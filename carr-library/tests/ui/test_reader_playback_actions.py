@@ -83,7 +83,9 @@ def reader(tmp_path):
         assert milliseconds == 25
         state.pending.append(callback)
     values = dict(parent=state.parent, player=state.player, progress=state.progress,
-        library=state.parent.library, library_root=root, source_guard=guard,
+        library=state.parent.library, library_root=root,
+        library_identity=(root.stat().st_dev, root.stat().st_ino), source_guard=guard,
+        prepare_listening=Mock(),
         alive=True, source_loaded=True, busy=False, playback_generation=1,
         repeat_scheduled=None, playback_refresh=None, playback_timer=state.timer,
         cancel=Event(), report=lambda message, **kwargs: state.reports.append(message),
@@ -252,7 +254,8 @@ def test_busy_playback_controls_preserve_active_worker_cancellation(reader, audi
 def test_modal_return_invalidates_queued_controls_and_checks_scope_before_focus(reader, tmp_path, monkeypatch, boundary):
     from carr_library.ui import reader_playback
     action = Mock()
-    def modal(parent, player, *, execute, stop, pause, subscribe):
+    def modal(parent, player, *, execute, stop, pause, subscribe, prepare_listening):
+        assert prepare_listening is reader.values['prepare_listening']
         assert parent is reader.values['dialog'] and player is reader.player
         subscribe(Mock())
         execute(action, audible=True)
@@ -274,4 +277,33 @@ def test_modal_return_invalidates_queued_controls_and_checks_scope_before_focus(
         reader.values['editor'].SetFocus.assert_not_called()
     ready(reader)
     action.assert_not_called()
+    assert all(hold.closed for hold in reader.progress.holds)
+
+
+def test_replaced_same_path_library_stops_playback_without_reading_old_source(reader):
+    root = reader.parent.library.root
+    previous = root.with_name('retained-old-library')
+    root.rename(previous)
+    root.mkdir()
+    reader.handlers.poll_audio()
+    assert reader.player.stops == 1
+    assert reader.player.starts == 0
+    assert reader.checks == 0
+    assert reader.cancel.is_set()
+    reader.timer.Stop.assert_called_once()
+    assert previous.is_dir() and root.is_dir()
+
+
+def test_replaced_same_path_library_rejects_already_admitted_repeat(reader):
+    reader.handlers.poll_audio()
+    assert len(reader.pending) == 1
+    root = reader.parent.library.root
+    previous = root.with_name('retained-before-repeat')
+    root.rename(previous)
+    root.mkdir()
+    ready(reader)
+    assert reader.player.starts == 0
+    assert reader.player.stops == 1
+    assert reader.checks == 0
+    assert not reader.pending
     assert all(hold.closed for hold in reader.progress.holds)

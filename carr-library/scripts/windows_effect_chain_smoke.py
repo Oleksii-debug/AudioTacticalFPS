@@ -176,7 +176,7 @@ def main():
             frame = DesktopFrame(library)
             frame.Show()
             gui.SetTopWindow(frame)
-            commands = {command.id for command in frame.keyboard_commands.registry.commands('main')}
+            commands = {command.command_id for command in frame.keyboard_commands.registry.commands('main')}
             check('existing Convert audio command is registered', 'audio.convert' in commands)
             runtime = audio_runtime(root, state_root=frame.library.root / 'state')
             verify_audio(runtime)

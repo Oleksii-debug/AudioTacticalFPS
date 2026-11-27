@@ -11,6 +11,7 @@ import pytest
 
 from carr_library.speech.progress_speech import activate_progress_voice, play_when_quiet
 from carr_library.speech.runtime import Voice, VoiceRegistry
+from carr_library.durable_state import local_path, regular
 
 
 def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=False):
@@ -33,7 +34,8 @@ def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=Fa
     factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
     factory.body[0].body[:0] = definitions
     namespace = {'Path': Path, 'VoiceRegistry': VoiceRegistry,
-                 'play_when_quiet': play_when_quiet, '__package__': 'carr_library.ui'}
+                 'play_when_quiet': play_when_quiet, 'local_path': local_path, 'regular': regular,
+                 '__package__': 'carr_library.ui'}
     namespace.update(globals_ or {})
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
     return SimpleNamespace(**namespace['build'](**values))
@@ -167,6 +169,7 @@ def reader(tmp_path, monkeypatch):
     report = lambda message, focus=False: reports.append(str(message))
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
     values = dict(parent=parent, library=parent.library, library_root=Path(parent.library.root),
+        library_identity=(tmp_path.stat().st_dev, tmp_path.stat().st_ino),
         progress=progress, voice_choice=choice,
         voices=registry.voices(), registry=registry, run=work, report=report,
         alive=True, playback_generation=0, repeat_scheduled=None,
@@ -176,7 +179,7 @@ def reader(tmp_path, monkeypatch):
         source_guard=lambda: None, draft_store=None, recovered=None, recovery_notice='', editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
         dialog=Mock(), autosave_timer=Mock(), executor=CleanupQueue(), audio_files=Mock(),
-        unregister=Mock(), owned_registries={registry}, owned_progress_voices=set())
+        unregister=Mock(), owned_registries={registry}, owned_progress_voices=set(), owned_listening=set())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
         ['check_current', 'reload', 'select_progress_voice', 'playback_scope',
          'playback_failed', 'start_playback', 'stop_audio', 'closing'],

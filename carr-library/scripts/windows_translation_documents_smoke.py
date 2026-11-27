@@ -186,7 +186,7 @@ def main():
             check('actual retained catalog and workspace', frame.active == (workspace, None)
                   and panel.ready and panel.workspace == workspace
                   and set(row['edition'] for row in entries).issubset(panel.rows))
-            commands = {command.id for command in frame.keyboard_commands.registry.commands('main')}
+            commands = {command.command_id for command in frame.keyboard_commands.registry.commands('main')}
             check('document translation uses the shared keyboard registry', 'tools.translation_documents' in commands)
             def find(dialog, name):
                 control = wx.FindWindowByName(name, dialog)

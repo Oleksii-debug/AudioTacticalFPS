@@ -8,6 +8,7 @@ See docs/DORDIAI_VOICES_CONTRACT.md for the reviewed upstream interfaces.
 
 from __future__ import annotations
 
+import atexit
 import base64
 from dataclasses import dataclass
 import hashlib
@@ -21,6 +22,8 @@ import subprocess
 from threading import Event, Lock, RLock, Thread
 from time import monotonic
 from typing import Callable, Iterator
+
+from ..speech._io import stop_process
 
 
 ENGINE_ID = "dordiai-voices"
@@ -157,22 +160,31 @@ class _JsonLinesProcess:
 
     def __init__(self, command: list[str], cwd: Path, *, max_reply_bytes: int = MAX_REPLY_BYTES):
         self._closed = Event()
+        self._close_lock = Lock()
+        self._cleanup_done = False
+        self._cleanup_registered = False
         self._send_lock = Lock()
         self._responses: Queue[dict | Exception | None] = Queue(maxsize=8)
         self._outgoing: Queue[bytes] = Queue(maxsize=2)
         self._max_reply_bytes = max_reply_bytes
         flags = (getattr(subprocess, "CREATE_NO_WINDOW", 0)
-                 | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0))
+                 | getattr(subprocess, "BELOW_NORMAL_PRIORITY_CLASS", 0)
+                 | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
         try:
             self.process = subprocess.Popen(command, cwd=str(cwd), stdin=subprocess.PIPE,
                                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                            env=_offline_environment(), creationflags=flags)
+                                            env=_offline_environment(), creationflags=flags,
+                                            start_new_session=os.name == 'posix', shell=False)
         except (OSError, ValueError):
             raise DordiaiUnavailable("The private dordiai-voices interpreter could not start") from None
         self._reader = Thread(target=self._read, daemon=True, name="CARR dordiai replies")
         self._writer = Thread(target=self._write, daemon=True, name="CARR dordiai requests")
-        self._reader.start()
-        self._writer.start()
+        try:
+            self._reader.start()
+            self._writer.start()
+        except BaseException:
+            self.close()
+            raise
 
     def _put(self, value: dict | Exception | None) -> None:
         while not self._closed.is_set():
@@ -248,30 +260,42 @@ class _JsonLinesProcess:
         return value
 
     def close(self) -> None:
-        if self._closed.is_set():
+        with self._close_lock:
+            try:
+                self._close()
+            except BaseException:
+                # Also retain a transport whose constructor failed while
+                # starting its threads, before an adapter could adopt it.
+                if not self._cleanup_registered:
+                    atexit.register(self.close)
+                    self._cleanup_registered = True
+                raise
+            else:
+                if self._cleanup_registered:
+                    atexit.unregister(self.close)
+                    self._cleanup_registered = False
+
+    def _close(self) -> None:
+        if self._cleanup_done:
             return
         self._closed.set()
-        self._writer.join(timeout=0.1)
+        # Stop the owned process group before closing stdin. A worker exiting
+        # on EOF must not leave a model child holding its inherited reply pipe.
+        stop_process(self.process)
+        if self._writer.ident is not None:
+            self._writer.join(timeout=1.0)
         if not self._writer.is_alive():
             try:
                 self.process.stdin.close()
             except (OSError, ValueError):
                 pass
-        try:
-            self.process.wait(timeout=1.0)
-        except subprocess.TimeoutExpired:
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=1.0)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait(timeout=2.0)
-        self._writer.join(timeout=1.0)
-        if not self._writer.is_alive():
-            self.process.stdin.close()
-        self._reader.join(timeout=1.0)
+        if self._reader.ident is not None:
+            self._reader.join(timeout=1.0)
         if not self._reader.is_alive():
             self.process.stdout.close()
+        if self._writer.is_alive() or self._reader.is_alive() or self.process.poll() is None:
+            raise DordiaiError('The local voice worker has not confirmed cleanup; its handle is retained for retry.')
+        self._cleanup_done = True
 
 
 class DordiaiVoicesAdapter:
@@ -299,6 +323,7 @@ class DordiaiVoicesAdapter:
         self._state = RLock()
         self._operation = Lock()
         self._worker: _JsonLinesProcess | None = None
+        self._probe_child: _JsonLinesProcess | None = None
         self._inventory: dict | None = None
         self._inventory_epoch: tuple | None = None
         self._active_cancel: Event | None = None
@@ -341,6 +366,8 @@ class DordiaiVoicesAdapter:
             check_cancelled()
             if self._closed:
                 raise DordiaiUnavailable("The dordiai-voices adapter is closed")
+            if self._probe_child is not None or (self._worker is not None and self._worker._closed.is_set()):
+                raise DordiaiUnavailable("Close the retained dordiai-voices worker before reconnecting.")
             epoch = self._epoch()
             if not refresh and self._inventory is not None and epoch == self._inventory_epoch:
                 return self._inventory
@@ -356,6 +383,7 @@ class DordiaiVoicesAdapter:
             check_cancelled()
             deadline = monotonic() + min(self.request_timeout, 60.0)
             child = _JsonLinesProcess([str(self.python), "-I", "-B", "-u", str(helper), str(self.runtime)], self.runtime)
+            self._probe_child = child
             try:
                 while True:
                     check_cancelled()
@@ -370,6 +398,7 @@ class DordiaiVoicesAdapter:
                     break
             finally:
                 child.close()
+                self._probe_child = None
             check_cancelled()
             self._validate_inventory(inventory)
             if epoch != self._epoch():
@@ -434,10 +463,10 @@ class DordiaiVoicesAdapter:
             return self._worker
 
     def _forget_worker(self, worker: _JsonLinesProcess) -> None:
+        worker.close()
         with self._state:
             if self._worker is worker:
                 self._worker = None
-        worker.close()
 
     def _drain_after_cancel(self, worker: _JsonLinesProcess, pending: bool) -> None:
         """Cancel has no acknowledgement; drain the old reply before drop's ack."""
@@ -566,11 +595,13 @@ class DordiaiVoicesAdapter:
                 pending = True
                 deadline = monotonic() + self.request_timeout
         finally:
-            if worker is not None and not completed:
-                self._drain_after_cancel(worker, pending)
-            with self._state:
-                self._active_cancel = None
-            self._operation.release()
+            try:
+                if worker is not None and not completed:
+                    self._drain_after_cancel(worker, pending)
+            finally:
+                with self._state:
+                    self._active_cancel = None
+                self._operation.release()
 
     def cancel(self) -> None:
         """Signal only this adapter's active request; no fabricated cancel RPC ack."""
@@ -583,9 +614,21 @@ class DordiaiVoicesAdapter:
         self.cancel()
         with self._state:
             self._closed = True
-            worker, self._worker = self._worker, None
-        if worker is not None:
-            worker.close()
+            children = (("_probe_child", self._probe_child), ("_worker", self._worker))
+        errors = []
+        for name, child in children:
+            if child is None:
+                continue
+            try:
+                child.close()
+            except BaseException as error:
+                errors.append(error)
+            else:
+                with self._state:
+                    if getattr(self, name) is child:
+                        setattr(self, name, None)
+        if errors:
+            raise errors[0]
 
     def __enter__(self) -> DordiaiVoicesAdapter:
         return self

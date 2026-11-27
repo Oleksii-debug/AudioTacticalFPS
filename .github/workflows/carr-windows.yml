@@ -78,6 +78,98 @@ jobs:
               sort_keys=True))
           PY
 
+  completion-regressions:
+    name: Required current composition / Windows source regressions
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare locked dependencies and the existing pinned codec
+        run: |
+          New-Item -ItemType Directory -Force 'ci-completion-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-completion-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m venv (Join-Path $env:RUNNER_TEMP 'carr-completion-python')
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $env:RUNNER_TEMP 'carr-completion-python/Scripts/python.exe'
+          "CARR_COMPLETION_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/trusted-client.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-completion-audio'
+          & $python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-completion-audio-cache') --output $audio --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Run required source regressions before the full bundle finishes
+        run: |
+          $completionSuites = @(
+            'tests/reader/test_braille.py',
+            'tests/ui/test_braille_actions.py',
+            'tests/studio/test_project_effects.py',
+            'tests/storage/test_backup_studio_effects.py',
+            'tests/integrations/test_dordiai_host_lifecycle.py',
+            'tests/ui/test_engine_settings_lifetime.py',
+            'tests/speech/test_listening.py',
+            'tests/speech/test_playback_devices.py',
+            'tests/ui/test_reader_listening_hooks.py',
+            'tests/packaging/test_installed_trusted_client_probe.py',
+            'tests/speech/test_wave_output.py',
+            'tests/speech/test_playlist.py',
+            'tests/speech/test_playlist_recovery.py',
+            'tests/ui/test_audio_playback.py',
+            'tests/audio/test_conversion_batch.py',
+            'tests/ui/test_audio_conversion_batch.py',
+            'tests/studio/test_conversion_batch_cli.py',
+            'tests/ui/test_reader_playback.py',
+            'tests/ui/test_reader_playback_actions.py',
+            'tests/studio/test_clip_dialog.py',
+            'tests/packaging/test_standard_installer.py',
+            'tests/speech/test_reader_usability.py',
+            'tests/security/test_idle_renewal.py',
+            'tests/assistant/test_translation_local.py',
+            'tests/assistant/test_translation_v3.py',
+            'tests/transcription/test_export_publication.py',
+            'tests/speech/test_publication_validation.py'
+          )
+          & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $summary = 'Required suites complete: ' + $completionSuites.Count + '; passed=' + $completionSuites.Count + '; failed=0'
+          if (@(Select-String -LiteralPath 'ci-completion-results/source-regressions.txt' -SimpleMatch $summary).Count -ne 1) { throw 'The current composition source inventory is incomplete.' }
+      - name: Retain source-only composition diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-completion-source-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-completion-results/*.txt
+          if-no-files-found: error
+          retention-days: 3
+
   # Mandatory Linux capability coverage complements the selected Windows build.
   flite-runtime:
     name: Required Linux Flite speech
@@ -597,6 +689,22 @@ jobs:
           "CARR_CI_INNO_ROOT=$innoRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Copy-Item -LiteralPath (Join-Path $innoRoot 'toolchain-receipt.json') -Destination 'ci-results/standard-inno-toolchain.json'
 
+      - name: Acquire the verified optional Liblouis archive for native BRF qualification
+        id: braille-runtime
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' }}
+        timeout-minutes: 5
+        run: |
+          # This explicit CI input is outside every application and transfer bundle.
+          $pin = Get-Content packaging/windows-braille-runtime.lock.json -Raw | ConvertFrom-Json
+          if ($pin.upstream.runtime_asset.url -cne 'https://github.com/liblouis/liblouis/releases/download/v3.39.0/liblouis-3.39.0-win64.zip' -or $pin.upstream.runtime_asset.bytes -ne 5762099 -or $pin.upstream.runtime_asset.sha256 -cne '64d669ac30f1411e0023b1cecc81c7a7b5374678ee41302c95ac8c7c8fbc6591') { throw 'Unexpected official Liblouis qualification pin.' }
+          $brailleInput = Join-Path $env:RUNNER_TEMP ('carr-braille-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $brailleInput -ErrorAction Stop | Out-Null
+          $brailleArchive = Join-Path $brailleInput $pin.upstream.runtime_asset.name
+          Invoke-WebRequest -Uri $pin.upstream.runtime_asset.url -OutFile $brailleArchive -ErrorAction Stop
+          if ((Get-Item -LiteralPath $brailleArchive).Length -ne $pin.upstream.runtime_asset.bytes) { throw 'Wrong optional Liblouis archive size' }
+          if ((Get-FileHash -LiteralPath $brailleArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.upstream.runtime_asset.sha256) { throw 'Wrong optional Liblouis archive SHA256' }
+          'CARR_CI_BRAILLE_ARCHIVE=' + $brailleArchive | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.audio_runtime.conclusion == 'success' && steps['publication-runtime'].conclusion == 'success' }}
@@ -808,7 +916,7 @@ jobs:
           # Start only the two already installed audio services on this ephemeral
           # CI host. No device/driver is installed; real MCI remains mandatory.
           & (Resolve-Path 'scripts/prepare_windows_audio.ps1').Path -Prepare -ReportPath 'ci-results/windows-audio-services.json'
-          & $python -I -B scripts/windows_reader_player_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-reader-player.txt'
+          & $python -I -B scripts/windows_reader_player_smoke.py --require-output-device --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-reader-player.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Actual installed native reader playback failed.' }
           $validatePlayer = @'
           import hashlib, json, pathlib, sys
@@ -822,14 +930,17 @@ jobs:
                   reports.append(value)
           assert len(reports) == 1, 'Native installed reader playback evidence is missing or ambiguous.'
           report = reports[0]
-          required = ('result', 'actual_windows_mci', 'paused_seek_no_play_command',
-                      'native_ab_sleep_skip_controls', 'installed_modules')
+          required = ["result","actual_windows_mci","installed_modules","paused_seek_no_play_command","native_ab_sleep_skip_controls","actual_listening_conversion_and_mapping","actual_windows_output_inventory","selected_mci_output"]
           assert all(report.get(name) == 'PASS' for name in required), report
           assert report['audible_listening'] == report['nvda'] == 'NOT_RUN'
           assert pathlib.Path(report['package_origin']).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve())
           expected = {name: hashlib.sha256((pathlib.Path('src/carr_library') / name).read_bytes()).hexdigest()
-                      for name in ('speech/player.py', 'ui/reader_playback.py')}
+                      for name in ["speech/player.py","speech/playback_devices.py","speech/listening.py","audio/dsp.py","audio/process.py","audio_runtime.py","operations/broker.py","ui/reader_playback.py","ui/speech_dialog.py"]}
           assert report['source_hashes'] == expected, report
+          new_required_checks = set(["actual Windows output inventory stays within its bound","opening output controls does not enumerate or change the route","actual native inventory is displayed without audio","native output selection alone does not apply or autoplay","native explicit output application stops and preserves identity","real selected MCI route confirms output before repeated playback","choosing automatic output still requires explicit application","explicit automatic output clears only session routing without autoplay","native listening Apply does not autoplay or change the original timeline","transformed native playback pauses on the original timeline","transformed native seek maps original seconds to measured derivative frames","native pitch choice keeps speed and actual output duration independent","native listening reset preserves exact original PCM without autoplay","listening runtime and installed source remain exact after native execution"])
+          assert new_required_checks <= set(report['checks']), sorted(new_required_checks - set(report['checks']))
+          assert report['output_count'] > 0
+          assert report['native_parent_callback'] == 'controlled probe callback; actual reader bridge tested separately'
           pathlib.Path('ci-results/full-bundle-reader-player.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
           print(json.dumps(report), flush=True)
           '@
@@ -1069,6 +1180,182 @@ jobs:
             @{ status='FAIL'; failures=$requiredNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-results/required-native-failures.json'
           }
           try {
+          if (-not (Test-Path -LiteralPath $env:CARR_CI_BRAILLE_ARCHIVE -PathType Leaf)) { throw 'The verified official Liblouis input is missing.' }
+          & $python -I -B scripts/windows_braille_smoke.py --source-root (Resolve-Path 'src').Path --runtime-archive $env:CARR_CI_BRAILLE_ARCHIVE --report 'ci-results/full-bundle-braille.json' 2>&1 | Tee-Object 'ci-results/full-bundle-braille.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native BRF export failed.' }
+          $verifyIntegratedFeature = @'
+          import json, os, pathlib, sys
+          from hashlib import sha256
+          report = json.loads(pathlib.Path('ci-results/full-bundle-braille.json').read_text(encoding='utf-8'))
+          required_fields = {"status":"PASS","actual_C_API":"PASS","actual_local_retained_source_exports":"PASS","manual_NVDA":"NOT_RUN","tactile_language_quality":"NOT_RUN","embosser_layout":"NOT_RUN","native_reader_menu":"NOT_RUN","languages_135":"NOT_RUN"}
+          assert all(report.get(name) == value for name, value in required_fields.items()), report
+          required = set(["native Windows x64","exact installed module bytes","official archive and 17-table source closure","actual isolated installed CLI inspection","actual isolated installed CLI export","English uncontracted literal cells","Ukrainian literal cells","Unicode archive and private source paths","long line beyond legacy CLI buffer","literal backslash is not an escape","unsupported symbol refused without output","eight-dot cells refused without output","source archived after review refuses native work","destination changed since question remains untouched","original bytes unchanged","all native reservations released","installed module bytes unchanged after native execution"])
+          assert len(report['checks']) == len(required) and set(report['checks']) == required
+          expected_origins = set(["carr_library.__main__","carr_library.application","carr_library.integrations.liblouis","carr_library.reader.braille","carr_library.reader.reading_desk","carr_library.speech.source","carr_library.research.export_file","carr_library.audio.process","carr_library.operations.broker","carr_library.operations.models","carr_library.ui.braille_actions","carr_library.ui.reading_desk"])
+          assert set(report['installed_origins']) == expected_origins
+          checkout, installed = pathlib.Path.cwd().resolve(), pathlib.Path(sys.prefix).resolve()
+          for name, item in report['installed_origins'].items():
+              actual = pathlib.Path(item['path']).resolve(strict=True)
+              source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert actual.is_relative_to(installed) and not actual.is_relative_to(checkout), name
+              assert item['sha256'] == sha256(actual.read_bytes()).hexdigest() == sha256(source.read_bytes()).hexdigest(), name
+          pin = json.loads(pathlib.Path('packaging/windows-braille-runtime.lock.json').read_text(encoding='utf-8'))['upstream']['runtime_asset']
+          archive = pathlib.Path(os.environ['CARR_CI_BRAILLE_ARCHIVE']).resolve(strict=True)
+          assert archive.stat().st_size == pin['bytes']
+          assert sha256(archive.read_bytes()).hexdigest() == pin['sha256'] == report['official_runtime']['archive_sha256']
+          assert len(report['official_runtime']['tables']) == 17
+          assert report['native_runtime_proofs'] and all(item['archive_sha256'] == pin['sha256'] and item['version'] == '3.39.0' and item['widechar_bytes'] == 4 for item in report['native_runtime_proofs'])
+          print(json.dumps(dict(status='PASS', required_checks=sorted(required), installed_origins=len(expected_origins), actual_C_API='PASS', manual_NVDA='NOT_RUN', native_reader_menu='NOT_RUN', tactile_language_quality='NOT_RUN', languages_135='NOT_RUN')), flush=True)
+          '@
+          $verifyIntegratedFeature | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Required braille-export evidence is incomplete.' }
+          } catch {
+            $requiredNativeFailures.Add([pscustomobject]@{ block='braille-export'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [braille-export]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-results/required-native-failures.json'
+          }
+          try {
+          & $python -I -B scripts/windows_studio_effects_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-studio-effects.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native persisted Studio effects failed.' }
+          $verifyIntegratedFeature = @'
+          import json, os, pathlib, re, sys
+          from hashlib import sha256
+          raw = pathlib.Path('ci-results/full-bundle-studio-effects.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'project_schema' in item and 'actual_ffmpeg' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native persisted Studio effects report is missing or ambiguous.'
+          report = reports[0]
+          required_fields = {"result":"PASS","native_keyboard":"PASS","actual_ffmpeg":"PASS","project_schema":3,"native_file_pickers":"NOT_RUN","nvda":"NOT_RUN","audible_listening":"NOT_RUN","physical_device":"NOT_RUN"}
+          assert all(report.get(name) == value for name, value in required_fields.items()), report
+          required = set(["actual wx Windows controls","actual Studio effect main loop","native original is managed by content identity","baseline render is an actual completed job","native saved exact clip processing","native persisted ordered bypass chain","native saved exact role processing","native saved exact scene processing","native saved exact master processing","native Cancel does not create a saved revision","native reload preserves full typed chains","native render completion has readable output and focus","actual clip scene master stages attenuate PCM","track stem includes clip effects but excludes bus effects","mastered chapter equals final master PCM","processing retains measured sample grid","saved timeline binds ordered project effects","concurrent saved revision cannot be overwritten by native review","Studio effects do not start playback","original and retained media remain unchanged","processing releases current shared admission","native effect editor closes cleanly","Studio effect worker cleanup is complete"])
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          expected_origins = set(["carr_library.studio.project","carr_library.studio.clips","carr_library.studio.managed_inputs","carr_library.studio.render","carr_library.ui.studio_clips","carr_library.ui.effects_dialog","carr_library.audio.effect_presets","carr_library.audio.dsp","carr_library.audio.process","carr_library.operations.broker","carr_library.durable_state","carr_library.runtime_settings"])
+          assert set(report['module_origins']) == expected_origins
+          checkout, installed = pathlib.Path.cwd().resolve(), pathlib.Path(sys.prefix).resolve()
+          for name, filename in report['module_origins'].items():
+              actual = pathlib.Path(filename).resolve(strict=True)
+              source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert actual.is_relative_to(installed) and not actual.is_relative_to(checkout), name
+              assert sha256(actual.read_bytes()).digest() == sha256(source.read_bytes()).digest(), name
+          pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
+          selected = pathlib.Path(os.environ['CARR_PUBLISHING_AUDIO_DIR']).resolve(strict=True)
+          assert set(report['audio_runtime']) == {'ffmpeg', 'ffprobe'}
+          for name, item in report['audio_runtime'].items():
+              binary = pathlib.Path(item['path']).resolve(strict=True)
+              expected = pin['output_files']['bin/' + name + '.exe']
+              assert binary.samefile(selected / 'bin' / (name + '.exe'))
+              assert binary.stat().st_size == expected['size']
+              assert item['sha256'] == expected['sha256'] == sha256(binary.read_bytes()).hexdigest()
+          pathlib.Path('ci-results/full-bundle-studio-effects.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(dict(status='PASS', required_checks=sorted(required), installed_origins=len(expected_origins), project_schema=3, actual_ffmpeg='PASS', native_keyboard='PASS', native_file_pickers='NOT_RUN', acoustic_quality='NOT_RUN', manual_nvda='NOT_RUN')), flush=True)
+          '@
+          $verifyIntegratedFeature | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Required studio-persisted-effects evidence is incomplete.' }
+          } catch {
+            $requiredNativeFailures.Add([pscustomobject]@{ block='studio-persisted-effects'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [studio-persisted-effects]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-results/required-native-failures.json'
+          }
+          try {
+          & $python -I -B scripts/windows_audio_conversion_batch_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-audio-conversion-batch.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native audio-conversion-batch failed.' }
+          $verifyIntegratedFeature = @'
+          import importlib, json, os, pathlib, re, sys
+          from hashlib import sha256
+          raw = pathlib.Path("ci-results/full-bundle-audio-conversion-batch.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'actual_ffmpeg' in item and 'file_and_folder_pickers' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'The actual native audio-conversion-batch report is missing or ambiguous.'
+          report = reports[0]
+          required_fields = {"result":"PASS","actual_ffmpeg":"PASS","native_keyboard":"PASS"}
+          assert all(report.get(name) == value for name, value in required_fields.items()), report
+          required = set(["actual Windows native batch controls","batch command uses the current registry API","batch picker requests explicit multiple files","batch resume is an explicit native choice","native batch review is read-only and names both sources","native batch approval defaults to No","native registered batch action dispatches","No leaves every output and manifest absent","native batch records only actual returned successes","actual batch PCM format and duration","actual batch output matches its completion receipt","native resume preserves all completed bytes and timestamps","native batch preserves both original sources","native batch releases shared resource admission","native batch leaves no owned conversion staging","native batch host finalizers complete","explicit pinned batch runtime: ffmpeg","explicit pinned batch runtime: ffprobe","exact installed source: carr_library.audio.conversion","exact installed source: carr_library.audio.conversion_batch","exact installed source: carr_library.audio.conversion_batch_cli","exact installed source: carr_library.ui.audio_conversion","exact installed source: carr_library.ui.audio_conversion_batch","exact installed source: carr_library.ui.studio_dialog","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.operations.broker","exact installed source: carr_library.durable_state","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.research.export_file"])
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          expected_origins = set(["carr_library.audio.conversion","carr_library.audio.conversion_batch","carr_library.audio.conversion_batch_cli","carr_library.ui.audio_conversion","carr_library.ui.audio_conversion_batch","carr_library.ui.studio_dialog","carr_library.audio.dsp","carr_library.audio.process","carr_library.operations.broker","carr_library.durable_state","carr_library.runtime_settings","carr_library.research.export_file"])
+          checkout, installed = pathlib.Path.cwd().resolve(), pathlib.Path(sys.prefix).resolve()
+          module_hashes = {}
+          for name in sorted(expected_origins):
+              actual = pathlib.Path(importlib.import_module(name).__file__).resolve(strict=True)
+              source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert actual.is_relative_to(installed) and not actual.is_relative_to(checkout), name
+              module_hashes[name] = sha256(actual.read_bytes()).hexdigest()
+              assert module_hashes[name] == sha256(source.read_bytes()).hexdigest(), name
+          assert report['file_and_folder_pickers'] == 'CONTROLLED'
+          assert report['physical_audio'] == report['acoustic_quality'] == report['nvda'] == 'NOT_RUN'
+          pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
+          selected = pathlib.Path(os.environ["CARR_PUBLISHING_AUDIO_DIR"]).resolve(strict=True)
+          assert set(report['audio_runtime']) == {'ffmpeg', 'ffprobe'}
+          for name, receipt in report['audio_runtime'].items():
+              binary = selected / 'bin' / (name + '.exe')
+              expected = pin['output_files']['bin/' + name + '.exe']
+              assert receipt['size'] == expected['size'] == binary.stat().st_size
+              assert receipt['sha256'] == expected['sha256'] == sha256(binary.read_bytes()).hexdigest()
+          pathlib.Path("ci-results/full-bundle-audio-conversion-batch.json").write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(dict(status='PASS', required_checks=sorted(required), installed_origins=len(expected_origins), actual_native='PASS', physical_audio='NOT_RUN', acoustic_quality='NOT_RUN', manual_nvda='NOT_RUN')), flush=True)
+          '@
+          $verifyIntegratedFeature | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Required audio-conversion-batch evidence is incomplete.' }
+          } catch {
+            $requiredNativeFailures.Add([pscustomobject]@{ block='audio-conversion-batch'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [audio-conversion-batch]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-results/required-native-failures.json'
+          }
+          try {
+          & $python -I -B scripts/windows_audio_player_smoke.py --installed 2>&1 | Tee-Object 'ci-results/full-bundle-saved-audio-queue.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native saved-audio-queue failed.' }
+          $verifyIntegratedFeature = @'
+          import importlib, json, os, pathlib, re, sys
+          from hashlib import sha256
+          raw = pathlib.Path("ci-results/full-bundle-saved-audio-queue.txt").read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'instance_volume_isolation' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'The actual native saved-audio-queue report is missing or ambiguous.'
+          report = reports[0]
+          required_fields = {"status":"PASS","installed_modules":"PASS","actual_windows_waveout":"PASS","actual_native_queue_controls":"PASS","instance_volume_isolation":"PASS"}
+          assert all(report.get(name) == value for name, value in required_fields.items()), report
+          required = set(["actual keyboard Space","native file chooser Enter","standalone opens without a source or native sound","actual file picker order and original hashes","review is passive","queue selection is silent","stopped live setting does not open a device","same canonical player owns bounded native output","actual pause is stable and disarms queue advancement","independent handles refer to the same Windows output","read independent owned output level","read muted owned output level","read unaffected independent output level","live mute and balance preserve volume and other player","live paused controls never resume audio","unmute retains reviewed native level","actual unmuted stereo balance matches the owned native handle","actual queue transition keeps levels and exact next file","Stop closes owned native output and cancels queue","native reorder is passive","silent original-frame cursor before save","actual Ctrl+S down","actual Ctrl+S character","actual Ctrl+S up","Ctrl+S durably saved order and exact original-frame cursor","restart loads passive metadata without opening audio","explicit review restores original cursor and settings without autoplay","one stable native command without a conflicting default shortcut","native modal close acknowledges player ownership","original PCM remains exact after live controls","closed source handle is released","saved queue reopens after original files moved","all installed queue sources stay exact after native execution"])
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          expected_origins = set(["carr_library.speech._wave_output","carr_library.speech.player","carr_library.speech.playlist","carr_library.speech.playback_devices","carr_library.ui.audio_playback","carr_library.ui.reader_playback","carr_library.ui.desktop_app","carr_library.studio.clips","carr_library.ui.save_all","carr_library.operations.broker","carr_library.backup_playback_queue"])
+          checkout, installed = pathlib.Path.cwd().resolve(), pathlib.Path(sys.prefix).resolve()
+          module_hashes = {}
+          for name in sorted(expected_origins):
+              actual = pathlib.Path(importlib.import_module(name).__file__).resolve(strict=True)
+              source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert actual.is_relative_to(installed) and not actual.is_relative_to(checkout), name
+              module_hashes[name] = sha256(actual.read_bytes()).hexdigest()
+              assert module_hashes[name] == sha256(source.read_bytes()).hexdigest(), name
+          assert set(report['source_identity']) == expected_origins
+          assert report['source_identity'] == module_hashes
+          assert report['audible_listening'] == report['nvda'] == 'NOT_RUN'
+          pathlib.Path("ci-results/full-bundle-saved-audio-queue.json").write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(dict(status='PASS', required_checks=sorted(required), installed_origins=len(expected_origins), actual_native='PASS', physical_audio='NOT_RUN', acoustic_quality='NOT_RUN', manual_nvda='NOT_RUN')), flush=True)
+          '@
+          $verifyIntegratedFeature | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Required saved-audio-queue evidence is incomplete.' }
+          } catch {
+            $requiredNativeFailures.Add([pscustomobject]@{ block='saved-audio-queue'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+            Write-Host ('REQUIRED NATIVE BLOCK FAILED [saved-audio-queue]: ' + $_.Exception.Message)
+            @{ status='FAIL'; failures=$requiredNativeFailures.ToArray(); qualification='Every native block remains required' } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 'ci-results/required-native-failures.json'
+          }
+          try {
           & $python -I -B scripts/windows_epub_reading_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-recorded-epub.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Actual installed recorded EPUB playback failed.' }
           $verifyRecordedEpub = @'
@@ -1234,7 +1521,7 @@ jobs:
           incremental_modules = ('carr_library.incremental_backup', 'carr_library.incremental_backup_cli', 'carr_library.sync.vault', 'carr_library.file_publication', 'carr_library.ui.incremental_backup_dialog')
           operations_modules = ["carr_library.operations.models","carr_library.operations._locks","carr_library.operations.broker","carr_library.operations.facade","carr_library.operations.cli","carr_library.ui.operations_dialog"]
           ebook_modules = ["carr_library.reader.ebook_audio","carr_library.ui.ebook_audio_dialog","carr_library.ui.reading_desk","carr_library.runtime_settings","carr_library.speech.player","carr_library.audio.process","carr_library.audio.cleanup"]
-          completion_modules = ["carr_library.assistant.templates","carr_library.ui.assistant_templates","carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.backup_book_audio","carr_library.integrations.transcription_values","carr_library.integrations.transcription_runtime","carr_library.integrations.transcription_scope","carr_library.integrations.transcription_backup","carr_library.integrations.transcription_protocol","carr_library.transcription","carr_library.backup_transcription","carr_library.ui.transcription_runtime_dialog","carr_library.ui.transcription_dialog","carr_library.transcription_cli","carr_library.integrations.transcription_exports","carr_library.audio.effect_presets","carr_library.audio.conversion","carr_library.ui.effects_dialog","carr_library.ui.audio_conversion","carr_library.backup_effect_presets","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.state_backup","carr_library.assistant.profiles","carr_library.assistant.providers","carr_library.assistant.translation","carr_library.assistant.translation_local","carr_library.assistant.translation_documents","carr_library.ui.translation_dialog","carr_library.ui.translation_documents","carr_library.assistant.translation_cli","carr_library.ui.assistant_dialog"]
+          completion_modules = ["carr_library.assistant.templates","carr_library.ui.assistant_templates","carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.backup_book_audio","carr_library.integrations.transcription_values","carr_library.integrations.transcription_runtime","carr_library.integrations.transcription_scope","carr_library.integrations.transcription_backup","carr_library.integrations.transcription_protocol","carr_library.transcription","carr_library.backup_transcription","carr_library.ui.transcription_runtime_dialog","carr_library.ui.transcription_dialog","carr_library.transcription_cli","carr_library.integrations.transcription_exports","carr_library.audio.effect_presets","carr_library.audio.conversion","carr_library.ui.effects_dialog","carr_library.ui.audio_conversion","carr_library.backup_effect_presets","carr_library.backup_producers","carr_library.backup_sidecars","carr_library.state_backup","carr_library.assistant.profiles","carr_library.assistant.providers","carr_library.assistant.translation","carr_library.assistant.translation_local","carr_library.assistant.translation_documents","carr_library.ui.translation_dialog","carr_library.ui.translation_documents","carr_library.assistant.translation_cli","carr_library.ui.assistant_dialog","carr_library.__main__","carr_library.application","carr_library.integrations.liblouis","carr_library.reader.braille","carr_library.reader.reading_desk","carr_library.speech.source","carr_library.research.export_file","carr_library.audio.process","carr_library.operations.broker","carr_library.operations.models","carr_library.ui.braille_actions","carr_library.ui.reading_desk","carr_library.studio.project","carr_library.studio.clips","carr_library.studio.managed_inputs","carr_library.studio.render","carr_library.ui.studio_clips","carr_library.audio.dsp","carr_library.durable_state","carr_library.runtime_settings","carr_library.integrations.dordiai_voices","carr_library.integrations.dordiai_speech","carr_library.speech.runtime","carr_library.speech._io","carr_library.ui.engine_settings","carr_library.speech.player","carr_library.speech.playback_devices","carr_library.speech.listening","carr_library.audio_runtime","carr_library.ui.reader_playback","carr_library.ui.speech_dialog","carr_library.speech._wave_output","carr_library.speech.playlist","carr_library.ui.audio_playback","carr_library.ui.desktop_app","carr_library.ui.save_all","carr_library.backup_playback_queue","carr_library.audio.conversion_batch","carr_library.audio.conversion_batch_cli","carr_library.ui.audio_conversion_batch"]
           for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules, *ebook_modules, *completion_modules):
               importlib.import_module(module_name)
           def installed_assistant_origins():
@@ -1417,13 +1704,31 @@ jobs:
               'tests/ui/test_operations_dialog.py',
               'tests/ui/test_operations_policy.py',
               'tests/e2e/test_operations_cli.py',
+              'tests/reader/test_braille.py',
+              'tests/ui/test_braille_actions.py',
+              'tests/studio/test_project_effects.py',
+              'tests/storage/test_backup_studio_effects.py',
+              'tests/integrations/test_dordiai_host_lifecycle.py',
+              'tests/ui/test_engine_settings_lifetime.py',
+              'tests/speech/test_listening.py',
+              'tests/speech/test_playback_devices.py',
+              'tests/ui/test_reader_listening_hooks.py',
+              'tests/packaging/test_installed_trusted_client_probe.py',
+              'tests/speech/test_wave_output.py',
+              'tests/speech/test_playlist.py',
+              'tests/speech/test_playlist_recovery.py',
+              'tests/ui/test_audio_playback.py',
+              'tests/audio/test_conversion_batch.py',
+              'tests/ui/test_audio_conversion_batch.py',
+              'tests/studio/test_conversion_batch_cli.py',
+              'tests/speech/test_publication_validation.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
           import xml.etree.ElementTree as ET
           publication_cases = list(ET.parse('ci-results/full-bundle-workflows.xml').iter('testcase'))
-          completion_suites = ["tests/transcription/test_protocol_fixture.py","tests/transcription/test_service.py","tests/transcription/test_admission_boundaries.py","tests/transcription/test_runtime_admission.py","tests/transcription/test_restore.py","tests/storage/test_transcription_backup.py","tests/ui/test_transcription_dialog.py","tests/e2e/test_transcription_cli.py","tests/transcription/test_unified_authority.py","tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/ui/test_worker_lifetime.py","tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_template_handlers.py","tests/storage/test_backup_book_audio.py","tests/storage/test_backup_studio_draft.py","tests/transcription/test_export_publication.py","tests/transcription/test_protocol_fixture_windows.py","tests/audio/test_effect_presets.py","tests/audio/test_audio_conversion.py","tests/ui/test_audio_conversion.py","tests/storage/test_backup_effect_presets.py","tests/assistant/test_translation_local.py","tests/assistant/test_translation_documents.py","tests/ui/test_translation_documents.py"]
+          completion_suites = ["tests/transcription/test_protocol_fixture.py","tests/transcription/test_service.py","tests/transcription/test_admission_boundaries.py","tests/transcription/test_runtime_admission.py","tests/transcription/test_restore.py","tests/storage/test_transcription_backup.py","tests/ui/test_transcription_dialog.py","tests/e2e/test_transcription_cli.py","tests/transcription/test_unified_authority.py","tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/ui/test_worker_lifetime.py","tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_template_handlers.py","tests/storage/test_backup_book_audio.py","tests/storage/test_backup_studio_draft.py","tests/transcription/test_export_publication.py","tests/transcription/test_protocol_fixture_windows.py","tests/audio/test_effect_presets.py","tests/audio/test_audio_conversion.py","tests/ui/test_audio_conversion.py","tests/storage/test_backup_effect_presets.py","tests/assistant/test_translation_local.py","tests/assistant/test_translation_documents.py","tests/ui/test_translation_documents.py","tests/reader/test_braille.py","tests/ui/test_braille_actions.py","tests/studio/test_project_effects.py","tests/storage/test_backup_studio_effects.py","tests/integrations/test_dordiai_host_lifecycle.py","tests/ui/test_engine_settings_lifetime.py","tests/speech/test_listening.py","tests/speech/test_playback_devices.py","tests/ui/test_reader_listening_hooks.py","tests/packaging/test_installed_trusted_client_probe.py","tests/speech/test_wave_output.py","tests/speech/test_playlist.py","tests/speech/test_playlist_recovery.py","tests/ui/test_audio_playback.py","tests/audio/test_conversion_batch.py","tests/ui/test_audio_conversion_batch.py","tests/studio/test_conversion_batch_cli.py","tests/speech/test_publication_validation.py"]
           effects_required = set(["test_actual_saved_order_changes_audio_and_bypassed_chain_preserves_source_pcm","test_complete_library_backup_preserves_user_presets_without_generated_audio","test_preset_growth_after_initial_stat_respects_the_actual_read_limit","test_old_preset_owner_cannot_write_into_same_path_replacement","test_processed_copy_tempo_and_pitch_have_separate_measured_meanings","test_source_byte_mutation_is_detected_even_when_observed_metadata_is_unchanged","test_same_byte_competing_create_is_never_reconciled_as_our_success","test_committed_copy_remains_completed_after_late_cancellation","test_postcommit_directory_flush_failure_reports_saved_but_unconfirmed_durability","test_postcommit_staging_cleanup_retains_owner_without_reclassifying_output","test_cancellation_during_real_shared_admission_starts_no_copy_or_decoder","test_actual_blocked_capability_probe_is_cancelled_and_never_cached","test_decoder_cleanup_holds_staging_and_native_admission_until_actual_child_death","test_close_while_capability_review_is_queued_cancels_its_own_work","test_named_preset_is_not_written_after_nested_name_dialog_loses_source_scope","test_refused_capability_submission_keeps_modal_cleanup_and_current_status","test_low_rate_high_bitrate_conversion_must_admit_its_real_encoded_output_cap","test_actual_preset_commit_with_directory_flush_failure_retains_its_identity[False]","test_actual_preset_commit_with_directory_flush_failure_retains_its_identity[True]","test_preset_precommit_flush_failure_never_claims_a_saved_record","test_preset_same_byte_competitor_remains_a_create_only_conflict","test_preset_editor_reports_visible_commit_identity_after_actual_flush_failure"])
           effects_seen = {case.get('name', '').split('[', 1)[0] for case in publication_cases}
           effects_seen.update(case.get('name', '') for case in publication_cases)
@@ -1438,12 +1743,18 @@ jobs:
                           if case.get('classname', '') == module or case.get('classname', '').startswith(module + '.')]
               assert selected and all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in selected), suite
               completion_counts[suite] = len(selected)
+          completed_feature_expected = {"tests/reader/test_braille.py":40,"tests/ui/test_braille_actions.py":8,"tests/studio/test_project_effects.py":25,"tests/storage/test_backup_studio_effects.py":21,"tests/integrations/test_dordiai_host_lifecycle.py":13,"tests/ui/test_engine_settings_lifetime.py":33,"tests/speech/test_listening.py":28,"tests/speech/test_playback_devices.py":53,"tests/ui/test_reader_listening_hooks.py":24,"tests/packaging/test_installed_trusted_client_probe.py":34,"tests/speech/test_wave_output.py":31,"tests/speech/test_playlist.py":21,"tests/speech/test_playlist_recovery.py":36,"tests/ui/test_audio_playback.py":24,"tests/audio/test_conversion_batch.py":36,"tests/ui/test_audio_conversion_batch.py":21,"tests/studio/test_conversion_batch_cli.py":4,"tests/speech/test_publication_validation.py":3}
+          assert all(completion_counts.get(name) == count for name, count in completed_feature_expected.items()), completion_counts
+          reviewed_queue_batch_required = set(["test_unconfirmed_native_close_retains_whole_listening_owner_after_ui_released","test_changed_prepared_copy_cannot_be_reaccepted_at_native_open","test_review_copy_and_hash_hold_one_actual_shared_reservation","test_declared_disk_refusal_precedes_playlist_review_or_input_creation","test_same_path_library_replacement_after_policy_discovery_prevents_copy","test_same_byte_competing_create_is_never_claimed_as_this_save","test_visible_save_warning_retries_even_when_current_matches_former_baseline","test_late_modal_review_cannot_touch_replacement_scope","test_real_backup_restores_saved_queue_after_original_and_library_deletion","test_standalone_state_roundtrip_keeps_queue_passive_and_uses_only_copied_pcm","test_resealed_queue_cannot_invent_pcm_dimensions","test_reserved_queue_aliases_and_descendants_fail_closed","test_incoming_saved_queue_lock_is_not_recovery_payload","test_saved_queue_record_budget_is_enforced_before_copy","test_actual_same_byte_competitor_is_uncertain_and_never_recovered","test_actual_child_death_retains_uncertain_output_without_hash_adoption[after-link]","test_actual_child_death_retains_uncertain_output_without_hash_adoption[before-success-receipt]","test_successful_output_with_failed_receipt_write_is_reported_without_retry","test_checkpoint_never_runs_after_actual_visible_commit","test_manifest_semantic_change_after_review_refuses_even_with_unchanged_stat","test_full_backup_keeps_external_manifest_external_and_restore_cannot_reauthorize_it","test_actual_cli_requires_explicit_review_then_exports_unicode_and_resumes_without_rewriting","test_default_no_review_never_admits_conversion","test_valid_callback_publishes_the_exact_measured_wave","test_callback_parent_replacement_rejects_identical_staging_bytes","test_callback_staging_hardlink_alias_cannot_be_published"])
+          reviewed_queue_batch_seen = {case.get('name', '') for case in publication_cases}
+          reviewed_queue_batch_base = {name.split('[', 1)[0] for name in reviewed_queue_batch_seen}
+          assert all(name in (reviewed_queue_batch_seen if '[' in name else reviewed_queue_batch_base) for name in reviewed_queue_batch_required), sorted(reviewed_queue_batch_required - reviewed_queue_batch_seen)
           print(json.dumps({'status': 'PASS', 'completion_installed_counts': completion_counts,
               'manual_nvda': 'NOT_RUN', 'private_model_inference': 'NOT_RUN'}), flush=True)
           publication_expected = {'test_publishing': 48, 'test_audiobook': 17, 'test_audiobook_publication': 1, 'test_daisy_publishing': 29, 'test_daisy_boundaries': 15, 'test_publishing_boundaries': 15, 'test_publishing_handlers': 12, 'test_publishing_cli': 7, 'test_backup_publication_formats': 8}
           publication_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in publication_expected}
           assert publication_counts == publication_expected, publication_counts
-          clip_expected = {"test_clip_editing":20,"test_clip_restoration":24,"test_clip_dialog":35,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
+          clip_expected = {"test_clip_editing":20,"test_clip_restoration":24,"test_clip_dialog":45,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
           clip_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in clip_expected}
           clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[completed]', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[cancelled-before-start]', 'test_borrowed_clip_editor_service_is_not_closed_by_dialog'}
           assert clip_counts == clip_expected, clip_counts
@@ -1463,7 +1774,7 @@ jobs:
           ebook_seen = {case.get('name', '').split('[', 1)[0] for case in publication_cases}
           assert all(ebook_counts.values()) and ebook_counts['test_ebook_audio_lifetime'] == 14, ebook_counts
           assert ebook_required <= ebook_seen, sorted(ebook_required - ebook_seen)
-          reader_expected = {'test_reader_usability': 31, 'test_navigation': 27, 'test_progress_voice_actions': 22, 'test_player_controls': 37, 'test_player_transport': 11, 'test_reader_playback': 15, 'test_reader_playback_actions': 22}
+          reader_expected = {'test_reader_usability': 33, 'test_navigation': 27, 'test_progress_voice_actions': 22, 'test_player_controls': 37, 'test_player_transport': 11, 'test_reader_playback': 52, 'test_reader_playback_actions': 24}
           reader_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in reader_expected}
           reader_required = {"test_one_thousand_matching_pronunciation_rules_commit_one_undo_step", "test_literal_expansion_is_admitted_before_large_allocation_and_is_atomic", "test_regex_backreference_expansion_is_bounded_inside_the_real_child", "test_cancellation_during_many_literal_matches_leaves_the_copy_unchanged", "test_recovered_caret_roundtrips_native_crlf_and_surrogate_offsets", "test_completed_synthesis_rechecks_current_source_before_late_playback", "test_dictionary_requires_explicit_save_of_a_changed_rule_form_before_apply"}
           reader_seen = {case.get('name', '').split('[', 1)[0] for case in publication_cases}
@@ -2102,7 +2413,25 @@ jobs:
             'tests/operations/test_current_union.py',
             'tests/ui/test_operations_dialog.py',
             'tests/ui/test_operations_policy.py',
-            'tests/e2e/test_operations_cli.py'
+            'tests/e2e/test_operations_cli.py',
+            'tests/reader/test_braille.py',
+            'tests/ui/test_braille_actions.py',
+            'tests/studio/test_project_effects.py',
+            'tests/storage/test_backup_studio_effects.py',
+            'tests/integrations/test_dordiai_host_lifecycle.py',
+            'tests/ui/test_engine_settings_lifetime.py',
+            'tests/speech/test_listening.py',
+            'tests/speech/test_playback_devices.py',
+            'tests/ui/test_reader_listening_hooks.py',
+            'tests/packaging/test_installed_trusted_client_probe.py',
+            'tests/speech/test_wave_output.py',
+            'tests/speech/test_playlist.py',
+            'tests/speech/test_playlist_recovery.py',
+            'tests/ui/test_audio_playback.py',
+            'tests/audio/test_conversion_batch.py',
+            'tests/ui/test_audio_conversion_batch.py',
+            'tests/studio/test_conversion_batch_cli.py',
+            'tests/speech/test_publication_validation.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
@@ -2147,12 +2476,12 @@ jobs:
             $speechVerdict = @(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
             if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
             $readerExpected = @{
-              'tests/speech/test_reader_usability.py' = 31
+              'tests/speech/test_reader_usability.py' = 33
               'tests/speech/test_navigation.py' = 27
               'tests/speech/test_player_controls.py' = 37
               'tests/speech/test_player_transport.py' = 11
-              'tests/ui/test_reader_playback.py' = 15
-              'tests/ui/test_reader_playback_actions.py' = 22
+              'tests/ui/test_reader_playback.py' = 52
+              'tests/ui/test_reader_playback_actions.py' = 24
               'tests/ui/test_ebook_audio_lifetime.py' = 14
               'tests/ui/test_progress_voice_actions.py' = 22
             }
@@ -2160,6 +2489,34 @@ jobs:
               $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
               $verdict = @(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern $pattern)
               if ($verdict.Count -ne 1) { throw ("Required reader coverage differs: " + $entry.Key) }
+            }
+            $completedFeatureCounts = @{
+              'tests/reader/test_braille.py' = 40
+              'tests/ui/test_braille_actions.py' = 8
+              'tests/studio/test_project_effects.py' = 25
+              'tests/storage/test_backup_studio_effects.py' = 21
+              'tests/integrations/test_dordiai_host_lifecycle.py' = 13
+              'tests/ui/test_engine_settings_lifetime.py' = 33
+              'tests/speech/test_listening.py' = 28
+              'tests/speech/test_playback_devices.py' = 53
+              'tests/ui/test_reader_listening_hooks.py' = 24
+              'tests/ui/test_reader_playback.py' = 52
+              'tests/ui/test_reader_playback_actions.py' = 24
+              'tests/packaging/test_installed_trusted_client_probe.py' = 34
+              'tests/studio/test_clip_dialog.py' = 45
+              'tests/packaging/test_standard_installer.py' = 102
+              'tests/speech/test_wave_output.py' = 31
+              'tests/speech/test_playlist.py' = 21
+              'tests/speech/test_playlist_recovery.py' = 36
+              'tests/ui/test_audio_playback.py' = 24
+              'tests/audio/test_conversion_batch.py' = 36
+              'tests/ui/test_audio_conversion_batch.py' = 21
+              'tests/studio/test_conversion_batch_cli.py' = 4
+              'tests/speech/test_publication_validation.py' = 3
+            }
+            foreach ($entry in $completedFeatureCounts.GetEnumerator()) {
+              $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+              if (@(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern $pattern).Count -ne 1) { throw ('Required completed-feature case inventory differs: ' + $entry.Key) }
             }
             $formatExpected = @{
               'tests/audio/test_audiobook.py' = 17

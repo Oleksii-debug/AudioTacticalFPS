@@ -209,6 +209,9 @@ class BookPlan:
                 or not self.role.voice_id or self.format not in FORMATS
                 or self.sample_rate not in (16000, 22050, 24000, 44100, 48000)):
             raise ValueError('Choose a typed local voice, supported format and sample rate.')
+        if self.role.effects:
+            raise ValueError('Book plans require a separate reviewed effect contract; '
+                             'saved Studio effect chains cannot be attached implicitly.')
         if type(self.source_json) is not str or len(self.source_json) > 12_000_000:
             raise ValueError('Invalid bounded source snapshot.')
         try:
@@ -250,7 +253,7 @@ class BookPlan:
 
     def to_dict(self):
         return {'schema': 1, 'id': self.id, 'source': self.source,
-                'options': asdict(self.options), 'role': asdict(self.role),
+                'options': asdict(self.options), 'role': self.role.to_dict(),
                 'parts': [asdict(part) for part in self.parts], 'format': self.format,
                 'sample_rate': self.sample_rate}
 
@@ -265,7 +268,7 @@ class BookPlan:
             raise ValueError('Unsupported book-audio plan.')
         try:
             return cls(value['id'], encode(value['source']).decode('utf-8'),
-                       SplitOptions(**value['options']), Role(**value['role']),
+                       SplitOptions(**value['options']), Role.from_dict(value['role']),
                        tuple(BookPart(**part) for part in value['parts']),
                        value['format'], value['sample_rate'])
         except (TypeError, KeyError) as exc:

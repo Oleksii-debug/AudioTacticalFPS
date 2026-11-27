@@ -1,4 +1,4 @@
-# Adjustable effects and named processed-copy presets
+# Adjustable effects, named presets and persisted Studio processing
 
 ## Current workflow
 
@@ -49,6 +49,32 @@ The worker copies the explicitly selected source into bounded private staging, h
 Inspection and processing use existing owned native process cleanup. If a codec's CleanupOwner has not confirmed termination, staging and resource admission stay owned until it does. Closing a queued capability review cancels that review. Cancellation before final publication leaves no accepted output.
 
 Publication uses the existing no-clobber file publisher after another source-byte and destination check. A competing file is a conflict even if its bytes match. Once the final link is visible, late cancellation does not change a saved result into a cancelled one. A later directory-flush failure is reported as **saved, durability unconfirmed**; retained temporary cleanup is reported separately with its existing cleanup owner.
+
+
+## Persisted Studio processing
+
+Open **Audio Studio → Scene audio clips** and select a saved project and scene. The same ordered editor is available from **Clip effects...**, **Speaking role effects...**, **Scene effects...** and **Master effects...**. Role selection is explicit. Apply saves the chosen chain as a new revision of that existing Studio project, after rechecking the exact previously reviewed project fingerprint. Cancel keeps the saved revision. An external edit requires Reload before another save.
+
+The saved project retains each chain's order, parameters and bypass states. Project schema 3 explicitly carries this processing. Existing schemas 1 and 2 keep their exact serialized fields and fingerprints; opening, rendering or accepting an unchanged empty chain does not migrate them. A legacy project with absolute cue paths cannot silently become a portable effects project. Create a portable clip project and explicitly select the source audio first.
+
+| Scope | Processing and resulting files |
+|---|---|
+| Speaking role | Applies to each placed speech line after the existing accepted synthesis cache. Changing these effects does not repeat an unchanged synthesis call. Role stems retain the role processing. |
+| Clip | Applies to that retained clip's track. Placement, trimming, gain, pan and fades remain the existing typed controls. Clip-role stems retain the clip processing. |
+| Scene | Applies to the mixed scene bus. Separate role and clip stems exclude this bus processing. |
+| Master | Applies once to the assembled master. Exported chapters are sample-aligned slices of that same processed master. Separate stems exclude the master bus. |
+
+Timeline chains preserve the existing duration and sample grid. An enabled tempo effect is rejected before saving; use an explicitly processed copy through Convert when a different duration is wanted. Delay and reverb tails beyond a scene or master boundary are cropped to that fixed duration. These controls do not provide an independent plug-in system or claim unrestricted DAW features.
+
+**Preview saved clip** renders its saved clip chain. **Preview without clip effects** bypasses that chain for comparison while retaining trim, gain, pan and fades. Neither preview includes scene or master effects. Render saved project requires an explicit output parent and does not start playback. The ordered editor and stored revisions are separate: the editor's Undo/Redo applies to its current unsaved chain; there is no new project-wide Undo/Redo command.
+
+The configured runtime is inspected on the existing shared worker after resource admission. Preview and rendering retain their native cleanup owners and reservations until the actual child processes are quiescent. Master processing declares room for both the processed master and the derived chapter PCM. Resource estimates remain declared limits, not a hardware benchmark or a measured quality guarantee.
+
+Schema 3 uses the existing managed inputs and local origin rules. Complete backups retain typed chains, exact managed originals, revision history and linked job/timeline metadata. Passive validation opens only copied state. After restoration to a new path or the same path, saved jobs still require explicit fresh output approval before any previous output path is inspected. A missing or changed retained original is refused before decoding or new output publication.
+
+Projects created by **Book audio** retain their separately reviewed BookPlan contract. The generic effects editor refuses those reserved source-bound projects. Applying effects to a source-bound book plan needs a future explicit BookPlan effect review; this Studio workflow does not silently modify its approved source or grant quotation authority.
+
+The dedicated Studio tests cover exact legacy bytes, ordered persistence, four scopes, real synthetic PCM, source preservation, cancellation, real-child admission retention and both restore paths. The separate native Studio probe drives real effect dialogs and saved-project rendering, including Cancel and stale-revision refusal. Its unused role tests role-editor persistence; it does not pretend to synthesize a voice. Exact candidate source and native execution remain required.
 
 ## Acceptance and limits
 

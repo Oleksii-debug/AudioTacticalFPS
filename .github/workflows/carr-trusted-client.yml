@@ -111,6 +111,7 @@ jobs:
       - name: Require every source authority and maintenance suite without skips
         run: |
           $suites = @('tests/packaging/test_managed_launch_boundary.py', 'tests/packaging/test_managed_update_native_policy.py', 'tests/packaging/test_native_launcher_bundle.py', 'tests/packaging/test_standard_installer.py', 'tests/security/test_anchor_locking.py', 'tests/security/test_canonical_boundary.py', 'tests/security/test_controller.py', 'tests/security/test_entitlements.py', 'tests/security/test_idle_renewal.py', 'tests/security/test_independent_review_boundaries.py', 'tests/security/test_installation.py', 'tests/security/test_managed_installation.py', 'tests/security/test_managed_registration.py', 'tests/security/test_publication_integrity.py', 'tests/security/test_refresh.py', 'tests/security/test_updates.py', 'tests/ui/test_trust_status_handlers.py')
+          $suites += 'tests/packaging/test_installed_trusted_client_probe.py'
           if ($IsWindows) { $suites += 'tests/security/test_windows_vault.py' }
           & $env:CARR_TRUST_PYTHON -B scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'trusted-results/source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -119,6 +120,7 @@ jobs:
             if (@(Select-String -LiteralPath 'trusted-results/source.txt' -Pattern $pattern).Count -ne 1) { throw ("Missing strict source result: " + $suite) }
           }
           if (@(Select-String -LiteralPath 'trusted-results/source.txt' -Pattern '^PASS: tests/ui/test_trust_status_handlers\.py: junit_passed=11, failed=0, skipped=0, pytest_exit=0$').Count -ne 1) { throw 'All11 current trust UI guards are required.' }
+          if (@(Select-String -LiteralPath 'trusted-results/source.txt' -Pattern '^PASS: tests/packaging/test_installed_trusted_client_probe\.py: junit_passed=34, failed=0, skipped=0, pytest_exit=0$').Count -ne 1) { throw 'The actual collector/report protocol regression inventory is required.' }
       - name: Require exact installed authority and maintenance contracts
         run: |
           & $env:CARR_TRUST_PYTHON -I -B scripts/installed_trusted_client_probe.py --report 'trusted-results/installed.xml' 2>&1 | Tee-Object 'trusted-results/installed.txt'

@@ -34,6 +34,8 @@ def dialog(tmp_path):
     value._accept = Mock()
     value.library = SimpleNamespace(root=tmp_path / 'library')
     value.library_root = value.library.root
+    value.library_root.mkdir()
+    value._library_identity = value._library_stamp()
     value.frame = SimpleNamespace(working=False, cancel_event=threading.Event(),
                                   library=value.library, _closing=False)
     value.test_environment = env
@@ -552,3 +554,134 @@ def test_borrowed_clip_editor_service_is_not_closed_by_dialog(dialog):
     dialog.editor = SimpleNamespace(service=SimpleNamespace(close=Mock()))
     dialog._release_service()
     dialog.editor.service.close.assert_not_called()
+
+
+def effect_selection(dialog):
+    from dataclasses import replace
+    from carr_library.audio import Effect
+    from carr_library.studio.project import Line, Role
+    cue = Cue('clip-1', 'inputs/' + '0' * 64 + '.audio')
+    scene = Scene('scene-1', 'Scene', (Line('line-1', 'role-1', 'Literal source words.'),),
+                  cues=(cue,))
+    project = Project('project-1', 'Effects', (Role('role-1', 'Narrator'),), (scene,), schema=2)
+    chain = (Effect('gain', gain_db=-3), Effect('highpass', frequency=80, enabled=False))
+    dialog.project = project
+    dialog._scene, dialog._clip = lambda: scene, lambda: cue
+    dialog.editor = SimpleNamespace(
+        effect_capabilities=Mock(return_value=('gain', 'highpass', 'tempo')),
+        set_effects=Mock(return_value=replace(project, schema=3, revision=2, effects=chain)))
+    dialog.wx.ID_OK = 1
+    picker = Mock()
+    picker.ShowModal.return_value, picker.GetSelection.return_value = 1, 0
+    dialog.wx.SingleChoiceDialog = Mock(return_value=picker)
+    return SimpleNamespace(project=project, scene=scene, cue=cue, chain=chain, picker=picker)
+
+
+@pytest.mark.parametrize('scope', ['clip', 'role', 'scene', 'master'])
+def test_effect_editor_queues_inspection_then_exact_reviewed_save_without_playback(dialog, monkeypatch, scope):
+    import sys
+    selected = effect_selection(dialog)
+    editor = Mock(return_value=selected.chain)
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.effects_dialog',
+                        SimpleNamespace(show_effect_chain=editor))
+    assert dialog._effects(scope)
+    dialog.editor.effect_capabilities.assert_not_called()
+    dialog.editor.set_effects.assert_not_called()
+    editor.assert_not_called()
+    assert len(dialog.calls) == 1
+    dialog.finish()
+    dialog.editor.effect_capabilities.assert_called_once()
+    assert dialog.editor.effect_capabilities.call_args.args == (selected.project,)
+    editor.assert_called_once()
+    assert editor.call_args.args == (dialog, dialog.library_root, ())
+    assert editor.call_args.kwargs['available'] == ('gain', 'highpass')
+    assert editor.call_args.kwargs['sample_rate'] == selected.project.sample_rate
+    editor.call_args.kwargs['guard']()
+    dialog.editor.set_effects.assert_not_called()
+    assert len(dialog.calls) == 1 and dialog.pending
+    dialog.finish()
+    call = dialog.editor.set_effects.call_args
+    assert call.args == (selected.project, scope, selected.chain)
+    expected = {'clip': {'scene_id': selected.scene.id, 'clip_id': selected.cue.id},
+                'role': {'role_id': selected.project.roles[0].id},
+                'scene': {'scene_id': selected.scene.id}, 'master': {}}[scope]
+    assert {key: value for key, value in call.kwargs.items() if key != 'cancelled'} == expected
+    assert not call.kwargs['cancelled']()
+    assert dialog._accept.call_count == 1
+    assert dialog.player is None and not dialog.previews
+    if scope == 'role':
+        selected.picker.Destroy.assert_called_once()
+
+
+def test_cancelled_effect_review_changes_no_project_and_queues_no_save(dialog, monkeypatch):
+    import sys
+    effect_selection(dialog)
+    editor = Mock(return_value=None)
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.effects_dialog',
+                        SimpleNamespace(show_effect_chain=editor))
+    dialog.master_effects()
+    dialog.finish()
+    assert editor.call_count == 1
+    dialog.editor.set_effects.assert_not_called()
+    dialog._accept.assert_not_called()
+    assert not dialog.calls and not dialog.pending and dialog.player is None
+
+
+@pytest.mark.parametrize('boundary', ['inspection-queued', 'modal-open', 'save-queued'])
+def test_effect_work_rejects_recreated_same_path_library_at_each_boundary(dialog, tmp_path, monkeypatch, boundary):
+    import sys
+    selected = effect_selection(dialog)
+    old_library = dialog.library
+    old_path = dialog.library_root
+    def replace_root():
+        old_path.rename(tmp_path / 'former-library')
+        old_path.mkdir()
+        assert dialog.frame.library is old_library and dialog.library.root == old_path
+    def review(*args, **kwargs):
+        if boundary == 'modal-open':
+            replace_root()
+        return selected.chain
+    shown = Mock(side_effect=review)
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.effects_dialog',
+                        SimpleNamespace(show_effect_chain=shown))
+    dialog.master_effects()
+    if boundary == 'inspection-queued':
+        replace_root()
+    dialog.finish()
+    if boundary == 'save-queued':
+        assert len(dialog.calls) == 1
+        replace_root()
+        dialog.finish()
+    dialog.editor.set_effects.assert_not_called()
+    dialog._accept.assert_not_called()
+    assert not dialog.calls and not dialog.pending and dialog.player is None
+    if boundary == 'inspection-queued':
+        dialog.editor.effect_capabilities.assert_not_called()
+        shown.assert_not_called()
+
+
+def test_project_changed_after_effect_review_is_refused_before_save(dialog, monkeypatch):
+    import sys
+    from dataclasses import replace
+    selected = effect_selection(dialog)
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.effects_dialog',
+                        SimpleNamespace(show_effect_chain=Mock(return_value=selected.chain)))
+    dialog.master_effects()
+    dialog.finish()
+    assert len(dialog.calls) == 1
+    dialog.project = replace(selected.project, revision=2, title='Another saved revision')
+    dialog.finish()
+    dialog.editor.set_effects.assert_not_called()
+    dialog._accept.assert_not_called()
+    assert 'changed' in dialog.status.ChangeValue.call_args.args[0]
+    assert not dialog.pending and dialog.player is None
+
+
+def test_role_picker_cancel_does_not_inspect_runtime_or_save(dialog):
+    selected = effect_selection(dialog)
+    selected.picker.ShowModal.return_value = 0
+    assert dialog.role_effects() is False
+    selected.picker.Destroy.assert_called_once()
+    dialog.editor.effect_capabilities.assert_not_called()
+    dialog.editor.set_effects.assert_not_called()
+    assert not dialog.calls and dialog.player is None

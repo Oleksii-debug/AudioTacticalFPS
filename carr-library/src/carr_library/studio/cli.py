@@ -54,6 +54,9 @@ def main(argv=None):
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--input-root', action='append', type=Path, default=[], help='Explicit local cue folder; repeat if needed')
     operations = parser.add_subparsers(dest='operation', required=True)
+    batch = operations.add_parser('convert-batch', help='Review and explicitly approve an ordered audio conversion batch')
+    from ..audio.conversion_batch_cli import add_arguments as batch_arguments
+    batch_arguments(batch)
     operations.add_parser('voices', help='List actually installed local voices')
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
@@ -119,6 +122,9 @@ def main(argv=None):
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
+        if args.operation == 'convert-batch':
+            from ..audio.conversion_batch_cli import execute as execute_batch
+            return execute_batch(args, app)
         service = ProductionService(app.root / 'state' / 'studio', input_roots=args.input_root)
         if args.operation == 'voices':
             result = [json_safe(asdict(voice)) for voice in service.voices.voices()]

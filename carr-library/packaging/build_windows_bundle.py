@@ -40,6 +40,8 @@ USER_GUIDES = (
     "INCREMENTAL_BACKUPS.md", "PORTABLE_SNAPSHOTS.md", "runtime_resources.md",
     "TRUSTED_CLIENT.md", "MANAGED_UPDATES.md", "audio_engine.md",
     "BOOK_AUDIO.md", "WORKFLOW_TEMPLATES.md", "AUDIO_EFFECTS.md", "translation_workstation.md",
+    "BRAILLE_BRF.md", "LISTENING_SPEED.md", "READER_PLAYBACK_OUTPUT.md",
+    "PLAYBACK_QUEUE.md", "AUDIO_CONVERSION_BATCH.md",
 )
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))

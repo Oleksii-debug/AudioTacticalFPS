@@ -43,6 +43,8 @@ def main():
     user32.SetForegroundWindow.restype = wintypes.BOOL
     user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
     user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user32.IsWindow.argtypes = [wintypes.HWND]
+    user32.IsWindow.restype = wintypes.BOOL
 
     def check(label, condition):
         if not condition:
@@ -287,24 +289,31 @@ def main():
             elif name == 'child_destroyed':
                 check('native child destruction does not dispose its parent controller',
                       not detached.controller.closed)
+                detached_state['controller'] = detached.controller
                 detached_state['before'] = detached.controller.status
-                def destroyed(event):
-                    if event.GetEventObject() is detached:
-                        detached_state['destroyed'] = True
-                    event.Skip()
-                def late():
-                    detached_state['late'] = True
-                    detached.controller.report('Late callback must not touch destroyed controls.', focus=True)
-                detached.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+                detached_state['hwnd'] = int(detached.GetHandle())
+                if not detached_state['hwnd'] or not user32.IsWindow(detached_state['hwnd']):
+                    raise AssertionError('The detached task view must own a live native window before destruction.')
                 detached.Destroy()
-                check('controller detaches before deferred native destruction', detached.controller.closed)
-                wx.CallAfter(late)
+                check('controller detaches before deferred native destruction', detached_state['controller'].closed)
                 advance('destroyed')
             elif name == 'destroyed':
-                if not detached_state.get('destroyed') or not detached_state.get('late'):
+                # This dialog was never shown. Its actual HWND lifetime is the
+                # boundary; delivery of a wx destroy event is not the proof.
+                if user32.IsWindow(detached_state['hwnd']):
+                    return
+                if not detached_state.get('late_queued'):
+                    detached_state['late_queued'] = True
+                    def late():
+                        detached_state['controller'].report('Late callback must not touch destroyed controls.', focus=True)
+                        detached_state['late'] = True
+                    wx.CallAfter(late)
+                    return
+                if not detached_state.get('late'):
                     return
                 check('queued callback cannot touch a destroyed native view',
-                      detached.controller.status == detached_state['before'])
+                      detached_state['controller'].closed
+                      and detached_state['controller'].status == detached_state['before'])
                 check('job identity and original queued result survive every task-view action',
                       assistant.get(identity).status == 'queued' and len(assistant.jobs()) == 1)
                 advance('complete')

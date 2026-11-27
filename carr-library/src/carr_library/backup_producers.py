@@ -10,7 +10,7 @@ from pathlib import PurePosixPath, PureWindowsPath
 import re
 from uuid import NAMESPACE_URL, uuid5
 
-from . import backup_book_audio, backup_effect_presets
+from . import backup_book_audio, backup_effect_presets, backup_playback_queue
 
 ID = r'[A-Za-z0-9_-]{1,80}'
 HEX = r'[0-9a-f]{64}'
@@ -32,6 +32,10 @@ TRUSTED_CLIENT = frozenset({'state/trusted-client/entitlement.json',
 
 
 def limit(name):
+    if backup_playback_queue.reserved(name):
+        if name != backup_playback_queue.NAME:
+            raise ValueError('Invalid reserved playback queue path.')
+        return backup_playback_queue.MAX_BYTES
     if maximum := backup_book_audio.limit(name):
         return maximum
     if maximum := backup_effect_presets.limit(name):
@@ -98,6 +102,7 @@ def validate_primary_collection(root, entries, records, *, cancelled):
     state_entries = [{**entry, 'filename': entry['filename'][6:]}
                      for entry in entries if entry['filename'].startswith('state/')]
     _validate_managed_clip_inputs(root / 'state', state_entries, cancelled=cancelled)
+    backup_playback_queue.validate_collection(root / 'state', state_entries, cancelled=cancelled)
     backup_effect_presets.validate_collection(root / 'state', state_entries, cancelled=cancelled)
     draft_name = 'state/studio/draft.json'
     if draft_name in by_name:
@@ -240,7 +245,7 @@ def _studio_draft(value):
 
 
 def _studio_job(value, identity):
-    from .studio.project import Project
+    from .studio.project import Project, validate_project_effects
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
                    'updated', 'error', 'runtime'}, {'result', 'total_disk_bytes', 'origin', 'recovery', 'resource_plan'})
@@ -274,14 +279,14 @@ def _studio_job(value, identity):
         number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
     if 'resource_plan' in value:
         _resource_plan(value['resource_plan'])
-    if project.schema == 2:
+    if project.schema in (2, 3):
         _origin(value.get('origin'))
     elif 'origin' in value:
         raise ValueError('Legacy production must not gain portable origin authority.')
     if 'recovery' in value:
         recovery = value['recovery']
         fields(recovery, {'requires_output_directory'}, {'previous', 'output_approved'})
-        if project.schema != 2 or type(recovery['requires_output_directory']) is not bool:
+        if project.schema not in (2, 3) or type(recovery['requires_output_directory']) is not bool:
             raise ValueError('Invalid portable production recovery state.')
         if ('previous' in recovery) != ('output_approved' in recovery):
             raise ValueError('Incomplete portable output approval history.')
@@ -302,8 +307,10 @@ def _studio_job(value, identity):
                 raise ValueError('Invalid historical runtime inventory.')
             if previous['result'] is not None:
                 _timeline(previous['result'])
+                validate_project_effects(project, previous['result'])
     if 'result' in value:
         _timeline(value['result'])
+        validate_project_effects(project, value['result'])
         if (value['result']['project'] != project.id or value['result']['revision'] != project.revision
                 or value['result']['source_sha256'] != sha256(project.original_script.encode()).hexdigest()):
             raise ValueError('Production result belongs to another project.')
@@ -338,7 +345,7 @@ def _origin(value):
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
-                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'lrc_notice', 'book_source_sha256'})
+                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'lrc_notice', 'book_source_sha256', 'effects'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
@@ -347,6 +354,9 @@ def _timeline(value):
     number(value['revision'], 1, integer=True)
     number(value['duration'], 0, 31_536_000)
     number(value['sample_rate'], 8000, 384000, integer=True)
+    if 'effects' in value:
+        from .studio.project import validate_effect_manifest
+        validate_effect_manifest(value['effects'], value['sample_rate'])
     number(value['channels'], 1, 2, integer=True)
     if value['mode'] not in ('faithful', 'authored') or type(value['loudness']) is not dict:
         raise ValueError('Invalid timeline mode or loudness.')
@@ -688,7 +698,9 @@ def _public_entitlement(value):
 
 
 def validate(db, name, value):
-    if backup_book_audio.limit(name) is not None:
+    if name == backup_playback_queue.NAME:
+        backup_playback_queue.validate_record(value)
+    elif backup_book_audio.limit(name) is not None:
         backup_book_audio.validate_record(name, value)
     elif backup_effect_presets.limit(name) is not None:
         backup_effect_presets.validate_record(name, value)

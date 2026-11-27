@@ -1,0 +1,276 @@
+{
+  "schema": "carr-optional-liblouis-runtime/1",
+  "reviewed_on": "2026-11-27",
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "purpose": "Explicit local Windows x64 C-API adapter; plain six-dot Braille ASCII derivative only.",
+  "distribution": {
+    "bundled": false,
+    "application_download": false,
+    "private_model": false
+  },
+  "upstream": {
+    "repository": "https://github.com/liblouis/liblouis",
+    "release_tag": "v3.39.0",
+    "source_commit": "2e775aca674cd2910e272eed7736acceb4c2e4a2",
+    "release_url": "https://github.com/liblouis/liblouis/releases/tag/v3.39.0",
+    "published_at": "2026-09-01T15:57:57Z",
+    "runtime_asset": {
+      "name": "liblouis-3.39.0-win64.zip",
+      "url": "https://github.com/liblouis/liblouis/releases/download/v3.39.0/liblouis-3.39.0-win64.zip",
+      "bytes": 5762099,
+      "sha256": "64d669ac30f1411e0023b1cecc81c7a7b5374678ee41302c95ac8c7c8fbc6591"
+    },
+    "matching_source": {
+      "name": "liblouis-3.39.0.tar.gz",
+      "url": "https://github.com/liblouis/liblouis/releases/download/v3.39.0/liblouis-3.39.0.tar.gz",
+      "bytes": 18064061,
+      "sha256": "629fa8cb0dfd9ad457c5bf47a42f0953b673e62c8ad6b1d03ddc4e2bd20008f1"
+    },
+    "draft_spec_commit": "457d5484a631e7c18ad4f57c1256c6496af14dd0",
+    "draft_spec_is_release": false
+  },
+  "native": {
+    "platform": "win32",
+    "architecture": "x86_64",
+    "version": "3.39.0",
+    "widechar_bytes": 4,
+    "dll_archive_path": "bin/liblouis.dll",
+    "dependency_load_policy": "Staged DLL directory plus Windows System32 only (LoadLibraryExW flags 0x900). Unknown missing dependencies fail; PATH/current-directory search is not allowed.",
+    "binary_layout_verified": "NOT_RUN",
+    "maximum_dll_bytes": 16777216
+  },
+  "table_entrypoints": {
+    "en-ueb-g1": "en-ueb-g1.ctb",
+    "uk": "uk.utb"
+  },
+  "display_table": "en-us-brf.dis",
+  "table_closure": [
+    {
+      "path": "share/liblouis/tables/en-ueb-g1.ctb",
+      "source_path": "tables/en-ueb-g1.ctb",
+      "source_git_blob_sha1": "c95a102781b56e7f93084aeb1a8e99d8f6d5c75a",
+      "size": 5368,
+      "includes": [
+        "en-ueb-chardefs.uti",
+        "en-ueb-math.ctb",
+        "braille-patterns.cti"
+      ],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/en-ueb-g1.ctb",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/uk.utb",
+      "source_path": "tables/uk.utb",
+      "source_git_blob_sha1": "2cc6762e76ff28b1dd71567918a21e7c91688bf4",
+      "size": 3509,
+      "includes": [
+        "ru-litbrl.ctb"
+      ],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/uk.utb",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/en-us-brf.dis",
+      "source_path": "tables/en-us-brf.dis",
+      "source_git_blob_sha1": "f349d50c8152585e86d7ad48fdc6bfe16356e228",
+      "size": 2438,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/en-us-brf.dis",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/en-ueb-chardefs.uti",
+      "source_path": "tables/en-ueb-chardefs.uti",
+      "source_git_blob_sha1": "b0e5c49d03c64574c29998ae8189832601844af4",
+      "size": 27834,
+      "includes": [
+        "text_nabcc.dis",
+        "spaces.uti",
+        "latinLetterDef6Dots.uti",
+        "latinUppercaseComp6.uti"
+      ],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/en-ueb-chardefs.uti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/en-ueb-math.ctb",
+      "source_path": "tables/en-ueb-math.ctb",
+      "source_git_blob_sha1": "320607c52875b8bf95159be4b2ebbca3bfbb0e14",
+      "size": 2045,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/en-ueb-math.ctb",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/braille-patterns.cti",
+      "source_path": "tables/braille-patterns.cti",
+      "source_git_blob_sha1": "1cb7df65602c1d1b91d29c147106d724f642d96a",
+      "size": 26431,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/braille-patterns.cti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/ru-litbrl.ctb",
+      "source_path": "tables/ru-litbrl.ctb",
+      "source_git_blob_sha1": "29544dd21279b9c24b6054e866df44355325e90a",
+      "size": 33096,
+      "includes": [
+        "ru-unicode.dis",
+        "spaces.uti",
+        "litdigits6Dots.uti",
+        "loweredDigits6Dots.uti",
+        "latinLetterDef6Dots.uti",
+        "ru-math.uti",
+        "braille-patterns.cti",
+        "IPA-unicode-range.uti"
+      ],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/ru-litbrl.ctb",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/text_nabcc.dis",
+      "source_path": "tables/text_nabcc.dis",
+      "source_git_blob_sha1": "dde2890c0d3d01afb82da1d69816d78fc73849e1",
+      "size": 21650,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/text_nabcc.dis",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/spaces.uti",
+      "source_path": "tables/spaces.uti",
+      "source_git_blob_sha1": "e72b674452c7937347e6941db6d612c594801a36",
+      "size": 2108,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/spaces.uti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/latinLetterDef6Dots.uti",
+      "source_path": "tables/latinLetterDef6Dots.uti",
+      "source_git_blob_sha1": "9ffefc80ab168a5380ed476b1a23fc5daccba584",
+      "size": 1993,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/latinLetterDef6Dots.uti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/latinUppercaseComp6.uti",
+      "source_path": "tables/latinUppercaseComp6.uti",
+      "source_git_blob_sha1": "2736a9fed2fb999fdc69f50e49da232f1723acb3",
+      "size": 1868,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/latinUppercaseComp6.uti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/ru-unicode.dis",
+      "source_path": "tables/ru-unicode.dis",
+      "source_git_blob_sha1": "f702feccbce1196d40f8ceaae742de7ab4952765",
+      "size": 3025,
+      "includes": [
+        "unicode.dis"
+      ],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/ru-unicode.dis",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/litdigits6Dots.uti",
+      "source_path": "tables/litdigits6Dots.uti",
+      "source_git_blob_sha1": "5c6a7cdc1325f969bbdc5d6e9e493f06c0925722",
+      "size": 957,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/litdigits6Dots.uti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/loweredDigits6Dots.uti",
+      "source_path": "tables/loweredDigits6Dots.uti",
+      "source_git_blob_sha1": "d30d92a3e5d9321f10632207418414f9e127798f",
+      "size": 926,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/loweredDigits6Dots.uti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/ru-math.uti",
+      "source_path": "tables/ru-math.uti",
+      "source_git_blob_sha1": "ce216261f6ea8ec50238628142c3a86ece4c97a5",
+      "size": 15084,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/ru-math.uti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    },
+    {
+      "path": "share/liblouis/tables/IPA-unicode-range.uti",
+      "source_path": "tables/IPA-unicode-range.uti",
+      "source_git_blob_sha1": "e4e26bfa163981765afef206af4a92fb11e5bd18",
+      "size": 13188,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/IPA-unicode-range.uti",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": "The upstream file also attributes its referenced IPA chart under CC-BY-SA-3.0. Preserve the complete upstream notices."
+    },
+    {
+      "path": "share/liblouis/tables/unicode.dis",
+      "source_path": "tables/unicode.dis",
+      "source_git_blob_sha1": "405ef89deb12fff35dc91e4aeba79ec9fa092614",
+      "size": 5974,
+      "includes": [],
+      "source_url": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/tables/unicode.dis",
+      "declared_notice": "LGPL-2.1-or-later",
+      "additional_notice": null
+    }
+  ],
+  "source_review": {
+    "library_header": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/liblouis/liblouis.h.in",
+    "translation_implementation": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/liblouis/lou_translateString.c",
+    "loader_implementation": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/liblouis/compileTranslationTable.c",
+    "windows_recipe": "https://github.com/liblouis/liblouis/blob/2e775aca674cd2910e272eed7736acceb4c2e4a2/.github/workflows/mingw.yml",
+    "library_declared_license": "LGPL-2.1-or-later",
+    "command_line_tools_declared_license": "GPL-3.0-or-later; no command-line tool is staged or executed by this adapter.",
+    "upstream_notices": "Per-file library and selected table notices were reviewed. This manifest records declarations, not a substitute for the upstream notices or a redistribution approval.",
+    "api_assumptions": [
+      "Native Win64 stdcall C API with four-byte widechar.",
+      "lou_translateString must consume the full input for every logical line.",
+      "dotsIO|ucBrl output is checked for six-dot Unicode cells before the pinned Braille ASCII display table.",
+      "Compare translation with noUndefined to reject undefined characters; no selected table declares an undefined replacement.",
+      "No CLI escape parser, arbitrary table path, external table resolver, DLL search via PATH, or automatic runtime acquisition."
+    ]
+  },
+  "limits": {
+    "max_text_characters": 100000,
+    "max_logical_lines": 4096,
+    "max_output_bytes": 2097152,
+    "max_stage_bytes": 33554432,
+    "native_timeout_seconds": 60,
+    "declared_cpu_slots": 1,
+    "declared_memory_bytes": 536870912
+  },
+  "qualification": {
+    "actual_native_runtime": "NOT_RUN",
+    "actual_reader_menu": "NOT_RUN",
+    "manual_NVDA": "NOT_RUN",
+    "independent_tactile_language_quality": "NOT_RUN",
+    "page_layout": "UNSUPPORTED",
+    "embosser_integration": "UNSUPPORTED",
+    "eight_dot_output": "UNSUPPORTED",
+    "language_catalog_135": "NOT_QUALIFIED"
+  }
+}

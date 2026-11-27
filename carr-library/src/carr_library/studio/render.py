@@ -17,7 +17,7 @@ from uuid import uuid4
 
 from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, regular, state_lock
 from .managed_inputs import project_managed_inputs, resolve_managed_input
-from .project import Project, ProjectStore, parse_script, _id
+from .project import Project, ProjectStore, parse_script, project_effects, _id
 
 ENGINE_SCHEMA = 'studio-local-dag-v1'
 
@@ -189,15 +189,18 @@ class ProductionService:
                 if selected <= 0:
                     raise ValueError('An edited clip must retain at least one output sample.')
                 placed = (round(cue.start * project.sample_rate) / project.sample_rate
-                          if project.schema >= 2 else cue.start)
+                          if project.schema in (2, 3) else cue.start)
                 duration = max(duration, placed + selected)
-            floor = 1 if not scene.lines and not (project.schema >= 2 and scene.cues) else 1 / project.sample_rate
+            floor = 1 if not scene.lines and not (project.schema in (2, 3) and scene.cues) else 1 / project.sample_rate
             seconds += max(duration, floor)
         pcm = math.ceil(max(1, seconds) * project.sample_rate * 2 * 2)
         roles = len(project.roles) if state['stems'] else 0
-        clip_roles = len({cue.role for scene in project.scenes for cue in scene.cues}) if state['stems'] and project.schema >= 2 else 0
+        clip_roles = len({cue.role for scene in project.scenes for cue in scene.cues}) if state['stems'] and project.schema in (2, 3) else 0
         music = int(any(scene.music is not None for scene in project.scenes))
-        cache_bytes = pcm * (6 + 2 * roles + 2 * clip_roles + 2 * music) + runtime.budget.reserve_disk_bytes
+        mastered = int(any(effect.enabled for effect in project.effects))
+        # A processed master plus its sample-aligned chapter slices are two
+        # additional PCM copies; role/clip/scene processing uses existing nodes.
+        cache_bytes = pcm * (6 + 2 * roles + 2 * clip_roles + 2 * music + 2 * mastered) + runtime.budget.reserve_disk_bytes
         export_bytes = pcm * (2 + roles + clip_roles + music * int(state['stems']) + int(state['format'] != 'wav')) + 1024 ** 2
         request = ResourceRequest(cpu_slots=runtime.budget.threads, memory_bytes=memory,
             gpu_device=device, gpu_memory_bytes=capacity, disk_bytes=cache_bytes, disk_path=self.cache,
@@ -337,7 +340,7 @@ class ProductionService:
                      'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
                      'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
                      'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
-            if project.schema == 2:
+            if project.schema in (2, 3):
                 state['origin'] = self._local_origin()
             atomic_json(existing_path, state)
         return job_id
@@ -349,7 +352,7 @@ class ProductionService:
         project = Project.from_dict(state['project'])
         if state.get('fingerprint') != project.fingerprint:
             raise ValueError('The saved production plan changed.')
-        if project.schema == 2:
+        if project.schema in (2, 3):
             recovery = dict(state.get('recovery', {}))
             recovery['requires_output_directory'] = state.get('origin') != self._local_origin()
             state['recovery'] = recovery
@@ -371,7 +374,7 @@ class ProductionService:
         return {'studio_root': str(self.root), 'nonce': value['nonce']}
 
     def _require_origin(self, state):
-        if state['project'].get('schema') == 2 and state.get('origin') != self._local_origin():
+        if state['project'].get('schema') in (2, 3) and state.get('origin') != self._local_origin():
             raise ValueError('This restored production needs a newly selected output directory. '
                              'Approve it before running or inspecting old output files.')
 
@@ -382,7 +385,7 @@ class ProductionService:
         with state_lock(job_root, 'render'):
             state = self.get(job_id)
             project = Project.from_dict(state['project'])
-            if project.schema != 2 or not state.get('recovery', {}).get('requires_output_directory'):
+            if project.schema not in (2, 3) or not state.get('recovery', {}).get('requires_output_directory'):
                 raise ValueError('Only a restored portable production needs output relocation.')
             parent = local_path(destination, exists=True)
             if not parent.is_dir() or parent.is_relative_to(self.root):
@@ -439,8 +442,10 @@ class ProductionService:
                              input_roots=(self.cache, self.inputs, *self.input_roots))
 
     def _cue_source(self, cue, *, cancelled=lambda: False, schema=2):
-        if schema == 2:
+        if schema in (2, 3):
             return resolve_managed_input(self.root, cue.path, cancelled=cancelled)
+        if schema != 1:
+            raise ValueError('Unsupported cue input schema.')
         source = local_path(cue.path, exists=True)
         if not any(source.is_relative_to(root) for root in self.input_roots):
             raise ValueError('A cue is outside the explicitly selected input directories.')
@@ -544,7 +549,17 @@ class ProductionService:
                             raise ValueError('A selected production input changed while waiting for resources.')
                 lease.checkpoint()
                 cancelled = lease.cancelled
-                capabilities = runtime.capabilities()
+                capabilities = (runtime.capabilities(cancelled=admission_cancelled)
+                                if project.schema == 3 else runtime.capabilities())
+                if project.schema == 3:
+                    required_effects = {effect.kind for chain in (
+                        project.effects, *(role.effects for role in project.roles),
+                        *(scene.effects for scene in project.scenes),
+                        *(cue.effects for scene in project.scenes for cue in scene.cues))
+                        for effect in chain if effect.enabled}
+                    if not required_effects <= set(capabilities['effects']):
+                        raise ValueError('The installed audio runtime lacks a selected Studio effect. '
+                                         'Review or bypass that effect before rendering.')
             except BaseException as exc:
                 from ..operations import ResourceCancelled, ResourceError
                 state['status'] = 'attention' if isinstance(exc, ResourceError) else 'failed'
@@ -689,10 +704,14 @@ class ProductionService:
                                 self.voices.synthesize(line.text, role.voice_id, target,
                                     settings=settings, cancelled=stopping))
                             duration = round((info.duration + line.pause_after) * project.sample_rate) / project.sample_rate
-                            clip, clip_info = node('voice placement', [digest_file(speech), duration,
-                                                   role.pan, role.gain_db, project.sample_rate],
+                            placement_identity = [digest_file(speech), duration,
+                                                  role.pan, role.gain_db, project.sample_rate]
+                            if role.effects:
+                                placement_identity.append([effect.to_dict() for effect in role.effects])
+                            clip, clip_info = node('voice placement', placement_identity,
                                 lambda target, speech=speech, role=role, duration=duration:
-                                runtime.mix((Track(speech, gain_db=role.gain_db, pan=role.pan),), target,
+                                runtime.mix((Track(speech, gain_db=role.gain_db, pan=role.pan,
+                                                   effects=role.effects),), target,
                                             duration=duration, sample_rate=project.sample_rate, cancelled=stopping))
                             scene_lines.append({'scene': scene.id, 'line': line.id, 'role': role.id,
                                 'text': line.text, 'start': offset + cursor, 'end': offset + cursor + info.duration,
@@ -713,16 +732,17 @@ class ProductionService:
                             raise ValueError('An edited clip selection is outside its original audio.')
                         if max(cue.fade_in, cue.fade_out) > selected:
                             raise ValueError('An edited clip fade exceeds its selected audio.')
-                        if project.schema == 2:
+                        if project.schema in (2, 3):
                             selected = round(selected * project.sample_rate) / project.sample_rate
                         if selected <= 0:
                             raise ValueError('An edited clip must retain at least one output sample.')
                         placed = (round(cue.start * project.sample_rate) / project.sample_rate
-                                  if project.schema == 2 else cue.start)
+                                  if project.schema in (2, 3) else cue.start)
                         required_duration = max(required_duration, placed + selected)
                         cue_tracks.append(Track(source, cue.start, cue.gain_db, cue.pan, cue.role,
-                                                cue.trim_start, cue.duration, cue.fade_in, cue.fade_out))
-                        if project.schema == 2:
+                                                cue.trim_start, cue.duration, cue.fade_in, cue.fade_out,
+                                                effects=cue.effects))
+                        if project.schema in (2, 3):
                             clip_timeline.append({'scene': scene.id, 'id': cue.id, 'role': cue.role,
                                 'title': cue.title, 'source_sha256': digest_file(source),
                                 'source_duration': info.duration, 'trim_start': cue.trim_start,
@@ -731,7 +751,7 @@ class ProductionService:
                                 'pan': cue.pan, 'fade_in': cue.fade_in, 'fade_out': cue.fade_out})
                     if not clips:
                         duration = (max(required_duration, 1 / project.sample_rate)
-                                    if project.schema == 2 and cue_tracks else max(scene.minimum_duration, 1))
+                                    if project.schema in (2, 3) and cue_tracks else max(scene.minimum_duration, 1))
                         clip, info = silence(duration)
                         clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     if required_duration > cursor + .5 / project.sample_rate:
@@ -765,10 +785,14 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
                     tracks.extend(cue_tracks)
-                    final_scene, final_info = node('scene mix',
-                        {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate},
+                    scene_identity = {'tracks': [track_identity(t) for t in tracks],
+                                      'sample_rate': project.sample_rate}
+                    if scene.effects:
+                        scene_identity['effects'] = [effect.to_dict() for effect in scene.effects]
+                    final_scene, final_info = node('scene mix', scene_identity,
                         lambda target: runtime.mix(tracks, target, sample_rate=project.sample_rate,
-                                                   duration=voice_info.duration, cancelled=stopping))
+                                                   duration=voice_info.duration, effects=scene.effects,
+                                                   cancelled=stopping))
                     scene_results.append((scene, final_scene, final_info))
                     if state['stems']:
                         for role_id in roles:
@@ -782,7 +806,7 @@ class ProductionService:
                         if scene.music is not None:
                             # This is the actual pre-duck score; final scene contains measured sidechain ducking.
                             stem_scenes.setdefault('music', []).append((scene.id, music, final_info.duration))
-                        if project.schema == 2:
+                        if project.schema in (2, 3):
                             for role in sorted({track.role for track in cue_tracks}):
                                 selected_tracks = tuple(track for track in cue_tracks if track.role == role)
                                 stem, _ = node('scene clip stem',
@@ -799,6 +823,14 @@ class ProductionService:
                 master, master_info = node('master assembly', [digest_file(row[1]) for row in scene_results],
                     lambda target: runtime.concatenate([row[1] for row in scene_results], target,
                         sample_rate=project.sample_rate, cancelled=stopping))
+                if any(effect.enabled for effect in project.effects):
+                    unprocessed_master = master
+                    master, master_info = node('master effects',
+                        {'source': digest_file(unprocessed_master), 'sample_rate': project.sample_rate,
+                         'effects': [effect.to_dict() for effect in project.effects]},
+                        lambda target: runtime.mix((Track(unprocessed_master, routing='stereo'),),
+                            target, duration=master_info.duration, sample_rate=project.sample_rate,
+                            effects=project.effects, cancelled=stopping))
                 # Revalidate local admission and retained originals before any
                 # external output path is resolved or created.
                 check_source()
@@ -864,6 +896,14 @@ class ProductionService:
 
                 publish(master, 'master.wav')
                 for index, (scene, path, info) in enumerate(scene_results, 1):
+                    if any(effect.enabled for effect in project.effects):
+                        chapter = chapter_data[index - 1]
+                        path, _ = node('mastered chapter',
+                            {'source': digest_file(master), 'start': chapter['start'],
+                             'end': chapter['end'], 'sample_rate': project.sample_rate},
+                            lambda target, chapter=chapter: runtime.convert(master, target,
+                                start=chapter['start'], duration=chapter['end'] - chapter['start'],
+                                sample_rate=project.sample_rate, cancelled=stopping))
                     publish(path, f'chapters/{index:04d}-{_output_name(scene.title)}.wav')
                 if state['format'] != 'wav':
                     # Codec selection is delegated to the verified local runtime inventory.
@@ -928,10 +968,12 @@ class ProductionService:
                             'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.',
                             'lrc_notice': 'LRC uses measured line starts rounded to centiseconds; no word or internal paragraph timing. '
                                           'Literal leading bracket text has a U+2060 boundary to prevent extra LRC time tags.'}
-                if project.schema == 2:
+                if project.schema in (2, 3):
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
                         'Music stems are before ducking; recorded clips have no inferred transcript.')
+                if project.schema == 3:
+                    metadata['effects'] = project_effects(project)
                 if source_provenance is not None:
                     metadata['book_source_sha256'] = sha256(source_provenance).hexdigest()
                 from ..audio.audiobook import line_lrc

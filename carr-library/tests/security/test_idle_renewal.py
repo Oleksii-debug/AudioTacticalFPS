@@ -44,17 +44,22 @@ def test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt
         host.set_idle(True)
         assert called.wait(1)
         wait_until(lambda: not worker.running)
-        assert store.current().sequence == 2
+        assert calls[0][0].after_sequence == 1
         assert calls[0][1] != threading.get_ident()
         assert calls[0][0].credential_profile_id == 'trust-test'
         called.clear()
         clock.now += 7 * 86400
         assert called.wait(1)  # The periodic host checks without another UI action.
         wait_until(lambda: not worker.running)
-        assert store.current().sequence == 3 and len(calls) == 2
+        # The real second request is admitted only after the worker has read
+        # the verified sequence from the first completed renewal.
+        assert calls[1][0].after_sequence == 2
     finally:
         host.close()
     assert not host._thread.is_alive() and not worker.running
+    # A running idle host may acquire the protected store again on its next
+    # tick. Read only after both owning threads have actually stopped.
+    assert store.current().sequence == 3 and len(calls) == 2
 
 
 def test_blocked_vault_check_does_not_block_data_save_or_shutdown_and_cannot_launch_late(

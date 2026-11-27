@@ -129,3 +129,25 @@ current canonical core has 15 pins; a donor's 17-pin count is not substituted
 for it. The final native gate must execute real A installation, actual B
 activation, deliberate post-health rollback, successful retry, Repair,
 Uninstall, retained library restoration and protected-anchor readback.
+
+## Immutable development baseline
+
+The managed gate pins installation A to
+`665acf2c1fdb5a30a05ef31c482eb02dcaf1e141`. Its own application wheel,
+native launcher, bundle builder, maintenance helpers and setup are rebuilt from
+that exact source; no files from B are substituted into A.
+[Run 45985890211, job 140461281613](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45985890211/job/140461281613)
+actually installed this A and completed the native update, rollback, Repair and
+Uninstall sequence with B `55725629bc0cb79b62f7f3979842a573d5fd868f`.
+This is a development acceptance baseline, not a production release or a claim
+that the current B has already passed.
+
+The previous test baseline `4c3632fb1baac4705059e344b6c952f7760c4f00`
+produces `bundled_launcher` and `bundled_audio_runtime` fields that its own
+native installation checker rejects. Its retained native log shows bootstrap
+exit 1 followed by setup exit 7; that helper did not retain the child diagnostic
+output. The exact source mismatch is proven, while the discarded child message
+is not reconstructed as observed evidence. The selected historical correction
+accepts and type-checks those fields without filtering the sealed manifest.
+The current A-to-B pair still must pass every mandatory native phase with
+independently checked source, wheel, launcher, setup and bundle identities.

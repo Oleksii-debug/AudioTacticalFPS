@@ -25,6 +25,7 @@ class ClipDialog(wx.Dialog):
         self.frame = frame
         self.library = frame.library
         self.library_root = Path(self.library.root)
+        self._library_identity = self._library_stamp()
         self.cancelled = threading.Event()
         self.destroyed = False
         self.editor = editor or ClipEditor(self.library_root)
@@ -82,6 +83,11 @@ class ClipDialog(wx.Dialog):
             (('save', '&Save clip settings', self.save), ('remove', 'Re&move clip', self.remove),
              ('move', 'Move to another scene', self.move),
              ('duration', 'Set scene &duration', self.duration), ('preview', '&Preview saved clip', self.preview)),
+            (('clip_effects', 'Clip effects...', self.clip_effects),
+             ('role_effects', 'Speaking role effects...', self.role_effects),
+             ('scene_effects', 'Scene effects...', self.scene_effects),
+             ('master_effects', 'Master effects...', self.master_effects),
+             ('dry_preview', 'Preview without clip effects', self.preview_dry)),
             (('render', 'Render saved project', self.render),
              ('stop', 'S&top playback', self.stop), ('cancel', 'Cancel operation', self.cancel),
              ('close', '&Close', self.close))):
@@ -102,11 +108,21 @@ class ClipDialog(wx.Dialog):
         self.Bind(wx.EVT_CHAR_HOOK, self.key)
         self._enable()
 
+    def _library_stamp(self):
+        from ..durable_state import local_path, regular
+        info = regular(local_path(self.library_root, exists=True), directory=True)
+        return info.st_dev, info.st_ino
+
     def _scope_current(self):
-        return (not self.closed and not self.closing
-                and getattr(self.frame, 'library', None) is self.library
-                and Path(self.library.root) == self.library_root
-                and not getattr(self.frame, '_closing', False))
+        if (self.closed or self.closing
+                or getattr(self.frame, 'library', None) is not self.library
+                or Path(self.library.root) != self.library_root
+                or getattr(self.frame, '_closing', False)):
+            return False
+        try:
+            return self._library_stamp() == self._library_identity
+        except (OSError, ValueError):
+            return False
 
     def _cancelled(self):
         return (self.cancelled.is_set() or self.frame.cancel_event.is_set()
@@ -432,7 +448,91 @@ class ClipDialog(wx.Dialog):
         except (ValueError, OSError) as exc:
             self.message(exc)
 
-    def preview(self, event=None):
+    def clip_effects(self, event=None):
+        return self._effects('clip')
+
+    def role_effects(self, event=None):
+        return self._effects('role')
+
+    def scene_effects(self, event=None):
+        return self._effects('scene')
+
+    def master_effects(self, event=None):
+        return self._effects('master')
+
+    def _effects(self, scope):
+        if self.pending or self.frame.working or not self._scope_current():
+            return False
+        try:
+            project, scene = self.project, self._scene()
+            arguments = {}
+            def guard():
+                if (not self._scope_current() or self.project is None
+                        or self.project.fingerprint != project.fingerprint):
+                    raise ValueError('The selected Studio project or library changed. Reopen effect review.')
+            guard()
+            if scope == 'clip':
+                cue = self._clip()
+                initial, arguments = cue.effects, {'scene_id': scene.id, 'clip_id': cue.id}
+            elif scope == 'scene':
+                initial, arguments = scene.effects, {'scene_id': scene.id}
+            elif scope == 'master':
+                initial = project.effects
+            elif scope == 'role':
+                if not project.roles:
+                    raise ValueError('This project has no speaking roles.')
+                picker = wx.SingleChoiceDialog(self, 'Choose the speaking role whose effects will change.',
+                    'Speaking role effects', [role.name for role in project.roles])
+                try:
+                    if picker.ShowModal() != wx.ID_OK:
+                        return False
+                    guard()
+                    index = picker.GetSelection()
+                    if not 0 <= index < len(project.roles):
+                        raise ValueError('Choose one existing speaking role.')
+                    role = project.roles[index]
+                finally:
+                    picker.Destroy()
+                guard()
+                initial, arguments = role.effects, {'role_id': role.id}
+            else:
+                raise ValueError('Choose an existing effect scope.')
+
+            def inspect():
+                guard()
+                return self.editor.effect_capabilities(project, cancelled=self._cancelled)
+
+            def reviewed(available):
+                from .effects_dialog import show_effect_chain
+                try:
+                    guard()
+                    if self._cancelled():
+                        return
+                    available = tuple(kind for kind in available if kind != 'tempo')
+                    value = show_effect_chain(self, self.library_root, initial,
+                        sample_rate=project.sample_rate, available=available, guard=guard)
+                    guard()
+                    if value is None or self._cancelled():
+                        return
+                    def save():
+                        guard()
+                        return self.editor.set_effects(project, scope, value,
+                            cancelled=self._cancelled, **arguments)
+                    self._run('Saving reviewed ' + scope + ' effects', save, self._accept)
+                except (ValueError, OSError, RuntimeError) as error:
+                    if self._scope_current():
+                        self.message(error)
+
+            return self._run('Checking installed ' + scope + ' effects', inspect, reviewed)
+        except (ValueError, OSError, RuntimeError) as error:
+            if self._scope_current():
+                self.message(error)
+            return False
+
+    def preview_dry(self, event=None):
+        return self.preview(event, dry=True)
+
+    def preview(self, event=None, *, dry=False):
         try:
             project, scene, cue = self.project, self._scene(), self._clip()
             def play(path):
@@ -452,9 +552,13 @@ class ClipDialog(wx.Dialog):
                         self.player.play(path)
                 play_when_quiet((progress,), playing, schedule=wx.CallLater,
                     alive=current, on_error=lambda error: self.message(error) if current() else None)
-                self.message('Previewing saved clip settings without the leading scene silence. Stop ends playback.')
+                self.message(('Previewing with clip effects bypassed. ' if dry else 'Previewing saved clip effects. ')
+                             + 'Timing, gain, pan and fades are retained. Stop ends playback.')
+            options = {'cancelled': self._cancelled}
+            if dry:
+                options['dry'] = True
             self._run('Rendering saved clip preview', lambda: self.editor.preview(project, scene.id, cue.id,
-                cancelled=self._cancelled), play, preview=True)
+                **options), play, preview=True)
         except (ValueError, OSError) as exc:
             self.message(exc)
 

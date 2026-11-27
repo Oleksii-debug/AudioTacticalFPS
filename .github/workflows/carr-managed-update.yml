@@ -18,11 +18,14 @@ jobs:
         shell: pwsh
         working-directory: source-b/carr-library
     env:
-      # A is a reviewed, immutable prior application/standard-installer source.
+      # A is an immutable development baseline with actual native install/update evidence.
+      # Run 45985890211/job 140461281613 installed this exact A successfully.
+      # The retired 4c3632 baseline rejected its own sealed manifest flags; no
+      # payload or verifier is patched here. This is not a production-release claim.
       # B is the exact event head. Their wheel/source hashes are independently
       # verified, with actual version strings unchanged. The synthetic TUF
       # build sequence advances 1 -> 2 even when both display 0.2.0.dev1.
-      CARR_MANAGED_SOURCE_A: '4c3632fb1baac4705059e344b6c952f7760c4f00'
+      CARR_MANAGED_SOURCE_A: '665acf2c1fdb5a30a05ef31c482eb02dcaf1e141'
       PYTHONUTF8: '1'
       PYTHONUNBUFFERED: '1'
       PYTHONDONTWRITEBYTECODE: '1'
@@ -62,7 +65,7 @@ jobs:
           $sourceAPath = Join-Path $env:GITHUB_WORKSPACE 'source-a/carr-library'
           $sourceA = (git -C $sourceAPath rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0 -or $sourceA -ne $env:CARR_MANAGED_SOURCE_A -or $sourceA -eq $sourceB) { throw 'A/B source selection is not exact and distinct.' }
-          @{ source_a=$sourceA; source_b=$sourceB; version_policy='Use exact committed versions; protected synthetic build advances 1 to 2'; runtime_profile='Each immutable A/B source supplies its own exact core and semantic lock inventory'; audio_transfer_payload=$false } | ConvertTo-Json | Set-Content (Join-Path $report 'source-identities.json')
+          @{ source_a=$sourceA; source_b=$sourceB; baseline_policy='immutable development source; prior native result is not current A-to-B acceptance'; baseline_native_run=45985890211; baseline_native_job=140461281613; retired_incompatible_source_a='4c3632fb1baac4705059e344b6c952f7760c4f00'; version_policy='Use exact committed versions; protected synthetic build advances 1 to 2'; runtime_profile='Each immutable A/B source supplies its own exact core and semantic lock inventory'; audio_transfer_payload=$false } | ConvertTo-Json | Set-Content (Join-Path $report 'source-identities.json')
           $private = Join-Path $env:RUNNER_TEMP 'carr-managed-upgrade-private'
           New-Item -ItemType Directory $private | Out-Null
           python -I -B -m venv (Join-Path $private 'host')

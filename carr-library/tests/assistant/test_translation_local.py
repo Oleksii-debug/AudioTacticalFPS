@@ -1,5 +1,6 @@
 """Pure local protocol/admission gates; all HTTP is a bounded synthetic transport."""
 from dataclasses import asdict, replace
+from decimal import Decimal
 from hashlib import sha256
 import http.client
 import json
@@ -179,7 +180,8 @@ def test_local_job_uses_existing_ledger_preserves_entities_and_exports_offline(r
     assert job['receipts'][0]['text'].endswith('&amp;')
     usage = service.gateway.ledger.get(approval.id)
     operation = usage['operations'][identity + '_0']
-    assert operation['reserved_cost'] == '0' and operation['status'] == 'complete'
+    assert Decimal(operation['reserved_cost']) == Decimal('0')
+    assert operation['status'] == 'complete'
     assert operation['usage']['decoded_translation_sha256'] == job['receipts'][0]['decoded_translation_sha256']
     assert len(state['calls']) == 2
     _, _, body, headers = state['calls'][-1]

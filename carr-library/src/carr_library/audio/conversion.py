@@ -181,12 +181,21 @@ def _published(staged, target):
     return (first.st_dev, first.st_ino, first.st_size) == (second.st_dev, second.st_ino, second.st_size)
 
 
-def convert_audio(review, *, cancelled=lambda: False, guard=lambda: None):
-    """Create one immutable processed copy, with final source/destination checks."""
+def convert_audio(review, *, cancelled=lambda: False, guard=lambda: None,
+                  before_publish=None, before_runtime=None):
+    """Create one immutable processed copy, with final source/destination checks.
+
+    An optional runtime guard runs inside inspection admission before any codec.
+    An optional checkpoint may durably record a candidate before publication. It
+    grants no commit authority: final checks and the create-only publisher still
+    run afterward. No checkpoint is called after an external file is committed.
+    """
     if not isinstance(review, ConversionReview):
         raise ValueError('Review the exact source, settings and new output before processing.')
-    if not callable(cancelled) or not callable(guard):
-        raise ValueError('Audio processing requires cancellation and scope guards.')
+    if (not callable(cancelled) or not callable(guard)
+            or before_publish is not None and not callable(before_publish)
+            or before_runtime is not None and not callable(before_runtime)):
+        raise ValueError('Audio processing requires callable cancellation, scope and publication guards.')
 
     def check():
         _stopped(cancelled, guard)
@@ -213,6 +222,9 @@ def convert_audio(review, *, cancelled=lambda: False, guard=lambda: None):
             disk_bytes=review.source_identity[4] + log_bytes, disk_path=root)
         with broker.reserve(inspection, operation_id=operation + ':inspect', cancelled=check, timeout=60):
             check()
+            if before_runtime is not None:
+                before_runtime(runtime)
+                check()
             source_digest = _copy_source(review, copied, check)
             capabilities = runtime.capabilities(cancelled=check)
             checked_chain(review.settings.effects, review.settings.sample_rate,
@@ -266,6 +278,9 @@ def convert_audio(review, *, cancelled=lambda: False, guard=lambda: None):
 
             completed = ConversionResult(replace(rendered, path=review.destination.target), measurement,
                 source_digest, sha256(encode([effect.to_dict() for effect in settings.effects])).hexdigest())
+            if before_publish is not None:
+                publication_check()
+                before_publish(completed, staged, runtime)
             try:
                 publish_file(staged, review.destination.target, cancelled=publication_check)
             except FileExistsError:

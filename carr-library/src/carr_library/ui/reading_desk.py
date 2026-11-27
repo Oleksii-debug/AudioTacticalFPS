@@ -609,6 +609,10 @@ class ReadingActions:
         except Exception as exc:
             self.frame.report(f'Reader not opened: {exc}')
 
+    def export_braille(self, event=None):
+        from .braille_actions import export_braille
+        return export_braille(self, event)
+
     def export_state(self, event=None):
         try:
             scope = self._scope()
@@ -689,6 +693,7 @@ def install_reading_desk_actions(frame):
     menu = wx.Menu()
     for label, handler in (
             ('&Read selected book...\tCtrl+R', actions.open_book),
+            ('Export selected source as plain &BRF...', actions.export_braille),
             ('&Export reading positions and bookmarks...', actions.export_state),
             ('&Import reading positions and bookmarks...', actions.import_state)):
         item = menu.Append(wx.ID_ANY, label)

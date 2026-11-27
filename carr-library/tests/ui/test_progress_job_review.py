@@ -419,7 +419,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'playback_timer', 'cancel', 'player', 'progress', 'parent',
                                       'executor', 'audio_files', 'dialog', 'unregister')}
-    env.update(__package__='carr_library.ui', owned_registries=[], owned_progress_voices=[],
+    env.update(__package__='carr_library.ui', owned_registries=[], owned_progress_voices=[], owned_listening=set(),
                wx=SimpleNamespace(CallAfter=lambda callback: callback()))
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')

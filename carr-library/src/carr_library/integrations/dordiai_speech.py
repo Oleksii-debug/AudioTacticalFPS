@@ -115,11 +115,15 @@ class DordiaiSpeechProvider:
             check_cancelled(cancelled)
             if path.is_file() and path.suffix in {".py", ".json"}:
                 paths.add(path)
+        def unreadable(_error):
+            check_cancelled(cancelled)
+            raise ValueError("The dordiai-voices asset inventory could not be read completely.") from None
+
         for directory in (root / "models", root / "python"):
             check_cancelled(cancelled)
             if not directory.exists():
                 continue
-            for folder, directories, files in os.walk(directory, followlinks=False):
+            for folder, directories, files in os.walk(directory, followlinks=False, onerror=unreadable):
                 check_cancelled(cancelled)
                 for name in directories:
                     entry = Path(folder) / name

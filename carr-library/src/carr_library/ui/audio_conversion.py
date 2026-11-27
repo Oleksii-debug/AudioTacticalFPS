@@ -6,6 +6,14 @@ from ..durable_state import local_path, regular
 
 
 def show_audio_conversion(frame):
+    return _show_guarded(frame, batch=False)
+
+
+def show_audio_conversion_batch(frame):
+    return _show_guarded(frame, batch=True)
+
+
+def _show_guarded(frame, *, batch):
     """Capture the exact current library before any native picker or worker."""
     library = frame.library
     root = local_path(library.root, exists=True)
@@ -28,28 +36,34 @@ def show_audio_conversion(frame):
 
     try:
         current_root()
-        return _show(frame, root, current_root, scope_current)
+        return _show(frame, root, current_root, scope_current, batch=batch)
     except Exception as error:
         if scope_current():
             frame.report(str(error))
 
 
-def _show(frame, library_root, current_root, scope_current):
+def _show(frame, library_root, current_root, scope_current, *, batch=False):
     import wx
     from ..audio import Effect
     from ..audio.effect_presets import checked_chain
     from ..audio.conversion import ConversionSettings, convert_audio, discover_effects, review_conversion
     from ..audio.models import integer
     from ..durable_state import local_path
-    chooser = wx.FileDialog(frame, 'Choose a local audio or video source', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+    chooser = wx.FileDialog(frame,
+        'Choose explicit audio or video files for this batch' if batch else 'Choose a local audio or video source',
+        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | (wx.FD_MULTIPLE if batch else 0))
     try:
         if chooser.ShowModal() != wx.ID_OK:
             return
-        source = local_path(chooser.GetPath(), exists=True)
+        sources = [local_path(value, exists=True) for value in chooser.GetPaths()] if batch else [
+            local_path(chooser.GetPath(), exists=True)]
+        if not sources or len(sources) > 64:
+            raise ValueError('Choose between one and 64 explicit source files.')
+        source = sources[0]
         current_root()
     finally:
         chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(760, 720),
+    dialog = wx.Dialog(frame, title='Batch audio conversion settings' if batch else 'Convert audio and apply effects', size=(760, 720),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     outer = wx.BoxSizer(wx.VERTICAL)
     panel = wx.ScrolledWindow(dialog)
@@ -228,6 +242,13 @@ def _show(frame, library_root, current_root, scope_current):
         if query_future is not None:
             query_future.cancel()
         dialog.Destroy()
+    settings = ConversionSettings(start=start_value, duration=duration_value,
+        sample_rate=rate_value, channels=channels_value, bit_depth=depth_value,
+        bitrate=bitrate_value, effects=chain)
+    if batch:
+        from .audio_conversion_batch import show_reviewed_batch
+        return show_reviewed_batch(frame, library_root, sources, settings,
+            current_root=current_root, scope_current=scope_current)
     chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
                             wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.ogg;*.opus;*.aac;*.aiff;*.wma)|*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.ogg;*.opus;*.aac;*.aiff;*.wma',
                             style=wx.FD_SAVE)
@@ -238,9 +259,6 @@ def _show(frame, library_root, current_root, scope_current):
         current_root()
     finally:
         chooser.Destroy()
-    settings = ConversionSettings(start=start_value, duration=duration_value,
-        sample_rate=rate_value, channels=channels_value, bit_depth=depth_value,
-        bitrate=bitrate_value, effects=chain)
     review = review_conversion(library_root, source, output, settings=settings, guard=current_root)
 
     def operation():

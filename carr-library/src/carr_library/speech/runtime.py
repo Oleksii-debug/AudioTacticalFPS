@@ -3,6 +3,7 @@
 SAPI, eSpeak, Piper and FFmpeg are invoked with fixed argument vectors. Text is
 data, never a shell command, SSML or a user-supplied FFmpeg filter graph.
 """
+import atexit
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
@@ -16,6 +17,7 @@ import struct
 import sys
 import sysconfig
 from tempfile import TemporaryDirectory
+from threading import RLock
 import wave
 
 from ._io import (check_cancelled, digest, local_file, new_output, run_process,
@@ -125,6 +127,9 @@ class VoiceRegistry:
     """A registry only of actually enumerated voices; no imaginary catalog."""
     def __init__(self, providers=(), *, cancelled=lambda: False):
         self._providers = list(providers)
+        self._closed = False
+        self._close_guard = RLock()
+        self._cleanup_registered = False
         self._voices = {}
         self._owners = {}
         self.notices = []
@@ -165,10 +170,16 @@ class VoiceRegistry:
             raise
 
     def reload(self, *, cancelled=None):
-        if cancelled is not None:
-            self._cancelled = cancelled
+        with self._close_guard:
+            if self._closed:
+                raise RuntimeError('The local voice registry is closed.')
+            if cancelled is not None:
+                self._cancelled = cancelled
+            providers = tuple(self._providers)
+        # Discovery can block in a legacy provider. Never hold the lifecycle
+        # lock while it waits; close must remain able to cancel native owners.
         entries, owners, notices = {}, {}, []
-        for provider in self._providers:
+        for provider in providers:
             check_cancelled(self._cancelled)
             try:
                 values = (provider.voices(cancelled=self._cancelled)
@@ -185,42 +196,94 @@ class VoiceRegistry:
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
                 notices.append(f'{provider.name}: {exc}')
         check_cancelled(self._cancelled)
-        self._voices, self._owners, self.notices = entries, owners, notices
-        return self.voices()
+        with self._close_guard:
+            if self._closed:
+                raise RuntimeError('The local voice registry is closed.')
+            self._voices, self._owners, self.notices = entries, owners, notices
+            return self.voices()
 
     def add_provider(self, provider, *, cancelled=None):
-        self._providers.append(provider)
+        with self._close_guard:
+            if self._closed:
+                raise RuntimeError('The local voice registry is closed.')
+            self._providers.append(provider)
         try:
             return self.reload(cancelled=cancelled)
         except BaseException:
-            self._providers.remove(provider)
-            close = getattr(provider, 'close', None)
-            if callable(close):
-                close()
+            with self._close_guard:
+                if self._closed:
+                    # Concurrent close already disposed or retained this
+                    # exact owner. A late discovery must not close it twice.
+                    raise
+                close = getattr(provider, 'close', None)
+                try:
+                    if callable(close) and close() is False:
+                        raise RuntimeError('Local voice worker cleanup remains unconfirmed.')
+                except BaseException as error:
+                    # Failed discovery must not drop the last strong native owner.
+                    # New work stays disabled until this registry is discarded.
+                    self._closed = True
+                    self._voices, self._owners = {}, {}
+                    self.notices.append(f'{provider.name}: Local voice cleanup remains unconfirmed ({type(error).__name__}).')
+                    self._retain_cleanup()
+                    if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                        raise
+                    raise RuntimeError('Local voice worker cleanup remains unconfirmed; its owner is retained for retry.') from None
+                else:
+                    self._providers.remove(provider)
             raise
 
     def voices(self):
         return tuple(self._voices.values())
 
+    def _retain_cleanup(self):
+        # Keep ownership even when construction failed or a progress-selection
+        # cleanup thread has ended. No inference or discovery is retried.
+        if not self._cleanup_registered:
+            atexit.register(self.close)
+            self._cleanup_registered = True
+
     def close(self):
-        """Release every owned local worker, including a provider that failed discovery."""
-        providers, self._providers = self._providers, []
-        self._voices, self._owners = {}, {}
-        errors = []
-        for provider in providers:
-            close = getattr(provider, 'close', None)
-            if callable(close):
+        """Close successes once; retain failed native owners for explicit retry."""
+        with self._close_guard:
+            self._closed = True
+            self._voices, self._owners = {}, {}
+            pending, failures = [], []
+            for provider in self._providers:
+                close = getattr(provider, 'close', None)
+                if not callable(close):
+                    continue
                 try:
-                    close()
-                except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
-                    errors.append(f'{provider.name}: {exc}')
-        self.notices.extend(errors)
+                    if close() is False:
+                        raise RuntimeError('Local voice worker cleanup remains unconfirmed.')
+                except BaseException as error:
+                    pending.append(provider)
+                    failures.append(error)
+                    self.notices.append(f'{provider.name}: Local voice cleanup remains unconfirmed ({type(error).__name__}).')
+            self._providers = pending
+            if pending:
+                self._retain_cleanup()
+                for error in failures:
+                    if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                        raise error
+                # Existing service/desktop finalizers retain this registry when
+                # close raises. Do not expose private native exception payloads.
+                raise RuntimeError('Local voice worker cleanup remains unconfirmed; its owner is retained for retry.') from None
+            if self._cleanup_registered:
+                atexit.unregister(self.close)
+                self._cleanup_registered = False
+
+    def _selection(self, voice_id):
+        with self._close_guard:
+            try:
+                if self._closed:
+                    raise KeyError(voice_id)
+                return self._voices[voice_id], self._owners[voice_id]
+            except (KeyError, TypeError) as exc:
+                raise ValueError('Select an available installed voice and reload if it was removed.') from exc
 
     def get(self, voice_id):
-        try:
-            return self._voices[voice_id]
-        except (KeyError, TypeError) as exc:
-            raise ValueError('Select an available installed voice and reload if it was removed.') from exc
+        return self._selection(voice_id)[0]
 
     def fingerprint(self, voice_id):
         """Fingerprint visible installed runtime/voice assets for render caches.
@@ -229,8 +292,7 @@ class VoiceRegistry:
         Its identity remains a token/host fingerprint and is described as such;
         it is never represented as proof of a third-party model revision.
         """
-        voice = self.get(voice_id)
-        provider = self._owners[voice_id]
+        voice, provider = self._selection(voice_id)
         identity = {'voice': asdict(voice), 'executable_sha256': digest(provider.executable)}
         if isinstance(provider, PiperProvider):
             model, config, _, _ = provider._models[voice_id]
@@ -276,11 +338,15 @@ class VoiceRegistry:
 
     def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False,
                    before_publish=None):
+        if not callable(cancelled):
+            raise ValueError('A cancellation callback is required.')
+        caller_cancelled = cancelled
+        cancelled = lambda: self._closed or bool(caller_cancelled())
         text_value(text)
         options = settings or SpeechSettings()
         if not isinstance(options, SpeechSettings):
             raise ValueError('Validated SpeechSettings are required.')
-        voice = self.get(voice_id)
+        voice, provider = self._selection(voice_id)
         if options.pitch is not None and 'pitch' not in voice.capabilities:
             raise ValueError('This voice does not expose native pitch control.')
         if options.punctuation and 'punctuation' not in voice.capabilities:
@@ -289,7 +355,6 @@ class VoiceRegistry:
             raise ValueError('This voice does not expose synthesis rate control.')
         if options.volume != 100 and 'volume' not in voice.capabilities:
             raise ValueError('This voice does not expose synthesis volume control.')
-        provider = self._owners[voice_id]
         count, frames, params = 0, 0, None
         target = Path(destination).absolute()
         def attest_publication(staged):

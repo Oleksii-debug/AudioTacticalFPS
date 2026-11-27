@@ -11,12 +11,20 @@ from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
 from ..speech.navigation import native_cursor_position, native_selection, select_text_unit
 from ..speech._io import text_value
+from ..durable_state import local_path, regular
 from .pronunciation_dialog import PronunciationDialog, caret_offset, native_caret_position, text_at_caret
 
 
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
                        source_guard=lambda: None, recovery_slot='manual'):
     import wx
+
+    library = getattr(parent, 'library', None)
+    library_root = local_path(library.root, exists=True) if library is not None else None
+    library_identity = None
+    if library_root is not None:
+        information = regular(library_root, directory=True)
+        library_identity = information.st_dev, information.st_ino
 
     dialog = wx.Dialog(parent, title='Voice reader and reading copy', size=(900, 800),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
@@ -31,11 +39,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     registry = None
     owned_registries = set()
     owned_progress_voices = set()
+    owned_listening = set()
     voices = ()
     alive = True
     busy = False
-    library = getattr(parent, 'library', None)
-    library_root = Path(library.root) if library is not None else None
     pronunciations = ()
     playback_generation = 0
     playback_refresh = None
@@ -54,6 +61,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         if library is not None and (getattr(parent, 'library', None) is not library
                                    or Path(library.root) != library_root):
             raise InterruptedError('The active library changed. Reopen the voice reader from that library.')
+        if library is not None:
+            information = regular(local_path(library_root, exists=True), directory=True)
+            if (information.st_dev, information.st_ino) != library_identity:
+                raise InterruptedError('The library folder was replaced. Reopen the voice reader.')
         if check_source:
             source_guard()
 
@@ -358,6 +369,102 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if progress is not None:
                 progress.refresh_audio_state()
 
+    def prepare_listening(request, completed, failed, *, active):
+        """Prepare on the existing serial worker; adopt only on the native UI."""
+        from ..audio.models import AudioCancelled
+        generation = playback_generation
+        request_cancel = threading.Event()
+        pending, discarding = [None], set()
+
+        def stopped():
+            return (request_cancel.is_set() or cancel.is_set() or not alive
+                    or not active() or generation != playback_generation)
+
+        def check():
+            if stopped():
+                raise AudioCancelled('Listening preparation was cancelled or the reader changed.')
+            playback_scope()
+
+        def visible():
+            # The modal and reader both own their native controls. In particular,
+            # a library/root rejection in run.finish must not update the old view.
+            if not alive or not active():
+                return False
+            try:
+                check_current(check_source=False)
+            except Exception:
+                return False
+            return True
+
+        def notice(message):
+            if visible():
+                report(message)
+
+        def release(value):
+            value.close()
+            owned_listening.discard(value)
+            if pending[0] is value:
+                pending[0] = None
+
+        def discard(value):
+            if value is None or value not in owned_listening or value in discarding:
+                return
+            # Keep ownership until cleanup succeeds, including a rejected native
+            # completion or an executor shutdown racing the modal's close.
+            discarding.add(value)
+            def observed(future):
+                discarding.discard(value)
+                try:
+                    future.result()
+                except Exception as exc:
+                    message = f'The unused listening copy is retained until cleanup succeeds: {exc}'
+                    try:
+                        wx.CallAfter(notice, message)
+                    except Exception:
+                        pass
+            try:
+                executor.submit(release, value).add_done_callback(observed)
+            except Exception as exc:
+                discarding.discard(value)
+                notice(f'The unused listening copy still needs cleanup: {exc}')
+
+        def work():
+            check()
+            value = player.prepare_listening(request, audio_files.name,
+                state_root=library_root / 'state' if library_root is not None else None,
+                cancelled=stopped)
+            owned_listening.add(value)
+            pending[0] = value
+            try:
+                check()
+            except BaseException:
+                release(value)
+                raise
+            return value
+
+        def adopted(value):
+            try:
+                check()
+                player.apply_listening(value)
+            except BaseException:
+                discard(value)
+                raise
+            owned_listening.discard(value)
+            pending[0] = None
+            completed()
+
+        failure_delivered = [False]
+        def failure(exc):
+            failure_delivered[0] = True
+            # run.finish can reject source/library scope before adopted() gets
+            # the result. Its already-created copy still needs prompt disposal.
+            discard(pending[0])
+            if visible():
+                failed(exc)
+        if not run(work, adopted, on_error=failure) and not failure_delivered[0]:
+            failure(ValueError('Finish or stop the current reader operation before preparing listening speed.'))
+        return request_cancel.set
+
     def show_playback(event=None):
         nonlocal playback_refresh, playback_generation, repeat_scheduled
         try:
@@ -371,7 +478,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 nonlocal playback_refresh
                 playback_refresh = callback
             show_reader_playback(dialog, player, execute=playback_control,
-                                 stop=stop_audio, pause=pause_audio, subscribe=subscribe)
+                                 stop=stop_audio, pause=pause_audio, subscribe=subscribe,
+                                 prepare_listening=prepare_listening if library_root is not None else None)
         except Exception as exc:
             try:
                 check_current(check_source=False)
@@ -1037,7 +1145,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         owned.close()
                     except Exception as exc:
                         errors.append(str(exc))
-                if silence_confirmed:
+                for owned in tuple(owned_listening):
+                    try:
+                        owned.close()
+                        owned_listening.discard(owned)
+                    except Exception as exc:
+                        errors.append(str(exc))
+                if silence_confirmed and not errors:
                     audio_files.cleanup()
                 if errors:
                     raise RuntimeError('; '.join(errors))

@@ -1,473 +1,839 @@
 {
   "schema": "resonance-integration-source-map/1",
-  "status": "SOURCE_COMPOSED_AWAITING_EXACT_COMMIT_CI",
-  "base_commit": "accaa1e3df0b179d858bf5b28ca4161c471c7e77",
+  "status": "COMPOSED_REVIEWED_NOT_RUN",
+  "base_commit": "dd533fa64bddd63ca13ffe23dbdab07f0ef4d0a5",
   "canonical_parent": "e3cf74c243d4ef930b526b5648ca9003c0900057",
   "preserved_schedule_count": 15,
   "integration_pr": "https://github.com/Oleksii-debug/AudioTacticalFPS/pull/173",
   "slices": {
-    "v3_restoration": "68d9fe1eca8843a0ba33eeaea719fce2bdb39265",
-    "cross_platform_asr": "9c24154a1a27df40e7170338267c57e9604ac0a4",
-    "effects": "da2c689db9f7e84fbffcaf630d4a8be333c78328",
-    "effects_backup": "74922f7f4b7054dcf04eb34cfe0265c599ae2f2f",
-    "native_continuation": "acae09ecbafbc3589e10c6991a0180bba5d7968e",
-    "native_audio_diagnostics": "3445cd57e67e35108543cb72d3000224b85625e0",
-    "translation": "d246ae3a7a39aad23a5d155c8e811b7b6fc8f706",
-    "book_backup_wire": "54bb9074541f4f554c3c91b161e8e0d1c1607c5e"
+    "braille": "18c997513de5b9e663e1acefd3cf0294f66e5627",
+    "studio_persisted_effects": "ddb9f9a7f7e6fe1a515eb72a8b7b49b72396c832",
+    "voice_lifecycle": "d51a9013d23fe37efa94a3301acbb810161d9905",
+    "listening_and_output": "13bcec2c9a92a5e51abd5a0efadc65b5e44a29c2",
+    "installed_trust_membership": "c42a1a55903914d45e6ec00717ed16d3c2dcb26b",
+    "bounded_installer_diagnostics": "ec4aae376c23f1f763847bd1a59399497b608b36",
+    "immutable_managed_baseline": "8c12f09071b15b0bd0ecfec6615acd34f1147957",
+    "unicode_native_installer": "d6f9ddb58fd5faf8327a5de3622eca79696007cd",
+    "saved_playback_queue": "b86d2859982a58d0d3b5a8b374c92dfd6fec2578",
+    "conversion_batch": "5d91eb4161ac4fe777c63c469136bf8b8e28db83",
+    "actual_v3_failures": "15ddc40d6833bfd89a4a438d48f60f85281806cb",
+    "actual_main_failures": "20a09639108f97c2ee347c15b4fd16ad474a38df",
+    "post_validator_publication_scope": "e68d95dc58aa21c988a81816f19d5c2db6c8178a"
   },
   "files": [
     {
-      "path": ".github/workflows/carr-ci-diagnostics.yml",
-      "sha": "b13c293cf376cbbe56c03d49a98052b22ccdf8fc",
-      "published_base": "bed83f5371055e9765335b3cc26390b500a3e5de",
-      "lane": "bounded-earlier-installer-failure-tail"
+      "path": ".github/workflows/carr-managed-update.yml",
+      "sha": "1cb0cc8f68a03e695c874ae942744907d9f83372",
+      "published_base": "07c77429d605995e6577a0335adbfffefe8ddee5",
+      "lane": "managed-baseline"
     },
     {
-      "path": ".github/workflows/carr-transcription-bridge.yml",
-      "sha": "3f7c9a90ac34ba73197c349827bcd2564066a6b5",
-      "published_base": "f80f402e8e7cbd88b769a6f84c2b295d0025d303",
-      "lane": "required-native-source-installed-and-loopback-gates"
+      "path": ".github/workflows/carr-trusted-client.yml",
+      "sha": "25cd944dc1a9dd9147dbd377a67c22b746d6dca3",
+      "published_base": "e04079b660e6d8740c8adf9dc364b025eb4ce21a",
+      "lane": "workflow-gates"
     },
     {
       "path": ".github/workflows/carr-v3.yml",
-      "sha": "96abbba6233fc3658cb8716bb96c4205fdb2d4fb",
-      "published_base": "90bf2e4101922b6aea7c8cbfa3495135711a6e1c",
-      "lane": "required-native-source-installed-and-loopback-gates"
+      "sha": "a31cf6022a5c835a1b40ab91a414081f958780aa",
+      "published_base": "96abbba6233fc3658cb8716bb96c4205fdb2d4fb",
+      "lane": "workflow-gates+queue-batch-gates",
+      "lineage": [
+        "ef753119e18679f92f0f69c140b956f6a02e558a",
+        "85421f4b0c26c27d5aa6140f244c149157ae1a60"
+      ]
     },
     {
       "path": ".github/workflows/carr-windows.yml",
-      "sha": "3007df79a05ba18496ce38b7f8e4ab9e04e220ed",
-      "published_base": "2d4a6c59396887d3c5e9d5340b984310b5d10dfa",
-      "lane": "required-native-source-installed-and-loopback-gates"
+      "sha": "78b40d6e6d8f2c6cb7b55740b452aa3a25d586e7",
+      "published_base": "3007df79a05ba18496ce38b7f8e4ab9e04e220ed",
+      "lane": "workflow-gates+queue-batch-gates",
+      "lineage": [
+        "c83b8c2b77ff9ff33e40b862a12224c2f35683e6",
+        "901139c91ca6c9b86b007c1eb1ddbf98bb667f56"
+      ]
+    },
+    {
+      "path": "carr-library/docs/AUDIO_CONVERSION_BATCH.md",
+      "sha": "fd986303ff8a9b9fcd081896e92e9998099782f0",
+      "published_base": null,
+      "lane": "conversion-batch"
     },
     {
       "path": "carr-library/docs/AUDIO_EFFECTS.md",
-      "sha": "525afc9e8dc37f5a27dab40bd2cb52057a1573d9",
-      "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
+      "sha": "82f0fc3af24e307b4181a244549d90cf37b83f9d",
+      "published_base": "525afc9e8dc37f5a27dab40bd2cb52057a1573d9",
+      "lane": "studio-effects"
     },
     {
-      "path": "carr-library/docs/translation_workstation.md",
-      "sha": "ce172579cef44df6cdf03a1f5ae60b5250e0510f",
-      "published_base": "4a77563a934e3323724799f552f45cb1aa9f7fcd",
-      "lane": "local-and-source-bound-document-translation"
+      "path": "carr-library/docs/BRAILLE_BRF.md",
+      "sha": "5a8f4560084139d9f7009057fc2cff700a49d641",
+      "published_base": null,
+      "lane": "braille"
+    },
+    {
+      "path": "carr-library/docs/DORDIAI_DESKTOP.md",
+      "sha": "08d8affbf68b46cb4a5e4229d71609b802ddbab0",
+      "published_base": "d4d5c65dac8c7c815be06d76f8b6b5d1679efd53",
+      "lane": "voice-lifecycle"
+    },
+    {
+      "path": "carr-library/docs/LISTENING_SPEED.md",
+      "sha": "84b72c56e1bb2721e3df6d4c023a136f7abdaa42",
+      "published_base": null,
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/docs/MANAGED_UPDATES.md",
+      "sha": "d55af41a8f6c4fb884eff0f53f7d7736c41ab25e",
+      "published_base": "08b3587a58af0c5378c6b04219ac13801a2edeb8",
+      "lane": "managed-baseline"
+    },
+    {
+      "path": "carr-library/docs/PLAYBACK_QUEUE.md",
+      "sha": "b78e963f12c032d9000d76d2b1a73e7b8a068ea2",
+      "published_base": null,
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/docs/READER_PLAYBACK_OUTPUT.md",
+      "sha": "3cd75d11e2ecd24743a490731ca70695c77e898c",
+      "published_base": null,
+      "lane": "listening"
     },
     {
       "path": "carr-library/packaging/build_windows_bundle.py",
-      "sha": "188f6036dc6513c1968f745954201a0c377010d5",
-      "published_base": "1dc8db5b7f5a5316a075ddd0ec14e0f25b40f02d",
-      "lane": "accessible-effects-and-translation-guides"
+      "sha": "79927ce854a35b301dcfdba889483443ee2f830b",
+      "published_base": "188f6036dc6513c1968f745954201a0c377010d5",
+      "lane": "bundled-guides+queue-batch-gates",
+      "lineage": [
+        "cbdd383391f44e7b878dabfb76eaaa2761982aac"
+      ]
     },
     {
-      "path": "carr-library/scripts/prepare_windows_audio.ps1",
-      "sha": "3e3398e62d49403a81a29c6a3de18636b38866d5",
-      "lane": "native-audio-prerequisite-evidence",
-      "published_base": null
+      "path": "carr-library/packaging/windows_installer/setup.iss.in",
+      "sha": "18f9544ed3d26763f955f14ed8d984a8e2a2558e",
+      "published_base": "c5654447639b87a65e2d0593d17d6f88642e5341",
+      "lane": "installer-native-compatibility"
     },
     {
-      "path": "carr-library/scripts/translation_loopback_check.py",
-      "sha": "17878fdf081092becb082e6ba07039ee5be5928a",
+      "path": "carr-library/packaging/windows-braille-runtime.lock.json",
+      "sha": "a31e865a66cbeda5dd6068f1d6216acfbd6ac0a7",
       "published_base": null,
-      "lane": "actual-loopback-source-and-installed-gate"
+      "lane": "braille"
     },
     {
-      "path": "carr-library/scripts/windows_audio_diagnostics.py",
-      "sha": "d1b9c64a6c822342c09af79954a93db30ccd1385",
-      "lane": "native-audio-prerequisite-evidence",
-      "published_base": null
+      "path": "carr-library/scripts/installed_trusted_client_probe.py",
+      "sha": "67cfbdc3fcd1a3a098b7032f5867d0880074a913",
+      "published_base": "2af6fc67d593aa0291414a464dba34c3d399d04a",
+      "lane": "installed-trust"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_conversion_batch_smoke.py",
+      "sha": "72c4ddd2f1281cab8d6a49ed5911ab05438323e3",
+      "published_base": null,
+      "lane": "conversion-batch"
+    },
+    {
+      "path": "carr-library/scripts/windows_audio_player_smoke.py",
+      "sha": "a388304961bb5d611f83f342d3f1badd8c0ff1b5",
+      "published_base": null,
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "sha": "4dd4c91feeaa3c3c08cf78c01d3f8b877a95085a",
+      "published_base": "35929aceefec8b24c01f0b6e0470b44f02777d48",
+      "lane": "actual-v3-failure"
+    },
+    {
+      "path": "carr-library/scripts/windows_braille_smoke.py",
+      "sha": "af152a119c39eae2801bc352acbcc163b5f24767",
+      "published_base": null,
+      "lane": "braille"
     },
     {
       "path": "carr-library/scripts/windows_effect_chain_smoke.py",
-      "sha": "ed5ccae2d6243ee1b7a2536ba336ee1345a6b851",
-      "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
+      "sha": "7bec5d040d7ee07bd4c55483aae2ee304ecf396a",
+      "published_base": "ed5ccae2d6243ee1b7a2536ba336ee1345a6b851",
+      "lane": "actual-v3-failure"
+    },
+    {
+      "path": "carr-library/scripts/windows_managed_update_smoke.py",
+      "sha": "ff6520d87d3fae899282433aacaae1ab9cff04f6",
+      "published_base": "6221dca70b9df241b32c3fa5ecca42c61e255dae",
+      "lane": "installer-native-compatibility"
     },
     {
       "path": "carr-library/scripts/windows_operations_smoke.py",
-      "sha": "f9ad7ba9a53ea34355948d0d1e4b75fb98e1bd34",
-      "lane": "actual-ci-corrections",
-      "published_base": "bbcafa5b660caed95baf67b3e0f1cbf0b499bab5"
+      "sha": "a4f1ff895261ba056203ebe99936835fc9036cfb",
+      "published_base": "f9ad7ba9a53ea34355948d0d1e4b75fb98e1bd34",
+      "lane": "actual-main-native-test-fault"
     },
     {
       "path": "carr-library/scripts/windows_reader_player_smoke.py",
-      "sha": "2c71d914a1d7849cb46c1a5b4c669a991edb97f1",
-      "lane": "native-audio-prerequisite-evidence",
-      "published_base": "a67011fd8759385a3006fdab00424eb7266354da"
+      "sha": "f6a1804be5e77eb53f5f4c6aac23ff2137706e7c",
+      "published_base": "2c71d914a1d7849cb46c1a5b4c669a991edb97f1",
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/scripts/windows_standard_installer_smoke.py",
+      "sha": "8704c0b91a3ed518d1454cf814667f9ef0a149da",
+      "published_base": "6a9396a39155a8446a5ca9362be54abaaf48591a",
+      "lane": "installer-diagnostics+native-compatibility",
+      "lineage": [
+        "60cdf88cc16d379f049fdb44b8a92b3d9d29eda8"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_studio_effects_smoke.py",
+      "sha": "d6432e948ee50981c59dde63c5bd7717b6dbfdbc",
+      "published_base": null,
+      "lane": "studio-effects"
     },
     {
       "path": "carr-library/scripts/windows_translation_documents_smoke.py",
-      "sha": "f4836a0ec6ab670ef8b08bcc9cc8945146e4e74e",
+      "sha": "63d280ebe1b2cece2c89e575f9e4c73ec00ada7c",
+      "published_base": "f4836a0ec6ab670ef8b08bcc9cc8945146e4e74e",
+      "lane": "actual-v3-failure"
+    },
+    {
+      "path": "carr-library/src/carr_library/__main__.py",
+      "sha": "57abefcb708455484acd557354929e287a9b2633",
+      "published_base": "d7050171bcd602860a63a1fdf23b22dc5e476bf3",
+      "lane": "braille"
+    },
+    {
+      "path": "carr-library/src/carr_library/audio/conversion_batch_cli.py",
+      "sha": "1538bc2617f12b4aab2904fddf2a9a84a64dfb78",
       "published_base": null,
-      "lane": "local-and-source-bound-document-translation"
+      "lane": "conversion-batch"
     },
     {
-      "path": "carr-library/src/carr_library/assistant/profiles.py",
-      "sha": "f6590a6518c2cea43333441a631148e6584fd3f8",
-      "published_base": "68ebee4c87963b6c0728be5dc2e2e82f0c79d7fa",
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/src/carr_library/assistant/providers.py",
-      "sha": "b40ba0bd1f37d8a6140ef92fbde16d68283d6ed4",
-      "published_base": "72979ca221bb572b9d5555b75e7510d44e58aca8",
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/src/carr_library/assistant/translation_cli.py",
-      "sha": "98ae774c024291d03067943ea026387efac9b5ef",
-      "published_base": "645e2beaef0ae1c4ca5f4bc67c4fb24f6a104917",
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/src/carr_library/assistant/translation_documents.py",
-      "sha": "340afdf70dd03f9ca51f3f61636c07f83017b458",
+      "path": "carr-library/src/carr_library/audio/conversion_batch.py",
+      "sha": "f8bf2d33b1ce4e0e0c1be71ebf5da5e00249c7bf",
       "published_base": null,
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/src/carr_library/assistant/translation_local.py",
-      "sha": "6be65ce3dd519777343b4b014722e1ea608ac225",
-      "published_base": null,
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/src/carr_library/assistant/translation.py",
-      "sha": "9da6a25aabfe94f4247fb4cc91a38cae209497ac",
-      "published_base": "752e18d7cf8679575604ea965a0e8442a9fe4e85",
-      "lane": "local-and-source-bound-document-translation"
+      "lane": "conversion-batch"
     },
     {
       "path": "carr-library/src/carr_library/audio/conversion.py",
-      "sha": "10b6d6f23f45e92fe09d2d9ca7bfdec1a62bb73c",
+      "sha": "4444de1d2eeaedeb62b874a98893dd53b04d3815",
+      "published_base": "10b6d6f23f45e92fe09d2d9ca7bfdec1a62bb73c",
+      "lane": "conversion-batch"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_playback_queue.py",
+      "sha": "1e1c3e8aec3674bdd8ac182216bfdbbb8acd5023",
       "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
-    },
-    {
-      "path": "carr-library/src/carr_library/audio/dsp.py",
-      "sha": "2763b965a8a20f832d08977a31cd2d34b78a051a",
-      "published_base": "565d89771ac98989676543e3f3363d837defdc06",
-      "lane": "ordered-effects-and-processed-copy"
-    },
-    {
-      "path": "carr-library/src/carr_library/audio/effect_presets.py",
-      "sha": "8ad8b5730b60fa6531904f83360232e7a697e834",
-      "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
-    },
-    {
-      "path": "carr-library/src/carr_library/backup_book_audio.py",
-      "sha": "4fd92f122d2907c0530fee912c18b45457748682",
-      "published_base": "cae46d016cd35a7d27d6230f8d016f68189990e2",
-      "lane": "canonical-book-json-wire-comparison"
-    },
-    {
-      "path": "carr-library/src/carr_library/backup_effect_presets.py",
-      "sha": "1a19d399bf6e0fe17211ba2221791d586d12f3a4",
-      "lane": "passive-effect-preset-backup",
-      "published_base": null
+      "lane": "saved-queue"
     },
     {
       "path": "carr-library/src/carr_library/backup_producers.py",
-      "sha": "13c73e4f95fdae453bacb1845c331facd2a85cd5",
-      "published_base": "54e1e22ecbb398d37147b43a88e9304c8005b701",
-      "lane": "composed-effect-and-translation-backup"
+      "sha": "40390b406ca318ffac31ecc20f6d6c6980281278",
+      "published_base": "13c73e4f95fdae453bacb1845c331facd2a85cd5",
+      "lane": "studio-effects+saved-queue",
+      "lineage": [
+        "80786586fbf827c9223ee736aa11fbd2fce68281"
+      ]
     },
     {
       "path": "carr-library/src/carr_library/backup_sidecars.py",
-      "sha": "101f42355b1fcdfd30de320a6776b7ea8a24282c",
-      "lane": "passive-effect-preset-backup",
-      "published_base": "c9ef0f2c3cb66f338159f7d1c0fb6f0b90d77afc"
+      "sha": "ba268ebe0da616dce392a14b0306fa83f5913e1b",
+      "published_base": "101f42355b1fcdfd30de320a6776b7ea8a24282c",
+      "lane": "saved-queue"
     },
     {
-      "path": "carr-library/src/carr_library/integrations/transcription_protocol.py",
-      "sha": "e1f49c8ba5e928234dd80de9157403de31eacb1e",
-      "lane": "actual-cross-platform-asr",
-      "published_base": "632b45e4c257b4cbf7cbab3a0414f567984a8826"
+      "path": "carr-library/src/carr_library/integrations/dordiai_speech.py",
+      "sha": "79f67586831828a48e3d0d5c42e9077028cb6f4c",
+      "published_base": "99d0afb0d117cb2acc1f9df6da9a1db4e756d847",
+      "lane": "voice-lifecycle"
     },
     {
-      "path": "carr-library/src/carr_library/operations/broker.py",
-      "sha": "3aebf909a5949f428b6d502388496035142f0fed",
-      "lane": "restored-resource-policy-and-publication-fixtures",
-      "published_base": "a910b2e94c3511254e8a9f5c74fccb1a931a7602"
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "sha": "22730d5b73670ba6525a0d68c76ab42ed2a49e8e",
+      "published_base": "13787af35f5fb1363665f7b0986f24771780dd0b",
+      "lane": "voice-lifecycle"
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/liblouis.py",
+      "sha": "4c276857e7da4371e2dcbf663a107cc629c86214",
+      "published_base": null,
+      "lane": "braille"
+    },
+    {
+      "path": "carr-library/src/carr_library/reader/braille.py",
+      "sha": "c5090efd78bd9c824d5ec384d436a6e827f14f42",
+      "published_base": null,
+      "lane": "braille"
+    },
+    {
+      "path": "carr-library/src/carr_library/security/windows_registration.py",
+      "sha": "26c0438eaeb094d67d6f4de2006785d059ffe9c4",
+      "published_base": "af63f9b3abdf8745255525e8a4b0dfbd506a2cbf",
+      "lane": "installer-native-compatibility"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/_io.py",
+      "sha": "8657f0942eb5eef51f30e9c938f9025bf91f9e47",
+      "published_base": "884a9b8c840e635aef53eaf746392ca19b9e882b",
+      "lane": "post-validator-publication-scope"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/_wave_output.py",
+      "sha": "67c3ec2d0fa1e785615b49e659506f5887606348",
+      "published_base": null,
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/listening.py",
+      "sha": "c50fc60b4f72a4ae15d81dfd3c54d9f3b2f2211e",
+      "published_base": null,
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/playback_devices.py",
+      "sha": "3f675bccbfeea8f0b0977d814e123b435bb7f0ca",
+      "published_base": null,
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/player.py",
+      "sha": "6f758c6073e239f771a7b8627713aca8bff51d7f",
+      "published_base": "3ebc6d573b943ce13667aa568582ddc7a23b475b",
+      "lane": "listening+saved-queue",
+      "lineage": [
+        "2ac67134fa74ab743b9348d04ee1346e22b1b09d"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/playlist.py",
+      "sha": "544f845fa425ff643620f68fad777421a85004f4",
+      "published_base": null,
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "sha": "60fe542d7f9383bd61c4cd50e5a1422742ec2ab9",
+      "published_base": "95a95cfbb224731a38a2e7474c57f4842f7ed36c",
+      "lane": "voice-lifecycle+incoming-source-publication",
+      "lineage": [
+        "87922b85c3c28a0164b2a267286b858baf8ef3d6",
+        "95a95cfbb224731a38a2e7474c57f4842f7ed36c"
+      ]
     },
     {
       "path": "carr-library/src/carr_library/state_backup.py",
-      "sha": "ac9726ae4dd61b95e3c4575fac9cb6160ae5f3d2",
-      "lane": "passive-effect-preset-backup",
-      "published_base": "0a7c332201347c711265e2cc7b4eced4b03fdcd8"
+      "sha": "fb672fe02721a64aa889d1afa0e3792b77f6e748",
+      "published_base": "ac9726ae4dd61b95e3c4575fac9cb6160ae5f3d2",
+      "lane": "studio-effects+saved-queue",
+      "lineage": [
+        "7bfe200f9e45fe873629f0bb0ea4f50f4fbac529"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "sha": "7d4a9a0064b75deacf9a06fd1945751e6df4adb8",
+      "published_base": "43b9549662381656bd1a41afc53062d8f8feee68",
+      "lane": "studio-effects"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/cli.py",
+      "sha": "a63f622678277f345d0de38376c70ab319adc71e",
+      "published_base": "12d6e7210861645b214f5dad44e60997f0952815",
+      "lane": "conversion-batch"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/clips.py",
+      "sha": "756b2a22b2414d9e45b674b1cc2d6dfff20455cc",
+      "published_base": "472f388c29467e50dd554a4d52a04af1218b10cf",
+      "lane": "studio-effects+saved-queue",
+      "lineage": [
+        "d49c8c91f63869b117c5b614cd219e04bf6fe31a"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/managed_inputs.py",
+      "sha": "6688213b891b2a3d1bf91a015918280ccc3eaeb6",
+      "published_base": "e80bd3c260d90a7ae33bd16a8dcd9a931c26b80d",
+      "lane": "studio-effects"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/project.py",
+      "sha": "2e07521a9d35965397a09b94799173fc7b9b17f7",
+      "published_base": "194bffd437536b476a62f9c737f2b1e0863aad2e",
+      "lane": "studio-effects"
     },
     {
       "path": "carr-library/src/carr_library/studio/render.py",
-      "sha": "5952faafbb999e0b099a017d083f38ac502197eb",
-      "lane": "composed-cached-broker-and-live-source-publication-guards",
-      "published_base": "4a76359b29996f85a5ed182b103104b0bccd9d3f"
+      "sha": "496f0ff69c6b385672997fadeccd3f07b66daf40",
+      "published_base": "5952faafbb999e0b099a017d083f38ac502197eb",
+      "lane": "studio-effects"
     },
     {
-      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
-      "sha": "1fbf8df440d9a29e7f95f1354cfbf2b97df23fd1",
-      "published_base": "cee2327498bf44c2b6a65b6c65db6f463bbe684d",
-      "lane": "local-profile-editor-with-existing-templates"
+      "path": "carr-library/src/carr_library/ui/audio_conversion_batch.py",
+      "sha": "e7d39f810906b5ae1362e54cd154826ff69602ce",
+      "published_base": null,
+      "lane": "conversion-batch"
     },
     {
       "path": "carr-library/src/carr_library/ui/audio_conversion.py",
-      "sha": "f9a8deeff67866e95cf9fe5b5aa9c0b6d68e851b",
-      "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
+      "sha": "ae58cfc1125e93ecffa3c204241be919fb80a31a",
+      "published_base": "f9a8deeff67866e95cf9fe5b5aa9c0b6d68e851b",
+      "lane": "conversion-batch"
     },
     {
-      "path": "carr-library/src/carr_library/ui/effects_dialog.py",
-      "sha": "6a9ab34f2963e438e1adbd294bd4c38e3e81caac",
+      "path": "carr-library/src/carr_library/ui/audio_playback.py",
+      "sha": "4850332970c92001564cc495c35e52bec4da1393",
       "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/braille_actions.py",
+      "sha": "b3a805b377be336eca6d1ac77d90201bbb7121e2",
+      "published_base": null,
+      "lane": "braille"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "sha": "e967e673e3daf414fd8b03737394dcf83125bdb4",
+      "published_base": "f0d6676f7891130fd271737b5b1d47f7c59b1b7c",
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/engine_settings.py",
+      "sha": "3f75ad3448bd9fe452b00cf982b60eb67032617e",
+      "published_base": "578cc5f39eb0fad693c4ebae6d4c4c62a27a7d83",
+      "lane": "voice-lifecycle"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reader_playback.py",
+      "sha": "a96a5b2662cf41b5ae04f017264a59e02f4c6f6a",
+      "published_base": "4114f6261df3c76e4ce8582bfaa9faef8ba779ac",
+      "lane": "listening+saved-queue",
+      "lineage": [
+        "d053a18f23ac49fa794486e500382bb0ec34b7e9"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/reading_desk.py",
+      "sha": "74608b6e34b3f7d64712a82f7b75359ea4701673",
+      "published_base": "d4d9ba8b92aed92a8c2889653305e26c71a22d84",
+      "lane": "braille"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+      "sha": "4612356be5452b938dd737c50bc1f65e303723bc",
+      "published_base": "c784e678942c4de6dfac9648217ae5c72e810e1c",
+      "lane": "listening+incoming-source-publication",
+      "lineage": [
+        "7dbcdd4f97e84037ab2828b5eb0fa863f7b84645",
+        "c784e678942c4de6dfac9648217ae5c72e810e1c"
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/studio_clips.py",
+      "sha": "60e10f79b26b6b12906303724b9d69caee985fc3",
+      "published_base": "2aceb72586185d7e7869bb03f604b44227b14b0b",
+      "lane": "studio-effects"
     },
     {
       "path": "carr-library/src/carr_library/ui/studio_dialog.py",
-      "sha": "5f5c6f97923a02d8e5a28ac6efeab98c305b8e7a",
-      "lane": "existing-conversion-command-delegate",
-      "published_base": "3dd278e826434b6c21ba76c0989b6b044d166726"
-    },
-    {
-      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
-      "sha": "99b6b68e30547e0d6e1b2328cb1e0411f9002a32",
-      "published_base": "dabb10575ea0abcba4f036358bb7a91b63040efa",
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/src/carr_library/ui/translation_documents.py",
-      "sha": "ac3966d318fe0217d7e8e0468f5298d278d1b57e",
-      "published_base": null,
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/tests/assistant/test_translation_documents.py",
-      "sha": "fc0d6148287026dbf6cb2640e5e4b0926a2d0ef8",
-      "published_base": null,
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/tests/assistant/test_translation_local_loopback.py",
-      "sha": "b927594a4720236c81c6556e1f841a465d3e91ef",
-      "published_base": null,
-      "lane": "local-and-source-bound-document-translation"
+      "sha": "0dc5f88af5b71a6679c48f50b60dd05da3f6ce8c",
+      "published_base": "5f5c6f97923a02d8e5a28ac6efeab98c305b8e7a",
+      "lane": "studio-effects+conversion-batch",
+      "lineage": [
+        "ec01588f35424f1f401a84a1e161f7b0bc07bcdb"
+      ]
     },
     {
       "path": "carr-library/tests/assistant/test_translation_local.py",
-      "sha": "68369e091e4feefb452a00d48e5c0bdd18381ef1",
+      "sha": "3db04918a25fa59567e5325be789ee7039b84d59",
+      "published_base": "68369e091e4feefb452a00d48e5c0bdd18381ef1",
+      "lane": "actual-v3-failure"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_v3.py",
+      "sha": "3563371b110d073b3b0cde56cf7773a9733e6c13",
+      "published_base": "b43bdf21eea1e458604b0f545c7112d5bdf4c063",
+      "lane": "actual-v3-failure"
+    },
+    {
+      "path": "carr-library/tests/audio/test_conversion_batch.py",
+      "sha": "2de28e8c24b4552aa6b960a58ebe458dcb12d748",
       "published_base": null,
-      "lane": "local-and-source-bound-document-translation"
+      "lane": "conversion-batch"
     },
     {
-      "path": "carr-library/tests/assistant/test_translation.py",
-      "sha": "be8d8236e0f529079d8b900e7902777913fc0ee4",
-      "published_base": "3dd08492145fd04964a944a37567ee5495fa1998",
-      "lane": "local-and-source-bound-document-translation"
-    },
-    {
-      "path": "carr-library/tests/assistant/test_workflow_template_handlers.py",
-      "sha": "5a70b8f7b7365055e6b03c786ed1e601e3f95203",
-      "lane": "actual-v3-wire-and-lifetime-fixture-correction",
-      "published_base": "b827c31987eac590d12dcf3f2515138fb2c1aee0"
-    },
-    {
-      "path": "carr-library/tests/audio/test_audio_conversion.py",
-      "sha": "ddc6f29dec6a00b724ad7b896e10ac876b6c2f73",
+      "path": "carr-library/tests/integrations/test_dordiai_host_lifecycle.py",
+      "sha": "52f3cce2330add9be0b7b81f575cdd6ee659e9af",
       "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
+      "lane": "voice-lifecycle"
     },
     {
-      "path": "carr-library/tests/audio/test_effect_presets.py",
-      "sha": "53dae0a662b78c085e1185a897fec23d6c006f6a",
+      "path": "carr-library/tests/integrations/test_dordiai_settings.py",
+      "sha": "3f4a49f3ef04d72cd4ad05d7ca4fe170925359a8",
+      "published_base": "31f573c60337fb68f13ab1c19bb1b336442ef465",
+      "lane": "voice-lifecycle"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_installed_trusted_client_probe.py",
+      "sha": "a2c69c55e8bbb77eeeb0b08f95307c1f5e003560",
       "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
+      "lane": "installed-trust"
     },
     {
-      "path": "carr-library/tests/packaging/test_windows_bundle.py",
-      "sha": "b794bec391522e99f4b949908b3375b254af0835",
-      "lane": "actual-ci-corrections",
-      "published_base": "4f4394ab0c366f940c0ae986bd4f235a89f85f88"
+      "path": "carr-library/tests/packaging/test_standard_installer.py",
+      "sha": "58e3270bf191da3f7cd0bfccbaaf554dc56c470c",
+      "published_base": "d37b4a38ca0d8eb2796b9216bb7791f43e3ecfb1",
+      "lane": "installed-trust+native-compatibility",
+      "lineage": [
+        "6946a66bcde868a48e8904438b65441575dd527f"
+      ]
     },
     {
-      "path": "carr-library/tests/storage/test_backup_book_audio.py",
-      "sha": "b4b93e79a1ed34d150898c7c73a02fe8963c07b4",
-      "published_base": "a3bef0fd586264c4433d0bb84bfbe94b14085c75",
-      "lane": "canonical-book-json-wire-comparison"
-    },
-    {
-      "path": "carr-library/tests/storage/test_backup_effect_presets.py",
-      "sha": "a62389ac521df8a9ef92b74a28a66793584e5e66",
-      "lane": "passive-effect-preset-backup",
-      "published_base": null
-    },
-    {
-      "path": "carr-library/tests/storage/test_backup_studio_draft.py",
-      "sha": "d85e3c52f06e1e9176f651434696cefd03268522",
-      "lane": "actual-v3-wire-and-lifetime-fixture-correction",
-      "published_base": "14dd2fdc591bb148664507fbd5a898e69e6f72ae"
-    },
-    {
-      "path": "carr-library/tests/studio/test_clip_restoration.py",
-      "sha": "dd366ddd98e6fdbe83c1720defc849aa3b0afe1d",
-      "lane": "restored-resource-policy-and-publication-fixtures",
-      "published_base": "9afe37873a8ae51cda90b75be673563cfc301117"
-    },
-    {
-      "path": "carr-library/tests/studio/test_daisy_boundaries.py",
-      "sha": "b4ea5f6de2172cc153d9a99c68aa5755c208d2f9",
-      "lane": "restored-resource-policy-and-publication-fixtures",
-      "published_base": "3a7656db8d0629ca79ae93420020ba7c04ec8ad1"
-    },
-    {
-      "path": "carr-library/tests/studio/test_publishing_boundaries.py",
-      "sha": "fe9cd9abef317a41db55847e767f09cad99984cb",
-      "lane": "restored-resource-policy-and-publication-fixtures",
-      "published_base": "dc4ef1173d3ea79a5c37f10802cd04234d75fb65"
-    },
-    {
-      "path": "carr-library/tests/transcription/test_protocol_fixture_windows.py",
-      "sha": "6d58c0b4fea268f9bb6ce3210a8935b7f34130a0",
-      "lane": "actual-cross-platform-asr",
-      "published_base": null
-    },
-    {
-      "path": "carr-library/tests/transcription/test_protocol_fixture.py",
-      "sha": "3fbe5c81347424aa6b9693dc8b4ae475c48748a1",
-      "lane": "actual-cross-platform-asr",
-      "published_base": "a49073f894c97d8a2c78c4672752f68d420e122e"
-    },
-    {
-      "path": "carr-library/tests/transcription/test_unified_authority.py",
-      "sha": "a7abbc4519f0e14f168b31103279ff6ef6bc6e92",
-      "lane": "actual-cross-platform-asr",
-      "published_base": "04358801d115a62f6ec83f2a97949d14b7044f12"
-    },
-    {
-      "path": "carr-library/tests/ui/test_audio_conversion.py",
-      "sha": "449ab303dbd62f43513d302b62a2acc03581e09a",
+      "path": "carr-library/tests/reader/test_braille.py",
+      "sha": "79f92b14479d996601e34260a434d1564e7a7d3a",
       "published_base": null,
-      "lane": "ordered-effects-and-processed-copy"
+      "lane": "braille"
     },
     {
-      "path": "carr-library/tests/ui/test_book_audio_dialog.py",
-      "sha": "180dda968201569a11711f44e406b82443c9945c",
-      "lane": "actual-v3-wire-and-lifetime-fixture-correction",
-      "published_base": "542c521d5fd40be6e58c7241ac9f4ee8483dae45"
+      "path": "carr-library/tests/security/test_idle_renewal.py",
+      "sha": "5d0264af70c7849dbd3c7000e37eaf828e10125c",
+      "published_base": "a7ac144a9d7230b05f6b745ec00dd59fc79becb4",
+      "lane": "actual-main-native-test-fault"
     },
     {
-      "path": "carr-library/tests/ui/test_desktop_handlers.py",
-      "sha": "b96e0f4d7aa2c870ea3f2db5079933fce5a1d1ec",
-      "lane": "actual-ci-corrections",
-      "published_base": "ec0ee946b9594bf6e5b1710cdb76ae25dc756690"
+      "path": "carr-library/tests/speech/test_listening.py",
+      "sha": "c1ee08209bed80c730dce48cde57467c944df24b",
+      "published_base": null,
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/tests/speech/test_playback_devices.py",
+      "sha": "4d00504a84af049032d986f125ec2497ee4a5b88",
+      "published_base": null,
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/tests/speech/test_playlist_recovery.py",
+      "sha": "71ffb3ae5f35661a29c24759e0094874301e3f69",
+      "published_base": null,
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/tests/speech/test_playlist.py",
+      "sha": "8476acef3b4799bb80b73217accfbaff8d843c10",
+      "published_base": null,
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/tests/speech/test_publication_validation.py",
+      "sha": "aba46523e3f85223b044ccd29f32361e6db8cde1",
+      "published_base": null,
+      "lane": "post-validator-publication-scope"
+    },
+    {
+      "path": "carr-library/tests/speech/test_wave_output.py",
+      "sha": "4759895ed76033a11d775b310b77fda51377b4a6",
+      "published_base": null,
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_studio_effects.py",
+      "sha": "b29b8529e1b319266a5128545d84e109aa781f5e",
+      "published_base": null,
+      "lane": "studio-effects"
+    },
+    {
+      "path": "carr-library/tests/studio/test_clip_dialog.py",
+      "sha": "22f82b84c019c1c917424612d41699da2c806ba8",
+      "published_base": "6f21e92b41346d98cd86ba14a7500c7f6e0d9fb3",
+      "lane": "studio-effects"
+    },
+    {
+      "path": "carr-library/tests/studio/test_conversion_batch_cli.py",
+      "sha": "7c3bb81b9c6a1206cf99a2c508e969ad17b6cd3a",
+      "published_base": null,
+      "lane": "conversion-batch"
+    },
+    {
+      "path": "carr-library/tests/studio/test_project_effects.py",
+      "sha": "dc9c8bb6a0e9004594a16af2d692fc26825a6efe",
+      "published_base": null,
+      "lane": "studio-effects"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_export_publication.py",
+      "sha": "9924f6da4cd80af58d40468def48c97690cb1b6a",
+      "published_base": "785d23d0802421a5e68ec0c90055351cd5d1f0af",
+      "lane": "asr-export-fixture"
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_conversion_batch.py",
+      "sha": "0b2ee625ac1c89c3709afe651503285ca2e20d41",
+      "published_base": null,
+      "lane": "conversion-batch"
+    },
+    {
+      "path": "carr-library/tests/ui/test_audio_playback.py",
+      "sha": "73e74336811add22a451021844ad19d991e4bb3e",
+      "published_base": null,
+      "lane": "saved-queue"
+    },
+    {
+      "path": "carr-library/tests/ui/test_braille_actions.py",
+      "sha": "fafe5b2d9dd47428b8ccb889854ab749345d48f5",
+      "published_base": null,
+      "lane": "braille"
+    },
+    {
+      "path": "carr-library/tests/ui/test_engine_settings_lifetime.py",
+      "sha": "b000cf4410a0392b00d90a2eee4d97f1114f61c8",
+      "published_base": null,
+      "lane": "voice-lifecycle"
+    },
+    {
+      "path": "carr-library/tests/ui/test_find_replace_hooks.py",
+      "sha": "acda9718d8bc60e1250401adc23754b49c774ffd",
+      "published_base": "357a272394e167ff87b2624e40664fc6fa7697f8",
+      "lane": "listening"
     },
     {
       "path": "carr-library/tests/ui/test_progress_job_review.py",
-      "sha": "0922576f67f98a9644f8cbb29fa491bc1337b691",
-      "lane": "actual-ci-corrections",
-      "published_base": "77a690a12ac53aa9b4f8a572caefa661c8105847"
+      "sha": "729d1e2e5a55f4099b8d2512783f7cccbcc31a5e",
+      "published_base": "0922576f67f98a9644f8cbb29fa491bc1337b691",
+      "lane": "listening"
     },
     {
-      "path": "carr-library/tests/ui/test_translation_documents.py",
-      "sha": "7a3b5ba93b3d71feb300be83dfb6f03abbb106cc",
+      "path": "carr-library/tests/ui/test_progress_voice_actions.py",
+      "sha": "61e8ff1cf190e9fe86ee7f522bf7a23077ac94c7",
+      "published_base": "b49f673a19f2f67464d80e295fb4a9f4f0e24159",
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_listening_hooks.py",
+      "sha": "eb8a68fcc65a46e4cb44b18c4a94557aca33b1ee",
       "published_base": null,
-      "lane": "local-and-source-bound-document-translation"
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_navigation_ui.py",
+      "sha": "87c4088ad61a4717c0c41fa4a09aab108d23f215",
+      "published_base": "16e6210dce49956291df6d8cc5db28084ce45396",
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_playback_actions.py",
+      "sha": "3c67a511c148c24eaba9cd34a744cb868d9b151f",
+      "published_base": "96e300cc10f4b877ec78970c7a456fa5fe924891",
+      "lane": "listening"
+    },
+    {
+      "path": "carr-library/tests/ui/test_reader_playback.py",
+      "sha": "3f9feb3d33f7b427a6f7a45255cc91ba6ffec398",
+      "published_base": "c6c96a19706b7a5a5eb4b23acb4c9121b4c9b04f",
+      "lane": "listening+saved-queue",
+      "lineage": [
+        "7983c407b731d9813a4defc9c8c113a64166fe9b"
+      ]
     },
     {
       "path": "resonance-status/Integration_Checkpoint_20261127.md",
-      "sha": "7105e5fac2c4a426cc237e335e84d3d83d892906",
-      "published_base": "66a29a94fd788bd2299d76cf98c26ac6a3253019",
-      "lane": "exact-source-status"
+      "sha": "5b084b0b0de4f407806e18d2a5b064f770a33647",
+      "published_base": "7105e5fac2c4a426cc237e335e84d3d83d892906",
+      "lane": "exact-candidate-checkpoint",
+      "lineage": [
+        "70745aa6c3999486cc740622db18ba5493ef9e01"
+      ]
     }
   ],
   "verification": {
-    "blob_readback": "exact for composed files and delegated final slice manifests",
-    "python_parse": "NOT_RUN",
-    "source_tests": "NOT_RUN",
-    "native_windows": "NOT_RUN",
-    "installed_package": "NOT_RUN",
-    "reason": "The local executor is unavailable; source checks must run against the actual successor."
+    "blob_readback": "EXACT",
+    "independent_review": "STATIC: BRF publication, Studio core and backup, voice lifecycle, listening/core/UI, installed trust collector, native installer compatibility, saved queue ABI/UI/passive backup and conversion batch commit/receipt seam. Exact successor execution remains required.",
+    "python_parse": "NOT_RUN_ON_THIS_COMPOSITION",
+    "source_tests": "NOT_RUN_ON_THIS_COMPOSITION",
+    "native_windows": "NOT_RUN_ON_THIS_COMPOSITION",
+    "installed_package": "NOT_RUN_ON_THIS_COMPOSITION",
+    "reason": "Execution host remains unavailable; source review does not substitute for exact successor CI.",
+    "integration_readback": [
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "sha": "78b40d6e6d8f2c6cb7b55740b452aa3a25d586e7",
+        "status": "EXACT"
+      },
+      {
+        "path": ".github/workflows/carr-v3.yml",
+        "sha": "a31cf6022a5c835a1b40ab91a414081f958780aa",
+        "status": "EXACT"
+      },
+      {
+        "path": "carr-library/packaging/build_windows_bundle.py",
+        "sha": "79927ce854a35b301dcfdba889483443ee2f830b",
+        "status": "EXACT"
+      },
+      {
+        "path": "carr-library/src/carr_library/speech/runtime.py",
+        "sha": "60fe542d7f9383bd61c4cd50e5a1422742ec2ab9",
+        "status": "EXACT"
+      },
+      {
+        "path": "carr-library/src/carr_library/ui/speech_dialog.py",
+        "sha": "4612356be5452b938dd737c50bc1f65e303723bc",
+        "status": "EXACT"
+      },
+      {
+        "path": "resonance-status/Integration_Checkpoint_20261127.md",
+        "sha": "5b084b0b0de4f407806e18d2a5b064f770a33647",
+        "status": "EXACT"
+      }
+    ],
+    "main_failure_independent_review": "Canonical accepted exact20a09639 Tasks/idle test deltas against unchanged production lifecycle and trust locks; STATIC_NOT_RUN.",
+    "queue_independent_review": "Locate accepted native ABI and passive backup helper/hooks; Progress accepted ownership/UI/CAS and the pending-confirmation correction; STATIC_NOT_RUN.",
+    "conversion_batch_independent_review": "Progress accepted runtime preflight and precommit/receipt/cleanup seams; root reviewed current GUI/CLI/native and exact additive hook composition; STATIC_NOT_RUN.",
+    "additive_gate_review": {
+      "blob": "20939d061f857929ea0c87b87a90d223cf8e9f7a",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "main": "901139c91ca6c9b86b007c1eb1ddbf98bb667f56",
+      "v3": "85421f4b0c26c27d5aa6140f244c149157ae1a60",
+      "guide": "79927ce854a35b301dcfdba889483443ee2f830b"
+    },
+    "post_validator_review": "Locate independently accepted8657/aba465 against the incoming884a writer and exact merged VoiceRegistry. Three actual-filesystem cases; STATIC_NOT_RUN.",
+    "final_gate_delta": "After20939 independent review, root appended only one3-case publication-validation whole module to source/installed/fast lists, exactcounts and requirednames. All old selected paths and assertions retained; heredocs remain20/20 and12/12."
   },
   "predecessor_evidence": {
-    "commit": "6fa244f0e206a44a6fc1e875ee977578c0bb61e9",
-    "linux_sync": {
-      "job": 140496134199,
-      "source": {
-        "passed": 272,
-        "failed": 0,
-        "skipped": 0
+    "commit": "ed74d168c81a21e68bbe1673a729181dfef96ee4",
+    "whole_candidate": "NOT_QUALIFIED",
+    "syntax": {
+      "job": 140520680633,
+      "status": "PASS",
+      "python_files": 847,
+      "explicit_packages": 31,
+      "inventory_sha256": "4f00c8a4e88ec598531b7feefa614b7f39f9b96dce6218b3251b45f2016d13c1"
+    },
+    "signed_trust": {
+      "windows": {
+        "job": 140520680760,
+        "source_passed": 324,
+        "source_failed": 0,
+        "source_skipped": 0,
+        "installed_passed": 322,
+        "installed_failed": 2,
+        "observed_failure": "Two default-codepage Unicode test fixtures"
       },
-      "installed": {
-        "passed": 272,
-        "failed": 0,
-        "skipped": 0
-      },
-      "posix_fork": {
-        "source_passed": 1,
-        "installed_passed": 1
+      "linux": {
+        "job": 140520680933,
+        "source_passed": 323,
+        "source_failed": 0,
+        "source_skipped": 0,
+        "installed_passed": 323,
+        "wrapper": "FAIL because JUnit classname depended on external pytest config root; use actual collector item.path membership"
       }
     },
+    "managed": {
+      "job": 140520681038,
+      "status": "FAIL_AT_INSTALL_A",
+      "source_suites_passed": 5,
+      "source_cases_passed": 131,
+      "initial_baseline": "4c3632fb1baac4705059e344b6c952f7760c4f00",
+      "source_proven_incompatibility": "Its builder emits optional manifest flags that its own native checker rejects.",
+      "hidden_bootstrap_error": "Unavailable; retained Inno tail only proves child exit1 and setup exit7."
+    },
     "asr_linux": {
-      "job": 140496016977,
-      "status": "FAIL",
-      "passed": 312,
-      "failed_or_error": 71,
-      "skipped": 2
+      "commit": "ed74d168c81a21e68bbe1673a729181dfef96ee4",
+      "run": 46003464921,
+      "job": 140520775099,
+      "suites": 16,
+      "passedSuites": 15,
+      "passedCases": 382,
+      "failedCases": 1,
+      "failedCase": "tests/transcription/test_export_publication.py::test_flat_export_retains_actual_prior_files_and_reports_partial[manifest]",
+      "cause": "Fixture planned only default TXT, then tried four-format export; canonical service correctly refused unrequested SRT after the first published TXT. Explicitly plan all four formats in the synthetic job; preserve all existing partial-publication and receipt assertions.",
+      "fix": "9924f6da4cd80af58d40468def48c97690cb1b6a",
+      "execution": "NOT_RUN",
+      "skippedCases": 0
     },
-    "msvc_launcher": {
-      "job": 140496017355,
+    "keyboard": {
+      "job": 140520680315,
       "status": "PASS"
     },
-    "v3_flite": {
-      "job": 140496059747,
+    "linux_sync": {
+      "job": 140520680978,
+      "status": "PASS",
+      "test_counts": "Not asserted without full log review"
+    },
+    "flite": {
+      "main_job": 140520680969,
+      "v3_job": 140520717253,
       "status": "PASS"
     },
-    "whole_candidate": "NOT_QUALIFIED",
     "v3_windows": {
-      "run": 45996177952,
-      "job": 140496060218,
-      "status": "CANCELLED_BY_SUCCESSOR_AFTER_FAILURES",
+      "job": 140520716904,
+      "status": "CANCELLED_BY_NEW_HEAD",
       "installed_recovery": {
-        "passed": 1262,
-        "failed": 2
+        "passed": 1355,
+        "failed": 3,
+        "skipped": 0
       },
       "installed_publication": {
-        "passed": 626,
-        "failed": 24,
-        "errors": 1
+        "passed": 781,
+        "failed": 0,
+        "skipped": 0
       },
-      "progress": {
-        "passed": 46,
-        "failed": 2
-      },
-      "cancelled_at": "2026-11-27T12:42:14Z",
-      "whole_candidate": "NOT_QUALIFIED"
+      "native_failure": "Translation/book/effects assertions used nonexistent CommandSpec.id; prepared narrow command_id corrections retain all real probes.",
+      "fix_manifest": "15ddc40d6833bfd89a4a438d48f60f85281806cb"
     },
-    "managed_diagnostic": {
-      "job": 140496017359,
-      "status": "DIAGNOSTIC_COMPLETED_CAUSE_NOT_EXPOSED",
-      "known_failure": "Earlier install-A process exit 7; no successful A-to-B evidence.",
-      "successor_change": "Read the actual installer process-log tail before generic matches."
+    "main_windows": {
+      "job": 140520680663,
+      "status": "CANCELLED_BY_NEW_HEAD",
+      "observed_failures": [
+        "Native Tasks waited for a wx destruction notification from an unshown dialog after controller detachment.",
+        "Real MCI playback could not open: running Audio/EndpointBuilder services exposed zero WinMM output devices; native output remains required.",
+        "Combined installed trust selection exposed two default-codepage fixtures and an independent periodic-read/idle-host test race."
+      ],
+      "full_log": "Retrieved; no overall success inferred from partial suites."
+    },
+    "asr_windows": {
+      "job": 140520774391,
+      "status": "CANCELLED_BY_NEW_HEAD",
+      "passed_cases": "Not asserted without complete final verdict"
+    },
+    "external_advance": {
+      "commits": [
+        "07f75b6e437ba8dd6dec9ce9bfcd03e427758ad0",
+        "dd533fa64bddd63ca13ffe23dbdab07f0ef4d0a5"
+      ],
+      "status": "PRESERVED",
+      "note": "Cancellation followed the same integration branch advancing; it was not a test timeout."
     }
   },
   "qualification_boundaries": [
-    "No transferred PASS from a predecessor.",
+    "No transferred PASS from any predecessor, donor, source-only test or different installed wheel.",
     "No private engines, models, samples, credentials or jobs in the public tree.",
-    "Processed-copy effects do not qualify live playback or every professional Studio workflow.",
+    "BRF CLI/C API gates do not establish tactile-language quality, embosser layout or NVDA usability.",
     "Local HTTP protocol fixtures do not establish engine identity, translation quality or 135-language coverage.",
-    "Manual NVDA, acoustic quality, authorized private inference and tactile/layout review remain unqualified.",
-    "No canonical merge or owner package release before the required actual-source gates."
+    "Actual physical listening/microphone, manual NVDA, authorized private inference and complete language qualification remain separate required evidence.",
+    "No canonical merge or owner package release before required exact-source and installed/native gates.",
+    "Remaining software is explicitly tracked: BookBatch, microphone pause/monitoring, reader recovery/presentation/preferences, bounded search, large-intake continuation, application schedules/watch folders, authorized clone lifecycle, formatted translation and optional integration surfaces. These are not claimed complete or reduced to external qualification."
   ],
-  "base_tree": "e5e79462d6dc70a52260da0f328e440825d99cd3",
-  "file_count_excluding_self": 60,
+  "base_tree": "da6b9490fbb4831462b59028afef0ff5e9825ca7",
+  "file_count_excluding_self": 96,
   "composition_notes": [
-    "Preserve accaa's two live Studio publication source guards in render5952 together with restoration broker-policy corrections.",
-    "Use the final translation d246 slice, including pre-request cached-pair validation, real DesktopFrame/Executor native probe, same-path root identity checks and two explicitly required loopback modes.",
-    "Compose effects backup and translation producer hooks into backup_producers13c without replacing existing book, draft, templates, trust or ASR hooks.",
-    "Compose provider settings into current assistant_dialog1fbf and keep Studio conversion delegate5f5c.",
-    "Apply exact old6fa CI fixture corrections for complete wire equality, worker teardown scope and workflow-template summary semantics; preserve every existing assertion of independent behavior.",
-    "The source map deliberately excludes its own blob to avoid a circular identity."
+    "Preserve every ed74 file outside this exact delta and all 15 automation configurations.",
+    "Only schema3 stores nonempty Studio effect chains; schema1/2 serialized fields and fingerprints remain unchanged.",
+    "Use explicitly selected official Liblouis3.39.0 ZIP; no archive/DLL/table distribution in the bundle.",
+    "No private engine API, model, voice, recording or checkpoint is uploaded or newly qualified.",
+    "Listening uses the current typed DSP, shared admission and serial reader worker; independent speed/pitch uses a privately prepared derivative, with original-time mapping.",
+    "Trust JUnit membership is bound to actual pytest item paths and exact collected identities; original offline/XFAIL/12-module origin gates remain.",
+    "Every installer source supplies its own wheel, launcher and wrapper; immutable A665acf replaces source-incompatible4c3632 using actual historical native evidence.",
+    "Canonical source and integration head remain unchanged until a reviewable successor is published non-force.",
+    "Rebased exactly onto dd533fa64bddd63ca13ffe23dbdab07f0ef4d0a5, retaining both incoming DAI-003 WAV publication commits. Incoming speech._io and test_reader_usability remain verbatim; runtime/speech dialog exact incoming hunks composed onto reviewed lifecycle/listening successors and reverse-checked.",
+    "Saved queue14files plus18 exact preimage-bound shared hooks and conversion batch12files plus4 exact CLI/menu hooks are composed without overwriting the earlier Studio/listening slices.",
+    "All previous main/V3 selected whole modules and455/221 named-test literals are retained. New main source/installed selections353/183; exact counts are static expected inventories pending actual collection. Separate26-module source feedback job preserves the full gates.",
+    "Post-validator scope fix8657 adds only six path/parent revalidation lines inside the existing optional callback branch. Default cancellation checkpoints unchanged. Three real VoiceRegistry/filesystem tests are added as whole source/installed suites; final selectors354/184, fast source27."
   ],
   "workflow_gates": {
-    "source_whole_module_selectors": 336,
-    "installed_whole_module_selectors": 166,
+    "source_whole_module_selectors": 354,
+    "installed_whole_module_selectors": 184,
     "source_suite_timeout_seconds": 600,
     "source_suite_jobs": 3,
     "clip_restoration_expected_cases": 24,
@@ -475,7 +841,291 @@
     "native_translation_required_checks": 58,
     "loopback_source_expected_cases": 7,
     "loopback_installed_expected_cases": 7,
-    "counts_status": "STATIC_CONFIGURATION_NOT_EXECUTION",
-    "native_continuation": "Every independent required probe runs after earlier probe failure; final aggregate still fails."
+    "counts_status": "Static expected inventories; new composed execution NOT_RUN",
+    "native_continuation": "All prior required blocks retained; BRF, persisted Studio effects, conversion batch, and saved queue native failures aggregate through the existing final required fail gate.",
+    "clip_dialog_expected_cases": 45,
+    "standard_installer_expected_cases": 102,
+    "braille_source_cases": 40,
+    "braille_ui_cases": 8,
+    "braille_native_required_checks": 17,
+    "braille_installed_origins": 12,
+    "studio_effects_source_cases": 25,
+    "studio_effects_backup_cases": 21,
+    "studio_effects_native_required_checks": 23,
+    "studio_effects_installed_origins": 12,
+    "listening_expected_cases": {
+      "tests/speech/test_listening.py": 28,
+      "tests/speech/test_playback_devices.py": 53,
+      "tests/ui/test_reader_listening_hooks.py": 24,
+      "tests/ui/test_reader_playback.py": 52,
+      "tests/ui/test_reader_playback_actions.py": 24
+    },
+    "listening_native_new_required_checks": 14,
+    "listening_installed_origins": 9,
+    "voice_lifecycle_cases": 13,
+    "engine_settings_lifetime_cases": 33,
+    "installed_trust_collector_cases": 34,
+    "parallel_source_regression_modules": 27,
+    "saved_queue_expected": {
+      "tests/speech/test_wave_output.py": 31,
+      "tests/speech/test_playlist.py": 21,
+      "tests/speech/test_playlist_recovery.py": 36,
+      "tests/ui/test_audio_playback.py": 24,
+      "tests/ui/test_reader_playback.py": 52
+    },
+    "conversion_batch_expected": [
+      {
+        "path": "tests/audio/test_conversion_batch.py",
+        "statically_enumerated_cases": 36
+      },
+      {
+        "path": "tests/ui/test_audio_conversion_batch.py",
+        "statically_enumerated_cases": 21
+      },
+      {
+        "path": "tests/studio/test_conversion_batch_cli.py",
+        "statically_enumerated_cases": 4
+      }
+    ],
+    "reader_usability_expected_cases": 33,
+    "new_queue_native_origins": 11,
+    "new_batch_native_origins": 12,
+    "idle_renewal_cases": 4,
+    "saved_queue_native_required_checks": 33,
+    "conversion_batch_native_required_checks": 30,
+    "post_validator_publication_cases": 3
+  },
+  "predecessor_source_map": {
+    "commit": "ed74d168c81a21e68bbe1673a729181dfef96ee4",
+    "blob": "f566dad52c225f2cc81e303f19f6f0d59956b2fd",
+    "preserved_inherited_slices": {
+      "v3_restoration": "68d9fe1eca8843a0ba33eeaea719fce2bdb39265",
+      "cross_platform_asr": "9c24154a1a27df40e7170338267c57e9604ac0a4",
+      "effects": "da2c689db9f7e84fbffcaf630d4a8be333c78328",
+      "effects_backup": "74922f7f4b7054dcf04eb34cfe0265c599ae2f2f",
+      "native_continuation": "acae09ecbafbc3589e10c6991a0180bba5d7968e",
+      "native_audio_diagnostics": "3445cd57e67e35108543cb72d3000224b85625e0",
+      "translation": "d246ae3a7a39aad23a5d155c8e811b7b6fc8f706",
+      "book_backup_wire": "54bb9074541f4f554c3c91b161e8e0d1c1607c5e"
+    }
+  },
+  "managed_baseline_evidence": {
+    "schema": 1,
+    "status": "STATIC_REVIEW_COMPLETE_CURRENT_BASELINE_GATE_NOT_RUN",
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "current_source": "ed74d168c81a21e68bbe1673a729181dfef96ee4",
+    "retired_baseline": {
+      "commit": "4c3632fb1baac4705059e344b6c952f7760c4f00",
+      "tree": "5da80913681fc9c35dee67ffc1da78d93ea2ae0b",
+      "observed_failure": {
+        "run": 46003465080,
+        "job": 140520681038,
+        "source_suite_count": 5,
+        "source_cases_passed": 131,
+        "phase": "MANAGED_STAGE install-A",
+        "inno_exit": 7
+      },
+      "retained_tail": {
+        "run": 46003464966,
+        "job": 140520670460,
+        "source_kind": "older ec513 run using exact same A",
+        "artifact": 15194548131,
+        "artifact_bytes": 50906,
+        "artifact_sha256": "f6430d2c3505da31b2369efd6543028d90669dca85b1da3f7dd37e9ff633d51b",
+        "bootstrap_exit": 1,
+        "bootstrap_arguments": [
+          "-I",
+          "-B",
+          "-X",
+          "utf8",
+          "install_windows.py"
+        ],
+        "bootstrap_stderr": "NOT_RETAINED_BY_A_MAINTENANCE"
+      },
+      "source_blocker": {
+        "builder": "54fb010ac8d16916c6c070714c03a103a936bc59",
+        "checker": "79307b2a804c8162cbd563c1b585165cb0fbe1bd",
+        "always_emitted_fields": [
+          "bundled_launcher",
+          "bundled_audio_runtime"
+        ],
+        "checker_permitted_optional_fields": [
+          "source_commit",
+          "bundled_native_runtime"
+        ],
+        "message": "Unsupported installation manifest or optional-component flags.",
+        "qualification": "Exact-source incompatibility; original child stderr is unavailable. No substituted payload or disabled verifier."
+      }
+    },
+    "selected_baseline": {
+      "commit": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+      "tree": "7113483d1d6287ed60c5115704232d66f7dde501",
+      "kind": "immutable native-qualified development test baseline, not production release",
+      "native_checks": "676c9bb01f2db33b6a01f7a56ab92d186e3390c6",
+      "builder": "54fb010ac8d16916c6c070714c03a103a936bc59",
+      "launcher_builder": "beb1c95f9ec999be261bda1c38593a4f849525d0",
+      "launcher_probe": "8c27c4d79a411a5c550e114d8978e0d08746ee76",
+      "source_wheel": "daf1b6ad2cd6d7efe1d34349a59745c8b41f6fd0",
+      "setup_builder": "3c38afc75e22931090c0585dd5b6901c6c74087c",
+      "maintenance": "61ce446587afc47802c7a375f5623aad69def497",
+      "setup_template": "c5654447639b87a65e2d0593d17d6f88642e5341",
+      "argument_compatibility": "Own-source current commands preserved; no historical payload is cross-copied or altered."
+    },
+    "historical_actual_evidence": {
+      "run": 45985890211,
+      "job": 140461281613,
+      "conclusion": "success",
+      "source_a": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+      "source_b": "55725629bc0cb79b62f7f3979842a573d5fd868f",
+      "a_wheel_sha256": "f36240819237c296b11de40938b52e94662c0bc2d21d2ba2836375d3e533a8cb",
+      "a_bundle_manifest_sha256": "53297ef3b02289ecf5c83bead1f93b5e6f28c49f9ec23b131753ecfc1dd7c46c",
+      "a_setup_sha256": "07e164443bf6e273c54b98e7f31750f8b0e30453620ad7b6c7c0744b3a4efa63",
+      "phases": [
+        "install-A",
+        "real-B-then-injected-health-refusal",
+        "commit-real-B",
+        "repair-and-uninstall-B"
+      ],
+      "actual_backup_restore": "PASS",
+      "actual_inno": "PASS",
+      "actual_windows_registration": "PASS",
+      "actual_windows_vault": "PASS",
+      "live_app_exclusion": "PASS",
+      "full_wrapper_rollback": "PASS",
+      "user_source_preserved": "PASS",
+      "production_publisher": "NOT_CONFIGURED",
+      "authenticode": "NOT_CLAIMED",
+      "nvda": "NOT_RUN",
+      "artifact": 15194245285,
+      "artifact_bytes": 84552,
+      "artifact_sha256": "834cca98eabb1a3a269e846be81d58e8667ea2194a92624df2960017f112ccc4",
+      "limitation": "This prior result does not qualify the current A-to-B pair or current release artifact."
+    },
+    "patch": {
+      "path": ".github/workflows/carr-managed-update.yml",
+      "preimage": "07c77429d605995e6577a0335adbfffefe8ddee5",
+      "blob": "1cb0cc8f68a03e695c874ae942744907d9f83372",
+      "changes": [
+        "exact A pin",
+        "explicit development-baseline policy",
+        "source-identities provenance fields"
+      ],
+      "runtime": "NOT_RUN"
+    },
+    "failure_log_patch_manifest": "ec4aae376c23f1f763847bd1a59399497b608b36",
+    "rejected_alternative": {
+      "commit": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+      "reason": "No own standard setup/maintenance/build_setup or source-bound launcher builder support; cannot be made a standard baseline without foreign payload copying."
+    },
+    "fallback": {
+      "commit": "ed74d168c81a21e68bbe1673a729181dfef96ee4",
+      "source_contract": "coherent",
+      "actual_standard_installation": "NOT_QUALIFIED",
+      "selected": false
+    },
+    "unchanged_constraints": [
+      "Every A and B wheel, PE, receipt, bundle and setup comes from its own exact Git source.",
+      "Current mandatory source/native A-to-B, rollback, Repair, Uninstall and original-source assertions remain required.",
+      "No audio/model payload, production issuer, signing or NVDA claim.",
+      "Original failed baseline result is retained; no false success conversion."
+    ],
+    "exact_old_bootstrap_replay": "NOT_RUN; retained original tail and deterministic source contract mismatch preserved."
+  },
+  "incoming_preserved": {
+    "commits": [
+      "07f75b6e437ba8dd6dec9ce9bfcd03e427758ad0",
+      "dd533fa64bddd63ca13ffe23dbdab07f0ef4d0a5"
+    ],
+    "unchanged_base_files": [
+      {
+        "path": "carr-library/tests/speech/test_reader_usability.py",
+        "sha": "2c5f5a4b7cb40924ccc19739c97eebfb36a0c7ce"
+      }
+    ],
+    "composed_runtime": "60fe542d7f9383bd61c4cd50e5a1422742ec2ab9",
+    "composed_speech_dialog": "4612356be5452b938dd737c50bc1f65e303723bc",
+    "reversal_check": "Incoming hunks reproduce the exact incoming blobs against their original bases; reversing them from our successors exactly restores the reviewed lifecycle/listening preimages.",
+    "strengthened_writer": "8657f0942eb5eef51f30e9c938f9025bf91f9e47"
+  },
+  "required_native_qualification": {
+    "saved_queue": {
+      "manifest": "b86d2859982a58d0d3b5a8b374c92dfd6fec2578",
+      "origins": 11,
+      "watchdog_seconds": 90,
+      "required_checks": [
+        "actual keyboard Space",
+        "native file chooser Enter",
+        "standalone opens without a source or native sound",
+        "actual file picker order and original hashes",
+        "review is passive",
+        "queue selection is silent",
+        "stopped live setting does not open a device",
+        "same canonical player owns bounded native output",
+        "actual pause is stable and disarms queue advancement",
+        "independent handles refer to the same Windows output",
+        "read independent owned output level",
+        "read muted owned output level",
+        "read unaffected independent output level",
+        "live mute and balance preserve volume and other player",
+        "live paused controls never resume audio",
+        "unmute retains reviewed native level",
+        "actual unmuted stereo balance matches the owned native handle",
+        "actual queue transition keeps levels and exact next file",
+        "Stop closes owned native output and cancels queue",
+        "native reorder is passive",
+        "silent original-frame cursor before save",
+        "actual Ctrl+S down",
+        "actual Ctrl+S character",
+        "actual Ctrl+S up",
+        "Ctrl+S durably saved order and exact original-frame cursor",
+        "restart loads passive metadata without opening audio",
+        "explicit review restores original cursor and settings without autoplay",
+        "one stable native command without a conflicting default shortcut",
+        "native modal close acknowledges player ownership",
+        "original PCM remains exact after live controls",
+        "closed source handle is released",
+        "saved queue reopens after original files moved",
+        "all installed queue sources stay exact after native execution"
+      ]
+    },
+    "conversion_batch": {
+      "manifest": "5d91eb4161ac4fe777c63c469136bf8b8e28db83",
+      "origins": 12,
+      "watchdog_seconds": 180,
+      "required_checks": [
+        "actual Windows native batch controls",
+        "batch command uses the current registry API",
+        "batch picker requests explicit multiple files",
+        "batch resume is an explicit native choice",
+        "native batch review is read-only and names both sources",
+        "native batch approval defaults to No",
+        "native registered batch action dispatches",
+        "No leaves every output and manifest absent",
+        "native batch records only actual returned successes",
+        "actual batch PCM format and duration",
+        "actual batch output matches its completion receipt",
+        "native resume preserves all completed bytes and timestamps",
+        "native batch preserves both original sources",
+        "native batch releases shared resource admission",
+        "native batch leaves no owned conversion staging",
+        "native batch host finalizers complete",
+        "explicit pinned batch runtime: ffmpeg",
+        "explicit pinned batch runtime: ffprobe",
+        "exact installed source: carr_library.audio.conversion",
+        "exact installed source: carr_library.audio.conversion_batch",
+        "exact installed source: carr_library.audio.conversion_batch_cli",
+        "exact installed source: carr_library.ui.audio_conversion",
+        "exact installed source: carr_library.ui.audio_conversion_batch",
+        "exact installed source: carr_library.ui.studio_dialog",
+        "exact installed source: carr_library.audio.dsp",
+        "exact installed source: carr_library.audio.process",
+        "exact installed source: carr_library.operations.broker",
+        "exact installed source: carr_library.durable_state",
+        "exact installed source: carr_library.runtime_settings",
+        "exact installed source: carr_library.research.export_file"
+      ]
+    },
+    "no_skip": true,
+    "endpoint": "Current hosted Windows predecessor enumerated0 outputs; required MCI/waveOut success remains unestablished. Separate signed-package inspection is not installation or qualification."
   }
 }

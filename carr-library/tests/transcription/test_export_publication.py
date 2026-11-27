@@ -49,8 +49,11 @@ def canonical(tmp_path):
     profile = _builder.register(service, runtime)
     source = tmp_path / 'selected.wav'
     source.write_bytes(b'Synthetic retained media, no inference.')
-    state = service.run(service.create_job(profile['id'], [source])['id'])
+    requested_formats = ('txt', 'srt', 'vtt', 'json')
+    state = service.run(service.create_job(profile['id'], [source],
+        settings={'output_' + name: True for name in requested_formats})['id'])
     assert state['status'] == 'complete', state
+    assert all(state['settings']['output_' + name] for name in requested_formats)
     destination = tmp_path / 'canonical-export'
     destination.mkdir()
     return service, state, destination

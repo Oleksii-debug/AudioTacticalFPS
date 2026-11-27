@@ -141,6 +141,12 @@ def new_output(destination, *, cancelled=lambda: False, before_publish=None):
         if before_publish is not None:
             before_publish(staged)
             check_cancelled(cancelled)
+            # Validation can perform slow retained-source reads. Re-admit both
+            # paths afterward, including the original destination directory.
+            local_file(staged)
+            checked = local_file(target, must_exist=False)
+            if checked != target or (target.parent.stat().st_dev, target.parent.stat().st_ino) != parent_identity:
+                raise ValueError('The output folder changed during rendering.')
         os.link(staged, target)
         # Remove the staging name before readers validate the final inode.
         staged.unlink()

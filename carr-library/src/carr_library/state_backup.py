@@ -13,7 +13,7 @@ import re
 import unicodedata
 
 from .durable_state import local_path, regular, sync_directory
-from . import backup_effect_presets
+from . import backup_effect_presets, backup_playback_queue
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
@@ -88,6 +88,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
                 regular(Path(directory) / name, directory=True)
                 backup_effect_presets.validate_directory(
                     'state/' + (Path(directory) / name).relative_to(root).as_posix())
+                backup_playback_queue.validate_directory(
+                    'state/' + (Path(directory) / name).relative_to(root).as_posix())
             dirs[:] = [name for name in dirs if _include((Path(directory) / name).relative_to(root), include_generated)]
             for name in sorted(files):
                 source = Path(directory) / name
@@ -98,6 +100,9 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
                         raise ValueError('Application state exceeds the file budget.')
         return found
     before_inventory = inventory()
+    backup_playback_queue.collection_budgets(
+        ({'filename': 'state/' + name.as_posix(), 'size_bytes': stamp[2]}
+         for name, stamp in before_inventory.items()), cancelled=cancelled)
     backup_effect_presets.collection_budgets(
         ({'filename': 'state/' + name.as_posix(), 'size_bytes': stamp[2]}
          for name, stamp in before_inventory.items()), cancelled=cancelled)
@@ -174,6 +179,7 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     from .backup_book_audio import validate_collection
     validate_collection(None, target, entries, cancelled=cancelled)
     backup_effect_presets.validate_collection(target, entries, cancelled=cancelled)
+    backup_playback_queue.validate_collection(target, entries, cancelled=cancelled)
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
@@ -211,10 +217,12 @@ def validate_state(entries):
         raise ValueError('Application state manifest exceeds its byte budget.')
     backup_effect_presets.collection_budgets(
         ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
+    backup_playback_queue.collection_budgets(
+        ({**entry, 'filename': 'state/' + entry['filename']} for entry in entries))
 
 
 def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: False):
-    """Check valid schema2 Studio records against this already-copied state.
+    """Check known portable Studio records against this already-copied state.
 
     Opaque historical sidecars and schema1 declarations remain byte archives;
     their external paths are never opened. A Studio local-origin nonce is
@@ -228,19 +236,13 @@ def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: Fal
 
     copied_root = Path(copied_root)
     by_name = {entry['filename']: entry for entry in entries}
-    checked = set()
-    identifier = r'[a-zA-Z0-9_-]{1,80}'
-    for entry in entries:
-        if cancelled():
-            raise InterruptedError('Studio input backup validation cancelled.')
+    checked, processed_jobs = set(), []
+
+    def copied_record(entry):
+        # Keep only one bounded record at a time, including the second pass.
+        if entry['size_bytes'] > MAX_JSON_BYTES:
+            return None
         name = entry['filename']
-        current = re.fullmatch(rf'studio/projects/({identifier})/project\.json', name, re.IGNORECASE)
-        revision = re.fullmatch(rf'studio/projects/({identifier})/revisions/([0-9]{{8,}})-([0-9a-f]{{64}})\.json', name, re.IGNORECASE)
-        job = re.fullmatch(rf'studio/jobs/({identifier})/job\.json', name, re.IGNORECASE)
-        exported = re.fullmatch(rf'studio/jobs/({identifier})/project\.json', name, re.IGNORECASE)
-        if not any((current, revision, job, exported)) or entry['size_bytes'] > MAX_JSON_BYTES:
-            # A larger opaque sidecar cannot be a readable ProjectStore record.
-            continue
         path = local_path(copied_root / name, root=copied_root, exists=True)
         before = regular(path)
         if before.st_size != entry['size_bytes']:
@@ -265,12 +267,27 @@ def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: Fal
                 parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
         except (UnicodeError, ValueError, RecursionError):
             # Preserve opaque historical sidecars, including non-JSON bytes.
+            return None
+        return value
+
+    identifier = r'[a-zA-Z0-9_-]{1,80}'
+    for entry in entries:
+        if cancelled():
+            raise InterruptedError('Studio input backup validation cancelled.')
+        name = entry['filename']
+        current = re.fullmatch(rf'studio/projects/({identifier})/project\.json', name, re.IGNORECASE)
+        revision = re.fullmatch(rf'studio/projects/({identifier})/revisions/([0-9]{{8,}})-([0-9a-f]{{64}})\.json', name, re.IGNORECASE)
+        job = re.fullmatch(rf'studio/jobs/({identifier})/job\.json', name, re.IGNORECASE)
+        exported = re.fullmatch(rf'studio/jobs/({identifier})/project\.json', name, re.IGNORECASE)
+        if not any((current, revision, job, exported)) or entry['size_bytes'] > MAX_JSON_BYTES:
+            # A larger opaque sidecar cannot be a readable ProjectStore record.
             continue
+        value = copied_record(entry)
         if not isinstance(value, dict):
             continue
         declaration = value.get('project') if job else value
         if (not isinstance(declaration, dict)
-                or type(declaration.get('schema')) is not int or declaration['schema'] != 2):
+                or type(declaration.get('schema')) is not int or declaration['schema'] not in (2, 3)):
             continue
         project = Project.from_dict(declaration)
         if current and project.id != current[1]:
@@ -281,6 +298,8 @@ def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: Fal
         if job and (type(value.get('schema')) is not int or value['schema'] != 1
                 or value.get('id') != job[1] or value.get('fingerprint') != project.fingerprint):
             raise ValueError('Copied Studio job differs from its project identity.')
+        if job and project.schema == 3:
+            processed_jobs.append((name, job[1]))
         for declared in project_managed_inputs(project):
             expected = managed_input_sha256(declared)
             incoming = by_name.get('studio/' + declared)
@@ -290,6 +309,32 @@ def _validate_managed_clip_inputs(copied_root, entries, *, cancelled=lambda: Fal
             if declared not in checked:
                 resolve_managed_input(copied_root / 'studio', declared, cancelled=cancelled)
                 checked.add(declared)
+    # Schema3 processing metadata is passive, but must agree with its saved
+    # job. Inspect copied records only; output destinations stay inert.
+    from .durable_state import encode
+    from .studio.project import validate_project_effects
+    from .backup_producers import _studio_job, _timeline
+    for name, identity in processed_jobs:
+        if cancelled():
+            raise InterruptedError('Studio effect backup validation cancelled.')
+        value = copied_record(by_name[name])
+        _studio_job(value, identity)
+        project = Project.from_dict(value['project'])
+        parent = name.rsplit('/', 1)[0]
+        exported_name, timeline_name = parent + '/project.json', parent + '/timeline.json'
+        if exported_name in by_name:
+            exported = Project.from_dict(copied_record(by_name[exported_name]))
+            if encode(exported.to_dict()) != encode(project.to_dict()):
+                raise ValueError('Copied exported Studio project differs from its saved job.')
+        if timeline_name in by_name:
+            result = copied_record(by_name[timeline_name])
+            _timeline(result)
+            validate_project_effects(project, result)
+            if (result['project'] != project.id or result['revision'] != project.revision
+                    or result['source_sha256'] != sha256(project.original_script.encode()).hexdigest()):
+                raise ValueError('Copied timeline belongs to another Studio project.')
+            if 'result' in value and encode(result) != encode(value['result']):
+                raise ValueError('Copied timeline differs from the saved Studio result.')
 
 
 def restore_state(source, target, entries):
@@ -306,6 +351,8 @@ def restore_state(source, target, entries):
             regular(Path(directory) / name, directory=True)
             backup_effect_presets.validate_directory(
                 'state/' + (Path(directory) / name).relative_to(source).as_posix())
+            backup_playback_queue.validate_directory(
+                'state/' + (Path(directory) / name).relative_to(source).as_posix())
         for name in files:
             path = Path(directory) / name
             regular(path)
@@ -318,6 +365,7 @@ def restore_state(source, target, entries):
     if missing:
         raise ValueError('Backup has missing or unlisted application state.')
     backup_effect_presets.validate_collection(source, entries)
+    backup_playback_queue.validate_collection(source, entries)
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for item in entries:
@@ -344,6 +392,7 @@ def restore_state(source, target, entries):
     from .backup_book_audio import validate_collection
     validate_collection(None, target, entries)
     backup_effect_presets.validate_collection(target, entries)
+    backup_playback_queue.validate_collection(target, entries)
     if (target / 'transcription').exists():
         from .integrations.transcription_protocol import prepare_restored_state
         prepare_restored_state(target)

@@ -355,7 +355,10 @@ def test_cli_requires_exact_review_then_uses_existing_jobs_and_gateway(tmp_path,
     assert review['glossary'] == GLOSSARY and review['endpoint'] == ENDPOINT
     submit_args = base + ['submit'] + args + ['--review-sha256', review['review_sha256']]
     assert translation_cli.main(submit_args) == 1
-    assert 'Explicitly approve' in capsys.readouterr().err
+    assert capsys.readouterr().err == ('Translation: Approve this exact selected destination '
+        'with --approve-local or --approve-remote.\n')
+    assert len(transport['calls']) == 1
+    assert not TranslationService(app.root / 'state' / 'translation').list()
     assert translation_cli.main(submit_args + ['--approve-remote']) == 0
     submitted = json.loads(capsys.readouterr().out)
     assert len(transport['calls']) == 1 and submitted['status'] == 'queued'
@@ -462,7 +465,9 @@ def translation_handlers(tmp_path, transport, monkeypatch):
     def complete():
         callback, done, failed = state['queue'].pop(0)
         try: result = callback()
-        except Exception as error: failed(error)
+        except Exception as error:
+            failed(error)
+            return error
         else: done(result)
     def scenario(callback):
         state['scenario'] = callback
@@ -534,9 +539,14 @@ def test_handler_root_change_before_worker_does_not_send_old_library_text(transl
     e = translation_handlers
     def scenario():
         prepare_handler(e); e.press('Preview'); e.press('Translate / resume')
+        status = e.find('Preview, supported languages and job status')
+        prior_status = status.value
+        status.focused = False
         e.frame.library = LibraryApp(tmp_path / 'different library')
-        e.complete()
-        assert 'library or research topic changed' in e.find('Preview, supported languages and job status').value
+        failure = e.complete()
+        assert isinstance(failure, ValueError)
+        assert 'library or research topic changed' in str(failure)
+        assert status.value == prior_status and not status.focused
         assert not e.service.list()
         assert len(transport['calls']) == 1
         e.press('Translate / resume')

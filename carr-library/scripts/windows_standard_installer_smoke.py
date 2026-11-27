@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import stat
 import subprocess
 import threading
 import time
@@ -98,6 +99,75 @@ def _environment():
     return environment
 
 
+
+def failure_diagnostics(command, log):
+    """Print at most 64 KiB of this CI report's settled diagnostic tails.
+
+    Only the process log and one exact absolute /LOG= argument in the same
+    report parent may be read. This is not a general path/log collector.
+    Reporting is best-effort and must never replace the native failure.
+    """
+    try:
+        log = Path(log).absolute()
+        root = log.parent
+        for directory in (root, *root.parents):
+            info = directory.lstat()
+            if (not stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                    or getattr(info, 'st_file_attributes', 0) & 0x400):
+                return
+        candidates = [log]
+        arguments = [os.fspath(item)[5:] for item in command
+                     if isinstance(item, (str, os.PathLike))
+                     and isinstance(os.fspath(item), str)
+                     and os.fspath(item).upper().startswith('/LOG=')]
+        if len(arguments) == 1:
+            chosen = Path(arguments[0])
+            if chosen.is_absolute() and chosen.parent == root and chosen != log:
+                candidates.append(chosen)
+        for path in candidates:
+            try:
+                before = path.lstat()
+                if (not stat.S_ISREG(before.st_mode) or stat.S_ISLNK(before.st_mode)
+                        or before.st_nlink != 1
+                        or getattr(before, 'st_file_attributes', 0) & 0x400):
+                    continue
+                stamp = lambda value: (value.st_dev, value.st_ino, value.st_size,
+                                       value.st_mtime_ns, value.st_ctime_ns)
+                flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+                with os.fdopen(os.open(path, flags), 'rb') as stream:
+                    if stamp(os.fstat(stream.fileno())) != stamp(before):
+                        continue
+                    prefix = stream.read(4)
+                    encoding = ('utf-16-le' if prefix.startswith(b'\xff\xfe') else
+                                'utf-16-be' if prefix.startswith(b'\xfe\xff') else 'utf-8-sig')
+                    start = max(0, before.st_size - 65536)
+                    if encoding.startswith('utf-16') and start % 2:
+                        start += 1
+                    stream.seek(start)
+                    raw = stream.read(65536)
+                    after = os.fstat(stream.fileno())
+                if stamp(after) != stamp(before) or stamp(path.lstat()) != stamp(before):
+                    continue
+                tail = '\n'.join(raw.decode(encoding, errors='replace').splitlines()[-80:])
+                # JSON escapes terminal controls and non-ASCII text. Bound the
+                # serialized form too: two records are at most 64 KiB total.
+                while True:
+                    payload = json.dumps({'kind': 'native-installer-failure-tail',
+                        'path': str(path), 'tail': tail}, ensure_ascii=True)
+                    if len(payload) + 1 <= 32768:
+                        break
+                    if not tail:
+                        payload = ''
+                        break
+                    tail = tail[len(tail) // 2 + 1:]
+                if payload:
+                    print(payload, flush=True)
+            except (OSError, ValueError, TypeError, UnicodeError):
+                continue
+    except (OSError, ValueError, TypeError, UnicodeError):
+        return
+
+
 def owned_process(command, *, cwd, log, timeout=1200, success=True):
     environment = _environment()
     with log.open('xb') as stream:
@@ -156,6 +226,8 @@ def owned_process(command, *, cwd, log, timeout=1200, success=True):
         if errors:
             raise RuntimeError(errors[0])
     if (result == 0) != success:
+        if result != 0:
+            failure_diagnostics(command, log)
         raise RuntimeError(f'Native acceptance failed at {log.name}: exit {result}')
     return result
 
@@ -168,6 +240,77 @@ def wait_ready(path, child, seconds=30):
         time.sleep(0.05)
 
 
+# WScript.Shell.TargetPath can lose characters outside the process ANSI code
+# page. Use the explicitly Unicode Shell-link interface on the actual .lnk;
+# never Resolve/Save it or accept the lossy path as an installation alias.
+# https://learn.microsoft.com/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishelllinkw
+UNICODE_SHORTCUTS_SCRIPT = r'''param([string]$Folder,[string]$Output)
+$ErrorActionPreference='Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+[ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+class NativeShellLink {}
+
+// GetPath is the first method after IUnknown in the IShellLinkW vtable.
+// Only that read-only method is exposed; IPersistFile.Load is also read-only.
+[ComImport, Guid("000214F9-0000-0000-C000-000000000046"),
+ InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface UnicodeShellLink {
+    [PreserveSig]
+    int GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path,
+                int characters, IntPtr findData, uint flags);
+}
+
+public static class ShortcutTarget {
+    public static string Read(string filename) {
+        object link = new NativeShellLink();
+        try {
+            ((IPersistFile)link).Load(filename, 0); // STGM_READ
+            StringBuilder path = new StringBuilder(32768);
+            int result = ((UnicodeShellLink)link).GetPath(path, path.Capacity,
+                                                         IntPtr.Zero, 4); // SLGP_RAWPATH
+            if (result != 0 || path.Length == 0 || path.Length >= path.Capacity - 1)
+                throw new InvalidOperationException("A shortcut has no complete Unicode target.");
+            return path.ToString();
+        } finally {
+            Marshal.FinalReleaseComObject(link);
+        }
+    }
+}
+'@
+$values=@{}
+foreach($name in @('Resonance','Repair Resonance','Uninstall Resonance')) {
+    $values[$name]=[ShortcutTarget]::Read((Join-Path $Folder ($name+'.lnk')))
+}
+$values | ConvertTo-Json | Set-Content -Encoding utf8 $Output
+'''
+
+
+def validate_shortcut_targets(root, result):
+    expected = {'Resonance': root / 'app/ResearchLibrary.exe',
+                'Repair Resonance': root / 'maintenance/ResonanceSetup.exe',
+                'Uninstall Resonance': root / 'unins000.exe'}
+    if type(result) is not dict or set(result) != set(expected):
+        raise RuntimeError('The native shortcut target inventory is incomplete.')
+    for name, path in expected.items():
+        value = result[name]
+        if type(value) is not str or not value or '\x00' in value or len(value) > 32767:
+            raise RuntimeError('A native shortcut has an invalid target.')
+        actual = Path(value)
+        try:
+            matches = (actual.is_absolute() and actual.is_file() and path.is_file()
+                       and actual.resolve(strict=True) == path.resolve(strict=True)
+                       and actual.samefile(path))
+        except (OSError, ValueError):
+            matches = False
+        if not matches:
+            raise RuntimeError(f'The {name} Start-menu shortcut targets another installation.')
+
+
 def inspect_shortcuts(root, report):
     folder = Path(os.environ['APPDATA']) / 'Microsoft/Windows/Start Menu/Programs/Resonance'
     names = ('Resonance', 'Repair Resonance', 'Uninstall Resonance')
@@ -175,22 +318,13 @@ def inspect_shortcuts(root, report):
         raise RuntimeError('The per-user Start-menu shortcuts were not installed.')
     powershell = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
     script = report / 'inspect-shortcuts.ps1'
-    script.write_text(
-        "param([string]$Folder,[string]$Output)\n$ErrorActionPreference='Stop'\n"
-        "$shell=New-Object -ComObject WScript.Shell\n$values=@{}\n"
-        "foreach($name in @('Resonance','Repair Resonance','Uninstall Resonance')) { "
-        "$values[$name]=$shell.CreateShortcut((Join-Path $Folder ($name+'.lnk'))).TargetPath }\n"
-        "$values | ConvertTo-Json | Set-Content -Encoding utf8 $Output\n", encoding='utf-8')
+    script.write_text(UNICODE_SHORTCUTS_SCRIPT, encoding='utf-8')
     output = report / 'shortcuts.json'
-    owned_process([powershell, '-NoProfile', '-NonInteractive', '-File', script,
+    owned_process([powershell, '-NoProfile', '-NonInteractive', '-Sta', '-File', script,
                    '-Folder', folder, '-Output', output], cwd=report,
                   log=report / 'shortcuts-process.log', timeout=30)
     result = json.loads(output.read_text(encoding='utf-8-sig'))
-    expected = {'Resonance': root / 'app/ResearchLibrary.exe',
-                'Repair Resonance': root / 'maintenance/ResonanceSetup.exe',
-                'Uninstall Resonance': root / 'unins000.exe'}
-    if any(Path(result[name]).resolve() != path.resolve() for name, path in expected.items()):
-        raise RuntimeError('A Start-menu shortcut targets another installation.')
+    validate_shortcut_targets(root, result)
     return folder
 
 

@@ -230,7 +230,7 @@ def main():
             frame.Show()
             gui.SetTopWindow(frame)
             check('existing shared worker owns finalizers', isinstance(frame.executor, worker_lifetime.DesktopExecutor))
-            commands = {command.id for command in frame.keyboard_commands.registry.commands('main')}
+            commands = {command.command_id for command in frame.keyboard_commands.registry.commands('main')}
             check('Book audio command is registered in the existing keyboard registry', 'studio.book_audio' in commands)
             catalog = frame.book.GetPage(1)
             check('current Books and Collections exposes the selected retained edition',

@@ -114,7 +114,7 @@ def test_repair_retains_changed_and_foreign_files_then_rebuilds(installed, tmp_p
     root, payload, expected, setup = installed
     original = root / 'app/README.txt'
     original.write_bytes(b'changed by the user or damaged; retain these exact bytes')
-    (root / 'app/foreign notes.txt').write_text('user notes Ω')
+    (root / 'app/foreign notes.txt').write_text('user notes Ω', encoding='utf-8')
     external = tmp_path / 'outside-user-library'
     external.mkdir()
     (external / 'content.db').write_bytes(b'private-data sentinel')
@@ -123,7 +123,7 @@ def test_repair_retains_changed_and_foreign_files_then_rebuilds(installed, tmp_p
     recovery = root.parent / result['retained_previous']
     assert result['operation'] == 'repair'
     assert (recovery / 'app/README.txt').read_bytes().startswith(b'changed by the user')
-    assert (recovery / 'app/foreign notes.txt').read_text() == 'user notes Ω'
+    assert (recovery / 'app/foreign notes.txt').read_text(encoding='utf-8') == 'user notes Ω'
     assert (root / 'app/README.txt').read_bytes() == (payload / 'README.txt').read_bytes()
     assert not (root / 'app/foreign notes.txt').exists()
     assert service.sha(external / 'content.db') == outside_hash
@@ -242,7 +242,7 @@ def test_uninstall_removes_only_owned_program_and_leaves_external_data(installed
     root, _, expected, setup = installed
     external = tmp_path / 'userdata'
     external.mkdir()
-    (external / 'book.txt').write_text('original Unicode prose Ω\f[pause 2]\r\n')
+    (external / 'book.txt').write_text('original Unicode prose Ω\f[pause 2]\r\n', encoding='utf-8')
     before = (external / 'book.txt').read_bytes()
     # An unrelated root-level file is never in the app-owned deletion list.
     (root / 'keep-me.txt').write_bytes(b'not part of the installer')
@@ -684,6 +684,97 @@ def test_interrupt_during_native_cleanup_is_delivered_only_after_quiescence(monk
 probe = load('standard_installer_native_probe_test', ROOT / 'scripts/windows_standard_installer_smoke.py')
 
 
+@pytest.fixture
+def shortcut_targets(tmp_path):
+    root = tmp_path / 'Managed Resonance Україна Ω'
+    values = {}
+    for name, relative in {'Resonance': 'app/ResearchLibrary.exe',
+                           'Repair Resonance': 'maintenance/ResonanceSetup.exe',
+                           'Uninstall Resonance': 'unins000.exe'}.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'Synthetic target identity, never executed')
+        values[name] = str(path)
+    return root, values
+
+
+def test_shortcut_inspection_retains_exact_unicode_and_real_target_identity(shortcut_targets):
+    root, values = shortcut_targets
+    probe.validate_shortcut_targets(root, values)
+    assert 'Україна Ω' in values['Resonance']
+
+
+@pytest.mark.parametrize('name', ['Resonance', 'Repair Resonance', 'Uninstall Resonance'],
+                         ids=['application', 'repair', 'uninstall'])
+def test_shortcut_inspection_refuses_an_existing_foreign_target(shortcut_targets, tmp_path, name):
+    root, values = shortcut_targets
+    other = tmp_path / 'Another installation' / Path(values[name]).name
+    other.parent.mkdir()
+    other.write_bytes(Path(values[name]).read_bytes())
+    values[name] = str(other)
+    with pytest.raises(RuntimeError, match='targets another installation'):
+        probe.validate_shortcut_targets(root, values)
+
+
+@pytest.mark.parametrize('kind', ['lossy-ansi', 'missing', 'directory', 'relative'])
+def test_shortcut_inspection_does_not_repair_or_guess_a_target(shortcut_targets, kind):
+    root, values = shortcut_targets
+    if kind == 'lossy-ansi':
+        values['Resonance'] = values['Resonance'].replace('Україна Ω', '??????? O')
+    elif kind == 'missing':
+        Path(values['Resonance']).unlink()
+    elif kind == 'directory':
+        values['Resonance'] = str(root / 'app')
+    else:
+        values['Resonance'] = 'app/ResearchLibrary.exe'
+    with pytest.raises(RuntimeError, match='targets another installation'):
+        probe.validate_shortcut_targets(root, values)
+
+
+@pytest.mark.parametrize('kind', ['list', 'missing-key', 'extra-key', 'empty', 'null', 'nul', 'long'])
+def test_shortcut_inspection_requires_the_complete_typed_inventory(shortcut_targets, kind):
+    root, values = shortcut_targets
+    if kind == 'list':
+        values = list(values.values())
+    elif kind == 'missing-key':
+        del values['Repair Resonance']
+    elif kind == 'extra-key':
+        values['Other program'] = values['Resonance']
+    else:
+        values['Resonance'] = {'empty': '', 'null': None, 'nul': '\x00', 'long': 'x' * 32768}[kind]
+    with pytest.raises(RuntimeError, match='inventory|invalid target'):
+        probe.validate_shortcut_targets(root, values)
+
+
+def test_native_shortcut_probe_keeps_unicode_report_from_owned_inspection(
+        shortcut_targets, tmp_path, monkeypatch):
+    root, values = shortcut_targets
+    appdata = tmp_path / 'Roaming Україна Ω'
+    folder = appdata / 'Microsoft/Windows/Start Menu/Programs/Resonance'
+    folder.mkdir(parents=True)
+    for name in values:
+        (folder / (name + '.lnk')).write_bytes(b'Synthetic link placeholder; COM is not run here')
+    monkeypatch.setenv('APPDATA', str(appdata))
+    monkeypatch.setenv('SystemRoot', str(tmp_path / 'Windows'))
+    report = tmp_path / 'report'
+    report.mkdir()
+    invocations = []
+
+    def inspected(command, *, cwd, log, timeout):
+        invocations.append(command)
+        assert cwd == report and timeout == 30
+        assert Path(command[command.index('-Folder') + 1]) == folder
+        output = Path(command[command.index('-Output') + 1])
+        output.write_text(json.dumps(values, ensure_ascii=False), encoding='utf-8-sig')
+        log.write_text('Synthetic process boundary, no native acceptance claim')
+
+    monkeypatch.setattr(probe, 'owned_process', inspected)
+    assert probe.inspect_shortcuts(root, report) == folder
+    assert len(invocations) == 1
+    assert json.loads((report / 'shortcuts.json').read_text(encoding='utf-8-sig')) == values
+    assert Path(values['Resonance']).read_bytes() == b'Synthetic target identity, never executed'
+
+
 def test_native_probe_fixture_populates_a_real_library(tmp_path, monkeypatch):
     root = tmp_path / 'retained real SQLite library'
     monkeypatch.setattr(sys, 'argv', ['native-fixture', str(root)])
@@ -850,3 +941,164 @@ def test_native_probe_does_not_treat_incomplete_registry_as_an_empty_account(mon
         assert probe.registry() is None
     else:
         assert set(probe.registry()) == {'InstallLocation', 'UninstallString', 'ModifyPath', 'NoModify'}
+
+
+def _failed_native_probe_child(monkeypatch, *, result=7):
+    events = []
+    child = SimpleNamespace(stdout=io.BytesIO(b'public stdout\n'),
+        stderr=io.BytesIO(b'public stderr\n'),
+        wait=lambda **_kwargs: events.append('parent-exited') or result)
+    monkeypatch.setattr(probe, 'JobProcess', lambda *_a, **_k: child)
+    monkeypatch.setattr(probe, 'active_job_processes', lambda _child: 0)
+    monkeypatch.setattr(probe, 'stop_owned_process', lambda _child: events.append('native-family-settled'))
+    return child, events
+
+
+def test_native_failure_prints_bounded_own_inno_tail_only_after_owned_streams_settle(tmp_path, monkeypatch, capsys):
+    report = tmp_path / 'report'
+    report.mkdir()
+    inno = report / 'install-A.log'
+    inno.write_text('\n'.join(f'line-{number:03d} Україна Ω' for number in range(100)),
+                    encoding='utf-16')
+    process_log = report / 'install-A-process.log'
+    child, events = _failed_native_probe_child(monkeypatch)
+    real = probe.failure_diagnostics
+    def inspect_after_cleanup(command, log):
+        assert events == ['parent-exited', 'native-family-settled']
+        assert child.stdout.closed and child.stderr.closed
+        # The process log's owned writer is closed as well; a regular read
+        # now obtains the complete bytes captured by its two settled readers.
+        assert set(log.read_bytes().splitlines()) == {b'public stdout', b'public stderr'}
+        real(command, log)
+    monkeypatch.setattr(probe, 'failure_diagnostics', inspect_after_cleanup)
+    with pytest.raises(RuntimeError, match='install-A-process.log: exit 7'):
+        probe.owned_process(['public-synthetic-setup.exe', '/LOG=' + str(inno)],
+            cwd=tmp_path, log=process_log)
+    output = capsys.readouterr().out
+    assert output.isascii() and len(output.encode('ascii')) <= 65536
+    records = [json.loads(line) for line in output.splitlines()]
+    assert {row['path'] for row in records} == {str(inno), str(process_log)}
+    tail = next(row['tail'] for row in records if row['path'] == str(inno))
+    assert len(tail.splitlines()) == 80
+    assert tail.startswith('line-020 ') and tail.endswith('line-099 Україна Ω')
+
+
+@pytest.mark.parametrize('kind', ['outside-report', 'hardlink', 'reparse', 'ambiguous-log'])
+def test_native_failure_diagnostics_cannot_read_other_or_redirected_files(tmp_path, monkeypatch, capsys, kind):
+    report = tmp_path / 'report'
+    report.mkdir()
+    process_log = report / 'process.log'
+    process_log.write_text('own process data', encoding='utf-8')
+    selected = report / 'install.log'
+    secret = tmp_path / 'unrelated-data.log'
+    secret.write_text('UNRELATED-CONTENT-MUST-NOT-BE-READ', encoding='utf-8')
+    if kind == 'outside-report':
+        arguments = ['/LOG=' + str(secret)]
+    elif kind == 'hardlink':
+        os.link(secret, selected)
+        arguments = ['/LOG=' + str(selected)]
+    elif kind == 'reparse':
+        selected.write_bytes(secret.read_bytes())
+        original = Path.lstat
+        def reparse(path):
+            value = original(path)
+            if path == selected:
+                return SimpleNamespace(st_mode=value.st_mode, st_nlink=value.st_nlink,
+                                       st_file_attributes=0x400)
+            return value
+        monkeypatch.setattr(Path, 'lstat', reparse)
+        arguments = ['/LOG=' + str(selected)]
+    else:
+        selected.write_bytes(secret.read_bytes())
+        arguments = ['/LOG=' + str(selected), '/LOG=' + str(secret)]
+    probe.failure_diagnostics(['public-synthetic-setup.exe', *arguments], process_log)
+    output = capsys.readouterr().out
+    assert 'UNRELATED' not in output
+    records = [json.loads(line) for line in output.splitlines()]
+    assert len(records) == 1 and records[0]['path'] == str(process_log)
+    assert records[0]['tail'] == 'own process data'
+
+
+def test_native_failure_tail_bounds_serialized_unicode_and_terminal_controls(tmp_path, capsys):
+    report = tmp_path / 'report'
+    report.mkdir()
+    process_log, inno = report / 'process.log', report / 'inno.log'
+    for path in (process_log, inno):
+        path.write_text('not-a-tail\n' + ('Ω\x1b[31m' * 20000) + '\nlast-current-error',
+                        encoding='utf-8')
+    probe.failure_diagnostics(['public-synthetic-setup.exe', '/LOG=' + str(inno)], process_log)
+    output = capsys.readouterr().out
+    assert output.isascii() and len(output.encode('ascii')) <= 65536
+    assert '\x1b' not in output and 'not-a-tail' not in output
+    rows = [json.loads(line) for line in output.splitlines()]
+    assert len(rows) == 2
+    assert all(row['tail'].endswith('last-current-error') for row in rows)
+    assert all(len(row['tail'].splitlines()) <= 80 for row in rows)
+
+
+def test_native_failure_logging_error_cannot_mask_original_exit_or_release_early(tmp_path, monkeypatch):
+    child, events = _failed_native_probe_child(monkeypatch)
+    def closed_console(*_args, **_kwargs):
+        assert events == ['parent-exited', 'native-family-settled']
+        assert child.stdout.closed and child.stderr.closed
+        raise OSError('Synthetic closed diagnostic console.')
+    monkeypatch.setattr(probe, 'print', closed_console, raising=False)
+    with pytest.raises(RuntimeError, match='process.log: exit 7'):
+        probe.owned_process(['public-synthetic-setup.exe'], cwd=tmp_path, log=tmp_path / 'process.log')
+    assert events == ['parent-exited', 'native-family-settled']
+
+
+def test_expected_native_refusal_keeps_existing_verdict_without_failure_dump(tmp_path, monkeypatch, capsys):
+    child, events = _failed_native_probe_child(monkeypatch)
+    assert probe.owned_process(['public-synthetic-setup.exe'], cwd=tmp_path,
+        log=tmp_path / 'expected-refusal.log', success=False) == 7
+    assert events == ['parent-exited', 'native-family-settled']
+    assert child.stdout.closed and child.stderr.closed
+    assert capsys.readouterr().out == ''
+
+
+@pytest.mark.parametrize('changed', [None, 'displayname', 'displayversion',
+    'modifypath', 'uninstallstring', 'shortcuts'],
+    ids=['generated-contract', 'implicit-versioned-name', 'wrong-version',
+         'foreign-repair-path', 'uninstall-extra-argument', 'missing-shortcut'])
+def test_generated_standard_setup_registration_matches_strict_update_health(tmp_path, payload, changed):
+    """Exercise the actual generated producer name, not a canned desired value.
+
+    Inno defaults UninstallDisplayName to AppVerName (which includes version).
+    The fixed name is therefore explicit; version remains independently bound.
+    Native registry/Inno acceptance still belongs to the two-setup Windows gate.
+    """
+    from carr_library.security.windows_registration import WindowsRegistration, LINKS
+    bundle, expected = payload
+    output = tmp_path / 'generated-health-contract'
+    prepared = build.prepare(bundle, output, manifest_sha256=expected)
+    generated = (output / 'ResonanceSetup.iss').read_text(encoding='utf-8-sig')
+    section = generated.split('[Setup]\n', 1)[1].split('\n[Files]', 1)[0]
+    directives = dict(line.split('=', 1) for line in section.splitlines()
+                      if line and not line.startswith(';') and '=' in line)
+    assert directives['AppVersion'] == prepared['application_version']
+    assert directives['UninstallDisplayName'] == directives['AppName']
+    root = tmp_path / 'Real synthetic root Україна Ω'
+    root.mkdir()
+    values = {
+        'InstallLocation': {'type': 1, 'value': str(root)},
+        'DisplayName': {'type': 1, 'value': directives['UninstallDisplayName']},
+        'DisplayVersion': {'type': 1, 'value': directives['AppVersion']},
+        'ModifyPath': {'type': 1, 'value': '"' + str(root / 'maintenance/ResonanceSetup.exe') + '"'},
+        'UninstallString': {'type': 1, 'value': '"' + str(root / 'unins000.exe') + '"'},
+    }
+    shortcuts = dict.fromkeys(LINKS, 'synthetic-present-bytes')
+    if changed == 'displayname':
+        values['DisplayName']['value'] = directives['AppName'] + ' ' + directives['AppVersion']
+    elif changed == 'displayversion':
+        values['DisplayVersion']['value'] = '99.0.0'
+    elif changed == 'modifypath':
+        values['ModifyPath']['value'] = '"' + str(tmp_path / 'foreign/ResonanceSetup.exe') + '"'
+    elif changed == 'uninstallstring':
+        values['UninstallString']['value'] += ' /UNREVIEWED'
+    elif changed == 'shortcuts':
+        shortcuts[LINKS[0]] = None
+    native = WindowsRegistration.__new__(WindowsRegistration)
+    native.snapshot = lambda selected: dict(values=values, shortcuts=shortcuts)
+    assert native.health(root, SimpleNamespace(version=prepared['application_version'])) is (changed is None)
+    assert native.health_failure == (None if changed is None else 'registration-' + changed)

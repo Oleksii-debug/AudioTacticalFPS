@@ -43,6 +43,8 @@ def factory(state):
     parent = state.parent
     library = parent.library
     library_root = Path(library.root)
+    information = regular(local_path(library_root, exists=True), directory=True)
+    library_identity = information.st_dev, information.st_ino
     alive = True
     busy = state.busy
     source_loaded = state.source_loaded
