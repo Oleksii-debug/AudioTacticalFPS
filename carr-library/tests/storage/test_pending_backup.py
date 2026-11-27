@@ -813,7 +813,7 @@ def test_full_backup_rejects_transient_scan_overrun_without_publication(
     from carr_library.library_backup import create_backup
 
     request_dir = app.root / 'import-requests'
-    request_dir.mkdir()
+    request_dir.mkdir(exist_ok=True)
     for index in range(4):
         (request_dir / (f'{index:032x}' + '.tmp')).touch()
     monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', 3)
