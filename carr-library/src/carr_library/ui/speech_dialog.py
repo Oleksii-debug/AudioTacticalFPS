@@ -87,6 +87,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     progress_voice = wx.Button(dialog, label='Use voice for progress...')
     progress_voice.SetName('Use selected local voice for progress')
     controls.Add(progress_voice, 0, wx.ALL, 6)
+    voice_preferences_button = wx.Button(dialog, label='Voice preferences...')
+    voice_preferences_button.SetName('Voice preferences')
+    controls.Add(voice_preferences_button, 0, wx.ALL, 6)
     layout.Add(controls, 0, wx.EXPAND)
     editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
                       value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
@@ -166,6 +169,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         for button in (read, cursor, export_audio):
             button.Enable(bool(current) and not busy)
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
+        voice_preferences_button.Enable(reader_root is not None and source_loaded and bool(voices) and not busy)
         pronunciation.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
         playback_controls.Enable(not busy and last_audio is not None and getattr(player, 'path', None) is not None)
@@ -343,6 +347,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 editor.SetFocus()
 
     def reload(event=None):
+        previous_index = voice_choice.GetSelection()
+        previous_voice_id = voices[previous_index].id if 0 <= previous_index < len(voices) else ''
         def discover_configured():
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
@@ -384,13 +390,16 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     + recovery_notice)
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
             if voices:
+                requested_voice = previous_voice_id or (recovered.voice_id if recovered is not None else '')
                 selected = next((i for i, voice in enumerate(voices)
-                                 if recovered is not None and voice.id == recovered.voice_id), 0)
+                                 if voice.id == requested_voice), -1 if requested_voice else 0)
                 voice_choice.SetSelection(selected)
                 if recovered is not None:
                     editor.SetInsertionPoint(native_cursor_position(editor, document.text, min(recovered.cursor, len(document.text))))
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
-                       'Voice pitch, emotional delivery and word timing depend on the selected engine.')
+                       'Voice pitch, emotional delivery and word timing depend on the selected engine. '
+                       + ('The saved or selected voice is unavailable; choose a voice explicitly. No substitute was selected.'
+                          if selected < 0 else ''))
             else:
                 report(recovery_notice + 'No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
@@ -398,6 +407,44 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             source = source_loader(cancel.is_set) if not source_loaded else None
             return discover_configured(), source
         run(load, loaded)
+
+    def voice_preferences(event=None):
+        from ..runtime_settings import load_voice_preferences
+        from ..language_qualification.catalog import canonical_language_tag
+        from .voice_preferences import show_voice_preferences
+        try:
+            playback_scope(source=False)
+            if reader_root is None or busy:
+                raise ValueError('Open an idle reader in a library before editing voice preferences.')
+            index = voice_choice.GetSelection()
+            if not 0 <= index < len(voices):
+                raise ValueError('Choose an installed voice first.')
+            current = voices[index]
+            try:
+                declared_language = canonical_language_tag(current.language, adapter_underscores=True)
+            except ValueError:
+                declared_language = ''  # Favorites do not invent a language declaration.
+            selected = {'voice_id': current.id,
+                        'language': declared_language,
+                        'rate': rate.GetValue(), 'volume': volume.GetValue()}
+            def apply_selection(value):
+                playback_scope(source=False)
+                index = next((i for i, item in enumerate(voices) if item.id == value['voice_id']), None)
+                if index is None:
+                    raise ValueError('This voice is no longer available; reload installed voices.')
+                voice_choice.SetSelection(index)
+                rate.SetValue(value['rate'])
+                volume.SetValue(value['volume'])
+                capabilities()
+                save_recovery(force=True)
+            def opened(preferences):
+                playback_scope(source=False)
+                show_voice_preferences(dialog, state_root=reader_root / 'state', voices=voices,
+                    preferences=preferences, selected=selected, execute=run,
+                    guard=lambda: playback_scope(source=False), apply_selection=apply_selection)
+            run(lambda: load_voice_preferences(reader_root / 'state'), opened)
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def sync_document():
         document.set_text(editor.GetValue())
@@ -614,7 +661,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 raise ValueError('Choose an installed local voice first.')
             source_guard()
             content = selected_text(from_cursor)
-            voice = voices[voice_choice.GetSelection()]
+            index = voice_choice.GetSelection()
+            if not 0 <= index < len(voices):
+                raise ValueError('Choose an installed local voice first.')
+            voice = voices[index]
             settings = SpeechSettings(rate=rate.GetValue(), volume=volume.GetValue())
             playback_generation += 1
             player.stop()
@@ -841,6 +891,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (pronunciation, pronunciations), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
+    voice_preferences_button.Bind(wx.EVT_BUTTON, voice_preferences)
     dialog.Bind(wx.EVT_CLOSE, closing)
     accelerators = []
     for flags, key, handler in ((wx.ACCEL_CTRL, ord('S'), save_project),
