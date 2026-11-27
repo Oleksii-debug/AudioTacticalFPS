@@ -4,6 +4,7 @@ Use only on a trusted synthetic test checkout, never on imported documents.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import ntpath
 import os
 from pathlib import Path
 import signal
@@ -169,6 +170,17 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
 
 
 def _run_test_process(command, *, env) -> int:
+    command, env = list(command), dict(env)
+    base_executable = getattr(sys, '_base_executable', None)
+    if (os.name == 'nt' and sys.prefix != sys.base_prefix and base_executable
+            and ntpath.normcase(command[0]) == ntpath.normcase(sys.executable)
+            and ntpath.normcase(base_executable) != ntpath.normcase(sys.executable)):
+        # CPython's Windows venv launcher is a redirector. Own the actual
+        # interpreter PID while preserving the selected venv's import paths,
+        # as multiprocessing.popen_spawn_win32 does for venv children.
+        env.pop('PYTHONEXECUTABLE', None)
+        env['__PYVENV_LAUNCHER__'] = sys.executable
+        command[0] = base_executable
     isolation = ({'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP}
                  if os.name == 'nt' else {'start_new_session': True})
     process = subprocess.Popen(command, cwd=ROOT, env=env, **isolation)

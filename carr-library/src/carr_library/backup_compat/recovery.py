@@ -71,8 +71,9 @@ def _identity(info):
 
 
 def _local_absolute(value):
+    """Validate an inert original-machine declaration, without host path access."""
     return (type(value) is str and 0 < len(value) <= 32768 and '\0' not in value
-            and '://' not in value and (Path(value).is_absolute() or PureWindowsPath(value).is_absolute()))
+            and '://' not in value and (PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute()))
 
 
 def _path(value):

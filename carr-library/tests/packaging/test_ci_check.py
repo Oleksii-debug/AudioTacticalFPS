@@ -3,6 +3,7 @@ import contextlib
 import ctypes
 import importlib.util
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -211,6 +212,30 @@ def test_parallel_barrier():
             self.assertNotIn('PermissionError', output.getvalue())
             self.assertTrue(all(not directory.exists() for directory in directories))
 
+    def test_windows_venv_owns_base_interpreter_without_mutating_launch_inputs(self):
+        spec = importlib.util.spec_from_file_location('reviewed_ci_check', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        selected = r'C:\selected venv\Scripts\python.exe'
+        base = r'C:\Python311\python.exe'
+        environment = {'PYTHONEXECUTABLE': 'unrelated', 'SELECTED': 'preserved'}
+        command = [selected, '-B', '-c', 'pass']
+        process = mock.Mock()
+        process.wait.return_value = 0
+        api = types.SimpleNamespace(**vars(subprocess))
+        api.CREATE_NEW_PROCESS_GROUP = 0x200
+        api.Popen = mock.Mock(return_value=process)
+        with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt')),
+              mock.patch.object(runner, 'sys', types.SimpleNamespace(executable=selected,
+                  _base_executable=base, prefix=r'C:\selected venv', base_prefix=r'C:\Python311')),
+              mock.patch.object(runner, 'subprocess', api)):
+            self.assertEqual(runner._run_test_process(command, env=environment), 0)
+        api.Popen.assert_called_once_with([base, '-B', '-c', 'pass'], cwd=runner.ROOT,
+            env={'SELECTED': 'preserved', '__PYVENV_LAUNCHER__': selected}, creationflags=0x200)
+        self.assertEqual(command, [selected, '-B', '-c', 'pass'])
+        self.assertEqual(environment, {'PYTHONEXECUTABLE': 'unrelated', 'SELECTED': 'preserved'})
+        process.wait.assert_called_once_with(timeout=runner.SUITE_TIMEOUT_SECONDS)
+
     def test_windows_failed_descendant_wait_reaps_parent_closes_all_handles_and_fails(self):
         spec = importlib.util.spec_from_file_location('reviewed_ci_check', SCRIPT)
         runner = importlib.util.module_from_spec(spec)
@@ -288,8 +313,10 @@ def test_parallel_barrier():
                 "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_timeout.py').write_text(
-                "from pathlib import Path\nimport subprocess,sys,time\n"
+                "from pathlib import Path\nimport json,os,pytest,subprocess,sys,time\n"
                 "def test_wait(tmp_path):\n"
+                "    (Path.cwd()/'suite-owner.json').write_text(json.dumps(dict(pid=os.getpid(),\n"
+                "        executable=sys.executable, prefix=sys.prefix, pytest=pytest.__file__)), encoding='utf-8')\n"
                 "    subprocess.Popen([sys.executable, '-B', str(Path.cwd()/'descendant.py'),\n"
                 "        str(tmp_path/'held-library.lock'), str(Path.cwd()/'descendant.pid')],\n"
                 "        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
@@ -308,6 +335,7 @@ def test_parallel_barrier():
                     time.sleep(.02)
                 pid = int(marker.read_text(encoding='ascii'))
                 observed['pid'] = pid
+                observed['suite'] = json.loads((root / 'suite-owner.json').read_text(encoding='utf-8'))
                 if kernel is not None:
                     handle = kernel.OpenProcess(0x100001, False, pid)  # SYNCHRONIZE | TERMINATE
                     self.assertTrue(handle, ctypes.get_last_error())
@@ -352,6 +380,11 @@ def test_parallel_barrier():
                 self.assertEqual(len(directories), 2)
                 self.assertTrue(all(not directory.exists() for directory in directories))
                 self.assertTrue(all(process.returncode is not None for process in processes))
+                import pytest
+                self.assertEqual(observed['suite']['pid'], processes[0].pid)
+                self.assertEqual(os.path.normcase(observed['suite']['executable']), os.path.normcase(sys.executable))
+                self.assertEqual(os.path.normcase(observed['suite']['prefix']), os.path.normcase(sys.prefix))
+                self.assertEqual(os.path.normcase(observed['suite']['pytest']), os.path.normcase(pytest.__file__))
                 if kernel is not None:
                     self.assertEqual(kernel.WaitForSingleObject(observed['handle'], 5000), 0)
                 elif previous_subreaper is not None:

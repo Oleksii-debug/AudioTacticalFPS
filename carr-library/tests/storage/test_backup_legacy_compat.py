@@ -245,3 +245,28 @@ def test_inert_batch_still_rejects_relative_or_traversing_source_declarations(tm
     with pytest.raises(ValueError):
         restore_backup(source, destination, digest)
     assert not destination.exists()
+
+
+@pytest.mark.parametrize('declared_root', ['/former-machine/library', r'Z:\former-machine\library'])
+def test_legacy_recovery_original_root_is_portable_inert_data(tmp_path, monkeypatch, declared_root):
+    from carr_library.backup_compat import recovery
+    source, _ = archive(tmp_path, 'v4')
+    manifest = json.loads((source / 'manifest.json').read_text())['recovery']
+    manifest['source_root'] = declared_root
+
+    def forbidden_host_path(*args, **kwargs):
+        raise AssertionError('An original-machine declaration became a host filesystem path')
+
+    monkeypatch.setattr(recovery, 'Path', forbidden_host_path)
+    assert recovery.validate_manifest(manifest) is manifest
+
+
+@pytest.mark.parametrize('declared_root', [None, True, 1, '', 'relative/library',
+    r'Z:relative', 'file:///former-machine/library', '/former\x00machine', '/' + 'a' * 32768])
+def test_legacy_recovery_rejects_invalid_original_root_declarations(tmp_path, declared_root):
+    from carr_library.backup_compat import recovery
+    source, _ = archive(tmp_path, 'v4')
+    manifest = json.loads((source / 'manifest.json').read_text())['recovery']
+    manifest['source_root'] = declared_root
+    with pytest.raises(ValueError, match='Invalid recovery manifest'):
+        recovery.validate_manifest(manifest)
