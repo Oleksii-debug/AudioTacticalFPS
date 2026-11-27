@@ -604,7 +604,14 @@ def test_wav_export_rechecks_full_source_after_staging_fsync(source, tmp_path, m
     actual_check = sequence.check
     actual_fsync = os.fsync
     flushed = False
+    staged_path = None
     observed = []
+
+    def render(*args, **kwargs):
+        nonlocal staged_path
+        result = renderer(*args, **kwargs)
+        staged_path = result.path
+        return result
 
     def check(section, cancelled, *, full=False):
         observed.append((flushed, full))
@@ -615,13 +622,16 @@ def test_wav_export_rechecks_full_source_after_staging_fsync(source, tmp_path, m
     def flush(fd):
         nonlocal flushed
         actual_fsync(fd)
-        flushed = True
+        if staged_path is not None and staged_path.exists():
+            opened, staged = os.fstat(fd), staged_path.stat()
+            if (opened.st_dev, opened.st_ino) == (staged.st_dev, staged.st_ino):
+                flushed = True
 
     monkeypatch.setattr(sequence, 'check', check)
     monkeypatch.setattr(os, 'fsync', flush)
     with pytest.raises(ValueError, match='retained-byte drift'):
         export_document_speech(sequence, destination, start=0, end=10,
-                               voice_id=VOICE.id, render=renderer)
+                               voice_id=VOICE.id, render=render)
     assert renderer.requests and (True, True) in observed
     assert not destination.exists()
     assert not list(tmp_path.glob('.speech-*'))
