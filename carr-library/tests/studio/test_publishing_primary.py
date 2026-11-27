@@ -99,7 +99,7 @@ def test_primary_publication_preserves_exact_source_and_accepted_reading_copy(pr
     provenance = inspect_epub(target)
     assert receipt['source'] == provenance['source']
     assert provenance['source']['family'] == 'director'
-    assert provenance['source']['project_snapshot'] == project.to_dict()
+    assert provenance['source']['project_snapshot'] == json.loads(encode(project.to_dict()))
     assert provenance['source']['project_sha256'] == project.fingerprint
     assert provenance['source']['source_reference'] == project.source
     assert provenance['source']['job_sha256'] == sha256(encode(state)).hexdigest()

@@ -178,7 +178,7 @@ def inspect(archive, java, lock_path, *, require_installed=False):
             'director:' + primary.id + ':' + rendered['job_id'], publication, language='en')
         source = publishing.inspect_epub(publication)
         assert source['original_script'] == primary_script
-        assert source['source']['project_snapshot'] == primary.to_dict()
+        assert source['source']['project_snapshot'] == json.loads(json.dumps(primary.to_dict(), ensure_ascii=False))
         assert source['intervals'][0]['source_details']['original_text'] == cue.text
         results.append(validate(java, jar, publication, root / 'primary-reading-copy.json'))
         invalid = root / 'deliberately-invalid.epub'
