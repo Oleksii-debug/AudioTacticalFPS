@@ -113,7 +113,11 @@ def odf_census(root):
         node, path = pending.pop()
         rows.append({'path': list(path), 'tag': str(node.tag)[:512],
                      'child_tags': [str(child.tag)[:512] for child in list(node)[:32]],
-                     'attribute_names': sorted(str(key)[:512] for key in node.attrib)[:32]})
+                     'attribute_names': sorted(str(key)[:512] for key in node.attrib)[:32],
+                     'form_flags': {key: str(node.get(
+                         '{urn:oasis:names:tc:opendocument:xmlns:form:1.0}' + key))[:32]
+                         for key in ('apply-design-mode', 'automatic-focus')
+                         if node.get('{urn:oasis:names:tc:opendocument:xmlns:form:1.0}' + key) is not None}})
         if len(path) < 8:
             pending.extend((child, (*path, index)) for index, child in
                            reversed(list(enumerate(node, 1))))
