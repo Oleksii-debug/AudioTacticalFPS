@@ -338,7 +338,7 @@ def process_voice(source, output, *, ffmpeg, sample_rate=48000, pan=0.0, gain=1.
         if file_identity(regular_file(source)) != identity:
             raise RuntimeError('An audio input changed during processing. Restart the production.')
         check_cancelled(cancelled)
-        publish_noreplace(target, output)
+        publish_noreplace(target, output, cancelled=cancelled)
     return output
 
 
@@ -370,7 +370,7 @@ def silence(output, frames, *, sample_rate=48000, channels=2, cancelled=lambda: 
             stream.flush()
             os.fsync(stream.fileno())
         check_cancelled(cancelled)
-        publish_noreplace(target, output)
+        publish_noreplace(target, output, cancelled=cancelled)
     return output
 
 
@@ -412,7 +412,7 @@ def concatenate(inputs, output, *, cancelled=lambda: False, on_status=lambda mes
         if wav_info(target).frames != frames:
             raise RuntimeError('The assembled duration is incorrect.')
         check_cancelled(cancelled)
-        publish_noreplace(target, output)
+        publish_noreplace(target, output, cancelled=cancelled)
     return output
 
 
@@ -457,7 +457,7 @@ def mix_scene(voices, music, output, *, ffmpeg, music_gain=0.15, cancelled=lambd
         if any(file_identity(regular_file(path)) != identity for path, identity in identities):
             raise RuntimeError('An audio input changed during mixing. Restart the production.')
         check_cancelled(cancelled)
-        publish_noreplace(target, output)
+        publish_noreplace(target, output, cancelled=cancelled)
     return output
 
 
@@ -538,5 +538,5 @@ def transcode(source, output, *, ffmpeg, format, metadata=None, cancelled=lambda
         if any(file_identity(regular_file(path)) != identity for path, identity in identities):
             raise RuntimeError('An audio input changed during encoding. Restart the production.')
         check_cancelled(cancelled)
-        publish_noreplace(target, output)
+        publish_noreplace(target, output, cancelled=cancelled)
     return output

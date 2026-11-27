@@ -73,7 +73,8 @@ def _identity(info):
 def _allowed(name):
     if name in ('studio/project.json', 'studio/project.json.recovery.json'):
         return True
-    if name == 'audio/render-journal.json' or re.fullmatch('audio/plan-' + _HEX + r'\.json', name):
+    if (name == 'audio/render-journal.json' or re.fullmatch('audio/plan-' + _HEX + r'\.json', name)
+            or re.fullmatch(r'audio/publication-[0-9a-f]{32}\.json', name)):
         return True
     # Input type and saved/recovery references are checked by input_assets().
     # Sound accepts portable filenames independently of their case or suffix.
@@ -111,6 +112,10 @@ def _studio(payload):
     draft = NarrationDraft.from_dict(payload['draft'])
     reference = payload['source_reference']
     if reference is not None:
+        from .legacy_project import KIND as CANONICAL_STUDIO, validate_reference
+        if type(reference) is dict and reference.get('kind') == CANONICAL_STUDIO:
+            validate_reference(reference, draft)
+            return payload
         from ..reader.narration import READING_REFERENCE_KIND, validate_reading_project_reference
         if type(reference) is not dict or reference.get('kind') not in (
                 'local-text', 'library-source-reading-copy', READING_REFERENCE_KIND):
@@ -141,20 +146,20 @@ def _asset_references(project, *, file_budget, cancelled):
     legacy_kind = 'narration' if project['source_reference'] is not None else 'script'
     if project.get('input_kind', legacy_kind) != 'script':
         return set()
-    from .models import Sound
+    from .models import Sound, Clip
     from .production import parse_script
     names = set()
     draft = NarrationDraft.from_dict(project['draft'])
     for line in draft.text.splitlines():
         check_cancelled(cancelled)
         line = line.strip()
-        if not re.match(r'\[sound(?:\s|\])', line):
+        if not re.match(r'\[(?:sound|clip)(?:\s|\])', line):
             continue
         # The production parser and Sound model own quoting, names and controls.
         # An incomplete sound directive cannot silently discard an input file.
         plan = parse_script(line, voice=project['voice'], language=project['language'])
-        names.update(event.asset for scene in plan.scenes for event in scene.events
-                     if isinstance(event, Sound))
+        names.update(event.asset for scene in plan.scenes for event in (*scene.events, *scene.clips)
+                     if isinstance(event, (Sound, Clip)))
         if len(names) > file_budget:
             raise ValueError('Sound inputs exceed the snapshot file budget.')
     return names

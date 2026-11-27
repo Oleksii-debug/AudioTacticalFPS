@@ -234,3 +234,26 @@ def test_codec_rate_constraint_is_visible_before_rendering():
     plan = parse_script('[output format=wma sample_rate=96000]\nNarrator: Exact words.')
     description = plan_description(plan)
     assert '48,000 Hz' in description and '96000 Hz' in description
+
+
+def test_script_bypass_and_order_change_reach_actual_signal_path(tmp_path, ffmpeg):
+    from carr_library.audio.effect_editing import RoleEffectEditor
+
+    source = tone(tmp_path / 'source.wav', rate=48000, amplitude=2500)
+    before = hashlib.sha256(source.read_bytes()).digest()
+    script = ('[effect Narrator gain gain_db=12]\n'
+              '[effect Narrator limiter ceiling_db=-18]\nExact source.')
+    editor = RoleEffectEditor(script)
+    enabled = parse_script(editor.script()).roles[0].effects
+    limited = process_voice(source, tmp_path / 'limited-first.wav', ffmpeg=ffmpeg, effects=enabled)
+    editor.move('Narrator', 1, 0)
+    reordered = process_voice(source, tmp_path / 'gain-last.wav', ffmpeg=ffmpeg,
+                              effects=parse_script(editor.script()).roles[0].effects)
+    assert measure_peak(reordered)['peak'] > measure_peak(limited)['peak'] * 2
+    editor.bypass('Narrator', 0)
+    editor.bypass('Narrator', 1)
+    bypassed = process_voice(source, tmp_path / 'bypassed.wav', ffmpeg=ffmpeg,
+                             effects=parse_script(editor.script()).roles[0].effects)
+    dry = process_voice(source, tmp_path / 'dry.wav', ffmpeg=ffmpeg)
+    assert samples(bypassed) == samples(dry)
+    assert hashlib.sha256(source.read_bytes()).digest() == before

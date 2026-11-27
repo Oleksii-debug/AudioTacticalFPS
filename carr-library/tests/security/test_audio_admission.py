@@ -150,3 +150,34 @@ def test_actual_renderer_cannot_replace_the_active_tool_authority(authority, tmp
     private = render_project(plan, tmp_path / 'private', engine=engine, ffmpeg=binary,
                              trust_controller=other)
     assert private['status'] == 'complete' and len(engine.calls) == 2
+
+
+def test_real_clip_preview_retains_authority_and_cached_pcm_after_expiry(authority, tmp_path, monkeypatch):
+    from carr_library.audio import clips
+    from carr_library.ui.audio_studio import StudioController
+    app = LibraryApp(tmp_path / 'clip-library', trust_controller=authority.controller)
+    folder = tmp_path / 'clip-project'
+    (folder / 'assets').mkdir(parents=True)
+    source = folder / 'assets/source.wav'
+    ToneEngine().synthesize('Synthetic clip fixture', source)
+    original = sha256(source.read_bytes()).hexdigest()
+    studio = StudioController(private_root=app.root, ffmpeg=local_ffmpeg(),
+                              trust_controller=authority.controller)
+    script = '[output sample_rate=8000 stems=false]\n[clip source.wav id=c1 duration=.1]'
+    studio.new(script, input_kind='script')
+    studio.configure(output_dir=folder)
+    editor = studio.clip_editor(studio.clip_snapshot())
+    request = {'action': 'preview', 'clip_id': 'c1'}
+    first = studio.prepare_clip_edit(editor, request)
+    rendered = Path(first['preview']).read_bytes()
+    expire(authority)
+    monkeypatch.setattr(clips, 'process_clip',
+                        lambda *args, **kwargs: pytest.fail('Expired permission started fresh clip DSP.'))
+    repeated = studio.prepare_clip_edit(editor, request)
+    assert repeated['preview'] == first['preview'] and Path(repeated['preview']).read_bytes() == rendered
+    studio.edit_script(script.replace('duration=.1', 'duration=.1 gain_db=-3'))
+    changed = studio.clip_editor(studio.clip_snapshot())
+    with pytest.raises(ReviewRequired):
+        studio.prepare_clip_edit(changed, request)
+    assert sha256(source.read_bytes()).hexdigest() == original
+    assert Path(first['preview']).read_bytes() == rendered

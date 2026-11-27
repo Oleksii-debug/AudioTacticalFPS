@@ -1,0 +1,214 @@
+{
+  "schema": 1,
+  "status": "NOT_RUN",
+  "method": "Static enumeration of selected test definitions and explicit parametrization values; requires actual source and isolated installed JUnit execution with zero skips/errors/failures.",
+  "base_commit": "d9db9f676bd7b0d282a2c6e2512b20f02b603b65",
+  "adapted_owner_reference": "078d254bd4ab4dbe9de4ea80e1e26731cb8ac9e8",
+  "all_changed_or_added_test_files": [
+    {
+      "path": "tests/audio/test_input_asset_backup.py",
+      "expected_cases": 17,
+      "test_functions": 7,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_extended_effects.py",
+      "expected_cases": 43,
+      "test_functions": 17,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_clips.py",
+      "expected_cases": 50,
+      "test_functions": 22,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_clip_render.py",
+      "expected_cases": 5,
+      "test_functions": 5,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_effect_editing.py",
+      "expected_cases": 34,
+      "test_functions": 14,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_master_effects.py",
+      "expected_cases": 43,
+      "test_functions": 18,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_canonical_project_import.py",
+      "expected_cases": 38,
+      "test_functions": 14,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_publication.py",
+      "expected_cases": 22,
+      "test_functions": 14,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_publication_acceptance.py",
+      "expected_cases": 13,
+      "test_functions": 9,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_publication_fsync.py",
+      "expected_cases": 11,
+      "test_functions": 5,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/ui/test_audio_clips.py",
+      "expected_cases": 9,
+      "test_functions": 4,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/ui/test_audio_effect_editing.py",
+      "expected_cases": 19,
+      "test_functions": 9,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/ui/test_audio_publication.py",
+      "expected_cases": 6,
+      "test_functions": 6,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/ui/test_legacy_studio_import.py",
+      "expected_cases": 7,
+      "test_functions": 6,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/ui/test_audio_native_probe_policy.py",
+      "expected_cases": 13,
+      "test_functions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/audio/test_cleanup_wait.py",
+      "expected_cases": 4,
+      "test_functions": 3,
+      "status": "NOT_RUN"
+    },
+    {
+      "path": "tests/security/test_audio_admission.py",
+      "expected_cases": 7,
+      "test_functions": 4,
+      "status": "NOT_RUN"
+    }
+  ],
+  "required_changed_selection_cases": 341,
+  "standalone_publication_boundary": {
+    "paths": [
+      "tests/audio/test_publication_acceptance.py",
+      "tests/audio/test_cleanup_wait.py"
+    ],
+    "source_cases": 17,
+    "installed_cases": 17,
+    "required_skipped": 0,
+    "required_failures": 0,
+    "required_errors": 0
+  },
+  "native": {
+    "retained_studio": {
+      "script": "scripts/windows_audio_smoke.py",
+      "expected_checks": 16,
+      "changed": false,
+      "status": "NOT_RUN_ON_R7"
+    },
+    "effects": {
+      "script": "scripts/windows_audio_effects_smoke.py",
+      "arguments": [
+        "--native"
+      ],
+      "expected_checks": 151,
+      "original_checks_retained": 109,
+      "required_fields": {
+        "status": "PASS",
+        "native_controls": "PASS",
+        "typed_parameters": "PASS",
+        "cancellation": "PASS",
+        "role_chain": "PASS",
+        "master_chain": "PASS",
+        "master_mix": "PASS",
+        "preset_file_roundtrip": "PASS",
+        "installed_mode": true,
+        "isolated": true
+      },
+      "unqualified_fields": {
+        "nvda": "NOT_RUN",
+        "signal_rendering": "NOT_RUN",
+        "preset_native_picker": "NOT_RUN"
+      }
+    },
+    "clips": {
+      "script": "scripts/windows_clip_editor_smoke.py",
+      "expected_checks": 24,
+      "required_fields": {
+        "status": "PASS",
+        "installed_mode": true,
+        "isolated": true
+      },
+      "actions": [
+        "edit",
+        "move",
+        "duration",
+        "remove",
+        "preview",
+        "copy",
+        "cut",
+        "paste",
+        "split",
+        "join",
+        "cancel"
+      ],
+      "unqualified_fields": {
+        "actual_pcm_processing": "SEPARATE_STRICT_SUITE",
+        "native_file_picker": "NOT_RUN",
+        "manual_nvda": "NOT_RUN",
+        "playback_device_acceptance": "NOT_RUN"
+      }
+    },
+    "publication": {
+      "script": "scripts/windows_publication_smoke.py",
+      "expected_checks": 11,
+      "required_fields": {
+        "status": "PASS",
+        "native_metadata_controls": "PASS",
+        "installed_mode": true,
+        "isolated": true
+      },
+      "unqualified_fields": {
+        "full_file_picker_flow": "NOT_RUN",
+        "manual_nvda": "NOT_RUN",
+        "third_party_reader_interoperability": "NOT_RUN"
+      }
+    }
+  },
+  "retained_files": [
+    "scripts/ci_audio_check.py",
+    "tests/ui/test_audio_studio.py",
+    "tests/audio/test_production_integrity.py",
+    "tests/audio/test_recording.py",
+    "tests/audio/test_recording_process.py",
+    "tests/audio/test_recording_pause.py",
+    "tests/audio/test_recording_monitor.py",
+    "tests/audio/test_windows_process.py",
+    "src/carr_library/audio/recording.py",
+    "src/carr_library/audio/recording_process.py",
+    "src/carr_library/audio/windows_process.py",
+    "src/carr_library/audio/engines.py"
+  ],
+  "lineage": "Only reviewed selected paths are ported; owner reference is provenance, not an ancestor or imported-head completion claim."
+}
