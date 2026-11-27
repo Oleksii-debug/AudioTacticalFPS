@@ -156,3 +156,25 @@ def test_end_of_document_selection_failure_preserves_previous_selection():
     before = editor.selection
     assert select_text_unit(editor, editor.text, 'word', direction=1) is None
     assert editor.selection == before
+
+@pytest.mark.parametrize('normalized', [False, True])
+def test_every_complete_native_crlf_and_surrogate_boundary_roundtrips(normalized):
+    raw = '😀 A\r\n🧭Бета\r\nZ'
+    displayed = raw.replace('\r\n', '\n') if normalized else raw
+    editor = NativeText(displayed)
+    for offset in range(len(raw) + 1):
+        if raw[max(0, offset - 1):offset + 1] == '\r\n':
+            # There is no displayed insertion boundary inside a source CRLF.
+            with pytest.raises(ValueError, match='complete native text boundary'):
+                native_cursor_position(editor, raw, offset)
+            continue
+        prefix = raw[:offset].replace('\r\n', '\n') if normalized else raw[:offset]
+        expected = len(prefix.encode('utf-16-le')) // 2
+        position = native_cursor_position(editor, raw, offset)
+        assert position == expected
+        editor.SetSelection(position, position)
+        assert native_selection(editor, raw) == (offset, offset)
+        if position < editor.GetLastPosition():
+            # The returned complete prefix must not leave an LF from its CRLF.
+            assert not (editor.GetRange(0, position).endswith('\r')
+                        and editor.GetRange(position, editor.GetLastPosition()).startswith('\n'))

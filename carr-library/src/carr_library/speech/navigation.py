@@ -80,6 +80,15 @@ def native_cursor_position(control, raw, offset):
     actual, position = mapped(low)
     if actual != offset:
         raise ValueError('The saved cursor is not a complete native text boundary.')
+    # A prefix ending between native CR and LF normalizes to the same source
+    # offset as the complete CRLF. Prefer the complete observed boundary so a
+    # selection cannot start before the remaining LF. The same check also
+    # preserves the completed surrogate boundary returned by mapped().
+    while position < last:
+        following, complete = mapped(position + 1)
+        if following != offset:
+            break
+        position = complete
     return position
 
 
