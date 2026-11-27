@@ -240,9 +240,11 @@ def validate_live(step, scope, data_dir, *, cancelled=lambda: False):
     if step.tool == 'audio.effects':
         _edit_script(raw, step.arguments)
     else:
-        from ..conversion.capabilities import CONVERSION_SUFFIXES
-        if source.suffix.casefold() not in CONVERSION_SUFFIXES:
-            raise ValueError('This file is not supported by the current reading converter.')
+        from ..conversion.capabilities import capabilities
+        capability = next((row for row in capabilities() if row['extension'] == source.suffix.casefold()), None)
+        if capability is None or not capability['available']:
+            raise ValueError('This format needs an explicitly selected local converter or missing reader dependencies. '
+                             'Choose the existing Document conversion action to select that runtime; this plan cannot invent it.')
     return source, record, raw
 
 
