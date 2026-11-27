@@ -41,7 +41,8 @@ def main():
     import wx
     import carr_library.progress as progress_module
     import carr_library.progress_audio as audio_module
-    import carr_library.ui.progress_view as view_module
+    import carr_library.ui.progress_view as lifecycle_module
+    import carr_library.ui.operation_progress as view_module
     import carr_library.ui.desktop_app as desktop_module
     from carr_library.application import LibraryApp
 
@@ -99,7 +100,7 @@ def main():
 
     checkout = Path(__file__).resolve().parents[1]
     prefix = Path(sys.prefix).resolve()
-    for module in (progress_module, audio_module, view_module, desktop_module):
+    for module in (progress_module, audio_module, lifecycle_module, view_module, desktop_module):
         installed = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         check('installed exact source: ' + module.__name__,
@@ -120,9 +121,9 @@ def main():
             frame.Show()
             frame.Raise()
             check('current desktop opens', pump(lambda: frame.active == (workspace, None) and not frame.working))
-            view = frame.progress_view
+            view = frame.operation_progress
             check('same shared hub and named native gauge',
-                  view.hub is frame.progress_hub and isinstance(view.gauge, wx.Gauge)
+                  view is frame.progress_view and view.hub is frame.progress_hub and isinstance(view.gauge, wx.Gauge)
                   and view.gauge.GetRange() == 100 and bool(view.gauge.GetName()))
             check('notification default is Off without an audio thread',
                   view.preferences.mode == 'off' and view.notifications._thread is None)
@@ -240,18 +241,18 @@ def main():
                             window.EndModal(wx.ID_CANCEL)
                     return
                 dialog = next((window for window in wx.GetTopLevelWindows()
-                    if isinstance(window, wx.Dialog) and window.GetTitle() == 'Progress feedback settings'), None)
+                    if isinstance(window, wx.Dialog) and window.GetTitle() == 'Progress feedback'), None)
                 if dialog is None:
                     wx.CallLater(25, save_settings)
                     return
                 try:
-                    interval = wx.FindWindowByName('Minimum progress feedback interval in seconds', dialog)
-                    volume = wx.FindWindowByName('Progress feedback volume percent', dialog)
-                    mode = wx.FindWindowByName('Extra progress feedback mode', dialog)
+                    interval = wx.FindWindowByName('Notification interval in seconds, 0.5 to 60', dialog)
+                    volume = wx.FindWindowByName('Notification volume, 0 to 1', dialog)
+                    mode = wx.FindWindowByName('Progress audio mode', dialog)
                     check('native settings controls expose accessible names', all((interval, volume, mode)))
                     mode.SetSelection(0)  # Preserve quiet native acceptance; no listening claim.
-                    interval.SetValue(2.5)
-                    volume.SetValue(17)
+                    interval.SetValue('2.5')
+                    volume.SetValue('0.17')
                     button = dialog.FindWindowById(wx.ID_OK)
                     event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
                     event.SetEventObject(button)

@@ -503,8 +503,8 @@ class DesktopFrame(WorkspaceFrame):
         self._menus()
         from .productivity import install_productivity_actions
         keyboard = install_productivity_actions(self)
-        from .progress_view import install_progress_view
-        install_progress_view(self)
+        from .operation_progress import install_operation_progress
+        install_operation_progress(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)
         if self.scopes:
@@ -560,7 +560,7 @@ class DesktopFrame(WorkspaceFrame):
             self.menu_bar.Append(menu, label)
         self.SetMenuBar(self.menu_bar)
         cancel = wx.Button(self.host, label='Cancel current operation')
-        cancel.Bind(wx.EVT_BUTTON, lambda e: self.cancel_event.set())
+        cancel.Bind(wx.EVT_BUTTON, self.cancel_current_operation)
         self.layout.Insert(0, cancel, 0, wx.ALL, 3)
         self.cancel_button = cancel
         cancel.Disable()
@@ -687,30 +687,46 @@ class DesktopFrame(WorkspaceFrame):
         self.status.SetValue(text)
         self.status.SetFocus()
 
-    def run_job(self, title, operation, done=None, failed=None, *, progress_unit='items'):
+    def cancel_current_operation(self, event=None):
+        self.cancel_event.set()
+        progress = getattr(self, 'operation_progress', None)
+        if progress is not None:
+            try:
+                progress.request_cancel()
+            except Exception:
+                pass  # A stale observer must not suppress the actual Stop signal.
+        self.report('Cancellation requested. Waiting for the operation to stop or save its result.')
+
+    def run_job(self, title, operation, done=None, failed=None, *, progress_total=None, progress_unit='items'):
         if self._closing:
             return
         if self.working:
             self.report('An operation is already running. Wait or choose Cancel current operation.')
             return
+        library = getattr(self, 'library', None)
+        progress = getattr(self, 'operation_progress', None)
         self.working = self.busy = True
         self.cancel_event.clear()
         self.cancel_button.Enable()
         self.choice.Disable()
         if self.book is not None:
             self.book.Disable()
-        progress_view = getattr(self, 'progress_view', None)
-        if progress_view is not None:
-            progress_view.set_busy(True)
+        view = progress or getattr(self, 'progress_view', None)
+        if view is not None:
+            view.set_busy(True)
         else:
             for i in range(self.menu_bar.GetMenuCount()):
                 self.menu_bar.EnableTop(i, False)
         self.report(title + '…')
-        from .progress_view import shared_hub, run_observed, fail_operation
+        from .progress_view import shared_hub, run_observed, finish_observed, fail_operation
         task = None
         try:
-            task = shared_hub(self).start(title, unit=progress_unit)
-            future = self.executor.submit(lambda: run_observed(task, operation))
+            if progress is not None:
+                progress.start(title, total=progress_total, unit=progress_unit)
+                task = progress.reporter
+            else:
+                task = shared_hub(self).start(title, total=progress_total, unit=progress_unit)
+            future = self.executor.submit(lambda: run_observed(task, operation, finalize=False))
         except Exception as exc:
             fail_operation(task, exc)
             self._finish_job_controls()
@@ -722,31 +738,50 @@ class DesktopFrame(WorkspaceFrame):
         def finish(future):
             if future.cancelled():
                 fail_operation(task, InterruptedError('The queued operation was cancelled.'))
+            else:
+                try:
+                    result = future.result()
+                except BaseException as exc:
+                    fail_operation(task, exc)
+                else:
+                    # Finalize only the real Future result, including during
+                    # shutdown. A late stop cannot undo its typed durable receipt.
+                    finish_observed(task, result, cancelled=self.cancel_event.is_set())
             if self._closing:
                 return
             def apply():
-                if self._closing:
+                if self._closing or getattr(self, 'library', None) is not library:
                     return
                 self._finish_job_controls()
                 try:
                     result = future.result()
+                except Exception as exc:
+                    self.report(f'{title}: {exc}')
+                    if failed is not None:
+                        failed(exc)
+                    return
+                try:
+                    outcome = task.event
+                    message = (title + ': complete.' if outcome.state == 'complete' and outcome.verified
+                               else outcome.text)
+                except Exception:
+                    # A detached/evicted observer cannot suppress the real
+                    # result callback or retry an already committed operation.
+                    message = title + ': operation returned; progress status is unavailable.'
+                if progress is not None:
                     try:
-                        outcome = task.event
-                        message = (title + ': complete.' if outcome.state == 'complete' and outcome.verified
-                                   else outcome.text)
+                        progress.tick()
                     except Exception:
-                        # A detached/evicted observer cannot suppress the real
-                        # result callback or retry an already committed operation.
-                        message = title + ': operation returned; progress status is unavailable.'
+                        pass  # The callback still receives the durable result.
+                try:
                     if done is not None and getattr(self, 'status', None) is not None:
-                        # The result callback owns its panel/reader focus.
                         self.status.SetValue(message)
                     else:
                         self.report(message)
                     if done is not None:
                         done(result)
                 except Exception as exc:
-                    self.report(f'{title}: {exc}')
+                    self.report(f'{title}: result returned, but its display failed: {exc}')
                     if failed is not None:
                         failed(exc)
             wx.CallAfter(apply)
@@ -758,9 +793,9 @@ class DesktopFrame(WorkspaceFrame):
         self.choice.Enable()
         if self.book is not None:
             self.book.Enable()
-        progress_view = getattr(self, 'progress_view', None)
-        if progress_view is not None:
-            progress_view.set_busy(False)
+        view = getattr(self, 'operation_progress', None) or getattr(self, 'progress_view', None)
+        if view is not None:
+            view.set_busy(False)
         else:
             for i in range(self.menu_bar.GetMenuCount()):
                 self.menu_bar.EnableTop(i, True)
@@ -782,6 +817,9 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
+        progress = getattr(self, 'operation_progress', None)
+        if progress is not None:
+            progress.change_root()
         if getattr(self, 'keyboard_commands', None) is not None:
             self.keyboard_commands.change_root(candidate.root)
         self.list_scopes = candidate.list_scopes
@@ -908,8 +946,13 @@ class DesktopFrame(WorkspaceFrame):
                 report = '\n\n'.join(row_details(dict(file=row['file'], state=row['state'],
                     message=row.get('message', ''), result=row)) for row in rows)
                 show_text(self, 'Import details', report)
-        self.run_job('Importing books', lambda: self.library.import_files(workspace, paths,
-            cancelled=self.cancel_event.is_set,config=config), done)
+        library = self.library
+        def import_selected():
+            from ..progress import report_progress
+            return library.import_files(workspace, paths, cancelled=self.cancel_event.is_set, config=config,
+                progress=lambda completed, total, phase: report_progress(
+                    completed=completed, total=total, phase=phase))
+        self.run_job('Importing books', import_selected, done, progress_unit='files')
 
     def add_text(self, event):
         try:
@@ -1268,6 +1311,10 @@ class DesktopFrame(WorkspaceFrame):
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):
+        from .save_all import defer_close
+        if defer_close(self, getattr(self, '_save_coordinator', None), close=lambda: self.Close(),
+                       report=self.report, alive=lambda: not self._closing, post=wx.CallAfter, event=event):
+            return
         if self.working:
             if event.CanVeto():
                 event.Veto()
@@ -1276,8 +1323,9 @@ class DesktopFrame(WorkspaceFrame):
         super().on_close(event)
         if not event.GetVeto():
             self._closing = True
-            if getattr(self, 'progress_view', None) is not None:
-                self.progress_view.close()
+            progress = getattr(self, 'operation_progress', None) or getattr(self, 'progress_view', None)
+            if progress is not None:
+                progress.close()
             self.cancel_event.set()
             self.executor.shutdown(wait=False, cancel_futures=True)
 

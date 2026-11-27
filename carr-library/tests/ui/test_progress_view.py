@@ -16,6 +16,7 @@ import pytest
 
 from carr_library.progress import ProgressHub, ProgressPreferences, current_progress, load_preferences, save_preferences
 from carr_library.ui import progress_view
+from carr_library.ui import operation_progress as native_progress
 
 
 def _module(name, path):
@@ -60,6 +61,7 @@ class Control:
     def GetSelection(self): return self.selection
     def Pulse(self): self.pulses += 1
     def GetRange(self): return 100
+    def SetRange(self, value): self.range = value
     def Wrap(self, width): pass
     def GetLabel(self): return self.value
     def SetEscapeId(self, identity): pass
@@ -86,8 +88,12 @@ class Notifications:
         self.error = ''
         self.closes = 0
         self.environments = []
+        self.quiescent = True
+        self.registry = None
 
     def configure(self, value): self.preferences = value
+    def clear(self): self.events = ()
+    def set_registry(self, value): self.registry = value
     def environment(self, **values): self.environments.append(values)
     def offer(self, events): self.events = tuple(events)
     def close(self): self.closes += 1
@@ -105,7 +111,7 @@ def native_boundary(tmp_path, monkeypatch):
         TE_READONLY=8, TE_MULTILINE=16, EXPAND=32, ALL=64, ALIGN_RIGHT=128,
         SL_HORIZONTAL=256, SL_LABELS=512, LEFT=1024, TOP=2048,
         EVT_CHOICE=object(), EVT_BUTTON=object(), EVT_TIMER=object(), EVT_WINDOW_DESTROY=object(),
-        EVT_MENU=object())
+        EVT_MENU=object(), EVT_CHECKBOX=object())
     monkeypatch.setitem(sys.modules, 'wx', fake)
     monkeypatch.setattr(_keyboard.MenuItem, 'Enable', lambda self, enabled=True: setattr(self, 'enabled', enabled), raising=False)
     monkeypatch.setattr(_keyboard.DynamicMenuBar, 'EnableTop',
@@ -118,12 +124,14 @@ def native_boundary(tmp_path, monkeypatch):
     frame.host, frame.layout = Control(), Layout()
     frame.library = SimpleNamespace(root=tmp_path)
     frame.Bind = Mock()
+    frame.Layout = Mock()
+    frame.report = Mock()
     frame.IsActive = lambda: True
     frame.working = False
     frame.progress_hub = ProgressHub()
     frame.keyboard_commands = _keyboard.install_keyboard_settings(frame)
     notices = Notifications()
-    view = progress_view.NativeProgressView(frame, notifications=notices)
+    view = native_progress.OperationProgress(frame, notifications=notices)
     yield frame, view, notices
     view.close()
 
@@ -181,7 +189,8 @@ def test_concurrent_parent_and_subtask_selection_keeps_separate_measurements(nat
 
 def test_preferences_roundtrip_and_changed_root_leave_both_settings_safe(native_boundary, tmp_path):
     frame, view, notices = native_boundary
-    chosen = ProgressPreferences(mode='beep_speech', interval_seconds=.5, volume=.37, muted=True, background=True)
+    chosen = ProgressPreferences(mode='beep_speech', interval_seconds=.5, volume=.37, muted=True, background=True,
+        voice_id='synthetic:chosen', voice_language='uk', voice_fingerprint='a' * 64)
     view.configure(chosen)
     assert load_preferences(tmp_path) == chosen and notices.preferences == chosen
     before = (tmp_path / 'progress-preferences.json').read_bytes()
@@ -203,7 +212,7 @@ def test_failed_persistence_still_mutes_immediately_but_does_not_unmute(native_b
     before = (view.root / 'progress-preferences.json').read_bytes()
     def full(*args):
         raise OSError('Synthetic full disk')
-    monkeypatch.setattr(progress_view, 'save_preferences', full)
+    monkeypatch.setattr(native_progress, 'save_preferences', full)
     view.toggle_mute()
     assert view.preferences.muted and notices.preferences.muted
     assert 'Muted for this session' in view.notice
@@ -254,13 +263,16 @@ def test_semantic_commands_preserve_custom_binding_and_busy_menu_states(native_b
     frame, existing, _ = native_boundary
     existing.close()
     notices = Notifications()
-    monkeypatch.setattr(progress_view, 'NotificationWorker', lambda preferences: notices)
-    view = progress_view.install_progress_view(frame)
-    assert progress_view.install_progress_view(frame) is view
+    monkeypatch.setattr(native_progress, 'NotificationWorker', lambda preferences: notices)
+    view = native_progress.install_operation_progress(frame)
+    assert native_progress.install_operation_progress(frame) is view
     frame.keyboard_commands.apply_overrides({'progress.query': 'Ctrl+Alt+Shift+F8'})
     assert frame.keyboard_commands.shortcut('progress.query') == 'Ctrl+Alt+Shift+F8'
-    assert all(frame.keyboard_commands.registry.get(spec.command_id) == spec for spec in progress_view.COMMANDS)
+    assert all(frame.keyboard_commands.registry.get(spec.command_id) == spec for spec in native_progress.COMMANDS)
     assert len(view.command_items) == 3
+    assert frame.progress_view is frame.operation_progress is view
+    assert view.hub is frame.progress_hub
+    assert all(not spec.default_shortcut for spec in native_progress.COMMANDS)
     options = frame.menu.GetMenu(1)
     original_item = options.items[0]
     original_item.Enable(False)
@@ -268,7 +280,7 @@ def test_semantic_commands_preserve_custom_binding_and_busy_menu_states(native_b
     view.set_busy(True)
     view.set_busy(True)
     assert not frame.menu.IsEnabledTop(0) and frame.menu.IsEnabledTop(1)
-    assert all(frame.keyboard_commands.available(spec.command_id) for spec in progress_view.COMMANDS)
+    assert all(frame.keyboard_commands.available(spec.command_id) for spec in native_progress.COMMANDS)
     assert all(not item.IsEnabled() for item in options.items if item not in view.command_items)
     view.set_busy(False)
     assert frame.menu.IsEnabledTop(0)

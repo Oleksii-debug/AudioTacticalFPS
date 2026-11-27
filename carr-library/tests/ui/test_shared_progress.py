@@ -192,7 +192,7 @@ class PreferencesTests(unittest.TestCase):
             changed['preferences'][key] = value
             variants.append(json.dumps(changed).encode())
         variants.extend((b'{}', b'\xff', b' ' * (MAX_BYTES + 1),
-                         encode_preferences(default).replace(b'"version": 1', b'"version": 1, "version": 1')))
+                         encode_preferences(default).replace(b'"version": 2', b'"version": 2, "version": 2')))
         for raw in variants:
             with self.subTest(raw=raw[:80]), self.assertRaises(ValueError):
                 decode_preferences(raw)
@@ -390,7 +390,7 @@ class NotificationPlaybackTests(unittest.TestCase):
             original = path.read_bytes()
             def notify():
                 try:
-                    progress_audio.LocalNotificationOutput._play(path, lambda: False)
+                    progress_audio.LocalNotificationOutput()._play(path, lambda: False)
                 except BaseException as error:
                     errors.append(error)
             thread = threading.Thread(target=notify, name='notification-starting-regression', daemon=True)
@@ -436,10 +436,10 @@ class NotificationPlaybackTests(unittest.TestCase):
                 with patch('carr_library.audio.player.WavePlayer', return_value=player):
                     try:
                         if stop:
-                            LocalNotificationOutput._play(path, cancelled.is_set)
+                            LocalNotificationOutput()._play(path, cancelled.is_set)
                         else:
                             with self.assertRaisesRegex(RuntimeError, 'audio device'):
-                                LocalNotificationOutput._play(path, cancelled.is_set)
+                                LocalNotificationOutput()._play(path, cancelled.is_set)
                         self.assertEqual(entered, [True])
                         self.assertEqual(player.status().state, 'unavailable')
                         self.assertFalse(player.native._thread.is_alive())

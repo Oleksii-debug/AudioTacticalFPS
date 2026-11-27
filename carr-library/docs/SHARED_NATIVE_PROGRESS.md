@@ -1,4 +1,7 @@
-# Shared native progress
+# Native progress integration
+
+The single current controller and settings surface is documented in [SHARED_PROGRESS.md](SHARED_PROGRESS.md). `ui/progress_view.py` now contains only the existing worker lifecycle helpers; it does not construct a second view, tracker or notification worker.
+
 
 This view connects the current progress contract to the existing desktop.
 It reuses ProgressHub, ProgressReporter, ProgressPreferences and
@@ -32,9 +35,10 @@ undo an accepted result.
 
 Extra sound is Off by default. Existing preferences support Off, Beep, Speech,
 Beep and speech; interval, volume, mute, quiet mode, background permission and
-suppression during app media playback. Speech uses the current optional local
-English SAPI path; missing support is a visible status, not another-language or
-network fallback. Muting takes effect immediately even if saving the preference
+suppression during app media playback. Speech uses an explicitly selected local
+voice with English, Ukrainian or Slovak notices and an exact voice/runtime
+identity check. Missing or changed support produces a visible reason without
+selecting another voice or contacting a provider. Muting takes effect immediately even if saving the preference
 fails. Unmuting and other changes persist before activation. The current typed
 backup already includes progress-preferences.json.
 
@@ -49,7 +53,7 @@ Uninstrumented operations are honestly indeterminate; this change does not
 claim measured phase coverage for every existing service.
 
 The view polls the same bounded hub from the wx thread. NotificationWorker
-receives the shared snapshot, foreground state and that hub's media_activity
+receives the current operation and subtasks, foreground state and that hub's media_activity
 state. It owns no production audio samples. The current player's separate media
 lifetime integration supplies actual playback suppression. No microphone
 capture implementation or manual listening qualification is claimed by this
@@ -69,6 +73,8 @@ Required headless source and installed suites include:
 - tests/ui/test_progress_view.py: 25 cases, including real background workers,
   actual file publication, late cancellation, observer failure, persisted
   settings, busy command availability, separate task selection and focus.
+- tests/ui/test_operation_progress.py: retain every owner presenter, local-voice
+  binding, media-handoff and backup check, plus the same-hub library-switch regression.
 - tests/ui/test_shared_progress.py: retain the existing complete suite.
 - tests/ui/test_desktop_handlers.py and tests/ui/test_keyboard_manager.py:
   retain existing host and keyboard assertions.
