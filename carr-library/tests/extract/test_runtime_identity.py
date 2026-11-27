@@ -33,29 +33,39 @@ def source_fixture(tmp_path):
         yield tmp_path
 
 
+def _required_runtime(languages='eng', *, orientation=False):
+    # The sealed Windows runtime is selected through CARR_OCR_DIR or the
+    # package-relative bundle; a developer installation can still use PATH.
+    runtime = ri.ocr_runtime.discover_ocr_runtime(languages, orientation=orientation)
+    assert runtime is not None, 'Actual local Tesseract is required for this runtime identity gate.'
+    return runtime
+
+
 def test_real_pinned_multilingual_and_osd():
-    if not shutil.which('tesseract'):
-        pytest.skip('Tesseract unavailable')
     cfg = Settings('eng+ukr+slk', orientation=True, model_policy=POLICY)
+    runtime = _required_runtime(cfg.languages, orientation=cfg.orientation)
     a = ri.runtime_identity(cfg)
     assert a == ri.runtime_identity(cfg)
     assert a['ocr']['model_sha256'] == {**{k: v[1] for k, v in MODELS.items()}, 'osd': OSD_MODEL[1]}
     assert a['ocr']['version'].startswith('tesseract ')
-    assert str(Path(shutil.which('tesseract')).parent) not in json.dumps(a)
+    assert str(Path(runtime.executable).parent) not in json.dumps(a)
     assert len(a['ocr']['executable_sha256']) == 64
     assert a != ri.runtime_identity(replace(cfg, orientation=False))
 
 
 def test_real_default_model_change_and_pinned_rejection(tmp_path, monkeypatch):
-    exe = shutil.which('tesseract')
-    if not exe:
-        pytest.skip('Tesseract unavailable')
-    report = subprocess.check_output([exe, '--list-langs'], text=True)
+    runtime = _required_runtime()
+    report = ri.run_ocr(runtime, [runtime.executable, '--list-langs'],
+                        remaining=lambda: 10).stdout.decode('utf-8')
     origin = Path(re.search(r'^List of available languages in "([^"\r\n]+)"', report, re.M)[1])
     dest = tmp_path / 'models'
     dest.mkdir()
     shutil.copyfile(origin / 'eng.traineddata', dest / 'eng.traineddata')
     monkeypatch.setenv('TESSDATA_PREFIX', str(dest))
+    # The real verified engine executes against a separate mutable test model.
+    # Keep the sealed runtime and its original model inventory unchanged.
+    selected = ri.ocr_runtime.OcrRuntime(runtime.executable, tessdata=dest, root=runtime.root)
+    monkeypatch.setattr(ri.ocr_runtime, 'discover_ocr_runtime', lambda *args, **kwargs: selected)
     a = ri.runtime_identity(Settings())
     assert a['ocr']['model_sha256']['eng'] == MODELS['eng'][1]
     with (dest / 'eng.traineddata').open('ab') as f:
@@ -70,7 +80,7 @@ def test_real_default_model_change_and_pinned_rejection(tmp_path, monkeypatch):
 
 
 def test_missing_engine_and_source_change(source_fixture):
-    with patch.object(ri.shutil, 'which', return_value=None):
+    with patch.object(ri.ocr_runtime, 'discover_ocr_runtime', return_value=None):
         a = ri.runtime_identity(Settings())
         assert a['ocr'] == {'state': 'missing'}
         (source_fixture / 'page_ocr.py').write_bytes(b'new adapter behavior')
@@ -87,7 +97,7 @@ def test_resource_limit(tmp_path):
 
 @pytest.mark.parametrize('module', ['ocr_languages.py', 'ocr_process.py'])
 def test_model_identifier_rules_are_bound_to_resume_identity(source_fixture, module):
-    with patch.object(ri.shutil, 'which', return_value=None):
+    with patch.object(ri.ocr_runtime, 'discover_ocr_runtime', return_value=None):
         before = ri.runtime_identity(Settings())
         (source_fixture / module).write_bytes(b'changed OCR execution or model identifier rules')
         assert before != ri.runtime_identity(Settings())
@@ -105,7 +115,8 @@ def test_unsafe_model_identifiers_fail_before_engine_discovery(languages):
 def test_engine_version_change_detected():
     # Only version response is injected; no unknown executable is run.
     with patch.object(ri, '_hash', return_value='a'*64), \
-         patch.object(ri.shutil, 'which', return_value='trusted-fixture'):
+         patch.object(ri.ocr_runtime, 'discover_ocr_runtime',
+                      return_value=ri.ocr_runtime.OcrRuntime('trusted-fixture')):
         def result(version):
             with patch.object(ri.subprocess, 'run', side_effect=[
                 subprocess.CompletedProcess([], 0, stdout=version.encode()),

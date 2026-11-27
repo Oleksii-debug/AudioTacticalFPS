@@ -6,10 +6,17 @@ temporary file is written; they are not a sandbox against a process that can
 maliciously replace directory entries at the instant of publication.
 """
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path, PureWindowsPath
 import os
 import stat
 from tempfile import NamedTemporaryFile
+from time import monotonic
+
+
+MAX_EXISTING_EXPORT_BYTES = 64 * 1024 * 1024
+DESTINATION_CHECK_SECONDS = 1.0
+HASH_CHUNK_BYTES = 128 * 1024
 
 
 def _filename(name):
@@ -40,7 +47,7 @@ def _file_state(info):
             info.st_mtime_ns, info.st_ctime_ns)
 
 
-def _destination(path, private_root):
+def _inspect_destination(path, private_root):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -80,6 +87,70 @@ def _destination(path, private_root):
     return target, _identity(parent.stat()), state
 
 
+def _destination(path, private_root):
+    return _inspect_destination(path, private_root)
+
+
+def _recheck_scope(path, private_root, snapshot):
+    if _inspect_destination(path, private_root) != snapshot:
+        raise ValueError('The export destination changed. Choose the destination again.')
+
+
+def _content_digest(target, expected, *, cancelled=lambda: False, check_scope=lambda: None):
+    """Inspect one existing regular file without trusting cached timestamps.
+
+    Each inspection reads at most the captured size plus one byte, in bounded
+    chunks with a one-second deadline. A slow, oversized or changing target
+    fails closed; choosing a new filename does not require reading old data.
+    """
+    if expected is None:
+        return None
+    deadline = monotonic() + DESTINATION_CHECK_SECONDS
+
+    def check():
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+        if monotonic() >= deadline:
+            raise TimeoutError('The existing export file could not be verified in time. '
+                               'Choose another destination; the file was not changed.')
+
+    check()
+    size = expected[3]
+    if size > MAX_EXISTING_EXPORT_BYTES:
+        raise ValueError('The existing export file is too large to verify for replacement. '
+                         'Choose another destination; the file was not changed.')
+    flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+             | getattr(os, 'O_NONBLOCK', 0))
+    descriptor = os.open(target, flags)
+    try:
+        opened = os.fstat(descriptor)
+        if (_linked(opened) or not stat.S_ISREG(opened.st_mode)
+                or _file_state(opened) != expected):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        # A parent may have been redirected inside os.open while this exact
+        # file kept its identity. Reauthorize the complete route before reads.
+        check_scope()
+        digest, total = sha256(), 0
+        while True:
+            check()
+            chunk = os.read(descriptor, min(HASH_CHUNK_BYTES, size + 1 - total))
+            check()
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > size:
+                raise ValueError('The export destination changed. Choose the destination again.')
+            digest.update(chunk)
+        if (total != size or _file_state(os.fstat(descriptor)) != expected
+                or _file_state(target.lstat()) != expected):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        check_scope()
+        check()
+        return digest.hexdigest()
+    finally:
+        os.close(descriptor)
+
+
 @dataclass(frozen=True)
 class ExportDestination:
     """One destination state captured before caller-side overwrite approval."""
@@ -88,6 +159,7 @@ class ExportDestination:
     target: Path
     parent_identity: tuple
     state: tuple | None
+    content_sha256: str | None
 
     @property
     def require_absent(self):
@@ -104,16 +176,23 @@ def _export_paths(path, private_root):
     return requested, Path(private_root).absolute()
 
 
-def capture_export_destination(path, *, private_root):
+def capture_export_destination(path, *, private_root, cancelled=lambda: False):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
     binds approval to the selected path, parent directory and existing file
-    state across queued work and rendering; it grants no permission itself.
+    state and exact contents across queued work and rendering; it grants no
+    permission itself. Existing-file inspection has a byte and time budget.
     """
+    if not callable(cancelled):
+        raise ValueError('An export cancellation callback is required.')
+    if cancelled():
+        raise TimeoutError('Export cancelled; the destination was not changed.')
     requested, private = _export_paths(path, private_root)
     target, parent_identity, state = _destination(requested, private)
-    return ExportDestination(requested, private, target, parent_identity, state)
+    digest = _content_digest(target, state, cancelled=cancelled,
+        check_scope=lambda: _recheck_scope(requested, private, (target, parent_identity, state)))
+    return ExportDestination(requested, private, target, parent_identity, state, digest)
 
 
 def write_export(path, content, *, private_root, cancelled=lambda: False,
@@ -175,6 +254,12 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         require_absent = require_absent or approval.require_absent
     if require_absent and previous is not None:
         raise FileExistsError('The export destination already exists; replacement was not authorized.')
+    def check_scope():
+        _recheck_scope(requested, private, (target, parent_identity, previous))
+
+    previous_digest = _content_digest(target, previous, cancelled=cancelled, check_scope=check_scope)
+    if approval is not None and approval.content_sha256 != previous_digest:
+        raise ValueError('The export destination changed. Choose the destination again.')
     temporary = None
     try:
         check_cancelled()
@@ -189,6 +274,9 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         checked_target, checked_parent, current = _destination(requested, private)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        if _content_digest(checked_target, current, cancelled=cancelled,
+                           check_scope=check_scope) != previous_digest:
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
         if require_absent:

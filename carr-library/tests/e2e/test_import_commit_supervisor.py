@@ -6,6 +6,7 @@ supervisor still run. No fake child receipt stands in for a publication.
 """
 from copy import deepcopy
 from time import monotonic
+import sys
 
 import pytest
 
@@ -105,13 +106,35 @@ raise SystemExit(worker.main())
 '''.replace('MARKER', repr(str(marker))).replace('PHASE', repr(phase)).replace('CHANGE', repr(change))
 
     def launch(command, *args, **kwargs):
-        command = list(command)
+        # subprocess is shared by the real supervisor and Windows taskkill.
+        # Only the trusted ingest bootstrap receives this test-owned barrier.
+        if not isinstance(command, (list, tuple)) or '-c' not in command:
+            return original(command, *args, **kwargs)
         index = command.index('-c') + 1
-        assert "run_module('carr_library.ingest.worker'" in command[index]
+        if (index >= len(command) or not isinstance(command[index], str)
+                or "run_module('carr_library.ingest.worker'" not in command[index]):
+            return original(command, *args, **kwargs)
+        command = list(command)
         command[index] = script
         return original(command, *args, **kwargs)
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+
+
+@pytest.mark.parametrize('kind', ['script', 'inline'])
+def test_child_barrier_preserves_unrelated_real_subprocesses(tmp_path, monkeypatch, kind):
+    marker = tmp_path / 'must-not-reach-ingest-boundary'
+    _child_barrier(monkeypatch, marker, 'after_commit')
+    code = "print('unrelated child')"
+    if kind == 'script':
+        path = tmp_path / 'unrelated.py'
+        path.write_text(code, encoding='utf-8')
+        command = [sys.executable, '-I', '-B', str(path)]
+    else:
+        command = [sys.executable, '-I', '-B', '-c', code]
+    result = worker.subprocess.run(command, capture_output=True, text=True, timeout=10, check=True)
+    assert result.stdout.strip() == 'unrelated child'
+    assert not marker.exists()
 
 
 @pytest.mark.parametrize('kind', ['pdf', 'docx'])
