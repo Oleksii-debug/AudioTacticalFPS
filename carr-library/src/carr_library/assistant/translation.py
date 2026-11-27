@@ -150,7 +150,7 @@ class TranslationService:
             raise ValueError('The translation source or approval differs from its saved job identity.')
         return value
 
-    def _source_context(self, job, *, index=None, remote=False,
+    def _source_context(self, job, *, index=None, remote=False, verify_capture=False,
                         cancelled=lambda: False, guard=lambda: None):
         """Reopen the original revision; never retarget a changed source.
 
@@ -196,6 +196,11 @@ class TranslationService:
             page = desk.page(row['ordinal'])
             if page.raw_text != job['source_text'][row['start']:row['end']]:
                 raise ValueError('The selected translation text changed.')
+            # A portable reading anchor is only a claimed locator. For fresh
+            # admission, attest the capture flag against the actual reader.
+            # Historical jobs keep their capture snapshot, not a live claim.
+            if verify_capture and page.verified is not row['text_verified_at_capture']:
+                raise ValueError('The source verification snapshot changed or is invalid. Reopen the source range.')
         self._source_current(desk, cancelled=cancelled, guard=guard)
         return desk
 
@@ -321,7 +326,7 @@ class TranslationService:
         elif topic is not None:
             raise ValueError('A source topic requires a bound library document.')
         self._admission_budget(job)
-        desk = self._source_context(job, cancelled=cancelled, guard=guard)
+        desk = self._source_context(job, verify_capture=True, cancelled=cancelled, guard=guard)
         with exclusive_writer(self.library.root) if desk is not None else nullcontext():
             self._source_current(desk, cancelled=cancelled, guard=guard)
             if self.jobs.path(identity).exists():
