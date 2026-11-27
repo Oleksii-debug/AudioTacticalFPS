@@ -184,12 +184,80 @@ manifests are generated internally from inspected PCM files with correct path
 escaping. Text/model instructions cannot select arbitrary files or network
 protocols through this API.
 
+Native audio launches receive a copied host environment with `FFREPORT`
+removed, including differently cased keys. This prevents an inherited FFmpeg
+diagnostic-file setting from writing to an unrelated path during inspection,
+rendering or POSIX playback. Explicit application diagnostics remain bounded
+by the process runner; locale, executable paths and audio-device settings are
+preserved. The caller's environment is never changed.
+
 WAV uses `-rf64 auto` to handle the RIFF size boundary when required. FLAC and
 separate PCM scenes are alternatives. A per-call input bound is handled by
 rendering scenes/stems and joining them, not by loading every track for a whole
 book at once. Whole multi-hour waveforms are not accumulated in Python memory.
 Neural models retain real per-chunk generation limits; scheduling multiple
 chunks does not establish musical coherence or full-length original generation.
+
+## Portable Studio inputs in complete library backups
+
+The existing version-4/5 library backup includes every approved local `Cue.path` referenced
+by typed Studio projects, saved revisions, production jobs and completed job
+project snapshots. Required audio is included even when optional generated
+cache is excluded. Inputs are copied as ordinary private files under
+`state/studio/inputs/<SHA256>.audio`; identical bytes are stored once. Their
+size and hash are part of the existing state manifest. A typed
+`studio/backup-inputs.json` receipt binds each original input reference to its
+retained bytes and each project snapshot to its source hash and fingerprint.
+Missing, linked, empty, changing or oversized required inputs fail the backup
+before its success manifest is published. The producer never edits the user's
+original audio or saved project bytes.
+
+Opening a project or submitting a saved cue does not approve its paths. New
+external references enter the existing local input-review list and cannot be
+read by render or backup until reviewed. A caller's explicitly selected input
+directories can admit a new cue before rendering; the local review record binds
+that approval to its current size and SHA-256. Reopening or resubmitting does
+not silently clear a pending review or refresh an old approval. Managed restored
+inputs are accepted only through their already verified state-manifest identity.
+
+Restore validates the complete state and receipt before publishing a fresh
+library destination. It then rebinds only typed cue paths to verified retained
+files inside that destination. Saved revisions keep their revision numbers and
+receive filenames matching the rebound project fingerprints. The original
+backup remains unchanged. The editable Studio draft is copied exactly: its
+current schema stores text, title, selected voice IDs and project ID, with no
+external audio-path fields. Unrelated opaque application state is not rewritten.
+
+External production output folders are explicitly excluded. Restored jobs
+retain their prior status, destination and artifact identities as recovery
+history, clear active output references and wait for a new output folder.
+The Studio's Render / resume action asks for that folder, and the service
+creates a fresh uniquely named output directory. Calling the renderer before
+this selection fails without touching the old output location. Required input
+hashes are checked again when they are used. Installed speech engines, models
+and licensed runtime assets still need their normal local configuration;
+retaining cue bytes does not imply a complete machine migration.
+
+Historical version-4 backups without the input receipt remain readable. Their
+project paths stay unchanged, because those backups cannot supply missing
+external bytes. Typed jobs still require a new output folder, and any original
+inputs must remain available and be explicitly reviewed again. Until that
+review, neither rendering nor a subsequent backup may consume the inherited
+paths. The native Studio dialog shows the actual files before allowing access;
+verification then runs in its cancellable background worker. Approval is bound
+to the current file hashes, and changed files require renewed review. A restore
+never inherits approvals from the source machine. Restored
+libraries can be backed up and restored again; receipts are regenerated for
+the new paths, while retained audio is deduplicated.
+
+`tests/storage/test_studio_input_backup.py` includes an actual FFmpeg lifecycle:
+render, back up, delete every original input and the original library/output
+trees, restore to a Unicode path, select a new output folder and render again.
+The regenerated WAV is byte-identical to the original, with 30,000 frames at
+24,000 Hz, stereo, and the selected cue confined to the right channel. The suite
+also exercises retained-file and reference tampering, cancellation, unavailable
+inputs, state budgets, historical backups and a second backup/restore. These
+Linux process tests do not substitute for Windows device or NVDA acceptance.
 
 ## Measured evidence from this implementation
 

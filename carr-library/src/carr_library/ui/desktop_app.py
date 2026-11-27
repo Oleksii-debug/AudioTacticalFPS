@@ -11,6 +11,7 @@ import threading
 import wx
 
 from ..application import LibraryApp
+from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
 from ..research.export_file import write_export, write_binary_export
@@ -562,7 +563,9 @@ class DesktopFrame(WorkspaceFrame):
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
-            ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
+            ('&Help', [('Keyboard guide\tF1', self.help),
+                ('Document formats', lambda event: show_text(self, 'Document formats', supported_formats_text())),
+                ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
             for title, handler in actions:
@@ -945,7 +948,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
             return
         dialog = wx.FileDialog(self, 'Import locally owned books',
-            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
+            wildcard=file_dialog_wildcard(),
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -974,6 +977,11 @@ class DesktopFrame(WorkspaceFrame):
                  if any(r['state'] == 'quarantined' for r in rows) else ''))
             if self.book is not None:
                 self.book.GetPage(1).refresh()
+            if any(row.get('warnings') for row in rows):
+                from .import_center import row_details
+                report = '\n\n'.join(row_details(dict(file=row['file'], state=row['state'],
+                    message=row.get('message', ''), result=row)) for row in rows)
+                show_text(self, 'Import details', report)
         library = self.library
         self.run_job('Importing books', lambda progress: library.import_files(workspace, paths,
             cancelled=self.cancel_event.is_set, config=config, progress=progress), done, with_progress=True)
@@ -1276,6 +1284,7 @@ class DesktopFrame(WorkspaceFrame):
 
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
+            'Help, Document formats explains supported text, ebook, email, presentation and spreadsheet formats and their limits.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'

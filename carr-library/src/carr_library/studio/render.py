@@ -79,9 +79,12 @@ class ProductionService:
         self.jobs_root.mkdir(exist_ok=True)
         self.cache = self.root / 'cache'
         self.cache.mkdir(exist_ok=True)
+        self.inputs = self.root / 'inputs'
+        self.inputs.mkdir(exist_ok=True)
         self._voices = voices
         self.runtime_factory = runtime_factory
-        self.input_roots = tuple(local_path(x, exists=True) for x in input_roots)
+        self._selected_input_roots = tuple(local_path(x, exists=True) for x in input_roots)
+        self.input_roots = (local_path(self.inputs, exists=True), *self._selected_input_roots)
 
     @property
     def voices(self):
@@ -92,8 +95,14 @@ class ProductionService:
 
     def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):
         project = parse_script(text, title=title, voice_ids=voice_ids, mode=mode)
+        self.review_project_inputs(project)
         self.projects.save(project)
         return project
+
+    def review_project_inputs(self, project, *, cancelled=lambda: False):
+        from .backup_inputs import review_project_inputs
+        return review_project_inputs(self.root, project, input_roots=self._selected_input_roots,
+                                     cancelled=cancelled)
 
     def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):
         if format not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
@@ -121,6 +130,7 @@ class ProductionService:
                     or previous['format'] != format or previous['stems'] != stems):
                 raise ValueError('This operation ID is already bound to a different production plan.')
             return job_id
+        self.review_project_inputs(project)
         self.projects.save(project)
         state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
                  'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
@@ -143,6 +153,54 @@ class ProductionService:
     def jobs(self):
         return tuple(self.get(path.parent.name) for path in sorted(self.jobs_root.glob('*/job.json')))
 
+    def relocate_restored_job(self, job_id, destination):
+        """Accept a fresh output parent explicitly selected after backup restore."""
+        directory = self.jobs_root / _id(job_id)
+        with state_lock(directory, 'render'):
+            state = self.get(job_id)
+            if state.get('recovery', {}).get('requires_output_directory') is not True:
+                raise ValueError('Only a restored job awaiting an output directory can be relocated.')
+            parent = local_path(destination, exists=True)
+            if not parent.is_dir() or parent.is_relative_to(self.root):
+                raise ValueError('Choose an existing output directory outside private production state.')
+            project = Project.from_dict(state['project'])
+            output = parent / f'{_output_name(project.title)}-{job_id[:12]}-restored-{uuid4().hex[:8]}'
+            if os.path.lexists(output):
+                raise FileExistsError('The new restored-job output folder is already occupied.')
+            state['destination'] = str(output)
+            state['recovery']['requires_output_directory'] = False
+            state['status'], state['progress'] = 'pending', 'New output directory approved; ready to resume.'
+            self._save(state)
+            return state
+
+    def restored_inputs_to_review(self, job_id):
+        from .backup_inputs import input_review, _input_paths
+        project = Project.from_dict(self.get(job_id)['project'])
+        self.review_project_inputs(project)
+        return tuple(sorted(_input_paths(project) & set(input_review(self.root)['pending'])))
+
+    def approve_restored_inputs(self, selected_paths, *, cancelled=lambda: False):
+        from .backup_inputs import approve_input_review
+        return approve_input_review(self.root, selected_paths, cancelled=cancelled)
+
+    def _cue_source(self, cue):
+        from .backup_inputs import input_review
+        review = input_review(self.root)
+        if cue.path in review['pending']:
+            raise ValueError('Review and explicitly approve this unselected input before rendering.')
+        source = local_path(cue.path, exists=True)
+        if source.is_relative_to(self.inputs):
+            match = re.fullmatch(r'([0-9a-f]{64})\.audio', source.name)
+            if source.parent != self.inputs or match is None or digest_file(source) != match[1]:
+                raise ValueError('A restored Studio input differs from its verified content identity.')
+        elif cue.path in review['approved']:
+            if review['approved'][cue.path] != {
+                    'size_bytes': source.stat().st_size, 'sha256': digest_file(source)}:
+                raise ValueError('A reviewed legacy Studio input changed; select it again before rendering.')
+        elif not any(source.is_relative_to(root) for root in self.input_roots):
+            raise ValueError('A cue is outside the explicitly selected input directories.')
+        return source
+
     def _save(self, state):
         state['updated'] = time.time()
         atomic_json(self.jobs_root / state['id'] / 'job.json', state, replace=True)
@@ -157,12 +215,12 @@ class ProductionService:
         atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'cancel'},
                     replace=(self.jobs_root / job_id / 'control.json').exists())
 
-    def _runtime(self):
+    def _runtime(self, *, reviewed_roots=()):
         if self.runtime_factory is not None:
-            return self.runtime_factory(self.cache, input_roots=(self.cache, *self.input_roots))
+            return self.runtime_factory(self.cache, input_roots=(self.cache, *self.input_roots, *reviewed_roots))
         from ..runtime_settings import audio_runtime
         return audio_runtime(self.cache, state_root=self.root.parent,
-                             input_roots=(self.cache, *self.input_roots))
+                             input_roots=(self.cache, *self.input_roots, *reviewed_roots))
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
         from ..audio import AudioCancelled, Track, MusicSpec
@@ -170,11 +228,22 @@ class ProductionService:
         job_root = self.jobs_root / _id(job_id)
         with state_lock(job_root, 'render'):
             state = self.get(job_id)
+            if (state.get('status') == 'waiting-input'
+                    or state.get('recovery', {}).get('requires_output_directory') is True):
+                raise ValueError('Choose a new output directory for this restored production job first.')
             if state['status'] == 'complete':
                 self._verify_artifacts(state)
                 return state
             project = Project.from_dict(state['project'])
-            runtime = self._runtime()
+            # Validate every selected cue before engines run. Only the parents
+            # of those exact approved files extend this job's decoder roots.
+            try:
+                sources = [self._cue_source(cue) for scene in project.scenes for cue in scene.cues]
+                runtime = self._runtime(reviewed_roots=tuple({source.parent for source in sources}))
+            except Exception as exc:
+                state['status'], state['error'] = 'failed', str(exc)[:2000]
+                self._save(state)
+                raise
             capabilities = runtime.capabilities()
             # Engine inventory is part of the node identity. A different installed
             # FFmpeg/voice version must not silently reuse incompatible work.
@@ -285,9 +354,7 @@ class ProductionService:
                         clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     required_duration = scene.minimum_duration
                     for cue in scene.cues:
-                        source = local_path(cue.path, exists=True)
-                        if not any(source.is_relative_to(root) for root in self.input_roots):
-                            raise ValueError('A cue is outside the explicitly selected input directories.')
+                        source = self._cue_source(cue)
                         required_duration = max(required_duration, cue.start + runtime.inspect(source).duration)
                     if required_duration > cursor + .5 / project.sample_rate:
                         clip, info = silence(required_duration - cursor)
@@ -320,9 +387,7 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
                     for cue in scene.cues:
-                        source = local_path(cue.path, exists=True)
-                        if not any(source.is_relative_to(root) for root in self.input_roots):
-                            raise ValueError('A cue is outside the explicitly selected input directories.')
+                        source = self._cue_source(cue)
                         tracks.append(Track(source, cue.start, cue.gain_db, cue.pan, cue.role))
                     final_scene, final_info = node('scene mix',
                         {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate},

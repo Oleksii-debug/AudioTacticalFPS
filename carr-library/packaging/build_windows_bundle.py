@@ -361,6 +361,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         for name in ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
                      "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
                      "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+                     "DOCUMENT_FORMATS_V3.md", "DOCUMENT_EXTRACTOR_REUSE.md",
                      "TRANSCRIPTION.md"):
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:

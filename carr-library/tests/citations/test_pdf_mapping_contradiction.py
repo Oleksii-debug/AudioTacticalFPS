@@ -2,6 +2,7 @@
 from contextlib import closing
 from hashlib import sha256
 from io import BytesIO
+import os
 import subprocess
 
 from pypdf import PdfReader, PdfWriter
@@ -9,7 +10,7 @@ from pypdf.generic import DecodedStreamObject, NameObject
 import pypdfium2 as pdfium
 from reportlab.pdfgen.canvas import Canvas
 
-from carr_library.extract.ocr_runtime import discover_ocr_runtime
+from carr_library.extract.ocr_runtime import discover_ocr_runtime, verify_ocr_bundle
 
 
 def fixture(tampered):

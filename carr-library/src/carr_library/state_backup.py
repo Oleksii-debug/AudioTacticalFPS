@@ -97,12 +97,18 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             if count != before.st_size or _stamp(regular(source)) != _stamp(before):
                 raise ValueError('Application state changed during backup; retry after saving.')
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
+    # Retain required typed Studio inputs in the staged backup. Recheck the
+    # original files against their pre-augmentation identities below.
+    source_entries = tuple(entries)
+    from .studio.backup_inputs import snapshot_inputs
+    entries = snapshot_inputs(target, entries, source_root=root, max_bytes=max_bytes,
+                              max_files=MAX_STATE_FILES, cancelled=cancelled)
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
     # A Windows creation timestamp is not a write counter, and last-write
     # timestamps may be coarse or restored. Check copied content again before
     # accepting the complete snapshot, without buffering whole state files.
-    for entry in entries:
+    for entry in source_entries:
         if cancelled():
             raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
@@ -168,7 +174,7 @@ def validate_state(entries):
         raise ValueError('Application state manifest exceeds its byte budget.')
 
 
-def restore_state(source, target, entries):
+def restore_state(source, target, entries, *, destination_root=None):
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
@@ -202,6 +208,8 @@ def restore_state(source, target, entries):
             os.fsync(write.fileno())
         if size != item['size_bytes'] or digest.hexdigest() != item['sha256']:
             raise ValueError('Application state checksum mismatch.')
+    from .studio.backup_inputs import restore_inputs
+    restore_inputs(target, target if destination_root is None else destination_root, entries)
     sync_directory(target)
 
 

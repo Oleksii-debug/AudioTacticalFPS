@@ -38,6 +38,8 @@ MAX_CHECKPOINTS = 100_000
 MAX_PAYLOAD = 16 * 1024**2
 _ID = re.compile(r'[0-9a-f]{32}\Z')
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
+_ORIGINAL_SUFFIXES = '|'.join(re.escape(suffix.removeprefix('.'))
+                            for suffix in sorted(set(SUFFIXES.values())))
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
 _REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result'}
@@ -684,7 +686,8 @@ def snapshot_pending(app, target, *, cancelled=lambda: False):
 def _component_name(name):
     return isinstance(name, str) and bool(re.fullmatch(
         r'imports\.sqlite|import-requests/(?:reviews/)?[0-9a-f]{32}\.json|'
-        r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}\.(?:txt|pdf|docx|epub)', name))
+        r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}\.(?:'
+        + _ORIGINAL_SUFFIXES + ')', name))
 
 
 def validate_pending(metadata):

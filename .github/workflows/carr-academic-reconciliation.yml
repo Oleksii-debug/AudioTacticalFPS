@@ -77,11 +77,15 @@ jobs:
             tests/ui/test_desktop_query_jobs.py \
             tests/e2e/test_advanced_research_search.py \
             tests/e2e/test_research_search_cli.py \
+            tests/extract/test_document_formats_text.py \
+            tests/extract/test_document_formats_xml.py \
+            tests/e2e/test_extended_document_workflows.py \
             tests/storage/test_library_backup_reading_state.py \
             tests/storage/test_v3_state_backup.py \
             tests/storage/test_state_backup_portability.py \
             tests/storage/test_pending_backup.py \
             tests/storage/test_complete_pending_backup.py \
+            tests/storage/test_studio_input_authority.py \
             tests/storage/test_backup_v4_review.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.

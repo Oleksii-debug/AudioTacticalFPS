@@ -35,6 +35,7 @@ from .research.topic_tree import TopicTree
 from .search import literal, thematic
 from .storage.revisions import Storage, Page, _schema_signature, _expected_signature
 from .data_paths import guard_data_directory
+from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, ISOLATED_SUFFIXES
 
 
 @dataclass(frozen=True)
@@ -509,8 +510,9 @@ class LibraryApp:
 
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
-                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
-        """Isolate PDF/DOCX/EPUB parsing; retain the exact TXT path inline."""
+                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0,
+                    expected_manifest=None):
+        """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
             raise ValueError('invalid authors')
@@ -520,13 +522,20 @@ class LibraryApp:
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ('.pdf', '.docx', '.epub'):
-            from .ingest.worker import run_request
+        if path.suffix.casefold() in ISOLATED_SUFFIXES:
+            from .ingest.worker import prepare_request, run_request
             with self.read(workspace):
                 pass
-            return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
-        return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
+            selected_config = config or Config()
+            request_id = None
+            if expected_manifest is not None:
+                planned = prepare_request(self.root, workspace, path, metadata, selected_config,
+                                          expected_manifest=expected_manifest)
+                request_id = planned['request_id']
+            return run_request(self.root, workspace, path, metadata, selected_config,
+                               cancelled=cancelled, timeout=timeout, request_id=request_id)
+        return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config,
+                                 _expected_manifest=expected_manifest)
 
     def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
         """Resume a durable native import from retained bytes and its existing job."""
@@ -633,21 +642,27 @@ class LibraryApp:
                 publisher = _CatalogPublisher(storage, record)
                 publisher.before_publish = lambda revision, settings, pages: record_publication(
                     self.root, _request_id, workspace, record, revision, settings, pages)
-                if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                  'application/epub+zip'):
+                if asset.mime in EXTENDED_MIMES or asset.mime in (
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
                         from .reader.ebook_contents import extraction_settings
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
                         settings = extraction_settings(extracted)
-                    else:
+                    elif asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
                         source_format = 'DOCX'
                         # Preserve the original configuration and revision identities.
                         settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
                                               'provenance': extracted['provenance']})
+                    else:
+                        from .extract.document_formats import extract_document, extraction_settings
+                        extracted = extract_document(asset.data, SUFFIXES[asset.mime], cancelled=cancelled)
+                        source_format = FORMAT_BY_MIME[asset.mime].name
+                        settings = canonical(extraction_settings(extracted, asset.mime))
                     if cancelled():
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
@@ -674,8 +689,10 @@ class LibraryApp:
                     publisher.check()
                     return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
+                            'format': source_format, 'warnings': extracted['warnings'],
                             'message': f'{source_format} imported as unverified logical segments; '
-                                       'printed pages are unknown.'}
+                                       'printed pages are unknown. ' + (
+                                           FORMAT_BY_MIME[asset.mime].limitations if asset.mime in EXTENDED_MIMES else '')}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})

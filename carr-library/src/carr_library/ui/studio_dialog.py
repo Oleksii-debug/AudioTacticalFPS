@@ -339,6 +339,7 @@ def show_studio(frame):
                 raise ValueError('The script exceeds the editable text budget; split it by chapters.')
             if path.suffix.casefold() == '.json':
                 project = Project.from_dict(read_json(path))
+                controller.service.review_project_inputs(project)
                 controller.service.projects.save(project)
                 controller.project = project
                 editor.SetValue(project.original_script)
@@ -441,8 +442,40 @@ def show_studio(frame):
                 return
             finally:
                 chooser.Destroy()
+        approved_inputs = ()
+        try:
+            pending_inputs = service.restored_inputs_to_review(current_job)
+            if pending_inputs:
+                review = wx.MessageDialog(dialog,
+                    'This project references audio inputs that need approval on this machine. Review their local paths:\n\n'
+                    + '\n'.join(pending_inputs)
+                    + '\n\nAllow this project to read these local files and include them in future backups?',
+                    'Review audio inputs', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                try:
+                    if review.ShowModal() != wx.ID_YES:
+                        return
+                    approved_inputs = pending_inputs
+                finally:
+                    review.Destroy()
+            restored = service.get(current_job).get('recovery', {}).get('requires_output_directory') is True
+            if restored:
+                chooser = wx.DirDialog(dialog, 'Choose a new output folder for the restored production job')
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    service.relocate_restored_job(current_job, Path(chooser.GetPath()))
+                finally:
+                    chooser.Destroy()
+        except Exception as exc:
+            report(str(exc), True)
+            return
         identity = current_job
-        run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
+        def render_selected(measured):
+            if approved_inputs:
+                measured('Verifying explicitly approved restored audio inputs')
+                service.approve_restored_inputs(approved_inputs, cancelled=cancel.is_set)
+            return service.run(identity, cancelled=cancel.is_set, progress=measured)
+        run(render_selected,
             lambda result: report('Production complete. ' + result['destination'] +
                 '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True),
             phase='Rendering audio production', with_progress=True)
