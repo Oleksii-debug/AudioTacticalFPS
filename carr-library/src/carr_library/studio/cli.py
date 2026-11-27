@@ -21,7 +21,12 @@ def data_directory(selected):
 
 @installed_entrypoint
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == 'book':
+        from .book_cli import main as book_main
+        return book_main(arguments[1:])
+    parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback',
+        epilog='Reviewed multi-book batches: carr-studio book --help (or python -m carr_library studio book --help).')
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--input-root', action='append', type=Path, default=[], help='Explicit local cue folder; repeat if needed')
     operations = parser.add_subparsers(dest='operation', required=True)
@@ -58,7 +63,7 @@ def main(argv=None):
     render.add_argument('--no-stems', action='store_true')
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
-    args = parser.parse_args(argv)
+    args = parser.parse_args(arguments)
     service = None
     try:
         from ..application import LibraryApp

@@ -132,6 +132,66 @@ def preview(e):
     e.complete()
 
 
+def test_bookmark_choices_use_worker_snapshot_and_refuse_later_rename(handlers, monkeypatch):
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.reader.reading_state import ReadingState
+    from carr_library.studio.book_audio import MODES
+    import carr_library.studio.book_landmarks as landmarks
+    e = handlers
+    state = ReadingState(e.app.root)
+    bookmark = state.add_bookmark(ReadingDesk(e.app, e.workspace, e.imported['edition']).page(1).location,
+                                  'Explicit source beginning')
+    actual, calls = landmarks.available_bookmarks, []
+    def read(*args, **kwargs):
+        calls.append(threading.get_ident())
+        assert calls[-1] != e.ui_thread
+        return actual(*args, **kwargs)
+    monkeypatch.setattr(landmarks, 'available_bookmarks', read)
+    class Picker:
+        def __init__(self, parent, message, title, choices):
+            assert threading.get_ident() == e.ui_thread
+            assert title == 'Reading bookmark boundaries' and bookmark.id in choices[0]
+        def ShowModal(self): return e.wx.ID_OK
+        def GetSelections(self): return [0]
+        def Destroy(self): pass
+    e.wx.MultiChoiceDialog = Picker
+    e.press('Load selected book')
+    e.complete()
+    e.press('Choose reading bookmarks...')
+    assert e.state['queue'] and not calls
+    e.complete()
+    assert len(calls) == 1 and e.find('Selected bookmark boundaries').focused
+    assert e.find('Split mode').GetSelection() == MODES.index('bookmarks')
+    e.press('Discover local voices')
+    e.complete()
+    e.find('Reviewed output folder').ChangeValue(str(e.output))
+    e.press('Preview split and names')
+    e.complete()
+    status = e.find('Book split preview and saved job status').value
+    assert bookmark.id in status and 'Explicit source beginning' in status
+    assert not e.production.jobs()
+    state.rename_bookmark(e.workspace, e.imported['edition'], bookmark.id, 'Changed after displayed review')
+    e.press('Prepare saved items')
+    e.complete()
+    assert not e.production.jobs()
+    assert 'inventory changed' in e.find('Book split preview and saved job status').value
+
+
+def test_empty_bookmark_selection_never_implicitly_uses_all_source_positions(handlers):
+    from carr_library.studio.book_audio import MODES
+    e = handlers
+    e.press('Load selected book')
+    e.complete()
+    e.press('Discover local voices')
+    e.complete()
+    e.find('Split mode').SetSelection(MODES.index('bookmarks'))
+    e.find('Reviewed output folder').ChangeValue(str(e.output))
+    e.press('Preview split and names')
+    e.complete()
+    assert 'exact existing bookmark IDs' in e.find('Book split preview and saved job status').value
+    assert not e.production.jobs() and not e.find('Prepare saved items').enabled
+
+
 def test_preview_and_prepare_validate_source_on_worker_and_never_start_speech(handlers, monkeypatch):
     import carr_library.studio.book_audio as book_audio
     e = handlers

@@ -29,7 +29,7 @@ MAX_PARTS = 256
 SOURCE_PREFIX = 'carr-book-audio:'
 FORMATS = ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma')
 MODES = ('document', 'chapters', 'pages', 'paragraphs', 'sentences',
-         'characters', 'blank-lines', 'regex')
+         'characters', 'blank-lines', 'regex', 'headings', 'bookmarks')
 
 
 def _identity(value):
@@ -122,6 +122,7 @@ class BookPlan:
     parts: tuple[BookPart, ...]
     format: str = 'wav'
     sample_rate: int = 24000
+    landmarks_json: str = ''
 
     def __post_init__(self):
         _identity(self.id)
@@ -159,25 +160,49 @@ class BookPlan:
             cursor = part.end
         if cursor != len(source['text']):
             raise ValueError('The split does not cover the exact selected text.')
+        if type(self.landmarks_json) is not str:
+            raise ValueError('Invalid immutable landmark snapshot.')
+        if self.options.mode in ('headings', 'bookmarks'):
+            from .book_landmarks import entries
+            snapshot = self.landmarks
+            entries(source, snapshot)
+            if (snapshot['kind'] != self.options.mode
+                    or encode(snapshot).decode('utf-8') != self.landmarks_json
+                    or split_parts(source, self.options, landmarks=snapshot) != self.parts):
+                raise ValueError('The reviewed landmark split differs from its captured source intervals.')
+        elif self.landmarks_json:
+            raise ValueError('Landmark metadata applies only to explicit heading or bookmark splits.')
 
     @property
     def source(self):
         return json.loads(self.source_json)
+
+    @property
+    def landmarks(self):
+        if not self.landmarks_json:
+            return None
+        try:
+            return json.loads(self.landmarks_json)
+        except (TypeError, ValueError) as exc:
+            raise ValueError('Invalid captured book landmark metadata.') from exc
 
     @cached_property
     def fingerprint(self):
         return sha256(encode(self.to_dict())).hexdigest()
 
     def to_dict(self):
-        return {'schema': 1, 'id': self.id, 'source': self.source,
+        value = {'schema': 1, 'id': self.id, 'source': self.source,
                 'options': asdict(self.options), 'role': self.role.to_dict(),
                 'parts': [asdict(part) for part in self.parts], 'format': self.format,
                 'sample_rate': self.sample_rate}
+        if self.landmarks_json:
+            value['landmarks'] = self.landmarks
+        return value
 
     @classmethod
     def from_dict(cls, value):
-        if type(value) is not dict or set(value) != {
-                'schema', 'id', 'source', 'options', 'role', 'parts', 'format', 'sample_rate'}:
+        required = {'schema', 'id', 'source', 'options', 'role', 'parts', 'format', 'sample_rate'}
+        if type(value) is not dict or not required <= set(value) <= required | {'landmarks'}:
             raise ValueError('Invalid saved book-audio plan fields.')
         if type(value['schema']) is not int or value['schema'] != 1 or type(value['parts']) is not list:
             raise ValueError('Unsupported book-audio plan.')
@@ -185,7 +210,8 @@ class BookPlan:
             return cls(value['id'], encode(value['source']).decode('utf-8'),
                        SplitOptions(**value['options']), Role.from_dict(value['role']),
                        tuple(BookPart(**part) for part in value['parts']),
-                       value['format'], value['sample_rate'])
+                       value['format'], value['sample_rate'],
+                       encode(value['landmarks']).decode('utf-8') if 'landmarks' in value else '')
         except (TypeError, KeyError) as exc:
             raise ValueError('Invalid saved book-audio plan.') from exc
 
@@ -218,7 +244,7 @@ class BookPlan:
     def provenance(self, index):
         part = self.parts[index - 1]
         source = self.source
-        return {'schema': 'carr-book-audio-source/1', 'plan': self.id,
+        value = {'schema': 'carr-book-audio-source/1', 'plan': self.id,
                 'plan_sha256': self.fingerprint,
                 'source_anchor': source['source_anchor'], 'source_metadata': source['source_metadata'],
                 'source_topic': source['source_topic'], 'warnings': source['warnings'],
@@ -226,15 +252,23 @@ class BookPlan:
                 'part': {'index': index, 'start': part.start, 'end': part.end,
                          'text_sha256': sha256(source['text'][part.start:part.end].encode('utf-8')).hexdigest()},
                 'notice': 'A literal reading derivative; this anchor never authorizes a quotation.'}
+        if self.landmarks_json:
+            from .book_landmarks import entries
+            value['landmarks'] = {'kind': self.options.mode,
+                'review_sha256': sha256(self.landmarks_json.encode('utf-8')).hexdigest(),
+                'boundaries': [entry for entry in entries(source, self.landmarks)
+                               if part.start <= entry['start'] < part.end]}
+        return value
 
 
-def split_parts(source, options, *, chapter_labels=None, cancelled=lambda: False):
+def split_parts(source, options, *, chapter_labels=None, landmarks=None, cancelled=lambda: False):
     if not isinstance(options, SplitOptions):
         raise ValueError('Validated split options are required.')
     value = source['text']
     if not value.strip() or len(value) > MAX_CHARACTERS:
         raise ValueError('Choose a nonempty source within the reading limit.')
     positions = source['source_anchor']['positions']
+    landmark_rows = ()
     if options.mode == 'document':
         boundaries = []
     elif options.mode in ('chapters', 'pages'):
@@ -244,6 +278,12 @@ def split_parts(source, options, *, chapter_labels=None, cancelled=lambda: False
         if options.mode == 'pages' and any(position['kind'] != 'physical_page' for position in positions):
             raise ValueError('This source has logical segments, not physical pages. Choose another split.')
         boundaries = [position['start'] for position in positions[1:]]
+    elif options.mode in ('headings', 'bookmarks'):
+        from .book_landmarks import entries
+        landmark_rows = entries(source, landmarks)
+        if landmarks['kind'] != options.mode:
+            raise ValueError('Choose the exact reviewed landmark type.')
+        boundaries = [row['start'] for row in landmark_rows]
     elif options.mode == 'characters':
         boundaries = list(range(options.characters, len(value), options.characters))
     elif options.mode in ('paragraphs', 'blank-lines', 'sentences'):
@@ -298,6 +338,9 @@ def split_parts(source, options, *, chapter_labels=None, cancelled=lambda: False
                 label = 'Page %s' % covered[0]['index']
                 if len(covered) > 1:
                     label += ' to %s' % covered[-1]['index']
+        elif options.mode in ('headings', 'bookmarks'):
+            labels = list(dict.fromkeys(row['label'] for row in landmark_rows if start <= row['start'] < end))
+            label = '; '.join(labels)[:480] if labels else 'Opening text'
         else:
             label = 'Part %d' % index
         parts.append(BookPart(start, end, label))
@@ -306,6 +349,7 @@ def split_parts(source, options, *, chapter_labels=None, cancelled=lambda: False
 
 def capture_plan(library, workspace, edition, *, options, role, format='wav', sample_rate=24000,
                  topic=None, first=None, last=None, chapter=None, revision=None,
+                 bookmark_ids=None,
                  cancelled=lambda: False, guard=lambda: None):
     _check(cancelled, guard)
     if not isinstance(options, SplitOptions) or not isinstance(role, Role):
@@ -318,9 +362,17 @@ def capture_plan(library, workspace, edition, *, options, role, format='wav', sa
         if contents['revision'] != source['source_anchor']['revision']:
             raise ValueError('The EPUB chapter inventory changed during review.')
         labels = {row['ordinal']: row['title'] for row in contents['chapters']}
-    parts = split_parts(source, options, chapter_labels=labels, cancelled=cancelled)
+    landmarks = None
+    if options.mode in ('headings', 'bookmarks'):
+        from .book_landmarks import capture
+        landmarks = capture(library, source, options.mode, bookmark_ids=bookmark_ids,
+                            cancelled=cancelled, guard=guard)
+    elif bookmark_ids is not None:
+        raise ValueError('Bookmark identities apply only to bookmark splitting.')
+    parts = split_parts(source, options, chapter_labels=labels, landmarks=landmarks, cancelled=cancelled)
     _check(cancelled, guard)
-    plan = BookPlan(uuid4().hex, encode(source).decode('utf-8'), options, role, parts, format, sample_rate)
+    plan = BookPlan(uuid4().hex, encode(source).decode('utf-8'), options, role, parts, format, sample_rate,
+                    encode(landmarks).decode('utf-8') if landmarks is not None else '')
     # Bound and validate every literal Project before presenting an executable plan.
     for index in range(1, len(parts) + 1):
         plan.project(index)
@@ -380,6 +432,23 @@ class BookAudioService:
             raise ValueError('Too many saved book plans; use their exact identities.')
         return tuple(self.load(path.stem) for path in paths)
 
+    def _retain(self, plan):
+        path = self.plans / (plan.id + '.json')
+        if os.path.lexists(path):
+            if self.load(plan.id).fingerprint != plan.fingerprint:
+                raise ValueError('This book identity already belongs to another reviewed plan.')
+        else:
+            atomic_json(path, {'plan': plan.to_dict(), 'fingerprint': plan.fingerprint})
+
+    def save(self, plan, *, cancelled=lambda: False, guard=lambda: None):
+        """Retain an exact source review without preparing or starting jobs."""
+        if not isinstance(plan, BookPlan):
+            raise ValueError('A typed immutable book plan is required.')
+        with state_lock(self.plans, 'book-' + plan.id):
+            self._validate(plan, cancelled, guard)
+            self._retain(plan)
+        return plan
+
     def _validate(self, plan, cancelled, guard):
         def stopped():
             return self._closed.is_set() or bool(cancelled())
@@ -391,6 +460,9 @@ class BookAudioService:
             validate_source(self.library, source['text'], source['source_anchor'],
                             source['source_metadata'], source['source_topic'],
                             cancelled=stopped, guard=guard)
+            if plan.landmarks_json:
+                from .book_landmarks import validate_current
+                validate_current(self.library, source, plan.landmarks, cancelled=stopped, guard=guard)
         except (ValueError, OSError, RuntimeError) as exc:
             # ReadingDesk/native retained-source checks may surface their own
             # bounded-read error when interrupted. Only an actual stop signal
@@ -443,12 +515,7 @@ class BookAudioService:
             reviewed = self.review(plan, destination, cancelled=cancelled, guard=guard)
             if approval != reviewed.fingerprint:
                 raise ValueError('The book split or output names changed. Review them again.')
-            path = self.plans / (plan.id + '.json')
-            if os.path.lexists(path):
-                if self.load(plan.id).fingerprint != plan.fingerprint:
-                    raise ValueError('This book identity already belongs to another reviewed plan.')
-            else:
-                atomic_json(path, {'plan': plan.to_dict(), 'fingerprint': plan.fingerprint})
+            self._retain(plan)
             for index in range(1, len(plan.parts) + 1):
                 self._validate(plan, cancelled, guard)
                 state = self._job(plan, index)
@@ -488,4 +555,8 @@ class BookAudioService:
                     progress=progress, source_guard=source_guard)
                 results.append({'index': index, 'job': result['id'], 'status': result['status'],
                                 'destination': result['destination']})
+                if result['status'] != 'complete':
+                    # A paused, cancelled or failed item never implicitly
+                    # advances to another part. A new explicit Run resumes it.
+                    break
             return tuple(results)
