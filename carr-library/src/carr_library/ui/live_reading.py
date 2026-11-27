@@ -506,6 +506,10 @@ class LiveReadingDialog:
     def pause(self, event=None):
         try:
             if self.player.status().state == 'paused':
+                self.guard()
+                if self.session is None:
+                    raise ValueError('The paused reader no longer owns its prepared utterance.')
+                self.session.check_playback()
                 self.player.resume()
                 self.pause_requested = False
                 self._say('Reading resumed.')
@@ -520,6 +524,8 @@ class LiveReadingDialog:
         try:
             if self.session is None:
                 raise ValueError('Prepare an utterance before seeking.')
+            self.guard()
+            self.session.check_playback()
             self.player.seek(self.session.source_to_audio(float(self.seek_seconds.GetValue())))
             self.where()
         except Exception as exc:

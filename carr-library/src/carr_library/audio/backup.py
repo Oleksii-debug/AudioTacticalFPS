@@ -248,7 +248,7 @@ def input_assets(project_file, project_dir, *, strict=False,
         _safe(path)
         wav_info(path)  # Same bounded PCM16 RIFF/RF64 validation as the renderer.
         files[member] = path
-    from .recording import RecordingService, RecordingOptions
+    from .recording import RecordingService, RecordingOptions, verify_recording_segments
     for payload in projects:
         reference = payload['source_reference']
         if reference is not None and reference.get('kind') == 'microphone-recording':
@@ -257,6 +257,7 @@ def input_assets(project_file, project_dir, *, strict=False,
                 RecordingOptions(**receipt['limits']), cancelled)
             if actual != receipt['audio']:
                 raise ValueError('The retained microphone input differs from its original receipt.')
+            verify_recording_segments(directory / reference['asset'], receipt, cancelled=cancelled)
     files.update({'audio/' + name: path for name, (path, _) in consolidation.items()})
     return files
 

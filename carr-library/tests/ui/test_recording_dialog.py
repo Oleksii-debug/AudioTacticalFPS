@@ -10,7 +10,8 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.audio.capture_types import AudioCancelled, AudioCleanupPending
-from carr_library.audio.recording import RecordingOptions
+from carr_library.audio.recording import RecordingOptions, RecordingState
+from carr_library.audio.playback_devices import PlaybackDevice
 
 
 class Control:
@@ -22,6 +23,7 @@ class Control:
     def SetItems(self, items): self.items = list(items)
     def GetValue(self): return self.value
     def SetValue(self, value): self.value = value
+    def AppendText(self, value): self.value += value
     def GetStringSelection(self): return str(self.value)
     def SetLabel(self, value): self.value = value
     def Pulse(self): pass
@@ -75,13 +77,14 @@ def handlers(values):
     module = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in module.body if isinstance(node, ast.FunctionDef) and node.name == 'show_recording')
     names = {'current', 'operation_cancelled', 'later', 'cancel_content_request', 'controls', 'release_holds', 'release_completed', 'release_when_stopped', 'poll_cleanup', 'display_record', 'show_records', 'run', 'refresh',
-             'start', 'close', 'stop_recording', 'cancel_recording'}
+             'start', 'close', 'stop_recording', 'cancel_recording', 'refresh_outputs',
+             'capture_notice', 'pause_recording', 'resume_recording'}
     definitions = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == names
     result = ', '.join(repr(name) + ': ' + name for name in sorted(names)) + ", 'detach': detach"
     factory = ast.parse('def build(' + ', '.join(values) + '):\n    return {' + result + '}\n')
     factory.body[0].body[:0] = definitions + ast.parse('def detach():\n    nonlocal alive\n    alive = False\n').body
-    namespace = {'RecordingOptions': RecordingOptions, 'AudioCancelled': AudioCancelled, 'AudioCleanupPending': AudioCleanupPending, 'time': time, 'threading': threading}
+    namespace = {'RecordingOptions': RecordingOptions, 'RecordingState': RecordingState, 'AudioCancelled': AudioCancelled, 'AudioCleanupPending': AudioCleanupPending, 'time': time, 'threading': threading}
     exec(compile(ast.fix_missing_locations(factory), str(source), 'exec'), namespace)
     return SimpleNamespace(**namespace['build'](**values))
 
@@ -98,12 +101,16 @@ def view():
         if kwargs['cancelled'](): raise AudioCancelled('User cancelled before capture')
         kwargs['progress'](1.0)
         return result
-    service = SimpleNamespace(devices=Mock(return_value=(device,)), capture=capture)
-    buttons = {name: Control() for name in ('runtime', 'refresh', 'start', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
+    output = PlaybackDevice(1, 'Explicit headphones', 'test-output-interface', 1, 2, 3, 2)
+    service = SimpleNamespace(devices=Mock(return_value=(device,)), capture=capture,
+                              monitoring_outputs=Mock(return_value=(output,)))
+    buttons = {name: Control() for name in ('runtime', 'refresh', 'refresh_outputs', 'start', 'pause', 'resume', 'stop', 'cancel', 'preview', 'use', 'stop_preview', 'close')}
     library = SimpleNamespace(root=Path('/synthetic-library'))
     frame = SimpleNamespace(library=library, _closing=False, report=Mock())
     values = dict(library=library, timers=set(), content_request=None, gauge=Control(), progress_label=Control(), busy=False, alive=True, closing=False, generation=0, active_future=None, devices=(), records=(), holds=[],
         cleanup_owner=None, cleanup_future=None, cleanup_retry=None, hold_guard=threading.RLock(), frame=frame,
+        outputs=(), recording_state='idle', monitor_enabled=Control(False), monitor_output=Control(selection=-1),
+        paused=threading.Event(),
         selected_result=None, controllers=(progress, parent), progress=progress, player=Mock(),
         executor=executor, service=service, cancelled=threading.Event(), stopped=threading.Event(),
         microphone=Control(selection=-1), title=Control('My recording'), minutes=Control(2),
@@ -345,3 +352,93 @@ def test_detached_quiet_wait_releases_new_hold_without_reusing_old_completed_fut
     view.handlers.release_when_stopped()
     assert view.progress.holds[0].closed and view.parent.holds[0].closed
     assert view.captures == []
+
+
+def test_monitoring_requires_checkbox_and_explicit_fresh_output_without_automatic_selection(view):
+    discovered(view)
+    view.handlers.refresh_outputs()
+    assert view.service.monitoring_outputs.call_count == 0
+    view.executor.finish()
+    assert view.values['monitor_output'].items == ['Explicit headphones (1)']
+    assert view.values['monitor_output'].selection == -1
+    assert view.values['monitor_enabled'].value is False
+    assert not view.values['monitor_output'].enabled
+    view.values['monitor_enabled'].SetValue(True)
+    view.handlers.controls()
+    assert view.values['monitor_output'].enabled and not view.values['buttons']['start'].enabled
+    view.handlers.start()
+    assert view.captures == [] and view.progress.holds == []
+    view.values['monitor_output'].SetSelection(0)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    assert not view.values['monitor_enabled'].enabled and not view.values['monitor_output'].enabled
+    assert not view.values['buttons']['refresh_outputs'].enabled
+    view.executor.finish()
+    assert view.captures[0][1]['monitor_output'].interface == 'test-output-interface'
+
+
+def test_default_capture_passes_pause_controls_but_no_output_authority(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    view.executor.finish()
+    options = view.captures[0][1]
+    assert options['monitor_output'] is None
+    assert callable(options['pause_requested']) and callable(options['state_changed'])
+    assert not options['pause_requested']()
+
+
+def test_pause_request_is_not_acknowledged_until_actual_worker_notice(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    assert view.values['buttons']['pause'].enabled
+    view.handlers.pause_recording()
+    assert view.values['paused'].is_set()
+    assert not view.values['buttons']['resume'].enabled
+    assert 'Pause requested' in view.values['status'].value
+    # Refresh incremented generation once and Start incremented it once.
+    view.handlers.capture_notice(RecordingState('paused', 2400, 24000, 1), 2)
+    assert view.values['buttons']['resume'].enabled
+    assert 'are closed' in view.values['status'].value
+    assert not view.progress.holds[0].closed
+    view.handlers.resume_recording()
+    assert not view.values['paused'].is_set()
+    assert view.values['buttons']['pause'].enabled
+    assert 'same runtime' in view.values['status'].value
+    view.executor.finish()
+
+
+def test_stop_while_paused_disables_resume_and_keeps_hold_until_worker_completion(view):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    view.handlers.pause_recording()
+    view.handlers.capture_notice(RecordingState('paused', 2400, 24000, 1), 2)
+    view.handlers.stop_recording()
+    view.handlers.resume_recording()
+    assert view.values['stopped'].is_set() and not view.values['buttons']['resume'].enabled
+    assert not view.progress.holds[0].closed
+    view.executor.finish()
+    assert view.progress.holds[0].closed
+
+
+@pytest.mark.parametrize('invalid', ['generation', 'library', 'detached'])
+def test_stale_recording_phase_does_not_touch_native_controls_or_clear_retained_holds(view, invalid):
+    discovered(view)
+    view.progress.ready = view.parent.ready = True
+    view.handlers.start()
+    expected = 1 if invalid == 'generation' else 2
+    if invalid == 'library':
+        view.values['frame'].library = object()
+    elif invalid == 'detached':
+        view.handlers.detach()
+    old_status = view.values['status'].value
+    view.handlers.capture_notice(RecordingState('paused', 2400, 24000, 1), expected)
+    assert view.values['status'].value == old_status
+    assert not view.values['buttons']['resume'].enabled
+    assert not view.progress.holds[0].closed
+    view.values['cancelled'].set()
+    view.handlers.release_when_stopped()
+    view.executor.finish()
+    assert view.progress.holds[0].closed

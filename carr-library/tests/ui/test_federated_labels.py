@@ -88,7 +88,7 @@ def native_dialog(monkeypatch, rows, active):
                                         'CheckListBox', 'TextCtrl', 'Choice', 'Button', 'ListBox')})
     monkeypatch.setitem(sys.modules, 'wx', wx)
     # The current controller exposes a page cursor even before its first search.
-    controller = N(selection_changed=Mock(), search=Mock(), next_cursor=None)
+    controller = N(selection_changed=Mock(), search_page=Mock(), next_cursor=None)
     monkeypatch.setattr(module, 'SearchCenter', lambda frame, view: controller)
     view = NativeSearchCenter(N(active=(active, None)), rows)
     return view, controller
@@ -106,7 +106,7 @@ def test_native_checklist_distinct_labels_preserve_checked_library_ids(monkeypat
     view.libraries_control.Check(0)
     view.query.GetValue.return_value = 'railway'
     view._search()
-    options, = controller.search.call_args.args
+    options, = controller.search_page.call_args.args
     assert options.workspaces == tuple(row.id for i, row in enumerate(rows)
                                        if i in {0, len(rows) - 1})
     assert options.query == 'railway'

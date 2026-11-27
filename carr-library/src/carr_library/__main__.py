@@ -77,6 +77,9 @@ def main(argv=None):
     if arguments and arguments[0] == 'operations':
         from .operations_cli import main as operations_main
         return operations_main(arguments[1:])
+    if arguments and arguments[0] == 'transcription':
+        from .transcription_cli import main as transcription_main
+        return transcription_main(arguments[1:])
     if arguments and arguments[0] == 'assistant':
         from .assistant.cli import main as assistant_main
         return assistant_main(arguments[1:])

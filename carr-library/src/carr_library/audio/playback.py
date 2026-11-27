@@ -266,9 +266,11 @@ class _WinMMBackend:
             self.reset()
             _check(self.dll, self.dll.waveOutClose(self.handle), "Close audio output")
             self.handle = HANDLE()
+            if self in _UNRELEASED_DEVICES:
+                _UNRELEASED_DEVICES.remove(self)  # This exact handle and all buffers are now released.
         except BaseException:
             # Never free memory still referenced by a failed native driver.
-            # One retained device disables new native opens until app restart.
+            # One retained device disables new native opens until its exact owner closes.
             if self not in _UNRELEASED_DEVICES:
                 _UNRELEASED_DEVICES.append(self)
             raise

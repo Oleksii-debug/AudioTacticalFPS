@@ -180,7 +180,8 @@ def _parse_rules(value):
 
 def open_narration_editor(parent, store, project, *, expected_digest=None, draft_digest=None,
                           guard=lambda: None, dialogs=None, on_ready=None, studio_factory=None,
-                          spelling_factory=None, appearance_factory=None, pacing_factory=None):
+                          spelling_factory=None, appearance_factory=None, pacing_factory=None,
+                          speech_factory=None):
     """Open one reading-copy editor; source provenance is always readable.
 
     The caller guards the captured workspace/source, not the current global
@@ -540,6 +541,58 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         finally:
             picker.Destroy()
 
+    def prepare_reading_speech(event=None):
+        if state['closed'] or preview.busy:
+            return
+        timer.Stop()
+        try:
+            capture()
+            controller.guard()
+            from .live_reading import native_offset, selected_source_offsets, _normalized
+            from .speech_preparation import (apply_speech, capture_speech, reading_frame,
+                show_speech_preparation, undo_speech)
+            frame = reading_frame(dialog, store.root)
+
+            def current():
+                if state['closed']:
+                    raise InterruptedError('The reading editor is closed.')
+                controller.guard()
+                if state['text_dirty'] or _normalized(editor.GetValue()) != _normalized(controller.pending_text):
+                    raise ValueError('The visible reading copy changed. Preview speech preparation again.')
+                return capture_speech(controller,
+                    selected_source_offsets(editor, controller.pending_text))
+
+            def keep_draft():
+                try:
+                    return controller.autosave()
+                except Exception as exc:
+                    return 'The change remains in this open reading copy; recovery saving failed: ' + str(exc)
+
+            def apply_reviewed(proposal):
+                if not apply_speech(controller, proposal, current()):
+                    raise ValueError('The proposed reading text is unchanged.')
+                refresh()
+                start = proposal.bounds[0]
+                editor.SetSelection(native_offset(editor, controller.pending_text, start),
+                    native_offset(editor, controller.pending_text, start + len(proposal.result.text)))
+                accepted = current()
+                return accepted, keep_draft()
+
+            def undo_reviewed(applied):
+                undo_speech(controller, applied, current())
+                refresh()
+                editor.SetInsertionPoint(0)
+                return keep_draft()
+
+            (speech_factory or show_speech_preparation)(dialog, frame=frame,
+                library_root=store.root, capture=current, apply=apply_reviewed,
+                undo=undo_reviewed, guard=controller.guard)
+        except Exception as exc:
+            say(str(exc), focus=False)
+        finally:
+            if not state['closed']:
+                timer.StartOnce(1200)
+
     def pace_reading_copy(event=None):
         if state['closed'] or preview.busy:
             return
@@ -705,7 +758,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('Save all open drafts', save_all_open), ('Import dictionary...', import_dictionary),
         ('Export dictionary...', export_dictionary), ('Read current copy aloud...', read_aloud),
         ('Review spelling...', review_spelling_copy), ('Reader appearance...', review_appearance),
-        ('Paced reading...', pace_reading_copy), ('Cancel preview', cancel_preview), ('C&lose', close),
+        ('Paced reading...', pace_reading_copy), ('Prepare speech text...', prepare_reading_speech),
+        ('Cancel preview', cancel_preview), ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:
@@ -752,6 +806,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                             import_dictionary=native_buttons[13], export_dictionary=native_buttons[14],
                             live_reading=native_buttons[15], spelling=native_buttons[16],
                             appearance=native_buttons[17], paced_reading=native_buttons[18],
+                            speech_preparation=native_buttons[19],
                             close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()

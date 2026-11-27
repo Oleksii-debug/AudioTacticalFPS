@@ -14,7 +14,8 @@ from filelock import FileLock, Timeout
 
 from ..operations._state import local_path, regular
 from .jobs import read_json
-from .recording import RecordingOptions, RecordingService, validate_recording_receipt
+from .recording import (RecordingOptions, RecordingService, validate_recording_receipt,
+                        verify_recording_segments, is_recording_stage_name, MAX_RECORDING_SEGMENTS)
 
 DIRECTORY = 'state/studio/recordings'
 MAX_RECORDINGS = 10000
@@ -44,7 +45,7 @@ def _parts(relative):
 def is_state_path(relative):
     parts = _parts(relative)
     return bool(len(parts) == 1 and _FINAL.fullmatch(parts[0])
-                or len(parts) == 2 and _PENDING.fullmatch(parts[0]) and parts[1] == 'capture.wav')
+                or len(parts) == 2 and _PENDING.fullmatch(parts[0]) and is_recording_stage_name(parts[1]))
 
 
 def state_limit(relative):
@@ -75,10 +76,12 @@ def state_paths(root, *, cancelled=lambda: False):
             if _PENDING.fullmatch(entry.name):
                 regular(path, directory=True)
                 with os.scandir(path) as children:
-                    for child in children:
+                    for stage_count, child in enumerate(children, 1):
                         _cancel(cancelled)
                         entries_seen += 1
-                        if entries_seen > MAX_FILES + MAX_RECORDINGS + 1 or child.name != 'capture.wav':
+                        if (entries_seen > MAX_FILES + MAX_RECORDINGS + 1
+                                or stage_count > MAX_RECORDING_SEGMENTS + 1
+                                or not is_recording_stage_name(child.name)):
                             raise ValueError('An unfinished recording contains an unsupported artifact.')
                         candidate = local_path(child.path, root=directory, exists=True)
                         info = regular(candidate)
@@ -127,6 +130,7 @@ def validate_state_tree(db, root, *, cancelled=lambda: False):
             raise ValueError('A recording receipt is missing its retained original.')
         if RecordingService._audio(audio, RecordingOptions(**value['limits']), cancelled) != value['audio']:
             raise ValueError('A recording original differs from its verified receipt.')
+        verify_recording_segments(audio, value, cancelled=cancelled)
     _cancel(cancelled)
 
 

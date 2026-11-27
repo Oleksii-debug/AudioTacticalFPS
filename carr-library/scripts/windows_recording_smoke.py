@@ -29,10 +29,13 @@ def main():
     from carr_library.audio.runtime import resolve_ffmpeg, verify_runtime
     import carr_library.audio.capture_process as process_module
     import carr_library.audio.recording as recording_module
+    import carr_library.audio.recording_monitor as monitor_module
+    import carr_library.audio.playback_devices as outputs_module
     import carr_library.ui.recording_dialog as dialog_module
     from carr_library.ui.desktop_app import DesktopFrame
 
-    checks, errors, captures, completed, cancelled_captures = [], [], [], [], []
+    checks, errors, captures, completed, cancelled_captures, segments = [], [], [], [], [], []
+    paused_snapshot, paused_at = None, None
     audio_proof = {}
     deadline = monotonic() + 80
     stage, dialog, frame, finished = 0, None, None, False
@@ -57,7 +60,7 @@ def main():
                   binary.name == 'ffmpeg.exe')
 
     checkout = Path(__file__).resolve().parents[1]
-    for module in (process_module, recording_module, dialog_module):
+    for module in (process_module, recording_module, monitor_module, outputs_module, dialog_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         check('installed exact source: ' + module.__name__, not actual.is_relative_to(checkout)
@@ -72,6 +75,8 @@ def main():
     app = ProbeApp(False)
     simulator = wx.UIActionSimulator()
     original_factory = dialog_module.RecordingService
+    original_run = recording_module.run_process
+    original_monitor_open = monitor_module.DryMonitor.open
 
     with TemporaryDirectory(prefix='resonance-native-recording-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
@@ -100,6 +105,21 @@ def main():
             '-re', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=24000']
         real_capture = service.capture
 
+        def tracked_run(command, **kwargs):
+            check('native capture segment has no overlapping input family',
+                  not any(part['active'] for part in segments))
+            part = {'path': Path(command[-1]), 'active': True}
+            segments.append(part)
+            try:
+                return original_run(command, **kwargs)
+            finally:
+                part['active'] = False
+
+        def no_unsolicited_output(*args, **kwargs):
+            raise AssertionError('Default recording unexpectedly opened a monitoring output.')
+        recording_module.run_process = tracked_run
+        monitor_module.DryMonitor.open = no_unsolicited_output
+
         def capture(device_id, **kwargs):
             abort_signal = threading.Event()
             observed_cancel = kwargs['cancelled']
@@ -107,6 +127,12 @@ def main():
             item = {'seconds': 0, 'cancel': abort_signal, 'active': True}
             captures.append(item)
             observe = kwargs['progress']
+            observed_state = kwargs.get('state_changed')
+            def notice(value):
+                item['state'] = value
+                if observed_state is not None:
+                    observed_state(value)
+            kwargs['state_changed'] = notice
             def report(seconds):
                 item['seconds'] = seconds
                 observe(seconds)
@@ -154,7 +180,7 @@ def main():
             wx.CallLater(25, guarded(dispatch))
 
         def drive():
-            nonlocal stage, dialog
+            nonlocal stage, dialog, paused_snapshot, paused_at
             if errors or finished:
                 return
             if monotonic() >= deadline:
@@ -168,6 +194,8 @@ def main():
             refresh = control('Refresh microphones')
             start = control('Start recording')
             stop = control('Stop and save recording')
+            pause = control('Pause recording')
+            resume = control('Resume recording')
             cancel = control('Cancel unfinished recording')
             selection = control('Microphone device (explicit selection required)')
             saved = control('Saved recordings')
@@ -176,6 +204,15 @@ def main():
                 check('opening the dialog does not discover or capture', not service._devices and not captures)
                 check('recording progress has a native accessible gauge',
                       isinstance(control('Recording operation progress'), wx.Gauge))
+                check('pause and resume are named native controls without initial authority',
+                      isinstance(pause, wx.Button) and isinstance(resume, wx.Button)
+                      and not pause.IsEnabled() and not resume.IsEnabled())
+                check('native dry monitoring is off and has no selected output',
+                      isinstance(control('Enable dry microphone monitoring'), wx.CheckBox)
+                      and not control('Enable dry microphone monitoring').GetValue()
+                      and control('Monitoring output (explicit selection required)').GetSelection() == wx.NOT_FOUND)
+                check('recording controls have a native scrolling keyboard container',
+                      isinstance(pause.GetParent(), wx.ScrolledWindow))
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
@@ -188,14 +225,43 @@ def main():
                 control('Recording title').SetValue('Native synthetic recording')
                 stage = 3
                 press(start)
-            elif stage == 3 and captures and captures[0]['seconds'] >= .1 and stop.IsEnabled():
+            elif stage == 3 and captures and captures[0]['seconds'] >= .1 and pause.IsEnabled():
                 check('actual FFmpeg reports recorded PCM while UI remains responsive', captures[0]['active'])
+                stage = 31
+                press(pause)
+            elif stage == 31 and resume.IsEnabled():
+                state = captures[0].get('state')
+                check('Pause is acknowledged only after the actual owned input family closes',
+                      state is not None and state.state == 'paused' and state.frames > 0
+                      and len(segments) == 1 and not segments[0]['active'] and captures[0]['active'])
+                paused_snapshot = (state.frames, sha256(segments[0]['path'].read_bytes()).hexdigest())
+                paused_at = monotonic()
+                stage = 32
+            elif stage == 32 and monotonic() - paused_at >= .15:
+                check('paused time adds no PCM and opens no replacement input',
+                      len(segments) == 1 and not segments[0]['active']
+                      and captures[0]['state'].frames == paused_snapshot[0]
+                      and sha256(segments[0]['path'].read_bytes()).hexdigest() == paused_snapshot[1])
+                check('prepared recording device and monitoring choices stay frozen',
+                      not selection.IsEnabled() and not control('Enable dry microphone monitoring').IsEnabled()
+                      and not control('Refresh monitoring outputs').IsEnabled())
+                stage = 33
+                press(resume)
+            elif (stage == 33 and len(segments) == 2 and segments[1]['active']
+                  and captures[0]['seconds'] >= paused_snapshot[0] / captures[0]['state'].sample_rate + .1):
+                check('Resume reopens one actual input segment while the first remains closed',
+                      not segments[0]['active'] and captures[0]['active'])
                 stage = 4
                 press(stop)
             elif stage == 4 and saved.GetCount() == 1 and start.IsEnabled():
                 check('Stop finalizes and verifies an actual retained recording', len(completed) == 1
                     and completed[0]['completion'] == 'stopped' and service.get(completed[0]['id']) == completed[0])
                 check('Stop reports retained completion', status.GetValue().startswith('Saved and verified.'))
+                check('native pause/resume retains two exact contiguous frame ranges',
+                      completed[0]['schema'] == 'carr-recording/2' and len(completed[0]['segments']) == 2
+                      and completed[0]['segments'][0]['ended_by'] == 'paused'
+                      and completed[0]['segments'][1]['start_frame'] == completed[0]['segments'][0]['frames']
+                      and not completed[0]['monitoring']['enabled'])
                 stage = 5
                 press(start)
             elif stage == 5 and len(captures) == 2 and captures[1]['seconds'] >= .1:
@@ -245,6 +311,8 @@ def main():
                 raise AssertionError('\n'.join(errors))
         finally:
             dialog_module.RecordingService = original_factory
+            recording_module.run_process = original_run
+            monitor_module.DryMonitor.open = original_monitor_open
             for item in captures:
                 item['cancel'].set()
             if frame is not None:
@@ -256,7 +324,9 @@ def main():
             if native_handle is not None:
                 native_handle.close()
     print(json.dumps({'status': 'PASS', 'checks': checks, 'actual_native_keys': True,
-        'actual_ffmpeg_synthetic_capture': True, 'audio_runtime': audio_proof, 'physical_microphone': 'NOT_RUN',
+        'actual_ffmpeg_synthetic_capture': True, 'actual_pause_resume': True,
+        'monitoring_controls': 'EXECUTED_DEFAULT_OFF', 'physical_monitoring': 'NOT_RUN',
+        'audio_runtime': audio_proof, 'physical_microphone': 'NOT_RUN',
         'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}, ensure_ascii=False, indent=2))
 
 

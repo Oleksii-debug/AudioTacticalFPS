@@ -1,6 +1,8 @@
 """Real reader workers and PCM with explicit controllable native-output boundaries."""
 from types import SimpleNamespace
 
+import pytest
+
 from carr_library.audio.capture_types import AudioBudget
 from carr_library.audio.playback_processing import PlaybackControls
 from carr_library.audio.runtime import resolve_ffmpeg
@@ -76,3 +78,33 @@ def test_invalid_reader_control_never_starts_processing_or_output(overlay_window
     assert view.future is None and not view.player.calls
     assert view.session._reader is None and view.session._prepared_playback is None
     assert messages and not disposed
+
+
+@pytest.mark.parametrize('reason', ['revoked-source', 'invalid-derivative'])
+def test_paused_live_resume_rechecks_source_and_controlled_pcm_without_losing_stop_owner(live_window, reason):
+    view, registry, broker, queue, messages, selected, disposed = live_window
+    session = view.session
+    session.ffmpeg = resolve_ffmpeg()
+    assert session.ffmpeg is not None, 'Actual selected FFmpeg is required; no skip.'
+    session.playback_controls = PlaybackControls(speed=2)
+    session.playback_budget = AudioBudget(threads=1, max_output_bytes=1024**2, reserve_disk_bytes=0)
+    original = session.render_next()
+    view.play()
+    drain_live(view, queue)
+    controlled = session._prepared_playback
+    resumed = []
+    view.player.state = 'paused'
+    view.player.resume = lambda: resumed.append(True)
+    if reason == 'revoked-source':
+        def denied():
+            raise PermissionError('Source authorization revoked while paused.')
+        view.guard = denied
+    else:
+        controlled.invalid = True
+    view.pause()
+    assert resumed == [] and messages
+    assert session._playback_reader is not None and controlled._reader is not None
+    assert controlled.audio.exists() and original.path.exists() and session.cursor == 0
+    view.close()
+    drain_live(view, queue, predicate=lambda item: item.closed)
+    assert not controlled.audio.exists() and not original.path.exists()

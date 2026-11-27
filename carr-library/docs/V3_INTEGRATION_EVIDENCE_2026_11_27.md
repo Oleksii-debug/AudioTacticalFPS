@@ -3,6 +3,48 @@
 This is a source/evidence checkpoint, not a declaration of full-platform completion.
 The technical scope remains [V3 finalization](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Speech preparation, segmented recording and current-service ASR commands
+
+This source continues `c68d950a1696c1600c90ab129c379a422e88a632` with
+speech preparation `f3ecad7`, recording `d63f89c` → `72bc7cd`,
+current-service ASR CLI/export `56c5bf5` → `c68cb13`, and shared exact
+book-source capture `643b0af` → `d3bc92d`. Shared files retain their current
+owners and stronger complete-backup validators. Main gates keep all previous
+367 distinct test paths and now require 376.
+
+Speech preparation uses explicit Ukrainian/English finite profiles or exact
+verbatim behavior. Review, Apply and Undo operate on the current narration copy;
+source originals are immutable. Both preview output and forged shared replacements
+are bounded before reconstruction. Native controls and real-worker/recovery
+regressions are authored, pending exact execution.
+
+Recording Pause is acknowledged only after the exact capture child and optional
+dry monitor close. Resume keeps the current input/runtime identity. Version2
+receipts retain contiguous PCM segment ranges and hashes; version1 is unchanged.
+Monitoring uses the existing WinMM backend with four bounded buffers and explicit
+output selection. The existing resource reservation, stage and UI quiet hold
+survive pending compound cleanup. Native probes use actual synthetic FFmpeg
+segments; physical microphone/monitor output and NVDA remain separate.
+
+ASR CLI uses the current TranscriptionService and exact reviewed runtime hash.
+It adds inspected offline export and explicit new-run/prepare controls; saved
+status never substitutes for current verification. Export checks both selected
+parent and owned stage native identity again after blocking flush and before
+publication. Post-commit cleanup/durability failure retains the saved destination.
+The source-only peer reviews found no remaining concrete blocker after these
+corrections; exact new tests remain NOT_RUN until their corresponding CI runs.
+
+Independent reader review also found the paused live-reader resume path bypassed
+its cheap source/PCM checks. Resume and seek now recheck those owners before native
+actions. Tests retain both readers on refusal and confirm actual Stop cleans up.
+
+The exact `55725629` main run `45985890260` completed 235 of 236 strict source
+suites; Linux and native-keyboard jobs passed. Its sole failing suite used an
+outdated fake `search` method while the native checklist calls `search_page`.
+The fixture now observes that current entrypoint and keeps every exact checked-ID
+assertion. This is a narrow acceptance-fixture correction, not permission to omit
+the failed gate or claim later installed/native stages ran.
+
 ## Independent playback and canonical transcription recovery
 
 This continuation composes reviewed playback `af97650` → `0779541` →
