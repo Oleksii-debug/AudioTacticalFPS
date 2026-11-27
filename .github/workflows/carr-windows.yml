@@ -112,8 +112,19 @@ jobs:
       - name: Exercise installed BibTeX import and real overwrite confirmation
         timeout-minutes: 5
         run: |
-          & $env:CARR_PYTHON -I -B scripts/windows_bibliography_interchange_smoke.py 2>&1 | Tee-Object 'ci-results/native-bibliography-interchange.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $bibliographyNativeExit = $null
+          $bibliographyWrapperError = $null
+          try {
+            & $env:CARR_PYTHON -I -B scripts/windows_bibliography_interchange_smoke.py 2>&1 | Tee-Object 'ci-results/native-bibliography-interchange.txt'
+            $bibliographyNativeExit = $LASTEXITCODE
+          } catch {
+            $bibliographyNativeExit = $LASTEXITCODE
+            $bibliographyWrapperError = $_.Exception.ToString()
+            throw
+          } finally {
+            [ordered]@{ native_exit_code=$bibliographyNativeExit; powershell=$PSVersionTable.PSVersion.ToString(); native_error_preference=$PSNativeCommandUseErrorActionPreference; error_action_preference=$ErrorActionPreference.ToString(); wrapper_error=$bibliographyWrapperError } | ConvertTo-Json -Depth 3 | Tee-Object 'ci-results/native-bibliography-exit.json'
+          }
+          if ($bibliographyNativeExit -ne 0) { exit $bibliographyNativeExit }
 
       - name: Exercise the installed native OCR catalogue and model manager
         timeout-minutes: 3
@@ -488,8 +499,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_bibliography_interchange_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-bibliography-native.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $bibliographyNativeExit = $null
+          $bibliographyWrapperError = $null
+          try {
+            & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_bibliography_interchange_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-bibliography-native.txt'
+            $bibliographyNativeExit = $LASTEXITCODE
+          } catch {
+            $bibliographyNativeExit = $LASTEXITCODE
+            $bibliographyWrapperError = $_.Exception.ToString()
+            throw
+          } finally {
+            [ordered]@{ native_exit_code=$bibliographyNativeExit; powershell=$PSVersionTable.PSVersion.ToString(); native_error_preference=$PSNativeCommandUseErrorActionPreference; error_action_preference=$ErrorActionPreference.ToString(); wrapper_error=$bibliographyWrapperError } | ConvertTo-Json -Depth 3 | Tee-Object 'ci-results/full-bundle-bibliography-exit.json'
+          }
+          if ($bibliographyNativeExit -ne 0) { exit $bibliographyNativeExit }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_advanced_search_native.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_progress_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-operation-progress.txt'
