@@ -437,3 +437,84 @@ def test_rehashed_replacement_snapshot_cannot_drop_connected_source_ids(research
     with pytest.raises(ValueError, match='connected source identities'):
         bridge.change(connected, preview=research.preview)
     assert not app.document.applied
+
+
+
+@pytest.mark.parametrize('outcome', ['success', 'exception', 'cancel'])
+def test_session_detaches_all_document_proxies_before_com_uninitialize(monkeypatch, outcome):
+    """Controlled apartment boundary; retaining wrappers cannot retain COM refs."""
+    from concurrent.futures import ThreadPoolExecutor
+    from types import ModuleType
+    import sys
+    import threading
+    import weakref
+
+    wrappers, sessions, weak_objects, events = [], [], [], []
+    owner = threading.get_ident()
+
+    class Document:
+        def Activate(self):
+            events.append('activate')
+        def Close(self, *args, **kwargs):
+            pytest.fail('Releasing a COM wrapper must not close a user document.')
+
+    class Documents:
+        Count = 1
+        def Open(self, **kwargs):
+            document = Document()
+            weak_objects.append(weakref.ref(document))
+            return document
+
+    class Application:
+        def __init__(self):
+            self.ActiveDocument = Document()
+            weak_objects.append(weakref.ref(self.ActiveDocument))
+            self.Documents = Documents()
+        def Quit(self, *args, **kwargs):
+            pytest.fail('Releasing a COM wrapper must not quit user Word.')
+
+    pythoncom = ModuleType('pythoncom')
+    pythoncom.COINIT_APARTMENTTHREADED = 2
+    pythoncom.com_error = type('ControlledComError', (Exception,), {})
+    pythoncom.CoInitializeEx = lambda flag: events.append('initialize')
+
+    def uninitialize():
+        assert threading.get_ident() != owner
+        assert len(wrappers) == 2
+        assert all(document.doc is None and document.app is None for document in wrappers)
+        assert sessions[0].application is None and sessions[0]._documents == []
+        assert all(reference() is None for reference in weak_objects)
+        events.append('uninitialize')
+    pythoncom.CoUninitialize = uninitialize
+    parent = ModuleType('win32com')
+    parent.__path__ = []
+    client = ModuleType('win32com.client')
+    def attach(name):
+        assert name == 'Word.Application'
+        application = Application()
+        weak_objects.append(weakref.ref(application))
+        return application
+    client.GetActiveObject = attach
+    for name, module in (('pythoncom', pythoncom), ('win32com', parent), ('win32com.client', client)):
+        monkeypatch.setitem(sys.modules, name, module)
+    monkeypatch.setattr(word, 'os', N(name='nt'))
+
+    def operation():
+        with word._running_word() as application:
+            sessions.append(application)
+            wrappers.extend([application.active(), application.open_copy('controlled-copy.docx')])
+            if outcome == 'exception':
+                raise RuntimeError('Controlled operation failed')
+            if outcome == 'cancel':
+                word._check(lambda: True)
+            return 'completed'
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(operation)
+        if outcome == 'success':
+            assert future.result(timeout=3) == 'completed'
+        else:
+            expected = RuntimeError if outcome == 'exception' else InterruptedError
+            with pytest.raises(expected):
+                future.result(timeout=3)
+    assert events == ['initialize', 'activate', 'uninitialize']
+    sessions[0]._release()  # A second detach is harmless and calls no native method.

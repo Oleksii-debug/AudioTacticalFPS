@@ -239,6 +239,8 @@ def _running_word():
     except ImportError as exc:
         raise WordUnavailable('The optional pinned Word runtime is not installed.') from exc
     initialized = False
+    application = None
+    session = None
     try:
         pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED)
         initialized = True
@@ -248,8 +250,17 @@ def _running_word():
             if (int(exc.hresult) & 0xffffffff) in (0x800401e3, 0x80040154):
                 raise WordUnavailable('Open desktop Microsoft Word and a saved CARR citation DOCX first.') from exc
             raise
-        yield _WordApplication(application)
+        session = _WordApplication(application)
+        application = None
+        yield session
     finally:
+        # Caller frames may still retain the public wrappers. Detach every
+        # session proxy while this thread's COM apartment is still initialized;
+        # never close documents, quit Word or manually release its IUnknown.
+        if session is not None:
+            session._release()
+        session = None
+        application = None
         if initialized:
             pythoncom.CoUninitialize()
 
@@ -407,19 +418,33 @@ class WordBridge:
 class _WordApplication:
     def __init__(self, application):
         self.application = application
+        self._documents = []
+
+    def _document(self, document):
+        wrapper = _ComDocument(self.application, document)
+        self._documents.append(wrapper)
+        return wrapper
+
+    def _release(self):
+        for document in self._documents:
+            document.doc = None
+            document.app = None
+        self._documents.clear()
+        self.application = None
 
     def active(self):
         if not self.application.Documents.Count:
             raise WordUnavailable('Open a saved CARR citation DOCX in desktop Word first.')
-        return _ComDocument(self.application, self.application.ActiveDocument)
+        return self._document(self.application.ActiveDocument)
 
     def open_copy(self, path):
         # Package inspection has already refused macros, embedded objects and
         # every external relationship. Do not mutate global Office security policy.
-        document = self.application.Documents.Open(FileName=str(path), ConfirmConversions=False,
-            ReadOnly=False, AddToRecentFiles=False, Visible=True, OpenAndRepair=False, NoEncodingDialog=True)
-        document.Activate()
-        return _ComDocument(self.application, document)
+        document = self._document(self.application.Documents.Open(FileName=str(path),
+            ConfirmConversions=False, ReadOnly=False, AddToRecentFiles=False,
+            Visible=True, OpenAndRepair=False, NoEncodingDialog=True))
+        document.doc.Activate()
+        return document
 
 
 def _items(collection, limit=_MAX_CONTROLS):
