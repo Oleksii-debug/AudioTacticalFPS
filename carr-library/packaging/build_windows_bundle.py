@@ -26,9 +26,17 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 
 TARGET = "Windows x64 / CPython 3.11"
-# Exact unsigned candidate independently built and executed on Windows; no override.
-NATIVE_LAUNCHER_SHA256 = "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec"
 HERE = Path(__file__).resolve().parent
+USER_GUIDES = (
+    "ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
+    "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
+    "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+    "TRANSCRIPTION.md", "ACADEMIC_CATALOG_INSIGHTS.md", "V3_RELEASE_READINESS.md",
+    "MICROPHONE_RECORDING.md", "STUDIO_CLIP_EDITING.md",
+    "STUDIO_EPUB_PUBLISHING.md", "BACKUP_FORMAT_V6.md",
+    "AUDIO_RUNTIME.md", "KEYBOARD_SHORTCUTS.md", "PROGRESS.md",
+    "LIBRARY_ASSISTANT.md", "ACADEMIC_ACQUISITION.md", "DORDIAI_DESKTOP.md",
+)
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
 
@@ -44,6 +52,44 @@ def regular(path):
             or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError(f"expected a regular file: {path.name}")
     return path
+
+
+def launcher_bytes(path, expected_sha256):
+    """Capture the explicitly selected unsigned launcher without executing it."""
+    if not isinstance(expected_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha256):
+        raise ValueError("native launcher requires its expected lowercase SHA256")
+    path = regular(Path(path))
+    with path.open("rb") as stream:
+        raw = stream.read(2 * 1024 * 1024 + 1)
+    if len(raw) > 2 * 1024 * 1024:
+        raise ValueError("native launcher exceeds its size budget")
+    if hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise ValueError("native launcher checksum mismatch")
+    return raw
+
+
+def inspect_launcher(path):
+    # Parse the copied bytes with the existing trusted PE probe. Never load or
+    # execute the supplied executable during bundle assembly.
+    spec = importlib.util.spec_from_file_location(
+        "carr_bundle_launcher_pe", HERE / "native-launcher" / "probe_pe.py")
+    probe = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(probe)
+    try:
+        return probe.inspect_pe(path)
+    except (ValueError, probe.struct.error, IndexError, UnicodeDecodeError) as exc:
+        raise ValueError("invalid unsigned native launcher PE: " + str(exc)) from exc
+
+
+def copy_user_guides(source, destination):
+    """Use current guides for both new and refreshed private bundles."""
+    for origin, name in (("RUNNING.md", "README.txt"), ("START_UK.txt", "START_UK.txt"),
+                         ("START_V3_UK.txt", "START_V3_UK.txt")):
+        shutil.copyfile(regular(source / origin), destination / name)
+    guides = destination / "docs"
+    guides.mkdir(exist_ok=True)
+    for name in USER_GUIDES:
+        shutil.copyfile(regular(source / name), guides / name)
 
 
 def read_lock(path):
@@ -127,18 +173,18 @@ def verify_dependency_closure(selected):
 
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, native_launcher=None):
+                 ocr_source_archive=None, native_launcher=None, native_launcher_sha256=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
+    if (native_launcher is None) != (native_launcher_sha256 is None):
+        raise ValueError("supply both native launcher and its expected SHA256")
+    native_bytes = (launcher_bytes(native_launcher, native_launcher_sha256)
+                    if native_launcher is not None else None)
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
-    if native_launcher is not None:
-        native_launcher = regular(Path(native_launcher))
-        if sha256(native_launcher) != NATIVE_LAUNCHER_SHA256:
-            raise ValueError("Native launcher differs from the exact Windows-tested executable")
     pins = read_lock(lock)
     if sbom is not None:
         sbom = regular(Path(sbom))
@@ -236,6 +282,11 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="carr-bundle-", dir=output.parent) as scratch:
         staged = Path(scratch)
+        if native_bytes is not None:
+            launcher = staged / "ResearchLibrary.exe"
+            launcher.write_bytes(native_bytes)
+            if inspect_launcher(launcher)["sha256"] != native_launcher_sha256:
+                raise ValueError("native launcher changed during bundle assembly")
         staged_wheels = staged / "wheelhouse"
         staged_wheels.mkdir()
         install = []
@@ -321,16 +372,9 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             target = staged / "tools" / "audio-setup" / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(regular(HERE / relative), target)
-        shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
-        shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
-        shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
+        copy_user_guides(HERE.parent / "docs", staged)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
-        if native_launcher is not None:
-            destination = staged / "ResearchLibrary.exe"
-            shutil.copyfile(regular(native_launcher), destination)
-            if sha256(destination) != NATIVE_LAUNCHER_SHA256:
-                raise ValueError("Native launcher changed during bundle assembly")
         if source_evidence is not None:
             # Retain the verifier's exact commit/tree/wheel binding inside the
             # sealed payload, so installed acceptance can attest those same
@@ -339,6 +383,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                 (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
+        if native_bytes is not None and files["ResearchLibrary.exe"] != native_launcher_sha256:
+            raise ValueError("native launcher changed before bundle sealing")
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
@@ -374,12 +420,14 @@ def main():
     parser.add_argument("--ocr-source-archive", type=Path,
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
     parser.add_argument("--native-launcher", type=Path,
-                        help="Optional exact Windows-tested ResearchLibrary.exe; its SHA256 is source-pinned")
+                        help="Optional explicitly built unsigned ResearchLibrary.exe")
+    parser.add_argument("--native-launcher-sha256",
+                        help="Expected SHA256 from this launcher's build and native process evidence")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.native_launcher)))
+                                  args.native_launcher, args.native_launcher_sha256)))
 
 
 if __name__ == "__main__":
