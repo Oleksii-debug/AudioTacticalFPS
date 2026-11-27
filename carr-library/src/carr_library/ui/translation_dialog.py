@@ -432,9 +432,18 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             return
         values = visible_scope()
         chooser = wx.DirDialog(dialog, 'Choose parent folder for a NEW translation export of job ' + current_job)
+        chooser_id, chooser_alive = chooser.GetId(), True
+        def chooser_destroyed(event):
+            nonlocal chooser_alive
+            if event.GetId() == chooser_id:
+                chooser_alive = False
+            event.Skip()
+        chooser.Bind(wx.EVT_WINDOW_DESTROY, chooser_destroyed)
         try:
             if chooser.ShowModal() == wx.ID_OK:
                 guard()
+                if not chooser_alive:
+                    raise InterruptedError('The translation export folder picker was closed.')
                 destination = Path(chooser.GetPath()) / ('Translation-' + current_job[:8] + '-' + uuid4().hex[:8])
                 identity = current_job
                 def publish():
@@ -449,7 +458,8 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         except Exception as exc:
             report(str(exc), True)
         finally:
-            chooser.Destroy()
+            if chooser_alive and not native_destroyed:
+                chooser.Destroy()
 
     def narration(event):
         if current_job is None:

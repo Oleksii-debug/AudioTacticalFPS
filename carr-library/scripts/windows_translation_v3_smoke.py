@@ -145,7 +145,9 @@ def main():
                 return wx.YES
             wx.MessageBox = approve
             class Directory:
-                def __init__(self, *args, **kwargs): pass
+                def __init__(self, *args, **kwargs): self.identity = int(wx.NewIdRef())
+                def GetId(self): return self.identity
+                def Bind(self, *args, **kwargs): pass
                 def ShowModal(self): return wx.ID_OK
                 def GetPath(self): return str(root)
                 def Destroy(self): pass

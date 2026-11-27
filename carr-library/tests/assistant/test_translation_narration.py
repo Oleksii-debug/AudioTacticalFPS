@@ -349,3 +349,48 @@ def test_native_completed_job_exports_through_the_same_narration_service(
     assert Project.from_dict(read_json(files[0])).roles[1].voice_id == 'test:translation'
     assert unchanged_evidence(case) == before and len(connection['calls']) == count
     assert not voices.renders and not window.gateways
+
+
+@pytest.mark.parametrize('destroy_parent', [False, True], ids=['picker-only', 'parent-and-picker'])
+def test_narration_export_picker_destruction_does_not_read_or_destroy_dead_controls(
+        completed, voices, translation_window, monkeypatch, tmp_path, connection, destroy_parent):
+    case, window, wx = completed, translation_window, sys.modules['wx']
+    frame = window.bind(case)
+    wx.NOT_FOUND, wx.OK, wx.CANCEL = -1, 1, 2
+    control, base_show = wx.Dialog, wx.Dialog.ShowModal
+    monkeypatch.setattr(control, 'SetSizerAndFit', lambda self, value: None, raising=False)
+    monkeypatch.setattr(control, 'CreateButtonSizer', lambda self, value: None, raising=False)
+    def show(dialog):
+        if dialog.title.startswith('Bilingual narration'):
+            rows = [item for item in window.controls if item.parent is dialog and item.name.endswith(('(en)', '(uk)'))]
+            assert len(rows) == 2 and all(row.selection == -1 for row in rows)
+            for row in rows:
+                row.SetSelection(0)
+            return wx.ID_OK
+        return base_show(dialog)
+    monkeypatch.setattr(control, 'ShowModal', show)
+    before, count, observed = unchanged_evidence(case), len(connection['calls']), []
+    def destroyed(chooser):
+        observed.append('picker')
+        identity = chooser.GetId()
+        chooser.handlers['destroy'](SimpleNamespace(GetId=lambda: identity, Skip=lambda: None))
+        chooser.destroyed = True
+        if destroy_parent:
+            owner, owner_id = chooser.parent, chooser.parent.GetId()
+            owner.handlers['destroy'](SimpleNamespace(GetId=lambda: owner_id, Skip=lambda: None))
+            owner.destroyed = True
+        return wx.ID_OK  # A modal result never makes a destroyed peer readable.
+    monkeypatch.setattr(wx.DirDialog, 'ShowModal', destroyed)
+    monkeypatch.setattr(wx.DirDialog, 'GetPath', lambda self: pytest.fail('Read a destroyed folder picker'))
+    monkeypatch.setattr(wx.DirDialog, 'Destroy', lambda self: pytest.fail('Destroyed a folder picker twice'))
+    def scenario():
+        window.click('Saved jobs')
+        window.click('Bilingual audio project')
+        if not destroy_parent:
+            assert 'folder picker was closed' in window.find('Preview, supported').value
+            window.click('Close')
+    window.state['scenario'] = scenario
+    window.ui.show_translation(frame)
+    assert observed == ['picker'] and not list(tmp_path.glob('Translation-*'))
+    assert unchanged_evidence(case) == before and len(connection['calls']) == count
+    assert not voices.renders and not window.gateways
