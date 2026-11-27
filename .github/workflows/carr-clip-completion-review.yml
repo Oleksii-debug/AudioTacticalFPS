@@ -67,6 +67,34 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_CLIP_REVIEW_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Record selected Windows Flite discovery
+        if: runner.os == 'Windows'
+        run: |
+          python -I -B -X utf8 - <<'PY' | tee ci-clip-review/flite-discovery.json
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          import shutil
+          from carr_library.speech import FliteProvider, VoiceRegistry
+          from carr_library.speech._io import run_process
+
+          selected = Path(shutil.which("ffmpeg")).resolve(strict=True)
+          _, diagnostic, status = run_process([selected, "-hide_banner", "-nostdin", "-f", "lavfi",
+              "-i", "flite=list_voices=1", "-f", "null", "-"], timeout=20, allow_failure=True)
+          version, version_diagnostic, version_status = run_process(
+              [selected, "-version"], timeout=20, allow_failure=True)
+          registry = VoiceRegistry([FliteProvider(selected)])
+          try:
+              print(json.dumps({"path": str(selected), "sha256": sha256(selected.read_bytes()).hexdigest(),
+                  "exit": status, "stderr_bytes": len(diagnostic),
+                  "stderr": diagnostic[:8192].decode("utf-8", errors="replace"),
+                  "version_exit": version_status,
+                  "version": version[:8192].decode("utf-8", errors="replace"),
+                  "voices": [voice.id for voice in registry.voices()],
+                  "notices": list(registry.notices)}, ensure_ascii=False))
+          finally:
+              assert registry.close() is not False
+          PY
       - name: Compile exact changed source and native acceptance
         run: |
           mkdir -p ci-clip-review
@@ -153,7 +181,12 @@ jobs:
               "audio.process",
               "audio.windows_job",
               "ui.playback_navigation",
-              "ui.effects_dialog"
+              "ui.effects_dialog",
+              "studio.publishing",
+              "studio.daisy",
+              "assistant.templates",
+              "speech.runtime",
+              "speech._io"
           ]
           identities = {}
           for suffix in modules:

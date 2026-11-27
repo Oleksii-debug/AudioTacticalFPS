@@ -388,3 +388,122 @@ def test_pre_grid_trim_stem_receipt_cannot_alias_new_sample_cut_output(prepared,
     assert pcm(stem)[1] != pcm(legacy)[1]
     assert pcm(stem)[1] == pcm(master)[1]
     assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize('format', ['epub', 'daisy-2.02'])
+def test_schema_three_clip_effects_and_markers_publish_through_existing_service(prepared, tmp_path, format):
+    from zipfile import ZipFile
+    from carr_library.studio.publishing import PublicationService, inspect_epub
+    from carr_library.studio.daisy import inspect_daisy
+    app, editor = prepared
+    original = constant(tmp_path / 'Immutable publication source.wav')
+    original_bytes = original.read_bytes()
+    project = editor.create('Authored clip publication')
+    scene = project.scenes[0].id
+    project = editor.add(project, scene, original, duration=.75, pan=-1, gain_db=0)
+    cue = project.scenes[0].cues[0]
+    project = editor.set_effects(project, 'clip', (Effect('gain', gain_db=-6),),
+                                 scene_id=scene, clip_id=cue.id)
+    project = editor.set_effects(project, 'master', (Effect('gain', gain_db=-3),))
+    project = editor.set_marker(project, scene, '.125', 'Authored marker, not narrated.')
+    assert project.schema == 3
+    state, master = render(editor, project, tmp_path / 'publication-render')
+    destination = Path(state['destination'])
+    before = {row['path']: sha256(Path(row['path']).read_bytes()).hexdigest()
+              for row in state['artifacts']}
+    timeline_path = destination / 'timeline.json'
+    timeline_bytes = timeline_path.read_bytes()
+    timeline = json.loads(timeline_bytes)
+    assert timeline['lines'] == [] and len(timeline['markers']) == 1
+    assert timeline['effects']['master'] == [effect.to_dict() for effect in project.effects]
+    assert timeline['effects']['clips'][scene][cue.id] == [effect.to_dict() for effect in
+                                                           project.scenes[0].cues[0].effects]
+    publication = PublicationService(editor.service)
+    output = tmp_path / ('book.epub' if format == 'epub' else 'book.zip')
+    def export(path):
+        if format == 'epub':
+            return publication.export_epub(state['id'], path, language='uk', creator='Authored fixture')
+        return publication.export_daisy(state['id'], path, language='uk',
+            creator='Authored fixture', publisher='Authored fixture publisher')
+    record = export(output)
+    assert record['status'] == 'complete' and record['format'] == format
+    assert record['artifact'] == dict(size=output.stat().st_size, sha256=sha256(output.read_bytes()).hexdigest())
+    inspected = (inspect_epub if format == 'epub' else inspect_daisy)(output)
+    assert inspected['source']['project_sha256'] == project.fingerprint
+    assert inspected['source']['job_id'] == state['id']
+    assert inspected['original_script'] == project.original_script
+    artifact_receipts = {row['name']: row for row in inspected['source']['artifacts']}
+    for name in ('project.json', 'timeline.json', 'master.wav'):
+        selected = destination / name
+        assert artifact_receipts[name] == dict(name=name, size=selected.stat().st_size,
+                                              sha256=sha256(selected.read_bytes()).hexdigest())
+    assert {row['kind'] for row in inspected['intervals']} == {'audio-interval'}
+    assert all(row['line'] is None and row['source_ref'] == '' for row in inspected['intervals'])
+    assert inspected['audio']['source_artifact'] == 'master.wav'
+    with ZipFile(output) as archive:
+        member = 'EPUB/audio/master.mp3' if format == 'epub' else 'master.mp3'
+        selected_audio = tmp_path / 'actual-packaged-audio.mp3'
+        selected_audio.write_bytes(archive.read(member))
+    measured = AudioRuntime(tmp_path, input_roots=(tmp_path,)).inspect(selected_audio)
+    assert measured.codec == 'mp3' and abs(measured.duration - state['result']['duration']) < .15
+    assert publication.verify(record['id']) == record
+    assert editor.service.get(state['id']) == state
+    assert before == {name: sha256(Path(name).read_bytes()).hexdigest() for name in before}
+    assert original.read_bytes() == Path(cue.path).read_bytes() == original_bytes
+    assert editor.service.projects.load(project.id) == project
+
+    # Authored annotations remain part of the exact source-artifact receipt.
+    # Their presence must not bypass the existing publisher's checksum gate.
+    changed = json.loads(timeline_bytes)
+    changed['markers'][0]['label'] = 'Changed marker, not narrated.'
+    rejected = tmp_path / ('changed.epub' if format == 'epub' else 'changed.zip')
+    try:
+        timeline_path.write_bytes(encode(changed))
+        with pytest.raises(ValueError, match='checksum|size'):
+            export(rejected)
+        assert not rejected.exists() and len(publication.publications()) == 1
+        assert publication.verify(record['id']) == record
+    finally:
+        timeline_path.write_bytes(timeline_bytes)
+    assert before == {name: sha256(Path(name).read_bytes()).hexdigest() for name in before}
+
+
+def test_schema_three_template_keeps_annotations_but_requires_new_clip_scope(prepared, tmp_path):
+    from carr_library.assistant import Scope
+    from carr_library.assistant.templates import (TemplateStore, WorkflowTemplate,
+                                                 definition_from_project, instantiate_plan)
+    app, editor = prepared
+    original = constant(tmp_path / 'Original template source.wav')
+    original_bytes = original.read_bytes()
+    project = editor.create('Reusable clip layout')
+    scene = project.scenes[0].id
+    project = editor.add(project, scene, original, duration=.5)
+    cue = project.scenes[0].cues[0]
+    project = editor.set_effects(project, 'clip', (Effect('gain', gain_db=-6),),
+                                 scene_id=scene, clip_id=cue.id)
+    project = editor.bypass_effects(project, scene, cue.id, True)
+    project = editor.set_marker(project, scene, '.125', 'Authored template marker')
+    source_definition = encode(project.to_dict())
+    store = TemplateStore(app.root)
+    template = store.save('Schema three clip recipe', 'project', definition_from_project(project))
+    saved = (store.root / (template.id + '.json')).read_bytes()
+    outputs = tmp_path / 'template-outputs'; outputs.mkdir()
+    with pytest.raises(PermissionError, match='input'):
+        instantiate_plan(template, Scope(output_root=outputs), {})
+    selected_scope = Scope(input_roots=(Path(cue.path).parent,), output_root=outputs)
+    first, second = (instantiate_plan(template, selected_scope, {}) for _ in range(2))
+    copies = [Project.from_dict(plan.steps[0].arguments['script']) for plan in (first, second)]
+    assert len({project.id, *(value.id for value in copies)}) == 3
+    for value in copies:
+        assert value.schema == 3 and value.revision == 1
+        assert value.scenes == project.scenes and value.effects == project.effects
+        assert value.original_script == project.original_script
+    malformed = template.to_dict()
+    malformed['definition']['project']['scenes'][0]['cues'][0]['effects'][0]['kind'] = 'shell'
+    with pytest.raises(ValueError):
+        WorkflowTemplate.from_dict(malformed)
+    assert editor.service.jobs() == ()
+    assert not list(outputs.iterdir())
+    assert (store.root / (template.id + '.json')).read_bytes() == saved
+    assert encode(editor.service.projects.load(project.id).to_dict()) == source_definition
+    assert original.read_bytes() == Path(cue.path).read_bytes() == original_bytes

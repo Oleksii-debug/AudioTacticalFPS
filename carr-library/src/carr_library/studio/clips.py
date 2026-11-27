@@ -162,6 +162,7 @@ class ClipEditor:
         return self._save(project, replace(scene, cues=(*scene.cues, cue)))
 
     def _validate_selection(self, cue, *, cancelled=lambda: False):
+        self._cancel(cancelled)
         source = self.service._cue_source(cue, cancelled=cancelled)
         runtime = self.service._runtime(reviewed_roots=(source.parent,))
         with self.service._audio_admission(runtime, operation_id='clip-inspect:' + uuid4().hex,
