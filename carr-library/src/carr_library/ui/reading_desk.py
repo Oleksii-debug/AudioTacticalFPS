@@ -234,8 +234,9 @@ class ReadingDialog:
         self.status.SetMinSize((-1, 65))
         layout.Add(self.status, 0, wx.EXPAND | wx.ALL, 8)
         from .reader_appearance import ReaderAppearance
-        self._appearance = ReaderAppearance(self.dialog, self.text, parent.library,
-            current_library=lambda: parent.library, alive=lambda: not self.closed, report=self._error)
+        self._appearance = ReaderAppearance(self.dialog, self.text, desk.library,
+            current_library=lambda: getattr(parent, 'library', desk.library),
+            alive=lambda: not self.closed, report=self._error)
         self._button(bookmarks, 'Reader appearance...', self._appearance.show)
         footer = wx.BoxSizer(wx.HORIZONTAL)
         self.cancel = wx.Button(self.dialog, label='Cancel reader operation')

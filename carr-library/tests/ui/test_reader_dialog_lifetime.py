@@ -123,9 +123,10 @@ def windows(monkeypatch, tmp_path):
     monkeypatch.setitem(sys.modules, 'wx', wx)
     owners = []
     parent = SimpleNamespace(operation_progress=None, library=SimpleNamespace(root=tmp_path))
+    selected_library = parent.library
     def make(kind):
         desk = SimpleNamespace(title='Retained source', cancelled=lambda: False,
-                               library=parent.library)
+                               library=selected_library)
         owner = (EbookAudioDialog(parent, desk, 1, lambda: None) if kind == 'audio'
                  else ReadingDialog(parent, desk, object(), lambda: None))
         owners.append(owner)
@@ -512,3 +513,15 @@ def test_recorded_audio_guard_rechecks_live_ownership_after_modal_handoff(window
         assert guarded == [True] and owner._audio_dialog is None
     finally:
         owner.live.core = original_core
+
+def test_reading_appearance_uses_explicit_source_with_plain_native_parent(windows):
+    selected = windows.parent.library
+    del windows.parent.library
+    owner = windows.make('reading')
+    assert owner._appearance.library is selected
+    owner._appearance.check()
+    assert owner._appearance.current_library() is owner.controller.desk.library
+    # Adding a different host library later must still reject the old binding.
+    windows.parent.library = SimpleNamespace(root=selected.root)
+    with pytest.raises(ValueError, match='library changed'):
+        owner._appearance.check()

@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   export-boundaries:
-    name: Export convergence / ${{ matrix.os }}
+    name: Export and native corrections / ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -39,7 +39,10 @@ jobs:
           python-version: '3.11'
       - name: Install this exact application and declared test dependencies
         run: python -m pip install '.[test]'
-      - name: Verify actual export publication, approval and native metadata
+      - name: Install the actual native desktop on Windows
+        if: runner.os == 'Windows'
+        run: python -m pip install '.[desktop]'
+      - name: Verify actual export publication and native correction regressions
         run: >-
           python -B -m pytest -q -ra
           tests/reader/test_export_no_clobber.py
@@ -47,10 +50,19 @@ jobs:
           tests/reader/test_export_change_time.py
           tests/ui/test_export_destination.py
           tests/ui/test_export_confirmation.py
+          tests/packaging/test_ci_check.py
+          tests/e2e/test_import_batches.py
+          tests/ui/test_reader_dialog_lifetime.py
           --junitxml=ci-convergence/export-tests.xml
       - name: Require nonempty passing evidence with no skipped cases
         run: >-
           python -c "import json,subprocess,xml.etree.ElementTree as E; cases=list(E.parse('ci-convergence/export-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),passed=len(cases),failed=failed,skipped=skipped,nvda='NOT_RUN')))"
+      - name: Exercise the installed full-source reader and bookmarks on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -I -B -X utf8 tests/ui/native_reading_desk_smoke.py 2>&1 | Tee-Object 'ci-convergence/native-reading-desk.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Preserve exact commit and dependency identity
         if: always()
         run: |
