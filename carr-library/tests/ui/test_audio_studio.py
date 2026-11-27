@@ -272,3 +272,159 @@ def test_selected_book_import_uses_exact_pages_and_retains_revision(tmp_path):
     controller.draft.replace_literal('Перший', 'Змінений')
     assert controller.draft.source_text == raw
     assert app._selections == {}
+
+
+@pytest.mark.parametrize('operation', ['save', 'export_reading_copy'])
+@pytest.mark.parametrize('existing', [False, True], ids=['new-file', 'replacement'])
+def test_audio_export_approval_rejects_late_destination_change(controller, tmp_path, operation, existing):
+    from carr_library.research.export_file import capture_export_destination
+    controller.new('Immutable original')
+    controller.edit_script('Separate reading derivative')
+    target = tmp_path / 'chosen-export.txt'
+    if existing:
+        target.write_bytes(b'Approved old file')
+    approval = capture_export_destination(target, private_root=controller.private_root)
+    newer = b'Created or changed after the destination was approved'
+    target.write_bytes(newer)
+    before = controller.project_path, controller._file_hash, controller._saved_value
+    with pytest.raises(ValueError, match='destination changed'):
+        getattr(controller, operation)(target, overwrite=True, approval=approval)
+    assert target.read_bytes() == newer
+    assert (controller.project_path, controller._file_hash, controller._saved_value) == before
+    assert controller.draft.source_text == 'Immutable original'
+    assert controller.script == 'Separate reading derivative' and controller.dirty
+    assert list(tmp_path.glob('.research-export-*')) == []
+
+
+@pytest.mark.parametrize('operation', ['save', 'export_reading_copy'])
+@pytest.mark.parametrize('existing', [False, True], ids=['new-file', 'replacement'])
+def test_audio_export_captures_before_preparation(controller, tmp_path, monkeypatch, operation, existing):
+    controller.new('Immutable original')
+    controller.edit_script('Separate reading derivative')
+    target = tmp_path / 'during-preparation.txt'
+    if existing:
+        target.write_bytes(b'Original destination')
+    newer = b'Another application wrote this during export preparation'
+    calls = []
+    if operation == 'save':
+        actual = controller.to_dict
+
+        def prepare():
+            result = actual()
+            calls.append('serialized')
+            target.write_bytes(newer)
+            return result
+
+        monkeypatch.setattr(controller, 'to_dict', prepare)
+    else:
+        actual = controller.draft.assert_source
+
+        def prepare():
+            actual()
+            calls.append('source checked')
+            target.write_bytes(newer)
+
+        monkeypatch.setattr(controller.draft, 'assert_source', prepare)
+    with pytest.raises(ValueError, match='destination changed'):
+        getattr(controller, operation)(target, overwrite=True)
+    assert len(calls) == 1
+    assert target.read_bytes() == newer
+    assert controller.project_path is None
+    assert controller._file_hash is None and controller._saved_value is None
+    assert controller.draft.source_text == 'Immutable original'
+    assert list(tmp_path.glob('.research-export-*')) == []
+
+
+def test_project_save_detects_change_after_external_hash_check(controller, tmp_path, monkeypatch):
+    controller.new('Original project')
+    target = tmp_path / 'project.json'
+    controller.save(target)
+    original_hash, original_saved = controller._file_hash, controller._saved_value
+    controller.edit_script('Unsaved edits')
+    newer = b'External project change after the initial saved-file check'
+    actual = controller.to_dict
+
+    def prepare():
+        result = actual()
+        target.write_bytes(newer)
+        return result
+
+    with monkeypatch.context() as scope:
+        scope.setattr(controller, 'to_dict', prepare)
+        with pytest.raises(ValueError, match='destination changed'):
+            controller.save()
+    assert target.read_bytes() == newer
+    assert controller.project_path == target
+    assert controller._file_hash == original_hash and controller._saved_value == original_saved
+    assert controller.script == 'Unsaved edits' and controller.dirty
+    assert list(tmp_path.glob('.research-export-*')) == []
+
+
+@pytest.mark.parametrize('action', ['save_as', 'export_copy'])
+@pytest.mark.parametrize('answer', ['approve', 'decline', 'changed-during-prompt'])
+def test_audio_save_dialog_binds_replace_answer(controller, tmp_path, monkeypatch, action, answer):
+    import sys
+    from carr_library.ui.audio_studio import AudioStudioDialog
+    controller.new('Immutable source')
+    controller.edit_script('Reading derivative')
+    target = tmp_path / 'chosen.txt'
+    original = b'Existing destination selected in the file picker'
+    newer = b'Changed by another application while Replace was displayed'
+    target.write_bytes(original)
+    prompts, errors, messages = [], [], []
+
+    class ReplaceDialog:
+        def __init__(self, parent, message, title, style):
+            assert parent is dialog.dialog
+            assert target.name in message
+            assert style == wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION
+
+        def ShowModal(self):
+            prompts.append('shown')
+            if answer == 'changed-during-prompt':
+                target.write_bytes(newer)
+            return wx.ID_NO if answer == 'decline' else wx.ID_YES
+
+        def Destroy(self):
+            prompts.append('destroyed')
+
+    wx = SimpleNamespace(MessageDialog=ReplaceDialog, YES_NO=1, NO_DEFAULT=2,
+                         ICON_QUESTION=4, ID_YES=10, ID_NO=11)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    dialog = AudioStudioDialog.__new__(AudioStudioDialog)
+    dialog.dialog = object()
+    dialog.controller = controller
+    dialog.busy = False
+    dialog._capture = lambda: None
+    dialog._file = lambda *args, **kwargs: target
+    dialog._refresh_text = lambda: None
+    dialog._message = lambda message, **kwargs: messages.append(message)
+    dialog._error = errors.append
+
+    result = getattr(dialog, action)()
+    assert prompts == ['shown', 'destroyed']
+    assert controller.draft.source_text == 'Immutable source'
+    if answer == 'changed-during-prompt':
+        assert target.read_bytes() == newer
+        assert len(errors) == 1 and isinstance(errors[0], ValueError)
+        assert 'destination changed' in str(errors[0])
+        assert messages == [] and controller.project_path is None and controller.dirty
+        if action == 'save_as':
+            assert result is False
+    elif answer == 'decline':
+        assert target.read_bytes() == original
+        assert errors == [] and messages == []
+        assert controller.project_path is None and controller.dirty
+        if action == 'save_as':
+            assert result is False
+    else:
+        assert errors == [] and len(messages) == 1
+        if action == 'save_as':
+            assert result is True and controller.project_path == target and not controller.dirty
+            reopened = StudioController(private_root=controller.private_root).open(target)
+            assert reopened.script == 'Reading derivative'
+            assert reopened.draft.source_text == 'Immutable source'
+        else:
+            assert target.read_text(encoding='utf-8') == 'Reading derivative'
+            assert controller.project_path is None and controller.dirty
+    assert list(tmp_path.glob('.research-export-*')) == []

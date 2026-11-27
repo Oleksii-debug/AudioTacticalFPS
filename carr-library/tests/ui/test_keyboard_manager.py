@@ -590,3 +590,120 @@ def test_late_profile_recovery_does_not_announce_a_stale_startup_warning(tmp_pat
     for callback in deferred:
         callback()
     assert frame.notices == []
+
+
+@pytest.fixture
+def keymap_export(manager, tmp_path, monkeypatch):
+    from unittest.mock import Mock
+    private = tmp_path / 'private'
+    private.mkdir()
+    manager.store = KeymapStore(private / 'keyboard-shortcuts.json')
+    manager.apply_overrides({'library.import': 'Ctrl+K'})
+    target = tmp_path / 'exported-keymap.json'
+    wx = SimpleNamespace(FD_SAVE=1, FD_OVERWRITE_PROMPT=2, ID_OK=3,
+                         YES_NO=4, NO_DEFAULT=8, ICON_QUESTION=16,
+                         ID_YES=20, ID_NO=21, ID_CANCEL=22)
+    chooser, question = Mock(), Mock()
+    chooser.ShowModal.return_value = wx.ID_OK
+    chooser.GetPath.return_value = str(target)
+    question.ShowModal.return_value = wx.ID_YES
+    wx.FileDialog = Mock(return_value=chooser)
+    wx.MessageDialog = Mock(return_value=question)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    messages = []
+    view = SimpleNamespace(wx=wx, dialog=object(), manager=manager,
+                           original_store=manager.store,
+                           draft={'library.import': 'Ctrl+K'}, _message=messages.append)
+    return SimpleNamespace(view=view, target=target, wx=wx, chooser=chooser,
+                           question=question, messages=messages)
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_keymap_export_keeps_exact_bytes_and_active_profile(keymap_export, existing):
+    import json
+    h = keymap_export
+    before = snapshot(h.view.manager)
+    if existing:
+        h.target.write_bytes(b'Old selected export')
+    KeyboardSettingsDialog.export_map(h.view)
+    expected = json.dumps({'version': 1, 'bindings': {'library.import': 'Ctrl+K'}},
+                          ensure_ascii=False, indent=2) + '\n'
+    assert h.target.read_bytes() == expected.encode('utf-8')
+    assert h.wx.FileDialog.call_args.kwargs['style'] == h.wx.FD_SAVE
+    assert snapshot(h.view.manager) == before
+    assert h.messages[-1].startswith('The draft keymap was exported.')
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_keymap_export_preserves_competing_file_during_real_serialization(
+        keymap_export, monkeypatch, existing):
+    from carr_library.ui import keyboard_settings as ui
+    h = keymap_export
+    before = snapshot(h.view.manager)
+    if existing:
+        h.target.write_bytes(b'Previously approved keymap')
+    serialize = ui.json.dumps
+
+    def competing_save(*args, **kwargs):
+        result = serialize(*args, **kwargs)
+        h.target.write_bytes(b'Newer keymap saved during actual serialization')
+        return result
+
+    monkeypatch.setattr(ui.json, 'dumps', competing_save)
+    KeyboardSettingsDialog.export_map(h.view)
+    assert h.target.read_bytes() == b'Newer keymap saved during actual serialization'
+    assert 'destination changed' in h.messages[-1]
+    assert snapshot(h.view.manager) == before
+    assert not list(h.target.parent.glob('.research-export-*'))
+
+
+def test_keymap_export_preserves_file_changed_during_overwrite_question(keymap_export):
+    h = keymap_export
+    h.target.write_bytes(b'Previously approved keymap')
+
+    def competing_save():
+        h.target.write_bytes(b'Newer keymap saved while question is open')
+        return h.wx.ID_YES
+
+    h.question.ShowModal.side_effect = competing_save
+    KeyboardSettingsDialog.export_map(h.view)
+    assert h.target.read_bytes() == b'Newer keymap saved while question is open'
+    assert 'destination changed' in h.messages[-1]
+    h.question.Destroy.assert_called_once()
+
+
+@pytest.mark.parametrize('answer', ['ID_NO', 'ID_CANCEL'])
+def test_keymap_export_decline_preserves_file_and_active_profile(keymap_export, answer):
+    h = keymap_export
+    before = snapshot(h.view.manager)
+    h.target.write_bytes(b'Preserved keymap export')
+    h.question.ShowModal.return_value = getattr(h.wx, answer)
+    KeyboardSettingsDialog.export_map(h.view)
+    assert h.target.read_bytes() == b'Preserved keymap export'
+    assert snapshot(h.view.manager) == before
+    assert not h.messages
+    h.question.Destroy.assert_called_once()
+
+
+def test_keymap_export_cannot_overwrite_private_profile(keymap_export):
+    h = keymap_export
+    before = snapshot(h.view.manager)
+    h.chooser.GetPath.return_value = str(h.view.manager.store.path)
+    KeyboardSettingsDialog.export_map(h.view)
+    assert 'outside the private library folder' in h.messages[-1]
+    assert snapshot(h.view.manager) == before
+    h.wx.MessageDialog.assert_not_called()
+
+
+def test_keymap_export_rechecks_profile_binding_after_confirmation(keymap_export, tmp_path):
+    h = keymap_export
+    h.target.write_bytes(b'Preserved keymap export')
+
+    def switch_profile():
+        h.view.manager.store = KeymapStore(tmp_path / 'other-profile.json')
+        return h.wx.ID_YES
+
+    h.question.ShowModal.side_effect = switch_profile
+    KeyboardSettingsDialog.export_map(h.view)
+    assert h.target.read_bytes() == b'Preserved keymap export'
+    assert 'library folder changed' in h.messages[-1]

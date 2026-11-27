@@ -10,6 +10,8 @@ from unittest.mock import Mock
 
 import pytest
 
+import carr_library
+
 from carr_library.citations.anchors import Identity, Locator, Metadata, make_anchor, format_citation
 from carr_library.application import LibraryApp
 from carr_library.catalog.read_views import active_collections
@@ -32,7 +34,7 @@ class BaseFrame:
 
 @pytest.fixture
 def classes():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    source = Path(carr_library.__file__).resolve().parent / 'ui/desktop_app.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and
              node.name in {'DesktopFrame','DesktopSearchPanel','format_topic_results'}]
@@ -126,9 +128,11 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
-        'install_audio_studio_actions', 'install_api_connection_actions',
+        'install_audio_studio_actions', 'install_api_connection_actions', 'install_transcription_actions',
         'install_assistant_actions', 'install_academic_comparison_actions')}
     env.update(installers)
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.transcription_dialog',
+                        SimpleNamespace(install_transcription_actions=installers['install_transcription_actions']))
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))

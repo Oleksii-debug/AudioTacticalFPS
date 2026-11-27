@@ -72,7 +72,14 @@ cases and two actual-child stop/partial/resume cases. Those two cases use the
 selected host's actual ProgressHub/ProgressTask; no canonical tracker module is
 added. The host suite adds real subprocess staging limits, typed backup/restore,
 foreign edit rejection, escaped-edit roundtrip and malformed engine checksums.
-Expected collection is36 bridge and14 host cases; actual JUnit must confirm it.
+Expected collection is36 bridge and16 host cases; actual JUnit must confirm it.
+The completed-job recheck observes Stop while verifying real output files and
+leaves the stored completed job, receipts, inputs and outputs unchanged. This
+successor requires its own source and installed execution evidence.
+Live worker status snapshots use read/write/delete sharing on Windows so
+bounded observation does not prevent atomic worker updates. The added
+held-reader regression performs a real replacement while the old snapshot
+remains open; configuration and completed recognition receipts are unchanged.
 
 Verify installed origins for `transcription`, `transcription_host`,
 `transcription_backup`, `transcription_cli`, `ui.transcription_dialog`, and

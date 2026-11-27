@@ -13,6 +13,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+import carr_library
+
 from carr_library.catalog.read_views import EditionView
 from carr_library.catalog.reference_exchange import preview_references
 
@@ -64,21 +66,31 @@ class Executor:
 
 
 @pytest.fixture
-def module():
+def module(monkeypatch):
     wx = ModuleType('wx')
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'TextCtrl', 'Button', 'Choice', 'ScrolledWindow'):
         setattr(wx, name, Control)
     names = ('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT', 'TOP', 'BOTTOM',
              'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'VSCROLL', 'TAB_TRAVERSAL',
              'ID_SAVE', 'ID_CANCEL', 'ID_OK', 'EVT_BUTTON', 'EVT_CLOSE', 'FD_OPEN',
-             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')
+             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT', 'ID_YES', 'ID_NO',
+             'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION')
     for number, name in enumerate(names):
         setattr(wx, name, 1 << number)
     wx.callbacks = []
     wx.CallAfter = wx.callbacks.append
     wx.FileDialog = Mock(side_effect=AssertionError('Unexpected file dialog'))
     wx.SingleChoiceDialog = Mock(side_effect=AssertionError('Unexpected choice dialog'))
-    root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.ID_YES, None, []
+    class MessageDialog(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            wx.overwrites.append(self)
+        def ShowModal(self):
+            if wx.overwrite_hook: wx.overwrite_hook()
+            return wx.overwrite_result
+    wx.MessageDialog = MessageDialog
+    root = Path(carr_library.__file__).resolve().parent / 'ui'
 
     def load(name, path):
         spec = importlib.util.spec_from_file_location(name, path)
@@ -86,10 +98,10 @@ def module():
         spec.loader.exec_module(value)
         return value
 
-    with patch.dict(sys.modules, {'wx': wx}):
-        metadata = load('carr_library.ui._academic_metadata_test', root / 'catalog_metadata_dialog.py')
-        with patch.dict(sys.modules, {'carr_library.ui.catalog_metadata_dialog': metadata}):
-            return load('carr_library.ui._academic_actions_test', root / 'academic_actions.py')
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    metadata = load('carr_library.ui._academic_metadata_test', root / 'catalog_metadata_dialog.py')
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.catalog_metadata_dialog', metadata)
+    return load('carr_library.ui._academic_actions_test', root / 'academic_actions.py')
 
 
 @pytest.fixture
@@ -418,8 +430,8 @@ def test_export_keeps_original_private_root_even_if_active_library_changes(
     other_root = tmp_path / 'another-library'
     other_root.mkdir()
     frame.library = SimpleNamespace(root=other_root)
-    with pytest.raises(ValueError, match='outside the private library'):
-        finish(frame)
+    assert not frame.jobs
+    assert 'outside the private library' in frame.reports[-1]
     assert destination.read_bytes() == b'Original library bytes'
 
 
@@ -464,3 +476,37 @@ def test_outline_handler_passes_exact_topic_and_atomic_export_text(module, editi
     library.export_outline.assert_called_once_with('workspace', 'topic', cancelled=frame.cancel_event.is_set)
     assert destination.read_text(encoding='utf-8') == '# Research — Україна\n'
     assert file.destroyed and 'Research outline exported' in frame.reports[-1]
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_export_preserves_file_changed_during_render(module, edition, tmp_path, monkeypatch, action, existing):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'competing.txt'
+    if existing: destination.write_bytes(b'Approved earlier bytes')
+    choose(module, monkeypatch, path=destination)
+    def compete(*args, **kwargs):
+        destination.write_bytes(b'Newer independent work')
+        return 'Older rendered export'
+    method = library.export_bibliography if action == 'bibliography' else library.export_outline
+    method.side_effect = compete
+    (module.export_bibliography if action == 'bibliography' else module.export_research_outline)(frame)
+    assert len(frame.jobs) == 1
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert destination.read_bytes() == b'Newer independent work'
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_declining_overwrite_stops_before_render_and_queue(module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'declined.txt'
+    destination.write_bytes(b'Keep this work')
+    choose(module, monkeypatch, path=destination)
+    module.wx.overwrite_result = module.wx.ID_NO
+    (module.export_bibliography if action == 'bibliography' else module.export_research_outline)(frame)
+    assert not frame.jobs and destination.read_bytes() == b'Keep this work'
+    library.export_bibliography.assert_not_called()
+    library.export_outline.assert_not_called()
+    assert module.wx.overwrites[0].destroyed

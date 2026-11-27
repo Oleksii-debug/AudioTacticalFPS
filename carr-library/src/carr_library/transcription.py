@@ -14,7 +14,8 @@ import shutil
 import time
 from uuid import uuid4
 
-from .transcription_host import AudioBudget, AudioCancelled, AudioError, finite, run_process
+from .transcription_host import (AudioBudget, AudioCancelled, AudioError, finite,
+                                 read_worker_status, run_process)
 from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
                             read_json, regular, state_lock, sync_directory)
 from .backup_sidecars import portable_name as relative_name
@@ -424,7 +425,7 @@ class TranscriptionService:
             config = self.configuration(verify=True)
             self._sources(path, job, cancelled)
             if job['status'] == 'completed':
-                self.verify(identity)
+                self.verify(identity, cancelled=cancelled)
                 return job
             for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
                 candidate = path / name
@@ -485,7 +486,7 @@ class TranscriptionService:
                 if observer_available and now - notice_at >= .5 and prior.exists():
                     notice_at = now
                     try:
-                        current = read_json(prior)
+                        current = read_worker_status(prior)
                         notify(current.get('done', 0), len(job['sources']),
                                str(current.get('state', 'running'))[:200])
                     except (ValueError, OSError):
@@ -514,7 +515,7 @@ class TranscriptionService:
                 notify(0, len(job['sources']), 'stopped')
                 return job
             try:
-                status = read_json(prior) if prior.exists() else {}
+                status = read_worker_status(prior) if prior.exists() else {}
                 receipts, artifacts = self._receipts(path, job, status, cancelled)
                 complete = (failure is None and stop_at is None
                             and status.get('result_state') == 'completed'
@@ -540,7 +541,7 @@ class TranscriptionService:
 
     def verify(self, identity, *, cancelled=lambda: False):
         path, job = self._path(identity), self.get(identity)
-        status = read_json(path / 'job_status.json')
+        status = read_worker_status(path / 'job_status.json')
         if status.get('run_id') != job.get('worker_run_id'):
             raise ValueError('The recognized transcript no longer belongs to the saved run.')
         receipts, artifacts = self._receipts(path, job, status, cancelled)

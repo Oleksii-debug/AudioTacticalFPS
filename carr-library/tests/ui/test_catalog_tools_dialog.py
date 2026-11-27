@@ -12,6 +12,8 @@ from unittest.mock import patch
 
 import pytest
 
+import carr_library
+
 
 class Control:
     def __init__(self, *args, **kwargs):
@@ -43,13 +45,14 @@ class Control:
 
 
 @pytest.fixture
-def module():
+def module(monkeypatch):
     wx = ModuleType('wx')
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Control)
     for n, name in enumerate(('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT',
             'TOP', 'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'ID_CANCEL', 'ID_OK',
-            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')):
+            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+            'ID_YES', 'ID_NO', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION')):
         setattr(wx, name, 1 << n)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -57,6 +60,15 @@ def module():
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
+    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.ID_YES, None, []
+    class MessageDialog(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            wx.overwrites.append(self)
+        def ShowModal(self):
+            if wx.overwrite_hook: wx.overwrite_hook()
+            return wx.overwrite_result
+    wx.MessageDialog = MessageDialog
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -69,11 +81,11 @@ def module():
             return wx.file_result
         def GetPath(self): return wx.file_path
     wx.FileDialog = FileDialog
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
+    path = Path(carr_library.__file__).resolve().parent / 'ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
-    with patch.dict(sys.modules, {'wx': wx}):
-        spec.loader.exec_module(mod)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    spec.loader.exec_module(mod)
     return mod
 
 
@@ -207,7 +219,7 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert getattr(form, 'export_' + kind)()
     assert module.wx.files[0].destroyed
     style = module.wx.files[0].options['style']
-    assert style & module.wx.FD_SAVE and style & module.wx.FD_OVERWRITE_PROMPT
+    assert style & module.wx.FD_SAVE and not style & module.wx.FD_OVERWRITE_PROMPT
     destination = Path(module.wx.file_path)
     assert not destination.exists() and library.calls == []
     frame.finish()
@@ -275,8 +287,8 @@ def test_late_report_callback_does_not_display_foreign_scope_data(setup):
 def test_checked_writer_refuses_private_source_overwrite(module, setup):
     form, frame, library = setup
     module.wx.file_path = str(library.original)
-    assert form.export_inventory()
-    frame.finish()
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == []
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled
@@ -392,3 +404,28 @@ def test_wrapper_rejects_ambiguous_collection_identifiers(module, setup, monkeyp
     monkeypatch.setattr(library, 'collections', lambda workspace: rows)
     module.show_catalog_tools(frame)
     assert not module.wx.callbacks and 'Collection choices changed' in frame.messages[-1]
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_each_catalog_export_preserves_competing_file_during_render(module, setup, kind, existing):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    if existing: destination.write_bytes(b'Previously approved output')
+    library.hook = lambda: destination.write_bytes(b'Newer independent work')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert destination.read_bytes() == b'Newer independent work'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(destination.parent.glob('.research-export-*'))
+    assert not form.pending
+
+
+def test_catalog_overwrite_decline_restores_button_without_render(module, setup):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    destination.write_bytes(b'Keep work')
+    module.wx.overwrite_result = module.wx.ID_NO
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == [] and form.inventory_button.focused
+    assert destination.read_bytes() == b'Keep work' and module.wx.overwrites[0].destroyed

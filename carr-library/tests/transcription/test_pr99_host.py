@@ -133,3 +133,64 @@ def test_malformed_engine_checksum_is_a_typed_backup_error(prepared, tmp_path, v
     with pytest.raises(ValueError, match='engine configuration'):
         app.backup(tmp_path / 'rejected')
     assert not (tmp_path / 'rejected').exists()
+
+def test_completed_run_recheck_observes_stop_after_real_output_read(prepared, monkeypatch):
+    from carr_library import transcription
+    from carr_library.transcription_host import AudioCancelled
+    _, _, service, _, _ = prepared
+    identity, completed = _fixture.completed(prepared)
+    root = service._path(identity)
+    names = ['job.json', 'job_status.json']
+    names += completed['receipts']
+    names += ['input/' + item['filename'] for item in completed['sources']]
+    names += ['results/' + item['path'] for item in completed['artifacts']]
+    before = {name: (root / name).read_bytes() for name in names}
+    first = root / 'results' / completed['artifacts'][0]['path']
+    actual_digest = transcription._checked_digest
+    stop, observed = [False], []
+
+    def request_stop_after_read(path, size, cancelled):
+        result = actual_digest(path, size, cancelled)
+        if Path(path).resolve() == first.resolve():
+            observed.append(result)
+            stop[0] = True
+        return result
+
+    with monkeypatch.context() as scope:
+        scope.setattr(transcription, '_checked_digest', request_stop_after_read)
+        with pytest.raises(AudioCancelled, match='cancelled'):
+            service.run(identity, cancelled=lambda: stop[0])
+
+    assert observed == [completed['artifacts'][0]['sha256']]
+    assert service.get(identity) == completed
+    assert service.get(identity)['status'] == 'completed'
+    assert {name: (root / name).read_bytes() for name in names} == before
+    assert service.verify(identity) == completed
+
+
+
+def test_live_worker_status_reader_allows_atomic_replacement(tmp_path, monkeypatch):
+    import os
+    from carr_library import transcription_host
+    status = tmp_path / 'job_status.json'
+    stage = tmp_path / 'status.tmp'
+    old = b'{"state":"running","done":0}\n'
+    new = b'{"state":"finished","done":1}\n'
+    status.write_bytes(old)
+    stage.write_bytes(new)
+    actual_open = transcription_host._open_worker_status
+
+    def replace_after_open(path):
+        stream = actual_open(path)
+        try:
+            os.replace(stage, status)
+        except BaseException:
+            stream.close()
+            raise
+        return stream
+
+    with monkeypatch.context() as scope:
+        scope.setattr(transcription_host, '_open_worker_status', replace_after_open)
+        assert transcription_host.read_worker_status(status) == {'state': 'running', 'done': 0}
+    assert transcription_host.read_worker_status(status) == {'state': 'finished', 'done': 1}
+    assert status.read_bytes() == new and not stage.exists()

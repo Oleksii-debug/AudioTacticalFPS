@@ -14,7 +14,8 @@ import threading
 from uuid import uuid4
 
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
-from ..research.export_file import write_export
+from ..research.export_file import ExportDestination, capture_export_destination, write_export
+from .export_destination import confirm_export_destination
 from ..audio.ffmpeg import find_local_tool
 from ..audio.player import WavePlayer
 
@@ -215,9 +216,13 @@ class StudioController:
     def dirty(self):
         return self._saved_value != _json_text(self.to_dict())
 
-    def save(self, path=None, *, overwrite=False, cancelled=lambda: False):
+    def save(self, path=None, *, overwrite=False, cancelled=lambda: False,
+             approval: ExportDestination | None = None):
         selected = _local_path(path or self.project_path or '', 'project file')
         self._protect_original(selected)
+        if approval is None:
+            approval = capture_export_destination(selected, private_root=self.private_root,
+                                                  cancelled=cancelled)
         same = self.project_path is not None and selected == self.project_path
         if selected.exists():
             if same:
@@ -228,7 +233,8 @@ class StudioController:
         elif same and self._file_hash is not None:
             raise ValueError('The saved project was removed. Use Save As to choose a destination.')
         value = _json_text(self.to_dict())
-        write_export(selected, value, private_root=self.private_root, cancelled=cancelled)
+        write_export(selected, value, private_root=self.private_root, cancelled=cancelled,
+                     approval=approval)
         self.project_path = selected
         self._file_hash = hashlib.sha256(value.encode('utf-8')).hexdigest()
         self._saved_value = value
@@ -353,13 +359,16 @@ class StudioController:
         finally:
             self._render_lock.release()
 
-    def export_reading_copy(self, path, *, overwrite=False):
+    def export_reading_copy(self, path, *, overwrite=False,
+                            approval: ExportDestination | None = None):
         selected = _local_path(path, 'reading-copy filename')
         self._protect_original(selected)
+        if approval is None:
+            approval = capture_export_destination(selected, private_root=self.private_root)
         if selected.exists() and not overwrite:
             raise FileExistsError('Choose a new reading-copy filename or confirm replacement.')
         self.draft.assert_source()
-        write_export(selected, self.script, private_root=self.private_root)
+        write_export(selected, self.script, private_root=self.private_root, approval=approval)
 
 
 # Preserve the public UI import while sharing the reviewed per-player transport.
@@ -723,7 +732,7 @@ class AudioStudioDialog:
         dialog = wx.FileDialog(self.dialog, title,
             wildcard='Text (*.txt)|*.txt|All files (*.*)|*.*' if text else 'Audio project (*.json)|*.json',
             defaultFile='audio-project.json' if save and not text else '',
-            style=(wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
+            style=wx.FD_SAVE if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
         try:
             return Path(dialog.GetPath()) if dialog.ShowModal() == wx.ID_OK else None
         finally:
@@ -788,7 +797,11 @@ class AudioStudioDialog:
             path = self._file('Save Audio Studio project as', save=True)
             if path is None:
                 return False
-            self.controller.save(path, overwrite=True)
+            approval = confirm_export_destination(self.dialog, path,
+                private_root=self.controller.private_root, title='Replace Audio Studio project')
+            if approval is None:
+                return False
+            self.controller.save(path, overwrite=True, approval=approval)
             self._refresh_text()
             self._message('Project saved to ' + str(path), focus=True)
             return True
@@ -970,7 +983,11 @@ class AudioStudioDialog:
             self._capture()
             path = self._file('Export separate reading copy', save=True, text=True)
             if path is not None:
-                self.controller.export_reading_copy(path, overwrite=True)
+                approval = confirm_export_destination(self.dialog, path,
+                    private_root=self.controller.private_root, title='Replace reading copy')
+                if approval is None:
+                    return
+                self.controller.export_reading_copy(path, overwrite=True, approval=approval)
                 self._message('Reading copy exported. Original sources and quotations are unchanged.', focus=True)
         except Exception as exc:
             self._error(exc)

@@ -18,7 +18,7 @@ from carr_library.durable_state import read_json, atomic_json
 from carr_library.library_backup import restore_backup
 from carr_library.transcription import TranscriptionService, settings
 from carr_library.progress import ProgressHub
-from carr_library.transcription_host import require_completed
+from carr_library.transcription_host import require_completed, read_worker_status
 
 
 SYNTHETIC_WORKER = r'''
@@ -382,7 +382,7 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
     monkeypatch.setattr(service, '_receipts', must_not_rehash)
     def cancelled():
         status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return status.exists() and read_worker_status(status).get('done') == 1
     stopped = service.run(identity, timeout=30, cancelled=cancelled)
     assert stopped['status'] == 'stopped'
     assert stopped['artifacts'] == [] and stopped['done'] == 0
@@ -442,7 +442,7 @@ def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(
 
     def cancelled():
         status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return status.exists() and read_worker_status(status).get('done') == 1
 
     def broken(done, total, phase):
         if phase == 'stopped':
@@ -496,7 +496,7 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     def cancelled():
         status = path / 'job_status.json'
         return (any(done == 1 for done, _, _ in calls) and status.exists()
-                and read_json(status).get('done') == 1)
+                and read_worker_status(status).get('done') == 1)
 
     result = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)
     durable, worker = service.get(identity), read_json(path / 'job_status.json')
@@ -530,7 +530,7 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
         events.append(tracker.update(completed=completed, total=total, phase=phase))
 
     partial = service.run(identity, timeout=30, progress=progress)
-    assert partial['status'] == 'partial' and partial['done'] == 1
+    assert partial['status'] == 'partial' and partial['done'] == 1, partial
     with pytest.raises(RuntimeError):
         require_completed(partial)
     assert events and all(event.percent < 100 for event in events)

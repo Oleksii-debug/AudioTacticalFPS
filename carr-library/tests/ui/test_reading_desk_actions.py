@@ -331,6 +331,42 @@ def test_state_export_does_not_overwrite_private_database(source):
     assert 'outside' in frame.messages[-1]
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_reading_export_uses_captured_destination_before_state_render(source, tmp_path, monkeypatch, existing):
+    from carr_library.ui import reading_desk as ui
+    from carr_library.research.export_file import capture_export_destination
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'competing-reading.json'
+    if existing: target.write_bytes(b'Previously approved reading state')
+    # Only the user's approval decision is a double. Capture and publication
+    # both use the real filesystem guard, and state rendering remains real.
+    monkeypatch.setattr(ui, 'confirm_export_destination', lambda parent, path, **options:
+        capture_export_destination(path, private_root=options['private_root']))
+    original = ReadingState.export_state
+    def compete(state, scope):
+        value = original(state, scope)
+        target.write_bytes(b'Newer reading state saved independently')
+        return value
+    monkeypatch.setattr(ReadingState, 'export_state', compete)
+    frame = Frame(app, workspace)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert target.read_bytes() == b'Newer reading state saved independently'
+    assert 'destination changed' in frame.messages[-1]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_reading_export_decline_stops_before_state_render(source, tmp_path, monkeypatch):
+    from carr_library.ui import reading_desk as ui
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'declined-reading.json'
+    target.write_bytes(b'Preserved reading state')
+    monkeypatch.setattr(ui, 'confirm_export_destination', lambda *args, **kwargs: None)
+    monkeypatch.setattr(ReadingState, 'export_state', lambda *args: pytest.fail('Declined export rendered state'))
+    frame = Frame(app, workspace)
+    ReadingActions(frame, dialogs=Dialogs(path=target)).export_state()
+    assert not frame.jobs and target.read_bytes() == b'Preserved reading state'
+
+
 def test_import_rejects_stale_source_before_bookmark_publication(source, tmp_path):
     app, workspace, book, desk, _ = source
     state = ReadingState(app.root)
