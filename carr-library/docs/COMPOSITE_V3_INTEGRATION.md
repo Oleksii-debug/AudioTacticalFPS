@@ -1,10 +1,87 @@
 # Resonance composite V3 integration
 
-This candidate reconciles the accepted platform source at
-4b6f8169986c4a58b43e4a23bc081fbefadbbdcb with the reviewed integration
-lineage recorded in PR127. The current
+This candidate reconciles the accepted platform source through
+1a0cd095563c9d86d9ca280323ff4449816ad3f7 with the reviewed integration
+lineage recorded in PR127. Canonical advanced during qualification to
+966e5ccf892243ead6942c635af5fbab47e72551, integrating the independently
+qualified ff803494 preview. The behavior and data-format reconciliation is
+recorded in CANONICAL_RECONCILIATION_2026-11-27.md. The current
 UNIVERSAL_SCOPE_V3_FINALIZATION.md remains authoritative. This record is not
 full-platform acceptance or distribution clearance.
+
+Canonical then advanced to 3beebd5aca900b8bf2e86498ae79db4015c96705 with
+the PR176 pre-link cancellation correction. The identical guard and real-render
+regression were already present in this composite; that two-path delta required
+no duplicate implementation or transfer of canonical test results.
+
+The current combined candidate also incorporates canonical per-evidence recovery,
+durably acknowledged Save All, contextual reader keys, historical backup and
+inert voice-helper compatibility, bounded asynchronous export approval and typed
+transcription-plan delegation, retained production/destination resource admission and
+bounded cancellable inventory. Resource and backup evidence is recorded in the
+canonical reconciliation document. The exact source/native checkpoints, corrected
+negative controls and remaining qualification boundary are maintained in
+[CANONICAL_RECONCILIATION_2026-11-27.md](CANONICAL_RECONCILIATION_2026-11-27.md).
+The main workflow records its complete required source-suite inventory and
+requires every selector to pass; installed-package regressions accompany its
+core installed workflows. The same installed bundle
+also exercises Catalog Tools export, Save All recovery and reader key dispatch.
+These are required gates, not claims that the enclosing commit already passed.
+
+## Current native correction evidence
+
+The published predecessor 1e2eebc41589a9fe462f10bc3a2359de05e536be completed
+all 241 required source suites in main Windows run45953981531. The overall
+run still failed: its early real descendant-cleanup regression retained a file
+lock, the native draft timer hit an access violation, and the host had no audio
+endpoint for the unchanged MCI reader. The successful source aggregator does
+not erase those failures. V3 run45953981573 failed two PDF timeout fixtures
+before their actual commit barriers; its other 1921 broad cases passed.
+Both launcher toolchains, both transcription jobs and bibliography
+run45953981645 passed at that exact predecessor. Bibliography completed
+985 strict cases and 69 native assertions.
+
+Follow-up 77093c8fc1d124bc6bb52c93edce69214098adde passed the bounded
+native correction job140377068923 in run45960544312:
+
+- 27 strict CI-runner cases passed without skips, including a real descendant
+  holding a file and an orphan whose intermediate parent already exited.
+  Windows suites are assigned to a non-breakaway Job Object while suspended.
+  Termination waits for the entire nested job's active-process count to reach
+  zero before temporary files are removed. An unproved barrier retains the
+  files and original failure; no weaker retry turns it into success.
+- Six interpreter-ownership cases passed in the actual Windows venv. The
+  import supervisor owns the base interpreter directly while retaining the
+  selected venv through CPython's launcher environment. The real child checks
+  PID, prefix, dependencies, isolation, writer-lock release and durable
+  post-commit reconciliation. This is not a general descendant barrier.
+- All 45 publication cases passed. Startup acknowledgment has its own bounded
+  wait; the actual three-second operation timeout and commit/rollback assertions
+  remain. An atomic marker identifies the actual child, separately from any
+  possible venv redirector.
+- All four installed native timer lifetime assertions passed. Both 3000 ms
+  draft timers and active 250 ms progress timers delivered real events.
+  Close and Destroy callbacks observed that both original SIP wrappers were
+  already invalidated. Captured native IDs identify the owner without invoking
+  the dying wrapper; both timers stopped. The event loop remained usable without
+  new events for a further 3400 ms interval.
+- The unchanged reader passed 108 native assertions through actual Windows MCI:
+  A/B repeat, paused sleep expiration, explicit disarm, library/source
+  invalidation, save and device cleanup. Its PCM is synthetic test data;
+  acoustic voice quality and human NVDA remain NOT_RUN.
+
+The one dated CI evaluation uses a pinned, ordinarily signed virtual endpoint
+only on an isolated hosted runner. Its package, both vendor SYS signatures,
+Microsoft hardware catalog, installed bytes, started devnode and exact PCM
+format are verified. It changes no signing policy or trust store and accepts
+no reboot. The driver is never uploaded or included in an application archive.
+Recurring CI deployment and its license are separate from this bounded test.
+The source and receipt contract are in scripts/ci_audio_endpoint_NOTICE.md.
+
+This targeted native success is not the complete successor Windows aggregate
+or a transferable application wheel. The final combined source, installed
+bundle, native controls and retained wheel must pass together after canonical
+feature and backup compatibility reconciliation.
 
 ## Current composition and exact predecessor evidence
 
@@ -19,7 +96,7 @@ counts from earlier feature checkpoints are not inherited.
 | Requirement | Integrated source change | Evidence boundary |
 | --- | --- | --- |
 | V3-02/03 | Reuse the existing reader for A/B repeat, a disarmable sleep timer, keyboard transport and source/close generation invalidation | Synthetic PCM through actual Windows MCI is a transport check; voice quality and human NVDA remain separate |
-| V3-03/21 | Explicit owner backend/profile selection and verified model/reference inventories in the existing voice settings | Original private source/models/recordings are absent; synthetic helper tests do not establish cloning inference |
+| V3-03/21 | Explicit owner backend/profile selection and verified model/reference inventories in the existing voice settings | Original private source/models/recordings are absent from the public repository and distribution; synthetic helper tests do not establish cloning inference |
 | V3-11/20/22 | Translation of exact retained documents or bounded ranges, source-bound consent, saved-job resume/export and linked reading derivatives | Existing gateway/ledger/ReadingDocument are reused; no live Google request or local neural translation is claimed |
 | V3-16/18/22 | Optional provider-injected host lifecycle, worker-thread renewal, offline file import/export and one-use update approval after complete backup | Public providers are synthetic; private verifier, supported installer and production trust are separately required |
 | V3-05/17 | Accessible local installation/verification of the reviewed audio runtime through existing settings | Audio-bearing archives remain blocked from transfer; actual runtime execution and distribution clearance are separate |
@@ -373,3 +450,21 @@ Owner voice/cloning runtime acceptance, authorized reference recordings,
 per-language quality for all 135 target entries, unrestricted distribution
 clearance, publisher signing, and signed update/entitlement services remain
 explicit open requirements. This candidate does not remove them.
+
+
+## Canonical recovery and voice checkpoint, 2026-11-27
+
+Commit `07e1e7fcdae89d27b6c8a8a1cd62a95e66e0c363` passed
+[Windows compatibility run 45961915464](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45961915464).
+The four required source suites and their fresh installed-package counterparts
+each passed 80 cases, with zero failed, skipped or expected-failure cases.
+The source inventory comprises evidence_drafts (19), save_all (10),
+evidence_draft_recovery (18) and progress_speech (33). This qualifies those
+contracts at that source only. It does not qualify the later Save All UI,
+reader keymap or backup composition, and it is not a complete release aggregate.
+
+Canonical reconciliation continues in
+[the exact compatibility record](CANONICAL_RECONCILIATION_2026-11-27.md).
+The composite retains its content-bound export, import receipts, cancellation,
+sealed audio identity and restored-job reapproval guards while adopting the
+canonical data and accessible workflow contracts.

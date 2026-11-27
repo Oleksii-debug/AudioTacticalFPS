@@ -48,8 +48,8 @@ def test_late_stop_does_not_hide_error_after_verified_outputs(tmp_path, voices, 
     verify = service._verify_artifacts
     stopping, accepted = [False], {}
 
-    def verify_then_fail(state):
-        verify(state)
+    def verify_then_fail(state, *, cancelled=lambda: False):
+        verify(state, cancelled=cancelled)
         assert state['status'] == 'complete' and state['artifacts']
         for artifact in state['artifacts']:
             path = Path(artifact['path'])
@@ -129,3 +129,64 @@ def test_stop_during_staged_master_validation_prevents_publication_and_resumes(t
     assert completed['status'] == 'complete'
     service._verify_artifacts(completed)
     assert (output / 'master.wav').is_file()
+
+
+def test_retained_inventory_cancels_during_enumeration_and_closes_iterator(tmp_path, monkeypatch):
+    from carr_library.studio import render
+    root = tmp_path / 'private-state'
+    root.mkdir()
+    files = [root / f'retained-{index}.bin' for index in range(8)]
+    for path in files:
+        path.write_bytes(path.name.encode('ascii'))
+    before = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in files}
+    original = render.os.scandir
+    stopping, yielded, closed = [False], [], []
+
+    class ObservedEntries:
+        def __init__(self, path):
+            self.stream = original(path)
+
+        def __enter__(self):
+            return self
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            entry = next(self.stream)
+            yielded.append(entry.name)
+            if len(yielded) == 2:
+                stopping[0] = True
+            return entry
+
+        def __exit__(self, *args):
+            self.stream.close()
+            closed.append(True)
+
+    monkeypatch.setattr(render.os, 'scandir', ObservedEntries)
+    with pytest.raises(InterruptedError, match='disk accounting cancelled'):
+        render._retained_bytes((root,), lambda: stopping[0])
+    assert len(yielded) == 2 and closed == [True]
+    assert {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in files} == before
+
+
+def test_retained_inventory_refuses_entry_budget_before_descending(tmp_path, monkeypatch):
+    from carr_library.studio import render
+    root = tmp_path / 'private-state'
+    root.mkdir()
+    files = [root / f'retained-{index}.bin' for index in range(8)]
+    for path in files:
+        path.write_bytes(path.name.encode('ascii'))
+    before = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in files}
+    original, inspected = Path.lstat, []
+
+    def observed(path, *args, **kwargs):
+        inspected.append(path)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(render, '_MAX_RETAINED_ENTRIES', 3)
+    monkeypatch.setattr(Path, 'lstat', observed)
+    with pytest.raises(ValueError, match='entry budget'):
+        render._retained_bytes((root,), lambda: False)
+    assert inspected == [root], 'The bounded pending list must reject before any child descent.'
+    assert {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in files} == before

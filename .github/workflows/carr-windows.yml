@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/ci-endpoint-evaluation-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -79,10 +79,10 @@ jobs:
       - name: Start existing Windows audio services and record actual endpoint capability
         if: ${{ !cancelled() && steps.desktop_runtime.outcome == 'success' }}
         id: audio_endpoint
-        timeout-minutes: 2
+        timeout-minutes: 5
         run: |
-          # This prepares the disposable runner only. No driver, startup policy,
-          # certificate trust, signing policy or user machine is changed.
+          # This prepares the disposable runner only. Existing service startup,
+          # certificate trust, signing policy and user machines are unchanged.
           if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_OS -ne 'Windows' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') { throw 'Audio service preparation requires the hosted Windows runner.' }
           $serviceEvidence = @()
           $serviceErrors = @()
@@ -118,6 +118,21 @@ jobs:
             $serviceEvidence += @{ name=$serviceName; before=$before; after=$after; start_type=$startMode }
           }
           @{ services=$serviceEvidence; errors=$serviceErrors; startup_policy_changed=$false; driver_installed=$false } | ConvertTo-Json -Depth 5 | Set-Content 'ci-results/audio-services.json'
+          if ($serviceErrors.Count) { throw ($serviceErrors -join '; ') }
+          # The signed endpoint evaluation is confined to this one dated test
+          # branch and a push event. It is not recurring application setup or a
+          # redistributed runtime. The helper independently enforces the same
+          # repository/ref/host guard, exact signatures/bytes and no-reboot rule.
+          if ($env:GITHUB_EVENT_NAME -ceq 'push' -and $env:GITHUB_REPOSITORY -ceq 'Oleksii-debug/AudioTacticalFPS' -and $env:GITHUB_REF -ceq 'refs/heads/carr/ci-endpoint-evaluation-20261127') {
+            $legacy = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell/v1.0/powershell.exe'
+            $modern = Join-Path $env:ProgramFiles 'PowerShell/7/pwsh.exe'
+            & $legacy -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-results/signature-json-ps51.json
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $modern -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-results/signature-json-ps7.json
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $env:CARR_PYTHON -I -B scripts/ci_audio_endpoint.py --receipt ci-results/endpoint-evaluation.json 2>&1 | Tee-Object 'ci-results/endpoint-evaluation.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
           $queryEndpoint = @'
           import importlib.util, json, pathlib
           spec = importlib.util.spec_from_file_location('reader_capability', 'scripts/windows_reader_controls_smoke.py')
@@ -142,6 +157,10 @@ jobs:
           path: |
             carr-library/ci-results/audio-services.json
             carr-library/ci-results/audio-endpoint.json
+            carr-library/ci-results/endpoint-evaluation.json
+            carr-library/ci-results/endpoint-evaluation.txt
+            carr-library/ci-results/signature-json-ps51.json
+            carr-library/ci-results/signature-json-ps7.json
             carr-library/ci-results/tested-commit.txt
           if-no-files-found: warn
           retention-days: 7
@@ -364,6 +383,12 @@ jobs:
         timeout-minutes: 20
         run: |
           $suites = @(
+            'tests/audio_acceptance/test_primary_publication_budget.py',
+            'tests/studio/test_production_hardening.py',
+            'tests/studio/test_production.py',
+            'tests/ui/test_assistant_voice_preview.py',
+            'tests/reader/test_finish_export_formats.py',
+            'tests/assistant/test_transcription_workflow.py',
             'tests/audio/test_local_runtime_cli.py',
             'tests/audio/test_local_runtime_setup.py',
             'tests/ui/test_audio_runtime_setup.py',
@@ -380,6 +405,16 @@ jobs:
             'tests/ui/test_library_translation_dialog.py',
             'tests/storage/test_state_json_reader.py',
             'tests/ui/test_save_actions.py',
+            'tests/storage/test_evidence_drafts.py',
+            'tests/ui/test_save_all.py',
+            'tests/ui/test_export_confirmation.py',
+            'tests/reader/test_export_approval_budget.py',
+            'tests/storage/test_canonical_backup_compat.py',
+            'tests/ui/test_save_all_access.py',
+            'tests/ui/test_reader_keymap_context.py',
+            'tests/language_qualification/test_inventory_cleanup.py',
+            'tests/speech/test_reading.py',
+            'tests/ui/test_evidence_draft_recovery.py',
             'tests/packaging/test_delivery_archive.py',
             'tests/ingest/test_import_metadata_shape.py',
             'tests/packaging/test_offline_runtime_policy.py',
@@ -577,6 +612,8 @@ jobs:
             'tests/storage/test_state_recovery_case_aliases.py',
             'tests/storage/test_import_registration_migration.py',
             'tests/e2e/test_import_worker_publication.py',
+            'tests/ingest/test_worker_interpreter_ownership.py',
+            'tests/ci_endpoint/test_endpoint_evaluation.py',
             'tests/packaging/test_worker_bytecode.py',
             'tests/storage/test_complete_pending_backup.py',
             'tests/storage/test_backup_v4_review.py',
@@ -644,6 +681,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { $nativeFailures += 'translation-source' }
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_save_timer_smoke.py --output ci-results/native-draft-timer.json 2>&1 | Tee-Object 'ci-results/native-draft-timer.txt'
           if ($LASTEXITCODE -ne 0) { $nativeFailures += 'draft-timer' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_save_all_recovery_smoke.py --native --report ci-results/native-save-all-recovery.json 2>&1 | Tee-Object 'ci-results/native-save-all-recovery.txt'
+          if ($LASTEXITCODE -ne 0) { $nativeFailures += 'save-all-recovery' }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_keymap_smoke.py --output ci-results/native-reader-keymap.json 2>&1 | Tee-Object 'ci-results/native-reader-keymap.txt'
+          if ($LASTEXITCODE -ne 0) { $nativeFailures += 'reader-keymap' }
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_audio_runtime_setup_smoke.py --runtime $env:CARR_AUDIO_RUNTIME --report ci-results/native-audio-runtime-setup.json 2>&1 | Tee-Object 'ci-results/native-audio-runtime-setup.txt'
           if ($LASTEXITCODE -ne 0) { $nativeFailures += 'local-audio-setup' }
           if ($nativeFailures.Count) { throw ('Native shared workflow failures: ' + ($nativeFailures -join ', ')) }
@@ -874,6 +915,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $catalogNative = @'
+          import pathlib, runpy, sys, sysconfig
+          import carr_library
+          root = pathlib.Path(sys.argv.pop(1)).resolve()
+          purelib = pathlib.Path(sysconfig.get_path('purelib')).resolve()
+          assert purelib.is_relative_to(root / '.venv'), str(purelib)
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(purelib)
+          from carr_library.native_runtime import activate_bundled_runtime
+          handle = activate_bundled_runtime(bundle_root=root)
+          assert handle is not None
+          probe = sys.argv.pop(1)
+          sys.argv[0] = probe
+          runpy.run_path(probe, run_name='__main__')
+          '@
+          $catalogNative | & $installedPython -I -B -X utf8 - $bundle (Resolve-Path tests/ui/native_catalog_tools_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-catalog-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path scripts/windows_citation_styles_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; from carr_library.audio.runtime import activate_bundled_audio_runtime; native=activate_bundled_runtime(); audio=activate_bundled_audio_runtime(); assert native is not None and audio is not None; probe=sys.argv.pop(1); sys.argv[0]=probe; runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_audio_studio_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-studio.json'
@@ -891,6 +948,10 @@ jobs:
           & $installedPython -I -B -X utf8 scripts/windows_translation_source_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-translation-source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_save_timer_smoke.py --output ci-results/bundle-draft-timer.json 2>&1 | Tee-Object 'ci-results/full-bundle-draft-timer.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $catalogNative | & $installedPython -I -B -X utf8 - $bundle (Resolve-Path scripts/windows_save_all_recovery_smoke.py).Path --native --report ci-results/bundle-save-all-recovery.json 2>&1 | Tee-Object 'ci-results/full-bundle-save-all-recovery.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/windows_reader_keymap_smoke.py --output ci-results/bundle-reader-keymap.json 2>&1 | Tee-Object 'ci-results/full-bundle-reader-keymap.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -X utf8 scripts/windows_audio_runtime_setup_smoke.py --runtime $env:CARR_AUDIO_RUNTIME --report ci-results/bundle-audio-runtime-setup.json 2>&1 | Tee-Object 'ci-results/full-bundle-audio-runtime-setup.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -943,7 +1004,22 @@ jobs:
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
-          contents_suites = ['tests/audio/test_local_runtime_cli.py',
+          contents_suites = ['tests/audio_acceptance/test_primary_publication_budget.py',
+                            'tests/studio/test_production_hardening.py',
+                            'tests/studio/test_production.py',
+                            'tests/ui/test_assistant_voice_preview.py',
+                            'tests/packaging/test_source_wheel.py',
+                            'tests/e2e/test_export_destination.py',
+                            'tests/ui/test_academic_actions.py',
+                            'tests/ui/test_academic_export_handler.py',
+                            'tests/ui/test_catalog_tools_dialog.py',
+                            'tests/reader/test_file_export.py',
+                            'tests/reader/test_binary_file_export.py',
+                            'tests/reader/test_export_no_clobber.py',
+                            'tests/reader/test_finish_export_formats.py',
+                            'tests/assistant/test_transcription_workflow.py',
+                            'tests/assistant/test_workflows.py',
+                            'tests/audio/test_local_runtime_cli.py',
                             'tests/audio/test_local_runtime_setup.py',
                             'tests/ui/test_audio_runtime_setup.py',
                             'tests/storage/test_translation_runtime_recovery.py',
@@ -959,6 +1035,18 @@ jobs:
                             'tests/ui/test_library_translation_dialog.py',
                             'tests/storage/test_state_json_reader.py',
                             'tests/ui/test_save_actions.py',
+                            'tests/storage/test_evidence_drafts.py',
+                            'tests/ui/test_save_all.py',
+                            'tests/ui/test_export_confirmation.py',
+                            'tests/reader/test_export_approval_budget.py',
+                            'tests/ui/probe_catalog_insights_actions.py',
+                            'tests/storage/test_canonical_backup_compat.py',
+                            'tests/ui/test_save_all_access.py',
+                            'tests/ui/test_reader_keymap_context.py',
+                            'tests/language_qualification/test_inventory_cleanup.py',
+                            'tests/speech/test_reading.py',
+                            'tests/ui/test_scope_labels.py',
+                            'tests/ui/test_evidence_draft_recovery.py',
                             'tests/reader/test_ebook_contents.py',
                             'tests/ingest/test_import_metadata_shape.py',
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
@@ -1014,6 +1102,7 @@ jobs:
                             'tests/storage/test_state_recovery_case_aliases.py',
                             'tests/storage/test_import_registration_migration.py',
                             'tests/e2e/test_import_worker_publication.py',
+                            'tests/ingest/test_worker_interpreter_ownership.py',
                             'tests/packaging/test_worker_bytecode.py',
                             'tests/storage/test_complete_pending_backup.py',
                             'tests/storage/test_backup_v4_review.py',
@@ -1078,7 +1167,8 @@ jobs:
           proof = module.verify_application_wheel(sys.argv[1], project.parent, sys.argv[2])
           tree = subprocess.run(['git', 'rev-parse', sys.argv[2] + '^{tree}'], cwd=project.parent,
                                 check=True, capture_output=True, text=True).stdout.strip()
-          print(json.dumps(dict(status='PASS', source_tree=tree, **proof)))
+          assert proof['source_tree'] == tree, 'Wheel proof tree differs from the checkout commit.'
+          print(json.dumps(dict(status='PASS', **proof)))
           '@
           $verifyWheel | & $env:CARR_PYTHON -I -B - $sealedWheel $sourceCommit | Tee-Object 'ci-results/source-wheel-proof.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

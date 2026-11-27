@@ -2,7 +2,7 @@ name: CARR native Windows launch entry
 
 on:
   push:
-    branches: [carr/v3-native-launcher-af5-20261126]
+    branches: [carr/v3-native-launcher-af5-20261126, carr/ci-endpoint-evaluation-20261127]
   pull_request:
     branches: [carr-library]
     paths:

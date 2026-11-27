@@ -31,8 +31,9 @@ firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 
 ## Current completion pass
 
-The authoritative specification was rechecked at accepted source
-`4b6f8169986c4a58b43e4a23bc081fbefadbbdcb`. The next candidate retains the
+The authoritative specification was rechecked against canonical source
+`3beebd5aca900b8bf2e86498ae79db4015c96705`, with the current finalization
+specification at blob `db8adbdc483a03c262885928c7ed214ca70bbaa7`. The next candidate retains the
 full requested platform scope. It adds native A/B and sleep controls, retained
 document/range translation, explicit owner voice profiles, accessible local
 audio-runtime setup and an optional provider-injected delivery lifecycle.
@@ -43,11 +44,40 @@ pending** until the complete successor result is recorded. Private engine/author
 weights, voice recordings, signing material and actual service policy are not
 part of public source.
 
-Predecessor `90496fad8f397dbd007d2a9531709be82c9d9f2b` passed its native
+Earlier predecessor `90496fad8f397dbd007d2a9531709be82c9d9f2b` passed its native
 launcher, bibliography and dedicated transcription workflows and all 221
 required integrated source suites. Its aggregate Windows and V3 workflows
 still failed; it is not an accepted delivery wheel. The concrete failures and
 the successor corrections are recorded in COMPOSITE_V3_INTEGRATION.md.
+
+Later predecessor `1e2eebc41589a9fe462f10bc3a2359de05e536be` passed all
+241 required source suites and the dedicated transcription, bibliography and
+native-launcher workflows; its aggregate Windows/V3 jobs still failed. At
+`77093c8fc1d124bc6bb52c93edce69214098adde`, the targeted Windows correction
+job passed actual descendant-process ownership (27 cases), interpreter
+ownership (6), import publication boundaries (45), the native timer lifecycle
+probe (4 assertions) and the unchanged actual MCI reader probe (108 assertions).
+The separate recovery/voice checkpoint at `07e1e7fcdae89d27b6c8a8a1cd62a95e66e0c363`
+passed 80 source and 80 installed cases. None of these targeted results is a
+substitute for the final complete Windows aggregate. See
+[canonical reconciliation](CANONICAL_RECONCILIATION_2026-11-27.md) for later
+composition work and exact pending states.
+
+At `d0a4a30a97c75ec90f545b5213776716dbb9badb`, all 19 source suites and
+477 installed cases passed without skips or expected failures. Native reader
+keyboard dispatch passed 34 source and 35 installed assertions. Its native
+Save All cancellation checks failed because the assertion preceded dispatch
+of the queued key event. The corrected probe subsequently passed at ee4f293a,
+and the complete compatibility checkpoint 16a18b2aad8faccdeae30aa27a3e32b434a9c0f0
+passed all 36 source suites, 1026 installed cases and six native lanes without
+failure or skipped contracts. The subsequent b2c171 voice-preview checkpoint
+passed 37 source suites, 1043 installed cases and seven native lanes, including
+44 native productivity assertions. Later resource-admission changes must still
+pass on the enclosing combined source. The current candidate also composes asynchronous captured-destination
+export, inert legacy voice-helper recovery and typed transcription plans through
+the existing worker service. Its new 24-case transcription-plan suite and the existing
+bridge/assistant/workflow/recovery suites passed on portable Python 3.12;
+this is source evidence, not final Windows or acoustic qualification.
 
 The canonical transfer producer refuses audio-bearing bundles. The owner
 application delivery therefore excludes that runtime and offers an explicit
@@ -85,6 +115,17 @@ third-party EPUB interoperability remain separate requirements.
 ## Requirements still open
 
 The following cannot be labelled DONE by passing the current core tests:
+
+- Remaining implementation in the finite reader checklist: RW-09 per-reader
+  output-device selection, RW-12 complete native find/replace, RW-13 the
+  speech-reader pronunciation manager, RW-15 spell checking, and RW-25 the
+  remaining presentation/tabs workflows. These are code/workflow gaps rather
+  than claims that owner input alone would complete them; see
+  [the bounded reader inventory](READING_WORKFLOW_ACCEPTANCE.md).
+- Professional microphone/track editing, the remaining shared cross-engine
+  resource-admission work and qualification at the specified platform scale.
+  The implemented production disk allowance and bounded traversal do not
+  constitute a complete platform resource broker.
 
 - A signed ResearchLibrary.exe and standard signed installer/uninstall/repair,
   owner-configured publisher trust and a complete private release review.

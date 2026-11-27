@@ -252,6 +252,88 @@ def test_flat_provider_usage_and_assistant_records_lose_old_execution_authority(
         restored.run(identity)
 
 
+def _production_with_retained_budget(app, output, budget):
+    """Persist an actual submitted job with its producer's optional allowance.
+
+    No audio runtime is created: renderer acceptance separately checks that
+    running jobs record this field. This fixture exercises the actual project,
+    queue, backup, restore and restored-execution boundary.
+    """
+    from carr_library.speech import VoiceRegistry
+    from carr_library.studio.render import ProductionService
+
+    output.mkdir()
+    service = ProductionService(app.root / 'state/studio', voices=VoiceRegistry([]))
+    project = service.create('[Scene: Budget recovery]\n[Pause: 0.1]', mode='authored')
+    identity = service.submit(project, output, stems=False)
+    record = service.get(identity)
+    record['total_disk_bytes'] = budget
+    path = service.jobs_root / identity / 'job.json'
+    atomic_json(path, record, replace=True)
+    assert service.get(identity) == record
+    service.close()
+    return identity, path, record
+
+
+@pytest.mark.parametrize('shape', ['composite', 'flat'], ids=str)
+@pytest.mark.parametrize('budget', [1024**2, 2**63 - 1], ids=['minimum', 'maximum'])
+def test_production_disk_budget_survives_backup_without_restoring_output_authority(
+        library, tmp_path, monkeypatch, shape, budget):
+    from carr_library.studio.render import ProductionService
+
+    app, _, location = library
+    identity, path, original = _production_with_retained_budget(app, tmp_path / 'output', budget)
+    source_bytes = path.read_bytes()
+    old_output = Path(original['destination'])
+    old_output.mkdir()
+    sentinel = old_output / 'unrelated.txt'
+    sentinel.write_bytes(b'Existing independent destination bytes.')
+    backup = tmp_path / 'backup'
+    if shape == 'flat':
+        _, checksum = _flat_backup(app, backup)
+    else:
+        create_backup(app, backup)
+        checksum = sha256((backup / 'manifest.json').read_bytes()).hexdigest()
+    stored_job = backup / 'state/studio/jobs' / identity / 'job.json'
+    assert stored_job.read_bytes() == source_bytes
+    root = restore_backup(backup, tmp_path / 'restored', checksum)
+    assert LibraryApp(root).search(location.workspace, 'railway')
+    service = ProductionService(root / 'state/studio')
+    expected = {**original, 'restore_requires_new_output': True}
+    assert service.get(identity) == expected
+    assert read_json(root / 'state/studio/jobs' / identity / 'job.json') == expected
+
+    def forbidden():
+        raise AssertionError('Restoring a disk allowance must not activate an audio runtime.')
+
+    monkeypatch.setattr(service, '_runtime', forbidden)
+    with pytest.raises(ValueError, match='restored.*new output'):
+        service.run(identity)
+    assert service.get(identity) == expected
+    assert sentinel.read_bytes() == b'Existing independent destination bytes.'
+    assert sorted(item.name for item in old_output.iterdir()) == ['unrelated.txt']
+    assert path.read_bytes() == stored_job.read_bytes() == source_bytes
+    service.close()
+
+
+@pytest.mark.parametrize('invalid', [True, False, -1, 0, 1024**2 - 1, 2**63,
+    float(1024**2), '1048576', None],
+    ids=['true', 'false', 'negative', 'zero', 'below-minimum', 'above-maximum',
+         'float', 'string', 'null'])
+def test_flat_production_budget_rejects_invalid_type_or_range_before_publication(
+        library, tmp_path, invalid):
+    app, _, _ = library
+    _, path, _ = _production_with_retained_budget(app, tmp_path / 'output', invalid)
+    original = path.read_bytes()
+    backup = tmp_path / 'backup'
+    _, checksum = _flat_backup(app, backup)
+    destination = tmp_path / 'rejected'
+    with pytest.raises(RestoreError, match='checkpoint number'):
+        restore_backup(backup, destination, checksum)
+    assert not destination.exists()
+    assert path.read_bytes() == original
+
+
 def _engines():
     return {'schema': 1, 'ffmpeg': None, 'ffprobe': None, 'piper': [], 'voice_helpers': [],
             'music_models': [], 'fluidsynth': None}

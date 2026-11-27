@@ -221,3 +221,48 @@ def test_json_byte_limit_applies_before_and_after_open(tmp_path, monkeypatch, gr
     with pytest.raises(ValueError, match='budget'):
         state.read_json(target)
     assert all(stream.closed for stream in streams)
+
+
+@pytest.mark.parametrize('stop_at', [1, 3], ids=['before-first-read', 'during-streamed-hash'])
+def test_digest_cancellation_closes_actual_stream_and_preserves_complete_file(tmp_path, monkeypatch, stop_at):
+    from hashlib import sha256
+    target = tmp_path / 'completed-output.bin'
+    original = b'a' * (3 * 1024 * 1024 + 17)
+    target.write_bytes(original)
+    stamp = target.stat().st_mtime_ns
+    opened, read_bytes = [], []
+    original_open = state.Path.open
+
+    class Observed:
+        def __init__(self, stream):
+            self.stream = stream
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            self.stream.close()
+        def read(self, maximum):
+            value = self.stream.read(maximum)
+            read_bytes.append(len(value))
+            return value
+
+    def observe(path, *args, **kwargs):
+        stream = original_open(path, *args, **kwargs)
+        if path == target:
+            opened.append(stream)
+            return Observed(stream)
+        return stream
+
+    polls = 0
+    def cancelled():
+        nonlocal polls
+        polls += 1
+        return polls >= stop_at
+
+    with monkeypatch.context() as patches:
+        patches.setattr(state.Path, 'open', observe)
+        with pytest.raises(InterruptedError, match='verification cancelled'):
+            state.digest_file(target, cancelled=cancelled)
+    assert polls == stop_at and len(opened) == 1 and opened[0].closed
+    assert sum(read_bytes) == (0 if stop_at == 1 else 2 * 1024 * 1024)
+    assert target.read_bytes() == original and target.stat().st_mtime_ns == stamp
+    assert state.digest_file(target) == sha256(original).hexdigest()

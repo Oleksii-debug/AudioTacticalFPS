@@ -4,7 +4,7 @@ on:
     branches: [carr-library]
     paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml']
   push:
-    branches: [carr-library, carr/v3-integrated-final-dbbb-20261126]
+    branches: [carr-library, carr/v3-integrated-final-dbbb-20261126, carr/ci-endpoint-evaluation-20261127]
     paths: ['carr-library/**', '.github/workflows/carr-transcription-bridge.yml']
   workflow_dispatch:
 permissions:
@@ -50,7 +50,7 @@ jobs:
       - name: Verify retained inputs, actual child protocol, recovery and CLI
         shell: pwsh
         run: |
-          python scripts/ci_check.py tests/transcription/test_supplied_worker_bridge.py tests/storage/test_transcription_recovery.py tests/storage/test_import_publication_backup.py tests/ui/test_progress_job_review.py
+          python scripts/ci_check.py tests/assistant/test_transcription_workflow.py tests/transcription/test_supplied_worker_bridge.py tests/storage/test_transcription_recovery.py tests/storage/test_import_publication_backup.py tests/ui/test_progress_job_review.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Install actual native desktop controls
         if: runner.os == 'Windows'

@@ -87,7 +87,9 @@ def _studio_job(value, identity):
     from .studio.project import Project
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
-                   'updated', 'error', 'runtime'}, {'result'})
+                   'updated', 'error', 'runtime'}, {'result', 'total_disk_bytes'})
+    if 'total_disk_bytes' in value:
+        number(value['total_disk_bytes'], 1024**2, 2**63 - 1, integer=True)
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
     project = Project.from_dict(value['project'])
