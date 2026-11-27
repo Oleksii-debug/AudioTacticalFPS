@@ -3,6 +3,7 @@ from hashlib import sha256
 from importlib import metadata
 import json
 import os
+import re
 from pathlib import Path
 
 from ..durable_state import local_path, regular
@@ -11,6 +12,8 @@ from .models import fingerprint
 MAX_MODEL_FILES = 4096
 MAX_MODEL_ENTRIES = 16384
 MAX_MODEL_BYTES = 64 * 1024**3
+MAX_RUNTIME_FILES = 262144
+MAX_RUNTIME_BYTES = 64 * 1024**3
 MAX_PYTHON_SUPPORT_FILES = 256
 MAX_PYTHON_SUPPORT_BYTES = 512 * 1024**2
 RUNTIME_DISTRIBUTIONS = ('faster-whisper', 'ctranslate2', 'av', 'onnxruntime',
@@ -125,7 +128,7 @@ def _python_layout(python, resolved_python, *, cancel=None):
 
 
 def _runtime_inventory(roots, *, cancel=None, progress=None):
-    """Read selected environment metadata; never import or execute its code."""
+    """Read all recorded distributions in the selected environment without importing them."""
     auxiliary = {}
     search = []
     for root in roots:
@@ -154,17 +157,24 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
             regular(local_path(path, exists=True), directory=True)
             meta_path = path / 'METADATA'
             if not meta_path.exists() or regular(meta_path).st_size > 1024**2:
-                continue
+                raise ValueError('A selected distribution has no bounded METADATA.')
             distribution = metadata.PathDistribution(path)
-            name = (distribution.metadata.get('Name') or '').lower().replace('_', '-')
-            if name in RUNTIME_DISTRIBUTIONS and name not in selected:
-                selected[name] = distribution
+            name = re.sub(r'[-_.]+', '-', (distribution.metadata.get('Name') or '').lower())
+            if not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', name) or not distribution.version:
+                raise ValueError('A selected distribution has no valid name or version.')
+            if name in selected:
+                raise ValueError('The selected runtime has ambiguous installed distribution: ' + name)
+            selected[name] = distribution
     missing = [name for name in RUNTIME_DISTRIBUTIONS if name not in selected]
     if missing:
         raise ValueError('The selected Python lacks a readable installed ASR file inventory: '
                          + ', '.join(missing) + '. No installation or download was attempted.')
     result = {}
-    for name in RUNTIME_DISTRIBUTIONS:
+    total_files = total_bytes = 0
+    # The required seven SDK distributions are a minimum, not an exhaustive
+    # dependency closure. Include every recorded distribution in the selected
+    # environment; do not ignore installed transitive dependencies like tqdm.
+    for name in sorted(selected):
         distribution = selected[name]
         record_path = distribution._path / 'RECORD'
         if not record_path.exists() or regular(local_path(record_path, exists=True)).st_size > 16 * 1024**2:
@@ -174,16 +184,28 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
             raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
         files = {}
         for relative in sorted(entries, key=str):
+            stopped(cancel)
             label = str(relative)
             if '__pycache__' in Path(label).parts or label.endswith(('.pyc', '.pyo')):
                 continue
+            if label in files:
+                raise ValueError('A selected distribution has a duplicate installed-file record.')
+            total_files += 1
+            if total_files > MAX_RUNTIME_FILES:
+                raise ValueError('The selected runtime exceeds its total installed-file budget.')
             if progress:
                 progress({'phase': 'Verifying installed ASR runtime files', 'status': 'running',
                           'current': name + ': ' + label, 'done': None, 'total': None, 'indeterminate': True})
             path = local_path(Path(distribution.locate_file(relative)).resolve(strict=True), exists=True)
             if not any(path.is_relative_to(root.resolve()) for root in roots):
                 raise ValueError('An installed-file record escapes the explicitly selected Python environment.')
-            files[label] = file_identity(path, cancel=cancel)
+            identity = file_identity(path, cancel=cancel, maximum=MAX_RUNTIME_BYTES - total_bytes)
+            total_bytes += identity['size']
+            if total_bytes > MAX_RUNTIME_BYTES:
+                raise ValueError('The selected runtime exceeds its total installed-byte budget.')
+            files[label] = identity
+        if not files:
+            raise ValueError('A selected distribution has an empty installed-file inventory.')
         result[name] = {'version': distribution.version, 'file_count': len(files),
             'installed_files_sha256': sha256(json.dumps(files, ensure_ascii=False,
                 sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()}
