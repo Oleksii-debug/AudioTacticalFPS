@@ -7,6 +7,7 @@ from dataclasses import asdict
 from decimal import Decimal, ROUND_DOWN, ROUND_UP
 from hashlib import sha256
 import json
+import logging
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -529,7 +530,8 @@ class TranslationService:
                     # Accepted output precedes later scope/cancel checks: never bill twice.
                     self.jobs.save(job)
                     self._output_budget(job)
-                    progress(index + 1, total, 'Verified translation chunks')
+                    if index + 1 < total:
+                        progress(index + 1, total, 'Verified translation chunks')
                 job['status'] = 'complete'
                 self.jobs.save(job)
             except InterruptedError:
@@ -544,6 +546,13 @@ class TranslationService:
                 job['status'] = 'attention'
                 self.jobs.save(job)
                 raise
+            if job['status'] == 'complete':
+                # The last receipt and terminal status are durable. An observer
+                # failure cannot reverse completion or trigger another paid call.
+                try:
+                    progress(total, total, 'Verified translation chunks')
+                except Exception:
+                    logging.getLogger(__name__).warning('Translation completed; final progress notification failed.')
             return {'id': identity, 'status': job['status'], 'completed': len(job['receipts']), 'total': total}
 
     def export(self, identity, output, *, cancelled=lambda: False, guard=lambda: None):
