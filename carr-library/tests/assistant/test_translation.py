@@ -845,6 +845,7 @@ def translation_window(monkeypatch, tmp_path):
     class Control:
         def __init__(self, parent=None, *args, **kwargs):
             self.parent = parent
+            self.identity = len(controls) + 1
             self.label = kwargs.get('label', '')
             self.name = ''
             self.title = kwargs.get('title', '')
@@ -855,6 +856,7 @@ def translation_window(monkeypatch, tmp_path):
             self.handlers = {}
             controls.append(self)
         def SetName(self, value): self.name = value
+        def GetId(self): return self.identity
         def SetSizer(self, value): pass
         def Add(self, *args, **kwargs): pass
         def SetSelection(self, value): self.selection = value
@@ -911,7 +913,7 @@ def translation_window(monkeypatch, tmp_path):
         TextEntryDialog=RangeDialog, DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2, VERTICAL=3,
         HORIZONTAL=4, TE_MULTILINE=8, TE_READONLY=16, EXPAND=32, ALL=64,
         YES_NO=128, NO_DEFAULT=256, YES=1, NO=0, ID_OK=10, ID_CLOSE=11,
-        EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu',
+        EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu', EVT_WINDOW_DESTROY='destroy',
         MessageBox=message_box, CallAfter=lambda function, *args: function(*args),
         NewIdRef=lambda: next(identities))
     monkeypatch.setitem(sys.modules, 'wx', wx)

@@ -346,22 +346,40 @@ def translation_handlers(tmp_path, transport, monkeypatch):
     state = {'widgets': [], 'queue': [], 'approvals': [], 'scenario': None, 'gateways': []}
     class Widget:
         def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
+            self.parent, self.identity, self.destroyed = parent, len(state['widgets']) + 1, False
             self.value, self.name, self.label, self.choices = value, '', label, choices
             self.enabled, self.selection, self.bindings, self.focused = True, -1, {}, False
             state['widgets'].append(self)
         def SetName(self, name): self.name = name
+        def GetId(self): return self.identity
         def SetSelection(self, value): self.selection = value
-        def SetEditable(self, value): self.editable = value
+        def SetEditable(self, value):
+            assert not self.destroyed, 'Late callback edited a destroyed native control'
+            self.editable = value
         def GetSelection(self): return self.selection
         def GetValue(self): return self.value
-        def ChangeValue(self, value): self.value = value
-        def Enable(self, value=True): self.enabled = value
+        def ChangeValue(self, value):
+            assert not self.destroyed, 'Late callback wrote a destroyed native control'
+            self.value = value
+        def Enable(self, value=True):
+            assert not self.destroyed, 'Late callback enabled a destroyed native control'
+            self.enabled = value
         def Disable(self): self.enabled = False
-        def SetFocus(self): self.focused = True
+        def SetFocus(self):
+            assert not self.destroyed, 'Late callback focused a destroyed native control'
+            self.focused = True
         def Bind(self, event, callback): self.bindings[event] = callback
         def SetSizer(self, sizer): pass
         def EndModal(self, result): pass
-        def Destroy(self): pass
+        def Destroy(self):
+            assert not self.destroyed, 'A deleted native dialog was destroyed again'
+            callback = self.bindings.get(wx.EVT_WINDOW_DESTROY)
+            if callback:
+                callback(SimpleNamespace(GetId=lambda: self.identity, Skip=lambda: None))
+            self.destroyed = True
+            for widget in state['widgets']:
+                if widget.parent is self:
+                    widget.destroyed = True
         def ShowModal(self):
             state['scenario']()
             return 1
@@ -375,7 +393,7 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         def Add(self, *args, **kwargs): pass
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate((
         'DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'ALL', 'EXPAND',
-        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE'))})
+        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE', 'EVT_WINDOW_DESTROY'))})
     for name in ('Dialog', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Widget)
     wx.BoxSizer = Sizer
@@ -394,6 +412,11 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         return Gateway(directory, vault=vault, **kwargs)
     monkeypatch.setattr(ui, 'Gateway', gateway)
     frame = SimpleNamespace(library=app, working=False, _closing=False, cancel_event=__import__('threading').Event())
+    def destroy_parent():
+        for widget in state['widgets']:
+            if widget.parent is frame and not widget.destroyed:
+                widget.Destroy()
+    frame.Destroy = destroy_parent
     def run_job(title, callback, done, failed):
         state['queue'].append((callback, done, failed))
         return True
@@ -409,7 +432,7 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         state['scenario'] = callback
         ui.show_translation(frame)
     return SimpleNamespace(state=state, frame=frame, find=find, press=press, complete=complete, scenario=scenario,
-                           service=TranslationService(app.root / 'state' / 'translation'), p=p, vault=vault)
+                           service=TranslationService(app.root / 'state' / 'translation'), p=p, vault=vault, wx=wx)
 
 
 def prepare_handler(e):
@@ -479,6 +502,81 @@ def test_handler_root_change_before_worker_does_not_send_old_library_text(transl
         assert len(transport['calls']) == 1
         e.press('Translate / resume')
         assert not e.state['queue'] and not e.service.list()
+    e.scenario(scenario)
+
+
+def test_direct_parent_destroy_before_queued_transfer_creates_no_job_or_request(translation_handlers, transport):
+    e = translation_handlers
+    def scenario():
+        prepare_handler(e); e.press('Preview'); e.press('Translate / resume')
+        assert len(e.state['queue']) == 1
+        before = len(e.state['gateways']), len(e.vault.calls)
+        e.frame.Destroy()  # Native destruction can bypass the Close handler.
+        e.complete()  # Deliver while ShowModal has not yet unwound its finally.
+        assert not e.service.list() and len(transport['calls']) == 1
+        assert (len(e.state['gateways']), len(e.vault.calls)) == before
+    e.scenario(scenario)
+
+
+def test_direct_parent_destroy_during_response_retains_uncertain_charge_without_late_ui(
+        translation_handlers, transport, monkeypatch):
+    e = translation_handlers
+    actual = http.client.HTTPSConnection.getresponse
+    def response(connection):
+        if transport['calls'][-1]['method'] == 'POST':
+            e.frame.Destroy()
+        return actual(connection)
+    monkeypatch.setattr(http.client.HTTPSConnection, 'getresponse', response)
+    def scenario():
+        prepare_handler(e); e.press('Preview'); e.press('Translate / resume')
+        e.complete()
+        job, = e.service.list()
+        assert job['status'] == 'paused' and not job['receipts']
+        operations = e.service.gateway.ledger.get(job['authorization']['id'])['operations']
+        assert operations[job['id'] + '_0']['status'] == 'uncertain'
+        usage_path = e.service.gateway.ledger._path(job['authorization']['id'])
+        before = usage_path.read_bytes()
+        service = TranslationService(e.service.directory,
+            gateway=Gateway(e.service.directory / 'provider', vault=e.vault, mode='APPROVED_REMOTE'))
+        with pytest.raises(ProviderError, match='already been attempted'):
+            service.resume(job['id'])
+        assert e.service.jobs.load(job['id'])['receipts'] == []
+        assert usage_path.read_bytes() == before and len(transport['calls']) == 2
+    e.scenario(scenario)
+
+
+def test_direct_parent_destroy_after_commit_keeps_completed_result_without_late_ui(
+        translation_handlers, transport, monkeypatch):
+    e = translation_handlers
+    actual = TranslationService.resume
+    def completed(service, *args, **kwargs):
+        result = actual(service, *args, **kwargs)
+        assert result['status'] == 'complete'
+        e.frame.Destroy()
+        return result
+    monkeypatch.setattr(TranslationService, 'resume', completed)
+    def scenario():
+        prepare_handler(e); e.press('Preview'); e.press('Translate / resume')
+        e.complete()
+        job, = e.service.list()
+        assert job['status'] == 'complete' and len(job['receipts']) == 1
+        assert len(transport['calls']) == 2
+    e.scenario(scenario)
+
+
+def test_descendant_destroy_notification_does_not_cancel_live_translation(translation_handlers, transport):
+    e = translation_handlers
+    def scenario():
+        prepare_handler(e)
+        dialog = e.find('Translation workspace')
+        child = e.find('Selected text; originals remain unchanged')
+        observed = []
+        dialog.bindings[e.wx.EVT_WINDOW_DESTROY](SimpleNamespace(
+            GetId=child.GetId, Skip=lambda: observed.append(True)))
+        assert observed == [True]
+        e.press('Preview'); e.press('Translate / resume'); e.complete()
+        job, = e.service.list()
+        assert job['status'] == 'complete' and len(transport['calls']) == 2
     e.scenario(scenario)
 
 

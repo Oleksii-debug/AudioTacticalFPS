@@ -55,8 +55,10 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     dialog = wx.Dialog(frame, title='Translation — selected text derivatives', size=(850, 900),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     dialog.SetName('Translation workspace')
+    owner_id = dialog.GetId()
     layout = wx.BoxSizer(wx.VERTICAL)
     alive, busy, current_job, reviewed = True, False, None, None
+    native_destroyed = False
     source_ready = source_loader is None
     original_document = document = None
     cancel = threading.Event()
@@ -411,25 +413,40 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             except Exception as exc:
                 report(str(exc), True)
 
-    def close(event=None):
+    def detach():
         nonlocal alive
         cancel.set()
         alive = False
+
+    def close(event=None):
+        if not alive:
+            return
+        detach()
         dialog.EndModal(wx.ID_CLOSE)
+
+    def destroyed(event):
+        nonlocal native_destroyed
+        if event.GetId() == owner_id:
+            # Parent destruction can bypass EVT_CLOSE and may supply another
+            # wx wrapper. Detach plain worker state without touching the owner.
+            native_destroyed = True
+            detach()
+        event.Skip()
 
     for name, handler in {'languages': languages, 'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
                            'jobs': jobs, 'new': new, 'export': export, 'close': close}.items():
         buttons[name].Bind(wx.EVT_BUTTON, handler)
     dialog.Bind(wx.EVT_CLOSE, close)
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
     controls()
     if source_loader is not None:
         wx.CallAfter(load_source)
     try:
         dialog.ShowModal()
     finally:
-        alive = False
-        cancel.set()
-        dialog.Destroy()
+        detach()
+        if not native_destroyed:
+            dialog.Destroy()
 
 
 def install_translation_actions(frame):

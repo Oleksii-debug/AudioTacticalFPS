@@ -48,6 +48,7 @@ def main():
             self.ExitMainLoop()
             return False
     app = App(False)
+    app.SetExitOnFrameDelete(False)
     simulator = wx.UIActionSimulator()
     user32 = ctypes.WinDLL('user32', use_last_error=True)
     user32.SetForegroundWindow.argtypes = [wintypes.HWND]
@@ -83,12 +84,18 @@ def main():
     address = 'https://translation.googleapis.com/v3/' + parent
     glossary = parent + '/glossaries/reviewed-terms'
     original = 'Unchanged synthetic source — Україна &amp; original.'
+    pending_response = threading.Event()
+    response_entered = threading.Event()
+    response_release = threading.Event()
+    callback_finished = threading.Event()
+    parent_destroy_requested = False
 
     class SyntheticHTTPS:
         def __init__(self, host, port, **options):
             check('fixed official authority', host == 'translation.googleapis.com' and port in (None, 443))
             self.position = 0
         def request(self, method, path, body, headers):
+            self.method = method
             calls.append((method, path))
             check('OAuth bearer, never API-key header', headers.get('Authorization', '').startswith('Bearer SYNTHETIC_') and 'X-goog-api-key' not in headers)
             if method == 'GET':
@@ -101,6 +108,10 @@ def main():
                         'model': request['model'], 'glossaryConfig': request['glossaryConfig']}]}
             self.raw = json.dumps(result, ensure_ascii=False).encode('utf-8')
         def getresponse(self):
+            if pending_response.is_set() and self.method == 'POST':
+                response_entered.set()
+                if not response_release.wait(10):
+                    raise TimeoutError('Synthetic response was not released by the native lifetime probe.')
             self.status = 200
             return self
         def getheader(self, name, default=None):
@@ -140,15 +151,19 @@ def main():
             frame.cancel_event = threading.Event()
             def run_job(title, callback, done, failed):
                 frame.working = True; frame.cancel_event.clear()
+                callback_finished.clear()
                 future = executor.submit(callback)
                 def finish():
                     frame.working = False
                     try:
-                        result = future.result()
-                    except Exception as error:
-                        failed(error)
-                    else:
-                        done(result)
+                        try:
+                            result = future.result()
+                        except Exception as error:
+                            failed(error)
+                        else:
+                            done(result)
+                    finally:
+                        callback_finished.set()
                 future.add_done_callback(lambda unused: wx.CallAfter(finish))
                 return True
             frame.run_job = run_job
@@ -203,10 +218,64 @@ def main():
                     if dialog is not None and dialog.IsModal():
                         dialog.EndModal(wx.ID_CANCEL)
 
-            def opened():
-                wx.CallLater(200, exercise)
+            def exercise_destroy():
+                nonlocal parent_destroy_requested
+                dialog = None
                 try:
-                    ui.show_translation(frame)
+                    dialog = next(window for window in wx.GetTopLevelWindows()
+                                  if window.GetName() == 'Translation workspace')
+                    owner_id = dialog.GetId()
+                    destroy_seen = threading.Event()
+                    def observed_destroy(event):
+                        if event.GetId() == owner_id:
+                            destroy_seen.set()
+                        event.Skip()
+                    dialog.Bind(wx.EVT_WINDOW_DESTROY, observed_destroy)
+                    def find(name):
+                        result = wx.FindWindowByName(name, dialog)
+                        check('named pending control: ' + name, result is not None)
+                        return result
+                    find('Source language code; auto detects').ChangeValue('en')
+                    find('Target language code').ChangeValue('uk')
+                    find('Advanced v3 glossary resource; blank for none').ChangeValue(glossary)
+                    find('Selected text; originals remain unchanged').ChangeValue(original + ' Pending response.')
+                    find('Maximum approved budget in USD; no default price').ChangeValue('1')
+                    press(find('Preview'))
+                    before = len(calls)
+                    pending_response.set()
+                    press(find('Translate / resume'))
+                    pump(response_entered.is_set, 'Actual worker reached synthetic pending response')
+                    parent_destroy_requested = True
+                    frame.Destroy()  # No translation Close handler is invoked.
+                    pump(destroy_seen.is_set, 'Actual native owner destruction')
+                    response_release.set()
+                    pump(callback_finished.is_set, 'Pending worker completion after native destruction')
+                    service = translation.TranslationService(library.root / 'state' / 'translation', library=library)
+                    jobs = service.list()
+                    stopped = [job for job in jobs if job['status'] == 'paused']
+                    complete = [job for job in jobs if job['status'] == 'complete']
+                    check('destroyed pending owner preserves prior completed translation', len(complete) == 1)
+                    check('destroyed pending owner publishes no late accepted result',
+                          len(stopped) == 1 and stopped[0]['receipts'] == [] and len(calls) == before + 1)
+                    job = stopped[0]
+                    usage = service.gateway.ledger.get(job['authorization']['id'])['operations']
+                    check('submitted cancellation remains an uncertain charge',
+                          usage[job['id'] + '_0']['status'] == 'uncertain')
+                    check('no callback reached a deleted native control', not errors)
+                except Exception:
+                    errors.append(traceback.format_exc())
+                finally:
+                    response_release.set()
+                    if dialog is not None and not parent_destroy_requested and dialog.IsModal():
+                        dialog.EndModal(wx.ID_CANCEL)
+
+            def opened():
+                try:
+                    for exercise_case in (exercise, exercise_destroy):
+                        wx.CallLater(200, exercise_case)
+                        ui.show_translation(frame)
+                        if errors:
+                            break
                 except Exception:
                     errors.append(traceback.format_exc())
                 finally:
@@ -214,11 +283,12 @@ def main():
             wx.CallAfter(opened)
             app.MainLoop()
         finally:
+            response_release.set()
             executor.shutdown(wait=True, cancel_futures=True)
             http.client.HTTPSConnection, wx.MessageBox, wx.DirDialog = actual_connection, actual_message, actual_directory
             if reference:
                 vault.delete('native_translation', reference)
-            if frame is not None:
+            if frame is not None and not parent_destroy_requested:
                 frame.Destroy()
             if native_handle is not None:
                 native_handle.close()
@@ -228,7 +298,8 @@ def main():
           contract['source_identity']() == tested_source and contract['installed_origins']() == tested_origins)
     print(json.dumps({'status': 'PASS', 'checks': len(checks), 'synthetic_rest_calls': len(calls),
         'source': tested_source, 'installed_origins': tested_origins, 'source_and_origins_unchanged': True,
-        'native_keyboard': 'PASS', 'live_google_api': 'WAITING_INPUT', 'billing_and_quality': 'WAITING_INPUT',
+        'native_keyboard': 'PASS', 'native_parent_destroy_pending_translation': 'PASS',
+        'live_google_api': 'WAITING_INPUT', 'billing_and_quality': 'WAITING_INPUT',
         'native_approval_and_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN'}), flush=True)
     return 0
 
