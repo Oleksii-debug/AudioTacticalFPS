@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 import threading
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from carr_library.application import LibraryApp
 from carr_library.ui import catalog_insights_actions as ui
@@ -120,6 +120,13 @@ class Dialogs:
 
 class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
+        self.wx = SimpleNamespace(YES_NO=1, NO_DEFAULT=2, ICON_QUESTION=4, YES=8, NO=16)
+        self.wx.MessageBox = Mock(return_value=self.wx.YES)
+        confirm = ui.confirm_export_destination
+        native = patch.object(ui, 'confirm_export_destination',
+            lambda *args, **kwargs: confirm(*args, **kwargs, wx_module=self.wx))
+        native.start()
+        self.addCleanup(native.stop)
         temporary = TemporaryDirectory(prefix='catalog-insights-actions-')
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)

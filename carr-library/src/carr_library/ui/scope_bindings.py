@@ -14,9 +14,12 @@ import unicodedata
 
 def scope_labels(rows):
     """Render distinct spoken labels without changing the authorized row order."""
-    rows = tuple(rows)
     def key(label):
-        return ' '.join(unicodedata.normalize('NFC', label).split())
+        # Compare presentation only. Keep stored/displayed names and scoped IDs
+        # untouched, including canonically equivalent Unicode and whitespace.
+        return ' '.join(unicodedata.normalize('NFC', label).split()).casefold()
+
+    rows = tuple(rows)
     label_counts = Counter(key(label) for _, _, label in rows)
     rendered = set()
     labels = []

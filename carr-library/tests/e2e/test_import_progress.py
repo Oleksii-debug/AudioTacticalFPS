@@ -4,7 +4,7 @@ from threading import Event
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library.ui.operation_progress import operation_outcome
+from carr_library.progress import operation_outcome
 
 
 def sources(tmp_path, count=3):

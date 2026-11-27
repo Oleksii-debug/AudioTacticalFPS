@@ -10,6 +10,7 @@ from pathlib import Path
 from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview, report_collections
 from ..catalog.membership import Catalog
 from ..research.export_file import write_export
+from .export_destination import confirm_export_destination
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -33,7 +34,7 @@ class InsightsDialogs(NativeDialogs):
         _, _, extension, wildcard = next(row for row in FORMATS if row[0] == format)
         dialog = wx.FileDialog(parent, 'Save source comparison matrix',
             defaultFile='source-comparison-matrix.' + extension, wildcard=wildcard,
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            style=wx.FD_SAVE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return None
@@ -232,6 +233,10 @@ class CatalogInsightsActions:
                 self._cancel(scope)
                 return
             path = Path(path)
+            approval = confirm_export_destination(self.frame, path, private_root=scope.library.root)
+            if approval is None:
+                self._cancel(scope)
+                return
             self._idle()
             self._authorize(scope, collection)
 
@@ -245,7 +250,7 @@ class CatalogInsightsActions:
                 # atomic publication. No reads of frame.library occur here.
                 self._authorize(scope, collection, cancellable=True)
                 write_export(path, text, private_root=scope.library.root,
-                             cancelled=scope.cancel_event.is_set)
+                             cancelled=scope.cancel_event.is_set, approval=approval)
                 # Once publication succeeds, cancellation cannot undo it. A
                 # receipt lets the callback describe that outcome truthfully.
                 return _ExportReceipt(path, format)

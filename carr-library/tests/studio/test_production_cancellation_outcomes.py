@@ -48,8 +48,8 @@ def test_late_stop_does_not_hide_error_after_verified_outputs(tmp_path, voices, 
     verify = service._verify_artifacts
     stopping, accepted = [False], {}
 
-    def verify_then_fail(state):
-        verify(state)
+    def verify_then_fail(state, *, cancelled=lambda: False):
+        verify(state, cancelled=cancelled)
         assert state['status'] == 'complete' and state['artifacts']
         for artifact in state['artifacts']:
             path = Path(artifact['path'])
@@ -95,7 +95,6 @@ def test_actual_dsp_cancellation_retains_typed_paused_or_cancelled_receipt(tmp_p
     assert saved['status'] == expected
     assert saved['artifacts']
     service._verify_artifacts(saved)
-
 
 def test_stop_during_staged_master_validation_prevents_publication_and_resumes(tmp_path, voices, monkeypatch):
     from carr_library.studio import render

@@ -47,6 +47,7 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
+    monkeypatch.setattr(desktop_app.wx, 'MessageBox', lambda *args: desktop_app.wx.YES)
     reports = []
 
     def run_job(title, operation, done=None, failed=None):
