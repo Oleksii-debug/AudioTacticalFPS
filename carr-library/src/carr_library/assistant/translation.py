@@ -1,4 +1,4 @@
-"""Explicit Google Basic v2 translation through the application's shared gateway.
+"""Explicit Google Basic v2 and Advanced v3 translation through the shared gateway.
 
 Source text is immutable; accepted chunks survive restart. A durable request
 intent precedes each call. A lost ledger, uncertain charge or missing paid
@@ -15,25 +15,27 @@ from uuid import uuid4
 from .models import canonical, local_path
 from .state import now, read_json, regular
 from .translation_state import (
-    CACHE_SCHEMA, MAX_CACHE_BYTES, MAX_OUTPUT_CHARACTERS, SCHEMA, TranslationStore,
+    ADVANCED_CACHE_SCHEMA, ADVANCED_SCHEMA, CACHE_SCHEMA, MAX_CACHE_BYTES,
+    MAX_OUTPUT_CHARACTERS, SCHEMA, TranslationStore,
     allocations, approval_from_dict, split_text, text_hash, validate_language_cache)
 from ..ingest.writer_guard import exclusive_writer
 from ..providers import (
     BudgetLedger, GoogleTranslationRequest, JobApproval, ProfileStore, ProviderError,
     ProviderGateway, ProviderProfile, GOOGLE_TRANSLATION_ENDPOINT,
-    decode_translation_response, translation_receipt_sha256)
+    GOOGLE_TRANSLATION_PROVIDERS, decode_translation_response, translation_request,
+    translation_receipt_sha256)
 from ..reader.narration_text import NarrationDraft
 from ..research.export_file import _destination, _filename, write_export
 
 ENDPOINT = GOOGLE_TRANSLATION_ENDPOINT
 
 
-def translation_approval(profile, value, source, target, budget_micros):
+def translation_approval(profile, value, source, target, budget_micros, *, glossary=''):
     """Only call after the user reviews these exact data and integer USD bound."""
-    if not isinstance(profile, ProviderProfile) or profile.provider != 'google-translation-v2':
-        raise ValueError('Choose a Google Basic v2 profile.')
+    if not isinstance(profile, ProviderProfile) or profile.provider not in GOOGLE_TRANSLATION_PROVIDERS:
+        raise ValueError('Choose a Google Basic v2 or Advanced v3 profile.')
     parts = split_text(value)
-    hashes = tuple(GoogleTranslationRequest(part, source, target).fingerprint(profile)
+    hashes = tuple(translation_request(profile, part, source, target, glossary=glossary).fingerprint(profile)
                    for part in parts if part.strip())
     return JobApproval(uuid4().hex, profile.fingerprint, hashes,
                        budget_micros=budget_micros, max_calls=len(hashes),
@@ -41,7 +43,7 @@ def translation_approval(profile, value, source, target, budget_micros):
 
 
 def language_approval(profile):
-    request = GoogleTranslationRequest(operation='languages')
+    request = translation_request(profile, operation='languages')
     return JobApproval(uuid4().hex, profile.fingerprint, (request.fingerprint(profile),),
                        budget_micros=0, max_calls=1, currency='USD', mode='APPROVED_REMOTE')
 
@@ -96,11 +98,11 @@ class TranslationService:
 
     def available_profiles(self):
         return tuple(profile for profile in self.profiles.profiles()
-                     if profile.provider == 'google-translation-v2')
+                     if profile.provider in GOOGLE_TRANSLATION_PROVIDERS)
 
     def _current_profile(self, profile):
-        if not isinstance(profile, ProviderProfile) or profile.provider != 'google-translation-v2':
-            raise ValueError('Choose a Google Basic v2 profile.')
+        if not isinstance(profile, ProviderProfile) or profile.provider not in GOOGLE_TRANSLATION_PROVIDERS:
+            raise ValueError('Choose a Google Basic v2 or Advanced v3 profile.')
         current = next((item for item in self.available_profiles() if item.id == profile.id), None)
         if current is None or current.fingerprint != profile.fingerprint or not current.credential_ref:
             raise PermissionError('This account changed or was disconnected. Review the current profile before sending text.')
@@ -115,13 +117,15 @@ class TranslationService:
         if not path.exists():
             return ()
         value = validate_language_cache(read_json(path, maximum=MAX_CACHE_BYTES), profile_id=profile.id)
-        if value['profile_fingerprint'] != profile.fingerprint:
+        expected_schema = ADVANCED_CACHE_SCHEMA if profile.provider == 'google-translation-v3' else CACHE_SCHEMA
+        if (value['profile_fingerprint'] != profile.fingerprint or value['schema'] != expected_schema
+                or value['endpoint'] != profile.endpoint or value['model'] != profile.model):
             raise ValueError('Explicitly refresh languages for this exact account and model.')
         return tuple(value['languages'])
 
     def refresh_languages(self, profile, *, approval, cancelled=lambda: False):
         self._current_profile(profile)
-        request = GoogleTranslationRequest(operation='languages')
+        request = translation_request(profile, operation='languages')
         if (not isinstance(approval, JobApproval) or approval.profile_fingerprint != profile.fingerprint
                 or approval.request_hashes != (request.fingerprint(profile),)
                 or approval.max_calls != 1 or approval.budget_micros != 0
@@ -130,8 +134,9 @@ class TranslationService:
             raise PermissionError('Approve only this account\'s supported-language query; no selected text is sent.')
         raw = self.gateway.perform(profile, request, approval=approval, operation_id=approval.job_id,
                                    estimated_micros=0, cancelled=cancelled)
-        rows = decode_translation_response(request, raw)['languages']
-        value = {'schema': CACHE_SCHEMA, 'profile_id': profile.id,
+        rows = decode_translation_response(request, raw, profile=profile)['languages']
+        schema = ADVANCED_CACHE_SCHEMA if profile.provider == 'google-translation-v3' else CACHE_SCHEMA
+        value = {'schema': schema, 'profile_id': profile.id,
             'profile_fingerprint': profile.fingerprint, 'endpoint': profile.endpoint, 'model': profile.model,
             'fetched_at': now(), 'languages': rows, 'languages_sha256': text_hash(canonical(rows)),
             'operation_id': approval.job_id, 'request_hash': request.fingerprint(profile),
@@ -139,16 +144,17 @@ class TranslationService:
         self.jobs.save_cache(profile, value)
         return tuple(rows)
 
-    def preview(self, profile, value, source, target, *, rate_per_million=None):
+    def preview(self, profile, value, source, target, *, rate_per_million=None, glossary=''):
         self._current_profile(profile)
         parts = split_text(value)
         first = next(part for part in parts if part.strip())
-        GoogleTranslationRequest(first, source, target)
+        translation_request(profile, first, source, target, glossary=glossary)
         rows = self.languages(profile)
-        codes = {row['language'] for row in rows}
-        if not codes:
+        sources = {row['language'] for row in rows if row.get('source', True)}
+        targets = {row['language'] for row in rows if row.get('target', True)}
+        if not rows:
             raise ValueError('Explicitly fetch the supported language list before translating.')
-        if target not in codes or (source != 'auto' and source not in codes):
+        if target not in targets or (source != 'auto' and source not in sources):
             raise ValueError('This source/target pair is not declared supported by this account\'s NMT model.')
         estimate = None
         if rate_per_million not in (None, ''):
@@ -165,21 +171,25 @@ class TranslationService:
             'source': source, 'target': target, 'estimated_cost': estimate,
             'language_catalog_sha256': text_hash(canonical(list(rows))),
             'estimate_basis': 'owner-entered rate; not a provider quote or a provider-enforced spending cap',
-            'preservation': 'plain-text derivative; layout, glossaries, Advanced v3 and local models are separate'}
+            'glossary': glossary, 'provider': profile.provider, 'endpoint': profile.endpoint, 'model': profile.model,
+            'preservation': 'plain-text derivative; original text is retained; document layout and translation quality are not guaranteed'}
 
-    def submit(self, profile, value, source, target, *, approval, title='Translation'):
-        preview = self.preview(profile, value, source, target)
+    def submit(self, profile, value, source, target, *, approval, title='Translation', glossary=''):
+        preview = self.preview(profile, value, source, target, glossary=glossary)
         if not isinstance(approval, JobApproval):
             raise PermissionError('Review a fresh exact translation approval.')
         parts = split_text(value)
         stamp = now()
-        job = {'schema': SCHEMA, 'id': approval.job_id, 'library_root': str(self.root),
+        schema = ADVANCED_SCHEMA if profile.provider == 'google-translation-v3' else SCHEMA
+        job = {'schema': schema, 'id': approval.job_id, 'library_root': str(self.root),
             'ledger_identity': self._ledger_identity(), 'created': stamp, 'updated': stamp, 'status': 'queued',
             'profile': _json_value(asdict(profile)), 'title': title, 'source_text': value,
             'source_sha256': preview['source_sha256'], 'source_language': source, 'target_language': target,
             'language_catalog_sha256': preview['language_catalog_sha256'],
             'approval': _json_value(asdict(approval)), 'allocations': allocations(parts, approval.budget_micros),
             'receipts': [], 'pending': None}
+        if schema == ADVANCED_SCHEMA:
+            job['glossary'] = glossary
         # Validation proves exact profile/request hashes, call count and budget.
         # It precedes publication and every possible provider call.
         self.jobs.save(job, new=True)
@@ -250,8 +260,9 @@ class TranslationService:
                 pending = job['pending']
                 row = operations.get(pending['operation_id'])
                 index = pending['index']
-                expected = GoogleTranslationRequest(
-                    split_text(job['source_text'])[index], job['source_language'], job['target_language'])
+                expected = translation_request(
+                    profile, split_text(job['source_text'])[index], job['source_language'],
+                    job['target_language'], glossary=job.get('glossary', ''))
                 if (row is None or row['state'] != 'cancelled_before_send' or row['job'] != identity
                         or row['request_hash'] != expected.fingerprint(profile)
                         or row['estimate_micros'] != job['allocations'][index]):
@@ -269,13 +280,14 @@ class TranslationService:
                     chunk = parts[index]
                     if chunk.strip():
                         profile = self._binding(job)
-                        request = GoogleTranslationRequest(chunk, job['source_language'], job['target_language'])
+                        request = translation_request(profile, chunk, job['source_language'],
+                                                      job['target_language'], glossary=job.get('glossary', ''))
                         operation = identity + '_' + str(index)
                         job['pending'] = {'index': index, 'operation_id': operation}
                         self.jobs.save(job)  # Durable intent before reservation, credentials or HTTP.
                         raw = self.gateway.perform(profile, request, approval=approval, operation_id=operation,
                             estimated_micros=job['allocations'][index], cancelled=cancelled)
-                        result = decode_translation_response(request, raw)
+                        result = decode_translation_response(request, raw, profile=profile)
                         row = {'index': index, 'source_sha256': text_hash(chunk), 'text': result['text'],
                             'translation_sha256': text_hash(result['text']), 'detected_source': result['detected_source'],
                             'operation_id': operation, 'request_hash': request.fingerprint(profile),
@@ -286,6 +298,9 @@ class TranslationService:
                         row = {'index': index, 'source_sha256': text_hash(chunk), 'text': chunk,
                             'translation_sha256': text_hash(chunk), 'detected_source': None,
                             'operation_id': None, 'request_hash': None, 'response_sha256': None}
+                    if job['schema'] == ADVANCED_SCHEMA:
+                        row.update(reported_model=result['reported_model'] if chunk.strip() else None,
+                                   glossary=result['glossary'] if chunk.strip() else None)
                     if sum(len(item['text']) for item in job['receipts']) + len(row['text']) > MAX_OUTPUT_CHARACTERS:
                         raise ValueError('The accepted output exceeds the translation storage budget. Do not repeat this request.')
                     job['receipts'].append(row)
@@ -354,6 +369,8 @@ class TranslationService:
                                 decoded_receipt_integrity=integrity)
                            for row, integrity in zip(job['receipts'], receipt_integrity)],
                 'files': hashes}
+            if job['schema'] == ADVANCED_SCHEMA:
+                report.update(schema='carr-translation-export/2', glossary=job['glossary'])
             # A provenance manifest is the final complete-export marker.
             write_export(target / 'translation-provenance.json', canonical(report) + '\n',
                          private_root=self.root, cancelled=cancelled, require_absent=True)
