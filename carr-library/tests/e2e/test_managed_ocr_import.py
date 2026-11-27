@@ -89,7 +89,8 @@ def quarantine(managed_import):
     assert len(records) == 1
     payload = json.loads(records[0][0])
     assert payload['status'] == 'review_required'
-    assert payload['raw_text'].strip() == GROUND_TRUTH, payload
+    print('OCR_IMPORT_DIAGNOSTIC', json.dumps(payload, ensure_ascii=False), flush=True)
+    assert payload['raw_text'].strip() == GROUND_TRUTH, payload['warnings']
     assert payload['provenance']['config']['model_profile'] == 'fast'
     assert payload['provenance']['ocr_runtime']['managed_models'] == selected.fingerprint()
     assert payload['provenance']['ocr_runtime']['managed_models']['profile'] == 'fast'

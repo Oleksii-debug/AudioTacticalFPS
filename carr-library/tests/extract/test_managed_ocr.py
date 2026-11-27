@@ -179,10 +179,19 @@ def test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance
             raise AssertionError({'arguments': exc.cmd,
                                   'stderr': exc.stderr.decode('utf-8', 'replace')}) from exc
     monkeypatch.setattr(page_module, 'run_ocr', traced)
+    read_output = page_module._read_ocr_output
+    def traced_read(path):
+        try:
+            return read_output(path)
+        except OSError as exc:
+            raise AssertionError({'sidecar': str(path), 'error': repr(exc),
+                                  'siblings': [item.name for item in path.parent.iterdir()]}) from exc
+    monkeypatch.setattr(page_module, '_read_ocr_output', traced_read)
     config = Config(model_profile='fast')
     identity = runtime_identity(config)
     result = extract_page(source, 1, config)
-    assert result['raw_text'].strip() == 'Managed source evidence', result
+    print('OCR_RESULT_DIAGNOSTIC', json.dumps(result, ensure_ascii=False), flush=True)
+    assert result['raw_text'].strip() == 'Managed source evidence', result['warnings']
     assert result['status'] == 'review_required' and result['blocks']
     assert result['physical_index'] == 1 and result['printed_label'] is None
     assert result['printed_label_verified'] is False
