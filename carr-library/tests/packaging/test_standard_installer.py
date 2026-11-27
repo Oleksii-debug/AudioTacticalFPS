@@ -739,3 +739,27 @@ def test_native_probe_does_not_treat_incomplete_registry_as_an_empty_account(mon
         assert probe.registry() is None
     else:
         assert set(probe.registry()) == {'InstallLocation', 'UninstallString', 'ModifyPath', 'NoModify'}
+
+@pytest.mark.parametrize('marker_name', ['portable-update.ini', 'PORTABLE-UPDATE.INI'])
+@pytest.mark.parametrize('installed_bundle', [False, True])
+def test_standard_setup_refuses_sealed_portable_profile_before_creating_output(
+        tmp_path, payload, marker_name, installed_bundle):
+    root, _expected = payload
+    marker = root / marker_name
+    marker.write_bytes(b'[Resonance portable updates]\nProtocol=1\nOwner=windows-job-v1\n')
+    expected = reseal(root)
+    if installed_bundle:
+        synthetic_bootstrap(root)
+    # The source inventory and manifest are genuinely sealed. Refusal must be
+    # about incompatible lifecycle ownership, not an incidental hash mismatch.
+    service.verifier.verify(root, manifest_bytes=(root / 'bundle-manifest.json').read_bytes())
+    before = service.inventory(root)
+    destination = tmp_path / 'must-not-create-setup'
+    with pytest.raises(ValueError, match='Standard setup cannot wrap'):
+        build.prepare(root, destination, manifest_sha256=expected,
+                      installed_bundle=installed_bundle)
+    assert not destination.exists()
+    assert service.inventory(root) == before
+    with pytest.raises(ValueError, match='Standard setup cannot wrap'):
+        service.bundle(root, expected, allow_installed=installed_bundle)
+    assert service.inventory(root) == before

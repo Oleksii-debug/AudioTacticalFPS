@@ -165,6 +165,10 @@ def bundle(root, expected, *, allow_installed=False):
     if hashlib.sha256(raw).hexdigest() != digest(expected):
         raise ValueError('The bundle differs from this installer identity.')
     document = json.loads(raw, object_pairs_hook=unique)
+    if (os.path.lexists(root / 'portable-update.ini')
+            or any(type(name) is str and name.casefold() == 'portable-update.ini'
+                   for name in document.get('files', {}))):
+        raise ValueError('Standard setup cannot wrap an opted-in portable-update bundle. Build a separate standard bundle without that sealed profile.')
     if document.get('bundled_python') is not True or document.get('bundled_launcher') is not True:
         raise ValueError('Standard installation requires the existing complete Python/native launcher bundle.')
     if not re.fullmatch('[0-9a-f]{40}', str(document.get('source_commit', ''))):

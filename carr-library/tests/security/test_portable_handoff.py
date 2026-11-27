@@ -390,3 +390,137 @@ def test_changed_candidate_guard_rolls_back_before_protected_commit(ready, monke
     assert (helper.program / 'version.txt').read_bytes() == b'A'
     assert [kind for kind, _root in calls] == ['prepare', 'activate']
     assert_preserved(original)
+
+def _interrupt_update_write(helper, package, monkeypatch, phase):
+    original_write = handoff.UpdateTransaction._write
+
+    class PowerLoss(BaseException):
+        pass
+
+    def interrupted(transaction, record, current):
+        if current == phase == 'complete':
+            # The protected B anchor has advanced; the previous nonfinal
+            # journal is deliberately left on disk for an actual recovery.
+            raise PowerLoss()
+        original_write(transaction, record, current)
+        if current == phase:
+            raise PowerLoss()
+
+    with monkeypatch.context() as patch:
+        patch.setattr(handoff.UpdateTransaction, '_write', interrupted)
+        with pytest.raises(PowerLoss):
+            helper.apply(package)
+
+
+@pytest.mark.parametrize('boundary', ['recover', 'apply'])
+def test_missing_previous_never_labels_current_b_as_rolled_back(
+        ready, tmp_path, monkeypatch, boundary):
+    helper, package, _manifest, _calls, original = ready
+    journal = helper.work / 'activation.json'
+    retained = tmp_path / 'independently-retained-original-A'
+    paths = []
+
+    def retain_original_elsewhere():
+        record = json.loads(journal.read_bytes())
+        previous = helper.program.parent / record['previous']
+        os.rename(previous, retained)
+        paths.append(previous)
+
+    if boundary == 'recover':
+        _interrupt_update_write(helper, package, monkeypatch, 'new-active')
+        retain_original_elsewhere()
+        journal_before = journal.read_bytes()
+        with pytest.raises(TrustError, match='authenticated activation identity'):
+            helper.recover(package)
+        assert journal.read_bytes() == journal_before
+    else:
+        def failed_health(adapter, root, release):
+            retain_original_elsewhere()
+            return False
+        with monkeypatch.context() as patch:
+            patch.setattr(handoff._PinnedAdapter, 'health', failed_health)
+            with pytest.raises(TrustError, match='authenticated activation identity'):
+                helper.apply(package)
+    assert len(paths) == 1 and not paths[0].exists()
+    assert json.loads(journal.read_bytes())['phase'] == 'new-active'
+    assert (helper.program / 'version.txt').read_bytes() == b'B'
+    assert (retained / 'version.txt').read_bytes() == b'A'
+    assert helper.anchor.load().sequence == 1 and helper._completed is None
+    assert_preserved(original)
+    os.rename(retained, paths[0])
+    assert helper.recover(package) == 'rolled-back'
+    assert (helper.program / 'version.txt').read_bytes() == b'A'
+    assert_preserved(original)
+
+
+def test_missing_previous_with_independently_verified_current_a_can_finish_rollback(
+        ready, monkeypatch):
+    helper, package, _manifest, _calls, original = ready
+    raw_a = (helper.program / 'bundle-manifest.json').read_bytes()
+    _interrupt_update_write(helper, package, monkeypatch, 'prepared')
+    record = json.loads((helper.work / 'activation.json').read_bytes())
+    assert not (helper.program.parent / record['previous']).exists()
+    assert helper.recover(package) == 'rolled-back'
+    assert (helper.program / 'bundle-manifest.json').read_bytes() == raw_a
+    assert sha256(raw_a).hexdigest() == helper.before
+    assert_original(ready)
+    assert_preserved(original)
+
+
+@pytest.mark.parametrize('reserved_name', [False, True])
+def test_committed_b_recovery_does_not_require_missing_previous_a(
+        ready, tmp_path, monkeypatch, reserved_name):
+    helper, package, _manifest, _calls, original = ready
+    if reserved_name:
+        renamed = helper.program.with_name('.carr-previous-owner-selected-program')
+        os.rename(helper.program, renamed)
+        helper = handoff.PortableUpdateHandoff(
+            helper.app, renamed, helper.work, helper.policy, helper.anchor, helper.verify_bundle,
+            installed_manifest_sha256=helper.before, clock=helper.clock)
+    _interrupt_update_write(helper, package, monkeypatch, 'complete')
+    journal = helper.work / 'activation.json'
+    record = json.loads(journal.read_bytes())
+    previous = helper.program.parent / record['previous']
+    retained = tmp_path / 'retained-A-after-protected-commit'
+    os.rename(previous, retained)
+    assert helper.anchor.load().sequence == package.release.build
+    assert record['phase'] == 'health-checked'
+    assert helper.recover(package) == 'complete'
+    assert json.loads(journal.read_bytes())['phase'] == 'complete'
+    assert (helper.program / 'version.txt').read_bytes() == b'B'
+    assert (retained / 'version.txt').read_bytes() == b'A'
+    assert_preserved(original)
+
+
+def test_legacy_adapter_cannot_claim_missing_previous_a_from_directory_existence(
+        setup_update, tmp_path, monkeypatch):
+    *_, package, transaction, anchor, _adapter = setup_update
+    original_write = transaction._write
+
+    class PowerLoss(BaseException):
+        pass
+
+    def interrupted(record, phase):
+        original_write(record, phase)
+        if phase == 'new-active':
+            raise PowerLoss()
+
+    with monkeypatch.context() as patch:
+        patch.setattr(transaction, '_write', interrupted)
+        with pytest.raises(PowerLoss):
+            transaction.apply(package)
+    record, _, _ = transaction._record()
+    _, previous, _ = transaction._paths(record)
+    retained = tmp_path / 'legacy-original-A-retained'
+    os.rename(previous, retained)
+    journal_before = transaction.journal.read_bytes()
+    with pytest.raises(TrustError, match='cannot be independently verified'):
+        transaction.recover()
+    assert transaction.journal.read_bytes() == journal_before
+    assert (transaction.installed / 'version.txt').read_bytes() == b'B'
+    assert anchor.load().sequence == 1
+    assert_preserved(setup_update)
+    os.rename(retained, previous)
+    assert transaction.recover() == 'rolled-back'
+    assert (transaction.installed / 'version.txt').read_bytes() == b'A'
+    assert_preserved(setup_update)

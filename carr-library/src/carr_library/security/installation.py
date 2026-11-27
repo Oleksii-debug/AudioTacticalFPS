@@ -404,6 +404,15 @@ class UpdateTransaction:
             sync_directory(self.installed.parent)
         elif not self.installed.is_dir():
             raise TrustError('Previous installation is unavailable. Keep the backup and ask the owner to recover.')
+        else:
+            # Existence cannot prove rollback: the current directory may still
+            # be B after a crash, or may have changed independently. Only an
+            # adapter holding an independently retained A identity can accept
+            # this exceptional no-previous case, including loss during apply.
+            verify_original = getattr(self.adapter, 'verify_rollback_current', None)
+            if not callable(verify_original):
+                raise TrustError('Previous installation is unavailable and current A cannot be independently verified. Preserve the backup for owner recovery.')
+            verify_original(self.installed)
         self._write(record, 'rolled-back')
 
     def recover(self):

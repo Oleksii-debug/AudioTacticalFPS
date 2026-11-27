@@ -104,13 +104,22 @@ class _PinnedAdapter(WindowsBundleAdapter):
         root = Path(root).absolute()
         # The retained rollback installation is always A. A journal/path change
         # must not present another internally consistent B as the previous app.
-        previous = root.parent == self.program.parent and root.name.startswith('.carr-previous-')
+        previous = (root != self.program and root.parent == self.program.parent
+                    and root.name.startswith('.carr-previous-'))
         allowed = {self.before} if previous else (
             {self.before, self.after} if root == self.program else {self.after})
         raw = self._manifest(root, allowed)
         self.verify_bundle(root, manifest_bytes=raw)
         if previous or root == self.program:
             installed_ownership(root, raw)
+
+    def verify_rollback_current(self, root):
+        root = Path(root).absolute()
+        if root != self.program:
+            raise TrustError('Original-installation verification belongs to its configured program path.')
+        raw = self._manifest(root, {self.before})
+        self.verify_bundle(root, manifest_bytes=raw)
+        installed_ownership(root, raw)
 
     def health(self, root, release):
         raw = self._manifest(root, {self.after})
