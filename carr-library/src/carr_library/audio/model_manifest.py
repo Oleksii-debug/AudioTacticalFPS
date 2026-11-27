@@ -99,6 +99,51 @@ def _relative(value):
     return path
 
 
+
+_MAX_INVENTORY_ENTRIES = 32768
+
+
+def inventory_files(root, *, cancelled=lambda: False):
+    """Yield ordinary local files after bounded, complete directory enumeration.
+
+    Scandir errors propagate; no unreadable subtree is treated as empty. The
+    allowance counts every entry, including directories and non-Python files.
+    """
+    root = local_path(root)
+    pending = [root]
+    count = 0
+
+    def check_cancel():
+        if cancelled():
+            raise InterruptedError('Local asset verification cancelled.')
+
+    try:
+        while pending:
+            check_cancel()
+            directory = local_path(pending.pop())
+            if not stat.S_ISDIR(directory.lstat().st_mode):
+                raise ModelManifestError('A model inventory folder is not a directory.')
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    check_cancel()
+                    count += 1
+                    if count > _MAX_INVENTORY_ENTRIES:
+                        raise ModelManifestError('The model installation exceeds the directory entry budget.')
+                    path = local_path(directory / entry.name)
+                    info = path.lstat()
+                    if stat.S_ISDIR(info.st_mode):
+                        pending.append(path)
+                    elif stat.S_ISREG(info.st_mode):
+                        yield path
+                    else:
+                        raise ModelManifestError('Local model inventory requires regular files and directories.')
+        check_cancel()
+    except InterruptedError:
+        raise
+    except OSError as exc:
+        raise ModelManifestError('The local model inventory is unreadable or incomplete.') from exc
+
+
 @dataclass(frozen=True)
 class LocalModelManifest:
     path: Path
@@ -184,13 +229,8 @@ class LocalModelManifest:
             raise ModelManifestError('The model manifest changed after it was loaded.')
         if require_complete:
             listed = dict(self.files)
-            for count, entry in enumerate(self.root.rglob('*'), 1):
-                if cancelled():
-                    raise InterruptedError('Local asset verification cancelled.')
-                if count > 32768:
-                    raise ModelManifestError('The model installation exceeds the directory entry budget.')
-                entry = local_path(entry)
-                if entry.is_file() and entry != self.path and entry.relative_to(self.root).as_posix() not in listed:
+            for entry in inventory_files(self.root, cancelled=cancelled):
+                if entry != self.path and entry.relative_to(self.root).as_posix() not in listed:
                     raise ModelManifestError('The local runtime contains a file missing from its reviewed manifest.')
         total = 0
         for name, expected in self.files:

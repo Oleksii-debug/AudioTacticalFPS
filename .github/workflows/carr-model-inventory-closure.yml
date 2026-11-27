@@ -1,0 +1,67 @@
+name: Complete local model inventory
+
+on:
+  push:
+    branches: [carr/model-inventory-closure-20261127]
+    paths:
+      - carr-library/src/carr_library/audio/model_manifest.py
+      - carr-library/src/carr_library/audio/music.py
+      - carr-library/tests/audio/test_model_inventory.py
+      - .github/workflows/carr-model-inventory-closure.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-actual-procedural-audio:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Install bounded test dependencies
+        run: |
+          python -m pip install --only-binary=:all: pytest==9.0.2 filelock==3.29.0 platformdirs==4.10.0 packaging==26.4
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Require model closure and existing actual procedural audio
+        run: python scripts/ci_check.py tests/audio/test_model_inventory.py tests/audio/test_model_manifest.py tests/audio/test_music.py
+
+  native-windows-inventory:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install bounded test dependencies
+        run: |
+          python -m pip install --only-binary=:all: pytest==9.0.2 filelock==3.29.0 platformdirs==4.10.0 packaging==26.4
+      - name: Require all native inventory cases without skipped results
+        run: python scripts/ci_check.py tests/audio/test_model_inventory.py

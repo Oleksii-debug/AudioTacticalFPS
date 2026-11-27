@@ -20,7 +20,8 @@ import tempfile
 import wave
 
 from .engines import EngineUnavailable, _binary, _number, _output, _publish, _run
-from .model_manifest import LocalModelManifest, ModelManifestError, digest_file, local_path, offline_environment, read_json
+from .model_manifest import (LocalModelManifest, ModelManifestError, digest_file, inventory_files,
+                             local_path, offline_environment, read_json)
 
 
 COMPOSER_VERSION = 'procedural-score-1'
@@ -316,8 +317,8 @@ def _render_musicgen_chunk(path, *, frame_count, sample_rate, mood, tempo, seed,
     if not cache.is_dir():
         raise ModelManifestError('Install the required local text-encoder cache before using MusicGen.')
     local_path(cache)
-    for file in cache.rglob('*'):
-        if file.is_file() and file.relative_to(manifest.root).as_posix() not in dict(manifest.files):
+    for file in inventory_files(cache, cancelled=cancelled):
+        if file.relative_to(manifest.root).as_posix() not in dict(manifest.files):
             raise ModelManifestError('Every text-encoder cache asset must be listed in the verified manifest.')
     environment = offline_environment()
     environment.update(HF_HOME=str(cache), HUGGINGFACE_HUB_CACHE=str(cache / 'hub'),
