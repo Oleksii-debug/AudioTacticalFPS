@@ -88,6 +88,9 @@ class Control:
             return -1
         return sum(count(line) + 2 for line in lines[:row]) + column
 
+    def GetLastPosition(self):
+        return len(self.value.replace('\n', '\r\n').encode('utf-16-le')) // 2
+
     def GetRange(self, start, end):
         native = self.value.replace('\n', '\r\n').encode('utf-16-le')
         return native[start * 2:end * 2].decode('utf-16-le').replace('\r\n', '\n')
@@ -314,6 +317,7 @@ def test_unavailable_native_position_keeps_chapter_and_explains_fallback(monkeyp
     def interaction(wx):
         reader = wx.named(NOTICE)
         reader.XYToPosition = lambda column, row: -1
+        reader.GetRange = lambda start, end: ''  # Neither mapping can prove a nonempty prefix.
         contents = wx.named('Book contents (levels and chapter destinations)')
         contents.SetSelection(1)
         contents.handlers[wx.EVT_CHOICE](None)
@@ -759,3 +763,127 @@ def test_recorded_epub_highlight_diagnostic_preserves_exact_bounded_observation(
     assert value['native_selection'] == [0, 9] and value['session_source_matches']
     assert value['status']['prefix'] == 'Mapping unavailable.'
     assert harness.env['errors'] == [] and harness.events == []
+
+
+class _NativeOffsetControl(Control):
+    """Native character units and range clamping, without a line-coordinate oracle."""
+
+    def __init__(self, owner, *, value, utf16=True, newline='\r\n'):
+        super().__init__(owner, value=value)
+        self.utf16, self.newline = utf16, newline
+        self.ranges, self.surrogate_splits = [], []
+
+    def native_length(self, text):
+        native = text.replace('\n', self.newline)
+        return len(native.encode('utf-16-le')) // 2 if self.utf16 else len(native)
+
+    def GetLastPosition(self):
+        return self.native_length(self.value)
+
+    def GetRange(self, start, end):
+        self.ranges.append((start, end))
+        native = self.value.replace('\n', self.newline)
+        try:
+            value = (native.encode('utf-16-le')[start * 2:end * 2].decode('utf-16-le')
+                     if self.utf16 else native[start:end])
+        except UnicodeError:
+            self.surrogate_splits.append((start, end))
+            raise
+        # MSW GetRange translates even a trailing CR; slicing also clamps.
+        return value.replace('\r\n', '\n').replace('\r', '\n')
+
+    def XYToPosition(self, column, row):
+        raise AssertionError('An exact absolute native position must not depend on display rows.')
+
+
+@pytest.mark.parametrize('utf16,newline', [
+    (False, '\n'), (False, '\r\n'), (True, '\n'), (True, '\r\n'),
+], ids=['characters-lf', 'characters-crlf', 'utf16-lf', 'utf16-crlf'])
+def test_native_positions_prove_all_prefixes_without_logical_row_coordinates(utf16, newline):
+    raw = 'Title 😀\n\nExact α 😀 source & words.\nTail 🧪\n'
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw, utf16=utf16, newline=newline)
+    for offset in range(len(raw) + 1):
+        before = len(control.ranges)
+        position = native_position(control, raw, offset)
+        assert position == control.native_length(raw[:offset])
+        assert 1 <= len(control.ranges) - before <= 4
+        assert control.GetRange(0, position) == raw[:offset]
+    assert all(0 <= start <= end <= control.GetLastPosition() for start, end in control.ranges)
+    assert control.GetValue() == raw
+
+
+@pytest.mark.parametrize('utf16,newline', [
+    (False, '\n'), (False, '\r\n'), (True, '\n'), (True, '\r\n'),
+], ids=['characters-lf', 'characters-crlf', 'utf16-lf', 'utf16-crlf'])
+def test_native_end_position_cannot_be_proved_by_an_oversized_clamped_range(utf16, newline):
+    raw = '😀\n'
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw, utf16=utf16, newline=newline)
+    last = control.GetLastPosition()
+    assert control.GetRange(0, last + 20) == raw  # The real platform may clamp.
+    control.ranges.clear()
+    assert native_position(control, raw, len(raw)) == last
+    assert control.ranges and all(end <= last for _, end in control.ranges)
+
+
+def test_native_position_continues_after_a_surrogate_splitting_candidate():
+    raw = 'a\n😀tail'
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw, newline='\n')
+    assert native_position(control, raw, 2) == 2
+    assert control.surrogate_splits == [(0, 3)]
+    assert control.GetRange(0, 2) == 'a\n'
+    assert control.GetValue() == raw
+
+
+def test_native_position_uses_complete_crlf_even_if_lone_cr_reads_as_lf():
+    raw = 'a\nx'
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw)
+    assert control.GetRange(0, 2) == 'a\n'  # Mid-CRLF also normalizes to LF.
+    assert native_position(control, raw, 2) == 3
+    assert control.GetRange(3, control.GetLastPosition()) == 'x'
+    assert control.GetValue() == raw
+
+
+def test_native_position_retains_only_a_bounded_proven_xy_fallback():
+    control = SimpleNamespace(GetValue=lambda: 'abc', GetLastPosition=lambda: 8,
+        GetRange=lambda first, last: 'ab' if (first, last) == (0, 7) else '',
+        XYToPosition=lambda column, row: 7)
+    assert native_position(control, 'abc', 2) == 7
+    control.GetLastPosition = lambda: 6
+    with pytest.raises(ValueError, match='could not locate'):
+        native_position(control, 'abc', 2)
+
+
+def test_recorded_overlay_highlight_uses_exact_positions_after_soft_wrapped_provenance():
+    from carr_library.ui.ebook_audio_dialog import EbookAudioDialog
+
+    fragment = 'Exact α 😀 source & words.'
+    raw = ('Title\n\n' + 'Source provenance remains unverified. ' * 18 +
+           '\n\nChapter\n\n' + fragment + '\n\nTail.')
+    control = _NativeOffsetControl(WxDouble(lambda wx: None), value=raw)
+    visual_rows, native_start = [], 0
+    for line in raw.split('\n'):
+        for column in range(0, max(1, len(line)), 40):
+            piece = line[column:column + 40]
+            visual_rows.append((native_start + control.native_length(line[:column]),
+                                control.native_length(piece)))
+        native_start += control.native_length(line) + 2
+
+    def visual_xy(column, row):
+        if not 0 <= row < len(visual_rows):
+            return -1
+        first, length = visual_rows[row]
+        return first + column if 0 <= column <= length else -1
+
+    control.XYToPosition = visual_xy
+    first, last = raw.index(fragment), raw.index(fragment) + len(fragment)
+    prefix = raw[:first]
+    old_line_start = visual_xy(0, prefix.count('\n'))
+    assert old_line_start >= 0 and control.GetRange(0, old_line_start) != prefix
+    owner = SimpleNamespace(text=control, transport=SimpleNamespace(index=0),
+        session=SimpleNamespace(page=SimpleNamespace(raw_text=raw),
+            chapter=SimpleNamespace(cues=(SimpleNamespace(start=first, end=last),))))
+    EbookAudioDialog._highlight(owner)
+    assert control.selection == (control.native_length(raw[:first]), control.native_length(raw[:last]))
+    assert control.GetRange(*control.selection) == fragment
+    assert control.position == control.selection[0]
+    assert control.GetValue() == raw
