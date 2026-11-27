@@ -79,13 +79,38 @@ and refusal of ambiguous roots, archive traversal, duplicate names, active code
 and expansion excess. Existing conversion and publication suites remain required.
 New checkpoint qualification is NOT_RUN until the exact CI evidence exists.
 
-AZW/AZW3, CHM, DjVu, LIT, MOBI, PRC, TCR and non-ZIP generic archives retain
-their separate converter/sample requirements. No renamed-file compatibility,
-decryption, DRM bypass, arbitrary external decoder or unverified universal-format
-claim is added. BXD/REX/DIC pronunciation interchange and verified SAPI4 driver
-combinations remain separate reader/runtime qualifications.
+AZW/AZW3, CHM, DjVu, LIT, MOBI, PRC and TCR use the separately selected
+[Calibre reading adapter](CALIBRE_READING.md), with its own actual eight-format
+gate and explicit fidelity boundaries. Non-ZIP generic archives remain outside
+this adapter. No renamed-file compatibility, decryption, DRM bypass, arbitrary
+external decoder or unverified universal-format claim is added. Pronunciation
+dictionary interchange and verified SAPI4 driver combinations retain their own
+reader/runtime acceptance.
 
 Primary interface references:
 
 - [LibreOffice fixed conversion filters](https://help.libreoffice.org/latest/en-US/text/shared/guide/convertfilters.html)
 - [MHTML aggregate MIME contract, RFC2557](https://www.rfc-editor.org/rfc/rfc2557)
+
+
+## Reviewed Office completion boundary
+
+The current gate selects LibreOffice 26.8.3 on both operating systems. Linux uses
+the official archive, checked at 221377373 bytes and SHA-256
+`e7cd3538e85818ff9dd9bb65386769fde927011242aace5a144989f4000dcabf`.
+The older distro 24.2.7 runtime was correctly refused because it lacked a required
+macro/OLE control; no control was removed to admit it.
+
+Actual Windows diagnostic fixtures identified two harmless empty nodes:
+a static `draw:enhanced-geometry` after the PPT's source text and a disabled empty
+XLS `style:header-left`. The parser accepts only their bounded declarative shape;
+it never evaluates geometry or suppresses hidden authored text. Geometry tokens
+are consumed once, with finite numeric limits and an owned-child malformed-input
+regression. Conversion still reports that drawing geometry is not rendered.
+
+The actual prior workspace gate passed all 276 common tests and six of the nine
+Windows native cases. The corrected all-nine source/installed gate is
+[run46044193352](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46044193352)
+at `4b1afc83fbf3e932880e6de71b8861857ab13712`; its attached results,
+and the final integrated gate, determine execution status. This document does
+not predeclare a queued run as passed.

@@ -250,3 +250,88 @@ def test_cancel_after_canonical_revocation_cannot_publish_a_partial_mixed_restor
     assert stopped and not (tmp_path / 'unpublished').exists()
     assert _saved_files(backup) == archive
     assert _saved_files(service.root) == original
+
+@pytest.mark.parametrize('completed', (False, True))
+def test_additional_reviewed_packages_restore_passively_without_changing_worker_dialect(
+        tmp_path, monkeypatch, completed):
+    app, _, service, original, engine, fixture = _canonical(tmp_path)
+    site = engine.site
+    package = site / 'tqdm.py'
+    package.write_bytes(b"raise AssertionError('Only inert recorded dependency bytes, never imported.')\n")
+    info = site / 'tqdm-0.1.dist-info'
+    info.mkdir()
+    (info / 'METADATA').write_text('Metadata-Version: 2.1\nName: tqdm\nVersion: 0.1\n', encoding='utf-8')
+    (info / 'RECORD').write_text('tqdm.py,,\ntqdm-0.1.dist-info/METADATA,,\ntqdm-0.1.dist-info/RECORD,,\n',
+                                encoding='utf-8')
+    reviewed = fixture.register(service, engine)
+    assert reviewed['runtime_distributions'] == original['runtime_distributions']
+    assert set(reviewed['runtime_additional_distributions']) == {'tqdm'}
+    assert reviewed['fingerprint'] != original['fingerprint']
+    source = tmp_path / 'additional-package-source.wav'
+    source.write_bytes(b'Exact synthetic protocol input; no inference claim.')
+    job = service.create_job(reviewed['id'], [source])
+    if completed:
+        value = service.run(job['id'])
+        assert value['status'] == 'complete', value['error']
+        recognized = service.read_transcript(job['id'])
+    before = _saved_files(service.root)
+    source.unlink()
+    shutil.rmtree(engine.root)
+    archive = tmp_path / 'additional-package-backup'
+    with monkeypatch.context() as passive:
+        _forbid_execution(passive)
+        checksum = create_backup(app, archive)
+        manifest = read_json(archive / 'manifest.json')
+        assert manifest['version'] == 4 and 'state' not in manifest
+        assert not any(row['filename'].endswith(('tqdm.py', 'model.bin', 'protocol_worker.py'))
+                       for row in manifest['sidecars'])
+        archived = _saved_files(archive)
+        destination = restore_backup(archive, tmp_path / 'additional-package-restored', checksum)
+        restored = TranscriptionService(destination / 'state/transcription')
+        profiles = {row['id']: row for row in restored.list_runtimes()}
+        after = profiles[reviewed['id']]
+        assert after['runtime_distributions'] == reviewed['runtime_distributions']
+        assert after['runtime_additional_distributions'] == reviewed['runtime_additional_distributions']
+        assert after['fingerprint'] == reviewed['fingerprint']
+        assert after['trusted'] is False and after['restored'] is True
+        current = restored.get_job(job['id'])
+        assert current['status'] == ('complete' if completed else 'interrupted')
+        if completed:
+            assert restored.read_transcript(job['id']) == recognized
+        else:
+            assert restored.run(job['id'])['status'] == 'failed'
+        assert _saved_files(archive) == archived
+    assert _saved_files(service.root) == before
+
+
+@pytest.mark.parametrize('malformation', ('empty', 'required-overlap', 'unnormalized', 'file-count', 'digest'))
+def test_additional_distribution_backup_validation_cannot_be_re_signed_around(
+        tmp_path, monkeypatch, malformation):
+    from copy import deepcopy
+    from carr_library.transcription.models import fingerprint
+    app, _, service, original, _, _ = _canonical(tmp_path)
+    value = deepcopy(original)
+    entry = deepcopy(original['runtime_distributions']['av'])
+    value['runtime_additional_distributions'] = {'tqdm': entry}
+    if malformation == 'empty':
+        value['runtime_additional_distributions'] = {}
+    elif malformation == 'required-overlap':
+        value['runtime_additional_distributions'] = {'av': entry}
+    elif malformation == 'unnormalized':
+        value['runtime_additional_distributions'] = {'Tqdm.Dep': entry}
+    elif malformation == 'file-count':
+        entry['file_count'] = True
+    else:
+        entry['installed_files_sha256'] = 'not a digest'
+    admission = {key: item for key, item in value.items() if key not in
+                 {'fingerprint', 'id', 'name', 'trusted', 'qualification', 'registered', 'restored'}}
+    value['fingerprint'] = fingerprint(admission)
+    value['id'] = value['fingerprint'][:32]
+    selected = service.profiles_root / (value['id'] + '.json')
+    atomic_json(selected, value)
+    before = selected.read_bytes()
+    with monkeypatch.context() as passive:
+        _forbid_execution(passive)
+        with pytest.raises((ValueError, OSError)):
+            create_backup(app, tmp_path / 'invalid-additional-backup')
+    assert selected.read_bytes() == before and not (tmp_path / 'invalid-additional-backup').exists()

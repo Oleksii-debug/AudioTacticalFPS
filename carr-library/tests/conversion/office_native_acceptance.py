@@ -4,6 +4,7 @@ All binary inputs are generated from synthetic text locally. No office runtime,
 third-party book, macro payload or proprietary fixture is embedded in git.
 """
 from hashlib import sha256
+import json
 import os
 from pathlib import Path
 import struct
@@ -121,21 +122,34 @@ def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_p
     assert len(list(destination.iterdir())) == 2
 
 
-def test_selected_office_cancellation_settles_family_before_private_profile_cleanup(tmp_path):
+def test_selected_office_cancellation_settles_family_before_private_profile_cleanup(tmp_path, monkeypatch):
     source = legacy_office(tmp_path, 'doc', 'The original must survive cancellation.')
     before = source.read_bytes()
     output = tmp_path / 'output'
     output.mkdir()
-    observed = []
+    from carr_library.conversion import service
+    real_process, stages, outer_stages, observed = service.run_process, [], [], []
+    def execute(argv, **kwargs):
+        request = json.loads(Path(argv[-1]).read_text(encoding='utf-8'))
+        assert request['operation'] == 'office' and kwargs['owned_tree'] is True
+        native = Path(kwargs['cwd'])
+        assert Path(request['source']).parent == native
+        stages.append(native)
+        outer_stages.extend(output.glob('.pending-conversion-*'))
+        # Delegate the actual selected worker and exact native-family owner.
+        return real_process(argv, **kwargs)
+    monkeypatch.setattr(service, 'run_process', execute)
     def cancelled():
-        profiles = list(output.glob('.pending-conversion-*/libreoffice-profile/user/registrymodifications.xcu'))
-        if profiles:
-            observed.append(profiles[0])
+        profiles = [stage / 'libreoffice-profile/user/registrymodifications.xcu'
+                    for stage in stages]
+        observed.extend(path for path in profiles if path.is_file())
         return bool(observed)
     with pytest.raises(InterruptedError):
         ConversionService(output, input_roots=(source,), office=office(),
         budget=ConversionBudget(memory_bytes=4 * 1024**3)).extract(source, 'reading.txt', cancelled=cancelled)
     assert observed and not observed[0].exists()
+    assert len(stages) == len(outer_stages) == 1
+    assert all(not path.exists() for path in (*stages, *outer_stages))
     assert list(output.iterdir()) == [] and source.read_bytes() == before
 
 
@@ -147,3 +161,45 @@ def test_selected_office_text_budget_keeps_destination_empty(tmp_path):
         ConversionService(output, input_roots=(source,), office=office(),
             budget=ConversionBudget(max_text_bytes=4, memory_bytes=4 * 1024**3)).extract(source, 'reading.txt')
     assert list(output.iterdir()) == []
+
+
+def test_actual_office_handles_deep_unicode_destination_with_short_private_windows_root(tmp_path, monkeypatch):
+    text = 'Actual selected Office retains this source across a deep Unicode destination.'
+    source = legacy_office(tmp_path, 'doc', text)
+    before = source.read_bytes()
+    destination = tmp_path / 'Читальна копія'
+    while len(str(destination).encode('utf-16-le')) // 2 < 155:
+        destination = destination / 'Довгий-каталог'
+    destination.mkdir(parents=True)
+    from carr_library.conversion import service
+    real_process, observed = service.run_process, []
+    def execute(argv, **kwargs):
+        request = json.loads(Path(argv[-1]).read_text(encoding='utf-8'))
+        assert request['operation'] == 'office' and kwargs['owned_tree'] is True
+        native = Path(kwargs['cwd'])
+        original_stage, = tuple(destination.glob('.pending-conversion-*'))
+        assert len(str(original_stage).encode('utf-16-le')) // 2 > 139
+        assert Path(request['source']).parent == native
+        assert all(kwargs['env'][key] == str(native) for key in ('TMPDIR', 'TEMP', 'TMP'))
+        if os.name == 'nt':
+            assert len(str(native).encode('utf-16-le')) // 2 <= 96
+            assert not native.is_relative_to(destination)
+        else:
+            assert native == original_stage
+        observed.append((native, original_stage))
+        return real_process(argv, **kwargs)
+    monkeypatch.setattr(service, 'run_process', execute)
+    result = ConversionService(destination, input_roots=(source,), office=office(),
+        budget=ConversionBudget(memory_bytes=4 * 1024**3)).extract(source, 'читання.txt')
+    assert len(observed) == 1
+    assert all(not path.exists() for path in observed[0])
+    assert source.read_bytes() == before
+    assert text in result.path.read_text(encoding='utf-8')
+    assert result.report['source_sha256'] == sha256(before).hexdigest()
+    assert result.report['text_sha256'] == sha256(result.path.read_bytes()).hexdigest()
+    assert result.report['engine'] == 'selected-libreoffice-doc'
+    assert result.report['verified_for_quotation'] is False
+    assert result.report['original_modified'] is False
+    assert json.loads(result.report_path.read_bytes()) == result.report
+    assert set(destination.iterdir()) == {result.path, result.report_path}
+    assert result.path.stat().st_nlink == result.report_path.stat().st_nlink == 1

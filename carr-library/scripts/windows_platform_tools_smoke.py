@@ -6,7 +6,6 @@ it is not model inference or recognition-quality evidence. SAPI discovery and
 PCM synthesis are real; playback is intercepted because CI may lack a device.
 Manual NVDA acceptance and physical playback remain NOT_RUN.
 """
-from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from hashlib import sha256
 import os
@@ -506,56 +505,72 @@ def run_native():
         check('both native profile destruction cases completed on the actual MainLoop',
               [case['destruction'] for case in result.get('profile_lifetimes', ())] == ['direct', 'parent'])
 
-        # A real dashboard executor with one deterministic failed submission
-        # exercises recovery without a competing fake native widget layer.
-        original_executor = operations_module.ThreadPoolExecutor
-        class RejectFirstSubmission:
-            def __init__(self, **options):
-                self.actual, self.first = ThreadPoolExecutor(**options), True
-            def submit(self, operation):
-                if self.first:
-                    self.first = False
-                    raise RuntimeError('Synthetic executor admission failure')
-                return self.actual.submit(operation)
-            def shutdown(self, **options): return self.actual.shutdown(**options)
-        operations_module.ThreadPoolExecutor = RejectFirstSubmission
+        # Reject one real submission on the desktop's already-owned executor.
+        # Every accepted dashboard operation still uses frame.run_job and the
+        # same worker; no substitute service result or second executor is used.
+        shared_executor = frame.executor
+        original_submit = shared_executor.submit
+        dashboard_submissions, dashboard_admission = [], []
+        def reject_first_submission(operation, *arguments, **options):
+            if not dashboard_admission:
+                dashboard_admission.append('Synthetic executor admission failure')
+                raise RuntimeError(dashboard_admission[0])
+            future = original_submit(operation, *arguments, **options)
+            dashboard_submissions.append(future)
+            return future
+        shared_executor.submit = reject_first_submission
         dashboard_errors = []
         dashboard_escape_received = False
+        dashboard_close_code = None
+        dashboard_owner = None
 
         def dashboard_checks():
-            nonlocal dashboard_escape_received
+            nonlocal dashboard_escape_received, dashboard_close_code, dashboard_owner
             dashboard = next((window for window in wx.GetTopLevelWindows()
                               if isinstance(window, wx.Dialog) and window.GetTitle() == 'Tasks and resources'), None)
             if dashboard is None:
                 dashboard_errors.append('The native Tasks and resources dialog did not open.')
                 return
+            dashboard_owner = dashboard
             try:
-                for name in ('Saved platform operations', 'Operation details and resource status',
+                for name in ('Saved jobs', 'Selected operation details', 'Tasks and resources status',
                         'Allowed CPU slots', 'Declared memory allowance in MiB',
                         'Declared temporary disk allowance in GiB', 'Keep free disk space in MiB'):
                     check('dashboard accessible native control: ' + name, isinstance(named(dashboard, name), wx.Control))
                 refresh = named(dashboard, 'Refresh')
-                detail = named(dashboard, 'Operation details and resource status')
-                click(refresh)
+                detail = named(dashboard, 'Selected operation details')
+                status = named(dashboard, 'Tasks and resources status')
+                # show_operations queues the real initial refresh. Its refused
+                # submit must restore both the dialog and desktop before retry.
                 check('dashboard submission failure restores usable controls',
-                      'Synthetic executor admission failure' in detail.GetValue() and refresh.IsEnabled())
+                      pump(lambda: bool(dashboard_admission) and
+                           'Synthetic executor admission failure' in status.GetValue()
+                           and refresh.IsEnabled() and not frame.working)
+                      and not dashboard.controller.busy)
                 detail.SetFocus()
                 click(refresh)
-                check('dashboard asynchronous refresh preserves details focus', pump(refresh.IsEnabled)
+                check('dashboard asynchronous refresh preserves details focus',
+                      pump(lambda: refresh.IsEnabled() and not frame.working)
                       and wx.Window.FindFocus() == detail)
+                dashboard.pages.SetSelection(1)
                 named(dashboard, 'Allowed CPU slots').SetValue(2)
                 named(dashboard, 'Declared memory allowance in MiB').SetValue(1024)
                 named(dashboard, 'Declared temporary disk allowance in GiB').SetValue(1)
                 named(dashboard, 'Keep free disk space in MiB').SetValue(64)
                 click(named(dashboard, 'Save allowances'))
                 check('native resource policy saves through the shared broker',
-                      pump(lambda: 'Resource allowances saved.' in detail.GetValue())
+                      pump(lambda: 'Resource allowances saved.' in status.GetValue()
+                           and not frame.working)
                       and ResourceBroker.for_app(library.root).limits.cpu_slots == 2)
+                check('dashboard retry and save retain the same desktop executor',
+                      frame.executor is shared_executor and len(dashboard_submissions) == 2
+                      and all(future.done() for future in dashboard_submissions))
                 check('dashboard Escape routes to explicit close', dashboard.GetEscapeId() == wx.ID_CLOSE)
                 named(dashboard, 'Close').SetFocus()
                 keyboard = wx.UIActionSimulator()
                 dashboard_escape_received = request_modal_escape(dashboard, keyboard,
                     escape_key=wx.WXK_ESCAPE, close_code=wx.ID_CLOSE, pump=pump)
+                dashboard_close_code = dashboard.GetReturnCode()
                 check('dashboard native Escape requests close and hides its window', dashboard_escape_received)
             except Exception as exc:
                 dashboard_errors.append(str(exc))
@@ -565,13 +580,15 @@ def run_native():
 
         wx.CallLater(200, dashboard_checks)
         try:
-            dashboard_close_code = operations_module.show_operations(frame)
+            operations_module.show_operations(frame)
         finally:
-            operations_module.ThreadPoolExecutor = original_executor
+            shared_executor.submit = original_submit
         if dashboard_errors:
             raise AssertionError('; '.join(dashboard_errors))
         check('dashboard native Escape ends its modal lifecycle',
-              dashboard_escape_received and dashboard_close_code == wx.ID_CLOSE)
+              dashboard_escape_received and dashboard_close_code == wx.ID_CLOSE
+              and dashboard_owner is not None and dashboard_owner.controller.closed
+              and pump(lambda: not dashboard_owner))
 
         measured, played, pcm_paths = {}, threading.Event(), []
         class CapturePlayback:

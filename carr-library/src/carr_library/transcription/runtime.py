@@ -6,6 +6,7 @@ from importlib import metadata
 import io
 import json
 import os
+import re
 from pathlib import Path
 import stat
 
@@ -23,6 +24,8 @@ MAX_RUNTIME_DISTRIBUTIONS = 8192
 MAX_RUNTIME_AUXILIARY_FILES = 256
 MAX_RUNTIME_METADATA_BYTES = 128 * 1024**2
 MAX_RUNTIME_RECORDS = 65536
+MAX_RUNTIME_FILES = 262144
+MAX_RUNTIME_BYTES = 64 * 1024**3
 RUNTIME_DISTRIBUTIONS = ('faster-whisper', 'ctranslate2', 'av', 'onnxruntime',
                          'numpy', 'huggingface-hub', 'tokenizers')
 
@@ -288,25 +291,32 @@ def _inspect_inventory(roots, *, cancel=None, progress=None):
             meta_path = path / 'METADATA'
             try:
                 meta_size = regular(meta_path).st_size
-            except FileNotFoundError:
-                continue
+            except FileNotFoundError as error:
+                raise ValueError('A selected distribution has no bounded METADATA.') from error
             if meta_size > 1024**2:
-                continue
+                raise ValueError('A selected distribution has no bounded METADATA.')
             raw = read_file_bytes(meta_path, cancel=cancel, maximum=1024**2)
             metadata_bytes += len(raw)
             if metadata_bytes > MAX_RUNTIME_METADATA_BYTES:
                 raise ValueError('The selected runtime exceeds its metadata byte budget.')
             message = Parser().parsestr(raw.decode('utf-8'))
-            name = (message.get('Name') or '').lower().replace('_', '-')
-            if name in RUNTIME_DISTRIBUTIONS and name not in selected:
-                selected[name] = (path, message.get('Version'),
-                                  {'sha256': sha256(raw).hexdigest(), 'size': len(raw)})
+            name = re.sub(r'[-_.]+', '-', (message.get('Name') or '').lower())
+            version = message.get('Version')
+            if (not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', name) or len(name) > 512
+                    or not version or len(version) > 1024):
+                raise ValueError('A selected distribution has no valid name or version.')
+            if name in selected:
+                raise ValueError('The selected runtime has ambiguous installed distribution: ' + name)
+            selected[name] = (path, version, {'sha256': sha256(raw).hexdigest(), 'size': len(raw)})
     missing = [name for name in RUNTIME_DISTRIBUTIONS if name not in selected]
     if missing:
         raise ValueError('The selected Python lacks a readable installed ASR file inventory: '
                          + ', '.join(missing) + '. No installation or download was attempted.')
     result = {}
-    for name in RUNTIME_DISTRIBUTIONS:
+    total_files, total_bytes = 0, 0
+    # The seven protocol packages are a minimum. Every recorded distribution
+    # in the reviewed import roots contributes to the outer profile identity.
+    for name in sorted(selected):
         path, version, meta_identity = selected[name]
         record_path = path / 'RECORD'
         try:
@@ -317,7 +327,7 @@ def _inspect_inventory(roots, *, cancel=None, progress=None):
         if metadata_bytes > MAX_RUNTIME_METADATA_BYTES:
             raise ValueError('The selected runtime exceeds its metadata byte budget.')
         record_identity = {'sha256': sha256(raw).hexdigest(), 'size': len(raw)}
-        files = {}
+        files, recorded_paths = {}, set()
         for relative in sorted(_captured_record_entries(raw, cancel=cancel), key=str):
             stopped(cancel)
             label = str(relative)
@@ -325,15 +335,34 @@ def _inspect_inventory(roots, *, cancel=None, progress=None):
                 continue
             if label in files:
                 raise ValueError('An installed-file record repeats a selected path.')
+            total_files += 1
+            if total_files > MAX_RUNTIME_FILES:
+                raise ValueError('The selected runtime exceeds its total installed-file budget.')
             if progress:
                 progress({'phase': 'Verifying installed ASR runtime files', 'status': 'running',
                           'current': name + ': ' + label, 'done': None, 'total': None, 'indeterminate': True})
-            selected_path = local_path((path.parent / relative).resolve(strict=True), exists=True)
+            # PackagePath uses POSIX parts even on Windows. Parse its exact
+            # spelling through the host Path so an absolute drive keeps its root.
+            selected_path = local_path(path.parent / label, exists=True)
             if not any(selected_path.is_relative_to(root.resolve()) for root in roots):
                 raise ValueError('An installed-file record escapes the explicitly selected Python environment.')
-            files[label] = file_identity(selected_path, cancel=cancel)
-        # Parsed declarations and the bytes included in the final inventory
-        # must describe the same metadata, even when RECORD omits itself.
+            if selected_path in recorded_paths:
+                raise ValueError('A selected distribution has duplicate resolved installed-file records.')
+            recorded_paths.add(selected_path)
+            remaining = MAX_RUNTIME_BYTES - total_bytes
+            if remaining <= 0:
+                raise ValueError('The selected runtime exceeds its total installed-byte budget.')
+            identity = file_identity(selected_path, cancel=cancel, maximum=remaining)
+            total_bytes += identity['size']
+            if total_bytes > MAX_RUNTIME_BYTES:
+                raise ValueError('The selected runtime exceeds its total installed-byte budget.')
+            files[label] = identity
+        if not files:
+            raise ValueError('A selected distribution has an empty installed-file inventory.')
+        required = {local_path(path / name, exists=True) for name in ('METADATA', 'RECORD')}
+        if not required <= recorded_paths:
+            raise ValueError('A selected distribution inventory omits METADATA or RECORD.')
+        # Recheck the captured declarations after every installed-file read.
         if (file_identity(path / 'METADATA', cancel=cancel, maximum=1024**2) != meta_identity
                 or file_identity(record_path, cancel=cancel, maximum=16 * 1024**2) != record_identity):
             raise ValueError('Selected runtime metadata changed during inspection.')
@@ -377,7 +406,12 @@ def verified_runtime_paths(profile, *, cancel=None):
     distributions, auxiliary, search = _inspect_inventory(roots, cancel=cancel)
     actual = {'python_resolved': str(resolved), 'python_identity': python_identity,
               'python_configuration': configurations, 'python_support': support,
-              'runtime_distributions': distributions, 'runtime_auxiliary': auxiliary}
+              'runtime_distributions': {name: distributions[name] for name in RUNTIME_DISTRIBUTIONS},
+              'runtime_auxiliary': auxiliary}
+    additional = {name: identity for name, identity in distributions.items()
+                  if name not in RUNTIME_DISTRIBUTIONS}
+    if additional or 'runtime_additional_distributions' in profile:
+        actual['runtime_additional_distributions'] = additional
     if any(profile.get(key) != value for key, value in actual.items()):
         raise ValueError('The selected runtime changed since its explicit review.')
     local_path(python.parent, exists=True)
@@ -442,7 +476,9 @@ def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=N
         'python_executable': str(python), 'python_resolved': str(resolved_python),
         'python_identity': file_identity(resolved_python, cancel=cancel),
         'python_configuration': configurations, 'python_support': python_support,
-        'runtime_distributions': runtime_files, 'runtime_auxiliary': runtime_auxiliary,
+        # Preserve the supplied worker's exact seven-package checkpoint dialect.
+        'runtime_distributions': {name: runtime_files[name] for name in RUNTIME_DISTRIBUTIONS},
+        'runtime_auxiliary': runtime_auxiliary,
         'runtime_capability': 'installed-files-reviewed; execution-and-quality-unqualified',
         'worker_path': str(worker), 'worker_identity': file_identity(worker, cancel=cancel, maximum=16 * 1024**2),
         'model_directory': str(model), 'model_name': model.name,
@@ -451,6 +487,10 @@ def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=N
     local_path(python.parent, exists=True)
     if python.resolve(strict=True) != resolved_python:
         raise ValueError('The selected Python executable link changed during inspection.')
+    additional = {name: identity for name, identity in runtime_files.items()
+                  if name not in RUNTIME_DISTRIBUTIONS}
+    if additional:
+        manifest['runtime_additional_distributions'] = additional
     manifest['model_content_fingerprint'] = fingerprint(manifest['model_files'])
     manifest['fingerprint'] = fingerprint(manifest)
     return manifest

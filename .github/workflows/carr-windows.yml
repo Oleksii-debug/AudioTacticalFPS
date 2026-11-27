@@ -810,8 +810,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Required installed recording acceptance failed.' }
           & $installedPython -I -B -X utf8 scripts/windows_clip_editor_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-clip-editor.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Required installed clip-editor acceptance failed.' }
-          & $installedPython -I -B -X utf8 scripts/windows_epub_reading_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-epub-reading.txt'
+          & $installedPython -I -B -X utf8 scripts/windows_audio_output_inventory.py 2>&1 | Tee-Object 'ci-results/native-audio-output-inventory.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual output-device inventory failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_epub_reading_smoke.py --controlled-output --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-epub-reading.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Required installed epub-reading acceptance failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_assistant_player_smoke.py 2>&1 | Tee-Object 'ci-results/native-assistant-player.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed current-reader Assistant acknowledgement failed.' }
+          & $installedPython -I -B -X utf8 scripts/windows_playback_settings_smoke.py --audio-evidence 'ci-results/external-test-audio-binding.json' 2>&1 | Tee-Object 'ci-results/native-playback-settings.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed independent playback settings acceptance failed.' }
           & $installedPython -I -B -X utf8 scripts/windows_pronunciation_smoke.py 2>&1 | Tee-Object 'ci-results/native-pronunciation.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Required installed pronunciation acceptance failed.' }
           & $installedPython -I -B -X utf8 scripts/windows_command_palette_smoke.py 2>&1 | Tee-Object 'ci-results/native-command-palette.txt'
@@ -918,6 +924,8 @@ jobs:
           additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.transcription', 'carr_library.transcription.models', 'carr_library.transcription.runtime', 'carr_library.transcription.service', 'carr_library.backup_transcription', 'carr_library.backup_document_batches', 'carr_library.backup_compat.state', 'carr_library.conversion.service', 'carr_library.conversion.models', 'carr_library.conversion.formats', 'carr_library.conversion.planning', 'carr_library.conversion.batches', 'carr_library.conversion.cli', 'carr_library.ui.document_batch', 'carr_library.ui.document_conversion', 'carr_library.audio.effect_presets', 'carr_library.ui.effects_dialog', 'carr_library.ui.reader_background', 'carr_library.academic_integration.runtime_adapter', 'carr_library.transcription.reading', 'carr_library.ui.transcription_workstation')))
           additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.audio.recording', 'carr_library.audio.recording_monitor', 'carr_library.ui.recording_dialog', 'carr_library.backup_recordings', 'carr_library.backup_current', 'carr_library.conversion.office', 'carr_library.conversion.service', 'carr_library.conversion.worker', 'carr_library.ui.document_conversion', 'carr_library.conversion.formats', 'carr_library.audio.metadata', 'carr_library.assistant.templates', 'carr_library.assistant.service', 'carr_library.assistant.templates_cli', 'carr_library.ui.workflow_templates', 'carr_library.ui.assistant_dialog', 'carr_library.ui.document_batch', 'carr_library.assistant.translation', 'carr_library.assistant.translation_source', 'carr_library.assistant.translation_batch', 'carr_library.ui.translation_batch_dialog', 'carr_library.assistant.translation_batch_cli', 'carr_library.backup_translation_batches', 'carr_library.ui.translation_dialog', 'carr_library.transcription_cli', 'carr_library.transcription.service', 'carr_library.audio.windows_job', 'carr_library.portable_entry', 'carr_library.installation_lease', 'carr_library.portable_bootstrap', 'carr_library.local_audio_setup', 'carr_library.__main__', 'carr_library.native_checks', 'carr_library.bibliography_cli', 'carr_library.operations_cli', 'carr_library.studio.cli', 'carr_library.extract.ocr_model_catalog', 'carr_library.assistant.translation_cli', 'carr_library.security.__main__', 'carr_library.security.installation', 'carr_library.security.handoff', 'carr_library.conversion.cli', 'carr_library.sync.cli', 'carr_library.ui.desktop_app', 'carr_library.security._https_worker', 'carr_library.security.https', 'carr_library.security.maintenance', 'carr_library.security.standard_handoff', 'carr_library.ui.trust_status', 'carr_library.ui.update_maintenance')))
           additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.conversion.calibre', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.transcription_dialog', 'carr_library.ui.transcription_workstation', 'carr_library.operations.facade', 'carr_library.ui.ebook_model', 'carr_library.studio.render')))
+          additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.audio.dsp', 'carr_library.audio.process', 'carr_library.audio.recording', 'carr_library.backup_producers', 'carr_library.backup_sidecars', 'carr_library.backup_transcription', 'carr_library.conversion.office', 'carr_library.extract.document_formats_xml', 'carr_library.library_backup', 'carr_library.research.export_file', 'carr_library.speech.pronunciation_formats', 'carr_library.studio.clips', 'carr_library.studio.project', 'carr_library.studio.render', 'carr_library.transcription.runtime', 'carr_library.transcription.service', 'carr_library.ui.ebook_audio_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.recording_dialog', 'carr_library.ui.studio_clips', 'carr_library.ui.studio_dialog')))
+          additional_names = tuple(dict.fromkeys((*additional_names, 'carr_library.assistant.llm', 'carr_library.assistant.local_tools', 'carr_library.assistant.models', 'carr_library.assistant.planner', 'carr_library.assistant.player_tools', 'carr_library.assistant.service', 'carr_library.audio.conversion_batch', 'carr_library.audio.dsp', 'carr_library.audio.process', 'carr_library.conversion.service', 'carr_library.reader.live_player', 'carr_library.reader.live_reading', 'carr_library.security._https_worker', 'carr_library.security.download_state', 'carr_library.security.https', 'carr_library.security.maintenance', 'carr_library.security.updates', 'carr_library.speech._wave_output', 'carr_library.speech.listening', 'carr_library.speech.player', 'carr_library.ui.assistant_dialog', 'carr_library.ui.builtin_keyboard_commands', 'carr_library.ui.live_reading', 'carr_library.ui.playback_navigation', 'carr_library.ui.playback_settings', 'carr_library.ui.save_all', 'carr_library.ui.studio_clips', 'carr_library.ui.studio_dialog', 'carr_library.ui.update_maintenance')))
           for name in additional_names:
               module = importlib.import_module(name)
               installed_origins[name] = str(pathlib.Path(module.__file__).resolve())
@@ -1269,6 +1277,27 @@ jobs:
               'tests/ui/test_update_maintenance.py',
               'tests/packaging/test_standard_update_envelope.py',
               'tests/packaging/test_portable_entry_windows.py',
+              'tests/security/test_https_updates.py',
+              'tests/audio/test_windows_job_cleanup.py',
+              'tests/packaging/test_native_launcher_bundle.py',
+              'tests/audio/test_process_deadline.py',
+              'tests/studio/test_project_effects.py',
+              'tests/studio/test_clip_timeline.py',
+              'tests/studio/test_clip_timeline_dialog.py',
+              'tests/speech/test_pronunciation_formats.py',
+              'tests/speech/test_pronunciation_formats_handlers.py',
+              'tests/assistant/test_local_tools.py',
+              'tests/assistant/test_player_tools.py',
+              'tests/audio/test_conversion_batch.py',
+              'tests/audio/test_dsp.py',
+              'tests/audio/test_process_scratch.py',
+              'tests/speech/test_listening.py',
+              'tests/speech/test_wave_output.py',
+              'tests/reader/test_live_listening.py',
+              'tests/ui/test_playback_settings.py',
+              'tests/conversion/test_office_workspace.py',
+              'tests/security/test_update_resume.py',
+              'tests/studio/test_production.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -1327,6 +1356,60 @@ jobs:
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
+          # The actual loopback TLS test runs after runtime egress-denial checks
+          # restore their rules; it still imports the exact sealed installed wheel.
+          $installedUpdateTls = @'
+          from hashlib import sha256
+          import importlib.util
+          import json
+          from pathlib import Path
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          root = Path.cwd().resolve()
+          (root / 'ci-results/update-resume-tls').mkdir(parents=True, exist_ok=True)
+          purelib = Path(sysconfig.get_path('purelib')).resolve()
+          mode = "installed"
+          names = ["carr_library.security.download_state","carr_library.security.updates","carr_library.security.https","carr_library.security._https_worker","carr_library.security.maintenance","carr_library.ui.update_maintenance","carr_library.security._files","carr_library.durable_state","carr_library.audio.process","carr_library.audio.windows_job"]
+          suites = ["tests/security/test_update_resume_https.py"]
+          def inventory():
+              result = {}
+              for name in names:
+                  actual = Path(importlib.util.find_spec(name).origin).resolve()
+                  expected = root / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  if mode == 'installed':
+                      assert actual.is_relative_to(purelib) and not actual.is_relative_to(root / 'src'), name
+                  else:
+                      assert actual == expected.resolve(), (name, str(actual), str(expected))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == sha256(expected.read_bytes()).hexdigest(), name
+                  result[name] = {'path': str(actual), 'sha256': digest}
+              return result
+          class SourceProof:
+              before = None
+              def pytest_sessionstart(self, session):
+                  self.before = inventory()
+          proof = SourceProof()
+          with tempfile.TemporaryDirectory(prefix='carr-bundle-update-tls-') as temporary:
+              report = root / 'ci-results/update-resume-tls/installed.xml'
+              options = ['-q', '--import-mode=importlib', '-o', 'addopts=', '-o', 'xfail_strict=true',
+                         '--junitxml', str(report), '--basetemp', str(Path(temporary) / 'pytest')]
+              if mode == 'installed':
+                  options.extend(['-o', 'pythonpath='])
+              status = pytest.main([*options, *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter('testcase'))
+              assert status == 0 and cases, status
+              assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+                         for case in cases), 'Every selected case must pass without a skip.'
+              assert inventory() == proof.before
+              result = {'status': 'PASS', 'mode': mode, 'cases': len(cases), 'origins': proof.before}
+              (root / ('ci-results/update-resume-tls/' + mode + '-identity.json')).write_text(
+                  json.dumps(result, indent=2, sort_keys=True), encoding='utf-8')
+              print(json.dumps(result, sort_keys=True))
+          '@
+          $installedUpdateTls | & $python -I -B -X utf8 - 2>&1 | Tee-Object 'ci-results/installed-update-resume-tls.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Sealed installed updater failed actual TLS continuation acceptance.' }
       # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required integrated source workflows
@@ -1763,7 +1846,27 @@ jobs:
             'tests/security/test_update_maintenance.py',
             'tests/ui/test_update_maintenance.py',
             'tests/packaging/test_standard_update_envelope.py',
-            'tests/packaging/test_portable_entry_windows.py'
+            'tests/packaging/test_portable_entry_windows.py',
+            'tests/audio/test_windows_job_cleanup.py',
+            'tests/audio/test_process_deadline.py',
+            'tests/studio/test_project_effects.py',
+            'tests/studio/test_clip_timeline.py',
+            'tests/studio/test_clip_timeline_dialog.py',
+            'tests/speech/test_pronunciation_formats.py',
+            'tests/speech/test_pronunciation_formats_handlers.py',
+            'tests/assistant/test_local_tools.py',
+            'tests/assistant/test_player_tools.py',
+            'tests/audio/test_conversion_batch.py',
+            'tests/audio/test_dsp.py',
+            'tests/audio/test_process_scratch.py',
+            'tests/speech/test_listening.py',
+            'tests/speech/test_wave_output.py',
+            'tests/reader/test_live_listening.py',
+            'tests/ui/test_playback_settings.py',
+            'tests/conversion/test_office_workspace.py',
+            'tests/security/test_update_resume.py',
+            'tests/security/test_update_resume_https.py',
+            'tests/studio/test_production.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR

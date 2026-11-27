@@ -450,3 +450,173 @@ def test_record_limit_and_empty_visible_content_rejected(monkeypatch):
         extract_xml_document(fb2('<section><p>A</p><p>B</p><p>C</p></section>'), '.fb2')
     with pytest.raises(ValueError, match='no supported visible text'):
         extract_xml_document(fb2('<section><p> </p></section>'), '.fb2')
+
+
+@pytest.mark.parametrize('suffix', ['.odt', '.ods', '.odp'])
+@pytest.mark.parametrize('settings', [
+    '',
+    ' form:apply-design-mode="false" form:automatic-focus="false"',
+    ' form:apply-design-mode="true" form:automatic-focus="true"',
+    ' form:apply-design-mode="0" form:automatic-focus="1"',
+])
+def test_empty_office_forms_preserves_static_text_and_source_identity(suffix, settings):
+    # Regression for the actual LibreOffice empty office:forms census in
+    # Windows diagnostic run 46029037728, not an acceptance of form controls.
+    forms = (f'<office:forms xmlns:form="{ODF}form:1.0"{settings}>'
+             ' \n\t</office:forms>')
+    body = {
+        '.odt': '<text:p>Книга remains intact.</text:p>',
+        '.ods': '<table:table table:name="Sheet"><table:table-row>'
+                '<table:table-cell><text:p>Книга remains intact.</text:p>'
+                '</table:table-cell></table:table-row></table:table>',
+        '.odp': '<draw:page draw:name="One"><draw:frame><draw:text-box>'
+                '<text:p>Книга remains intact.</text:p>'
+                '</draw:text-box></draw:frame></draw:page>',
+    }[suffix]
+    source = odf(suffix, forms + body)
+    result = extract_xml_document(source, suffix)
+    assert texts(result) == ['Книга remains intact.']
+    assert result['provenance']['asset_sha256'] == sha256(source).hexdigest()
+
+
+@pytest.mark.parametrize('suffix', ['.odt', '.ods', '.odp'])
+@pytest.mark.parametrize('forms', [
+    '<office:forms>authored form text</office:forms>',
+    '<office:forms><form:form/></office:forms>',
+    '<office:forms><text:p>authored form content</text:p></office:forms>',
+    '<office:forms form:unknown="false"/>',
+    '<office:forms form:apply-design-mode="unexpected"/>',
+    '<office:forms form:automatic-focus=""/>' ,
+    '<office:forms office:automatic-focus="false"/>',
+])
+def test_nonempty_or_unknown_office_forms_are_never_silently_omitted(suffix, forms):
+    forms = forms.replace('<office:forms',
+                          f'<office:forms xmlns:form="{ODF}form:1.0"', 1)
+    with pytest.raises(ValueError, match='document forms'):
+        extract_xml_document(odf(suffix, forms), suffix)
+
+
+def test_empty_forms_cannot_hide_following_raw_text_or_active_scripts():
+    for body in (
+        '<office:forms/>authored text<text:p>Visible.</text:p>',
+        '<office:forms/><office:scripts><text:p>active</text:p></office:scripts>',
+        '<office:forms/><text:script>active</text:script>',
+    ):
+        with pytest.raises(ValueError):
+            extract_xml_document(odf('.odt', body), '.odt')
+
+
+@pytest.mark.parametrize('suffix', ['.odt', '.ods', '.odp'])
+@pytest.mark.parametrize('slot', ['header', 'header-left', 'header-first', 'footer', 'footer-left', 'footer-first'])
+def test_actual_empty_disabled_master_page_slot_does_not_hide_visible_source(suffix, slot):
+    # Exact shape of the actual LibreOffice XLS diagnostic, run46038224169.
+    styles = (f'<office:document-styles xmlns:office="{O}" xmlns:style="{ODF}style:1.0">'
+              f'<office:master-styles><style:master-page style:name="Default">'
+              f'<style:{slot} style:display="false"/>'
+              '</style:master-page></office:master-styles></office:document-styles>')
+    source = odf(suffix, styles=styles)
+    result = extract_xml_document(source, suffix)
+    assert texts(result) == texts(extract_xml_document(odf(suffix), suffix))
+    assert result['provenance']['asset_sha256'] == sha256(source).hexdigest()
+
+
+@pytest.mark.parametrize('slot', ['header', 'header-left', 'header-first', 'footer', 'footer-left', 'footer-first'])
+@pytest.mark.parametrize('addition,body,tail', [
+    ('', 'Hidden authored header', ''),
+    ('', '<text:p>Hidden authored paragraph</text:p>', ''),
+    (' style:unknown="false"', '', ''),
+    (' fo:visibility="hidden"', '', ''),
+    ('', '', 'Unexpected authored tail'),
+])
+def test_disabled_header_slots_with_content_or_unknown_settings_still_refuse(slot, addition, body, tail):
+    styles = (f'<office:document-styles xmlns:office="{O}" xmlns:style="{ODF}style:1.0" '
+              f'xmlns:text="{T}" xmlns:fo="{ODF}xsl-fo-compatible:1.0">'
+              f'<style:{slot} style:display="false"{addition}>{body}</style:{slot}>{tail}'
+              '</office:document-styles>')
+    with pytest.raises(ValueError, match='Hidden document text'):
+        extract_xml_document(odf('.ods', styles=styles), '.ods')
+
+
+def static_geometry(*, attributes='', body='', tail=''):
+    return (f'<draw:enhanced-geometry xmlns:svg="{ODF}svg-compatible:1.0" '
+            'svg:viewBox="0 0 21600 21600" draw:type="mso-spt202" '
+            'draw:enhanced-path="M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N"'
+            f'{attributes}>{body}</draw:enhanced-geometry>{tail}')
+
+
+def shape_slide(geometry):
+    return ('<draw:page draw:name="page1"><draw:custom-shape>'
+            '<text:list><text:list-header><text:p><text:span>'
+            '  Exact Книга α 😀 source.  '
+            '</text:span></text:p></text:list-header></text:list>'
+            + geometry + '</draw:custom-shape></draw:page>')
+
+
+def test_actual_converted_ppt_static_geometry_keeps_exact_text_and_logical_order():
+    source = odf('.odp', shape_slide(static_geometry()))
+    result = extract_xml_document(source, '.odp')
+    assert texts(result) == ['  Exact Книга α 😀 source.  ']
+    assert result['records'][0]['logical_locator']['slide'] == 1
+    assert result['provenance']['asset_sha256'] == sha256(source).hexdigest()
+    assert 'drawing_geometry_not_rendered' in result['warnings']
+
+
+@pytest.mark.parametrize('attributes,body,tail', [
+    ('', 'Authored shape text', ''),
+    ('', '<text:p>Authored nested text</text:p>', ''),
+    ('', '<draw:equation draw:name="f0" draw:formula="width"/>', ''),
+    (' xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="file:///PRIVATE"', '', ''),
+    (' draw:unknown="value"', '', ''),
+    ('', '', 'Authored body tail'),
+])
+def test_geometry_exception_never_discards_text_children_external_links_or_raw_tail(attributes, body, tail):
+    with pytest.raises(ValueError):
+        extract_xml_document(odf('.odp', shape_slide(
+            static_geometry(attributes=attributes, body=body, tail=tail))), '.odp')
+
+
+@pytest.mark.parametrize('old,new', [
+    ('0 0 21600 21600', '0 0 nan 21600'),
+    ('0 0 21600 21600', '0 0 1e999 21600'),
+    ('0 0 21600 21600', '0 0 0 21600'),
+    ('mso-spt202', 'unknown:external'),
+    ('M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N', 'M ?formula 0 L 1 1'),
+    ('M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N', 'M 0 0 L 1e999 1'),
+])
+def test_nonstatic_or_unbounded_shape_geometry_refuses(old, new):
+    with pytest.raises(ValueError, match='drawing geometry'):
+        extract_xml_document(odf('.odp', shape_slide(static_geometry().replace(old, new))), '.odp')
+
+
+def test_malformed_long_geometry_is_bounded_in_actual_owned_parser_child(tmp_path):
+    # This fails safely under the existing native child owner if the lexical
+    # recognizer regresses into exponential backtracking on accepted-size input.
+    import sys
+    from pathlib import Path
+    from carr_library.audio.models import AudioBudget
+    from carr_library.audio.process import run_process
+
+    original = 'M 0 0 L 21600 0 21600 21600 0 21600 0 0 Z N'
+    for index, malicious in enumerate(('M ' + '0' * 3500 + '?',
+                                       'M ' + '1' * 3500 + '?',
+                                       'M .' + '0' * 3500 + '?')):
+        (tmp_path / f'hostile-{index}.odp').write_bytes(odf(
+            '.odp', shape_slide(static_geometry().replace(original, malicious))))
+    package_parent = Path(module.__file__).resolve().parents[2]
+    program = (
+        "import pathlib,sys; sys.path.insert(0,sys.argv[1]); "
+        "from carr_library.extract.document_formats_xml import extract_xml_document; "
+        "root=pathlib.Path(sys.argv[2]); "
+        "\nfor path in sorted(root.glob('hostile-*.odp')):\n"
+        "    try:\n        extract_xml_document(path.read_bytes(), '.odp')\n"
+        "    except ValueError as error:\n"
+        "        assert 'drawing geometry' in str(error), error\n"
+        "    else:\n        raise AssertionError('Malformed geometry was accepted')\n"
+        "print('three actual malformed geometry inputs refused')\n"
+    )
+    outcome = run_process(
+        [sys.executable, '-I', '-B', '-X', 'utf8', '-c', program,
+         str(package_parent), str(tmp_path)],
+        budget=AudioBudget(timeout=20, max_log_bytes=65536), owned_tree=True)
+    assert outcome.returncode == 0
+    assert b'three actual malformed geometry inputs refused' in outcome.stdout

@@ -1,4 +1,4 @@
-name: Native platform and EPUB correction review
+name: Native platform, controlled EPUB and pronunciation review
 on:
   push:
     branches: [carr/platform-lifetime-review-20261127]
@@ -49,7 +49,7 @@ jobs:
         run: |
           python -I -B -X utf8 scripts/windows_audio_output_inventory.py 2>&1 | Tee-Object 'ci-platform-lifetime/native-output-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Require real Windows lifecycle and EPUB playback with egress blocked
+      - name: Require native lifecycle, controlled EPUB and pronunciation with egress blocked
         if: "!cancelled()"
         run: |
           $ErrorActionPreference = 'Stop'
@@ -88,7 +88,8 @@ jobs:
             $failed = @()
             $probes = @(
               @{ name='platform'; script='scripts/windows_platform_tools_smoke.py'; arguments=@() },
-              @{ name='epub'; script='scripts/windows_epub_reading_smoke.py'; arguments=@('--audio-evidence', 'ci-platform-lifetime/external-test-audio-binding.json') }
+              @{ name='epub-controlled'; script='scripts/windows_epub_reading_smoke.py'; arguments=@('--audio-evidence', 'ci-platform-lifetime/external-test-audio-binding.json', '--controlled-output') },
+              @{ name='pronunciation'; script='scripts/windows_pronunciation_smoke.py'; arguments=@() }
             )
             foreach ($probe in $probes) {
               $scriptPath = $probe.script
