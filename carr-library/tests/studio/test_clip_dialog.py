@@ -248,3 +248,58 @@ def test_child_destruction_does_not_close_or_cancel_live_clip_owner(dialog):
     dialog.finish()
     dialog._accept.assert_called_once_with('live result')
     event.Skip.assert_called_once()
+
+
+def test_destroyed_clip_retains_failed_player_and_preview_after_dialog_collection(dialog, tmp_path):
+    import gc
+    import weakref
+    from carr_library.audio import cleanup
+
+    path = tmp_path / 'clip-preview-native-owned.wav'
+    original = b'Preview remains owned until native Close confirms silence.'
+    path.write_bytes(original)
+    allowed, retried, finished = threading.Event(), threading.Event(), threading.Event()
+    calls = []
+    ui_thread = threading.get_ident()
+
+    class Player:
+        def close(self):
+            calls.append(threading.get_ident())
+            if calls[-1] != ui_thread:
+                retried.set()
+            if not allowed.is_set():
+                raise OSError('Injected unconfirmed native Close')
+
+    # A separate unrooted instance lets actual collection prove that cleanup
+    # ownership survives the dialog; pytest retains the controller fixture.
+    owner = object.__new__(type(dialog))
+    owner.closed = owner.closing = owner.pending = owner.destroyed = False
+    owner.owner_id, owner.playback_generation = 801, 0
+    owner.cancel_event = threading.Event()
+    owner.player = Player()
+    owner.previews = [path]
+    owner_ref, player_ref = weakref.ref(owner), weakref.ref(owner.player)
+    retained_before = {id(item) for item in cleanup._RETAINED}
+    retained = None
+    try:
+        owner.on_destroy(destroy_event(owner.owner_id))
+        assert owner.destroyed and owner.closed
+        assert 'unconfirmed native Close' in owner.cleanup_error
+        del owner
+        gc.collect()
+        assert owner_ref() is None, 'Cleanup must not keep the destroyed dialog alive.'
+        assert player_ref() is not None, 'The native Close retry authority was lost with the dialog.'
+        assert path.read_bytes() == original
+        owners = [item for item in cleanup._RETAINED if id(item) not in retained_before]
+        assert len(owners) == 1
+        retained = owners[0]
+        assert not retained.quiescent and retried.wait(3)
+        retained.add_quiescent_callback(finished.set)
+        allowed.set()
+        assert finished.wait(5) and retained.quiescent
+        assert not path.exists() and len(calls) >= 2
+        assert retained not in cleanup._RETAINED
+    finally:
+        allowed.set()
+        if retained is not None:
+            retained.close()

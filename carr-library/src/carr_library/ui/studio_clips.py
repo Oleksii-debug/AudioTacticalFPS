@@ -411,9 +411,20 @@ class ClipDialog(wx.Dialog):
                     for path in self.previews:
                         path.unlink(missing_ok=True)
                 except (OSError, RuntimeError) as exc:
-                    # Preserve files and the native player on uncertain cleanup.
-                    # This plain state remains safe after the native owner dies.
                     self.cleanup_error = str(exc)
+                    # The native dialog can now be collected. Retain the exact
+                    # player and its files in the existing background owner;
+                    # neither callback captures the dying wx wrapper.
+                    from ..audio.cleanup import pending_cleanup
+                    player, previews = self.player, tuple(self.previews)
+                    def close_player():
+                        return player is None or player.close() is not False
+                    def remove_previews():
+                        for path in previews:
+                            path.unlink(missing_ok=True)
+                    self.cleanup_owner = pending_cleanup(close_player,
+                        message='Clip playback is awaiting native cleanup.',
+                        callbacks=(remove_previews,)).cleanup_owner
         event.Skip()
 
     def key(self, event):
