@@ -203,7 +203,7 @@ def v5(tmp_path):
         (runtime / name).write_text('# Synthetic protocol fixture only.\n', encoding='utf-8')
     models = tmp_path / 'models'
     (models / 'small').mkdir(parents=True)
-    for name in ('model.bin', 'config.json', 'tokenizer.json'):
+    for name in ('model.bin', 'config.json', 'tokenizer.json', 'vocabulary.json'):
         (models / 'small' / name).write_bytes(('Synthetic, non-executable model placeholder: '+name).encode())
     source = tmp_path / 'Запис.wav'
     with wave.open(str(source), 'wb') as audio:
