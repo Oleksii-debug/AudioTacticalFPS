@@ -10,6 +10,79 @@ from carr_library.speech import (ReadingDocument, PronunciationRule, SourceSpan,
                                  export_dictionary, import_dictionary)
 
 
+def _bound_project():
+    from carr_library.speech.source import NarrationSource
+    text = 'ABC\n\nDEF'
+    source = NarrationSource(text, 'Source', 'library', 'edition', 'revision', (
+        {'ordinal': 1, 'kind': 'physical_page', 'index': 3, 'start': 0, 'end': 3,
+         'text_sha256': sha256(b'ABC').hexdigest(), 'text_verified_at_read': False},
+        {'ordinal': 2, 'kind': 'physical_page', 'index': 5, 'start': 5, 'end': 8,
+         'text_sha256': sha256(b'DEF').hexdigest(), 'text_verified_at_read': True}), (), 'a' * 64)
+    return ReadingDocument.from_narration_source(source)
+
+
+def test_legacy_v1_copy_remains_readable_and_explicitly_unbound():
+    value = {'schema': 'carr.reading-copy.v1', 'title': 'Legacy reading copy',
+             'source_text': 'ABC', 'source_sha256': sha256(b'ABC').hexdigest(),
+             'edits': [{'start': 1, 'end': 2, 'replacement': 'X', 'label': 'Legacy edit'}],
+             'revision': 1}
+    legacy = ReadingDocument.from_dict(value)
+    assert legacy.text == 'AXC' and legacy.source_anchor is None
+    assert legacy.to_dict() == value
+    assert legacy.undo() and legacy.text == 'ABC'
+
+
+def test_source_anchor_is_detached_and_does_not_invent_quotation_authority():
+    bound = _bound_project()
+    anchor = bound.source_anchor
+    anchor['workspace'] = 'other'
+    anchor['positions'][0]['text_verified_at_read'] = True
+    anchor['derived_separators'][0]['start'] = 0
+    exported = bound.to_dict()
+    exported['source_anchor']['positions'][0]['text_sha256'] = '0' * 64
+    assert bound.source_anchor['workspace'] == 'library'
+    assert bound.source_anchor['positions'][0]['text_verified_at_read'] is False
+    assert bound.source_anchor['derived_separators'] == [{'start': 3, 'end': 5}]
+    assert bound.source_anchor['quotation_authority'] is False
+    assert ReadingDocument.from_dict(bound.to_dict()).source_anchor == bound.source_anchor
+    assert bound.source_span(0, 3) == SourceSpan(0, 3, True)
+    assert bound.source_span(3, 5) == SourceSpan(None, None, False)
+
+
+@pytest.mark.parametrize('path,value', [
+    (('workspace',), ''), (('workspace',), 'other\nworkspace'),
+    (('asset_sha256',), 'not-a-hash'), (('quotation_authority',), True),
+    (('quotation_authority',), 0), (('positions',), []),
+    (('positions', 0, 'start'), True), (('positions', 0, 'end'), 4),
+    (('positions', 0, 'ordinal'), False), (('positions', 1, 'ordinal'), 4),
+    (('positions', 1, 'kind'), 'logical_segment'), (('positions', 1, 'index'), 3),
+    (('positions', 0, 'text_sha256'), '0' * 64),
+    (('positions', 0, 'text_verified_at_read'), 'true'),
+    (('derived_separators',), []), (('derived_separators', 0, 'start'), False),
+])
+def test_damaged_or_authoritative_source_anchor_is_rejected(path, value):
+    data = _bound_project().to_dict()
+    target = data['source_anchor']
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    with pytest.raises(ValueError):
+        ReadingDocument.from_dict(data)
+
+
+@pytest.mark.parametrize('change', ['v1-with-anchor', 'v2-without-anchor', 'v2-null-anchor'])
+def test_reading_schema_never_silently_discards_source_binding(change):
+    data = _bound_project().to_dict()
+    if change == 'v1-with-anchor':
+        data['schema'] = 'carr.reading-copy.v1'
+    elif change == 'v2-without-anchor':
+        del data['source_anchor']
+    else:
+        data['source_anchor'] = None
+    with pytest.raises(ValueError):
+        ReadingDocument.from_dict(data)
+
+
 def test_edit_never_changes_raw_source_and_mapping_is_conservative():
     raw = 'A raw line.\r\nІще інший рядок.\nمرحبا'
     copy = ReadingDocument(raw)

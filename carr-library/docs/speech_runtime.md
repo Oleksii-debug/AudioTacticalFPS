@@ -87,6 +87,22 @@ deletion cannot join separated source runs into a false exact quotation.
 Undo/redo and edit history survive project saving and reopening. Reading edits
 never call quotation approval, source correction or saved-evidence APIs.
 
+Library narration copies retain an exact source anchor in the version-2 reading
+project: workspace, edition, retained revision, original-file SHA256, each
+page/segment's position, text hash and verification observation at reading time.
+The inserted joins between source positions are explicitly derived separators;
+they never become exact source spans. Portable saving, reopening, undo/redo and
+the existing complete backup retain this anchor. A verification observation is
+historical metadata, not current access or quotation approval: those still
+require the normal authorized library/citation services.
+
+Version-1 projects and standalone text copies remain readable and explicitly
+unbound. Titles or equal text never establish a library identity. A source
+window reuses a recovered draft only when its full anchor matches the freshly
+authorized selection. A mismatched or legacy draft is kept unchanged, with a
+visible notice, while the fresh copy must use Save As; it is not silently
+rebound or overwritten by recovery autosave.
+
 Whitespace and optional hyphenation cleanup are deterministic derivative edits.
 Pronunciation dictionaries support literal and bounded regex substitutions,
 optional language and voice scoping, import/export, and undo as one change.

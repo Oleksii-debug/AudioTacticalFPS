@@ -188,15 +188,22 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return VoiceRegistry.discover()
 
         def loaded(value):
-            nonlocal registry, voices, document, source_loaded
+            nonlocal registry, voices, document, source_loaded, draft_store, recovery_notice
             registry, source = value
             voices = registry.voices()
             if source is not None:
                 source_guard()
-                if recovered is not None and recovered.document.source_text == source.text:
+                if recovered is not None and recovered.document.matches_source(source):
                     document = recovered.document
                 else:
-                    document = ReadingDocument(source.text, title=source.title)
+                    document = ReadingDocument.from_narration_source(source)
+                    if recovered is not None:
+                        # A v1 or foreign draft must not be assigned this
+                        # source identity merely because the text is equal.
+                        # Keep its saved bytes rather than autosaving over it.
+                        draft_store = None
+                        recovery_notice += ('The saved reading draft has no matching source identity '
+                            'and was kept unchanged. This fresh copy will not replace it; use Save As. ')
                 editor.ChangeValue(document.text)
                 source_loaded = True
                 source_status.ChangeValue(f'{source.title}; {len(source.positions)} source reading positions. '
@@ -212,16 +219,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
-                report('No local voice is available. Install a SAPI 5 voice on Windows or an optional '
+                report(recovery_notice + 'No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
         run(lambda: (discover_configured(),
                      source_loader(cancel.is_set) if not source_loaded else None), loaded)
 
     def sync_document():
         document.set_text(editor.GetValue())
+        provenance = ('Retained library source identity; fresh source access is required for source use. '
+                      if document.source_anchor is not None else
+                      'Unbound reading copy; no library source identity. ')
         source_status.ChangeValue(f'Original text preserved; reading revision {document.revision}; '
             f'{"unsaved changes" if document.dirty else "saved"}. '
-            'The reading copy is not quotation evidence.')
+            + provenance + 'The reading copy is not quotation evidence.')
 
     def save_recovery(event=None, *, force=False):
         nonlocal last_recovery_signature
@@ -342,6 +352,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def save_project(event=None, *, choose=False):
         nonlocal save_path
         try:
+            source_guard()
             sync_document()
             if not choose and save_path is None and draft_store is not None:
                 save_recovery(force=True)
@@ -358,6 +369,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     selected = Path(chooser.GetPath())
             else:
                 selected = save_path
+            # A modal chooser can outlive the source's current authorization.
+            source_guard()
             document.save(selected)
             save_path = selected
             save_recovery(force=True)
