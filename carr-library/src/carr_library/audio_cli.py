@@ -9,6 +9,8 @@ from threading import Event
 
 def add_audio_arguments(parser):
     group = parser.add_mutually_exclusive_group()
+    from .audio_batch_cli import add_arguments as add_batch_arguments
+    add_batch_arguments(parser, group)
     group.add_argument('--audio-voices', action='store_true', help='List available local speech voices and compatibility notices')
     group.add_argument('--audio-script', type=Path, help='Read a local UTF-8 production script')
     group.add_argument('--audio-plan', type=Path, help='Read a validated versioned production-plan JSON file')
@@ -22,10 +24,18 @@ def add_audio_arguments(parser):
 
 
 def audio_requested(args):
-    return bool(args.audio_voices or args.audio_script or args.audio_plan)
+    from .audio_batch_cli import requested as batch_requested
+    return bool(args.audio_voices or args.audio_script or args.audio_plan or batch_requested(args))
 
 
 def validate_audio_arguments(args, parser):
+    from .audio_batch_cli import requested as batch_requested, validate as validate_batch
+    if batch_requested(args):
+        validate_batch(args, parser)
+        return
+    if any((getattr(args, 'audio_batch_action', None), getattr(args, 'audio_batch_item', None),
+            getattr(args, 'audio_batch_file', None), getattr(args, 'audio_batch_export', None))):
+        parser.error('Batch controls require --audio-batch, --audio-batches or --audio-batch-plan.')
     requested = audio_requested(args)
     if requested and (args.self_test or args.backup or args.restore or args.list_libraries or args.search is not None):
         parser.error('Choose one library or audio operation per command.')
@@ -41,6 +51,9 @@ def validate_audio_arguments(args, parser):
 
 
 def run_audio(args, *, trust_controller=None):
+    from .audio_batch_cli import requested as batch_requested, run as run_batch
+    if batch_requested(args):
+        return run_batch(args, trust_controller=trust_controller)
     from .audio.engines import default_registry
     from .audio.runtime import resolve_ffmpeg
     from .audio.models import ProductionPlan

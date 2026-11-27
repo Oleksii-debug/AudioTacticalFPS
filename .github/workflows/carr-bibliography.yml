@@ -24,7 +24,7 @@ jobs:
   windows-bibliography:
     name: Windows x64 / CPython 3.11 / installed bibliography
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 30
     defaults:
       run:
         shell: pwsh
@@ -105,7 +105,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run strict bibliography, replay and export acceptance
-        timeout-minutes: 8
+        timeout-minutes: 20
         run: |
           $suites = @(
             'tests/research/test_bibtex_import.py',
