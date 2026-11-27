@@ -1,0 +1,187 @@
+"""Fixed Windows helper identity is separate from strict private-file trust."""
+from pathlib import Path
+import os
+import stat
+from types import SimpleNamespace
+
+import pytest
+
+from carr_library.security import _files
+from carr_library.security import standard_windows as standard
+
+
+class SystemDirectory:
+    def __init__(self, path, size=None):
+        self.path = str(path)
+        self.size = size
+        self.calls = []
+        self.argtypes = None
+        self.restype = None
+
+    def __call__(self, buffer, capacity):
+        self.calls.append(capacity)
+        buffer.value = self.path
+        return len(self.path) if self.size is None else self.size
+
+
+def selected_ctypes(monkeypatch, loader):
+    # Replace this module's selector only. Path validation in audio.jobs must
+    # keep its real GetDriveTypeW and other independently owned Win32 APIs.
+    actual = standard.ctypes
+    class SelectedApi:
+        def __getattr__(self, name):
+            return loader if name == 'WinDLL' else getattr(actual, name)
+    monkeypatch.setattr(standard, 'ctypes', SelectedApi())
+
+
+def system_directory(monkeypatch, root, *, size=None):
+    lookup = SystemDirectory(root, size)
+    def load(name, *, use_last_error):
+        assert name == 'kernel32' and use_last_error is True
+        return SimpleNamespace(GetSystemDirectoryW=lookup)
+    selected_ctypes(monkeypatch, load)
+    return lookup
+
+
+def fixed_helper(tmp_path):
+    system = tmp_path / 'System32'
+    helper = system / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
+    helper.parent.mkdir(parents=True)
+    helper.write_bytes(b'inert synthetic system helper; never executed')
+    return system, helper
+
+
+@pytest.mark.parametrize('links', [1, 2, 3])
+def test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection(tmp_path, monkeypatch, links):
+    root, helper = fixed_helper(tmp_path)
+    for index in range(links - 1):
+        os.link(helper, tmp_path / ('servicing-link-' + str(index)))
+    decoy = tmp_path / 'untrusted-environment'
+    decoy.mkdir()
+    (decoy / 'powershell.exe').write_bytes(b'not selected')
+    monkeypatch.setenv('SystemRoot', str(decoy))
+    monkeypatch.setenv('WINDIR', str(decoy))
+    monkeypatch.setenv('PATH', str(decoy))
+    lookup = system_directory(monkeypatch, root)
+    assert standard.WindowsStandardHost._powershell() == helper
+    assert helper.stat().st_nlink == links
+    assert lookup.calls == [32768]
+    assert lookup.argtypes == [standard.ctypes.c_wchar_p, standard.ctypes.c_uint32]
+    assert lookup.restype is standard.ctypes.c_uint32
+
+
+def test_hardlinked_private_files_remain_refused_before_any_content_read(tmp_path, monkeypatch):
+    source = tmp_path / 'private-state.bin'
+    source.write_bytes(b'private state')
+    os.link(source, tmp_path / 'foreign-link.bin')
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A hardlinked private file reached its content reader.')
+    monkeypatch.setattr(_files, 'verified_reader', forbidden)
+    monkeypatch.setattr(standard, 'verified_reader', forbidden)
+    for read in (_files.file_info, _files.read_bytes, standard._file_digest):
+        with pytest.raises(_files.TrustError, match='unlinked local file'):
+            read(source)
+    assert source.read_bytes() == b'private state'
+
+
+@pytest.mark.parametrize('mode,attributes,links', [
+    (stat.S_IFDIR | 0o700, 0, 1),
+    (stat.S_IFLNK | 0o700, 0, 1),
+    (stat.S_IFREG | 0o700, 0x400, 1),
+    (stat.S_IFREG | 0o700, 0, 0),
+])
+def test_system_helper_rejects_nonregular_or_redirected_leaf(tmp_path, monkeypatch, mode, attributes, links):
+    root, helper = fixed_helper(tmp_path)
+    system_directory(monkeypatch, root)
+    original = Path.lstat
+    def metadata(path, *args, **kwargs):
+        if path == helper:
+            return SimpleNamespace(st_mode=mode, st_file_attributes=attributes, st_nlink=links)
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'lstat', metadata)
+    with pytest.raises(_files.TrustError, match='fixed Windows system helper'):
+        standard.WindowsStandardHost._powershell()
+
+
+@pytest.mark.parametrize('size', [0, 32768, 32769])
+def test_unavailable_or_truncated_system_directory_never_reaches_a_file(tmp_path, monkeypatch, size):
+    system_directory(monkeypatch, tmp_path, size=size)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('An invalid API result reached a filesystem lookup.')
+    monkeypatch.setattr(standard, 'directory', forbidden)
+    with pytest.raises(_files.TrustError, match='system directory is unavailable'):
+        standard.WindowsStandardHost._powershell()
+
+
+def test_system_api_failure_does_not_fall_back_to_environment_or_path(tmp_path, monkeypatch):
+    root, helper = fixed_helper(tmp_path)
+    monkeypatch.setenv('SystemRoot', str(root))
+    monkeypatch.setenv('PATH', str(helper.parent))
+    def fail(*args, **kwargs):
+        raise OSError('synthetic system API unavailable')
+    selected_ctypes(monkeypatch, fail)
+    with pytest.raises(OSError, match='synthetic system API unavailable'):
+        standard.WindowsStandardHost._powershell()
+
+
+def test_redirected_system_helper_parent_is_refused(tmp_path, monkeypatch):
+    root, helper = fixed_helper(tmp_path)
+    system_directory(monkeypatch, root)
+    redirected = root / 'WindowsPowerShell'
+    original = Path.lstat
+    def metadata(path, *args, **kwargs):
+        if path == redirected:
+            return SimpleNamespace(st_mode=stat.S_IFDIR | 0o700, st_file_attributes=0x400, st_nlink=1)
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'lstat', metadata)
+    with pytest.raises(_files.TrustError, match='Directory is linked, redirected'):
+        standard.WindowsStandardHost._powershell()
+
+
+def test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host(tmp_path, monkeypatch):
+    root, helper = fixed_helper(tmp_path)
+    target = tmp_path / "Verified target ' $marker.exe"
+    target.write_bytes(b'inert target; never executed')
+    shortcut = tmp_path / "Reviewed shortcut ' $marker.lnk"
+    original = {'SYSTEMROOT': str(root), 'PIP_NO_INDEX': '1'}
+    calls = []
+    monkeypatch.setattr(standard.WindowsStandardHost, 'environment', staticmethod(lambda: dict(original)))
+    monkeypatch.setattr(standard.WindowsStandardHost, '_powershell', staticmethod(lambda: helper))
+
+    def run(arguments, **options):
+        calls.append((arguments, options))
+        assert arguments[:4] == [helper, '-NoProfile', '-NonInteractive', '-Command']
+        script = arguments[4]
+        assert str(shortcut) not in script and str(target) not in script
+        assert "GetTypeFromProgID('WScript.Shell')" in script
+        assert '[Activator]::CreateInstance' in script and 'New-Object' not in script
+        assert "$PSModuleAutoLoadingPreference='None'" in script
+        assert 'FinalReleaseComObject($link)' in script and 'FinalReleaseComObject($shell)' in script
+        assert options == {'cwd': root, 'environment': dict(original,
+            CARR_STANDARD_SHORTCUT=str(shortcut)), 'timeout': 30}
+        return 0, (str(target) + '\r\n').encode('utf-8')
+
+    monkeypatch.setattr(standard, 'run_owned', run)
+    host = object.__new__(standard.WindowsStandardHost)
+    assert host._shortcut_target(shortcut, root) == target
+    assert len(calls) == 1 and original == {'SYSTEMROOT': str(root), 'PIP_NO_INDEX': '1'}
+    assert target.read_bytes() == b'inert target; never executed' and not shortcut.exists()
+
+
+@pytest.mark.parametrize('failure', ['nonzero-exit', 'oversized-output'])
+def test_shortcut_helper_failure_never_admits_its_untrusted_target(tmp_path, monkeypatch, failure):
+    root, helper = fixed_helper(tmp_path)
+    monkeypatch.setattr(standard.WindowsStandardHost, 'environment', staticmethod(dict))
+    monkeypatch.setattr(standard.WindowsStandardHost, '_powershell', staticmethod(lambda: helper))
+    output = (1, b'untrusted target') if failure == 'nonzero-exit' else (0, b'x' * 32769)
+    calls = []
+    def run(*args, **options):
+        calls.append(options)
+        return output
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A failed or oversized native response reached target admission.')
+    monkeypatch.setattr(standard, 'run_owned', run)
+    monkeypatch.setattr(standard, 'local_path', forbidden)
+    with pytest.raises(_files.TrustError, match='Start-menu target could not be verified'):
+        object.__new__(standard.WindowsStandardHost)._shortcut_target(tmp_path / 'selected.lnk', root)
+    assert len(calls) == 1 and calls[0]['timeout'] == 30
