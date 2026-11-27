@@ -5,6 +5,7 @@ selected environment. Missing declared packages are recorded explicitly: this
 seal does not assert that an environment can perform inference.
 """
 from hashlib import sha256
+import csv
 from importlib import metadata
 import json
 import os
@@ -184,7 +185,13 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
         record_path = distribution._path / 'RECORD'
         if not record_path.exists() or regular(local_path(record_path, exists=True)).st_size > 16 * 1024**2:
             raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
-        entries = distribution.files
+        try:
+            entries = distribution.files
+        except (TypeError, ValueError, csv.Error) as exc:
+            # importlib.metadata reports malformed external RECORD rows as
+            # parser errors, including TypeError for a blank/extra CSV field.
+            # Keep the review boundary fail-closed without executing that env.
+            raise ValueError('A selected ASR distribution has a malformed installed file inventory.') from exc
         if not entries or len(entries) > 65536:
             raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
         files = {}

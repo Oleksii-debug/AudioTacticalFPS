@@ -159,6 +159,96 @@ retains an explicit existing topic scope. Repeat all selectors unchanged for
 This is local bounded chunk scheduling of selected text, not Google's Cloud
 Storage batch service. It does not upload a document directory or buckets.
 
+## Multiple documents with separate reviews and reservations
+
+The translation workspace's **Add current source to batch** captures the current
+exact text or loaded library source, account, languages, glossary and reservation.
+Load the next source and repeat. **Document batches** opens an ordered list.
+Move up/down or remove rows before **Review entire translation batch**. Each
+document keeps its own settings; later edits to the single-document fields do not
+change a collected row. Review displays each original identity, source revision,
+character/call count, endpoint, model, glossary and budget, plus aggregate totals.
+
+**Prepare approved batch** asks explicitly for the exact displayed order and
+transfer reservation. It saves normal translation child jobs and sends no text.
+**Run or resume batch** is a separate explicit action. A pause, stale source or
+uncertain charge stops advancement to the next document. Accepted chunks and
+complete children are verified and reused. Saved batches never mint fresh
+permission or renew expired approvals. Interrupted local preparation can fill
+missing child journals from the retained immutable templates without changing
+their identities or envelopes.
+
+A batch contains 1–32 documents and at most two million selected characters in
+total. Source-bound entries remain in one existing workspace; the native window
+also retains its selected topic. Entire documents, chapters and position ranges
+use the same bounded Reading Desk source checks as individual jobs. Plain-text
+files remain unbound selected text. Duplicate source/settings are refused;
+export the accepted job again when another identical copy is needed.
+
+**Export completed batch** requires every child to be verified complete and a
+new explicitly selected directory. It writes numbered per-document subfolders
+with the existing original/translated/bilingual/reading-copy files, plus
+`batch-provenance.json` binding the child IDs and provenance hashes. Source
+guards run again before publication. Backups use the same typed translation
+producer and retain exact parent/child approvals, usage evidence and source
+identities. Restore starts no request and restores no output-directory approval;
+choose a new destination explicitly.
+
+### Headless document batches
+
+Use `python -m carr_library translate --data-dir LIBRARY COMMAND`, or the
+translation module command above. Create a UTF-8 JSON description of at most
+128 KiB with only explicitly selected input paths or library editions:
+
+```json
+{
+  "schema": "carr-translation-batch-input/1",
+  "title": "Two reviewed documents",
+  "items": [
+    {
+      "profile": "ACCOUNT_ID",
+      "workspace": "WORKSPACE_ID",
+      "edition": "EDITION_ID",
+      "source": "en",
+      "target": "uk",
+      "budget": "1"
+    },
+    {
+      "profile": "ACCOUNT_ID",
+      "input": "second-selected.txt",
+      "source": "auto",
+      "target": "uk",
+      "budget": "1"
+    }
+  ]
+}
+```
+
+Replace the placeholders with your existing IDs and your explicitly chosen
+reservations. The numbers are examples, not prices. File paths may be absolute
+or relative to the description's directory; no directory scanning or implicit
+document upload is performed. Library items also accept `topic`, `chapter`, or
+`first`/`last`; each item may include `title`, `glossary` and `rate_per_million`.
+
+1. `batch-preview --batch-file selection.json` resolves the explicit inputs,
+   rechecks sources and prints the exact aggregate `review_sha256`. No request.
+2. `batch-submit --batch-file selection.json --approve-remote --review-sha256 HASH`
+   rereads those inputs and rejects any changed text, source, settings or order.
+   It saves the existing child approvals without transmitting text.
+3. `batch-review BATCH_ID` displays the retained approval and current child
+   checkpoints. `batch-jobs` lists batches. `batch-prepare BATCH_ID` finishes an
+   interrupted local preparation; these commands do not send selected text.
+4. `batch-resume BATCH_ID` uses only those original child approvals. Ctrl+C
+   requests cancellation through the existing whole-request transport. A paused,
+   partial or attention result exits 2; validation/permission errors exit 1.
+5. `batch-export BATCH_ID --output NEW_DIRECTORY` publishes all completed
+   derivatives into the explicitly selected new directory without overwrite.
+
+Neither the JSON description nor a batch manifest is a second execution queue.
+The ordinary child jobs and their usage ledgers remain the sole authority for
+accepted translations and attempted provider calls. This bounded local batch
+does not use Google's Cloud Storage batch API.
+
 ## Supported boundary and remaining qualification
 
 Basic v2 and Advanced v3 NMT selected **plain text** are implemented, with Unicode-preserving
@@ -174,9 +264,9 @@ a silent remote fallback or model download. Selected source text and receipts us
 the existing private local state store; this feature does not supply encrypted
 text-at-rest containers. API secrets use the OS vault.
 
-A failed export may leave a partial newly created directory. Export success
-requires the final provenance manifest and matching output hashes. Original
-library quotations remain attached to their source, not the translated revision.
+Exports are staged privately and require final provenance and matching output
+hashes before exclusive publication. Original library quotations remain attached
+to their source, not the translated revision.
 
 ## Validation
 
@@ -200,10 +290,17 @@ checks exact project/model/glossary consent, directional language capability,
 expiry and explicit re-entry without duplicate accepted calls, stale CLI/UI
 reviews, disabled controls during queued work and close/cancellation.
 
+The batch suites `tests/assistant/test_translation_batch.py`,
+`test_translation_batch_cli.py` and `test_translation_batch_ui.py` cover actual
+library/jobs/ledger/restore boundaries and real worker threads with synthetic
+provider replies and widget stand-ins. Their new source requires execution on the
+exact integrated build; source review alone is not a passing test result.
+
 The required installed Windows probe is
 `python -I -B scripts/windows_translation_v3_smoke.py`. It checks real wx native
 Space/focus, asynchronous completion, temporary Windows Credential Manager
-storage and output bytes. Its REST responses and confirmation/file-picker
+storage, ordered multi-document review/preparation/resume, and exact output bytes.
+Its REST responses and confirmation/file-picker
 results are deliberately synthetic. Linux execution reports NOT_RUN and exits
 77; it is not a portable replacement for the Windows gate.
 

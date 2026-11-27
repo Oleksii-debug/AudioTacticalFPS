@@ -17,6 +17,7 @@ from .models import canonical, local_path
 from .profiles import ProfileStore
 from .providers import Authorization, Gateway, money
 from .translation import TranslationService, translation_approval
+from .translation_batch import TranslationBatchService, MAX_ITEMS, MAX_CHARACTERS
 from ..application import LibraryApp
 from ..installation_lease import installed_entrypoint
 
@@ -56,6 +57,76 @@ def _review(service, profile, args):
     return value, {**review, 'review_sha256': sha256(canonical(review).encode('utf-8')).hexdigest()}
 
 
+def _batch_input(service, store, path, *, cancelled=lambda: False):
+    """Resolve only explicitly listed files or existing library selections."""
+    selected = local_path(path)
+    if not selected.is_file() or selected.stat().st_size > 131072:
+        raise ValueError('Choose a translation batch JSON description of at most 128 KiB.')
+    with selected.open('rb') as stream:
+        raw = stream.read(131073)
+    if len(raw) > 131072:
+        raise ValueError('The batch description exceeds its byte budget.')
+    def pairs(entries):
+        result = {}
+        for key, value in entries:
+            if key in result:
+                raise ValueError('A batch description contains duplicate JSON keys.')
+            result[key] = value
+        return result
+    description = json.loads(raw.decode('utf-8', errors='strict'), object_pairs_hook=pairs)
+    if (type(description) is not dict or set(description) != {'schema', 'title', 'items'}
+            or description['schema'] != 'carr-translation-batch-input/1'
+            or type(description['items']) is not list
+            or not 1 <= len(description['items']) <= MAX_ITEMS):
+        raise ValueError('Use a typed batch description with 1–32 explicitly selected documents.')
+    required = {'profile', 'target', 'budget'}
+    optional = {'input', 'workspace', 'edition', 'topic', 'chapter', 'first', 'last',
+                'source', 'glossary', 'rate_per_million', 'title'}
+    items, count = [], 0
+    for row in description['items']:
+        if cancelled():
+            raise InterruptedError('Translation batch input review cancelled.')
+        if type(row) is not dict or not required <= set(row) or set(row) - required - optional:
+            raise ValueError('Unknown or missing translation batch item fields.')
+        strings = {'profile', 'source', 'target', 'budget', 'input', 'workspace', 'edition', 'title'}
+        if (any(key in row and type(row[key]) is not str for key in strings)
+                or any(key in row and row[key] is not None and type(row[key]) is not str
+                       for key in ('topic', 'glossary', 'rate_per_million'))
+                or any(key in row and row[key] is not None and type(row[key]) is not int
+                       for key in ('chapter', 'first', 'last'))):
+            raise ValueError('Use explicit text settings and integer source positions in each batch item.')
+        if ('input' in row) == ('edition' in row):
+            raise ValueError('Each batch item selects one UTF-8 file or one existing library edition.')
+        profile = store.get(row['profile'])
+        context = {}
+        if 'edition' in row:
+            if 'workspace' not in row:
+                raise ValueError('A library edition requires its explicit workspace.')
+            record = service.select_source(row['workspace'], row['edition'], topic=row.get('topic'),
+                chapter=row.get('chapter'), first=row.get('first'), last=row.get('last'), cancelled=cancelled)
+            value, default_title = record['text'], record['title']
+            context = {key: record[key] for key in ('source_anchor', 'source_metadata', 'source_topic')}
+        else:
+            if any(key in row for key in ('workspace', 'topic', 'chapter', 'first', 'last')):
+                raise ValueError('Library selectors cannot be attached to a plain-text file.')
+            if type(row['input']) is not str or not row['input']:
+                raise ValueError('Choose an explicit UTF-8 input pathname.')
+            source = Path(row['input'])
+            if not source.is_absolute():
+                source = selected.parent / source
+            value, default_title = _input(source), source.name
+        count += len(value)
+        if count > MAX_CHARACTERS:
+            raise ValueError('The selected batch exceeds two million characters.')
+        items.append({'profile': profile.to_dict(), 'text': value,
+            'title': row.get('title', default_title), 'source': row.get('source', 'auto'),
+            'target': row['target'], 'budget': row['budget'], 'glossary': row.get('glossary'),
+            'rate_per_million': row.get('rate_per_million'), **context})
+    if cancelled():
+        raise InterruptedError('Translation batch input review cancelled.')
+    return description['title'], items
+
+
 @installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Reviewed Google Basic v2 / Advanced v3 plain-text translation')
@@ -92,6 +163,18 @@ def main(argv=None):
     export = sub.add_parser('export', help='Publish a completed derivative into a fresh directory')
     export.add_argument('job')
     export.add_argument('--output', type=Path, required=True)
+    for name in ('batch-preview', 'batch-submit'):
+        action = sub.add_parser(name, help='Review or prepare explicitly listed documents; sends no text')
+        action.add_argument('--batch-file', type=Path, required=True, help='Bounded carr-translation-batch-input/1 JSON')
+        if name == 'batch-submit':
+            action.add_argument('--approve-remote', action='store_true')
+            action.add_argument('--review-sha256', required=True)
+    sub.add_parser('batch-jobs', help='List existing child checkpoints without sending text')
+    for name in ('batch-review', 'batch-prepare', 'batch-resume', 'batch-export'):
+        action = sub.add_parser(name, help='Use the exact saved batch and its existing child approvals')
+        action.add_argument('batch')
+        if name == 'batch-export':
+            action.add_argument('--output', type=Path, required=True, help='New explicit output directory')
     args = parser.parse_args(argv)
     stop = threading.Event()
     previous = None
@@ -101,7 +184,32 @@ def main(argv=None):
             raise ValueError('Choose an existing Resonance library with library.sqlite.')
         store = ProfileStore(root / 'state' / 'providers')
         service = TranslationService(root / 'state' / 'translation', library=LibraryApp(root))
-        if args.command == 'profiles':
+        if args.command.startswith('batch-'):
+            batches = TranslationBatchService(service)
+            if args.command not in ('batch-jobs', 'batch-review'):
+                previous = signal.signal(signal.SIGINT, lambda *unused: stop.set())
+            if args.command in ('batch-preview', 'batch-submit'):
+                title, items = _batch_input(service, store, args.batch_file, cancelled=stop.is_set)
+                if args.command == 'batch-preview':
+                    result = batches.preview(items, title=title, cancelled=stop.is_set)
+                else:
+                    identity = batches.submit(items, title=title, review_sha256=args.review_sha256,
+                        approve_remote=args.approve_remote, cancelled=stop.is_set)
+                    result = {**batches.get(identity), 'network_access': False,
+                              'next': 'batch-resume this ID to use its exact existing document approvals'}
+            elif args.command == 'batch-jobs':
+                result = list(batches.list())
+            elif args.command == 'batch-review':
+                result = {'review': batches.get_review(args.batch), 'checkpoints': batches.get(args.batch)}
+            elif args.command == 'batch-prepare':
+                result = batches.prepare(args.batch, cancelled=stop.is_set)
+            elif args.command == 'batch-resume':
+                service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+                result = batches.resume(args.batch, cancelled=stop.is_set,
+                    progress=lambda done, total, phase: print(f'{done}/{total}: {phase}', file=sys.stderr, flush=True))
+            else:
+                result = batches.export(args.batch, args.output, cancelled=stop.is_set)
+        elif args.command == 'profiles':
             result = [{key: p.to_dict()[key] for key in ('id', 'name', 'adapter', 'endpoint', 'model', 'enabled')}
                       for p in store.list() if p.adapter in ('google-translation-v2', 'google-translation-v3')]
         elif args.command == 'languages':
@@ -139,7 +247,8 @@ def main(argv=None):
         else:
             result = service.export(args.job, args.output)
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        return 2 if isinstance(result, dict) and result.get('status') == 'paused' else 0
+        return 2 if isinstance(result, dict) and (result.get('status') == 'paused'
+            or args.command == 'batch-resume' and result.get('status') != 'complete') else 0
     except (ValueError, RuntimeError, OSError) as error:
         print('Translation: ' + str(error), file=sys.stderr)
         return 1

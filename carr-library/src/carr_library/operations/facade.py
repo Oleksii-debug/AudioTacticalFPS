@@ -191,6 +191,26 @@ class OperationFacade:
             raise ResourceStateError('Operation checkpoint schema or identity changed.')
         if kind == 'assistant' and data.get('data_dir') != str(self.root):
             raise ResourceStateError('Assistant checkpoint belongs to another data directory.')
+        if kind == 'translation' and data.get('kind') == 'translation-batch/1':
+            from ..assistant.translation_batch import validate_batch, batch_summary
+            manifest = validate_batch(data, identity)
+            children = []
+            for member in manifest['members']:
+                child_path = self._path('translation', member['job']['id'])
+                if not child_path.exists():
+                    children.append(None)
+                    continue
+                if regular(child_path).st_size > _MAX_CHECKPOINT:
+                    raise ResourceStateError('Batch child exceeds the bounded dashboard reader.')
+                children.append(read_json(child_path))
+            summary = batch_summary(manifest, children)
+            updated = manifest['updated']
+            if any(ord(char) < 32 for char in updated):
+                raise ResourceStateError('Invalid batch update time.')
+            return OperationView(kind, identity, manifest['review']['workspace'], summary['status'],
+                summary['completed'], summary['total'],
+                'Stored translation batch; child document jobs own accepted chunks. Open its translation workspace to resume.',
+                updated, (), path.relative_to(self.root).as_posix())
         if kind == 'translation' and data.get('kind') != 'translation/1':
             raise ResourceStateError('Unsupported translation checkpoint.')
         status = data.get('state') if kind == 'import' else data.get('status')

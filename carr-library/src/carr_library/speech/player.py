@@ -1,7 +1,8 @@
 """Keyboard-addressable local WAV playback using an installed native backend.
 
-Windows MCI provides measured play position and native pause/seek. The POSIX
-ffplay fallback is explicit; elapsed position there is only a clock estimate.
+Windows MCI provides measured position and native pause/seek. Explicit live
+controls use an owned waveOut handle in this same player. The POSIX ffplay
+fallback is explicit; elapsed position there is only a clock estimate.
 """
 import ctypes
 import os
@@ -40,6 +41,12 @@ class WavePlayer:
         self._skip_intervals = (10.0, 30.0)
         self._listening = None
         self._listening_request = None
+        self._wave = None
+        self._live_controls = False
+        self._levels = None
+        self._playlist = ()
+        self._playlist_index = None
+        self._playlist_armed = False
         self.backend = 'Windows MCI' if os.name == 'nt' else 'ffplay'
         self.position_is_approximate = os.name != 'nt'
         self._executable = shutil.which('ffplay') if os.name != 'nt' else None
@@ -52,6 +59,166 @@ class WavePlayer:
     def output_device(self):
         """Explicit session choice; None retains the backend's automatic output."""
         return self._output_device
+
+    @property
+    def live_mix_available(self):
+        return os.name == 'nt'
+
+    @property
+    def levels(self):
+        from ._wave_output import PlaybackLevels
+        return self._levels if self._levels is not None else PlaybackLevels()
+
+    def set_levels(self, volume, *, muted=False, balance=0):
+        """Apply per-instance controls; never change a system/device-wide mixer."""
+        from ._wave_output import PlaybackLevels, WaveOutput
+        levels = PlaybackLevels(volume, muted, balance)
+        if not self.live_mix_available:
+            raise RuntimeError('Live volume, mute and balance require the Windows owned-output backend.')
+        if self._wave is not None:
+            try:
+                self._wave.set_levels(levels)
+            except BaseException:
+                self._close_transport()
+                raise
+            self._levels = levels
+            return levels
+        state = self.state
+        if state not in ('playing', 'paused'):
+            # Retain a session request only. No device open and no autoplay.
+            self._levels, self._live_controls = levels, True
+            return levels
+        position = self.position_seconds
+        path, identity = self.path, self._identity
+        end, loop, sleep = self._end_seconds, self._ab, self._sleep_deadline
+        if sleep is not None and time.monotonic() >= sleep:
+            self.stop()
+            self._levels, self._live_controls = levels, True
+            return levels
+        queued = self._playlist_armed
+        if identity is None or self._stamp(path) != identity:
+            self.stop()
+            raise ValueError('The current recording changed. Select it again.')
+        self._check_listening()
+        self._close_transport()  # Old MCI alias must acknowledge closure first.
+        if self._stamp(path) != identity:
+            raise ValueError('The recording changed before switching playback controls.')
+        self._wave = WaveOutput()
+        try:
+            self._wave.open(self.listening_path,
+                start_seconds=self._to_transport(position),
+                end_seconds=None if end is None else self._to_transport(end),
+                device=self._output_device, levels=levels, paused=state == 'paused',
+                expected=identity if self._listening is None else self._stamp(self.listening_path))
+        except BaseException:
+            self._close_transport()
+            raise
+        self._levels, self._live_controls = levels, True
+        self.backend = 'Windows waveOut'
+        self._state, self._offset = state, position
+        self._started = time.monotonic() if state == 'playing' else None
+        self._play_start = position
+        self._end_seconds, self._ab, self._sleep_deadline = end, loop, sleep
+        self._repeat_armed = state == 'playing' and loop is not None
+        self._playlist_armed = queued
+        return levels
+
+    @staticmethod
+    def prepare_playlist(paths, *, cancelled=lambda: False):
+        from .playlist import prepare_playlist
+        return prepare_playlist(paths, cancelled=cancelled)
+
+    @property
+    def playlist(self):
+        return self._playlist
+
+    @property
+    def playlist_index(self):
+        return self._playlist_index
+
+    @property
+    def queue_active(self):
+        return self._playlist_armed
+
+    def set_playlist(self, items):
+        """Adopt reviewed entries in order; replacement stops and never plays."""
+        from .playlist import MAX_ITEMS, PlaylistItem
+        if (not isinstance(items, (list, tuple)) or len(items) > MAX_ITEMS
+                or any(not isinstance(item, PlaylistItem) for item in items)):
+            raise ValueError('Use a bounded, explicitly reviewed session playlist.')
+        for item in items:
+            if self._stamp(item.path) != item.identity:
+                raise ValueError('A reviewed playlist file changed. Review the selection again.')
+        self.close()
+        self._playlist, self._playlist_index = tuple(items), None
+        self.path, self._identity, self.duration_seconds = None, None, 0
+
+    def select_queue(self, index):
+        """Select silently. A later explicit Play or Play queue admits audio."""
+        if type(index) is not int or not 0 <= index < len(self._playlist):
+            raise ValueError('Choose an existing playlist item.')
+        item = self._playlist[index]
+        if self._stamp(item.path) != item.identity:
+            self.stop()
+            raise ValueError('The selected playlist file changed. Review it again.')
+        self.close()
+        self.path, self._identity = item.path, item.identity
+        self.duration_seconds, self._playlist_index = item.duration_seconds, index
+
+    def play_queue(self, index=None):
+        """Explicitly play this item and arm later, separately admitted transitions."""
+        index = self._playlist_index if index is None else index
+        if index is None:
+            index = 0
+        if type(index) is not int or not 0 <= index < len(self._playlist):
+            raise ValueError('Choose an item in a reviewed playlist.')
+        item = self._playlist[index]
+        if self._playlist_index == index and self.path == item.path and self._identity == item.identity:
+            state = self.state
+            if state == 'paused':
+                resumed = self.resume()
+                self._playlist_armed = bool(resumed)
+                return resumed
+            if state == 'playing':
+                if self._stamp(item.path) != item.identity:
+                    self.stop()
+                    raise ValueError('The current playlist file changed. Review it again.')
+                self._playlist_armed = True
+                return False
+        return self._play_queue_item(index)
+
+    def _play_queue_item(self, index):
+        item = self._playlist[index]
+        sleep = self._sleep_deadline
+        if sleep is not None and time.monotonic() >= sleep:
+            self.stop()
+            return False
+        self._playlist_armed = False
+        try:
+            self._play(item.path, expected=item.identity, new_recording=True)
+        except BaseException:
+            # Validation can fail before the old native handle has closed.
+            self.stop()
+            raise
+        self._playlist_index, self._playlist_armed = index, True
+        self._sleep_deadline = sleep
+        return True
+
+    @property
+    def queue_pending(self):
+        return bool(self._playlist_armed and self._ab is None
+            and self.state == 'stopped' and self._ended
+            and self._playlist_index is not None
+            and self._playlist_index + 1 < len(self._playlist))
+
+    def advance_if_ready(self):
+        """UI admission only. poll() itself never opens or starts the next file."""
+        if self._sleep_deadline is not None and time.monotonic() >= self._sleep_deadline:
+            self.stop()
+            return False
+        if not self.queue_pending:
+            return False
+        return self._play_queue_item(self._playlist_index + 1)
 
     @property
     def listening_settings(self):
@@ -155,7 +322,20 @@ class WavePlayer:
     def state(self):
         if self._state == 'playing':
             end = self.duration_seconds if self._end_seconds is None else self._end_seconds
-            if os.name == 'nt' and self._open:
+            if self._wave is not None:
+                try:
+                    self._wave.pump()
+                    if self._wave.ended:
+                        self._state = 'stopped'
+                        self._offset = end
+                        self._ended = self._play_start < end
+                        self._started = None
+                except BaseException:
+                    self._playlist_armed = self._repeat_armed = self._ended = False
+                    self._close_transport()
+                    self._state = 'error'
+                    raise
+            elif os.name == 'nt' and self._open:
                 mode = self._mci(f'status {self._alias} mode')
                 if mode == 'stopped':
                     position = self._from_transport(int(self._mci(f'status {self._alias} position')) / 1000)
@@ -178,6 +358,8 @@ class WavePlayer:
 
     @property
     def position_seconds(self):
+        if self._wave is not None:
+            return self._from_transport(self._wave.position_seconds)
         if os.name == 'nt' and self._open:
             return self._from_transport(int(self._mci(f'status {self._alias} position')) / 1000)
         if self.state == 'playing' and self._started is not None:
@@ -236,7 +418,20 @@ class WavePlayer:
         self._end_seconds = None if end_seconds is None else float(end_seconds)
         self._ended = False
         actual = target if self._listening is None else self._listening.path
-        if os.name == 'nt':
+        if os.name == 'nt' and self._live_controls:
+            from ._wave_output import WaveOutput
+            self._wave = WaveOutput()
+            try:
+                self._wave.open(actual, start_seconds=self._to_transport(start_seconds),
+                    end_seconds=None if end_seconds is None else self._to_transport(end_seconds),
+                    device=output, levels=self.levels,
+                    expected=identity if self._listening is None else self._stamp(actual))
+                self.backend = 'Windows waveOut'
+            except BaseException:
+                self._close_transport()
+                raise
+        elif os.name == 'nt':
+            self.backend = 'Windows MCI'
             self._mci(f'open "{actual}" type waveaudio alias {self._alias}')
             self._open = True
             try:
@@ -270,11 +465,12 @@ class WavePlayer:
         if identity is not None and self._stamp(path) != identity:
             self.stop()
             raise ValueError('The opened recording changed. Select its current version explicitly.')
-        loop, sleep = self._ab, self._sleep_deadline
+        loop, sleep, queued = self._ab, self._sleep_deadline, self._playlist_armed
         self._repeat_armed = False
         self._play(path, start_seconds=seconds, end_seconds=end_seconds, expected=identity)
         self._ab, self._sleep_deadline = loop, sleep
         self._repeat_armed = loop is not None
+        self._playlist_armed = queued
         return True
 
     def play_current(self):
@@ -296,7 +492,11 @@ class WavePlayer:
         return self._restart(position, last)
 
     def _silent_position(self, seconds, *, paused):
-        if os.name == 'nt' and self._open:
+        if self._wave is not None:
+            # A paused seek never opens/starts a replacement native stream.
+            self._wave.close()
+            self._wave = None
+        elif os.name == 'nt' and self._open:
             self._mci(f'seek {self._alias} to {round(self._to_transport(seconds) * 1000)} wait')
         elif self._process is not None:
             # A POSIX paused seek must not play then SIGSTOP a fresh child.
@@ -309,6 +509,7 @@ class WavePlayer:
         self._ended = False
 
     def pause(self):
+        self._playlist_armed = False
         state = self.state
         if state == 'stopped' and self._ended and self._repeat_armed and self._ab is not None:
             # Pause between native B and the next UI tick must suppress repeat.
@@ -317,7 +518,9 @@ class WavePlayer:
         if state != 'playing':
             return False
         position = self.position_seconds
-        if os.name == 'nt':
+        if self._wave is not None:
+            self._wave.pause()
+        elif os.name == 'nt':
             self._mci(f'pause {self._alias}')
         else:
             os.kill(self._process.pid, signal.SIGSTOP)
@@ -337,7 +540,15 @@ class WavePlayer:
             self.stop()
             raise ValueError('The opened recording changed. Select its current version explicitly.')
         self._check_listening()
-        if os.name == 'nt':
+        if self._wave is not None:
+            try:
+                self._wave.resume()
+            except BaseException:
+                self._close_transport()
+                raise
+        elif os.name == 'nt' and self._live_controls:
+            return self._restart(self._offset, self._end_seconds)
+        elif os.name == 'nt':
             if self._output_device is not None:
                 try:
                     if not self._open or self._opened_output is None:
@@ -470,14 +681,23 @@ class WavePlayer:
         if self._sleep_deadline is not None and time.monotonic() >= self._sleep_deadline:
             self.stop()
             return 'sleep'
-        return 'repeat-pending' if self.repeat_pending else None
+        if self.repeat_pending:
+            return 'repeat-pending'
+        if self.queue_pending:
+            return 'queue-pending'
+        if self._ended and self._playlist_index == len(self._playlist) - 1:
+            self._playlist_armed = False
+        return None
 
     def stop(self):
         # Invalidate automatic work before touching a possibly failing device.
         self._listening_request = None
-        self._repeat_armed = self._ended = False
+        self._repeat_armed = self._ended = self._playlist_armed = False
         self._sleep_deadline = None
-        if os.name == 'nt' and self._open:
+        if self._wave is not None:
+            self._wave.close()
+            self._wave = None
+        elif os.name == 'nt' and self._open:
             self._mci(f'stop {self._alias}')
         elif self._process is not None:
             stop_process(self._process)

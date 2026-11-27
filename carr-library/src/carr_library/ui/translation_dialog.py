@@ -24,6 +24,7 @@ def show_translation(frame):
     layout = wx.BoxSizer(wx.VERTICAL)
     alive, busy, current_job, reviewed = True, False, None, None
     source_record = None
+    batch_items = []
     cancel = threading.Event()
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
@@ -53,6 +54,7 @@ def show_translation(frame):
     buttons = {}
     row = wx.BoxSizer(wx.HORIZONTAL)
     for name, label in [('load_source', 'Load library so&urce'), ('paste', 'Use &pasted text'),
+                         ('add_batch', 'Add current source to batch'), ('batches', 'Document batches...'),
                         ('languages', 'Fetch &languages'), ('preview', '&Preview'), ('run', '&Translate / resume'),
                         ('pause', 'Pa&use'), ('jobs', 'Saved &jobs'), ('export', '&Export'), ('close', '&Close')]:
         if name == 'languages':
@@ -103,7 +105,7 @@ def show_translation(frame):
             control.Enable(not busy)
         if hasattr(selected, 'SetEditable'):
             selected.SetEditable(source_record is None)
-        for name in ('load_source', 'paste', 'languages', 'preview', 'run', 'jobs', 'export'):
+        for name in ('load_source', 'paste', 'add_batch', 'batches', 'languages', 'preview', 'run', 'jobs', 'export'):
             buttons[name].Enable(not busy and (name != 'export' or current_job is not None))
         buttons['pause'].Enable(busy)
 
@@ -386,6 +388,43 @@ def show_translation(frame):
         finally:
             chooser.Destroy()
 
+    def add_batch(event=None):
+        try:
+            check_library()
+            if busy or getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+                raise RuntimeError('Finish the active operation before collecting another batch document.')
+            from ..assistant.translation_batch import MAX_ITEMS, MAX_CHARACTERS
+            p = profile()
+            value = selected.GetValue()
+            if not value.strip():
+                raise ValueError('Load or paste the exact document text first.')
+            if len(batch_items) >= MAX_ITEMS or sum(len(row['text']) for row in batch_items) + len(value) > MAX_CHARACTERS:
+                raise ValueError('A translation batch is limited to 32 documents and two million characters.')
+            item = {'profile': p.to_dict(), 'text': value,
+                'title': source_record.get('title', 'Library source') if source_record is not None else 'Selected text',
+                'source': source.GetValue().strip(), 'target': target.GetValue().strip(),
+                'budget': str(money(budget.GetValue())), 'glossary': glossary.GetValue().strip() or None,
+                'rate_per_million': rate.GetValue().strip() or None, **source_arguments()}
+            batch_items.append(json.loads(json.dumps(item, ensure_ascii=False)))
+            report(f'Added document {len(batch_items)} with its exact source and settings. No text sent. '
+                   'Load the next source and add it, or open Document batches to review order, cost and approval.')
+        except Exception as error:
+            report(str(error))
+
+    def document_batches(event=None):
+        nonlocal batch_items
+        try:
+            check_library()
+            if busy or getattr(frame, 'working', False) or getattr(frame, '_closing', False):
+                raise RuntimeError('Finish the active operation before opening document batches.')
+            from .translation_batch_dialog import show_translation_batch
+            batch_items = show_translation_batch(frame, items=batch_items)
+            if alive and not getattr(frame, '_closing', False):
+                report(f'Draft retains {len(batch_items)} documents. Add another source or reopen its batch review.')
+                controls()
+        except Exception as error:
+            report(str(error))
+
     def close(event=None):
         nonlocal alive
         cancel.set()
@@ -393,6 +432,7 @@ def show_translation(frame):
         dialog.EndModal(wx.ID_CLOSE)
 
     for name, handler in {'load_source': load_source, 'paste': paste_mode,
+                           'add_batch': add_batch, 'batches': document_batches,
                            'languages': languages, 'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
                            'jobs': jobs, 'export': export, 'close': close}.items():
         buttons[name].Bind(wx.EVT_BUTTON, handler)

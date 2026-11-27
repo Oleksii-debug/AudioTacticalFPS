@@ -56,8 +56,8 @@ jobs:
             tests/speech/test_reading_marks.py tests/speech/test_reading_focus.py tests/ui/test_reading_focus.py tests/ui/test_reader_focus_hook.py tests/ui/test_reading_tools.py \
             tests/ui/test_reader_listening_hook.py tests/operations/test_worker_start_cleanup.py tests/speech/test_listening.py \
             tests/speech/test_reading_tabs.py tests/ui/test_reader_tabs.py \
-            tests/ui/test_reader_voice_recovery.py tests/ui/test_reader_navigation.py tests/ui/test_reader_playback.py tests/ui/test_progress_job_review.py \
+            tests/ui/test_reader_voice_recovery.py tests/ui/test_reader_navigation.py tests/ui/test_reader_playback.py tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/ui/test_audio_playback.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_progress_job_review.py \
             tests/studio/test_measured_audio.py tests/ui/test_book_duration_dialog.py \
             tests/studio/test_book_cli.py tests/storage/test_backup_publications.py \
             tests/reader/test_export_reconciliation.py tests/storage/test_backup_incremental.py \
-            tests/ui/test_backup_incremental_dialog.py tests/audio/test_recording_monitor.py 2>&1 | tee reader-completion.txt
+            tests/ui/test_backup_incremental_dialog.py tests/audio/test_recording_monitor.py tests/assistant/test_translation_batch.py tests/assistant/test_translation_batch_cli.py tests/assistant/test_translation_batch_ui.py tests/storage/test_backup_translation.py tests/transcription/test_runtime_review.py tests/transcription/test_supplied_worker_bridge.py 2>&1 | tee reader-completion.txt

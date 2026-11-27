@@ -45,7 +45,8 @@ class Widget:
 def dialog(monkeypatch):
     widgets, deferred, subscriptions, actions = [], [], [], []
     Widget.widgets = widgets
-    fixture = SimpleNamespace(driver=lambda _dialog: None, prepare_listening=None)
+    fixture = SimpleNamespace(driver=lambda _dialog: None, prepare_listening=None,
+                              allow_queue=False, review_playlist=None)
     class Dialog(Widget):
         def ShowModal(self):
             self.native()
@@ -54,7 +55,7 @@ def dialog(monkeypatch):
     class StaticText(Widget):
         pass
     wx = SimpleNamespace(Dialog=Dialog, StaticText=StaticText, TextCtrl=Widget,
-        Choice=Widget, ScrolledWindow=Widget,
+        Choice=Widget, ListBox=Widget, CheckBox=Widget, ScrolledWindow=Widget,
         Button=Widget, BoxSizer=Widget, GridSizer=Widget, ID_CANCEL=2,
         EVT_BUTTON='button')
     for key in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'EXPAND', 'ALL',
@@ -91,7 +92,8 @@ def dialog(monkeypatch):
     def show():
         return show_reader_playback(object(), player, execute=execute,
             stop=lambda: actions.append(('stop',)), pause=lambda: actions.append(('pause',)),
-            subscribe=fixture.subscribe, prepare_listening=fixture.prepare_listening)
+            subscribe=fixture.subscribe, prepare_listening=fixture.prepare_listening,
+            allow_queue=fixture.allow_queue, review_playlist=fixture.review_playlist)
     fixture.show = show
     def find(name):
         # A StaticText label and its explicitly named TextCtrl are distinct
@@ -425,3 +427,180 @@ def test_listening_close_destroys_native_dialog_when_cleanup_callback_raises(lis
     completed()
     failed(RuntimeError('Late completion after cleanup failure.'))
     assert view.actions == [('stop',)] and not view.deferred
+
+
+@pytest.fixture
+def levels_dialog(dialog):
+    from carr_library.speech._wave_output import PlaybackLevels
+    dialog.player.levels = PlaybackLevels(70)
+    dialog.player.live_mix_available = True
+    def set_levels(volume, *, muted=False, balance=0):
+        dialog.actions.append(('levels', volume, muted, balance))
+        dialog.player.levels = PlaybackLevels(volume, muted, balance)
+    dialog.player.set_levels = set_levels
+    return dialog
+
+
+def test_live_levels_capture_only_reviewed_values_before_quiet_wait(levels_dialog):
+    dialog = levels_dialog
+    def drive(window):
+        dialog.find('This player volume, 0 to 100').ChangeValue('35')
+        dialog.find('This player stereo balance, minus 100 left to 100 right').ChangeValue('-25')
+        dialog.find('Mute this player only').SetValue(True)
+        dialog.press('Apply player volume, mute and balance')
+        assert dialog.actions == [] and len(dialog.deferred) == 1
+        dialog.find('This player volume, 0 to 100').ChangeValue('100')
+        dialog.find('Mute this player only').SetValue(False)
+        dialog.deferred.pop(0)()
+        assert dialog.actions == [('levels', 35, True, -.25)]
+    dialog.driver = drive
+    dialog.show()
+
+
+@pytest.mark.parametrize('volume,balance', [('nan', '0'), ('101', '0'), ('50', 'inf'), ('50', '-101')])
+def test_invalid_live_levels_do_not_queue_or_mutate(levels_dialog, volume, balance):
+    dialog = levels_dialog
+    def drive(window):
+        dialog.find('This player volume, 0 to 100').ChangeValue(volume)
+        dialog.find('This player stereo balance, minus 100 left to 100 right').ChangeValue(balance)
+        dialog.press('Apply player volume, mute and balance')
+        assert 'Choose volume' in dialog.find('Current reader playback status').GetValue()
+    dialog.driver = drive
+    dialog.show()
+    assert not dialog.actions and not dialog.deferred
+
+
+def test_closed_controls_cannot_apply_a_waiting_volume_change(levels_dialog):
+    dialog = levels_dialog
+    dialog.driver = lambda window: dialog.press('Apply player volume, mute and balance')
+    dialog.show()
+    for widget in dialog.widgets:
+        widget.destroyed = True
+    dialog.deferred.pop(0)()
+    assert not dialog.actions
+
+
+def test_unavailable_backend_has_no_enabled_live_mixer(levels_dialog):
+    dialog = levels_dialog
+    dialog.player.live_mix_available = False
+    def drive(window):
+        assert not dialog.find('Apply player volume, mute and balance').enabled
+        assert not dialog.find('Mute this player only').enabled
+    dialog.driver = drive
+    dialog.show()
+    assert not dialog.actions
+
+
+@pytest.fixture
+def queue_dialog(dialog, monkeypatch):
+    from pathlib import Path
+    wx = sys.modules['wx']
+    class FileDialog(Widget):
+        def __enter__(self): return self
+        def __exit__(self, *args): self.Destroy()
+        def ShowModal(self): return wx.ID_OK
+        def GetPaths(self): return ['one.wav', 'two.wav']
+    wx.FileDialog, wx.ID_OK = FileDialog, 1
+    wx.FD_OPEN, wx.FD_FILE_MUST_EXIST, wx.FD_MULTIPLE = 1, 2, 4
+    dialog.allow_queue = True
+    items = tuple(SimpleNamespace(path=Path(name), duration_seconds=1)
+                  for name in ('one.wav', 'two.wav'))
+    dialog.player.playlist = items
+    dialog.player.playlist_index = None
+    dialog.player.queue_active = False
+    dialog.reviews, dialog.review_cancelled = [], []
+    def set_playlist(values):
+        dialog.actions.append(('queue', tuple(values)))
+        dialog.player.playlist = tuple(values)
+        dialog.player.playlist_index = None
+    dialog.player.set_playlist = set_playlist
+    dialog.player.play_queue = lambda index: dialog.actions.append(('play-queue', index))
+    dialog.player.select_queue = lambda index: dialog.actions.append(('select-queue', index))
+    def review(paths, completed, failed, *, active):
+        dialog.reviews.append((paths, completed, failed, active))
+        return lambda: dialog.review_cancelled.append(True)
+    dialog.review_playlist = review
+    dialog.items = items
+    return dialog
+
+
+def test_document_bound_reader_never_exposes_playlist_controls(queue_dialog):
+    dialog = queue_dialog
+    dialog.allow_queue = False
+    def drive(window):
+        assert not any(widget.name == 'Play queue from selected item' for widget in dialog.widgets)
+    dialog.driver = drive
+    dialog.show()
+    assert not dialog.actions
+
+
+def test_playlist_review_stops_then_waits_for_exact_worker_result_without_playing(queue_dialog):
+    dialog = queue_dialog
+    def drive(window):
+        dialog.press('Replace session playlist...')
+        assert dialog.actions == [('stop',)]
+        paths, completed, failed, active = dialog.reviews[0]
+        assert paths == ('one.wav', 'two.wav') and active()
+        assert not dialog.find('Play queue from selected item').enabled
+        completed(tuple(reversed(dialog.items)))
+        assert dialog.actions[-1] == ('queue', tuple(reversed(dialog.items)))
+        assert dialog.find('Play queue from selected item').enabled
+        assert not any(action[0] in ('play', 'play-queue') for action in dialog.actions)
+    dialog.driver = drive
+    dialog.show()
+
+
+def test_late_review_after_modal_close_is_cancelled_and_cannot_replace_queue(queue_dialog):
+    dialog = queue_dialog
+    dialog.driver = lambda window: dialog.press('Replace session playlist...')
+    dialog.show()
+    assert dialog.review_cancelled == [True]
+    for widget in dialog.widgets:
+        widget.destroyed = True
+    _, completed, failed, active = dialog.reviews[0]
+    assert not active()
+    completed(dialog.items)
+    failed(ValueError('late'))
+    assert dialog.actions == [('stop',)]
+
+
+def test_queue_item_is_frozen_before_deferred_quiet_admission(queue_dialog):
+    dialog = queue_dialog
+    def drive(window):
+        queue = dialog.find('Reviewed session playlist; choose an item explicitly')
+        queue.SetSelection(1)
+        dialog.press('Play queue from selected item')
+        queue.SetSelection(0)
+        assert not dialog.actions
+        dialog.deferred.pop(0)()
+        assert dialog.actions == [('play-queue', 1)]
+    dialog.driver = drive
+    dialog.show()
+
+
+def test_changed_playlist_cannot_retarget_a_deferred_item_action(queue_dialog):
+    dialog = queue_dialog
+    def drive(window):
+        dialog.press('Play queue from selected item')
+        dialog.player.playlist = tuple(reversed(dialog.items))
+        with pytest.raises(ValueError, match='playlist changed'):
+            dialog.deferred.pop(0)()
+        assert not dialog.actions
+    dialog.driver = drive
+    dialog.show()
+
+
+def test_reordering_and_removal_are_silent_owned_actions(queue_dialog):
+    dialog = queue_dialog
+    def drive(window):
+        queue = dialog.find('Reviewed session playlist; choose an item explicitly')
+        queue.SetSelection(0)
+        dialog.press('Stop and move item down')
+        assert dialog.player.playlist == tuple(reversed(dialog.items))
+        queue.SetSelection(1)
+        dialog.press('Stop and remove item')
+        assert dialog.player.playlist == (dialog.items[1],)
+        assert not dialog.deferred
+    dialog.driver = drive
+    dialog.show()
+    assert all(action[0] == 'queue' for action in dialog.actions)

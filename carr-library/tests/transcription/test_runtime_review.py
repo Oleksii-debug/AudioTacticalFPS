@@ -107,14 +107,17 @@ def test_inspection_is_inert_and_named_approval_is_exact(peer, monkeypatch):
     assert peer.service.list_runtimes()[-1]['id'] == profile['id']
 
 
-@pytest.mark.parametrize('changed', ['installed-file', 'record', 'pyvenv', 'path-config', 'package-removed'])
+@pytest.mark.parametrize('changed', ['installed-file', 'record', 'record-extra-fields', 'record-size', 'pyvenv', 'path-config', 'package-removed'])
 def test_installed_runtime_change_refuses_before_actual_child(peer, changed):
     identity = peer.service.submit([peer.source])
     if changed == 'installed-file':
         peer.payloads['numpy'].write_text('# Changed reviewed package bytes.\n', encoding='utf-8')
-    elif changed == 'record':
+    elif changed.startswith('record'):
         path = peer.site / 'numpy-0.synthetic.dist-info' / 'RECORD'
-        path.write_text(path.read_text(encoding='utf-8') + '\n', encoding='utf-8')
+        invalid_row = {'record': '\n',
+            'record-extra-fields': 'synthetic_numpy.py,,,extra\n',
+            'record-size': 'synthetic_numpy.py,,not-a-byte-count\n'}[changed]
+        path.write_text(path.read_text(encoding='utf-8') + invalid_row, encoding='utf-8')
     elif changed == 'pyvenv':
         path = peer.environment / 'pyvenv.cfg'
         path.write_text(path.read_text(encoding='utf-8') + '\n# Changed reviewed configuration.\n', encoding='utf-8')

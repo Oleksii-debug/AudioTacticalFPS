@@ -21,7 +21,7 @@ from bootstrap.vendor.cairn_extractors import hasher as bootstrap_hasher
 from carr_library.application import LibraryApp
 from carr_library.durable_state import read_json, atomic_json
 from carr_library.library_backup import restore_backup
-from carr_library.transcription import TranscriptionService, settings
+from carr_library.transcription import RuntimeReviewError, TranscriptionService, settings
 from carr_library.progress import ProgressHub, ProgressState, operation_outcome
 
 
@@ -188,7 +188,7 @@ def test_selected_virtualenv_remains_the_actual_worker_runtime(prepared, tmp_pat
     # Change only this fixture's entry, never the real interpreter behind it.
     executable.unlink()
     executable.write_bytes(b'Synthetic changed interpreter; never executed.')
-    with pytest.raises(ValueError, match='runtime changed'):
+    with pytest.raises(RuntimeReviewError, match='runtime or model changed'):
         service.configuration(verify=True)
     assert service.text(identity, source) == recognized
 
@@ -480,7 +480,7 @@ def test_worker_change_requires_explicit_reconfiguration(prepared):
     worker = configure()
     identity = service.submit([original])
     worker.write_text(worker.read_text(encoding='utf-8') + '\n# changed after selection\n', encoding='utf-8')
-    with pytest.raises(ValueError, match='runtime changed'):
+    with pytest.raises(RuntimeReviewError, match='runtime or model changed'):
         service.run(identity)
     assert service.get(identity)['status'] == 'ready'
 
@@ -550,7 +550,7 @@ def test_selected_runtime_changes_are_refused_before_child_launch(
         with target.open('ab') as stream:
             stream.write(b'changed selected runtime bytes')
 
-    with pytest.raises(ValueError, match='runtime changed'):
+    with pytest.raises(RuntimeReviewError, match='runtime or model changed'):
         service.run(identity, timeout=20)
 
     assert service.get(identity)['status'] == 'ready'
