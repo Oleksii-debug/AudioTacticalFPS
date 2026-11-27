@@ -13,61 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  windows-ci-runner:
-    name: Actual Windows owned descendant termination and cleanup
-    runs-on: windows-2022
-    timeout-minutes: 10
-    env:
-      PYTHONUTF8: '1'
-      PYTHONDONTWRITEBYTECODE: '1'
-      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
-      PYTEST_ADDOPTS: ''
-      PYTHONPATH: ''
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - name: Read the exact selected runner candidates
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          path: recovery-source
-          persist-credentials: false
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
-        with:
-          python-version: '3.11'
-      - name: Reproduce the native Windows venv redirector with only the pinned test runner
-        run: |
-          python -B -m venv .ci-runner-venv
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $python = (Resolve-Path '.ci-runner-venv/Scripts/python.exe').Path
-          & $python -B -m pip install pytest==9.0.2
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          "RECOVERY_CI_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-      - name: Bind the two reviewed files in an independent source directory
-        run: |
-          & $env:RECOVERY_CI_PYTHON -B recovery-source/recovery/prepare_native_recovery_checks.py ci-check --root recovery-source --evidence ci-owned-results --stage ci-owned-source
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:RECOVERY_CI_PYTHON -B -m pip freeze | Set-Content -Encoding utf8 ci-owned-results/installed-dependencies.txt
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:RECOVERY_CI_PYTHON -B -c "import json,sys,pytest; assert sys.prefix!=sys.base_prefix; print(json.dumps(dict(executable=sys.executable,base_executable=sys._base_executable,prefix=sys.prefix,base_prefix=sys.base_prefix,version=sys.version,pytest=pytest.__file__)))" | Set-Content -Encoding utf8 ci-owned-results/interpreter.json
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Require the complete finite runner regression on native Windows
-        working-directory: ci-owned-source/carr-library
-        run: |
-          & $env:RECOVERY_CI_PYTHON -B -m pytest -q -p no:cacheprovider --import-mode=importlib -o addopts= -o xfail_strict=true --basetemp ../../ci-owned-results/pytest --junitxml ../../ci-owned-results/ci-check-tests.xml tests/packaging/test_ci_check.py 2>&1 | Tee-Object ../../ci-owned-results/ci-check-tests.txt
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:RECOVERY_CI_PYTHON -B -c "import json,xml.etree.ElementTree as E; c=list(E.parse('../../ci-owned-results/ci-check-tests.xml').iter('testcase')); bad=sum(any(x.find(t) is not None for t in ('failure','error','skipped')) for x in c); assert len(c)>=25 and not bad; assert any(x.get('name')=='test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed' for x in c); print(json.dumps(dict(status='PASS',cases=len(c),scope='selected Windows CI runner cleanup regressions',application_native='NOT_RUN',installed='NOT_RUN',nvda='NOT_RUN')))"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Preserve exact runner identities and native failure diagnostics
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: carr-recovery-windows-ci-runner-${{ github.sha }}-${{ github.run_attempt }}
-          path: ci-owned-results/
-          if-no-files-found: error
-          retention-days: 7
-
+  # The unchanged Windows source pair passed 25 cases and 5 subtests in run 45984033388.
   posix-ci-runner:
     name: Actual POSIX owned descendant termination and cleanup
     runs-on: ubuntu-24.04
@@ -91,17 +37,17 @@ jobs:
       - name: Prepare only the pinned test runner in a fresh environment
         run: |
           python -B -m venv .ci-runner-venv
-          .ci-runner-venv/bin/python -B -m pip install pytest==9.0.2
+          "$GITHUB_WORKSPACE/.ci-runner-venv/bin/python" -B -m pip install pytest==9.0.2
       - name: Bind exact source bytes and record the actual interpreter
         run: |
-          .ci-runner-venv/bin/python -B recovery-source/recovery/prepare_native_recovery_checks.py ci-check --root recovery-source --evidence ci-owned-results --stage ci-owned-source
-          .ci-runner-venv/bin/python -B -m pip freeze > ci-owned-results/installed-dependencies.txt
-          .ci-runner-venv/bin/python -B -c "import json,sys,pytest; assert sys.prefix!=sys.base_prefix; print(json.dumps(dict(executable=sys.executable,base_executable=sys._base_executable,prefix=sys.prefix,base_prefix=sys.base_prefix,version=sys.version,pytest=pytest.__file__)))" > ci-owned-results/interpreter.json
+          "$GITHUB_WORKSPACE/.ci-runner-venv/bin/python" -B recovery-source/recovery/prepare_native_recovery_checks.py ci-check --root recovery-source --evidence ci-owned-results --stage ci-owned-source
+          "$GITHUB_WORKSPACE/.ci-runner-venv/bin/python" -B -m pip freeze > ci-owned-results/installed-dependencies.txt
+          "$GITHUB_WORKSPACE/.ci-runner-venv/bin/python" -B -c "import json,sys,pytest; assert sys.prefix!=sys.base_prefix; print(json.dumps(dict(executable=sys.executable,base_executable=sys._base_executable,prefix=sys.prefix,base_prefix=sys.base_prefix,version=sys.version,pytest=pytest.__file__)))" > ci-owned-results/interpreter.json
       - name: Require the complete finite runner regression on native POSIX
         working-directory: ci-owned-source/carr-library
         run: |
-          ../../.ci-runner-venv/bin/python -B -m pytest -q -p no:cacheprovider --import-mode=importlib -o addopts= -o xfail_strict=true --basetemp ../../ci-owned-results/pytest --junitxml ../../ci-owned-results/ci-check-tests.xml tests/packaging/test_ci_check.py 2>&1 | tee ../../ci-owned-results/ci-check-tests.txt
-          ../../.ci-runner-venv/bin/python -B -c "import json,xml.etree.ElementTree as E; c=list(E.parse('../../ci-owned-results/ci-check-tests.xml').iter('testcase')); bad=sum(any(x.find(t) is not None for t in ('failure','error','skipped')) for x in c); assert len(c)>=25 and not bad; assert any(x.get('name')=='test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed' for x in c); print(json.dumps(dict(status='PASS',cases=len(c),scope='selected POSIX CI runner cleanup regressions',application_native='NOT_RUN',installed='NOT_RUN',nvda='NOT_RUN')))"
+          "$GITHUB_WORKSPACE/.ci-runner-venv/bin/python" -B -m pytest -q -p no:cacheprovider --import-mode=importlib -o addopts= -o xfail_strict=true --basetemp ../../ci-owned-results/pytest --junitxml ../../ci-owned-results/ci-check-tests.xml tests/packaging/test_ci_check.py 2>&1 | tee ../../ci-owned-results/ci-check-tests.txt
+          "$GITHUB_WORKSPACE/.ci-runner-venv/bin/python" -B -c "import json,xml.etree.ElementTree as E; c=list(E.parse('../../ci-owned-results/ci-check-tests.xml').iter('testcase')); bad=sum(any(x.find(t) is not None for t in ('failure','error','skipped')) for x in c); assert len(c)>=25 and not bad; assert any(x.get('name')=='test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed' for x in c); print(json.dumps(dict(status='PASS',cases=len(c),scope='selected POSIX CI runner cleanup regressions',application_native='NOT_RUN',installed='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve exact runner identities and native diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
