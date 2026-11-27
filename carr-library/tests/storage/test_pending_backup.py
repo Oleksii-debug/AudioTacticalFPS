@@ -759,3 +759,48 @@ def test_pending_checkpoint_cancel_at_each_database_validation_boundary(tmp_path
         with pytest.raises(InterruptedError, match='cancelled'):
             pending._source_checkpoints(asset, raw, jobs, db, cancelled=cancelled)
         assert db.execute('SELECT count(*) FROM checkpoint').fetchone()[0] == 2
+
+
+
+# CARR-SEC-PENDING-SCAN-001: ignored transient names still consume directory
+# enumeration time. MAX_FILES alone bounds only retained journals.
+@pytest.mark.parametrize('directory', (
+    'import-requests', 'import-batches', 'import-requests/reviews',
+))
+def test_pending_inventory_bounds_ignored_transient_names(tmp_path, monkeypatch, directory):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    for i in range(4):
+        (parent / (f'{i:032x}' + '.tmp')).touch()
+    monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', 3)
+    with pytest.raises(ValueError, match='directory entries'):
+        pending._inventory(root)
+
+
+@pytest.mark.parametrize('directory,limit', (
+    ('import-requests', 4), ('import-batches', 4),
+    ('import-requests/reviews', 5),
+))
+def test_pending_inventory_allows_exact_scanned_entry_budget(
+        tmp_path, monkeypatch, directory, limit):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    for i in range(4):
+        (parent / (f'{i:032x}' + '.tmp')).touch()
+    monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', limit)
+    assert pending._inventory(root) == {}
+
+
+def test_pending_inventory_shared_budget_for_nested_and_outer_scans(tmp_path, monkeypatch):
+    root = tmp_path / 'library'
+    parent = root / 'import-requests'
+    review = parent / 'reviews'
+    review.mkdir(parents=True)
+    for i in range(2):
+        (parent / (f'{i:032x}' + '.tmp')).touch()
+        (review / (f'{i+2:032x}' + '.tmp')).touch()
+    monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', 4)
+    with pytest.raises(ValueError, match='directory entries'):
+        pending._inventory(root)
