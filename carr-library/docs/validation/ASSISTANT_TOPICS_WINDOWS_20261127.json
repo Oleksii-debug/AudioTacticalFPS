@@ -1,0 +1,301 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "scope": "Exact frozen topic component; no result transfer to later commits or other assistant tools.",
+  "run_id": 46027138165,
+  "job_id": 140601331020,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46027138165",
+  "artifact": {
+    "id": 15216986218,
+    "sha256": "3c208dee855213ef5b6135b606e1d9755223db39acaae48d249c7384002dbd09",
+    "bytes": 403232
+  },
+  "aggregate": {
+    "schema": 1,
+    "status": "PASS",
+    "source_cases": 94,
+    "installed_cases": 94,
+    "oracle_sha256": "d126d375d04a62c2115f4766001c17bf267eefc613f9acf53c7a2d167d449e48",
+    "qualification_adapter_sha256": "c095652581bd3571bac7156910db13dbe4fa5d572f107175a6a3897b7341a8ab",
+    "qualification_dispatch_sha256": "672449c25f95b87041f9838d482a807b43ed0c9afdff42e5eaf4f96ea5a09fcc",
+    "native_checks": 23,
+    "nvda": "NOT_RUN",
+    "language_model_quality": "NOT_QUALIFIED",
+    "physical_audio": "NOT_RUN",
+    "source_commit": "3366cd3584c3810b3d54b1177b9a833402e4c7a9",
+    "source_tree": "d0d29f74ae742557133d0521685745cf0f717dc1",
+    "wheel_sha256": "bfb3bcbc0c4d2bd51d1a965d017878f326ff415fe3f4c10a1aa74fed41f65d21",
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "native_gui": "PASS",
+    "actual_outbound_block": "PASS",
+    "firewall_cleanup": "PASS",
+    "existing_cases_retained": 0,
+    "native_receipt_sha256": "9f004b4d9d2cc9236dfd8d6329c02ea24aea593744ed9c062188ba217ad32b95",
+    "new_topic_cases": 94
+  },
+  "source": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "source",
+    "declared_cases": 94,
+    "timeout_seconds": 1500,
+    "oracle_sha256": "d126d375d04a62c2115f4766001c17bf267eefc613f9acf53c7a2d167d449e48",
+    "source_commit": "3366cd3584c3810b3d54b1177b9a833402e4c7a9",
+    "source_tree": "d0d29f74ae742557133d0521685745cf0f717dc1",
+    "wheel_sha256": "bfb3bcbc0c4d2bd51d1a965d017878f326ff415fe3f4c10a1aa74fed41f65d21",
+    "checkout_manifest_sha256": "f84b8122a086677650a66b4b0a0f7888d663e7f4186855945bbeff475ea01b64",
+    "tracked_source_files": 1499,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "test_source_sha256": {
+      "tests/assistant/test_topic_tools.py": "0ab093515328605e5f1c454781dc11cd64c4b201c3305e64cad9015205f8494e",
+      "tests/assistant/test_topic_crash_recovery.py": "bd35b4ff8cfc8a3c22197a531d3bf417b62e39e5e6f0f8d862086bf9bb6244d3",
+      "tests/assistant/test_topic_state.py": "fc984f4bc8ed7b982b50e4b7cfaa27472dfdf214243ca78a97d75615f3f361ec",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.assistant.test_topic_crash_recovery": {
+        "test_real_process_exit_around_topic_commit_recovers_one_deterministic_topic": 2,
+        "test_real_process_exit_before_and_after_publication_recovers_only_owned_bytes": 4,
+        "test_postcrash_output_cannot_be_replaced_or_adopted_by_hash_only": 4,
+        "test_real_link_publication_crash_rejects_unknown_or_changed_twins_without_cleanup": 3,
+        "test_prepared_crash_refuses_changed_evidence_or_an_unowned_destination": 2,
+        "test_committed_link_cleanup_failure_remains_complete_with_an_owned_notice": 1
+      },
+      "tests.assistant.test_topic_state": {
+        "test_forged_topic_receipts_fail_pure_validation_without_opening_saved_paths": 15,
+        "test_rehashed_plan_cannot_retarget_a_topic_reference_to_another_tool": 1,
+        "test_completed_topic_membership_is_checked_against_the_backup_database": 1,
+        "test_complete_backup_recovery_preserves_topic_jobs_templates_and_external_path_inertia": 1,
+        "test_combined_templates_rebase_each_local_topic_reference_without_mutating_saved_drafts": 1,
+        "test_existing_cli_previews_then_explicitly_runs_topic_steps": 2,
+        "test_shared_export_prepared_failure_preserves_destination_and_cleans_owned_stage": 2,
+        "test_prepared_hook_observes_fsynced_stage_before_atomic_publisher_runs": 1
+      },
+      "tests.assistant.test_topic_tools": {
+        "test_native_guided_topics_preview_is_readonly_and_nested_run_is_scoped": 2,
+        "test_invalid_topic_references_refuse_the_whole_plan_before_earlier_creation": 8,
+        "test_reference_to_an_earlier_noncreation_step_is_rejected": 1,
+        "test_unreviewed_topic_arguments_cannot_run_an_earlier_valid_step": 15,
+        "test_current_library_creation_can_feed_nested_topics_without_an_alternate_store": 1,
+        "test_topic_export_preserves_exact_verified_source_notes_and_renderer_format": 5,
+        "test_each_topic_tool_requires_current_library_scope": 3,
+        "test_topic_budgets_fail_visibly_before_publication": 2,
+        "test_changed_completed_topic_is_refused_without_recreating_or_continuing": 4,
+        "test_existing_new_file_conflict_is_refused_before_inspecting_its_bytes": 1,
+        "test_concurrent_output_after_review_is_never_claimed_or_overwritten": 2,
+        "test_concurrent_creation_after_staging_keeps_the_foreign_file_and_removes_only_own_stage": 1,
+        "test_stop_preserves_the_actual_topic_export_commit_boundary": 3,
+        "test_postpublication_directory_sync_failure_is_a_completed_receipt_not_a_retry": 1,
+        "test_topic_output_aliases_are_refused_before_any_creation": 4,
+        "test_current_thirteen_tools_remain_allowed_alongside_exact_three_topic_tools": 1
+      }
+    },
+    "interpreter_sha256": "c82650b82b62be7208d04e62214d9924d53be64013532103734b036e525e50c8",
+    "actual_cases": 94,
+    "elapsed_seconds": 23.98399999999998
+  },
+  "installed": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "installed",
+    "declared_cases": 94,
+    "timeout_seconds": 1500,
+    "oracle_sha256": "d126d375d04a62c2115f4766001c17bf267eefc613f9acf53c7a2d167d449e48",
+    "source_commit": "3366cd3584c3810b3d54b1177b9a833402e4c7a9",
+    "source_tree": "d0d29f74ae742557133d0521685745cf0f717dc1",
+    "wheel_sha256": "bfb3bcbc0c4d2bd51d1a965d017878f326ff415fe3f4c10a1aa74fed41f65d21",
+    "checkout_manifest_sha256": "f84b8122a086677650a66b4b0a0f7888d663e7f4186855945bbeff475ea01b64",
+    "tracked_source_files": 1499,
+    "source_only_python": {
+      "bootstrap/semantic_compat/probe.py": "c51758108a418c7bf98ddd459cefdca852777b07cfc95ac669855b1195398ac7",
+      "bootstrap/semantic_compat/test_probe.py": "ae093cae9f00307c09d2ea787dacf7c8c1522184e5480a411c0979023b7b70bb"
+    },
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "test_source_sha256": {
+      "tests/assistant/test_topic_tools.py": "0ab093515328605e5f1c454781dc11cd64c4b201c3305e64cad9015205f8494e",
+      "tests/assistant/test_topic_crash_recovery.py": "bd35b4ff8cfc8a3c22197a531d3bf417b62e39e5e6f0f8d862086bf9bb6244d3",
+      "tests/assistant/test_topic_state.py": "fc984f4bc8ed7b982b50e4b7cfaa27472dfdf214243ca78a97d75615f3f361ec",
+      "tests/__init__.py": "bda1d1b86fa69f604fb87c19f27628942b6bd77aa46b605efbc9cb9d4457183d"
+    },
+    "runner_sha256": {
+      "audio_batch_acceptance.py": "3fcb217a7ed9d535ea9d277191a27504f8e6f452bef235b728036358f9e6e003",
+      "ci_check.py": "a7e90c3a14dc51b78c9af17850a7038bf21513cc5ba41466293cc853cd0e2842",
+      "ci_watchdog.py": "e02be6a6c3406bdf1d9d4c24673363894d03a1ee7948b3b77d6b20fcc2bfc057"
+    },
+    "pytest_exit": 0,
+    "case_counter": {
+      "tests.assistant.test_topic_crash_recovery": {
+        "test_real_process_exit_around_topic_commit_recovers_one_deterministic_topic": 2,
+        "test_real_process_exit_before_and_after_publication_recovers_only_owned_bytes": 4,
+        "test_postcrash_output_cannot_be_replaced_or_adopted_by_hash_only": 4,
+        "test_real_link_publication_crash_rejects_unknown_or_changed_twins_without_cleanup": 3,
+        "test_prepared_crash_refuses_changed_evidence_or_an_unowned_destination": 2,
+        "test_committed_link_cleanup_failure_remains_complete_with_an_owned_notice": 1
+      },
+      "tests.assistant.test_topic_state": {
+        "test_forged_topic_receipts_fail_pure_validation_without_opening_saved_paths": 15,
+        "test_rehashed_plan_cannot_retarget_a_topic_reference_to_another_tool": 1,
+        "test_completed_topic_membership_is_checked_against_the_backup_database": 1,
+        "test_complete_backup_recovery_preserves_topic_jobs_templates_and_external_path_inertia": 1,
+        "test_combined_templates_rebase_each_local_topic_reference_without_mutating_saved_drafts": 1,
+        "test_existing_cli_previews_then_explicitly_runs_topic_steps": 2,
+        "test_shared_export_prepared_failure_preserves_destination_and_cleans_owned_stage": 2,
+        "test_prepared_hook_observes_fsynced_stage_before_atomic_publisher_runs": 1
+      },
+      "tests.assistant.test_topic_tools": {
+        "test_native_guided_topics_preview_is_readonly_and_nested_run_is_scoped": 2,
+        "test_invalid_topic_references_refuse_the_whole_plan_before_earlier_creation": 8,
+        "test_reference_to_an_earlier_noncreation_step_is_rejected": 1,
+        "test_unreviewed_topic_arguments_cannot_run_an_earlier_valid_step": 15,
+        "test_current_library_creation_can_feed_nested_topics_without_an_alternate_store": 1,
+        "test_topic_export_preserves_exact_verified_source_notes_and_renderer_format": 5,
+        "test_each_topic_tool_requires_current_library_scope": 3,
+        "test_topic_budgets_fail_visibly_before_publication": 2,
+        "test_changed_completed_topic_is_refused_without_recreating_or_continuing": 4,
+        "test_existing_new_file_conflict_is_refused_before_inspecting_its_bytes": 1,
+        "test_concurrent_output_after_review_is_never_claimed_or_overwritten": 2,
+        "test_concurrent_creation_after_staging_keeps_the_foreign_file_and_removes_only_own_stage": 1,
+        "test_stop_preserves_the_actual_topic_export_commit_boundary": 3,
+        "test_postpublication_directory_sync_failure_is_a_completed_receipt_not_a_retry": 1,
+        "test_topic_output_aliases_are_refused_before_any_creation": 4,
+        "test_current_thirteen_tools_remain_allowed_alongside_exact_three_topic_tools": 1
+      }
+    },
+    "interpreter_sha256": "b4e675dc1a583644e47b1c5d61761f317c10c67efb7f5af1f0bf3292108092bb",
+    "actual_cases": 94,
+    "elapsed_seconds": 25.937000000000012
+  },
+  "native": {
+    "schema": 1,
+    "status": "PASS",
+    "mode": "native",
+    "oracle_sha256": "d126d375d04a62c2115f4766001c17bf267eefc613f9acf53c7a2d167d449e48",
+    "qualification_adapter_sha256": "c095652581bd3571bac7156910db13dbe4fa5d572f107175a6a3897b7341a8ab",
+    "qualification_dispatch_sha256": "672449c25f95b87041f9838d482a807b43ed0c9afdff42e5eaf4f96ea5a09fcc",
+    "source_commit": "3366cd3584c3810b3d54b1177b9a833402e4c7a9",
+    "source_tree": "d0d29f74ae742557133d0521685745cf0f717dc1",
+    "probe_sha256": "63d1f23a4b08300e67cc2d637fad08b769df8963e5edce4bb6997a39b371bbba",
+    "wheel_sha256": "bfb3bcbc0c4d2bd51d1a965d017878f326ff415fe3f4c10a1aa74fed41f65d21",
+    "native_exit": 0,
+    "actual_checks": 23,
+    "receipt": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "checks": [
+        "native_topic_scope_and_actions_are_named",
+        "native_topic_instruction_accepts_keyboard_focus",
+        "native_unreviewed_topic_draft_cannot_run",
+        "native_topic_preview_has_no_jobs_or_new_topics",
+        "native_review_exposes_all_three_topic_tools",
+        "native_explicit_run_available_only_after_preview",
+        "native_current_dialog_completes_five_topic_steps",
+        "native_created_topics_use_deterministic_scoped_references",
+        "native_topic_list_excludes_unselected_workspace",
+        "native_new_child_export_uses_its_resolved_topic",
+        "native_exact_evidence_export_preserves_original_bytes",
+        "native_export_keeps_commentary_separate_and_origins_visible",
+        "native_created_outputs_leave_no_staging_files",
+        "native_run_preserves_original_catalog_and_evidence",
+        "native_result_is_visible_after_owned_worker_finishes",
+        "native_assistant_workers_settle_before_backup",
+        "actual_named_topic_workflow_is_an_inert_draft",
+        "actual_backup_restore_preserves_all_scoped_topics",
+        "actual_backup_restore_preserves_exact_evidence",
+        "actual_restored_topic_job_requires_new_approval",
+        "actual_restored_job_does_not_replay_external_exports",
+        "actual_restore_retains_inert_topic_template",
+        "actual_rebound_topic_template_is_preview_only"
+      ],
+      "module_origins": {
+        "carr_library.assistant.models": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\models.py",
+          "sha256": "20b9671999c69fd9137d55d5caa5718b906d7117aeb17a5a283d75cc7e3b3e03"
+        },
+        "carr_library.assistant.service": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\service.py",
+          "sha256": "31ca39a1946f0eaffff48ccc427738ae2bd26f9173e3fac8fd5c5ff4d87eccfd"
+        },
+        "carr_library.assistant.validation": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\validation.py",
+          "sha256": "3adbad60e71c56a17cedc2f8f3849c32a7eaf08faf507d80b2d2284a7eb84c0e"
+        },
+        "carr_library.assistant.topic_tools": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\topic_tools.py",
+          "sha256": "d26e4b5aa4e1b3cbc0081839de5ee8ced6ec83f0f5343a328594c3e1c8883ab0"
+        },
+        "carr_library.assistant.templates": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\templates.py",
+          "sha256": "f2626597dff51a4f557381d2646d6b70343be2d8bfe2b632400cb4ff1e13e258"
+        },
+        "carr_library.assistant.snapshots": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\assistant\\snapshots.py",
+          "sha256": "3e82cb208edc6207819de1319a6924a4aea4d195705a4a4ab93c989d044ebf5a"
+        },
+        "carr_library.research.topic_tree": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\research\\topic_tree.py",
+          "sha256": "62a15d723aac7bf3669203c4eff079a7f7f1a0b2e1dd0a6cd881fc799fb3ee16"
+        },
+        "carr_library.research.evidence_export": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\research\\evidence_export.py",
+          "sha256": "c31c606f4c89d2682d3a159682fc4d75138fbaeed19f6e78df427e9adad32505"
+        },
+        "carr_library.research.export_file": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\research\\export_file.py",
+          "sha256": "8e3c7bbeaea57f43d61496659017cbf9c57378f085e2d249bcbd4e212de912da"
+        },
+        "carr_library.ui.assistant_dialog": {
+          "path": "D:\\a\\_temp\\carr-assistant-topics-46027138165-1\\installed\\Lib\\site-packages\\carr_library\\ui\\assistant_dialog.py",
+          "sha256": "e24120555fa6c5363da5e73de831aa27d69c441392804fd2de88fc6a05de05ae"
+        }
+      },
+      "metrics": {
+        "completed_steps": 5,
+        "new_topics": 2,
+        "exported_files": 2,
+        "restored_scoped_topics": 3,
+        "retained_template_records": 1,
+        "restored_jobs_replayed": 0
+      },
+      "nvda": "NOT_RUN",
+      "language_model_quality": "NOT_QUALIFIED",
+      "physical_audio": "NOT_RUN"
+    },
+    "native_output_sha256": "d1cc804602205bd25e104616c7b3826c6d90c4bfdad0475c442d8406d1e3d53c"
+  },
+  "independent_log_review": {
+    "exact_function_counters": true,
+    "exact_native_label_counter": true,
+    "exact_metrics": true,
+    "ten_native_origins_match_installed_wheel_proof": true
+  },
+  "limits": {
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "model_quality": "NOT_QUALIFIED",
+    "later_assistant_transcription": "NOT_RUN"
+  }
+}

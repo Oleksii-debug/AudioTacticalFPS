@@ -142,8 +142,15 @@ def run(work):
         timers.append(wx.CallLater(25, invoke))
 
     def settings_window():
-        values = [window for window in wx.GetTopLevelWindows()
-                  if isinstance(window, wx.Dialog) and window.GetTitle() == 'Progress feedback']
+        values = []
+        for window in wx.GetTopLevelWindows():
+            if (not window or not isinstance(window, wx.Dialog) or window.IsBeingDeleted()
+                    or not window.IsShown() or not window.IsModal()
+                    or window.GetTitle() != 'Progress feedback'):
+                continue
+            if window.GetParent() is not frame:
+                raise AssertionError('An active progress settings dialog belongs to another owner.')
+            values.append(window)
         if len(values) > 1:
             raise AssertionError('Multiple native progress settings owners appeared.')
         return values[0] if values else None
@@ -174,7 +181,8 @@ def run(work):
                 press(choose)
             if state['stage'] == 'voice':
                 candidates = [window for window in wx.GetTopLevelWindows()
-                              if isinstance(window, wx.SingleChoiceDialog)
+                              if window and isinstance(window, wx.SingleChoiceDialog)
+                              and not window.IsBeingDeleted() and window.IsShown() and window.IsModal()
                               and window.GetTitle() == 'Local progress voice' and window.GetParent() is dialog]
                 if candidates:
                     if len(candidates) != 1:
@@ -200,7 +208,8 @@ def run(work):
                     selector.EndModal(wx.ID_OK)
             elif state['stage'] == 'language':
                 candidates = [window for window in wx.GetTopLevelWindows()
-                              if isinstance(window, wx.SingleChoiceDialog)
+                              if window and isinstance(window, wx.SingleChoiceDialog)
+                              and not window.IsBeingDeleted() and window.IsShown() and window.IsModal()
                               and window.GetTitle() == 'Progress notice language' and window.GetParent() is dialog]
                 if candidates:
                     if len(candidates) != 1:

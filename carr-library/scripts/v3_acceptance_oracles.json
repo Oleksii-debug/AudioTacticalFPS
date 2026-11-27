@@ -1342,7 +1342,9 @@
       "test_saved_receipt_cannot_substitute_another_action_or_prepared_source": 9,
       "test_saved_seek_receipt_requires_the_same_measured_position_bound": 2,
       "test_started_playback_receipt_never_means_whole_book_completion": 1,
-      "test_supported_commands_require_exact_source_and_typed_observations": 9
+      "test_supported_commands_require_exact_source_and_typed_observations": 9,
+      "test_punctuation_requires_a_typed_boolean_in_current_commands": 6,
+      "test_saved_receipt_cannot_silently_drop_enabled_punctuation": 1
     },
     "tests.ui.test_assistant_interactive": {
       "test_async_prepare_does_not_report_success_before_real_owner_settlement": 1,
@@ -1359,7 +1361,10 @@
       "test_previewed_native_target_cannot_rebind_after_owner_or_source_changes": 4,
       "test_replaced_prepared_pcm_is_refused_before_player_action": 1,
       "test_settings_are_snapshotted_and_changed_voice_refuses_before_dispatch": 1,
-      "test_unavailable_native_player_never_uses_a_path_discovered_fallback": 1
+      "test_unavailable_native_player_never_uses_a_path_discovered_fallback": 1,
+      "test_punctuation_capture_preserves_default_shape_and_explicit_enabled_setting": 2,
+      "test_punctuation_change_after_preview_refuses_dispatch_in_both_directions": 2,
+      "test_explicit_false_punctuation_keeps_legacy_effective_settings": 1
     },
     "tests.assistant.test_derived_tools": {
       "test_approved_resource_limits_are_checked_before_preparation": 2,
@@ -3919,7 +3924,9 @@
       "test_saved_receipt_cannot_substitute_another_action_or_prepared_source": 9,
       "test_saved_seek_receipt_requires_the_same_measured_position_bound": 2,
       "test_started_playback_receipt_never_means_whole_book_completion": 1,
-      "test_supported_commands_require_exact_source_and_typed_observations": 9
+      "test_supported_commands_require_exact_source_and_typed_observations": 9,
+      "test_punctuation_requires_a_typed_boolean_in_current_commands": 6,
+      "test_saved_receipt_cannot_silently_drop_enabled_punctuation": 1
     },
     "tests.ui.test_assistant_interactive": {
       "test_async_prepare_does_not_report_success_before_real_owner_settlement": 1,
@@ -3936,7 +3943,10 @@
       "test_previewed_native_target_cannot_rebind_after_owner_or_source_changes": 4,
       "test_replaced_prepared_pcm_is_refused_before_player_action": 1,
       "test_settings_are_snapshotted_and_changed_voice_refuses_before_dispatch": 1,
-      "test_unavailable_native_player_never_uses_a_path_discovered_fallback": 1
+      "test_unavailable_native_player_never_uses_a_path_discovered_fallback": 1,
+      "test_punctuation_capture_preserves_default_shape_and_explicit_enabled_setting": 2,
+      "test_punctuation_change_after_preview_refuses_dispatch_in_both_directions": 2,
+      "test_explicit_false_punctuation_keeps_legacy_effective_settings": 1
     },
     "tests.assistant.test_derived_tools": {
       "test_approved_resource_limits_are_checked_before_preparation": 2,

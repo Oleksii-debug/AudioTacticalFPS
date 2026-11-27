@@ -264,7 +264,10 @@ def test_semantic_commands_preserve_custom_binding_and_busy_menu_states(native_b
     frame, existing, _ = native_boundary
     existing.close()
     notices = Notifications()
-    monkeypatch.setattr(native_progress, 'NotificationWorker', lambda preferences: notices)
+    def worker(preferences, *, library_root):
+        assert library_root == frame.library.root
+        return notices
+    monkeypatch.setattr(native_progress, 'NotificationWorker', worker)
     view = native_progress.install_operation_progress(frame)
     assert native_progress.install_operation_progress(frame) is view
     frame.keyboard_commands.apply_overrides({'progress.query': 'Ctrl+Alt+Shift+F8'})

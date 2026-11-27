@@ -1,0 +1,127 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REPAIR_RUNTIME_NOT_RUN",
+  "base_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+  "original_frozen_results": [
+    {
+      "run_id": 46027131158,
+      "job_id": 140601307818,
+      "source_commit": "3366cd3584c3810b3d54b1177b9a833402e4c7a9",
+      "conclusion": "failure",
+      "artifact": {
+        "id": 15214729856,
+        "size_in_bytes": 442678,
+        "sha256": "02b3d68d7a80059dd59855fc9fc8edcd3bc6d2440fe0f97eca0adad76eb4282e"
+      },
+      "observed_native_check_labels": {
+        "native_main_template_action_named": 1,
+        "native_original_plan_preview_only": 1,
+        "native_template_controls_named": 1,
+        "native_empty_inventory_no_job": 1,
+        "save_all_observes_pending_settings": 1,
+        "native_save_publishes_inert_draft": 1,
+        "save_all_waits_for_durable_completion": 1,
+        "native_rename_uses_same_identity_revision": 1,
+        "native_update_commits_reviewed_revision": 1,
+        "native_load_clears_previous_permissions": 1,
+        "native_loaded_draft_cannot_run_before_preview": 1,
+        "native_fresh_scope_preview_creates_no_job": 1,
+        "native_explicit_run_completes_current_scope": 1,
+        "native_results_use_only_new_workspace": 1,
+        "actual_selected_template_export": 1,
+        "actual_import_creates_new_inert_identity": 1,
+        "actual_complete_backup_includes_typed_templates": 1,
+        "actual_restore_preserves_exact_inert_templates": 1,
+        "actual_restored_old_job_requires_reapproval": 1,
+        "actual_restored_template_rebind_is_preview_only": 1,
+        "actual_rebackup_preserves_template_inventory": 1
+      }
+    },
+    {
+      "run_id": 46030084065,
+      "job_id": 140611362879,
+      "source_commit": "2efb0cd239dfec331be303ecb6c0fe73b323668a",
+      "conclusion": "failure",
+      "artifact": {
+        "id": 15216905136,
+        "size_in_bytes": 416237,
+        "sha256": "6ec92625cf4fdb3df97032cdcd22a6aeebe0b84dab06e18836a12685c7ab223e"
+      },
+      "observed_native_check_labels": {
+        "native_progress_owner_bound_to_first_library": 1,
+        "native_progress_settings_controls_named": 1,
+        "native_registered_voice_has_keyboard_focus": 1,
+        "native_first_library_registration_is_selectable": 1,
+        "native_notice_language_selection_is_explicit": 1,
+        "native_saved_voice_matches_current_registration_fingerprint": 1,
+        "native_synthetic_registration_did_not_enable_audio": 1,
+        "native_cancel_keeps_exact_preferences_and_runtime": 1,
+        "native_library_change_rebinds_same_private_output": 1,
+        "native_second_library_has_its_own_registered_choice": 1,
+        "native_second_library_saves_separate_voice_metadata": 1
+      }
+    }
+  ],
+  "repairs": [
+    {
+      "paths": [
+        "src/carr_library/assistant/interactive_tools.py",
+        "src/carr_library/ui/assistant_interactive.py"
+      ],
+      "classification": "product composition bug",
+      "observed": "Both template source and installed phases reported 501 passed / 5 failed. SpeechSettings acquired punctuation=False; NativeReaderBridge expanded asdict into the earlier exact settings schema.",
+      "change": "Use current SpeechSettings.engine_options, validate optional boolean punctuation, normalize disabled punctuation to the historical seven-field shape, bind enabled punctuation in current preview and saved receipts.",
+      "new_tests": {
+        "source": 12,
+        "installed": 12
+      },
+      "retained_old_failing_cases": 5
+    },
+    {
+      "paths": [
+        "tests/ui/test_progress_view.py"
+      ],
+      "classification": "test fixture contract mismatch",
+      "observed": "Both progress phases reported 145 passed / 1 failed. One NotificationWorker lambda rejected library_root.",
+      "change": "Fixture accepts the explicit library_root keyword and asserts it is the selected frame library; all existing assertions retained.",
+      "case_count_unchanged": 146
+    },
+    {
+      "paths": [
+        "scripts/windows_progress_registered_smoke.py"
+      ],
+      "classification": "native probe discovery mismatch",
+      "observed": "The probe emitted 11 of its 16 expected check labels, including both library selections, before a later settings selection counted more than one top-level title. Product Destroy is deferred; raw labels do not establish aggregate native PASS.",
+      "change": "Require actual shown/modal/non-deleting dialogs belonging to this frame. Multiple simultaneously active matching owners still fail; no arbitrary first-window selection."
+    },
+    {
+      "paths": [
+        "scripts/windows_workflow_templates_smoke.py"
+      ],
+      "classification": "native probe interaction mismatch",
+      "observed": "Probe completed first modal and full backup/restore/rebackup, then watchdog stack remained inside wx.MessageBox at removal after parent WM_COMMAND / IDYES.",
+      "change": "Resolve the same owned current-process native Yes button by GetDlgItem(IDYES), require visible/enabled, activate its dialog and post BM_CLICK to that button. Require the existing exact durable deletion outcome afterward.",
+      "primary_sources": [
+        "https://github.com/wxWidgets/wxWidgets/blob/v3.2.8/src/msw/msgdlg.cpp",
+        "https://learn.microsoft.com/en-us/windows/win32/controls/bm-click"
+      ]
+    }
+  ],
+  "successor_required": {
+    "templates": {
+      "source": 518,
+      "installed": 518,
+      "native": 24
+    },
+    "progress": {
+      "source": 146,
+      "installed": 146,
+      "native": 16
+    }
+  },
+  "limitations": [
+    "These are source repairs pending execution.",
+    "Failed frozen runs and their artifacts remain unchanged.",
+    "No NVDA, physical audio, model quality or source-to-installed success is inferred from a source review."
+  ]
+}
