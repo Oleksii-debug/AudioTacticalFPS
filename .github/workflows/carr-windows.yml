@@ -642,7 +642,8 @@ jobs:
             'tests/storage/test_historical_asr_cache_policy.py',
             'tests/storage/test_atomic_state_publication.py',
             'tests/audio/test_ffmpeg_process_boundaries.py',
-            'tests/ui/test_save_actions_routes.py'
+            'tests/ui/test_save_actions_routes.py',
+            'tests/ui/test_progress_numeric_limits.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1661,7 +1662,8 @@ jobs:
               'tests/storage/test_historical_asr_cache_policy.py',
               'tests/storage/test_atomic_state_publication.py',
               'tests/audio/test_ffmpeg_process_boundaries.py',
-              'tests/ui/test_save_actions_routes.py'
+              'tests/ui/test_save_actions_routes.py',
+              'tests/ui/test_progress_numeric_limits.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

@@ -85,7 +85,8 @@ def finalize(results):
                     canonical_progress_cases=ORACLE.get('canonical_progress_cases', 0),
                     headless_admission_cases=ORACLE.get('headless_admission_cases', 0),
                     canonical_state_cases=ORACLE.get('canonical_state_cases', 0),
-                    ffmpeg_process_boundary_cases=ORACLE.get('ffmpeg_process_boundary_cases', 0))
+                    ffmpeg_process_boundary_cases=ORACLE.get('ffmpeg_process_boundary_cases', 0),
+                    canonical_progress_numeric_cases=ORACLE.get('canonical_progress_numeric_cases', 0))
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)

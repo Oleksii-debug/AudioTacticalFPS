@@ -207,3 +207,134 @@ and addressed the concrete provider, topic, preference, registered-voice and
 historical-cache gaps described here. This bounded disposition must be combined
 with the other family's source review and the final composed-head qualification
 before any whole-project completion statement.
+
+## Addendum: native save routes and original test-file disposition
+
+The additional source boundary is canonical
+a44fac04072389caa40e0d6e799b13797712f797 against integrated
+9e27ef8649408038b5fc116e6f9bdded71d6371b. An exact path comparison found 88 absent
+test-tree blobs: 86 Python files, one PPTX fixture and one private-voice README.
+This addendum examines only the 35 assistant/library-assistant/progress/storage/
+UI paths enumerated in
+CANONICAL_ASSISTANT_PROVIDER_BACKUP_PROGRESS_TEST_DISPOSITION_20261127.json.
+That file records each original blob, original test-function names, and exact
+current test/probe blobs. This is a source contract mapping, not one-to-one
+pytest collection equivalence or a transfer of the original test verdicts.
+
+### Native File/Edit entry points
+
+A real discoverability gap was identified in canonical ui/save_actions.py.
+Current Save and Save All already used the completion-aware SaveCoordinator,
+and the evidence panel already offered source-bound recovery, but the main
+window lacked canonical Edit and File recovery menu routes. Component
+dc30b29d724b0033f968b838142366469e3901b8 adds those routes only in the current
+ui/productivity.py. It registers seven current semantic commands and delegates
+to the current focused native control or current evidence panel. Closing,
+foreign/cyclic ownership, read-only mutation and unavailable native actions are
+refused. It does not install another save owner or automatically commit a
+recovered draft.
+
+The new tests/ui/test_save_actions_routes.py declares 34 cases. Its focused
+89/89 qualification retains the existing 35 productivity + 17 Save All + 3
+current-draft cases. The existing native_save_all_smoke.py keeps its 27 save/
+close observations and adds 11 actual Edit/recovery observations. The final
+report is emitted only after GUI, retained tasks, temporary scope and optional
+DLL cleanup. The probe explicitly adapts Redo to the selected native control's
+reported capability instead of claiming unavailable control behavior. Source
+reviews by root and the capacity peer found no blocker; runtime evidence belongs
+only to the exact frozen run, not this document. A later watchdog-only successor
+changes 300 to 240 seconds so the diagnostic stack precedes the full gate's
+300-second parent timeout; the 89/89/38 populations and frozen dc30 ref remain
+unchanged.
+
+### Owned speech cleanup
+
+Canonical ui/worker_cleanup.py queues service.close after active work on its
+serial executor. The current live-reader owner already implements this ordering:
+Close requests Stop; a live future retains its session and PCM; once it settles,
+cleanup runs on that same serial worker; only confirmed session/player release
+permits modal destruction. The real-thread regression
+tests/ui/test_live_reading.py::test_close_waits_for_real_synthesis_worker_before_destroying_utterance
+and retained-PCM test_stop_refusal_preserves_pcm_until_actual_owner_release
+exercise the current boundary. Current audio/cleanup.py and recording/playback
+tests cover delayed native cleanup. The current design keeps a refusing reader
+open for retry; it does not copy the alternate closed-dialog retained-registry
+helper or pretend the lifetime designs have identical callbacks.
+
+### Additional findings that must remain visible
+
+The canonical generic-state retry tests revealed a separate current-family
+boundary. Root's bcb66742afcff1e5c6d887c32042d90682536972 ports the seven canonical
+generic Windows sharing/access retry cases through one lazy current helper;
+native audio state publication remains separate. That component's runtime
+evidence is pending its exact composed gate.
+
+Two further public boundaries were found by this test audit and are not marked
+covered merely because related services exist:
+
+* Canonical assistant/test_supplied_transcription.py executes audio.transcribe
+  through AssistantService with its saved intent, original source/runtime
+  binding, real owned child and exact output recovery. Baseline9e27 has no such
+  allowed tool. Standalone supplied-ASR service/UI/CLI tests are necessary but
+  do not close that assistant workflow. A thin current-service adapter is now
+  assigned; its eventual source and tests need their own evidence.
+* Canonical ui/test_progress_numeric_limits.py includes measured-count bounds.
+  Current preference/tone ranges already reject huge values before conversion,
+  but baseline progress._counts lacks the canonical maximum of 10**15. Root is
+  implementing that narrow count/ETA boundary and focused regressions.
+
+Historical engine-declaration tests are a deliberate schema distinction:
+state/audio/engines.json is preserved as bounded passive original state, while
+current machine-bound EngineProfileStore entries are not silently reactivated.
+This does not claim that every malformed-field test for the alternate
+engine-settings validator executes against the current producer. Current
+unknown active typed namespaces still fail visibly.
+
+### Original test paths and current contract owners
+
+Paths in this table are relative to tests/. The JSON file gives immutable
+blob identities and the complete reason/limitation for each row.
+
+| Original canonical test path | Current test paths / disposition |
+| --- | --- |
+| assistant/test_local_planning.py | assistant/test_local_llm.py; assistant/test_planning_handlers.py; assistant/test_planning_runtime.py |
+| assistant/test_local_planning_loopback.py | loopback/test_local_planning.py |
+| assistant/test_providers.py | e2e/test_provider_gateway.py; e2e/test_provider_transport_boundaries.py; e2e/test_provider_transport_contract.py; e2e/test_provider_ledger_lifetime.py; e2e/test_provider_credential_echo.py; e2e/test_provider_profile_import.py |
+| assistant/test_supplied_transcription.py | transcription/test_supplied_worker_bridge.py; test_transcription_service.py; storage/test_supplied_transcription_backup.py — **OPEN at baseline** |
+| assistant/test_translation_v3.py | assistant/test_translation_advanced.py; e2e/test_google_translation_v3.py; ui/test_translation_advanced.py; ui/test_translation_dialog.py |
+| library_assistant/test_library_workflow.py | assistant/test_local_assistant.py; assistant/test_topic_tools.py; assistant/test_topic_crash_recovery.py; assistant/test_topic_state.py; assistant/test_checkpoint_publication.py; assistant/test_backup_receipt.py; assistant/test_canonical_backup.py |
+| library_assistant/test_library_workflow_ui.py | assistant/test_dialog_lifecycle.py; assistant/test_planning_handlers.py; assistant/test_workflow_template_handlers.py |
+| progress/test_progress_contract.py | ui/test_shared_progress.py; ui/test_operation_progress.py |
+| progress/test_progress_feedback.py | ui/test_shared_progress.py; ui/test_operation_progress.py |
+| progress/test_progress_media_integration.py | ui/test_operation_progress.py; ui/test_progress_view.py; ui/test_progress_registered_voices.py; ui/test_recording_dialog.py |
+| progress/test_progress_preferences.py | ui/test_shared_progress.py; ui/test_progress_compatibility.py; ui/test_progress_concurrency.py |
+| progress/test_progress_reporting_failure.py | ui/test_progress_view.py |
+| storage/probe_backup_v4_producer_models.py | storage/test_backup_productivity_state.py; storage/test_backup_unified_audio.py; storage/test_live_reading_backup.py; storage/test_preparation_backup.py |
+| storage/test_atomic_state_publication.py | storage/test_state_json_reader.py |
+| storage/test_backup_generated_audio.py | storage/test_backup_unified_audio.py; audio/test_publication.py; storage/test_audio_batch_backup.py; storage/test_playback_queue_backup.py; storage/test_backup_content_revalidation.py |
+| storage/test_backup_keyboard_drafts.py | storage/test_backup_productivity_state.py; storage/test_evidence_drafts.py; storage/test_keyboard_preferences.py; ui/test_evidence_draft_recovery.py |
+| storage/test_backup_pending_common4.py | storage/test_complete_pending_backup.py; storage/test_backup_pending_integration.py; storage/test_pending_backup.py; storage/test_pending_backup_ocr.py; storage/test_streamed_source_backup.py |
+| storage/test_backup_primary_producers.py | storage/test_backup_assistant_state.py; storage/test_provider_recovery.py; storage/test_backup_unified_audio.py; storage/test_legacy_reader_session_backup.py; storage/test_backup_content_revalidation.py |
+| storage/test_backup_translation.py | assistant/test_translation.py; assistant/test_translation_advanced.py; assistant/test_translation_scopes.py |
+| storage/test_backup_v4_sidecars.py | storage/test_backup_schema_identity.py; storage/test_backup_v3_compatibility.py; storage/test_library_backup_reading_state.py; storage/test_backup_pending_integration.py; storage/test_backup_content_revalidation.py; storage/test_crash_backup.py |
+| storage/test_engine_settings_backup.py | storage/test_backup_pending_integration.py; storage/test_legacy_state_portability.py; audio/test_engine_profiles.py — passive format policy differs |
+| storage/test_engine_settings_dordiai_backup.py | storage/test_backup_pending_integration.py; storage/test_legacy_state_portability.py; audio/test_engine_profiles.py — passive format policy differs |
+| storage/test_progress_preferences_backup.py | ui/test_progress_compatibility.py; ui/test_operation_progress.py; storage/test_backup_productivity_state.py; ui/test_progress_registered_voices.py |
+| storage/test_state_backup_portability.py | storage/test_legacy_state_portability.py; storage/test_backup_boundary.py; storage/test_backup_pending_integration.py |
+| storage/test_state_snapshot_identity.py | storage/test_backup_content_revalidation.py; storage/test_backup_source_binding_review.py |
+| storage/test_v3_state_backup.py | storage/test_backup_pending_integration.py; storage/test_backup_v3_compatibility.py; storage/test_backup_schema_identity.py; storage/test_backup_content_revalidation.py; storage/test_legacy_transcription_compatibility.py; storage/test_historical_asr_cache_policy.py |
+| ui/native_library_workflow_smoke.py | scripts/windows_topic_tools_smoke.py; scripts/windows_workflow_templates_smoke.py |
+| ui/native_progress_smoke.py | scripts/progress_registered_acceptance.py; scripts/windows_progress_registered_smoke.py; scripts/windows_progress_smoke.py; scripts/windows_shared_progress_smoke.py |
+| ui/test_platform_modal_lifecycle.py | assistant/test_dialog_lifecycle.py; assistant/test_workflow_template_handlers.py; ui/test_live_reading.py; ui/test_save_all.py |
+| ui/test_progress_job_results.py | ui/test_progress_view.py; ui/test_operation_progress.py |
+| ui/test_progress_media_quiet.py | ui/test_shared_progress.py; ui/test_operation_progress.py; ui/test_progress_view.py; ui/test_recording_dialog.py |
+| ui/test_progress_numeric_limits.py | ui/test_shared_progress.py; ui/test_progress_compatibility.py — **OPEN at baseline** |
+| ui/test_progress_panel_state.py | ui/test_progress_view.py; ui/test_progress_concurrency.py |
+| ui/test_progress_voice_actions.py | ui/test_operation_progress.py; ui/test_progress_registered_voices.py; ui/test_live_reading.py; ui/test_live_playback_controls.py; ui/test_playback_queue.py |
+| ui/test_worker_cleanup.py | ui/test_live_reading.py; audio/test_cleanup_wait.py; ui/test_recording_dialog.py |
+
+No table row asserts that an old filename, function name or number of cases is
+itself qualified behavior. In particular original unittest classes are retained
+through actual classname-aware full collection, private protocol actors do not
+qualify private voices, and a source checkpoint does not close the two open
+public boundaries above.

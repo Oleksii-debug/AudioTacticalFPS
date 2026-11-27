@@ -24,12 +24,22 @@ class SystemDirectory:
         return len(self.path) if self.size is None else self.size
 
 
+def selected_ctypes(monkeypatch, loader):
+    # Replace this module's selector only. Path validation in audio.jobs must
+    # keep its real GetDriveTypeW and other independently owned Win32 APIs.
+    actual = standard.ctypes
+    class SelectedApi:
+        def __getattr__(self, name):
+            return loader if name == 'WinDLL' else getattr(actual, name)
+    monkeypatch.setattr(standard, 'ctypes', SelectedApi())
+
+
 def system_directory(monkeypatch, root, *, size=None):
     lookup = SystemDirectory(root, size)
     def load(name, *, use_last_error):
         assert name == 'kernel32' and use_last_error is True
         return SimpleNamespace(GetSystemDirectoryW=lookup)
-    monkeypatch.setattr(standard.ctypes, 'WinDLL', load, raising=False)
+    selected_ctypes(monkeypatch, load)
     return lookup
 
 
@@ -109,7 +119,7 @@ def test_system_api_failure_does_not_fall_back_to_environment_or_path(tmp_path, 
     monkeypatch.setenv('PATH', str(helper.parent))
     def fail(*args, **kwargs):
         raise OSError('synthetic system API unavailable')
-    monkeypatch.setattr(standard.ctypes, 'WinDLL', fail, raising=False)
+    selected_ctypes(monkeypatch, fail)
     with pytest.raises(OSError, match='synthetic system API unavailable'):
         standard.WindowsStandardHost._powershell()
 

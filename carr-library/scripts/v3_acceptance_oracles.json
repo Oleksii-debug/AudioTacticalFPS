@@ -2617,6 +2617,14 @@
       "test_unknown_edit_action_cannot_gain_arbitrary_method_access": 3,
       "test_adding_recovery_route_keeps_durable_save_all_waiting_for_confirmation": 1,
       "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
+    },
+    "tests.ui.test_progress_numeric_limits": {
+      "test_extreme_integers_are_validation_errors": 6,
+      "test_extreme_number_in_saved_preferences_is_a_readable_validation_error": 1,
+      "test_count_endpoints_need_verified_completion_before_one_hundred": 2,
+      "test_invalid_count_preserves_the_existing_event_and_sequence": 10,
+      "test_unknown_total_accepts_the_bound_and_refuses_excess_without_completion": 1,
+      "test_largest_supported_total_has_a_finite_measured_eta_and_readable_status": 1
     }
   },
   "installed": {
@@ -5166,6 +5174,14 @@
       "test_unknown_edit_action_cannot_gain_arbitrary_method_access": 3,
       "test_adding_recovery_route_keeps_durable_save_all_waiting_for_confirmation": 1,
       "test_reinstall_retains_existing_routes_and_coordinator_without_duplicate_menus": 1
+    },
+    "tests.ui.test_progress_numeric_limits": {
+      "test_extreme_integers_are_validation_errors": 6,
+      "test_extreme_number_in_saved_preferences_is_a_readable_validation_error": 1,
+      "test_count_endpoints_need_verified_completion_before_one_hundred": 2,
+      "test_invalid_count_preserves_the_existing_event_and_sequence": 10,
+      "test_unknown_total_accepts_the_bound_and_refuses_excess_without_completion": 1,
+      "test_largest_supported_total_has_a_finite_measured_eta_and_readable_status": 1
     }
   },
   "native_trust": [

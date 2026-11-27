@@ -399,7 +399,7 @@ def main():
         return 77
     handle = None
     faulthandler.enable()
-    faulthandler.dump_traceback_later(300, exit=True)
+    faulthandler.dump_traceback_later(240, exit=True)
     print('PHASE native save and Edit routes started', flush=True)
     try:
         from carr_library.native_runtime import activate_bundled_runtime

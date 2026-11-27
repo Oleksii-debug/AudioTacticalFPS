@@ -2,7 +2,7 @@
   "schema": 1,
   "component": "Preserved publication, canonical recovery, progress settings, native manifests and headless admission",
   "authoring_status": "NOT_RUN",
-  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases.",
+  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases.",
   "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
   "failure_run_id": 45993629737,
   "tests": {
@@ -153,13 +153,22 @@
       "test_cancel_before_spawn_does_not_start_a_child": 1,
       "test_bounded_nonzero_child_remains_failure_with_its_diagnostic": 1,
       "test_launch_failure_closes_only_the_owned_diagnostic_file": 1
+    },
+    "tests/ui/test_progress_numeric_limits.py": {
+      "test_extreme_integers_are_validation_errors": 6,
+      "test_extreme_number_in_saved_preferences_is_a_readable_validation_error": 1,
+      "test_count_endpoints_need_verified_completion_before_one_hundred": 2,
+      "test_invalid_count_preserves_the_existing_event_and_sequence": 10,
+      "test_unknown_total_accepts_the_bound_and_refuses_excess_without_completion": 1,
+      "test_largest_supported_total_has_a_finite_measured_eta_and_readable_status": 1
     }
   },
-  "total_cases": 279,
+  "total_cases": 300,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
   "canonical_progress_cases": 59,
   "headless_admission_cases": 9,
   "canonical_state_cases": 13,
-  "ffmpeg_process_boundary_cases": 7
+  "ffmpeg_process_boundary_cases": 7,
+  "canonical_progress_numeric_cases": 21
 }

@@ -25,6 +25,7 @@ from .ingest.writer_guard import exclusive_writer
 
 FILENAME = 'progress-preferences.json'
 MAX_BYTES = 16 * 1024
+MAX_UNITS = 10**15
 MODES = ('off', 'beep', 'speech', 'beep_speech')
 STATES = frozenset(('running', 'paused', 'complete', 'failed', 'cancelled'))
 TERMINAL = frozenset(('complete', 'failed', 'cancelled'))
@@ -285,10 +286,11 @@ class ProgressEvent:
 
 
 def _counts(completed, total):
-    if type(completed) is not int or completed < 0:
-        raise ValueError('Completed work must be a nonnegative integer.')
-    if total is not None and (type(total) is not int or total < 0 or completed > total):
-        raise ValueError('Total work must be a nonnegative integer at least as large as completed work.')
+    if type(completed) is not int or not 0 <= completed <= MAX_UNITS:
+        raise ValueError('Completed work must be a nonnegative integer no greater than 10**15.')
+    if total is not None and (type(total) is not int or not completed <= total <= MAX_UNITS):
+        raise ValueError('Total work must be a nonnegative integer at least as large as '
+                         'completed work and no greater than 10**15.')
 
 
 class ProgressHub:

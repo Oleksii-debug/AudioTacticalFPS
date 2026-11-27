@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "status": "SOURCE_RECONCILIATION_NOT_RUN",
+  "canonical_commit": "a44fac04072389caa40e0d6e799b13797712f797",
+  "canonical_test": "tests/ui/test_progress_numeric_limits.py",
+  "base": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+  "component": "e2039c104225670c86ed6d0ac34af10427c1d71a",
+  "contract": {
+    "minimum": 0,
+    "maximum": 1000000000000000,
+    "integer_only": true,
+    "unknown_total_allowed": true,
+    "verified_completion_only": true
+  },
+  "issue": "The current count validator accepted arbitrary-size nonnegative integers. A later measured ETA could overflow; malformed counts could enter an existing operation.",
+  "repair": "Restore the canonical finite count limit before start/update mutation, preserving the current shared hub, preferences, cue generation and all prior sequence/concurrency behavior.",
+  "coverage": {
+    "canonical_numeric_scenarios": 7,
+    "additional_count_state_eta_cases": 14,
+    "total_per_mode": 21
+  },
+  "preserved": [
+    "0 and10**15 accepted as valid count endpoints.",
+    "Boolean, fractional, negative and excessive values refused before event/sequence mutation.",
+    "Unknown totals remain indeterminate.",
+    "100percent remains reserved for verified durable completion.",
+    "Existing interval/volume/frequency/cue range checks remain unchanged; malformed saved preferences are not rewritten."
+  ],
+  "execution": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN"
+  }
+}
