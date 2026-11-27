@@ -22,7 +22,6 @@ base.SUPPORT = (*base.SUPPORT, 'tests/ui/test_operation_progress.py',
                 'tests/audio/test_music_adapters.py',
                 'tests/ingest/test_worker_publication_boundary.py',
                 'tests/storage/backup_compat_fixture.py',
-                'tests/ui/__init__.py',
                 'tests/ui/test_import_center.py')
 read, write, require, file_hash = base.read, base.write, base.require, base.file_hash
 source_identity, installed_identity = base.source_identity, base.installed_identity
