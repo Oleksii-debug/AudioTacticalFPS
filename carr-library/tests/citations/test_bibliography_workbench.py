@@ -182,3 +182,23 @@ def test_invalid_name_convention_fails_without_changing_data(mode, value):
     snapshot = json.dumps([dict(id='one', type='book', title='Title', author=[dict(literal=value)])])
     with pytest.raises(ValueError):
         records_for_style(snapshot, name_mode=mode)
+
+
+def test_native_citation_document_reuses_scoped_export_and_excludes_private_notes(research, tmp_path):
+    from carr_library.citations.documents import read_citation_docx
+    controller, row, workbench = research
+    preview = workbench.preview(identity=row.id, style='chicago-note', name_mode='family-given')
+    destination = tmp_path / 'editable-citations.docx'
+    workbench.export(preview, destination, format='docx-citations', require_absent=True)
+    snapshot = read_citation_docx(destination)
+    assert snapshot['style']['id'] == 'chicago-note'
+    assert 'PrivateNote' not in json.dumps(snapshot)
+    assert snapshot['quotation_verified'] is False
+    original = destination.read_bytes()
+    with pytest.raises(FileExistsError):
+        workbench.export(preview, destination, format='docx-citations', require_absent=True)
+    assert destination.read_bytes() == original
+    controller.update(row, {'title': 'Changed after preview'})
+    with pytest.raises(ValueError, match='changed'):
+        workbench.export(preview, tmp_path / 'stale-editable.docx', format='docx-citations')
+    assert not (tmp_path / 'stale-editable.docx').exists()
