@@ -325,6 +325,23 @@ def test_actual_process_receipts_progress_and_text_revision_export(service, sour
     assert service.get(identity)['state'] == 'succeeded'
 
 
+def test_final_progress_failure_cannot_rewrite_verified_completion(service, source, engine, monkeypatch):
+    identity = service.submit([source])
+    spec = engine()
+    called = []
+    def failed_observer(done, total, phase):
+        if phase == 'Verified every requested transcript output':
+            called.append((done, total))
+            raise RuntimeError('Synthetic final progress observer failure')
+    result = service.run(identity, engine=spec, progress=failed_observer)
+    assert called == [(1, 1)]
+    assert result['state'] == result['receipt']['state'] == 'succeeded'
+    assert len(result['receipt']['artifacts']) == 4
+    assert service.get(identity) == result  # Full source/output verification.
+    patch_worker_popen(monkeypatch, lambda *a, **k: pytest.fail('completed work was executed again'))
+    assert service.run(identity, engine=spec) == result
+
+
 @pytest.mark.parametrize('mode', ['wrong-job','stale-run','wrong-count','source-hash','source-path',
     'source-duplicate','artifact-hash','artifact-size','artifact-escape','artifact-absolute',
     'artifact-duplicate','artifact-unlisted','artifact-case','artifact-link','input-changed',

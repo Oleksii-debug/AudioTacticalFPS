@@ -704,7 +704,13 @@ class TranscriptionService:
                             + str(process.returncode) + ').' + (' Worker diagnostic: ' + diagnostic if diagnostic else ''))
                     atomic_json(root / 'job.json', job, replace=True)
                     if job['state'] == 'succeeded':
-                        progress(len(job['inputs']), len(job['inputs']), 'Verified every requested transcript output')
+                        try:
+                            progress(len(job['inputs']), len(job['inputs']), 'Verified every requested transcript output')
+                        except Exception:
+                            # Final feedback is an observer of the durable,
+                            # fully verified result. It cannot rewrite success
+                            # as failure or trigger another worker execution.
+                            pass
                     return job
             except Exception as exc:
                 job['state'], job['error'] = ('cancelled' if isinstance(exc, InterruptedError) else 'failed'), str(exc)[:8000]
