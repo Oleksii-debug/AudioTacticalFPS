@@ -1,4 +1,5 @@
 """Enclosing manifest and publication integration for resumable import backups."""
+from contextlib import closing
 from uuid import uuid4
 from hashlib import sha256
 import json
@@ -160,6 +161,7 @@ def test_unpinned_prepared_request_restores_verified_hash_before_explicit_resume
 
 @pytest.mark.parametrize('version', [3, 4])
 def test_actual_legacy_sidecar_shapes_remain_restorable(tmp_path, version):
+    from carr_library.storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
     from carr_library.reader.reading_desk import ReadingDesk
     from carr_library.reader.reading_state import ReadingState
     from carr_library.progress import ProgressSettings, ProgressSettingsStore
@@ -175,6 +177,21 @@ def test_actual_legacy_sidecar_shapes_remain_restorable(tmp_path, version):
     create_backup(app, folder)
     manifest = _manifest(folder)
     manifest['version'] = version
+    # These are genuine old sidecar layouts over their released V4 catalog,
+    # not a current database with only the enclosing version number changed.
+    database = folder / 'library.sqlite'
+    with closing(sqlite3.connect(database)) as db:
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
+        for name in ('no_update', 'no_delete', 'no_replace'):
+            db.execute('DROP TRIGGER import_publication_' + name)
+        db.execute('DROP TABLE import_publication')
+        db.execute('PRAGMA user_version=4')
+        db.commit()
+        assert schema_fingerprint(db) == expected_schema_fingerprint(4)
+    manifest['schema_version'] = 4
+    manifest['schema_fingerprint'] = expected_schema_fingerprint(4)
+    manifest['database']['size_bytes'] = database.stat().st_size
+    manifest['database']['sha256'] = sha256(database.read_bytes()).hexdigest()
     del manifest['pending']
     shutil.rmtree(folder / 'pending')
     if version == 3:

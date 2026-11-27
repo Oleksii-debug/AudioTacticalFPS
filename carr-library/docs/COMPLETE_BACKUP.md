@@ -45,6 +45,12 @@ version-1 through version-4 layouts and validates their database schema. Older
 backups contain only the state supported by their original format; unknown or
 mixed manifest fields are rejected.
 
+The enclosing manifest version and the database schema version are separate.
+Current snapshots contain catalog schema V5 with immutable import-publication
+receipts. Exact released catalog schemas V3 and V4 still restore unchanged;
+opening the restored library performs the checked transactional upgrade. A
+migration never invents ownership receipts for historical source revisions.
+
 ## Unfinished imports and prepared requests
 
 The pending component includes supported import batches, durable requests,
@@ -75,6 +81,21 @@ preserved. The final rebased request and batch bytes must still fit their reader
 size limits. Original request IDs, batch IDs, work/edition IDs, journal jobs,
 runtime/model identities, checkpoints, statuses and exact review attestations
 remain bound to the same source.
+
+A stopped child may have committed its source before its reply was lost. The
+parent reports completion only after confirmed child termination, an immutable
+SQLite receipt owned by that exact request and execution attempt, and a fresh
+check of the source bytes, pages, workspace and catalog registration. A peer
+import of identical bytes cannot complete the stopped request. Metadata and
+configuration participate in the receipt digest; relocated paths and mutable
+progress do not.
+
+Backup keeps the immutable receipts in the catalog snapshot. Restore clears
+process-bound execution attempts and candidate hints, because no child is
+running in the restored folder. Historical results, request IDs and journal
+identities remain. An explicit resume obtains a new attempt, validates the
+retained inputs and can reuse an existing sealed revision without duplicating
+it or transferring its original receipt.
 
 Restoration never starts an import or external retry. Review the restored queue
 and explicitly resume the selected work. The normal runtime and review checks

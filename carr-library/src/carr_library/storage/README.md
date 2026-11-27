@@ -13,3 +13,42 @@ No destructive down migration; future migrations must be versioned and backed up
 ## Reproduction
 From carr-library: PYTHONPATH=src python -m pytest -q tests/storage/test_revisions.py (Linux); Python 3.13.5, SQLite 3.46.1. 5 passed in 0.11s, exit 0. Source Git blob d1ffd0829a6680d7af7a172186ce7db991de3dfe; test blob fb852dfba3f52e998e25d5f3c7b3dabcbe0e95a9.
 One synthetic 10,000-page run, one workspace/edition, each page text "Synthetic page {i} historical river bridge archive", AMD EPYC 9V74 (5 visible CPUs), Linux x86_64: publication 0.1041s, check 0.0502s, rebuild 0.1238s, database 3,117,056 bytes. This is a single run, not a performance SLA. Windows and independent review NOT_RUN.
+
+## Current host: import publication receipts (schema V5)
+
+The earlier candidate notes above are historical. The current application keeps
+the existing catalog, source revisions and import journal. Schema V5 adds one
+immutable receipt in `library.sqlite`, committed in the same transaction as the
+source revision. It binds that publication to its import request, execution
+attempt and validated source fingerprint. The attempt comes from the trusted
+parent's stdin message and must match its persisted request; ordinary direct
+calls never infer ownership from a sidecar. The logical input digest includes
+metadata, extraction configuration and the source hash, excluding rebased
+library/source paths and mutable progress. Identical imports retain their
+deterministic revision ID; a second request cannot make a cancelled first
+request claim its commit. A sidecar candidate is only a hint and requires this
+receipt plus fresh authorization and retained-source verification.
+
+Exact V3 and V4 databases upgrade transactionally after schema and data checks.
+The released V1–V4 layouts and fingerprints remain unchanged. Existing revisions
+receive no invented receipts. Full backups include receipts in the normal
+SQLite snapshot; old backups restore at their original version before the host
+performs its checked upgrade. Restoring pending requests clears process-bound
+attempts and candidate hints, while immutable historical receipts remain.
+These records report completion only and grant no quotation approval.
+
+## Selective reuse and qualification
+
+The schema, transaction receipt and child-process race regression are adapted
+from PR150 commit `d3bdb56730770d676201d8449823594755c81324`. The host retains its
+document-format registry, pending-backup manifest V5, typed assistant sidecars
+and existing aggregate budgets. The subprocess supervisor API is unchanged.
+
+PR150's integrated Windows source run 45927037402 passed. Its installed run
+45927037329 recorded 225 passed and 25 failed: the test scheduling hook
+intercepted Windows `taskkill` as though it were the Python worker bootstrap.
+The adapted fixture changes only that interception boundary; real child
+termination, time limits and publication assertions remain active. These are
+upstream observations, not qualification of this adapted tree. Execution for
+this isolated adaptation is NOT_RUN while the executor is unavailable; the
+combined source and installed Windows gates must run its exact files.

@@ -17,8 +17,8 @@ restored job requires a new review of its current permissions before execution.
 Version 5 adds a typed pending-import component to the exact version-4 shape.
 All new backups use version 5, including an empty typed pending manifest.
 Legacy version 1/2/3/4 backups and version 5 backups are accepted only for an exact
-supported V3 or V4 database schema. V3 snapshots are restored unchanged; opening the
-restored library performs the normal checked upgrade to V4.
+supported V3, V4 or V5 database schema. Older snapshots are restored unchanged;
+opening the restored library performs the normal checked upgrade to the current schema.
 Restoration always creates a new data directory and never merges or overwrites.
 """
 from contextlib import closing
@@ -38,7 +38,7 @@ from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import _regular_if_present, exclusive_writer
 from .data_paths import guard_data_directory
-from .storage.revisions import Storage
+from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
@@ -354,14 +354,14 @@ def create_backup(app, destination, *, max_bytes=None, max_files=None,
         with TemporaryDirectory(prefix='.carr-library-backup-', dir=destination.parent) as tmp:
             stage = Path(tmp)
             snapshot = stage / DATABASE
-            with closing(Storage(app.database, schema_version=4)) as storage:
+            with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.backup(snapshot)
             _check_cancelled(cancelled)
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
             _check_backup_budget(size, 2, maximum_bytes, maximum_files)
-            with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+            with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 planned = catalog_inventory(snapshot_storage.db,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 _check_backup_budget(size + sum(entry.size for entry in planned),
@@ -388,7 +388,7 @@ def create_backup(app, destination, *, max_bytes=None, max_files=None,
             total_files += len(pending['files'])
             _check_backup_budget(total_bytes, total_files, maximum_bytes, maximum_files)
             manifest = dict(version=5,
-                kind='carr-library', schema_version=4,
+                kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries), sidecars=_sidecar_manifest(sidecars),
@@ -456,7 +456,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         fields.add('pending')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 4 and manifest['provider_restore_mode'] != 'LOCAL_ONLY':
