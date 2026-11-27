@@ -61,7 +61,7 @@ jobs:
           python packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-v3-results/ocr-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Verify installed backup and import publication integrity
+      - name: Verify installed source translation, backup and import publication integrity
         timeout-minutes: 10
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
@@ -75,6 +75,8 @@ jobs:
           import carr_library.speech.runtime, carr_library.academic_integration.doi
           import carr_library.speech.session
           import carr_library.storage.revisions, carr_library.storage.schema_identity
+          import carr_library.assistant.translation, carr_library.assistant.providers
+          import carr_library.ui.translation_dialog
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
@@ -82,7 +84,9 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
-                   'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
+                   'carr_library.storage.revisions', 'carr_library.storage.schema_identity',
+                   'carr_library.assistant.translation', 'carr_library.assistant.providers',
+                   'carr_library.ui.translation_dialog')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
@@ -110,7 +114,9 @@ jobs:
                     'tests/speech/test_reading.py',
                     'tests/speech/test_source.py',
                     'tests/speech/test_session.py',
-                    'tests/packaging/test_worker_bytecode.py']
+                    'tests/packaging/test_worker_bytecode.py',
+                    'tests/assistant/test_translation.py',
+                    'tests/assistant/test_providers.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
