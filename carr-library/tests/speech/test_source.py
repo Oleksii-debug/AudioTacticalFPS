@@ -199,6 +199,7 @@ def _exercise_reader_project(tmp_path, monkeypatch, *, archive_during_picker=Fal
             assert get_ident() == main
             assert not self.destroyed
         def SetName(self, value): self.native(); self.name = value
+        def SetToolTip(self, value): self.native(); self.tooltip = value
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
         def GetValue(self): self.native(); return self.value
@@ -1136,6 +1137,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             assert get_ident() == main
             assert not self.destroyed
         def SetName(self, value): self.native(); self.name = value
+        def SetToolTip(self, value): self.native(); self.tooltip = value
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
         def GetValue(self): self.native(); return self.value
