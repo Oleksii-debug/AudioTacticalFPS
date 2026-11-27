@@ -8,6 +8,8 @@ import wave
 import math
 import shutil
 
+import pytest
+
 from carr_library.audio.ffmpeg import (wav_info, silence, concatenate, process_voice,
     mix_scene, measure_peak, effect_filters, _write_header)
 from carr_library.audio.jobs import RenderCancelled, publish_new
@@ -94,6 +96,38 @@ class SignalTests(unittest.TestCase):
             boosted=process_voice(root/'source.wav',root/'boost.wav',ffmpeg=FFMPEG,sample_rate=8000,
                                   effects=(Effect('equalizer',(('frequency',1000),('gain_db',6),('q',1))),))
             self.assertGreater(measure_peak(boosted)['peak'],measure_peak(flat)['peak']*1.8)
+
+
+@pytest.mark.parametrize('operation', ['voice', 'silence', 'concatenate', 'mix', 'transcode'])
+def test_cancellation_at_actual_publication_preserves_input_and_absent_output(tmp_path, monkeypatch, operation):
+    from carr_library.audio import ffmpeg as audio
+    assert FFMPEG.is_file(), 'Publication acceptance requires actual FFmpeg.'
+    source = audio.silence(tmp_path / 'source.wav', 8000, sample_rate=8000)
+    original = source.read_bytes()
+    output = tmp_path / ('output.flac' if operation == 'transcode' else 'output.wav')
+    publish, stopped = audio.publish_new, [False]
+
+    def stop_after_render_before_copy(source_path, destination, **options):
+        stopped[0] = True
+        return publish(source_path, destination, **options)
+
+    monkeypatch.setattr(audio, 'publish_new', stop_after_render_before_copy)
+    cancelled = lambda: stopped[0]
+    operations = {
+        'voice': lambda: audio.process_voice(source, output, ffmpeg=FFMPEG,
+                                             sample_rate=8000, cancelled=cancelled),
+        'silence': lambda: audio.silence(output, 8000, sample_rate=8000, cancelled=cancelled),
+        'concatenate': lambda: audio.concatenate([source], output, cancelled=cancelled),
+        'mix': lambda: audio.mix_scene(source, None, output, ffmpeg=FFMPEG, cancelled=cancelled),
+        'transcode': lambda: audio.transcode(source, output, ffmpeg=FFMPEG, format='flac',
+                                            cancelled=cancelled),
+    }
+    with pytest.raises(RenderCancelled):
+        operations[operation]()
+    assert stopped[0], 'Cancellation must begin at real publication after rendering.'
+    assert source.read_bytes() == original
+    assert not output.exists()
+    assert sorted(path.name for path in tmp_path.iterdir()) == ['source.wav']
 
 
 if __name__=='__main__':

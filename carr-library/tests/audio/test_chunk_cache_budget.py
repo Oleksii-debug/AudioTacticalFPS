@@ -1,11 +1,147 @@
 """Retained corruption and complete sealed payloads obey the cache budget."""
 import hashlib
+import os
+from pathlib import Path
+import subprocess
+import sys
 import wave
 
 import pytest
 
 from carr_library.audio import jobs
 from carr_library.audio.jobs import ChunkCache, RenderCancelled
+
+
+@pytest.mark.parametrize('marker', ['[]', 'null', '"scalar"', '42', 'true'])
+def test_nonobject_checkpoint_is_quarantined_with_all_retained_bytes(tmp_path, marker):
+    staged = source(tmp_path / 'staging', companions=True)
+    cache = ChunkCache(tmp_path / 'cache')
+    cache.seal(key(), staged, companions=('.mid', '.music.json'))
+    checkpoint = cache.root / (key() + '.json')
+    checkpoint.write_text(marker, encoding='utf-8')
+    before = contents(cache.root)
+    retained = sizes(cache.root)
+
+    assert cache.get(key()) is None
+
+    quarantined = contents(cache.root / 'quarantine')
+    assert sorted(quarantined.values()) == sorted(before.values())
+    assert len(quarantined) == 4
+    assert not checkpoint.exists()
+    assert cache.used == sizes(cache.root) == retained
+    reopened = ChunkCache(cache.root, disk_budget_bytes=retained)
+    assert reopened.used == retained
+    with pytest.raises(RuntimeError, match='disk budget'):
+        reopened.reserve(1)
+
+
+def test_export_is_an_independent_copy_of_immutable_cache(tmp_path):
+    source_path, destination = tmp_path / 'source', tmp_path / 'export'
+    source_path.write_bytes(b'original sealed cache')
+    source_path.chmod(0o444)
+    try:
+        jobs.publish_new(source_path, destination)
+        assert source_path.stat().st_nlink == destination.stat().st_nlink == 1
+        destination.write_bytes(b'user edited export')
+        assert source_path.read_bytes() == b'original sealed cache'
+    finally:
+        source_path.chmod(0o600)
+
+
+@pytest.mark.parametrize('race', [False, True])
+def test_independent_publication_never_replaces_competing_output(tmp_path, monkeypatch, race):
+    original, destination = tmp_path / 'source', tmp_path / 'export'
+    original.write_bytes(b'complete new bytes')
+    competing = b'Another program owns this destination'
+    if race:
+        publish = jobs.publish_noreplace
+
+        def create_then_publish(source_path, output):
+            output.write_bytes(competing)
+            return publish(source_path, output)
+
+        monkeypatch.setattr(jobs, 'publish_noreplace', create_then_publish)
+    else:
+        destination.write_bytes(competing)
+    with pytest.raises(FileExistsError):
+        jobs.publish_new(original, destination)
+    assert destination.read_bytes() == competing
+    assert original.read_bytes() == b'complete new bytes'
+    assert destination.stat().st_nlink == original.stat().st_nlink == 1
+    assert not list(tmp_path.glob('.publish-*'))
+
+
+def test_cancelled_copy_retains_source_and_removes_partial_stage(tmp_path):
+    original, destination = tmp_path / 'source', tmp_path / 'export'
+    original.write_bytes(b'a' * (2 * 1024 ** 2))
+    copied = []
+
+    def cancelled():
+        copied.extend(path.stat().st_size for path in tmp_path.glob('.publish-*'))
+        return any(size >= 1024 ** 2 for size in copied)
+
+    with pytest.raises(RenderCancelled):
+        jobs.publish_new(original, destination, cancelled=cancelled)
+    assert any(size >= 1024 ** 2 for size in copied)
+    assert original.read_bytes() == b'a' * (2 * 1024 ** 2)
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.publish-*'))
+
+
+def test_copy_flush_failure_never_exposes_partial_output(tmp_path, monkeypatch):
+    original, destination = tmp_path / 'source', tmp_path / 'export'
+    original.write_bytes(b'preserve the source')
+
+    def fail(_descriptor):
+        raise OSError('Synthetic flush failure')
+
+    monkeypatch.setattr(os, 'fsync', fail)
+    with pytest.raises(OSError, match='flush failure'):
+        jobs.publish_new(original, destination)
+    assert original.read_bytes() == b'preserve the source'
+    assert not destination.exists()
+    assert not list(tmp_path.glob('.publish-*'))
+
+
+def test_process_death_after_publication_leaves_no_source_alias(tmp_path):
+    original, destination = tmp_path / 'сцена.wav', tmp_path / 'готово.wav'
+    original.write_bytes(b'complete data')
+    code = """
+import os, sys
+from carr_library.audio import jobs
+jobs._sync_directory = lambda path: os._exit(17)
+jobs.publish_new(sys.argv[1], sys.argv[2])
+"""
+    environment = dict(os.environ, PYTHONPATH=str(Path(jobs.__file__).parents[2]))
+    result = subprocess.run([sys.executable, '-B', '-c', code, str(original), str(destination)],
+                            env=environment, timeout=20, capture_output=True)
+    assert result.returncode == 17, result.stderr.decode(errors='replace')
+    assert destination.read_bytes() == b'complete data'
+    assert original.stat().st_nlink == destination.stat().st_nlink == 1
+    destination.write_bytes(b'edited after crash')
+    assert original.read_bytes() == b'complete data'
+    assert not list(tmp_path.glob('.publish-*'))
+
+
+def test_project_budget_includes_retained_renders_and_music_jobs(tmp_path):
+    for name in ('renders', 'music-jobs'):
+        directory = tmp_path / name / 'old'
+        directory.mkdir(parents=True)
+        (directory / 'retained.wav').write_bytes(b'x' * 700)
+    cache = ChunkCache(tmp_path / 'cache', budget_root=tmp_path, disk_budget_bytes=1024)
+    with pytest.raises(RuntimeError, match='disk budget'):
+        cache.reserve(1)
+    assert cache.used == 1400
+
+
+def test_copy_and_original_stage_share_one_project_budget_before_seal(tmp_path):
+    staged = source(tmp_path / 'staging', frames=1600)
+    retained = staged.stat().st_size
+    cache = ChunkCache(tmp_path / 'cache', budget_root=tmp_path, disk_budget_bytes=retained + 1)
+    with pytest.raises(RuntimeError, match='disk budget'):
+        cache.seal(key(), staged)
+    assert staged.stat().st_size == retained
+    assert not list(cache.root.iterdir())
 
 
 def source(directory, *, name='incoming', frames=1600, companions=False):
@@ -135,8 +271,8 @@ def test_cancellation_between_companion_publications_cleans_only_new_links(tmp_p
     cache = ChunkCache(tmp_path / 'cache', cancelled=lambda: stopped[0])
     publish = jobs.publish_new
 
-    def first_then_cancel(source_path, destination):
-        publish(source_path, destination)
+    def first_then_cancel(source_path, destination, **options):
+        publish(source_path, destination, **options)
         stopped[0] = True
 
     monkeypatch.setattr(jobs, 'publish_new', first_then_cancel)
@@ -158,11 +294,11 @@ def test_failed_companion_publication_does_not_charge_or_leave_partial_payload(t
     publish = jobs.publish_new
     calls = [0]
 
-    def fail_second(source_path, destination):
+    def fail_second(source_path, destination, **options):
         calls[0] += 1
         if calls[0] == 2:
             raise OSError('Synthetic publication failure')
-        return publish(source_path, destination)
+        return publish(source_path, destination, **options)
 
     monkeypatch.setattr(jobs, 'publish_new', fail_second)
     with pytest.raises(OSError, match='publication failure'):

@@ -227,7 +227,7 @@ def process_voice(source, output, *, ffmpeg, sample_rate=48000, pan=0.0, gain=1.
         result = wav_info(target)
         if result.channels != 2 or result.rate != sample_rate or result.frames <= 0:
             raise RuntimeError('The voice processor returned an invalid waveform.')
-        publish_new(target, output)
+        publish_new(target, output, cancelled=cancelled)
     return output
 
 
@@ -258,7 +258,7 @@ def silence(output, frames, *, sample_rate=48000, channels=2, cancelled=lambda: 
                 remaining -= size
             stream.flush()
             os.fsync(stream.fileno())
-        publish_new(target, output)
+        publish_new(target, output, cancelled=cancelled)
     return output
 
 
@@ -298,7 +298,7 @@ def concatenate(inputs, output, *, cancelled=lambda: False, on_status=lambda mes
             os.fsync(dest.fileno())
         if wav_info(target).frames != frames:
             raise RuntimeError('The assembled duration is incorrect.')
-        publish_new(target, output)
+        publish_new(target, output, cancelled=cancelled)
     return output
 
 
@@ -331,7 +331,7 @@ def mix_scene(voices, music, output, *, ffmpeg, music_gain=0.15, cancelled=lambd
         result = wav_info(target)
         if (result.frames, result.rate, result.channels) != (info.frames, info.rate, 2):
             raise RuntimeError('Mix duration or format changed unexpectedly.')
-        publish_new(target, output)
+        publish_new(target, output, cancelled=cancelled)
     return output
 
 
@@ -397,5 +397,5 @@ def transcode(source, output, *, ffmpeg, format, metadata=None, cancelled=lambda
         run_ffmpeg(ffmpeg, [*args, '-f', container, '-n', str(target)], cancelled=cancelled)
         if regular_file(target).st_size == 0:
             raise RuntimeError('The encoder produced no audio.')
-        publish_new(target, output)
+        publish_new(target, output, cancelled=cancelled)
     return output

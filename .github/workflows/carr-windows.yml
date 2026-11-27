@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126, carr/resonance-build-check-20261127]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126, carr/resonance-build-check-20261127, carr/resonance-final-hardening-26c2-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
@@ -153,6 +153,119 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,runpy; read_lock=runpy.run_path('packaging/build_windows_bundle.py')['read_lock']; locked=read_lock(pathlib.Path('packaging/windows-semantic-cp311.lock')); pins={name:value[0] for name,value in locked.items()}; actual={name:m.version(name) for name in pins}; assert pins and actual==pins; print(json.dumps(dict(status='PASS',count=len(pins),versions=actual),sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check UTF-8 resources under the installed Windows code page
+        timeout-minutes: 3
+        run: |
+          $checkCodepage = @'
+          import codecs, json, locale, os, pathlib, runpy, sys, xml.etree.ElementTree as ET
+          import carr_library
+          assert sys.platform == 'win32' and sys.flags.isolated == 1 and sys.flags.utf8_mode == 0
+          assert codecs.lookup(locale.getencoding()).name == 'cp1252'
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve())
+          os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+          for name in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS'):
+              os.environ.pop(name, None)
+          nodes = [
+              'tests/citations/test_csl.py::test_all_pinned_resources_and_license_notices_match_manifest',
+              'tests/e2e/test_google_translation.py::test_translation_export_is_separate_source_bound_and_secret_free',
+          ]
+          report = pathlib.Path('ci-results/windows-codepage-regressions.xml')
+          sys.argv = ['windows-codepage-regressions', '-o', 'addopts=', '-o', 'pythonpath=',
+                      '--import-mode=importlib', '-o', 'xfail_strict=true', '--junitxml', str(report), *nodes]
+          child = runpy.run_path('scripts/ci_check.py')['PYTEST_CHILD']
+          try:
+              exec(compile(child, 'windows-codepage-regressions', 'exec'), {'__name__': '__main__'})
+          except SystemExit as result:
+              status = int(result.code or 0)
+          else:
+              raise AssertionError('The strict pytest runner did not report an exit status')
+          cases = list(ET.parse(report).iter('testcase'))
+          assert status == 0 and len(cases) == len(nodes) == 2
+          assert {case.get('name') for case in cases} == {node.split('::')[1] for node in nodes}
+          assert all(case.find(tag) is None for case in cases for tag in ('failure', 'error', 'skipped'))
+          print(json.dumps(dict(status='PASS', encoding=locale.getencoding(), isolated=True,
+                                utf8_mode=sys.flags.utf8_mode, passed=2, failed=0, skipped=0)), flush=True)
+          '@
+          $checkCodepage | & $env:CARR_PYTHON -I -B -X utf8=0 - 2>&1 | Tee-Object 'ci-results/windows-codepage-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check crash-test Python children preserve runtime bytecode
+        timeout-minutes: 4
+        run: |
+          $checkChildBytecode = @'
+          import json, os, pathlib, runpy, sys, tempfile, xml.etree.ElementTree as ET
+          import carr_library
+          assert sys.platform == 'win32' and sys.flags.isolated == 1 and sys.dont_write_bytecode
+          origin = pathlib.Path(carr_library.__file__).resolve()
+          assert origin.is_relative_to(pathlib.Path(sys.prefix).resolve())
+          nodes = [
+              'tests/storage/test_backup_v4_sidecars.py::test_real_process_exit_during_sidecar_publication',
+              'tests/storage/test_backup_publication_recovery.py::test_actual_exit_at_completion_manifest_leaves_a_verifiable_backup',
+              'tests/storage/test_backup_publication_recovery.py::test_actual_exit_after_first_managed_document_commit_preserves_reopen_and_backup',
+              'tests/storage/test_evidence_drafts.py::test_checkpoint_survives_process_exit_without_destructors',
+              'tests/audio/test_chunk_cache_budget.py::test_process_death_after_publication_leaves_no_source_alias',
+          ]
+          expected = {
+              'test_real_process_exit_during_sidecar_publication[backup]',
+              'test_real_process_exit_during_sidecar_publication[restore]',
+              'test_actual_exit_at_completion_manifest_leaves_a_verifiable_backup',
+              'test_actual_exit_after_first_managed_document_commit_preserves_reopen_and_backup[project]',
+              'test_actual_exit_after_first_managed_document_commit_preserves_reopen_and_backup[recovery]',
+              'test_checkpoint_survives_process_exit_without_destructors',
+              'test_process_death_after_publication_leaves_no_source_alias',
+          }
+          report = pathlib.Path('ci-results/child-bytecode-regressions.xml')
+          child = runpy.run_path('scripts/ci_check.py')['PYTEST_CHILD']
+          names = ('PYTHONPYCACHEPREFIX', 'PYTHONDONTWRITEBYTECODE',
+                   'PYTEST_DISABLE_PLUGIN_AUTOLOAD', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS')
+          previous = {name: os.environ.get(name) for name in names}
+          previous_argv = sys.argv[:]
+          try:
+              with tempfile.TemporaryDirectory(prefix='carr-child-bytecode-') as temporary:
+                  cache = pathlib.Path(temporary) / 'bytecode'
+                  cache.mkdir()
+                  assert not any(cache.iterdir())
+                  os.environ['PYTHONPYCACHEPREFIX'] = str(cache)
+                  os.environ.pop('PYTHONDONTWRITEBYTECODE', None)
+                  os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+                  for name in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS'):
+                      os.environ.pop(name, None)
+                  sys.argv = ['child-bytecode-regressions', '-o', 'addopts=', '-o', 'pythonpath=',
+                              '--import-mode=importlib', '-o', 'xfail_strict=true',
+                              '--junitxml', str(report), *nodes]
+                  try:
+                      exec(compile(child, 'child-bytecode-regressions', 'exec'), {'__name__': '__main__'})
+                  except SystemExit as result:
+                      status = int(result.code or 0)
+                  else:
+                      raise AssertionError('The strict pytest runner did not report an exit status')
+                  cases = list(ET.parse(report).iter('testcase'))
+                  assert status == 0 and len(cases) == len(expected) == 7
+                  assert {case.get('name') for case in cases} == expected
+                  assert all(case.find(tag) is None for case in cases for tag in ('failure', 'error', 'skipped'))
+                  generated = [str(path.relative_to(cache)) for path in cache.rglob('*.pyc')]
+                  assert not generated, 'Python children wrote bytecode: ' + repr(generated[:20])
+                  print(json.dumps(dict(status='PASS', passed=7, failed=0, skipped=0,
+                                        expected_failures=0, bytecode_files=0,
+                                        parent_dont_write_bytecode=sys.dont_write_bytecode,
+                                        isolated=True, installed_origin=str(origin))), flush=True)
+          finally:
+              sys.argv = previous_argv
+              for name, value in previous.items():
+                  if value is None:
+                      os.environ.pop(name, None)
+                  else:
+                      os.environ[name] = value
+          '@
+          $checkChildBytecode | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-results/child-bytecode-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check SQLite fixtures and verification-runner regressions
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -B scripts/ci_check.py --jobs 2 tests/research/test_academic_library.py tests/packaging/test_ci_check.py 2>&1 | Tee-Object 'ci-results/verification-runner-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare the verified OCR engine before its required source regression
         timeout-minutes: 10
         run: |
@@ -184,6 +297,24 @@ jobs:
           "CARR_CI_AUDIO_RUNTIME=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_FFMPEG=$(Join-Path $audioBin 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Exercise installed document navigation before long suites
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'ci-results/installed-document-formats.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed academic comparison before long suites
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_academic_comparison_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/installed-academic-comparison.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed transcription and translation controls before long suites
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_language_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/installed-language-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the exact test font for real OCR fixtures
         timeout-minutes: 2
@@ -219,7 +350,20 @@ jobs:
           & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_document_formats_text.py tests/extract/test_ocr_languages.py tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py 2>&1 | Tee-Object 'ci-results/platform-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check observed native runtime regressions before long suites
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/audio/test_music.py tests/audio/test_production.py tests/extract/test_ocr_runtime.py 2>&1 | Tee-Object 'ci-results/runtime-compatibility-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check final export, import and installation regressions before long suites
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_provider_ledger_lifetime.py tests/ui/test_keyboard_manager.py tests/reader/test_export_no_clobber.py tests/ui/test_citation_styles_jobs.py tests/packaging/test_native_checks.py tests/ingest/test_import_metadata_shape.py tests/storage/test_keyboard_preferences.py tests/audio/test_dordiai_discovery.py tests/catalog/test_epub_metadata.py tests/assistant/test_complete_recovery.py 2>&1 | Tee-Object 'ci-results/finalization-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
+        id: required_source
         timeout-minutes: 35
         run: |
           $suites = @(
@@ -233,6 +377,7 @@ jobs:
             'tests/ingest/test_batch_scan.py',
             'tests/ui/test_import_center.py',
             'tests/e2e/test_epub_import.py',
+            'tests/catalog/test_epub_metadata.py',
             'tests/extract/test_document_formats_text.py',
             'tests/extract/test_document_formats_xml.py',
             'tests/e2e/test_extended_document_workflows.py',
@@ -266,6 +411,7 @@ jobs:
             'tests/storage/test_pending_backup.py',
             'tests/storage/test_complete_pending_backup.py',
             'tests/storage/test_backup_pending_compatibility.py',
+            'tests/storage/test_backup_studio_project_schema.py',
             'tests/storage/test_academic_migration.py',
             'tests/research/test_academic_library.py',
             'tests/e2e/test_academic_workflow.py',
@@ -331,6 +477,7 @@ jobs:
             'tests/storage/test_research_schema.py',
             'tests/packaging/test_source_wheel.py',
             'tests/packaging/test_ci_check.py',
+            'tests/packaging/test_native_checks.py',
             'tests/catalog/test_application_metadata_integrity.py',
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
@@ -340,6 +487,7 @@ jobs:
             'tests/ui/test_federated_labels.py',
             'tests/search/test_literal_unicode_memory.py',
             'tests/e2e/test_search_deadline.py',
+            'tests/ingest/test_import_metadata_shape.py',
             'tests/ingest/test_txt_replay_registration.py',
             'tests/ingest/test_terminal_replay_registration.py',
             'tests/research/test_bibtex_import.py',
@@ -410,6 +558,7 @@ jobs:
             'tests/ui/test_audio_studio.py',
             'tests/ui/test_api_connections.py',
             'tests/e2e/test_provider_gateway.py',
+            'tests/e2e/test_provider_ledger_lifetime.py',
             'tests/e2e/test_provider_transport_boundaries.py',
             'tests/e2e/test_audio_cli.py',
             'tests/packaging/test_audio_acquisition.py',
@@ -430,10 +579,21 @@ jobs:
             'tests/ui/test_audio_menu_registry.py',
             'tests/audio/test_chunk_cache_budget.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Preserve the failed source-gate log
+        if: ${{ !cancelled() && steps.required_source.outcome == 'failure' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-source-log-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/integrated-tests.txt
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Prepare the pinned local model through the existing upstream verifier
+        id: pinned_model
+        if: ${{ !cancelled() && (steps.required_source.outcome == 'success' || steps.required_source.outcome == 'failure') }}
         timeout-minutes: 10
         run: |
           $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
@@ -469,6 +629,7 @@ jobs:
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
+        if: ${{ !cancelled() && steps.pinned_model.outcome == 'success' }}
         timeout-minutes: 35
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -637,10 +798,17 @@ jobs:
             @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' },
             @{ Script='tests/ui/native_language_tools_smoke.py'; Args=@('--native'); Output='native-language-tools.txt' }
           )
+          # Each native scenario runs in a fresh process.
+          # Retain every failure while collecting the independent later evidence.
+          $failedNativeGates = @()
           foreach ($gate in $nativeGates) {
             $arguments = @($gate.Args)
             & $installedPython -I -B -c $runNative $bundle (Resolve-Path $gate.Script).Path @arguments 2>&1 | Tee-Object (Join-Path 'ci-results' $gate.Output)
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $nativeExitCode = $LASTEXITCODE
+            if ($nativeExitCode -ne 0) {
+              $failedNativeGates += "$($gate.Script) (exit $nativeExitCode)"
+              Write-Warning "Required native scenario failed: $($gate.Script) (exit $nativeExitCode)"
+            }
           }
           Copy-Item -LiteralPath 'ci-results/core-bundle-native.txt' -Destination 'ci-results/native-desktop.txt'
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -742,6 +910,7 @@ jobs:
                       self.seen = True
           policy = RejectExpectedFailures()
           installed_suites = [
+              'tests/ingest/test_import_metadata_shape.py',
               'tests/e2e/test_semantic_runtime.py',
               'tests/e2e/test_import_worker.py',
               'tests/e2e/test_import_batches_ocr.py',
@@ -773,6 +942,7 @@ jobs:
               'tests/storage/test_pending_backup.py',
               'tests/storage/test_complete_pending_backup.py',
               'tests/storage/test_backup_pending_compatibility.py',
+              'tests/storage/test_backup_studio_project_schema.py',
               'tests/storage/test_backup_publication_recovery.py',
               'tests/storage/test_backup_audio_composition.py',
               'tests/storage/test_backup_generated_audio.py',
@@ -819,6 +989,9 @@ jobs:
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_complete_backup_survives_lost_original_and_resumes_identical_import','test_pending_publication_failure_keeps_incomplete_guard','test_registered_original_also_pending_is_published_once[canonical-v4]','test_registered_original_also_pending_is_published_once[host-v5]','test_actual_persistent_embeddings_reopen_without_reinference','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and passed>0 and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',persistent_semantic_cache='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after installed workflows, before audio engines')" $bundle 2>&1 | Tee-Object 'ci-results/post-installed-seal.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           # The reviewed LGPL Windows FFmpeg build has no libflite. Exclude only
@@ -877,6 +1050,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($failedNativeGates.Count -ne 0) {
+            throw ('Required native scenarios failed: ' + ($failedNativeGates -join '; '))
+          }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }

@@ -63,7 +63,7 @@ def test_audio_and_connections_register_before_or_after_keyboard_manager(monkeyp
     assert set(manager.bindings) == {'audio.studio.open', 'audio.narration.prepare_selected',
                                     'api.connections.open', 'translation.text.open', 'audio.transcription.open'}
     assert len(handlers) == 5
-    assert [bar.GetMenuLabel(i) for i in range(3)] == ['A&udio', '&Connections', '&Translation']
+    assert [bar.GetMenuLabel(i) for i in range(3)] == ['A&udio', '&Connections', 'Tra&nslation']
     manager.apply_overrides({'audio.studio.open': 'Ctrl+Alt+J', 'api.connections.open': 'Ctrl+Shift+K'})
     assert manager.bindings['audio.studio.open'].item.GetItemLabel().endswith('\tCtrl+Alt+J')
     assert manager.bindings['api.connections.open'].item.GetItemLabel().endswith('\tCtrl+Shift+K')

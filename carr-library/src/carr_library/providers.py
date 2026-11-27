@@ -384,8 +384,8 @@ class BudgetLedger:
     def _db(self):
         _plain(self.path)
         db = sqlite3.connect(self.path, timeout=10)
-        db.execute('PRAGMA synchronous=FULL')
         try:
+            db.execute('PRAGMA synchronous=FULL')
             with db:
                 yield db
         finally:

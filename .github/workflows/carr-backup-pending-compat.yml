@@ -70,7 +70,7 @@ jobs:
           import sys
           import sysconfig
           import tempfile
-          
+
           roots = tuple(Path(sysconfig.get_path(key)).resolve() for key in ("purelib", "platlib"))
           expected = {
               "carr_library.studio": "7e38d3875a79e43e24321e4a14f613a0bb7b5064",
@@ -86,11 +86,11 @@ jobs:
               blob = sha1(("blob " + str(len(raw)) + "\0").encode() + raw).hexdigest()
               assert blob == expected_blob, (name, blob)
               origins[name] = {"path": str(origin), "git_blob": blob}
-          
+
           from carr_library.application import LibraryApp
           from carr_library.library_backup import create_backup, verify_backup, restore_backup
           from carr_library.studio import ProjectStore, parse_script
-          
+
           with tempfile.TemporaryDirectory(prefix="carr-installed-studio-") as temporary:
               root = Path(temporary)
               app = LibraryApp(root / "source")

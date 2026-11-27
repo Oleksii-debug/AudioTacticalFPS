@@ -9,6 +9,7 @@ from pathlib import Path
 import shlex
 import shutil
 import tempfile
+import time
 import uuid
 
 from . import ffmpeg as audio
@@ -16,6 +17,10 @@ from .jobs import (ChunkCache, RenderCancelled, atomic_json, checked_directory,
                    check_cancelled, project_lock, publish_new, regular_file, sha256_file)
 from .models import (Effect, Line, MusicCue, Pause, ProductionPlan, Role, Scene,
                      Sound, canonical, digest, text)
+
+
+# Version 1 published cache/export aliases. Regenerate independent copies.
+PIPELINE_VERSION = 2
 
 
 SCRIPT_HELP = '''Local audio script format
@@ -317,6 +322,22 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
 
 
 def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
+    cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes,
+                       budget_root=root)
+    cache.reserve(0)
+    requested_cancelled, last_budget_check = cancelled, 0.0
+
+    def guarded_cancelled():
+        nonlocal last_budget_check
+        if requested_cancelled():
+            return True
+        now = time.monotonic()
+        if now - last_budget_check >= 0.25:
+            last_budget_check = now
+            cache.reserve(0)
+        return False
+
+    cancelled = guarded_cancelled
     roles = {role.name: role for role in plan.roles}
     identities = {}
     used_roles = {event.role for scene in plan.scenes for event in scene.events if isinstance(event, Line)}
@@ -347,10 +368,9 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                 asset = checked_directory(root / 'assets') / event.asset
                 audio.wav_info(asset)
                 assets[event.asset] = sha256_file(asset, cancelled=cancelled)
-    run_key = digest({'pipeline_version': 1, 'plan': plan.to_dict(), 'engines': identities,
+    run_key = digest({'pipeline_version': PIPELINE_VERSION, 'plan': plan.to_dict(), 'engines': identities,
                       'processor': processor, 'assets': assets, 'music_models': music_identities,
                       'composer': composer_identity})
-    cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes)
     renders = checked_directory(root / 'renders', create=True)
     output_dir = renders / run_key
     if output_dir.is_symlink():
@@ -387,17 +407,19 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
             temp = Path(temporary)
 
             def cached(settings, create, *, provenance=None, estimate=0, companions=()):
-                key = digest({'pipeline_version': 1, **settings})
+                key = digest({'pipeline_version': PIPELINE_VERSION, **settings})
                 ready = cache.get(key)
                 if ready is not None:
                     return ready
-                cache.reserve(estimate)
+                # A generated stage and its independent sealed copy can coexist.
+                cache.reserve(estimate * 2 + 65536)
                 stage = temp / (key + '.wav')
                 if stage.exists():
                     stage.unlink()
                 try:
                     create(stage)
                     check_cancelled(cancelled)
+                    cache.reserve(0)
                     result = cache.seal(key, stage, provenance=provenance, companions=companions)
                     checkpoint('Completed and saved an audio step.')
                     return result
@@ -492,7 +514,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                     settings = {'kind': 'music', 'cue': asdict(cue), 'rate': plan.sample_rate,
                         'frames': scene_frames, 'processor': processor, 'composer': composer_identity,
                         'model': music_identities.get(cue.model_manifest)}
-                    music_key = digest({'pipeline_version': 1, **settings})
+                    music_key = digest({'pipeline_version': PIPELINE_VERSION, **settings})
                     companions = ('.mid', '.music.json') if cue.engine == 'procedural' else ('.music.json',)
 
                     def create_music(path):
@@ -522,10 +544,10 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                                 mood=cue.mood, tempo=cue.tempo, seed=cue.seed, engine=cue.engine,
                                 gain=0.35, sample_rate=plan.sample_rate, cancelled=cancelled,
                                 manifest=music_models.get(cue.model_manifest), on_status=on_status,
-                                max_output_bytes=plan.disk_budget_bytes)
-                        publish_new(generated, path)
+                                max_output_bytes=max(1, plan.disk_budget_bytes - cache.used))
+                        publish_new(generated, path, cancelled=cancelled)
                         for suffix in companions:
-                            publish_new(generated.with_suffix(suffix), path.with_suffix(suffix))
+                            publish_new(generated.with_suffix(suffix), path.with_suffix(suffix), cancelled=cancelled)
 
                     music_file, music_info = cached(settings, create_music,
                         provenance={'kind': 'generated_music', 'method': cue.engine, 'cue': asdict(cue),
@@ -561,7 +583,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                 position += mixed_info['frames']
                 checkpoint(f'Chapter {scene_index+1} is complete and saved.')
 
-            cache.reserve(position * 4 * (2 + (len(role_names) + 2 if plan.export_stems else 0)) + 1024 ** 2)
+            cache.reserve(position * 4 * (2 + (plan.output_format != 'wav')
+                + (len(role_names) + 2 if plan.export_stems else 0)) + 1024 ** 2)
             staged_output = checked_directory(temp / 'finished', create=True)
             master = staged_output / 'master.wav'
             audio.concatenate([p for p, _ in scene_audio], master, cancelled=cancelled, on_status=on_status)
@@ -581,12 +604,13 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                     stem_names.append(filename)
                     stem_labels[filename] = name
             for index, (path, _) in enumerate(scene_audio, 1):
-                # New hardlink retains the sealed PCM exactly; final integrity is checked.
-                publish_new(path, staged_output / f'chapter-{index:06d}.wav')
+                # Exports are independent: editing one must not change the cache.
+                publish_new(path, staged_output / f'chapter-{index:06d}.wav', cancelled=cancelled)
             for scene_number, music_info in music_companions:
                 for item in music_info.get('companions', ()):
                     suffix = '.mid' if item['name'].endswith('.mid') else '.music.json'
-                    publish_new(cache.root / item['name'], staged_output / f'music-{scene_number:06d}{suffix}')
+                    publish_new(cache.root / item['name'], staged_output / f'music-{scene_number:06d}{suffix}',
+                                cancelled=cancelled)
             srt = []
             for index, item in enumerate(subtitles, 1):
                 srt.extend([str(index), f"{_timestamp(item['start_frame'], plan.sample_rate, srt=True)} --> {_timestamp(item['end_frame'], plan.sample_rate, srt=True)}",
@@ -619,6 +643,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                           'Output measurements do not replace listening or Windows/NVDA acceptance.']}
             atomic_json(staged_output / 'complete.json', result)
             check_cancelled(cancelled)
+            cache.reserve(0)
             # A nonempty existing final directory is never overwritten. The OS lock
             # prevents two cooperative renderers from racing this publication.
             if output_dir.exists() or output_dir.is_symlink():

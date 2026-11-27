@@ -223,8 +223,8 @@ def test_translation_export_is_separate_source_bound_and_secret_free(setup):
     assert document['translation']['language'] == 'uk'
     assert document['operation']['request_sha256'] == request.fingerprint(profile)
     assert document['operation']['billed_cost'] == 'unknown'
-    assert 'synthetic-not-real' not in target.read_text()
-    assert 'credential_ref' not in target.read_text()
+    assert 'synthetic-not-real' not in target.read_text(encoding='utf-8')
+    assert 'credential_ref' not in target.read_text(encoding='utf-8')
     with pytest.raises(FileExistsError):
         controller.run(profile, request, target, approved=True, estimate_micros=100)
     assert len(transport.calls) == 1

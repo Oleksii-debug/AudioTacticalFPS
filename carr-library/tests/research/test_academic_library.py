@@ -19,15 +19,20 @@ from carr_library.storage.revisions import SCHEMA_V3
 @pytest.fixture
 def db(tmp_path):
     connection = sqlite3.connect(tmp_path / 'academic.sqlite', isolation_level=None)
-    connection.execute('PRAGMA foreign_keys=ON')
-    connection.execute('PRAGMA recursive_triggers=ON')
-    connection.executescript(SCHEMA_V3 + ACADEMIC_SCHEMA + '\nPRAGMA user_version=4;')
-    for identity in ('first', 'second'):
-        connection.execute('INSERT INTO workspace VALUES(?)', (identity,))
-        connection.execute('INSERT INTO workspace_meta(workspace,name) VALUES(?,?)', (identity, identity))
-    connection.execute('BEGIN')
-    yield connection
-    connection.close()
+    try:
+        connection.execute('PRAGMA foreign_keys=ON')
+        connection.execute('PRAGMA recursive_triggers=ON')
+        # Commit the complete fixture once, rather than syncing every DDL and
+        # seed statement separately, before opening the caller's snapshot.
+        connection.executescript('BEGIN;\n' + SCHEMA_V3 + ACADEMIC_SCHEMA + '\nPRAGMA user_version=4;')
+        for identity in ('first', 'second'):
+            connection.execute('INSERT INTO workspace VALUES(?)', (identity,))
+            connection.execute('INSERT INTO workspace_meta(workspace,name) VALUES(?,?)', (identity, identity))
+        connection.commit()
+        connection.execute('BEGIN')
+        yield connection
+    finally:
+        connection.close()
 
 
 @pytest.fixture

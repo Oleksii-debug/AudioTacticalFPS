@@ -77,14 +77,14 @@ def test_espeak_does_not_substitute_another_language(tmp_path):
 def test_local_process_cancellation_stops_owned_worker():
     started = time.monotonic()
     with pytest.raises(InterruptedError):
-        _run([Path(sys.executable).resolve(), '-I', '-c', 'import time; time.sleep(20)'],
+        _run([Path(sys.executable).resolve(), '-I', '-B', '-c', 'import time; time.sleep(20)'],
              cancelled=lambda: time.monotonic() - started > .12)
     assert time.monotonic() - started < 5
 
 
 def test_engine_logs_do_not_expose_document_content():
     with pytest.raises(EngineUnavailable) as caught:
-        _run([Path(sys.executable).resolve(), '-I', '-c',
+        _run([Path(sys.executable).resolve(), '-I', '-B', '-c',
               'import sys; print("PRIVATE DOCUMENT",file=sys.stderr);sys.exit(3)'])
     assert 'PRIVATE DOCUMENT' not in str(caught.value)
 
@@ -109,7 +109,7 @@ assert json.loads(sys.stdin.readline())=={'mode':'next'}
 print(json.dumps({'finished':True}),flush=True)
 ''', encoding='utf-8')
     target = tmp_path / 'audio.wav'
-    protocol_engine(tmp_path)._stream([str(Path(sys.executable).resolve()), '-I', str(worker)],
+    protocol_engine(tmp_path)._stream([str(Path(sys.executable).resolve()), '-I', '-B', str(worker)],
                                      {'text':'Literal test text'}, target, lambda: False)
     with wave.open(str(target),'rb') as source:
         assert source.getframerate() == 24000
@@ -124,7 +124,7 @@ def test_dordiai_protocol_rejects_invalid_or_empty_pcm(tmp_path, reply):
     worker = tmp_path / 'worker.py'
     worker.write_text('import sys;sys.stdin.readline();print(' + repr(json.dumps(reply)) + ',flush=True)\n', encoding='utf-8')
     with pytest.raises((ValueError, EngineUnavailable)):
-        protocol_engine(tmp_path)._stream([str(Path(sys.executable).resolve()), '-I', str(worker)],
+        protocol_engine(tmp_path)._stream([str(Path(sys.executable).resolve()), '-I', '-B', str(worker)],
                                          {'text':'test'}, tmp_path/'audio.wav', lambda: False)
 
 
@@ -132,7 +132,7 @@ def test_dordiai_worker_denies_network_before_external_code(tmp_path):
     worker = tmp_path / 'worker.py'
     worker.write_text('import socket;socket.create_connection(("127.0.0.1",9))', encoding='utf-8')
     with pytest.raises(EngineUnavailable):
-        _run([Path(sys.executable).resolve(), '-I', '-c', _DORDIAI_OFFLINE_BOOTSTRAP, worker])
+        _run([Path(sys.executable).resolve(), '-I', '-B', '-c', _DORDIAI_OFFLINE_BOOTSTRAP, worker])
 
 
 def test_dordiai_cancels_worker_that_never_reads_large_unicode_request(tmp_path):
@@ -140,7 +140,7 @@ def test_dordiai_cancels_worker_that_never_reads_large_unicode_request(tmp_path)
     worker.write_text('import time;time.sleep(20)',encoding='utf-8')
     started = time.monotonic()
     with pytest.raises(InterruptedError):
-        protocol_engine(tmp_path)._stream([str(Path(sys.executable).resolve()), '-I', str(worker)],
+        protocol_engine(tmp_path)._stream([str(Path(sys.executable).resolve()), '-I', '-B', str(worker)],
             {'text':'\U0001f600'*8000}, tmp_path/'audio.wav', lambda: time.monotonic()-started > .15)
     assert time.monotonic()-started < 4
 

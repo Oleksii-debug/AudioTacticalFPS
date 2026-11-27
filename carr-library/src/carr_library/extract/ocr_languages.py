@@ -191,7 +191,9 @@ def _capture(runtime, option, remaining):
                     process.kill()
                 process.wait()
                 raise
-    return normalize_ocr_query_output(raw, report_directory).decode('utf-8')
+    if option == '--list-langs':
+        raw = normalize_ocr_query_output(raw, report_directory)
+    return raw.decode('utf-8')
 
 
 def discover_languages(*, timeout=10, cancelled=lambda: False, model_profile='installed'):

@@ -434,3 +434,77 @@ def test_unbound_runtime_never_reinterprets_relative_models_after_cwd_change(tmp
                 ['tesseract', str(source), 'stdout'], remaining=lambda: 1)
     assert source.read_bytes() == b'path-binding fixture; native process must not run'
     assert list(temporary.iterdir()) == []
+
+
+@pytest.mark.parametrize('folder', ['models', 'Моделі'])
+def test_windows_native_script_listing_reaches_both_strict_consumers(tmp_path, monkeypatch, folder):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    from carr_library.extract.ocr_languages import is_model_id, parse_language_report
+    from carr_library.ui.ocr_selection import parse_installed_models
+    directory = tmp_path / folder
+    directory.mkdir()
+    runtime = OcrRuntime('tesseract', tessdata=directory, root=tmp_path)
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+
+    def execute(command, cwd, remaining):
+        binding = command[command.index('--tessdata-dir') + 1]
+        report = (f'List of available languages in "{binding}" (3):\r\n'
+                  'eng\r\nscript\\Latin\r\nosd\r\n').encode('utf-8')
+        return subprocess.CompletedProcess(command, 0, report, b'')
+
+    monkeypatch.setattr(ocr_process, '_execute', execute)
+    result = run_ocr(runtime, ['tesseract', '--list-langs'], remaining=lambda: 1)
+    assert parse_language_report(result.stdout.decode()) == ('eng', 'script/Latin', 'osd')
+    assert parse_installed_models(result.stdout, expected_directory=directory) == (
+        'eng', 'script/Latin', 'osd')
+    # Native report normalization does not authorize backslashes in user input.
+    assert not is_model_id('script\\Latin')
+
+
+@pytest.mark.parametrize('option', ['--version', '--help', '--print-parameters'])
+def test_windows_unicode_informational_queries_preserve_non_inventory_output(tmp_path, monkeypatch, option):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    directory = tmp_path / 'Моделі'
+    directory.mkdir()
+    runtime = OcrRuntime('tesseract', tessdata=directory, root=tmp_path)
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    expected = b'tesseract 5.5.4\r\nNative informational output.\r\n'
+    calls = []
+
+    def execute(command, cwd, remaining):
+        calls.append((command, cwd))
+        return subprocess.CompletedProcess(command, 0, expected, b'diagnostic')
+
+    monkeypatch.setattr(ocr_process, '_execute', execute)
+    result = run_ocr(runtime, ['tesseract', option, '--tessdata-dir', str(directory)],
+                     remaining=lambda: 1)
+    assert result.stdout == expected and result.stderr == b'diagnostic'
+    assert result.returncode == 0
+    assert calls == [(['tesseract', option, '--tessdata-dir', '.'], directory)]
+
+
+@pytest.mark.parametrize('identifier', [r'script\..\eng', r'script\\Latin',
+                                      r'script\NUL', r'script\Latin+eng'])
+def test_windows_report_never_normalizes_unsafe_script_identifiers(monkeypatch, identifier):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    report = f'List of available languages in "models" (1):\r\n{identifier}\r\n'.encode()
+    with pytest.raises(OcrRuntimeError, match='invalid script identifier'):
+        ocr_process.normalize_ocr_query_output(report, None)
+
+
+def test_native_script_separator_aliases_remain_rejected_by_inventory_parsers(monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    from carr_library.extract.ocr_languages import parse_language_report
+    from carr_library.ui.ocr_selection import parse_installed_models
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    report = b'List of available languages in "models" (2):\r\nscript\\Latin\r\nscript/Latin\r\n'
+    normalized = ocr_process.normalize_ocr_query_output(report, None)
+    for parse, value in ((parse_language_report, normalized.decode()),
+                         (parse_installed_models, normalized)):
+        with pytest.raises(ValueError):
+            parse(value)

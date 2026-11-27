@@ -176,5 +176,5 @@ def install_translation_actions(frame):
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'Translate &text...')
     frame.Bind(wx.EVT_MENU, lambda event: show_translation_dialog(frame), item)
-    frame.menu_bar.Append(menu, '&Translation')
+    frame.menu_bar.Append(menu, 'Tra&nslation')
     register_menu_command(frame, CommandSpec('translation.text.open', 'Translate text'), item)
