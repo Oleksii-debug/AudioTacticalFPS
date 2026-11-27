@@ -68,6 +68,9 @@ from .installation_lease import installed_entrypoint
 @installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if arguments and arguments[0] == 'backup-repository':
+        from .incremental_backup_cli import main as repository_main
+        return repository_main(arguments[1:])
     if arguments and arguments[0] == 'sync':
         from .sync.cli import main as sync_main
         return sync_main(arguments[1:])

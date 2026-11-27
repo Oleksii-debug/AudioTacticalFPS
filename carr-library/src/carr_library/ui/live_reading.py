@@ -104,6 +104,8 @@ class LiveReadingDialog:
         self.source, self.location = text, location
         self.source_loader, self.ordinal, self.total = source_loader, ordinal, total
         self.registry, self.on_ready = registry, on_ready
+        self.appearance = None
+        self.paced_view = None
         self.dialog = wx.Dialog(parent, title='Read aloud — ' + title,
                                 size=(920, 780), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.dialog.SetName('Live source reading')
@@ -185,6 +187,14 @@ class LiveReadingDialog:
             button.Bind(wx.EVT_BUTTON, action)
             row.Add(button, 0, wx.ALL, 3)
             self.controls[name] = button
+        self.appearance_button = wx.Button(self.dialog, label='Reader appearance...')
+        self.appearance_button.SetName('Reader appearance')
+        self.appearance_button.Bind(wx.EVT_BUTTON, self.show_appearance)
+        row.Add(self.appearance_button, 0, wx.ALL, 3)
+        self.pacing_button = wx.Button(self.dialog, label='Paced reading...')
+        self.pacing_button.SetName('Paced reading')
+        self.pacing_button.Bind(wx.EVT_BUTTON, self.show_pacing)
+        row.Add(self.pacing_button, 0, wx.ALL, 3)
         layout.Add(row, 0, wx.EXPAND | wx.ALL, 4)
         self.dialog.SetSizer(layout)
         self.dialog.SetEscapeId(wx.ID_CLOSE)
@@ -195,7 +205,14 @@ class LiveReadingDialog:
         self.timer.Start(100)
         try:
             self._select(selection or (cursor, cursor))
+            from .reader_appearance import ReaderAppearance
+            self.appearance = ReaderAppearance(self.dialog, self.text, self.root,
+                guard=self.guard, alive=lambda: not self.closed, report=self._say, wx_module=wx)
+            if self.appearance.notice:
+                self._say(self.appearance.notice)
         except BaseException:
+            if self.appearance is not None:
+                self.appearance.close()
             self.timer.Stop()
             self.player.close()
             self.unregister_player()
@@ -203,6 +220,51 @@ class LiveReadingDialog:
             self.dialog.Destroy()
             raise
         self._enable()
+
+    def show_pacing(self, event=None):
+        if self.closed or self.close_pending:
+            return
+        if (self.future is not None or self.session is not None or self.playing
+                or self.through_book or self.auto_advance):
+            self._say('Stop the current speech operation before starting visual paced reading.')
+            return
+        from .paced_reading import show_paced_reader
+        source, initial_native = self.source, self.text.GetSelection()
+        try:
+            selection = selected_source_offsets(self.text, source)
+
+            def current():
+                self.guard()
+                if self.closed or self.close_pending:
+                    raise ValueError('The source reader is closing.')
+                if _normalized(self.text.GetValue()) != _normalized(self.source):
+                    raise ValueError('The visible source changed. Reopen paced reading.')
+                return self.source
+
+            def highlight(first, last):
+                if current() != source:
+                    raise ValueError('The source changed. Reopen paced reading.')
+                self._select((first, last))
+
+            def restore():
+                if current() != source:
+                    raise ValueError('The source changed. The current selection was kept.')
+                self.text.SetSelection(*initial_native)
+
+            def opened(view):
+                self.paced_view = view
+
+            show_paced_reader(self.dialog, self.root, source, selection,
+                current_text=current, highlight=highlight, restore_selection=restore,
+                guard=self.guard, on_ready=opened)
+        except Exception as exc:
+            self._say(str(exc))
+        finally:
+            self.paced_view = None
+
+    def show_appearance(self, event=None):
+        if not self.closed and not self.close_pending and self.appearance is not None:
+            self.appearance.show()
 
     def _say(self, message):
         if not self.closed:
@@ -554,9 +616,13 @@ class LiveReadingDialog:
     def _close_now(self):
         if self.closed:
             return
+        if getattr(self, 'paced_view', None) is not None:
+            self.paced_view.on_close()
         self.player.close()
         self.unregister_player()
         self.timer.Stop()
+        if getattr(self, 'appearance', None) is not None:
+            self.appearance.close()
         self.closed = True
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():

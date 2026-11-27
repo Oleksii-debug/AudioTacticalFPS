@@ -68,6 +68,10 @@ from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
     ReadingLocation, _decode as _decode_reading_state, _file_identity,
 )
+from .reader.appearance import (
+    FILENAME as READER_APPEARANCE, MAX_APPEARANCE_BYTES,
+    validate_appearance, snapshot_guard as _appearance_guard,
+)
 from .reader.live_speech import (
     FILENAME as LIVE_READING, MAX_STATE_BYTES as MAX_LIVE_READING_BYTES,
     decode_positions as decode_live_reading, saved_locations as live_reading_locations,
@@ -123,6 +127,7 @@ MAX_SIDECAR_JSON_BYTES = 64 * 1024**2
 MAX_AUDIO_PROJECTS = 1000
 _PROJECT_ID = re.compile(r'[0-9a-f]{32}')
 _SIMPLE_SIDECARS = {
+    READER_APPEARANCE: (MAX_APPEARANCE_BYTES, validate_appearance),
     LIVE_READING: (MAX_LIVE_READING_BYTES, decode_live_reading),
     PUBLICATION_READING: (MAX_PUBLICATION_READING_BYTES, decode_publication_reading),
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
@@ -515,6 +520,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
         if _resource_policy_files(root, cancelled=cancelled) != resource_policy:
             raise RestoreError('Resource allowances changed before backup; retry after the update.')
         stack.enter_context(_legacy_ui_guard(root))
+        stack.enter_context(_appearance_guard(root))
         keymap_lock = root / 'keyboard-shortcuts.json.lock'
         _regular_if_present(keymap_lock, empty=True)
         try:

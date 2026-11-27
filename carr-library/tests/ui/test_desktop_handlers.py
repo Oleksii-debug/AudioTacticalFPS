@@ -128,7 +128,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
         'install_academic_comparison_actions', 'install_assistant_actions',
-        'install_portable_sync_actions', 'install_language_actions', 'install_translation_actions',
+        'install_portable_sync_actions', 'install_incremental_backup', 'install_language_actions', 'install_translation_actions',
         'install_conversion_actions', 'install_transcription_actions',
         'install_engine_settings_actions', 'install_operations_actions', 'install_reading_import_actions',
         'install_trust_actions', 'install_recording_actions',
@@ -275,6 +275,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('api_connections', 'install_api_connection_actions'),
                 ('assistant_dialog', 'install_assistant_actions'),
                 ('portable_sync', 'install_portable_sync_actions'),
+                ('incremental_backup_dialog', 'install_incremental_backup'),
                 ('language_matrix', 'install_language_actions'),
                 ('translation_dialog', 'install_translation_actions'),
                 ('document_conversion', 'install_conversion_actions'),
@@ -323,6 +324,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'audio.recording' in keyboard.bindings
         assert 'reading.publication' in keyboard.bindings
         assert 'conversion.audio' in keyboard.bindings
+        assert 'library.incremental_backup' in keyboard.bindings
         # Re-installing a module cannot duplicate its native item or semantic ID.
         trust_module = importlib.import_module('carr_library.ui.trust_status')
         before = len(collect_commands(value.menu_bar))

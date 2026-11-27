@@ -13,7 +13,7 @@ otherwise unauthenticated snapshot. Cancelling a transfer keeps verified chunks
 for the next attempt; incomplete manifests never become the current generation.
 """
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from hashlib import sha256
 import ctypes
@@ -51,6 +51,15 @@ class VaultBusy(RuntimeError):
     """Another cooperating operation holds the vault writer lock."""
 
 
+class VaultMaterializedError(RuntimeError):
+    """The complete destination is visible, but its directory sync failed."""
+    def __init__(self, destination, token):
+        self.destination = Path(destination)
+        self.transfer_token = token
+        super().__init__('Checkpoint payload was materialized, but disk durability is unconfirmed: '
+                         + str(self.destination))
+
+
 @dataclass(frozen=True)
 class TransferReceipt:
     snapshot_id: str
@@ -61,6 +70,7 @@ class TransferReceipt:
     label: str
     file_count: int
     total_bytes: int
+    durability_confirmed: bool = True
 
 
 @dataclass(frozen=True)
@@ -172,7 +182,8 @@ def _read(path, limit):
     before = _plain(path)
     if before.st_size > limit:
         raise VaultError('Snapshot metadata exceeds the configured resource budget.')
-    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+             | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_CLOEXEC', 0))
     with os.fdopen(os.open(path, flags), 'rb') as stream:
         if _identity(os.fstat(stream.fileno())) != _identity(before):
             raise VaultError('Snapshot file changed while opening.')
@@ -184,7 +195,7 @@ def _read(path, limit):
     return raw
 
 
-def _write_file(path, raw, *, replace=False):
+def _write_file(path, raw, *, replace=False, _committed=None):
     """Flush new bytes, then publish one file without exposing partial contents."""
     temporary = None
     try:
@@ -200,27 +211,28 @@ def _write_file(path, raw, *, replace=False):
             os.replace(temporary, path)
             temporary = None
         else:
-            if os.name == 'nt':
-                # Windows rename is exclusive even for an existing empty file.
-                # Unlike hard links, it is available on FAT/exFAT removable media.
-                os.rename(temporary, path)
-            else:
-                os.link(temporary, path)
-                temporary.unlink()
+            # The shared exclusive rename works for files as well as directories.
+            # Unlike link/unlink, process death cannot strand a second link.
+            from ..file_publication import publish_directory_no_replace
+            publish_directory_no_replace(temporary, path)
             temporary = None
+        if _committed is not None:
+            _committed()  # Internal commit observation, never a user callback.
         _sync_directory(path.parent)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
 
 
-def _publish_directory(stage, destination):
+def _publish_directory(stage, destination, *, _committed=None):
     """Publish through the shared native exclusive-rename primitive."""
     from ..file_publication import publish_directory_no_replace
     try:
         publish_directory_no_replace(stage, destination)
     except RuntimeError as exc:
         raise VaultError(str(exc)) from exc
+    if _committed is not None:
+        _committed()
     _sync_directory(destination.parent)
 
 
@@ -235,24 +247,36 @@ class Vault:
 
     def __init__(self, path, *, chunk_bytes=4 * 1024 * 1024,
                  max_files=100_000, max_total_bytes=1024**4,
-                 max_manifest_bytes=64 * 1024 * 1024):
+                 max_manifest_bytes=64 * 1024 * 1024, create=True):
         for value, low, high in ((chunk_bytes, 1024, 16 * 1024 * 1024),
                                  (max_files, 1, 1_000_000),
                                  (max_total_bytes, 1, 1024**5),
                                  (max_manifest_bytes, 4096, 256 * 1024 * 1024)):
             if type(value) is not int or not low <= value <= high:
                 raise VaultError('Invalid snapshot resource budget.')
+        if type(create) is not bool:
+            raise VaultError('Repository initialization must be an explicit boolean.')
         self.chunk_bytes = chunk_bytes
         self.max_files = max_files
         self.max_total_bytes = max_total_bytes
         self.max_manifest_bytes = max_manifest_bytes
         self.root = _local(path)
-        self.root.mkdir(mode=0o700, exist_ok=True)
+        if create:
+            self.root.mkdir(mode=0o700, exist_ok=True)
+        else:
+            # Read-only admission precedes lock creation in an existing directory.
+            _plain(self.root, directory=True)
+            if _read(self.root / _MARKER, 4096) != _VAULT:
+                raise VaultError('Unsupported local snapshot vault format.')
+            for name in (_CHUNKS, _SNAPSHOTS):
+                _plain(self.root / name, directory=True)
         info = _plain(self.root, directory=True)
         self._root_identity = info.st_dev, info.st_ino
         with self._locked():
             marker = self.root / _MARKER
             if not os.path.lexists(marker):
+                if not create:
+                    raise VaultError('Existing repository metadata disappeared.')
                 if any(os.path.lexists(self.root / name) for name in (_HEAD, _CHUNKS, _SNAPSHOTS)):
                     raise VaultError('Existing files do not identify a complete local snapshot vault.')
                 _write_file(marker, _VAULT)
@@ -260,9 +284,16 @@ class Vault:
                 raise VaultError('Unsupported local snapshot vault format.')
             for name in (_CHUNKS, _SNAPSHOTS):
                 folder = self.root / name
-                folder.mkdir(mode=0o700, exist_ok=True)
+                if create:
+                    folder.mkdir(mode=0o700, exist_ok=True)
                 _plain(folder, directory=True)
-            _sync_directory(self.root)
+            if create:
+                _sync_directory(self.root)
+
+    @classmethod
+    def open_existing(cls, path, **budgets):
+        """Open an existing vault without creating or adopting a missing namespace."""
+        return cls(path, create=False, **budgets)
 
     def _check_root(self):
         _local(self.root)
@@ -476,7 +507,19 @@ class Vault:
             # user callback runs after successful publication or reports failure
             # after that commit. A crash before HEAD may leave a complete orphan.
             check()
-            _write_file(self.root / _HEAD, _canonical(dict(version=1, snapshot=identity)), replace=True)
+            published = False
+            def committed():
+                nonlocal published
+                published = True
+            try:
+                _write_file(self.root / _HEAD, _canonical(dict(version=1, snapshot=identity)),
+                            replace=True, _committed=committed)
+            except OSError:
+                if not published:
+                    raise
+                # HEAD is already replaced. Preserve the recovery identity and
+                # distinguish uncertain durability from a pre-publication error.
+                return replace(self._receipt(identity, manifest), durability_confirmed=False)
             return self._receipt(identity, manifest)
 
     def _validate_manifest(self, value):
@@ -631,5 +674,14 @@ class Vault:
                 check()
                 self._check_root()
                 _local(target)
-                _publish_directory(stage, target)
+                published = False
+                def committed():
+                    nonlocal published
+                    published = True
+                try:
+                    _publish_directory(stage, target, _committed=committed)
+                except OSError as exc:
+                    if published:
+                        raise VaultMaterializedError(target, expected_token) from exc
+                    raise
             return target

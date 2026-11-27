@@ -46,6 +46,7 @@ from .api_connections import install_api_connection_actions
 from .acquisition_dialog import show_acquisition_dialog
 from .assistant_dialog import install_assistant_actions
 from .portable_sync import install_portable_sync_actions
+from .incremental_backup_dialog import install_incremental_backup
 from .language_matrix import install_language_actions
 from .translation_dialog import install_translation_actions
 from .document_conversion import install_conversion_actions
@@ -664,6 +665,7 @@ class DesktopFrame(WorkspaceFrame):
         install_reading_import_actions(self)
         install_trust_actions(self)
         install_portable_sync_actions(self)
+        install_incremental_backup(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

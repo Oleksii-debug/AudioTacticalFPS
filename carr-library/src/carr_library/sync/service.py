@@ -34,18 +34,19 @@ class SyncConflict(ValueError):
 
 
 class SyncPublishedError(RuntimeError):
-    """A checkpoint exists, but local history did not finish saving."""
+    """A checkpoint exists, but local history completion was not confirmed."""
     def __init__(self, receipt):
-        super().__init__('Checkpoint published; local history could not be saved.')
+        super().__init__('Checkpoint published; local history completion could not be confirmed.')
         self.receipt = receipt
 
 
 class SyncRestoredError(RuntimeError):
-    """A verified library exists, but final directory durability was not confirmed."""
-    def __init__(self, destination, token):
-        super().__init__('Library restored; final directory durability could not be confirmed.')
+    """A verified library exists, but finalization needs explicit review."""
+    def __init__(self, destination, token, *, durability_confirmed=False):
+        super().__init__('Library restored; final durability or staging cleanup could not be confirmed.')
         self.destination = str(destination)
         self.token = token
+        self.durability_confirmed = durability_confirmed
 
 
 def _token(value):
@@ -109,7 +110,9 @@ def _transfer_metadata(unpacked):
 def _copy_verified_tree(source, destination, cancelled):
     """Copy a privately verified restore in bounded, cancellable blocks."""
     destination.mkdir(mode=0o700)
-    for directory, subdirs, names in os.walk(source, followlinks=False):
+    def unreadable(error):
+        raise error
+    for directory, subdirs, names in os.walk(source, followlinks=False, onerror=unreadable):
         cancelled_check(cancelled)
         directory = local_path(directory, exists=True, directory=True)
         relative = directory.relative_to(source)
@@ -215,9 +218,13 @@ class SyncService:
         from .vault import Vault
         self._bound()
         path = self._vault_path(folder)
-        if not path.exists():
+        try:
+            local_path(path, exists=True, directory=True)
+        except FileNotFoundError:
             return []
-        vault = Vault(path)
+        if not any(path.iterdir()):
+            return []  # A read never initializes the chosen empty folder.
+        vault = Vault.open_existing(path)
         head = vault.head()
         result = []
         for receipt in vault.list_snapshots():
@@ -319,41 +326,61 @@ class SyncService:
                         # Existing pending jobs are never removed on an error.
                         shutil.rmtree(job)
                         raise
-                cancelled_check(cancelled)
-                def progress(value):
-                    _message(on_status, f'Publishing checkpoint: {value.bytes_completed} of {value.total_bytes} bytes; {value.chunks_reused} verified chunks reused.')
-                receipt = vault.publish(payload, expected_head=expected_head,
-                    label='Encrypted checkpoint' if password is not None else label,
-                    cancelled=cancelled, on_progress=progress)
-                state['vaults'][key] = {'head': receipt.snapshot_id, 'label': label}
-                try:
-                    _atomic_json(self.state_path, state)
-                except (OSError, ValueError) as exc:
-                    raise SyncPublishedError({'id': receipt.snapshot_id, 'token': receipt.transfer_token,
-                        'head': receipt.snapshot_id, 'encrypted': password is not None}) from exc
-                # A stale private cache can be removed later. Failure to remove it
-                # must not hide a successfully committed checkpoint and its code.
-                try:
-                    shutil.rmtree(job)
-                except OSError:
-                    _message(on_status, 'Checkpoint saved. Private transfer cache cleanup will be retried later.')
-                return {'id': receipt.snapshot_id, 'token': receipt.transfer_token,
-                    'head': receipt.snapshot_id, 'encrypted': password is not None,
-                    'files': receipt.file_count, 'bytes': receipt.total_bytes,
-                    'scope': 'All libraries in this data folder',
-                    'message': 'Checkpoint published and local history saved. Keep the transfer code separately from the portable folder.'}
+            # Finish private preparation cleanup before the externally visible
+            # commit. Its failure must not hide a published transfer code.
+            cancelled_check(cancelled)
+            def progress(value):
+                _message(on_status, f'Publishing checkpoint: {value.bytes_completed} of {value.total_bytes} bytes; {value.chunks_reused} verified chunks reused.')
+            receipt = vault.publish(payload, expected_head=expected_head,
+                label='Encrypted checkpoint' if password is not None else label,
+                cancelled=cancelled, on_progress=progress)
+            result = {'id': receipt.snapshot_id, 'token': receipt.transfer_token,
+                'head': receipt.snapshot_id, 'encrypted': password is not None,
+                'files': receipt.file_count, 'bytes': receipt.total_bytes,
+                'durability_confirmed': receipt.durability_confirmed,
+                'scope': 'All libraries in this data folder'}
+            state['vaults'][key] = {'head': receipt.snapshot_id, 'label': label}
+            try:
+                _atomic_json(self.state_path, state)
+            except (OSError, ValueError) as exc:
+                raise SyncPublishedError(result) from exc
+            # No user callback or cancellation check follows publication.
+            # Cleanup is best effort; the immutable receipt remains authoritative.
+            cleanup_pending = False
+            try:
+                shutil.rmtree(job)
+            except OSError:
+                cleanup_pending = True
+            warnings = []
+            if not receipt.durability_confirmed:
+                warnings.append('Snapshot files and history are visible, but final storage durability was not confirmed. Keep the transfer code and verify the checkpoint before relying on it.')
+            if cleanup_pending:
+                warnings.append('Private transfer cache cleanup is pending.')
+            result.update(status='complete' if receipt.durability_confirmed else 'attention',
+                cleanup_pending=cleanup_pending, warnings=warnings,
+                message=('Checkpoint published and local history saved. Keep the transfer code separately from the portable folder.'
+                         if receipt.durability_confirmed else warnings[0]))
+            return result
 
     @contextmanager
     def _opened(self, folder, token, password, cancelled, on_status):
-        from .vault import Vault
+        from .vault import Vault, VaultMaterializedError
         self._bound()
         token = _token(token)
         path = self._vault_path(folder)
         with TemporaryDirectory(prefix='read-', dir=self._cache()) as transient:
             transient = Path(transient)
-            vault = Vault(path)
-            materialized = vault.materialize(token, transient / 'payload', expected_token=token,
-                                             cancelled=cancelled)
+            vault = Vault.open_existing(path)
+            materialized = transient / 'payload'
+            try:
+                vault.materialize(token, materialized, expected_token=token, cancelled=cancelled)
+            except VaultMaterializedError as exc:
+                # This is private staging, never the user's restored library.
+                # Continue only for the exact committed tree and retained token;
+                # decryption and canonical backup validation still run below.
+                if exc.destination != materialized or exc.transfer_token != token:
+                    raise
+                local_path(materialized, exists=True, directory=True)
             children = {entry.name for entry in materialized.iterdir()}
             encrypted = children == {'snapshot.carr'}
             if encrypted:
@@ -417,24 +444,32 @@ class SyncService:
             if os.path.lexists(destination):
                 raise FileExistsError('The restore destination already exists. Choose a new directory.')
             local_path(destination.parent, exists=True, directory=True)
-            with self._opened(folder, token, password, cancelled, on_status) as (verified, metadata, _):
-                cancelled_check(cancelled)
-                _message(on_status, 'Restoring the checked checkpoint to the new data folder.')
-                cancelled_check(cancelled)
-                state = {'kind': 'carr-portable-state', 'version': 1,
-                    'family_id': metadata['family_id'],
-                    'vaults': {self._vault_key(vault_path): {'head': token, 'label': metadata['label']}}}
-                from .vault import _publish_directory, _sync_directory
+            from .vault import _publish_directory
+            published, durable = False, False
+            def committed():
+                nonlocal published
+                published = True
+            try:
                 with TemporaryDirectory(prefix='.carr-portable-restore-', dir=destination.parent) as staging:
                     prepared = Path(staging) / 'library'
-                    _copy_verified_tree(verified, prepared, cancelled)
-                    _atomic_json(prepared / STATE, state)
+                    with self._opened(folder, token, password, cancelled, on_status) as (verified, metadata, _):
+                        cancelled_check(cancelled)
+                        _message(on_status, 'Restoring the checked checkpoint to the new data folder.')
+                        cancelled_check(cancelled)
+                        state = {'kind': 'carr-portable-state', 'version': 1,
+                            'family_id': metadata['family_id'],
+                            'vaults': {self._vault_key(vault_path): {'head': token, 'label': metadata['label']}}}
+                        _copy_verified_tree(verified, prepared, cancelled)
+                        _atomic_json(prepared / STATE, state)
+                    # Authenticated staging is closed before the commit. The
+                    # internal observer records rename success before fsync.
                     cancelled_check(cancelled)
-                    _publish_directory(prepared, destination)
-                    try:
-                        _sync_directory(destination.parent)
-                    except OSError as exc:
-                        raise SyncRestoredError(destination, token) from exc
-                restored = destination
-                return {'id': token, 'token': token, 'destination': str(restored),
-                        'verified': True, 'message': 'Checkpoint restored to a separate folder. Open that library folder when ready.'}
+                    _publish_directory(prepared, destination, _committed=committed)
+                    durable = True
+            except Exception as exc:
+                if published:
+                    raise SyncRestoredError(destination, token, durability_confirmed=durable) from exc
+                raise
+            return {'id': token, 'token': token, 'destination': str(destination),
+                    'verified': True, 'durability_confirmed': True,
+                    'message': 'Checkpoint restored to a separate folder. Open that library folder when ready.'}

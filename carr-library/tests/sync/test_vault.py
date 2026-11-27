@@ -104,6 +104,7 @@ def test_process_exit_releases_lock_and_resumes_durable_verified_chunks(tmp_path
 import os, sys
 from pathlib import Path
 import carr_library.sync.vault as module
+assert Path(module.__file__).resolve() == Path(sys.argv[4]).resolve(), 'Wrong installed/source Vault origin'
 vault = module.Vault(Path(sys.argv[1]), chunk_bytes=1024)
 if sys.argv[3] == 'manifest':
     original = module._write_file
@@ -118,7 +119,8 @@ def progress(event):
 vault.publish(Path(sys.argv[2]), expected_head=None, on_progress=progress)
 raise AssertionError('crash boundary was not reached')
 '''
-    result = subprocess.run([sys.executable, '-c', script, str(vault.root), str(source), phase],
+    result = subprocess.run([sys.executable, '-B', '-c', script, str(vault.root), str(source), phase,
+                             str(Path(module.__file__).resolve())],
                             capture_output=True, timeout=15, check=False)
     assert result.returncode == 73, result.stderr.decode('utf-8', errors='replace')
     restarted = Vault(vault.root, chunk_bytes=1024)
@@ -260,10 +262,10 @@ def test_existing_destination_and_racing_directory_are_never_overwritten(tmp_pat
     assert tree(target) == {'keep': b'original'}
     target = tmp_path / 'racing target'
     original = module._publish_directory
-    def race(stage, destination):
+    def race(stage, destination, **kwargs):
         destination.mkdir()
         (destination / 'keep').write_bytes(b'concurrent')
-        return original(stage, destination)
+        return original(stage, destination, **kwargs)
     monkeypatch.setattr(module, '_publish_directory', race)
     with pytest.raises(FileExistsError):
         vault.materialize(receipt.snapshot_id, target, expected_token=receipt.transfer_token)
@@ -275,7 +277,7 @@ def test_failure_before_atomic_publication_leaves_destination_absent(tmp_path, m
     source = payload(tmp_path / 'prepared')
     vault = Vault(tmp_path / 'vault')
     receipt = vault.publish(source, expected_head=None)
-    def fail(stage, destination):
+    def fail(stage, destination, **kwargs):
         raise OSError('injected publication failure')
     monkeypatch.setattr(module, '_publish_directory', fail)
     with pytest.raises(OSError, match='injected'):
@@ -366,29 +368,22 @@ def test_path_bytes_are_bounded_during_inventory_before_chunk_writes(tmp_path):
 
 
 def test_exclusive_file_publication_on_the_actual_platform(tmp_path, monkeypatch):
+    from carr_library import file_publication
     destination = tmp_path / 'receipt.json'
     calls = []
-    if os.name == 'nt':
-        # Exercise actual native Windows rename, not a simulated platform flag.
-        operation = module.os.rename
-        def exclusive(source, target):
-            calls.append('native-rename')
-            return operation(source, target)
-        monkeypatch.setattr(module.os, 'rename', exclusive)
-    else:
-        operation = module.os.link
-        def exclusive(source, target):
-            calls.append('native-link')
-            return operation(source, target)
-        monkeypatch.setattr(module.os, 'link', exclusive)
+    operation = file_publication.publish_directory_no_replace
+    def exclusive(source, target):
+        calls.append('native-exclusive-rename')
+        return operation(source, target)
+    monkeypatch.setattr(file_publication, 'publish_directory_no_replace', exclusive)
     module._write_file(destination, b'complete receipt')
     assert destination.read_bytes() == b'complete receipt'
+    assert destination.stat().st_nlink == 1
     with pytest.raises(FileExistsError):
         module._write_file(destination, b'must not replace')
     assert destination.read_bytes() == b'complete receipt'
-    assert calls == ['native-rename' if os.name == 'nt' else 'native-link'] * 2
+    assert calls == ['native-exclusive-rename'] * 2
     assert not list(tmp_path.glob('.snapshot-*.tmp'))
-
 
 def test_unknown_files_are_not_deleted_by_listing_or_resume(tmp_path):
     source = payload(tmp_path / 'prepared')
@@ -435,3 +430,40 @@ def test_empty_opaque_payload_and_progress_failure_do_not_confuse_completion(tmp
     with pytest.raises(RuntimeError, match='observer'):
         vault.publish(source, expected_head=receipt.snapshot_id, on_progress=fail)
     assert vault.head() == receipt.snapshot_id
+
+
+def test_open_existing_never_creates_or_adopts_missing_metadata(tmp_path):
+    absent = tmp_path / 'absent'
+    with pytest.raises((OSError, ValueError)):
+        Vault.open_existing(absent)
+    assert not absent.exists()
+    unknown = tmp_path / 'unknown'
+    unknown.mkdir()
+    (unknown / 'keep').write_bytes(b'owner data')
+    with pytest.raises((OSError, ValueError)):
+        Vault.open_existing(unknown)
+    assert tree(unknown) == {'keep': b'owner data'}
+    original = Vault(tmp_path / 'known')
+    marker = original.root / 'vault.json'
+    before = marker.read_bytes(), marker.stat().st_mtime_ns
+    opened = Vault.open_existing(original.root)
+    assert opened.head() is None
+    assert (marker.read_bytes(), marker.stat().st_mtime_ns) == before
+
+
+def test_post_materialization_sync_failure_reports_visible_complete_destination(tmp_path, monkeypatch):
+    source = payload(tmp_path / 'prepared')
+    vault = Vault(tmp_path / 'vault')
+    receipt = vault.publish(source, expected_head=None)
+    target = tmp_path / 'visible'
+    sync = module._sync_directory
+    def fail_after_publication(path):
+        if Path(path) == target.parent and target.exists():
+            raise OSError('Directory sync unavailable after rename')
+        return sync(path)
+    monkeypatch.setattr(module, '_sync_directory', fail_after_publication)
+    with pytest.raises(module.VaultMaterializedError) as error:
+        vault.materialize(receipt.snapshot_id, target, expected_token=receipt.transfer_token)
+    assert error.value.destination == target
+    assert error.value.transfer_token == receipt.transfer_token
+    assert tree(target) == tree(source)

@@ -347,6 +347,7 @@ def test_native_multiline_normalization_only_enters_saved_text_after_an_edit(tmp
         Dialog=Window, TextCtrl=Window, StaticText=Window, Button=Window,
         BoxSizer=Sizer, WrapSizer=Sizer, Timer=Timer, ID_OK=1,
         EVT_BUTTON='button', EVT_MENU='menu', EVT_TIMER='timer', EVT_CLOSE='close', EVT_TEXT='text',
+        EVT_WINDOW_DESTROY='destroy', EVT_SYS_COLOUR_CHANGED='system-colour',
         AcceleratorTable=lambda rows: rows, CallAfter=lambda fn, *args: queue.append(lambda: fn(*args)))
     monkeypatch.setitem(sys.modules, 'wx', wx)
     root = tmp_path / 'library'
@@ -362,6 +363,7 @@ def test_native_multiline_normalization_only_enters_saved_text_after_an_edit(tmp
         assert controls['editor'].GetValue() == displayed
         assert controls['editor'].IsEnabled() and controls['save'].IsEnabled()
         assert controls['live_reading'].IsEnabled() and controls['close'].IsEnabled()
+        assert controls['appearance'].IsEnabled()
         assert not controls['cancel_preview'].IsEnabled()
         dialog.handlers['timer'](None)
         assert store.load(project.id, draft=True)[0].current_text == original
