@@ -8,7 +8,7 @@ import pytest
 
 from carr_library.speech.player import WavePlayer
 from carr_library.ui.operation_progress import (
-    OperationProgress, ProgressPreferences, WindowsProgressSound,
+    OperationProgress, ProgressPreferences, WindowsProgressSound, save_preferences,
 )
 
 
@@ -442,3 +442,58 @@ def test_quiet_policy_discards_pending_final_speech_without_late_replay(media):
     controller.configure(ProgressPreferences(mode='speech'))
     controller._tick()
     assert voice.heard == [] and not controller.timer.IsRunning()
+
+
+@pytest.mark.parametrize('mode', ['speech', 'beep'])
+def test_root_change_discards_pending_final_cue_when_new_library_has_sound_enabled(media, tmp_path, mode):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode=mode))
+    if mode == 'beep':
+        media.backend.release.clear()
+    controller.start('Completed in the old library', 4)
+    assert (voice.entered if mode == 'speech' else media.backend.entered).wait(1)
+    controller.succeed()
+    prior_beeps = len(media.backend.calls)
+
+    other = tmp_path / 'another-library-with-sound'
+    other.mkdir()
+    save_preferences(other, ProgressPreferences(mode='beep'))
+    media.frame.library = SimpleNamespace(root=other)
+    controller.reload_preferences()
+    assert controller.preferences.mode == 'beep'
+    assert not media.sound.muted and not media.sound.speech_available
+    voice.release.set()
+    media.backend.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+
+    controller._tick()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert voice.heard == []
+    assert len(media.backend.calls) == prior_beeps, 'An old cue must not use the new library sound policy'
+    assert not controller.timer.IsRunning()
+
+
+def test_quiet_toggle_between_timer_ticks_discards_pending_final_speech(media):
+    voice = media.use_voice()
+    controller = media.controller
+    controller.configure(ProgressPreferences(mode='speech'))
+    controller.start('Completed before quiet was enabled', 4)
+    assert voice.entered.wait(1)
+    controller.succeed()
+
+    # No GUI timer runs while quiet is enabled. Entering the policy must discard
+    # the old cue immediately instead of letting a later unmute revive it.
+    controller.configure(ProgressPreferences(mode='speech', quiet=True))
+    controller.configure(ProgressPreferences(mode='speech'))
+    voice.release.set()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+
+    controller._tick()
+    media.sound._thread.join(2)
+    assert not media.sound._thread.is_alive()
+    assert voice.heard == [], 'Unmuting must not replay a cue discarded by the quiet policy'
+    assert not controller.timer.IsRunning()
