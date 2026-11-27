@@ -22,6 +22,11 @@ class CanonicalPlayer:
         self._digest = None
         self._started = False
 
+    def select_output(self, selected):
+        if self.path is not None:
+            raise ValueError('Close the current speech chunk before changing its output.')
+        self.backend.select_output(selected)
+
     def available(self):
         return bool(self.backend.available)
 

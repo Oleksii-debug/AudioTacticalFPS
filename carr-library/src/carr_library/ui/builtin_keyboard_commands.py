@@ -76,6 +76,7 @@ READER_COMMANDS = (
     CommandSpec('reader.speech_sentence', 'Read current sentence aloud', 'reader', 'Shift+F9'),
     CommandSpec('reader.speech_paragraph', 'Read current paragraph aloud', 'reader', 'Ctrl+Shift+F9'),
     CommandSpec('reader.speech_voices', 'Discover local reading voices', 'reader'),
+    CommandSpec('reader.output_device', 'Choose playback output device', 'reader'),
     CommandSpec('reader.speech_seek', 'Seek within current speech chunk', 'reader'),
     CommandSpec('reader.speech_pause', 'Pause or resume voice reading', 'reader', 'F7'),
     CommandSpec('reader.speech_stop', 'Stop voice reading', 'reader', 'F8'),

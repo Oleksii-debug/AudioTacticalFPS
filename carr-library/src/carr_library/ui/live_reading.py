@@ -140,6 +140,7 @@ class LiveReadingControls:
         self.voice.SetName("Local reading voice; choose explicitly")
         voices.Add(self.voice, 1, wx.EXPAND | wx.ALL, 4)
         self.discover_button = self._button(voices, "Discover local voices", self.discover, "reader.speech_voices")
+        self.output_button = self._button(voices, "Playback output...", self.choose_output, "reader.output_device")
         voices.Add(wx.StaticText(dialog, label="Synthesis rate (-10 to 10)"), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 4)
         self.rate = wx.SpinCtrl(dialog, min=-10, max=10, initial=0)
         self.rate.SetName("Speech rate for the next reading operation")
@@ -204,6 +205,31 @@ class LiveReadingControls:
             return
         try:
             self.core.discover_voices()
+        except Exception as exc:
+            self._report(exc)
+
+    def choose_output(self, event=None):
+        if self.closed:
+            return
+        core = self.core
+        generation = getattr(self, '_start_generation', 0)
+
+        def guard():
+            if (self.closed or self.core is not core or not self.dialog
+                    or generation != getattr(self, '_start_generation', 0)
+                    or core.busy or not self.ready()):
+                raise ValueError('The reader changed or is active. Stop reading before choosing its output.')
+
+        try:
+            from .output_devices import choose_output_device
+            guard()
+            choice = choose_output_device(self.dialog, current=core.output_device, guard=guard)
+            if choice is None:
+                return
+            guard()
+            core.set_output_device(choice.device)
+            label = choice.device.name if choice.device is not None else 'the Windows system default'
+            self._report(f'Playback output selected: {label}. Start reading when ready.')
         except Exception as exc:
             self._report(exc)
 
@@ -337,6 +363,7 @@ class LiveReadingControls:
         for button in self.read_buttons:
             button.Enable(available)
         self.discover_button.Enable(not busy)
+        self.output_button.Enable(available)
         self.resume_button.Enable(available and self.source.supports_resume)
         self.pause_button.Enable(busy and view.state in ("loading", "rendering", "playing", "paused"))
         self.stop_button.Enable(busy or not self.ready())

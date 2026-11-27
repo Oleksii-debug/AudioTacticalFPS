@@ -577,11 +577,11 @@ def install_progress_panel(frame):
                     if bar.GetMenuLabel(index).replace('&', '').strip().casefold() == 'options'), None)
     if options is None:
         raise ValueError('Install the shared keyboard Options menu before operation progress.')
+    # The live keyboard manager validates every native leaf at registration.
+    # Finish each new command before appending the next unregistered leaf.
     query = options.Append(wx.ID_ANY, 'Query current &progress\tCtrl+Shift+Q')
-    settings = options.Append(wx.ID_ANY, 'Progress feedback settings...')
     panel.query_item = query
     frame.Bind(wx.EVT_MENU, panel.query, query)
-    frame.Bind(wx.EVT_MENU, panel.settings, settings)
     manager = frame.keyboard_commands
     previous_notice = manager.load_notice
     register_menu_command(frame, CommandSpec('progress.query', 'Query current progress',
@@ -589,6 +589,8 @@ def install_progress_panel(frame):
                           fallback_unassigned=True)
     if manager.load_notice and manager.load_notice != previous_notice:
         panel.notice = panel.notice + '\n' + manager.load_notice if panel.notice else manager.load_notice
+    settings = options.Append(wx.ID_ANY, 'Progress feedback settings...')
+    frame.Bind(wx.EVT_MENU, panel.settings, settings)
     register_menu_command(frame, CommandSpec('options.progress', 'Progress feedback settings'), settings)
     panel.refresh()
     return panel

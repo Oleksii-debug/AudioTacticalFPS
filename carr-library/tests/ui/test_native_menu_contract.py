@@ -245,3 +245,63 @@ def test_retained_alias_rejects_rebinding_reused_ids_and_unknown_slash_paths():
     item.SetItemLabel('Unregistered / ambiguous command')
     with pytest.raises(ValueError, match='stable, unambiguous'):
         capture_commands(bar)
+
+
+
+def test_progress_installer_adds_two_commands_to_the_existing_shared_manager(native_menus):
+    from carr_library.ui.keyboard_settings import install_keyboard_settings
+    from carr_library.ui.progress_panel import install_progress_panel
+
+    frame = native_menus.frame
+    frame.menu_bar = MenuBar()
+    options = Menu()
+    frame.menu_bar.Append(options, '&Options')
+    retained = options.Append(-1, 'Retained action\tCtrl+Shift+7')
+    frame.Bind(native_menus.wx.EVT_MENU, lambda event: None, retained)
+    manager = install_keyboard_settings(frame)
+    original = {row.menu_id for row in frame.keyboard_settings.commands}
+
+    # This is the real installer after the real manager is active, matching
+    # DesktopFrame._menus. Both callbacks must become registered native leaves.
+    panel = install_progress_panel(frame)
+    assert frame.keyboard_commands is manager
+    assert frame.keyboard_settings.manager is manager
+    query = manager.bindings['progress.query'].item
+    settings = manager.bindings['options.progress'].item
+    assert query.GetId() != settings.GetId()
+    assert manager.registry.get('progress.query').default_shortcut == 'Ctrl+Shift+Q'
+    assert native_menus.bindings[query.GetId()].__self__ is panel
+    assert native_menus.bindings[settings.GetId()].__self__ is panel
+    observed = {row.menu_id for row in frame.keyboard_settings.commands}
+    assert observed == original | {query.GetId(), settings.GetId()}
+    assert retained.GetId() in observed
+    manager.guard_native()
+    frame.keyboard_settings._guard()
+
+    # Reinstalling the observer must keep one owner and the same semantic IDs.
+    assert install_progress_panel(frame) is panel
+    assert frame.operation_progress is panel.legacy
+    assert {row.menu_id for row in frame.keyboard_settings.commands} == observed
+    assert len(options.GetMenuItems()) == len(observed)
+
+
+def test_active_manager_still_rejects_an_unregistered_second_native_leaf(native_menus):
+    from carr_library.ui.command_registry import CommandSpec
+    from carr_library.ui.keyboard_settings import install_keyboard_settings, register_menu_command
+
+    frame = native_menus.frame
+    frame.menu_bar = MenuBar()
+    options = Menu()
+    frame.menu_bar.Append(options, '&Options')
+    manager = install_keyboard_settings(frame)
+    first = options.Append(-1, 'Explicit dynamic command')
+    second = options.Append(-1, 'Unregistered dynamic command')
+    frame.Bind(native_menus.wx.EVT_MENU, lambda event: None, first)
+
+    # This intentionally repeats the faulty two-append sequence. The fix is in
+    # the progress installer; relaxing the manager's identity guard is unsafe.
+    with pytest.raises(ValueError, match='A new native command must register its semantic identity'):
+        register_menu_command(frame, CommandSpec('test.dynamic', 'Explicit dynamic command'), first)
+    assert second.GetId() not in {binding.item.GetId() for binding in manager.bindings.values()}
+    with pytest.raises(ValueError, match='menu commands changed'):
+        manager.guard_native()

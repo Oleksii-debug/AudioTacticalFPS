@@ -156,7 +156,7 @@ def show_studio(frame):
                  ('preview', 'Listen to &output'), ('close', '&Close')),
                 (('progress_voice', 'Use voice for progress...'),
                  ('navigation', 'Playback navigation...'), ('pause_preview', 'Pause/resume playback'),
-                 ('stop_preview', 'Stop playback'))):
+                 ('stop_preview', 'Stop playback'), ('output_device', 'Playback output...'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
@@ -211,6 +211,7 @@ def show_studio(frame):
         buttons['navigation'].Enable(not busy and getattr(dialog, '_playback_navigation', None) is not None)
         buttons['pause_preview'].Enable(not busy and getattr(dialog, '_audio_player', None) is not None)
         buttons['stop_preview'].Enable(getattr(dialog, '_audio_player', None) is not None)
+        buttons['output_device'].Enable(not busy)
         selected = voice_choice.GetSelection()
         buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
                                           and 'volume' in voices[selected].capabilities)
@@ -684,6 +685,41 @@ def show_studio(frame):
         except Exception as exc:
             report(f'Playback stop needs attention: {exc}', True)
 
+    def choose_playback_output(event=None):
+        if not alive:
+            return
+        player = getattr(dialog, '_audio_player', None)
+        generation = getattr(dialog, '_playback_generation', 0)
+
+        def guard():
+            if (not alive or not dialog or busy
+                    or generation != getattr(dialog, '_playback_generation', 0)
+                    or getattr(dialog, '_audio_player', None) is not player):
+                raise ValueError('The Studio or playback changed. Choose its output again when idle.')
+            if player is not None and player.state in ('playing', 'paused'):
+                raise ValueError('Stop the Studio preview before changing its playback output.')
+
+        try:
+            from .output_devices import choose_output_device
+            guard()
+            choice = choose_output_device(dialog, current=getattr(dialog, '_output_device', None), guard=guard)
+            if choice is None:
+                return
+            guard()
+            dialog._playback_generation = generation + 1
+            navigation = getattr(dialog, '_playback_navigation', None)
+            if navigation is not None:
+                navigation.invalidate()
+            if player is not None:
+                if player.close() is False:
+                    raise RuntimeError('The previous playback device has not confirmed closure.')
+                player.select_output(choice.device)
+            dialog._output_device = choice.device
+            label = choice.device.name if choice.device is not None else 'the Windows system default'
+            report(f'Preview output selected: {label}. Listen to output when ready.', True)
+        except Exception as exc:
+            report(f'Playback output was not changed. {exc}', True)
+
     def playback_navigation(event=None):
         if not alive:
             return
@@ -732,8 +768,13 @@ def show_studio(frame):
                 raise ValueError('There is no completed master yet; render or resume the job.')
             from ..speech.player import WavePlayer
             from .playback_navigation import PlaybackNavigationHost
-            player = getattr(dialog, '_audio_player', None) or WavePlayer()
-            dialog._audio_player = player
+            player = getattr(dialog, '_audio_player', None)
+            if player is None:
+                player = WavePlayer()
+                dialog._audio_player = player
+                selected_output = getattr(dialog, '_output_device', None)
+                if selected_output is not None:
+                    player.select_output(selected_output)
             dialog._playback_generation = getattr(dialog, '_playback_generation', 0) + 1
             generation = dialog._playback_generation
             navigation = getattr(dialog, '_playback_navigation', None)
@@ -870,7 +911,7 @@ def show_studio(frame):
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
                            'preview': preview, 'help': help_text, 'close': close,
                            'navigation': playback_navigation, 'pause_preview': pause_preview,
-                           'stop_preview': stop_preview,
+                           'stop_preview': stop_preview, 'output_device': choose_playback_output,
                            'progress_voice': select_progress_voice}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)
     bindings = []

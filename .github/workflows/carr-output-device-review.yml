@@ -1,0 +1,82 @@
+name: Explicit output and integration correction review
+
+on:
+  push:
+    branches: [carr/explicit-output-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-output-device-review.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: output-review-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Output selection and corrections / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact source and declared tests
+        run: python -m pip install ".[test]"
+      - name: Install actual Windows desktop
+        if: runner.os == 'Windows'
+        run: python -m pip install ".[desktop]"
+      - name: Require passing boundary tests without skips
+        run: |
+          mkdir -p ci-output-review
+          python scripts/ci_check.py --jobs 3 \
+            tests/audio/test_output_devices.py \
+            tests/speech/test_output_device_playback.py \
+            tests/reader/test_live_reading.py \
+            tests/reader/test_live_player.py \
+            tests/ui/test_output_devices.py \
+            tests/ui/test_live_reading_controls.py \
+            tests/ui/test_studio_playback_actions.py \
+            tests/ui/test_native_menu_contract.py \
+            tests/ui/test_progress_job_review.py \
+            tests/speech/test_voice_preferences.py \
+            tests/speech/test_voice_preferences_handlers.py \
+            tests/storage/test_state_json_budget.py \
+            tests/storage/test_voice_preferences_backup.py \
+            tests/packaging/test_ci_check.py 2>&1 | tee ci-output-review/boundaries.txt
+      - name: Require the installed native reader and exact bookmarks
+        if: runner.os == 'Windows'
+        run: python -I -B -X utf8 tests/ui/native_reading_desk_smoke.py --native 2>&1 | tee ci-output-review/native-reader.txt
+      - name: Require installed native voice preference review
+        if: runner.os == 'Windows'
+        run: python -I -B -X utf8 scripts/windows_voice_preferences_smoke.py 2>&1 | tee ci-output-review/native-voice-preferences.txt
+      - name: Preserve source and dependency identity
+        if: always()
+        run: |
+          mkdir -p ci-output-review
+          git rev-parse HEAD > ci-output-review/commit.txt
+          python -m pip freeze > ci-output-review/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: output-review-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-output-review
+          if-no-files-found: error

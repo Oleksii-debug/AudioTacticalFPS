@@ -123,6 +123,7 @@ def controls():
     owner._release_media = None
     owner.on_stop = lambda: None
     owner.seek_button = Control()
+    owner.output_button = Control()
     owner.shown = []
     owner.show_section = owner.shown.append
     owner.timer = SimpleNamespace(Stop=lambda: None)
@@ -556,3 +557,31 @@ def test_initial_source_acceptance_keeps_async_voice_inventory_alive(monkeypatch
     dialog._stop_live()
     assert tuple(accepted) == accepted_before and dialog.text.value == 'Є source.\r\n'
     assert owner.core.calls == [('stop', None)], 'Detached source callbacks touched the live owner.'
+
+
+@pytest.mark.parametrize('boundary', ['use', 'cancel', 'closed', 'busy', 'generation'])
+def test_output_chooser_cannot_change_replaced_or_active_reading_owner(monkeypatch, boundary):
+    from carr_library.audio.output_devices import OutputDevice
+    from carr_library.ui import output_devices
+    owner = controls()
+    owner.dialog = SimpleNamespace()
+    selected = OutputDevice(0, 'reviewed-endpoint', 'Навушники')
+    owner.core.output_device = None
+    changes = []
+    owner.core.set_output_device = changes.append
+    def choose(parent, *, current, guard):
+        guard()
+        assert parent is owner.dialog and current is None
+        if boundary == 'closed':
+            owner.closed = True
+            for control in (owner.status, owner.voice):
+                control.destroyed = True
+        elif boundary == 'busy':
+            owner.core.busy = True
+        elif boundary == 'generation':
+            owner._start_generation = 1
+        return None if boundary == 'cancel' else output_devices.OutputChoice(selected)
+    monkeypatch.setattr(output_devices, 'choose_output_device', choose)
+    owner.choose_output()
+    assert changes == ([selected] if boundary == 'use' else [])
+    assert not owner.core.calls

@@ -254,6 +254,7 @@ class LiveReader:
         self._future = None
         self._closed = self._pause = False
         self._pending_seek = None
+        self._output_device = None
         self._possibly_audible = False
         self._retained_resources = None
         self._stop_message = "Live reading stopped. Resume restarts the current verified chunk."
@@ -273,6 +274,21 @@ class LiveReader:
     def silence_uncertain(self):
         with self._lock:
             return self._possibly_audible and (self._closed or not self.busy)
+
+    @property
+    def output_device(self):
+        with self._lock:
+            return self._output_device
+
+    def set_output_device(self, selected):
+        from ..audio.output_devices import OutputDevice
+        if selected is not None and type(selected) is not OutputDevice:
+            raise ValueError('Choose a device from the current output list.')
+        with self._lock:
+            if self._closed or self.busy or self._retained_resources is not None or self._possibly_audible:
+                raise ValueError('Stop reading and confirm device cleanup before changing the playback output.')
+            self._output_device = selected
+        return selected
 
     def status(self):
         with self._lock:
@@ -367,7 +383,10 @@ class LiveReader:
                 or type(continuous) is not bool or type(resume) is not bool):
             raise ValueError("Invalid live-reading voice settings.")
         voice = next(voice for voice in voices if voice.id == voice_id)
-        return self._submit(lambda: self._read(ordinal, start, end, voice, rate, volume, continuous, resume))
+        with self._lock:
+            selected = self._output_device
+            return self._submit(lambda: self._read(ordinal, start, end, voice, rate, volume, continuous, resume,
+                                                   output_device=selected))
 
     def toggle_pause(self):
         if not self.busy or self.status().state in ("discovering", "stopping"):
@@ -429,7 +448,7 @@ class LiveReader:
             # A full disk must not silently erase an earlier valid resume point.
             self._emit(warning="The current chunk position could not be saved: " + str(exc))
 
-    def _read(self, ordinal, start, end, voice, rate, volume, continuous, resume):
+    def _read(self, ordinal, start, end, voice, rate, volume, continuous, resume, *, output_device=None):
         began = self.clock()
         self._emit(state="loading", message="Checking the exact reading source…", warning="",
                    audio_seconds=0.0, duration_seconds=0.0)
@@ -457,6 +476,11 @@ class LiveReader:
         directory = None
         total_characters, total_seconds = 0, 0.0
         try:
+            if output_device is not None:
+                choose = getattr(player, 'select_output', None)
+                if choose is None:
+                    raise ValueError('This playback backend does not support an explicit output device.')
+                choose(output_device)
             if not player.available():
                 reason = player.status().get("reason") or "No native audio output device is available."
                 raise ValueError(reason)

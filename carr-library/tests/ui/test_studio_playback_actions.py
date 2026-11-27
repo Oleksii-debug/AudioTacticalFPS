@@ -30,6 +30,9 @@ def studio(tmp_path):
             self.path, self.duration_seconds = None, 0
             self.state, self.position_seconds = 'stopped', 0
             self.calls, self.close_result = [], True
+            self.output_device = None
+        def select_output(self, selected):
+            self.calls.append(('select_output', selected)); self.output_device = selected
         def play(self, selected):
             self.calls.append(('play', selected))
             self.path, self.duration_seconds = selected, 10
@@ -74,7 +77,7 @@ def studio(tmp_path):
         controls=Mock(), alive=True, busy=False, autosave=lambda: None,
         cancel=threading.Event(), timer=Mock(), executor=Mock(), cleanup_started=False, frame=frame)
     handlers = _shared['callbacks']('studio_dialog.py', 'show_studio',
-        ['preview', 'pause_preview', 'stop_preview', 'playback_navigation',
+        ['preview', 'pause_preview', 'stop_preview', 'playback_navigation', 'choose_playback_output',
          'cleanup', 'release_service', 'dispose', 'close'], values)
     fixture = SimpleNamespace(handlers=handlers, player=dialog._audio_player, dialog=dialog,
         local=local, parent=parent, scheduler=scheduler, reports=reports, path=path, values=values)
@@ -146,3 +149,68 @@ def test_close_invalidates_timer_and_retains_uncertain_media_in_both_existing_ob
     assert ('unregister', 'main', confirmed) in studio.parent.events
     assert any('not confirmed' in notice for notice in studio.reports) is (not confirmed)
     assert studio.path.exists()
+
+
+@pytest.mark.parametrize('confirmed', [True, False])
+def test_explicit_output_change_requires_previous_native_close_confirmation(studio, monkeypatch, confirmed):
+    from carr_library.audio.output_devices import OutputDevice
+    from carr_library.ui import output_devices
+    selected = OutputDevice(1, 'reviewed-endpoint', 'Headphones')
+    host = start(studio)
+    studio.handlers.stop_preview()
+    studio.player.close_result = confirmed
+    def choose(parent, *, current, guard):
+        guard()
+        return output_devices.OutputChoice(selected)
+    monkeypatch.setattr(output_devices, 'choose_output_device', choose)
+    studio.handlers.choose_playback_output()
+    assert studio.player.output_device is (selected if confirmed else None)
+    assert getattr(studio.dialog, '_output_device', None) is (selected if confirmed else None)
+    assert host.controller.audio is None
+    if not confirmed:
+        assert any('not confirmed' in message for message in studio.reports)
+    else:
+        assert studio.player.calls[-2:] == [('close',), ('select_output', selected)]
+
+
+@pytest.mark.parametrize('boundary', ['generation', 'player', 'native-owner', 'playback'])
+def test_modal_output_selection_is_bound_to_unchanged_studio_and_player(studio, monkeypatch, boundary):
+    from carr_library.audio.output_devices import OutputDevice
+    from carr_library.ui import output_devices
+    selected = OutputDevice(0, 'reviewed-endpoint', 'Speakers')
+    def choose(parent, *, current, guard):
+        guard()
+        if boundary == 'generation':
+            studio.dialog._playback_generation += 1
+        elif boundary == 'player':
+            studio.dialog._audio_player = SimpleNamespace()
+        elif boundary == 'native-owner':
+            studio.dialog.destroyed = True
+        else:
+            studio.player.state = 'playing'
+        return output_devices.OutputChoice(selected)
+    monkeypatch.setattr(output_devices, 'choose_output_device', choose)
+    studio.handlers.choose_playback_output()
+    assert studio.player.output_device is None
+    assert not hasattr(studio.dialog, '_output_device')
+    assert not any(call[0] == 'select_output' for call in studio.player.calls)
+    # Restore the fixture's real cleanup owner before its ordinary finalizer.
+    studio.dialog._audio_player = studio.player
+    studio.dialog.destroyed = False
+    studio.player.state = 'stopped'
+
+
+def test_output_change_revokes_already_queued_quiet_start(studio, monkeypatch):
+    from carr_library.audio.output_devices import OutputDevice
+    from carr_library.ui import output_devices
+    studio.handlers.preview()
+    assert not studio.player.calls
+    selected = OutputDevice(0, 'explicit-endpoint', 'Speakers')
+    monkeypatch.setattr(output_devices, 'choose_output_device',
+        lambda *args, **kwargs: output_devices.OutputChoice(selected))
+    studio.handlers.choose_playback_output()
+    before = list(studio.player.calls)
+    studio.local.ready = studio.parent.ready = True
+    studio.scheduler.tick()
+    assert studio.player.calls == before
+    assert not any(call[0] == 'play' for call in studio.player.calls)
