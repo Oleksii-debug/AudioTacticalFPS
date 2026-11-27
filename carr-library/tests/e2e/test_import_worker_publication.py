@@ -97,29 +97,65 @@ LibraryApp._import_file = _replay
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
         return popen(command, **options)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    class WorkerSubprocess:
+        Popen = staticmethod(launch)
+
+        def __getattr__(self, name):
+            return getattr(subprocess, name)
+
+    # Keep the instrumentation local to the supervisor: replacing the shared
+    # stdlib Popen class also changes unrelated parsers and Windows helpers.
+    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess())
+
 
 
 def _expire_after_barrier(monkeypatch, marker, timeout):
-    """Expire the real supervisor only after the intended transaction boundary.
+    """Advance only the supervisor's clock after the real child reaches its barrier.
 
-    Native PDF startup is not the behavior under test. Keep a real wall-clock
-    watchdog for a child that never reaches the barrier, and advance only this
-    supervisor's clock when the actual child has published its marker. The
-    child, process termination and publication verifier use their real clocks.
+    Cold native PDF imports can need more than three seconds on Windows. The
+    unchanged real deadline still bounds startup; the injected clock advances
+    only once the exact before/after-commit boundary has actually been reached.
+    Child parsing, process termination and publication recovery remain real.
     """
-    monotonic = time.monotonic
-    first = True
+    clock = worker.time
 
-    def clock():
-        nonlocal first
-        now = monotonic()
-        if first:
-            first = False
-            return now
-        return now + timeout if marker.exists() else now
+    class BarrierClock:
+        armed = False
+        expired = False
 
-    monkeypatch.setattr(worker, 'time', SimpleNamespace(monotonic=clock, sleep=time.sleep))
+        def monotonic(self):
+            now = clock.monotonic()
+            if self.armed and marker.exists():
+                self.expired = True
+            self.armed = True
+            return now + (timeout + 1 if self.expired else 0)
+
+        def __getattr__(self, name):
+            return getattr(clock, name)
+
+    monkeypatch.setattr(worker, 'time', BarrierClock())
+
+
+@pytest.mark.parametrize('marker_preexists', (False, True))
+def test_timeout_fixture_arms_deadline_before_expiring_at_barrier(tmp_path, monkeypatch,
+                                                               marker_preexists):
+    from types import SimpleNamespace
+
+    marker = tmp_path / 'observed-boundary'
+    if marker_preexists:
+        marker.write_text('observed', encoding='utf-8')
+    original_sleep = worker.time.sleep
+    clock = SimpleNamespace(monotonic=lambda: 100.0, sleep=original_sleep)
+    monkeypatch.setattr(worker, 'time', clock)
+    _expire_after_barrier(monkeypatch, marker, timeout=15.0)
+    assert worker.time.monotonic() == 100.0
+    assert worker.time.sleep is original_sleep
+    if not marker_preexists:
+        assert worker.time.monotonic() == 100.0
+        marker.write_text('observed', encoding='utf-8')
+    assert worker.time.monotonic() == 116.0
+    marker.unlink()
+    assert worker.time.monotonic() == 116.0
 
 
 @pytest.mark.parametrize('arguments, expected', [
@@ -129,6 +165,7 @@ def _expire_after_barrier(monkeypatch, marker, timeout):
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
     _barrier(monkeypatch, marker, boundary='after')
+    assert worker.subprocess.Popen is not subprocess.Popen
     result = subprocess.run([sys.executable, '-B', *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr

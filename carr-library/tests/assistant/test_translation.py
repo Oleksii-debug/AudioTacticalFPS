@@ -845,6 +845,7 @@ def translation_window(monkeypatch, tmp_path):
     class Control:
         def __init__(self, parent=None, *args, **kwargs):
             self.parent = parent
+            self.identity = len(controls) + 1
             self.label = kwargs.get('label', '')
             self.name = ''
             self.title = kwargs.get('title', '')
@@ -855,6 +856,7 @@ def translation_window(monkeypatch, tmp_path):
             self.handlers = {}
             controls.append(self)
         def SetName(self, value): self.name = value
+        def GetId(self): return self.identity
         def SetSizer(self, value): pass
         def Add(self, *args, **kwargs): pass
         def SetSelection(self, value): self.selection = value
@@ -911,7 +913,7 @@ def translation_window(monkeypatch, tmp_path):
         TextEntryDialog=RangeDialog, DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2, VERTICAL=3,
         HORIZONTAL=4, TE_MULTILINE=8, TE_READONLY=16, EXPAND=32, ALL=64,
         YES_NO=128, NO_DEFAULT=256, YES=1, NO=0, ID_OK=10, ID_CLOSE=11,
-        EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu',
+        EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu', EVT_WINDOW_DESTROY='destroy',
         MessageBox=message_box, CallAfter=lambda function, *args: function(*args),
         NewIdRef=lambda: next(identities))
     monkeypatch.setitem(sys.modules, 'wx', wx)
@@ -1295,7 +1297,7 @@ def test_native_saved_resume_requires_the_exact_visible_account_before_gateway(
     def scenario():
         window.find('Optional price').ChangeValue('99')
         window.click('Saved jobs')
-        account = window.find('Google Basic v2')
+        account = window.find('Google API account')
         assert account.GetSelection() == -1
         assert window.find('Optional price').GetValue() == ''
         status = window.find('Preview, supported')
@@ -1326,7 +1328,7 @@ def test_native_saved_resume_rereads_catalog_after_dialog_and_worker_queue(
     calls = len(connection['calls'])
     def scenario():
         window.click('Saved jobs')
-        account = window.find('Google Basic v2')
+        account = window.find('Google API account')
         assert account.GetSelection() == 0
         window.state['deferred'] = True
         account.SetFocus()
@@ -1361,7 +1363,7 @@ def test_native_saved_resume_matches_visible_account_and_numeric_budget(
     calls = len(connection['calls'])
     def scenario():
         window.click('Saved jobs')
-        account = window.find('Google Basic v2')
+        account = window.find('Google API account')
         assert account.GetSelection() == 0
         account.SetSelection(1 if wrong_account else 0)
         window.find('Maximum approved').ChangeValue('2.00')
@@ -1395,7 +1397,7 @@ def test_native_completed_export_keeps_original_lineage_without_current_account(
     calls, secrets = len(connection['calls']), len(case.vault.calls)
     def scenario():
         window.click('Saved jobs')
-        assert window.find('Google Basic v2').GetSelection() == -1
+        assert window.find('Google API account').GetSelection() == -1
         window.click('Export')
         target, = tmp_path.glob('Translation-*')
         reading = ReadingDocument.load(target / 'translation.reading.json')

@@ -491,6 +491,7 @@ def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcut
         def GetMenuItems(self): return items
     menu = Menu()
     frame = Frame(tmp_path)
+    frame.GetId = lambda: 701
     frame.host = object()
     insertions = []
     frame.layout = SimpleNamespace(Insert=lambda *args: insertions.append(args))
@@ -516,5 +517,10 @@ def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcut
     assert install_operation_progress(frame) is controller and len(items) == 2
     destroy = next(binding[1] for binding in frame.bindings if binding[0] == 'destroy')
     skipped = []
-    destroy(SimpleNamespace(GetEventObject=lambda: frame, Skip=lambda: skipped.append(True)))
-    assert controller.closed and skipped == [True]
+    destroy(SimpleNamespace(GetId=lambda: 702, GetEventObject=lambda: object(), Skip=lambda: skipped.append(True)))
+    assert not controller.closed and controller.timer.IsRunning()
+    destroy(SimpleNamespace(GetId=lambda: 701, GetEventObject=lambda: object(), Skip=lambda: skipped.append(True)))
+    assert controller.closed and not controller.timer.IsRunning() and skipped == [True, True]
+    frame.IsActive = lambda: pytest.fail('Destroyed progress owner was queried')
+    controller._tick()
+    controller._flush()

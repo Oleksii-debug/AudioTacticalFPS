@@ -922,8 +922,9 @@ def install_operation_progress(frame):
                             ('Progress sound settings...', controller.settings_dialog)]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
+    owner_id = frame.GetId()
     def destroy(event):
-        if event.GetEventObject() is frame:
+        if event.GetId() == owner_id:
             controller.close()
         event.Skip()
     frame.Bind(wx.EVT_WINDOW_DESTROY, destroy)

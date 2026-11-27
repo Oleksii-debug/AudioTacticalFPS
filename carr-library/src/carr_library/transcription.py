@@ -16,7 +16,8 @@ import shutil
 import time
 from uuid import uuid4
 
-from .audio.models import AudioBudget, AudioCancelled, AudioError, finite
+from .audio.models import AudioBudget, AudioCancelled, AudioCleanupPending, AudioError, finite
+from .audio.cleanup import retained_state_lock
 from .audio.process import run_process
 from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
                             read_json, regular, state_lock, sync_directory)
@@ -928,10 +929,10 @@ class TranscriptionService:
         finite(timeout, 'Transcription time allowance', .05, 365 * 86400)
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
-        with state_lock(path, 'transcribe'), ExitStack() as reservations:
+        with retained_state_lock(path, 'transcribe'), ExitStack() as reservations:
             job = self.get(identity)
             if job['status'] == 'completed':
-                self.verify(identity, cancelled=cancelled)
+                self._verify_result(identity, cancelled=cancelled)
                 return job
             config = self.configuration(verify=True)
             if config['protocol'] != job['protocol']:
@@ -1058,6 +1059,14 @@ class TranscriptionService:
                             + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
                             + 512 * 1024**2),
                         max_staging_files=10000))
+            except AudioCleanupPending as exc:
+                # The same native owner still owns its child and pipe readers.
+                # Keep this reservation until quiescence; the outer lock scope
+                # transfers this exact job lock to that owner as well. Do not
+                # read mutable status or admit artifacts before explicit resume.
+                retained = reservations.pop_all()
+                exc.cleanup_owner.add_quiescent_callback(retained.close)
+                raise
             except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
                 failure = exc
             # A stop must not trigger a second potentially multi-gigabyte read.
@@ -1113,6 +1122,14 @@ class TranscriptionService:
             return job
 
     def verify(self, identity, *, cancelled=lambda: False):
+        self._authorize()
+        path = local_path(self._path(identity), exists=True)
+        regular(path, directory=True)
+        with state_lock(path, 'transcribe'):
+            return self._verify_result(identity, cancelled=cancelled)
+
+    def _verify_result(self, identity, *, cancelled=lambda: False):
+        """Verify canonical receipts while the caller holds this job's lock."""
         path, job = self._path(identity), self.get(identity)
         status = read_json(path / ('host_status.json' if job['protocol'] == V5_PROTOCOL else 'job_status.json'))
         if status.get('run_id') != job.get('worker_run_id'):
@@ -1138,7 +1155,7 @@ class TranscriptionService:
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
-            job = self.verify(identity, cancelled=cancelled)
+            job = self._verify_result(identity, cancelled=cancelled)
             artifact = next((x for x in job['artifacts'] if x['source'] == source and x['format'] == 'txt'), None)
             if artifact is None:
                 raise ValueError('Choose a verified original transcript before editing.')
@@ -1179,7 +1196,7 @@ class TranscriptionService:
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
-            job = self.verify(identity, cancelled=cancelled)
+            job = self._verify_result(identity, cancelled=cancelled)
             destination = local_path(destination)
             if os.path.lexists(destination) or destination.is_relative_to(self.app.root):
                 raise ValueError('Choose a new export folder outside the library data directory.')

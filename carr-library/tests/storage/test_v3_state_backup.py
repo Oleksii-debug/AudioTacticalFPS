@@ -318,3 +318,38 @@ def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_pa
     with pytest.raises(ValueError, match='changed during backup'):
         snapshot_state(root, target, cancelled=mutate_after_copy)
     assert changed and (target / 'a.json').read_bytes() == b'old'
+
+@pytest.mark.parametrize('failure', (PermissionError, FileNotFoundError))
+def test_backup_state_lookup_failure_never_publishes(populated, tmp_path, monkeypatch, failure):
+    app, *_ = populated
+    root = app.root / 'state'
+    destination = tmp_path / 'backup'
+    original = Path.lstat
+    probes = 0
+
+    def denied(path, *args, **kwargs):
+        nonlocal probes
+        if path == root:
+            probes += 1
+            # Permission failure at the caller, or disappearance after its
+            # successful initial presence probe (before the snapshot).
+            if failure is PermissionError or probes >= 2:
+                raise failure('state lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    legacy_probes = 0
+
+    def suppressed(path):
+        nonlocal legacy_probes
+        if Path(path) == root:
+            legacy_probes += 1
+            return failure is FileNotFoundError and legacy_probes == 1
+        return lexists(path)
+
+    monkeypatch.setattr(os.path, 'lexists', suppressed)
+    monkeypatch.setattr(Path, 'lstat', denied)
+    with pytest.raises(failure, match='state lookup failed'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert probes >= (1 if failure is PermissionError else 2)

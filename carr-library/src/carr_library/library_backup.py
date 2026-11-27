@@ -4,10 +4,12 @@ Backups include all workspaces, saved research and registered original files.
 Canonical version 3 includes private application state; version 4 also includes
 resumable import journals and their pinned unpublished sources. Version 5 adds
 the personal reading-state file with exact bookmarks and resume positions.
+Version 6 additionally binds retained Studio inputs, microphone originals and
+inert publication receipts without changing the database or reading formats.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Historical reading-only version 3 backups have a distinct exact manifest shape
-and remain readable alongside canonical versions 1 through 5. Every version
+and remain readable alongside canonical versions 1 through 6. Every version
 requires an exact supported V3, V4 or V5 database schema. Older snapshots are
 restored unchanged; opening the restored library performs the normal checked
 upgrade to the current schema.
@@ -120,6 +122,127 @@ def _reading_snapshot(root, db, expected=None):
     return raw
 
 
+
+def _check_backup_cancelled(cancelled):
+    if cancelled():
+        raise InterruptedError('Backup or restoration cancelled.')
+
+
+def _required_media_input(component, kind, reference):
+    if (not isinstance(reference, str) or not reference or len(reference) > 32768
+            or any(ord(c) < 32 for c in reference)):
+        raise RestoreError('Invalid declared external Studio input.')
+    return dict(component=component, kind=kind, reference=reference, included=False)
+
+
+def _ordered_media_inputs(values):
+    unique = {json.dumps(item, ensure_ascii=False, sort_keys=True,
+                         separators=(',', ':')): item for item in values}
+    return [unique[key] for key in sorted(unique)]
+
+
+def _inspect_studio_media(root, entries, *, cancelled=lambda: False):
+    """Inspect verified staged files, without opening recorded external paths."""
+    from .durable_state import read_json
+    from .studio.backup_inputs import inspect_snapshot_inputs, _record
+
+    root = Path(root)
+    by_name = {entry['filename']: entry for entry in entries}
+    receipt = inspect_snapshot_inputs(root, entries, cancelled=cancelled)
+    media = dict(schema=1, studio_input_receipt=receipt is not None,
+                 studio_publications=[], studio_recordings=[],
+                 studio_unverified_recordings=[], required_inputs=[])
+    required = []
+    if receipt is not None:
+        for binding in receipt['projects']:
+            _check_backup_cancelled(cancelled)
+            found = _record(root, binding['filename'])
+            if found is None:
+                raise RestoreError('A verified Studio project binding disappeared.')
+            project = found[2]
+            component = 'state/' + binding['filename']
+            for role in project.roles:
+                if role.voice_id:
+                    required.append(_required_media_input(component, 'local-voice', role.voice_id))
+            for scene in project.scenes:
+                if scene.music is not None and scene.music.engine != 'procedural':
+                    required.append(_required_media_input(component, 'music-engine', scene.music.engine))
+    for name in sorted(by_name):
+        _check_backup_cancelled(cancelled)
+        if name.casefold().startswith('studio/publications/'):
+            if not re.fullmatch(r'studio/publications/[0-9a-f]{32}\.json', name):
+                raise RestoreError('Invalid typed Studio publication filename.')
+            from .studio.publishing import validate_publication_receipt
+            record = validate_publication_receipt(read_json(root / name),
+                publication_id=Path(name).stem)
+            media['studio_publications'].append(name)
+            required.append(_required_media_input('state/' + name, 'publication-output', record['output']))
+        elif name.casefold().startswith('studio/recordings/'):
+            if re.fullmatch(r'studio/recordings/[0-9a-f]{32}\.json', name):
+                from .audio.recording import validate_recording_receipt
+                record = validate_recording_receipt(read_json(root / name),
+                    recording_id=Path(name).stem)
+                audio = by_name.get(name.removesuffix('.json') + '.wav')
+                if (audio is None or audio['size_bytes'] != record['audio']['size_bytes']
+                        or audio['sha256'] != record['audio']['sha256']):
+                    raise RestoreError('A recording receipt differs from its retained original.')
+                from .speech.runtime import _wave_info
+                expected_pcm = tuple(record['audio'][key] for key in
+                    ('sample_rate', 'channels', 'frames', 'sample_width'))
+                if _wave_info(root / audio['filename'], cancelled=cancelled,
+                        max_output_bytes=record['limits']['max_bytes']) != expected_pcm:
+                    raise RestoreError('A recording receipt differs from its retained PCM header.')
+                media['studio_recordings'].append(name)
+            elif re.fullmatch(r'studio/recordings/[0-9a-f]{32}\.wav', name):
+                if name.removesuffix('.wav') + '.json' not in by_name:
+                    media['studio_unverified_recordings'].append(name)
+            else:
+                raise RestoreError('Invalid typed Studio recording filename.')
+    media['required_inputs'] = _ordered_media_inputs(required)
+    return media
+
+
+def _validate_studio_media(media, entries):
+    """Validate the exact V6 envelope; staged content is checked separately."""
+    from .state_backup import MAX_STATE_FILES
+
+    fields = {'schema', 'studio_input_receipt', 'studio_publications',
+              'studio_recordings', 'studio_unverified_recordings', 'required_inputs'}
+    if (type(media) is not dict or set(media) != fields
+            or type(media['schema']) is not int or media['schema'] != 1
+            or type(media['studio_input_receipt']) is not bool):
+        raise RestoreError('Unsupported Studio media manifest.')
+    names = {entry['filename'] for entry in entries}
+    for field, pattern in (
+            ('studio_publications', r'studio/publications/[0-9a-f]{32}\.json'),
+            ('studio_recordings', r'studio/recordings/[0-9a-f]{32}\.json'),
+            ('studio_unverified_recordings', r'studio/recordings/[0-9a-f]{32}\.wav')):
+        values = media[field]
+        if (type(values) is not list or len(values) > MAX_STATE_FILES
+                or any(not isinstance(name, str) or not re.fullmatch(pattern, name)
+                       or name not in names for name in values)
+                or values != sorted(set(values))):
+            raise RestoreError('Invalid Studio media file manifest.')
+    required = media['required_inputs']
+    if type(required) is not list or len(required) > MAX_STATE_FILES:
+        raise RestoreError('Invalid required Studio inputs.')
+    for item in required:
+        if (type(item) is not dict
+                or set(item) != {'component', 'kind', 'reference', 'included'}
+                or not isinstance(item['component'], str)
+                or not item['component'].startswith('state/')
+                or item['component'][len('state/'):] not in names
+                or item['kind'] not in ('local-voice', 'music-engine', 'publication-output')
+                or item['included'] is not False):
+            raise RestoreError('Invalid required Studio input.')
+        _required_media_input(item['component'], item['kind'], item['reference'])
+    if required != _ordered_media_inputs(required):
+        raise RestoreError('Duplicate or unordered required Studio inputs.')
+    if not any(media[field] for field in ('studio_input_receipt', 'studio_publications',
+                                          'studio_recordings', 'studio_unverified_recordings')):
+        raise RestoreError('Empty Studio media manifest.')
+
+
 def create_backup(app, destination, *, include_generated=False, cancelled=lambda: False):
     """Back up every library to a fresh folder and return its manifest SHA256.
 
@@ -158,16 +281,38 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
-            if os.path.lexists(app.root / 'state'):
-                from .state_backup import snapshot_state
+            studio_media = None
+            state_root = app.root / 'state'
+            # Access errors must not silently omit user work from the archive.
+            # Disappearance after this initial presence check also fails.
+            try:
+                state_root.lstat()
+            except FileNotFoundError:
+                pass
+            else:
+                from .state_backup import (snapshot_state, validate_state,
+                                           MAX_STATE_BYTES, MAX_STATE_FILES)
+                from .studio.backup_inputs import snapshot_inputs
                 (stage / 'state').mkdir()
-                state = snapshot_state(app.root / 'state', stage / 'state',
-                                       include_generated=include_generated, cancelled=cancelled)
+                state = snapshot_state(state_root, stage / 'state',
+                                       include_generated=include_generated, cancelled=cancelled,
+                                       missing_ok=False)
+                # The private snapshot retains the exact project bytes. Only
+                # explicitly selected Cue inputs are copied into its receipt.
+                state = snapshot_inputs(stage / 'state', state,
+                    max_bytes=MAX_STATE_BYTES, max_files=MAX_STATE_FILES, cancelled=cancelled)
+                validate_state(state)
+                observed = _inspect_studio_media(stage / 'state', state, cancelled=cancelled)
+                if any(observed[field] for field in ('studio_input_receipt', 'studio_publications',
+                                                      'studio_recordings', 'studio_unverified_recordings')):
+                    _validate_studio_media(observed, state)
+                    studio_media = observed
                 manifest.update(version=3, state=state, generated_audio_included=include_generated)
-            if any(os.path.lexists(app.root / name) for name in
-                   ('imports.sqlite', 'import-requests', 'import-batches')):
-                from .pending_backup import snapshot_pending
-                manifest.update(version=4, pending=snapshot_pending(app, stage / 'pending', cancelled=cancelled))
+            from .pending_backup import pending_roots, snapshot_pending
+            roots = pending_roots(app.root)
+            if roots:
+                manifest.update(version=4, pending=snapshot_pending(app, stage / 'pending',
+                    cancelled=cancelled, expected_roots=roots))
                 if 'state' not in manifest:
                     (stage / 'state').mkdir()
                     manifest.update(state=[], generated_audio_included=include_generated)
@@ -178,6 +323,12 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                     (stage / 'state').mkdir()
                     manifest.update(state=[], generated_audio_included=include_generated)
                 manifest.update(version=5, reading_state=reading_manifest)
+                manifest.setdefault('pending', None)
+            if studio_media is not None:
+                # V5 remains the canonical reading-state format. Media uses a
+                # new explicit envelope and cannot reinterpret an older V5.
+                manifest.update(version=6, studio_media=studio_media,
+                                reading_state=reading_manifest)
                 manifest.setdefault('pending', None)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
@@ -230,7 +381,7 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3, 4, 5)):
+            or manifest['version'] not in (1, 2, 3, 4, 5, 6)):
         raise RestoreError('unsupported library manifest')
     version = manifest['version']
     fields = {'version','kind','schema_version','database','assets'}
@@ -244,8 +395,10 @@ def _read_manifest(directory, expected_manifest_sha256):
         fields.update(('state', 'generated_audio_included'))
     if version >= 4:
         fields.add('pending')
-    if version == 5:
+    if version >= 5:
         fields.add('reading_state')
+    if version == 6:
+        fields.add('studio_media')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
@@ -264,12 +417,14 @@ def _read_manifest(directory, expected_manifest_sha256):
         required.add('state')
     if 'pending' in fields:
         if manifest['pending'] is None:
-            if version != 5:
+            if version not in (5, 6):
                 raise RestoreError('missing pending import backup')
         else:
             from .pending_backup import validate_pending
             validate_pending(manifest['pending'])
             required.add('pending')
+    if version == 6:
+        _validate_studio_media(manifest['studio_media'], manifest['state'])
     reading = manifest.get('reading_state')
     if version == 5 and reading is None:
         raise RestoreError('missing reading-state manifest')
@@ -338,13 +493,16 @@ def _copy_database(source, target, library_manifest):
             raise RestoreError('backup schema fingerprint mismatch')
 
 
-def restore_backup(source, destination, expected_manifest_sha256):
+def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):
     """Restore a trusted backup into a new data root; return that root's Path.
 
     Keep the expected digest independently of the backup. The source is never
     opened writable. A failed/terminated publication retains .restore-incomplete;
     the application must reject such a root instead of opening partial data.
     """
+    if not callable(cancelled):
+        raise ValueError('Invalid restore options.')
+    _check_backup_cancelled(cancelled)
     # Validate the original lexical path before resolving it, otherwise an
     # ancestor symlink/junction would be hidden from the component verifiers.
     source = local_path(source, exists=True)
@@ -374,9 +532,23 @@ def restore_backup(source, destination, expected_manifest_sha256):
         if 'state' in manifest:
             from .state_backup import restore_state
             restore_state(source / 'state', stage / 'state', manifest['state'])
+            _check_backup_cancelled(cancelled)
+            if manifest['version'] == 6:
+                observed = _inspect_studio_media(stage / 'state', manifest['state'],
+                                                cancelled=cancelled)
+                if observed != manifest['studio_media']:
+                    raise RestoreError('Studio media manifest differs from its exact staged state.')
+            # Legacy paths describe the source machine. They remain declarations
+            # until explicitly reviewed; even a completed job needs a new output.
+            # V6 rewrites only the private projection, never the source archive.
+            from .studio.backup_inputs import restore_inputs
+            restore_inputs(stage / 'state', destination / 'state', manifest['state'],
+                           cancelled=cancelled)
         if manifest.get('pending') is not None:
             from .pending_backup import restore_pending
-            pending = restore_pending(source / 'pending', stage, destination, manifest['pending'])
+            pending = restore_pending(source / 'pending', stage, destination, manifest['pending'],
+                                      cancelled=cancelled)
+        _check_backup_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
@@ -398,6 +570,7 @@ def restore_backup(source, destination, expected_manifest_sha256):
                     os.link(stage / name, destination / name)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
+    _check_backup_cancelled(cancelled)
     # Temporary hard links are now gone; retained originals have one link.
     (destination / INCOMPLETE).unlink()
     _sync_directory(destination)

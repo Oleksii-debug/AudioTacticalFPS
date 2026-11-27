@@ -8,9 +8,13 @@ provider SDK is installed automatically.
 ## Use
 
 1. In Tools → AI and API connections, create a separate account and choose
-   `google-translation-v2`. The editor fills the official endpoint
+   Basic `google-translation-v2` or Advanced `google-translation-v3`. Both use
+   `translation.text,translation.languages`. Basic uses the official endpoint
    `https://translation.googleapis.com/language/translate/v2`, model `nmt` and
-   capabilities `translation.text,translation.languages`. Add your API key and
+   your API key. Advanced uses an explicit numeric project and location at
+   `https://translation.googleapis.com/v3/projects/PROJECT_NUMBER/locations/LOCATION`,
+   model `general/nmt`, and a manually supplied IAM/ADC OAuth access token with
+   its actual future expiry including UTC offset. Store the credential and
    explicitly enable the account. Saving a profile makes no request.
 2. Choose Translate selected text to paste text, or select a book in the library
    and choose Translate selected book or source range. Enter one source reading
@@ -21,15 +25,20 @@ provider SDK is installed automatically.
    Its original text is read-only in this translation window. The source summary
    shows the title, position range, character count and limits. Unreviewed
    extracted text remains labelled as unreviewed. Loading sends no text.
-4. Choose the Google account and explicitly approve Fetch languages if its
-   capability list has not been fetched. Selected text is not sent by language
-   discovery. The returned list is tied to the exact account, endpoint and model.
+4. Choose the Google account and edition, then explicitly approve Fetch languages
+   if its capability list has not been fetched. Selected text is not sent by
+   language discovery. The returned list is tied to the exact account, endpoint
+   and model. Advanced source and target direction flags are shown and checked;
+   a target-only language cannot be silently used as a source.
 5. Choose a source code or `auto` and a target code from the fetched list.
-   Enter the maximum total reservation and, optionally, your own current
+   For Advanced, optionally enter an existing glossary resource in the same
+   numeric project and non-global location. Glossaries require an explicit
+   source language and use case-sensitive matching. Leave this field blank for
+   Basic. Enter the maximum total reservation and, optionally, your own current
    contract price per million characters for an estimate.
 6. Preview the character/call count. Translate asks explicit permission for
-   this exact selected text and binds its request hashes, destination, operation,
-   budget and 24-hour authorization expiry. Source authorization and the retained
+   this exact selected text and binds its request hashes, account edition,
+   destination, model, glossary, operation, budget and 24-hour authorization expiry. Source authorization and the retained
    original are checked again in the worker before transmission.
 7. Pause/resume the same saved job. Accepted chunks are recorded durably and
    reused. Uncertain charges are never retried automatically. Expired approval
@@ -47,15 +56,47 @@ provider SDK is installed automatically.
 The shared Gateway defaults to LOCAL_ONLY. The dialog changes mode only for an
 explicitly approved operation. Unknown cost, wrong scope/request hash, expired
 approval and exhausted reservations fail before credential use or transmission.
-The API key travels in X-goog-api-key, never the URL. TLS authority is fixed;
-redirects are rejected. Provider responses are text, never executable commands.
+Basic sends its API key in X-goog-api-key, never the URL. Advanced sends the
+selected OAuth token in Authorization: Bearer and the explicit numeric billing
+project in X-goog-user-project. TLS authority is fixed; redirects are rejected. Provider responses are text, never executable commands.
 Completed saved work remains exportable offline when its account is unavailable;
-the selected text, languages and numeric budget must still match the saved job,
+the selected text, languages, glossary and numeric budget must still match the saved job,
 and library-source exports still require current source authorization.
 
 The local reservation and optional estimate are **not provider-enforced billing
 limits** or a live price quotation. Actual cost/quota remains the provider
 account's contract; no current price is invented by this application.
+
+## Advanced OAuth and glossary boundaries
+
+The account editor accepts a short-lived token value and its explicit expiry,
+then stores a typed endpoint-bound record in Windows Credential Manager. The
+token must be unexpired and no more than twelve hours from the time of
+entry. The application never searches credential files, reads ADC automatically,
+accepts a service-account JSON key, or refreshes a token in the background.
+
+Renew a token explicitly in the same unchanged account. The existing vault
+reference and complete non-secret profile remain stable, so a paused job can
+resume under its original still-valid approval without repeating accepted
+chunks. Changing the project, region, model or other profile fields requires
+review; an old saved job cannot inherit the changed account. Expiry or an
+invalid record stops transmission before an Authorization header is sent.
+A provider refusal after submission remains an uncertain charge and is never
+automatically retried.
+
+Advanced requests select the full NMT model resource. Successful receipts must
+return that exact normalized numeric-project model; with a glossary, the
+glossary result and its exact resource/case configuration must also match.
+Ordinary translations cannot substitute for a missing glossary result.
+Advanced text/plain responses retain literal entities such as `&amp;`; Basic
+HTML entity decoding remains separate. Both adapters bind accepted decoded
+text to the same usage ledger.
+
+Experimental Advanced checkpoints from other branches that lack this
+decoded-output evidence do not acquire provider authority on import. They
+remain stored, but validated resume/export rejects missing proof; a new remote
+job needs explicit preview and consent. Existing supported Basic checkpoints
+keep the legacy readability behavior described below.
 
 ## Source lineage, interruption and recovery
 
@@ -93,8 +134,8 @@ so changing only the saved kind, source binding and consent fields cannot turn a
 source-bound job into a legacy one.
 New Google usage receipts also bind the exact decoded translation text by SHA256;
 changing a saved translation and its self-hash cannot borrow the original response
-receipt. Source jobs require this decoded-output proof. Older pasted-text receipts
-that never recorded it remain exportable with `decoded_text_binding: unrecorded-legacy`
+receipt. Source jobs and all Advanced jobs require this decoded-output proof. Older Basic
+pasted-text receipts that never recorded it remain exportable with `decoded_text_binding: unrecorded-legacy`
 in their provenance, rather than claiming missing provider-content proof.
 New source approvals use the already allowlisted selected-script data class;
 legacy pasted-text approvals use selected-excerpt. Changing a saved source job to
@@ -115,13 +156,14 @@ the saved completed translation remains available for another explicit export.
 
 ## Supported limits and remaining qualification
 
-Basic v2 NMT selected **plain text**, including the full bounded reading text of
-an imported document or an explicit source-position range, is implemented.
+Basic v2 and Advanced v3 NMT selected **plain text**, including the full bounded
+reading text of an imported document or an explicit source-position range, are
+implemented through the same service, consent, journal and derivative path.
 The source and translated reading copy each support at most 2,000,000 characters.
-Requests contain at most 4,500 characters. Library-source jobs additionally bound
+Requests contain at most 4,500 characters. Library-source and Advanced jobs bound
 each provider response to 200,000 bytes and stop further requests if accepted
 translated text or its reconstructed source separators exceed the reading-copy budget.
-Before a new source job is saved, a conservative JSON-size preflight reserves the
+Before a new library-source or Advanced job is saved, a conservative JSON-size preflight reserves the
 existing 64 MiB checkpoint and 32 MiB reading-project limits, including escaped
 source text, a single translation edit and accepted receipts. Already accepted chunks remain
 stored; an over-limit job is not reported complete.
@@ -133,8 +175,9 @@ joins without altering the saved provider receipts. This preserves tested
 plain-text joins; it is not a claim of page layout, table, footnote or formatted
 document fidelity.
 
-Advanced v3 IAM/ADC, glossaries, automatic chapter-title interpretation, batch
-document selection, formatted-document preservation, local M2M100 inference,
+Automatic IAM/ADC discovery or refresh, custom/LLM translation models, glossary
+creation, document-batch APIs, automatic chapter-title interpretation, batch
+source selection, formatted-document preservation, local M2M100 inference,
 canonical-135 translation mapping and independent linguistic quality review
 remain separate work. No offline failure causes a silent remote fallback or
 model download. Source text and receipts use the existing private local state
@@ -154,6 +197,12 @@ The saved-selection matcher and validated job accessor reuse PR162 at
 rereads the existing profile catalog in its worker before creating the gateway
 and at the existing remote-operation authorization checks.
 
+The Advanced adapter reuses the reviewed account and REST contracts from PR147
+at `3671e9b1bbbfc566b2fb5ea18fcda834ad6bb36e`. It does not replace the canonical
+source-bound service with that branch's legacy translation/1 implementation or
+add a parallel credential, usage or job store. The native workflow is the supported
+Advanced entry point; this increment does not add a translation CLI.
+
 The existing `tests/assistant/test_translation.py` suite now exercises actual
 LibraryApp, ReadingDesk, retained originals, provider ledger, JobStore,
 ReadingDocument and library backup/restore with synthetic HTTPS responses.
@@ -164,6 +213,19 @@ bindings, same-path and new-path restore, archival exclusion, output/cancellatio
 bounds, and native-dialog/menu callback contracts. Existing provider and
 source/reading regression suites remain required. Dialog doubles are not native
 Windows or NVDA evidence.
+
+`tests/assistant/test_translation_v3.py` adds synthetic OAuth/REST/model/glossary
+validation, directional-language handling, same-profile token renewal, accepted
+chunk reuse, decoded-receipt tamper rejection, full/range source lineage,
+mid-operation source revocation and same-path restore. It also exercises the
+actual native callback functions with widget stand-ins, including stale account
+and changed saved glossary checks. `windows_translation_v3_smoke.py` separately
+uses real Windows wx controls, native focus/Space actions, a temporary synthetic
+Credential Manager record and synthetic HTTPS responses. It binds its installed
+module bytes to the exact checkout and runs inside the existing egress-blocked
+acceptance steps. Native approval/file-picker usability and manual NVDA remain
+separate from that automated probe. New exact-head runtime results must be read
+from CI; source preparation and static review are not execution results.
 
 Exact source, installed Windows and manual accessibility results belong to the
 candidate's validation record. This document does not transfer earlier test
@@ -177,3 +239,9 @@ translation quality require separate explicit execution.
 - https://docs.cloud.google.com/translate/docs/reference/rest/v2/languages
 - https://docs.cloud.google.com/docs/authentication/api-keys-use
 - https://docs.cloud.google.com/translate/docs/translate-text
+
+- https://docs.cloud.google.com/translate/docs/reference/rest/v3/projects.locations/translateText
+- https://docs.cloud.google.com/translate/docs/reference/rest/v3/TranslateTextResponse
+- https://docs.cloud.google.com/translate/docs/reference/rest/v3/projects.locations/getSupportedLanguages
+- https://docs.cloud.google.com/translate/docs/advanced/translate-text-advance
+- https://docs.cloud.google.com/translate/docs/authentication

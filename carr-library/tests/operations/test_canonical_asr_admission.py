@@ -319,5 +319,140 @@ def test_asr_and_studio_generic_cuda_policy_has_one_shared_exclusive_token(prepa
     assert not broker.snapshot()['leases']
 
 
+@pytest.mark.parametrize('stop_kind', ['timeout', 'cancel'])
+def test_pending_actual_asr_child_keeps_capacity_job_lock_and_unverified_files(prepared, tmp_path,
+                                                                           monkeypatch, stop_kind):
+    from carr_library.audio import process
+    from carr_library.audio.models import AudioCleanupPending
+
+    app, _, service, original, configure = prepared
+    broker = _policy(app)
+    completed_id = service.submit([original])
+    completed = service.run(completed_id, timeout=15)
+    assert completed['status'] == 'completed'
+    completed_path = service._path(completed_id)
+    completed_before = (completed_path / 'job.json').read_bytes()
+    accepted_files = {row['path']: (completed_path / 'results' / row['path']).read_bytes()
+                      for row in completed['artifacts']}
+    source_before = original.read_bytes()
+
+    configure('timeout')  # An actual synthetic child remains alive for 30 seconds.
+    identity = service.submit([original])
+    path = service._path(identity)
+    status_path = path / 'job_status.json'
+    children, status_reads, receipt_reads = [], [], []
+    allowed = threading.Event()
+    owner = None
+    native_popen, native_terminate = process.subprocess.Popen, process._terminate
+    original_read, original_receipts = transcription.read_json, service._receipts
+
+    def capture(*args, **kwargs):
+        child = native_popen(*args, **kwargs)
+        children.append(child)
+        return child
+
+    def delayed_cleanup(child):
+        if not allowed.is_set():
+            raise OSError('Synthetic native cleanup has not confirmed shutdown.')
+        return native_terminate(child)
+
+    def read(value):
+        if Path(value) == status_path:
+            status_reads.append(True)
+            assert all(child.poll() is not None for child in children), (
+                'A final status reader opened the actual pending child status.')
+        return original_read(value)
+
+    def receipts(job_path, *args, **kwargs):
+        if Path(job_path) == path:
+            receipt_reads.append(True)
+            assert all(child.poll() is not None for child in children), (
+                'Pending native output entered artifact verification.')
+        return original_receipts(job_path, *args, **kwargs)
+
+    def lock_released():
+        try:
+            with transcription.state_lock(path, 'transcribe'):
+                return True
+        except RuntimeError:
+            return False
+
+    monkeypatch.setattr(process.subprocess, 'Popen', capture)
+    monkeypatch.setattr(process, '_terminate', delayed_cleanup)
+    monkeypatch.setattr(transcription, 'read_json', read)
+    monkeypatch.setattr(service, '_receipts', receipts)
+    # Exercise the no-live-status Windows contract on both supported platforms.
+    monkeypatch.setattr(transcription, '_LIVE_STATUS_SNAPSHOTS', False)
+    try:
+        with pytest.raises(AudioCleanupPending) as pending:
+            service.run(identity, timeout=1 if stop_kind == 'timeout' else 10,
+                        cancelled=lambda: stop_kind == 'cancel' and status_path.exists())
+        owner = pending.value.cleanup_owner
+        assert len(children) == 1 and children[0].poll() is None
+        assert not owner.quiescent
+        assert status_reads == receipt_reads == []
+        saved = service.get(identity)
+        assert saved['status'] == 'running' and saved['receipts'] == saved['artifacts'] == []
+        host_before = (path / 'job.json').read_bytes()
+        retained_before = {item.name: item.read_bytes() for item in (path / 'input').iterdir()}
+        active = broker.snapshot()['leases']
+        assert len(active) == 1
+        assert active[0]['operation_id'] == 'asr:' + service.jobs_root.parent.name + ':' + identity
+        with pytest.raises(ResourceTimeout):
+            with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='competing-heavy-work', timeout=0):
+                pytest.fail('The actual pending child released shared capacity.')
+
+        selected_source = saved['sources'][0]['filename']
+        export_path = tmp_path / 'pending-export'
+        actions = (
+            lambda: service.run(identity, timeout=1),
+            lambda: service.verify(identity),
+            lambda: service.text(identity, selected_source),
+            lambda: service.export(identity, export_path),
+            lambda: service.save_edit(identity, selected_source, 'Human derivative must wait.'),
+        )
+        for action in actions:
+            with pytest.raises(RuntimeError, match='already being changed'):
+                action()
+        assert len(children) == 1 and status_reads == receipt_reads == []
+        assert (path / 'job.json').read_bytes() == host_before
+        assert not export_path.exists() and not (path / 'edits').exists()
+
+        # Another verified completed job remains readable without shared heavy
+        # admission, and none of its accepted receipts or files is rewritten.
+        assert service.run(completed_id) == completed
+        assert service.verify(completed_id)['status'] == 'completed'
+        assert (completed_path / 'job.json').read_bytes() == completed_before
+        assert accepted_files == {name: (completed_path / 'results' / name).read_bytes()
+                                  for name in accepted_files}
+        assert len(broker.snapshot()['leases']) == 1
+        assert original.read_bytes() == source_before
+        assert not owner.close() and not owner.quiescent
+    finally:
+        allowed.set()
+        if owner is not None:
+            _wait(lambda: owner.quiescent, seconds=10)
+            _wait(lambda: not broker.snapshot()['leases'], seconds=10)
+            _wait(lock_released, seconds=10)
+        else:
+            # A failing assertion must still clean the actual owned fixture.
+            for child in children:
+                native_terminate(child)
+        assert all(child.poll() is not None for child in children)
+
+    assert status_reads == receipt_reads == []
+    assert (path / 'job.json').read_bytes() == host_before
+    assert retained_before == {item.name: item.read_bytes() for item in (path / 'input').iterdir()}
+    # Quiescence releases only ownership. Explicit resume performs all original
+    # runtime/source checks and receipt verification; no cleanup thread does it.
+    configure('complete')
+    resumed = service.run(identity, timeout=15)
+    assert resumed['status'] == 'completed' and resumed['done'] == 1
+    assert status_reads and receipt_reads and len(children) == 2
+    assert service.verify(identity)['status'] == 'completed'
+    assert not broker.snapshot()['leases']
+    assert original.read_bytes() == source_before
+
+
 if __name__ == '__main__':
     _studio_actor()

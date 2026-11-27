@@ -48,7 +48,8 @@ def fixture(tmp_path, *, extra=(), machine=0x8664):
             'artifact': {'url': 'https://github.com/GyanD/codexffmpeg/releases/download/test/synthetic.zip',
                          'filename': source.name, 'size': source.stat().st_size,
                          'sha256': audio.digest(source), 'format': 'zip'},
-            'deployment': {'download_default': False, 'public_binary_distribution': False},
+            'deployment': {'download_default': False, 'public_binary_distribution': False,
+                           'application_runtime_network': False},
             'output_files': {name: {'member': 'release/' + name, 'size': len(raw),
                                    'sha256': hashlib.sha256(raw).hexdigest()} for name, raw in data.items()}}
     path = tmp_path / 'lock.json'
@@ -66,6 +67,8 @@ def test_offline_prepare_verifies_each_file_and_retains_notices(tmp_path):
     manifest = json.loads((output / 'runtime-manifest.json').read_text(encoding='utf-8'))
     assert manifest['lock_sha256'] == audio.digest(path)
     assert set(manifest['files']) == audio.REQUIRED_FILES
+    for field in ('public_binary_distribution', 'application_runtime_network', 'download_default'):
+        assert result[field] is manifest['deployment'][field] is False
     with pytest.raises(FileExistsError):
         audio.prepare(path, cache, output)
 
@@ -141,6 +144,52 @@ def test_private_profile_and_exact_manifest_are_required(tmp_path):
     path.write_text(json.dumps(lock), encoding='utf-8')
     with pytest.raises(ValueError, match='private'):
         audio.prepare(path, cache, output)
+
+
+@pytest.mark.parametrize('field', ['download_default', 'public_binary_distribution',
+                                    'application_runtime_network'])
+@pytest.mark.parametrize('value', [True, None, 0, 'false', 'missing'])
+def test_local_policy_requires_explicit_boolean_false(tmp_path, monkeypatch, field, value):
+    path, cache, output, lock = fixture(tmp_path)
+    if value == 'missing':
+        del lock['deployment'][field]
+    else:
+        lock['deployment'][field] = value
+    path.write_text(json.dumps(lock), encoding='utf-8')
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Invalid local runtime policy must fail before acquisition.')
+
+    monkeypatch.setattr(audio, 'cached_artifact', forbidden)
+    with pytest.raises(ValueError, match='private local runtime'):
+        audio.prepare(path, cache, output, download=True)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('value', [None, [], 'private'])
+def test_deployment_must_be_an_object(tmp_path, value):
+    path, cache, output, lock = fixture(tmp_path)
+    lock['deployment'] = value
+    path.write_text(json.dumps(lock), encoding='utf-8')
+    with pytest.raises(ValueError, match='private local runtime'):
+        audio.prepare(path, cache, output)
+    assert not output.exists()
+
+
+def test_boolean_schema_is_not_an_integer_schema(tmp_path):
+    path, cache, output, lock = fixture(tmp_path)
+    lock['schema'] = True
+    path.write_text(json.dumps(lock), encoding='utf-8')
+    with pytest.raises(ValueError, match='Unsupported audio runtime lock'):
+        audio.prepare(path, cache, output)
+    assert not output.exists()
+
+
+def test_committed_audio_lock_retains_local_only_policy():
+    lock, identity = audio.load_lock(MODULE.with_name('windows-audio.lock.json'))
+    assert identity == audio.digest(MODULE.with_name('windows-audio.lock.json'))
+    assert all(lock['deployment'][field] is False for field in
+               ('download_default', 'public_binary_distribution', 'application_runtime_network'))
 
 
 def test_directory_publication_never_replaces_existing_empty_directory(tmp_path):

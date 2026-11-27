@@ -145,11 +145,16 @@ class WavePlayer:
         self._state, self._offset, self._started = 'stopped', 0.0, None
 
     def close(self):
+        stop_error = None
         try:
             self.stop()
-        finally:
-            if os.name == 'nt' and self._open:
-                try:
-                    self._mci(f'close {self._alias}')
-                finally:
-                    self._open = False
+        except (OSError, RuntimeError) as exc:
+            stop_error = exc
+        if os.name == 'nt' and self._open:
+            # A failed native close retains the alias and retry authority.
+            # Successful close establishes silence even if Stop itself failed.
+            self._mci(f'close {self._alias}')
+            self._open = False
+            self._state, self._offset, self._started = 'stopped', 0.0, None
+        elif stop_error is not None:
+            raise stop_error
