@@ -8,6 +8,44 @@ product acceptance work are complete.
 
 ## Latest composed checkpoint
 
+### Observed Windows corrections and bounded reading edits
+
+Published source
+[`8c8650eefafb158294a6317964c52367ac71a3c3`](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/8c8650eefafb158294a6317964c52367ac71a3c3)
+contains the observed Windows corrections described below: fresh transcription
+file metadata, captured native destruction IDs, prepared-reader withdrawal and
+the corrected academic focus/menu contracts. Import scanning now has an explicit
+30–600 second budget, defaulting to the existing 120 seconds. Version-two
+journals preserve an explicitly chosen budget; older journals retain the default.
+The 5,001-file continuation acceptance chooses 300 seconds explicitly.
+
+The final local core composition `86a650e7ac931976a4f261c3481d916dfb85ed75`
+passed **37 required suite paths: 1,942 cases, zero failures or skips**. Later
+changes before publication add the capacity script and evidence, not runtime
+code. A built wheel was independently matched to published source `8c8650e`:
+322 payload files, 254 required runtime files, SHA-256
+`ce40d55eedd1699c4a0fdad528a857005a43c4062fe072e29c08d483f9335901`.
+That installed core wheel passed all nine command-line self-test flows in a
+separate isolated interpreter. This is Linux evidence, not a Windows bundle.
+
+The next source composition adds [RW-14](READING_WORKFLOW_ACCEPTANCE.md): bounded
+regular-expression preview and explicit application inside the existing
+versioned reading-copy editor. The canonical project worker is reused with
+pre-expansion and encoded-reply bounds, a cancellable isolated subprocess and
+current-project/lifetime checks. Undo, redo, Save and backup retain the existing
+narration format and original-source authority. Its composed local source
+`6db22e0` passed **seven required paths: 164 cases, zero failures or skips**,
+including wheel and bundle inventory checks. Required Windows source and
+installed gates include all three new regression files; the existing real
+reading probe now exercises preview, Apply, Undo, Redo, Save and backup.
+Native Windows and manual NVDA execution of this addition remain pending.
+
+The [capacity baseline](CAPACITY_BASELINE.md) records an actual 1,000-document
+synthetic run through the ordinary import/search/context/original/resume paths.
+Its exact source, module hashes, environment, timings and limits are retained.
+Short TXT inputs on Linux tmpfs do not establish large-book, physical-disk,
+50,000-document, multi-gigabyte or concurrent-writer performance.
+
 ### Shared recovery, translation, planning and search composition
 
 Source-only checkpoint

@@ -26,6 +26,7 @@ def main():
     from carr_library.reader.reading_state import ReadingState
     from carr_library.ui.desktop_app import DesktopFrame
     from carr_library.ui.narration_editor import open_narration_editor
+    from carr_library.ui.research_actions import NativeDialogs
 
     checks, failures = [], []
 
@@ -63,9 +64,11 @@ def main():
         check('native button event: ' + button.GetLabel(), button.GetEventHandler().ProcessEvent(event))
 
     from carr_library.ui import productivity, narration_editor
+    import carr_library.reader.regex_preview as regex_adapter
+    import carr_library.reader.regex_worker as regex_worker
     check('productivity and editor load from the installed wheel', all(
         'site-packages' in [part.casefold() for part in Path(module.__file__).parts]
-        for module in (productivity, narration_editor)))
+        for module in (productivity, narration_editor, regex_adapter, regex_worker)))
     check('real Windows wx runtime', wx.Platform == '__WXMSW__')
 
     with TemporaryDirectory(prefix='research-v3-reading-native-') as temporary:
@@ -138,8 +141,82 @@ def main():
             store = NarrationStore(library.root)
             project = new_project(page.raw_text, title='Synthetic reading copy', source_location=page.location)
             changed = source + '\nExplicit reading-copy edit.'
-            recovered = changed + '\nAutosaved recovery sentence.'
+            regex_text = changed.replace('Explicit reading-copy', 'reading-copy Explicit')
+            recovered = regex_text + '\nAutosaved recovery sentence.'
             modal_errors, later_calls = [], []
+            reading = {}
+
+            def descendants(window):
+                for child in window.GetChildren():
+                    yield child
+                    yield from descendants(child)
+
+            def schedule_modal(parent, title, action):
+                parent_id, deadline = parent.GetId(), monotonic() + 8
+                def respond():
+                    try:
+                        windows = [window for window in wx.GetTopLevelWindows()
+                            if isinstance(window, wx.Dialog) and not window.IsBeingDeleted()
+                            and window.IsModal() and window.GetTitle() == title
+                            and window.GetParent() is not None
+                            and window.GetParent().GetId() == parent_id]
+                        if windows:
+                            if len(windows) != 1:
+                                raise AssertionError('Expected exactly one owned regex dialog.')
+                            action(windows[0])
+                        elif monotonic() >= deadline:
+                            raise TimeoutError('Owned regex dialog was not shown: ' + title)
+                        else:
+                            later_calls.append(wx.CallLater(20, respond))
+                    except Exception:
+                        modal_errors.append(traceback.format_exc())
+                        for window in wx.GetTopLevelWindows():
+                            if isinstance(window, wx.Dialog) and window.IsModal():
+                                window.EndModal(wx.ID_CANCEL)
+                later_calls.append(wx.CallLater(20, respond))
+
+            def modal_button(window, identity):
+                matches = [child for child in descendants(window)
+                           if isinstance(child, wx.Button) and child.GetId() == identity]
+                if len(matches) != 1:
+                    raise AssertionError('Expected one native modal action.')
+                click(matches[0])
+
+            class RegexDialogs(NativeDialogs):
+                def fields(self, parent, title, fields, explanation=''):
+                    def enter(window):
+                        controls = {child.GetName():child for child in descendants(window)
+                                    if isinstance(child, wx.TextCtrl)}
+                        check('native regex request exposes both named fields',
+                              all(label in controls for _,label,_,_ in fields))
+                        controls[fields[0][1]].SetValue(r'(Explicit) (reading-copy)')
+                        controls[fields[1][1]].SetValue(r'\2 \1')
+                        modal_button(window, wx.ID_OK)
+                    schedule_modal(parent,title,enter)
+                    return super().fields(parent,title,fields,explanation=explanation)
+
+                def choose(self, parent, title, label, choices):
+                    def select(window):
+                        if title == 'Regular-expression replacement':
+                            check('native review has not yet applied the regex result',
+                                  reading['controller'].pending_text == changed)
+                        lists = [child for child in descendants(window) if isinstance(child, wx.ListBox)]
+                        if len(lists) != 1:
+                            raise AssertionError('Expected one native regex choice list.')
+                        lists[0].SetSelection(0)
+                        modal_button(window, wx.ID_OK)
+                    schedule_modal(parent,title,select)
+                    return super().choose(parent,title,label,choices)
+
+                def show(self, parent, title, value):
+                    def read(window):
+                        texts = [child for child in descendants(window) if isinstance(child, wx.TextCtrl)]
+                        check('actual regex proposal is readable before explicit apply',
+                              len(texts) == 1 and bool(texts[0].GetWindowStyleFlag() & wx.TE_READONLY)
+                              and texts[0].GetValue() == regex_text)
+                        modal_button(window, wx.ID_CANCEL)
+                    schedule_modal(parent,title,read)
+                    return super().show(parent,title,value)
 
             def safely(dialog, action):
                 try:
@@ -150,6 +227,7 @@ def main():
                         dialog.EndModal(wx.ID_CANCEL)
 
             def ready(dialog, controller, controls):
+                reading.update(controller=controller, controls=controls)
                 def begin():
                     check('original text is a native read-only multiline control',
                           isinstance(controls['original'], wx.TextCtrl)
@@ -164,17 +242,54 @@ def main():
                     saved, _ = store.load(project.id)
                     check('native Save persists edits but retains exact original',
                           saved.current_text == changed and saved.original_text == source)
-                    controls['editor'].SetValue(recovered)
+                    click(controls['regex'])
+                    check('regex uses a pending worker and leaves source text intact',
+                          controls['cancel_regex'].IsEnabled()
+                          and controller.pending_text == changed
+                          and controls['original'].GetValue() == source)
+                    deadline = monotonic() + 10
 
                     def finish():
                         draft, _ = store.load(project.id, draft=True)
                         check('native timer publishes a recoverable draft', draft.current_text == recovered)
                         check('autosave does not silently replace saved version',
-                              store.load(project.id)[0].current_text == changed)
+                              store.load(project.id)[0].current_text == regex_text)
                         click(controls['save'])
                         click(controls['close'])
 
-                    later_calls.append(wx.CallLater(1800, lambda: safely(dialog, finish)))
+                    def regex_finished():
+                        if modal_errors:
+                            raise RuntimeError('\n'.join(modal_errors))
+                        owned_modal = any(isinstance(window, wx.Dialog)
+                            and not window.IsBeingDeleted() and window.IsModal()
+                            and window.GetParent() is not None
+                            and window.GetParent().GetId() == dialog.GetId()
+                            for window in wx.GetTopLevelWindows())
+                        # Worker settlement reenables controls before the real
+                        # nested read/apply dialogs finish. Wait for the actual
+                        # applied text and their return, not just a disabled
+                        # Cancel button, while retaining the native assertions.
+                        if (controls['cancel_regex'].IsEnabled() or owned_modal
+                                or controls['editor'].GetValue() != regex_text):
+                            if monotonic() >= deadline:
+                                raise TimeoutError('Native regex review and explicit apply did not complete.')
+                            later_calls.append(wx.CallLater(20, lambda: safely(dialog, regex_finished)))
+                            return
+                        check('native explicit regex apply changes only the reading copy',
+                              controls['editor'].GetValue() == regex_text
+                              and controller.project.original_text == source)
+                        click(controls['undo'])
+                        check('one native undo restores the text before regex apply',
+                              controls['editor'].GetValue() == changed)
+                        click(controls['redo'])
+                        check('native redo restores the same regex derivative',
+                              controls['editor'].GetValue() == regex_text)
+                        click(controls['save'])
+                        check('saved regex revision retains original source location',
+                              store.load(project.id)[0].source_location == page.location)
+                        controls['editor'].SetValue(recovered)
+                        later_calls.append(wx.CallLater(1800, lambda: safely(dialog, finish)))
+                    later_calls.append(wx.CallLater(20, lambda: safely(dialog, regex_finished)))
                 safely(dialog, begin)
 
             def expired():
@@ -183,9 +298,9 @@ def main():
                         modal_errors.append('Native reading-copy dialog timed out.')
                         window.EndModal(wx.ID_CANCEL)
 
-            watchdog = wx.CallLater(15000, expired)
+            watchdog = wx.CallLater(30000, expired)
             try:
-                open_narration_editor(frame, store, project, on_ready=ready)
+                open_narration_editor(frame, store, project, on_ready=ready, dialogs=RegexDialogs())
             finally:
                 watchdog.Stop()
                 for call in later_calls:

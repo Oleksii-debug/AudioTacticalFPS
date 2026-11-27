@@ -42,7 +42,7 @@ Windows 11/NVDA or listening acceptance.
 | RW-11 | Edit a separate reading copy with undo/redo | V3-02/03 | INTEGRATED | [reader/narration.py](../src/carr_library/reader/narration.py); [component gate](../tests/reader/test_narration.py) | Versioned edits, original comparison, explicit Save/Save As and recovery drafts do not change quotation authority. | Scope |
 | RW-12 | Find and replace literal text | V3-02/03 | INTEGRATED | [ui/narration_editor.py](../src/carr_library/ui/narration_editor.py); [component gate](../tests/ui/test_narration_editor.py) | Preview and apply exact, case-sensitive replacements. Regex editing is a separate row. | R2 |
 | RW-13 | Apply a literal pronunciation dictionary | V3-02/03 | INTEGRATED, limited | [reader/narration.py](../src/carr_library/reader/narration.py); [component gate](../tests/reader/test_narration.py) | Bounded longest-match replacement is non-cascading. The current language field is descriptive; it is not automatic language detection or a voice-scoped override. | R1 |
-| RW-14 | Preview bounded regular-expression substitutions | V3-02/03 | SOURCE_REVIEWED | [reader/narration.py](../src/carr_library/reader/narration.py); [component gate](../tests/reader/test_narration.py) | Canonical isolated regex worker 630f6d9a6b5a90355125b932cc469fe4d628f883 was reviewed. It has not yet been connected to this narration store/UI; no regex support claim. | R1 |
+| RW-14 | Preview bounded regular-expression substitutions | V3-02/03 | INTEGRATED, limited | [reader/regex_preview.py](../src/carr_library/reader/regex_preview.py); [actual child-process gate](../tests/reader/test_regex_preview.py); [editor gate](../tests/ui/test_narration_regex_dialog.py) | Explicit preview and apply reuse the versioned reading-copy editor. The isolated worker has time, match and byte budgets; originals and quotation authority remain unchanged. Installed Windows and manual NVDA acceptance are separate. See the bounded behavior below. | R1 |
 | RW-15 | Spell checking with reviewed dictionaries | V3-02/03 | REQUIREMENT | [reader/narration.py](../src/carr_library/reader/narration.py); [component gate](../tests/reader/test_narration.py) | Hunspell/OS spell checking, dictionary rights and correction-preview integration still require implementation and actual runtime evidence. | R1 |
 | RW-16 | Text normalization and word-break cleanup | V3-02 | INTEGRATED, limited | [reader/narration.py](../src/carr_library/reader/narration.py); [component gate](../tests/reader/test_narration.py) | Only spacing and line-ending normalization are currently implemented here. Punctuation, stress, phonemes and linguistic restoration are not inferred. | R2 |
 | RW-17 | Assign voices to roles and scripted passages | V3-04/13 | INTEGRATED, limited | [audio/production.py](../src/carr_library/audio/production.py); [component gate](../tests/audio/test_production.py) | Typed scenes and roles feed the existing renderer. Arbitrary third-party voice markup is not accepted as executable instructions. | Scope |
@@ -54,9 +54,9 @@ Windows 11/NVDA or listening acceptance.
 | RW-23 | Batch extraction and document conversion | V3-01/04 | INTEGRATED, limited | [conversion/service.py](../src/carr_library/conversion/service.py); [component gate](../tests/conversion/test_conversion.py) | Explicit bounded conversion produces new derivatives with fidelity limits. It is not a general-purpose unattended folder watcher. | R1 |
 | RW-24 | Change keyboard shortcuts | V3-03/10 | INTEGRATED, limited | [ui/command_registry.py](../src/carr_library/ui/command_registry.py); [component gate](../tests/ui/test_keyboard_manager.py) | The existing application/context registry handles conflicts and saved mappings. System-wide hotkeys and tray/clipboard automation remain pending. | R1 |
 | RW-25 | Customize reader presentation | V3-03/10 | REQUIREMENT, partial | [ui/reading_desk.py](../src/carr_library/ui/reading_desk.py); [component gate](../tests/ui/test_reading_desk_actions.py) | Native readable text is available. Do not infer complete font/color/zoom, tabs or speed-reading modes from an accessible text control. | Scope |
-| RW-26 | Show audible and accessible progress | V3-19 | INTEGRATED; native retest pending | [ui/operation_progress.py](../src/carr_library/ui/operation_progress.py); [component gate](../tests/ui/probe_operation_progress_native.py) | At source 6d8fdfd the probe lacks an active Windows event loop. The corrected probe retains its gauge-99 assertion; actual retesting is pending. Physical feedback and manual NVDA remain separate. | Scope |
+| RW-26 | Show audible and accessible progress | V3-19 | INTEGRATED; native lifecycle retest pending | [ui/operation_progress.py](../src/carr_library/ui/operation_progress.py); [component gate](../tests/ui/probe_operation_progress_native.py) | Actual Windows source f6a0485 passes gauge 99 and verified 100 after the probe event-loop correction, then fails Studio destruction. Captured native IDs and owned-worker settlement now guard disposal; those later corrections require an exact-source native retest. Physical feedback and manual NVDA remain separate. | Scope |
 | RW-27 | Install, repair, uninstall and update | V3-18 | INTEGRATED, partial | [packaging/install_windows.py](../packaging/install_windows.py); [component gate](../tests/packaging/test_windows_bundle.py) | Verified offline bundle installation exists. Standard signed installer/repair/uninstall and signed owner-authorized in-place updates are not completed by this installer. | R2 |
-| RW-28 | Translate text through an explicitly chosen service | V3-11/20 | REQUIREMENT; integration active | [providers.py](../src/carr_library/providers.py); [component gate](../tests/e2e/test_provider_gateway.py) | Only official reviewed API adapters are eligible. Translation remains a derivative; a consumer-site scraping utility is not adopted. | Scope |
+| RW-28 | Translate text through an explicitly chosen service | V3-11/20 | INTEGRATED; controlled-provider execution | [assistant/translation.py](../src/carr_library/assistant/translation.py); [translation gate](../tests/assistant/test_translation.py); [native gate](../tests/ui/native_translation_smoke.py) | Google Basic v2 uses the existing credential vault, gateway and budget ledger after explicit request review. Restart receipts, uncertain-send handling, bilingual export, reading copies and validated common backups are integrated. Live authorized API execution and exact-source Windows/NVDA acceptance remain separate; translated text never becomes an original quotation. | Scope |
 
 ## Requested input-format inventory
 
@@ -85,6 +85,58 @@ Continuation removes selected result/file-count ceilings in named workflows;
 it does not prove multi-GB import capacity or a 50,000-book performance target.
 Capacity acceptance needs a declared corpus, hardware profile and measured
 latency, memory, disk, cancellation and recovery results.
+
+## RW-14: bounded regular-expression preview
+
+The existing reading-copy editor now offers **Preview regular expression** and
+**Cancel regex preview**. A request captures the current project, editing text
+and physical data-root identity. The standard-library worker computes the
+substitution in an isolated child process through the existing bounded process
+supervisor; user expressions are never compiled on the UI thread. The user can
+read the proposed text, apply it explicitly or cancel. Applying creates an
+ordinary reading-copy revision with the existing undo, redo, Save and recovery
+behavior. No source text, evidence, quotation approval, persisted dictionary
+rule or storage schema is changed by the preview.
+
+The bounded subset uses Python regular-expression and replacement syntax,
+including numbered/named backreferences and an explicit case-sensitive or
+case-insensitive choice. Its limits are:
+
+| Boundary | Enforced limit |
+| --- | --- |
+| Native editor worker deadline | 2 seconds; the component API accepts 0.05–10 seconds. |
+| Encoded UTF-8 request, including JSON overhead | 8,000,000 bytes. |
+| Pattern and replacement | 1,024 and 4,096 Unicode characters respectively. |
+| Returned matches and exact UTF-8 JSON reply | 10,000 matches and 1,000,000 bytes. |
+| Resulting reading section | The existing 8 MiB text budget. |
+
+Backreference expansion is checked conservatively before allocating each
+replacement, so some large expressions are refused even when their actual
+output might fit. Cancellation or deadline expiry terminates and reaps the
+owned child and produces no accepted preview. Project, text, root or window
+changes invalidate late results. The editor also rechecks those bindings after
+the nested preview and close decisions before applying or saving anything.
+
+The worker is adapted from existing project source at canonical commit
+`184dd83d43f285ce27b6f351e82fee0bbaf19323`, original blob
+`630f6d9a6b5a90355125b932cc469fe4d628f883`. The adapter adds capture-expansion
+preflight and checks the exact encoded reply, while preserving that worker's
+isolated standard-library approach. It adds no third-party regex dependency.
+
+The component gates cover real child execution, Unicode, backreferences,
+zero-width matches, catastrophic-pattern termination, cancellation and output
+bounds. The [job gate](../tests/ui/test_narration_regex_jobs.py) exercises actual
+source imports, immutable citations, explicit revisions and common backup
+round trips. The [dialog gate](../tests/ui/test_narration_regex_dialog.py) uses
+real workers with explicit native-control doubles for nested decisions,
+forced destruction, stale roots and rejected executors. Those doubles are not
+native Windows or screen-reader evidence. The extended
+[installed Windows reading-copy probe](../scripts/windows_v3_reading_smoke.py)
+requires actual named native fields, read-before-apply, undo/redo, Save and
+backup restoration; its new regex phase remains **NOT_RUN** until executed on
+the exact installed artifact. Manual NVDA remains **NOT_RUN**. This bounded
+feature does not establish full editing or pronunciation parity with another
+application.
 
 ## How a row advances
 
@@ -123,7 +175,6 @@ Reviewed on 2026-11-27:
   requested workflow extends beyond those three comparison pages.
 
 No proprietary binary was executed, reverse-engineered or redistributed for
-this inventory. The reviewed isolated regex candidate is existing project
-source at canonical commit `184dd83d43f285ce27b6f351e82fee0bbaf19323`,
-blob `630f6d9a6b5a90355125b932cc469fe4d628f883`; inspection alone is not
-integration.
+this inventory. RW-14 reuses the project-owned source identified above;
+its component execution, native acceptance and distribution evidence remain
+separate.

@@ -226,6 +226,14 @@ def pronunciation_preview(text, rules):
     return _body(result), count
 
 
+def regex_preview(text, pattern, replacement, *, ignore_case=False, timeout=2.0,
+                  cancelled=lambda: False):
+    """Compute a bounded isolated proposal; applying it is an explicit edit."""
+    from .regex_preview import preview
+    return preview(text, pattern, replacement, ignore_case=ignore_case,
+                   timeout=timeout, cancelled=cancelled)
+
+
 def source_spans(project):
     """Linear-time conservative alignment: exact edges and one derived middle.
 
