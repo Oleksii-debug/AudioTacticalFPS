@@ -178,6 +178,7 @@ class ReadingDialog:
         self.controller = ReaderController(desk, state, guard, self.cancelled.is_set, defer_display=True)
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='reading-desk')
         self.closed = self.busy = False
+        self._audio_dialog = None
         self.buttons = []
         self.command_buttons = {}
         self.accelerators = []
@@ -213,6 +214,8 @@ class ReadingDialog:
         self._button(bookmarks, 'Manage page bookmarks...', self.manage_bookmarks,
                      command_id='reader.bookmarks')
         self._button(bookmarks, 'Reader keyboard guide', self.help, command_id='reader.help')
+        self._button(bookmarks, 'EPUB synchronized recorded audio...', self.open_audio,
+                     command_id='reader.audio')
         self._button(bookmarks, 'Find a reader command...', lambda event: self.keyboard.commands(event),
                      command_id='reader.commands')
         self._button(bookmarks, 'Reader keyboard shortcuts...', lambda event: self.keyboard.settings(event),
@@ -407,6 +410,35 @@ class ReadingDialog:
                               lambda _: self._message('Bookmark deleted. Source text is unchanged.'))
         self._run('Loading page bookmarks', self.controller.bookmarks, choose)
 
+    def open_audio(self, event=None):
+        if self.busy or self.closed or self.controller.current is None:
+            return
+        try:
+            self.controller.check()
+            page = self.controller.current
+            def guard():
+                self.controller.check()
+                if self.closed or self.controller.current != page:
+                    raise ValueError('The source reading selection changed. Open recorded audio again.')
+            from .ebook_audio_dialog import EbookAudioDialog
+            reader = EbookAudioDialog(self.dialog, self.controller.desk, page.ordinal, guard,
+                host=self.parent, progress=getattr(self.parent, 'progress_panel', None))
+            self._audio_dialog = reader
+            try:
+                reader.show()
+            finally:
+                if reader.closed:
+                    self._audio_dialog = None
+                if not self.closed:
+                    try:
+                        guard()
+                    except Exception:
+                        pass
+                    else:
+                        self.text.SetFocus()
+        except Exception as exc:
+            self._error(exc)
+
     def help(self, event=None):
         if self.busy:
             return
@@ -421,12 +453,21 @@ class ReadingDialog:
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
             'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
-            'The existing library backup does not yet include this reader state.')
+            'Library backups include reading positions and bookmarks. Recorded EPUB audio uses the retained '
+            'original archive; temporary playback files are regenerated after restore. '
+            'Choose EPUB synchronized recorded audio for authored local SMIL segments. Nothing plays '
+            'until Play is chosen, and recorded playback never approves quotations.')
         self.text.SetFocus()
 
     def close(self, event=None):
         if self.closed:
             return
+        if self._audio_dialog is not None:
+            self._audio_dialog.close()
+            if not self._audio_dialog.closed:
+                if event is not None and getattr(event, 'CanVeto', lambda: False)():
+                    event.Veto()
+                return
         self.closed = True
         self.cancelled.set()
         if hasattr(self, 'keyboard'):

@@ -265,7 +265,8 @@ class CatalogInsightsActions:
                 except Exception:
                     if not getattr(self.frame, '_closing', False):
                         self.frame.report('The matrix file was saved before cancellation or a library change '
-                                          'was detected. Reopen the command to make a current report.')
+                                          'was detected. Reopen the command to make a current report.'
+                                          + ('\n' + result.cleanup_warning if result.cleanup_warning else ''))
                     return
                 self.frame.report('Source comparison matrix saved to ' + display_value(str(path))
                                   + '. Quotations and notes are not included.'

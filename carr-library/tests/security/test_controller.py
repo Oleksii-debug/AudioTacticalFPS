@@ -91,9 +91,15 @@ def test_desktop_installs_help_hook():
     initialize = next(node for node in frame.body if isinstance(node, ast.FunctionDef) and node.name == '__init__')
     menu_call = next(node for node in ast.walk(initialize) if isinstance(node, ast.Call)
                      and isinstance(node.func, ast.Attribute) and node.func.attr == '_menus')
-    keyboard_call = next(node for node in ast.walk(initialize) if isinstance(node, ast.Call)
-                         and isinstance(node.func, ast.Name) and node.func.id == 'install_productivity_actions')
-    assert menu_call.lineno < keyboard_call.lineno
+    assert len([node for node in ast.walk(initialize) if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute) and node.func.attr == '_menus']) == 1
+    assert calls.count('install_keyboard_settings') == 1
+    trust_call = next(node for node in ast.walk(menus) if isinstance(node, ast.Call)
+                      and isinstance(node.func, ast.Name) and node.func.id == 'install_trust_actions')
+    keyboard_call = next(node for node in ast.walk(menus) if isinstance(node, ast.Call)
+                         and isinstance(node.func, ast.Name) and node.func.id == 'install_keyboard_settings')
+    assert isinstance(menu_call.func.value, ast.Name) and menu_call.func.value.id == 'self'
+    assert trust_call.lineno < keyboard_call.lineno
 
 
 def test_cancelled_explicit_import_does_not_advance_protected_state(

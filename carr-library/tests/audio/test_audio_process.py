@@ -13,7 +13,7 @@ from carr_library.audio.process import publish_file, run_process
 
 
 def execute(code, **kwargs):
-    return run_process([str(Path(sys.executable).resolve()), '-I', '-c', code], **kwargs)
+    return run_process([str(Path(sys.executable).resolve()), '-I', '-B', '-c', code], **kwargs)
 
 
 def test_fast_stdout_overflow_is_detected_after_child_exit():
@@ -331,3 +331,50 @@ def test_windows_live_metadata_still_rejects_reparse_and_device_output(
     with pytest.raises(AudioError, match='not a regular file'):
         execute(code, watch=(stage,), budget=AudioBudget(timeout=2))
     assert windows_watch_processes and all(child.poll() is not None for child in windows_watch_processes)
+
+
+def test_unconfirmed_ordinary_child_stop_retains_streams_until_owned_cleanup(monkeypatch):
+    from threading import Event
+    from carr_library.audio import process
+    from carr_library.audio.models import AudioCleanupPending
+
+    released, disposed = Event(), Event()
+    children = []
+    native_popen, native_terminate = process.subprocess.Popen, process._terminate
+    owner = None
+
+    def spawn(*args, **kwargs):
+        child = native_popen(*args, **kwargs)
+        children.append(child)
+        return child
+
+    def controlled_termination(child):
+        if not released.is_set():
+            raise OSError('Controlled native termination has not yet been confirmed.')
+        native_terminate(child)
+
+    monkeypatch.setattr(process.subprocess, 'Popen', spawn)
+    monkeypatch.setattr(process, '_terminate', controlled_termination)
+    try:
+        with pytest.raises(AudioCleanupPending) as result:
+            process.run_process([str(Path(getattr(sys, '_base_executable', None) or sys.executable).resolve()), '-I', '-B', '-c',
+                                 'import time; time.sleep(30)'],
+                                budget=AudioBudget(timeout=.1))
+        owner = result.value.cleanup_owner
+        assert isinstance(result.value.__cause__, OSError)
+        assert len(children) == 1 and children[0].poll() is None
+        assert not owner.quiescent
+        assert not children[0].stdout.closed and not children[0].stderr.closed
+        # Register after the process-owned release_streams callback, so this
+        # event proves that the real readers and their handles finished too.
+        owner.add_quiescent_callback(disposed.set)
+        released.set()
+        assert disposed.wait(10), 'The existing cleanup owner did not finish.'
+        assert owner.quiescent and children[0].poll() is not None
+        assert children[0].stdout.closed and children[0].stderr.closed
+    finally:
+        released.set()
+        for child in children:
+            native_terminate(child)
+        if owner is not None:
+            owner.close()

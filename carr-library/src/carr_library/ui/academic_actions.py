@@ -295,19 +295,29 @@ def export_bibliography(frame):
             format = ('csl-json', 'ris', 'bibtex')[index]
         finally:
             dialog.Destroy()
+        def selected_scope():
+            if not _current_scope(frame, library, workspace):
+                raise ValueError('Library selection changed. Open the bibliography command again.')
+
+        selected_scope()
         approval = confirm_export_destination(frame, path, private_root=library.root,
                                                title='Replace bibliography')
         if approval is None:
             return
-        if not _current_scope(frame, library, workspace):
-            raise ValueError('Library selection changed. Open the bibliography command again.')
+        selected_scope()
+
+        def export_cancelled():
+            selected_scope()
+            return frame.cancel_event.is_set()
 
         def operation():
+            selected_scope()
             text = library.export_bibliography(workspace, collection=collection, format=format,
                                                cancelled=frame.cancel_event.is_set)
+            selected_scope()
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
-            return write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set,
+            return write_export(path, text, private_root=library.root, cancelled=export_cancelled,
                          approval=approval)
 
         def done(result):
@@ -335,18 +345,28 @@ def export_research_outline(frame):
             path = Path(dialog.GetPath())
         finally:
             dialog.Destroy()
+        def selected_scope():
+            if not _current_scope(frame, library, workspace) or frame.active != (workspace, topic):
+                raise ValueError('Topic selection changed. Open the outline command again.')
+
+        selected_scope()
         approval = confirm_export_destination(frame, path, private_root=library.root,
                                                title='Replace research outline')
         if approval is None:
             return
-        if not _current_scope(frame, library, workspace) or frame.active != (workspace, topic):
-            raise ValueError('Topic selection changed. Open the outline command again.')
+        selected_scope()
+
+        def export_cancelled():
+            selected_scope()
+            return frame.cancel_event.is_set()
 
         def operation():
+            selected_scope()
             text = library.export_outline(workspace, topic, cancelled=frame.cancel_event.is_set)
+            selected_scope()
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
-            return write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set,
+            return write_export(path, text, private_root=library.root, cancelled=export_cancelled,
                          approval=approval)
 
         def done(result):

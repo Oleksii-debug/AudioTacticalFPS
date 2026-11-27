@@ -153,3 +153,35 @@ def test_complete_native_inventory_verifies_and_detects_payload_changes(native_b
     (root / changed).write_bytes(b"Tampered after sealing")
     with pytest.raises(ValueError, match="checksum"):
         installer.verify(root)
+
+
+def test_isolated_managed_launcher_bootstrap_uses_only_its_exact_source_siblings(tmp_path):
+    """Execute the workflow's real bootstrap without a compiler or binary build."""
+    import os
+    import sys
+    workflow = (ROOT.parent / '.github/workflows/carr-managed-update.yml').read_text(encoding='utf-8')
+    start = "          $launcherBootstrap = @'\n"
+    assert workflow.count(start) == 1
+    block = workflow.split(start, 1)[1].split("\n          '@", 1)[0]
+    bootstrap = '\n'.join(line[10:] for line in block.splitlines()) + '\n'
+    hostile = tmp_path / 'Untrusted working directory Київ'
+    hostile.mkdir()
+    marker = hostile / 'ambient-helper-was-executed'
+    payload = "from pathlib import Path\nPath(" + repr(str(marker)) + ").write_text('must not run')\nraise RuntimeError('ambient import')\n"
+    (hostile / 'probe_pe.py').write_text(payload, encoding='utf-8')
+    (hostile / 'sitecustomize.py').write_text(payload, encoding='utf-8')
+    commit = subprocess.check_output(['git', '-C', str(ROOT.parent), 'rev-parse', 'HEAD'], text=True).strip()
+    environment = dict(os.environ, PYTHONPATH=str(hostile), PYTHONDONTWRITEBYTECODE='1')
+    command = [sys.executable, '-I', '-B', '-', str(ROOT), commit, '--help']
+    result = subprocess.run(command, input=bootstrap, text=True, encoding='utf-8',
+                            cwd=hostile, env=environment, capture_output=True, timeout=20)
+    assert result.returncode == 0, result.stderr
+    assert '--build-probe' in result.stdout
+    assert not marker.exists()
+    assert not list(hostile.rglob('*.pyc'))
+    # A different claimed source cannot execute even the otherwise harmless CLI.
+    command[-2] = '0' * 40
+    refused = subprocess.run(command, input=bootstrap, text=True, encoding='utf-8',
+                             cwd=hostile, env=environment, capture_output=True, timeout=20)
+    assert refused.returncode != 0 and 'immutable launcher source changed' in refused.stderr
+    assert not marker.exists()

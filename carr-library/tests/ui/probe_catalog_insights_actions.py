@@ -464,9 +464,11 @@ class CatalogInsightsActionsTests(unittest.TestCase):
     def test_cancellation_after_publication_is_reported_as_saved(self):
         original = ui.write_export
 
+        warning = 'Completed export; temporary cleanup still needs attention.'
         def cancel_after_write(*args, **kwargs):
-            original(*args, **kwargs)
+            receipt = original(*args, **kwargs)
             self.frame.cancel_event.set()
+            return replace(receipt, cleanup_warning=warning)
 
         actions, _ = self.actions((0, 0))
         with patch.object(ui, 'write_export', cancel_after_write):
@@ -474,6 +476,7 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.assertTrue(self.destination.is_file())
         self.assertEqual(self.frame.errors, [])
         self.assertIn('file was saved before cancellation', self.frame.messages[-1])
+        self.assertIn(warning, self.frame.messages[-1])
 
     def test_cancellation_during_file_write_preserves_destination_and_removes_temporary(self):
         from carr_library.research import export_file
@@ -504,10 +507,16 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         other = self.clone_library()
         self.frame.after_worker = lambda: setattr(self.frame, 'library', other)
         actions, _ = self.actions((0, 0))
-        actions.export_matrix()
+        original = ui.write_export
+        warning = 'Completed export; temporary cleanup still needs attention.'
+        def completed_with_notice(*args, **kwargs):
+            return replace(original(*args, **kwargs), cleanup_warning=warning)
+        with patch.object(ui, 'write_export', completed_with_notice):
+            actions.export_matrix()
         self.assertTrue(self.destination.is_file())
         self.assertIn('file was saved', self.frame.messages[-1])
         self.assertNotIn(str(self.destination), self.frame.messages[-1])
+        self.assertIn(warning, self.frame.messages[-1])
 
     def test_checked_export_rejects_private_library_destination(self):
         protected = self.library.root / 'matrix.csv'

@@ -123,6 +123,27 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $private, $python = $env:CARR_MANAGED_PRIVATE, $env:CARR_MANAGED_PYTHON
           $report = (Resolve-Path 'managed-update-results').Path
+          $launcherBootstrap = @'
+          import pathlib, runpy, subprocess, sys
+          source = pathlib.Path(sys.argv[1]).resolve(strict=True)
+          expected = sys.argv[2]
+          repository = source.parent
+          actual = subprocess.check_output(['git', '-C', str(repository), 'rev-parse', 'HEAD'], text=True).strip()
+          if actual != expected:
+              raise RuntimeError('The selected immutable launcher source changed.')
+          for name in ('build_launcher.py', 'probe_pe.py'):
+              path = source / 'packaging/native-launcher' / name
+              raw = subprocess.check_output(['git', '-C', str(repository), 'show',
+                                            expected + ':carr-library/packaging/native-launcher/' + name])
+              if path.read_bytes() != raw:
+                  raise RuntimeError('The launcher build helper differs from its exact committed source.')
+          script = source / 'packaging/native-launcher/build_launcher.py'
+          # -I omits script siblings. Admit this one verified source directory explicitly;
+          # neither the working directory nor PYTHONPATH participates in module discovery.
+          sys.path.insert(0, str(script.parent))
+          sys.argv = [str(script), *sys.argv[3:]]
+          runpy.run_path(str(script), run_name='__main__')
+          '@
           foreach ($label in @('a', 'b')) {
             $source = Join-Path $env:GITHUB_WORKSPACE ('source-' + $label + '/carr-library')
             $expected = if ($label -eq 'a') { $env:CARR_MANAGED_SOURCE_A } else { $env:CARR_MANAGED_SOURCE_B }
@@ -173,7 +194,7 @@ jobs:
               $wheel = @(Get-ChildItem $application -Filter '*.whl')
               if ($wheel.Count -ne 1) { throw 'Expected one exact source application wheel.' }
               $launcher = Join-Path $build 'launcher'
-              & $python -I -B packaging/native-launcher/build_launcher.py --zig $env:CARR_MANAGED_ZIG --toolchain-archive (Join-Path $private 'zig.zip') --output-dir $launcher --build-probe | Tee-Object (Join-Path $report ('launcher-build-' + $label + '.txt'))
+              $launcherBootstrap | & $python -I -B - $source $expected --zig $env:CARR_MANAGED_ZIG --toolchain-archive (Join-Path $private 'zig.zip') --output-dir $launcher --build-probe | Tee-Object (Join-Path $report ('launcher-build-' + $label + '.txt'))
               if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
               & $python -I -B packaging/native-launcher/probe_windows.py --launcher (Join-Path $launcher 'ResearchLibrary.exe') --child (Join-Path $launcher 'windows_child_probe.exe') --report (Join-Path $report ('launcher-native-' + $label + '.json'))
               if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

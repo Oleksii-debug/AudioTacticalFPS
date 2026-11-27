@@ -52,14 +52,17 @@ static int child_path(const wchar_t *relative, int directory) {
    Keep the read handle until the Python child exits; no PID lock or polling. */
 static int acquire_managed_lease(void) {
     size_t length = rl_len(root), i;
+    /* Keep this entry point free of the CRT: MSVC /O1 may otherwise
+       replace the bounded directory copy with an external memcpy call. */
+    volatile wchar_t *parent_chars = managed_parent;
     if (length && root[length - 1] == L'\\') --length;
     i = length; while (i && root[i - 1] != L'\\') --i;
     if (length - i != 3 || !((root[i] == L'a' || root[i] == L'A') &&
         (root[i + 1] == L'p' || root[i + 1] == L'P') &&
         (root[i + 2] == L'p' || root[i + 2] == L'P'))) return 1;
     if (!i || i + 1 >= CAP) return 0;
-    for (length = 0; length < i; ++length) managed_parent[length] = root[length];
-    managed_parent[i] = 0;
+    for (length = 0; length < i; ++length) parent_chars[length] = root[length];
+    parent_chars[i] = 0;
     if (!rl_join(scratch, CAP, managed_parent, L"managed-install.ini")) return 0;
     if (present(scratch, 0) == 0) return 1;
     if (present(scratch, 0) != 1 || !rl_join(scratch, CAP, managed_parent, L"installation.lease") ||

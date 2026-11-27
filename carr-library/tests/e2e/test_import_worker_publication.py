@@ -237,7 +237,14 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
 @pytest.mark.parametrize('competitor_kind', ('direct', 'second-request', 'forged-sidecar'))
 def test_competing_commit_after_kill_does_not_complete_stopped_request(
         tmp_path, monkeypatch, kind, competitor_kind):
+    from carr_library.operations import ResourceBroker, ResourceLimits
+
     app = LibraryApp(tmp_path / 'private')
+    # The stopped parent retains its real admission until reconciliation. This
+    # adversarial scenario explicitly admits a second 3 GiB import meanwhile;
+    # it must reach publication, not time out at the default 4 GiB policy.
+    ResourceBroker.for_app(app.root,
+        limits=ResourceLimits(cpu_slots=2, memory_bytes=6 * 1024**3))
     workspace = app.create_workspace('Competing publication after rollback')
     source = _source(tmp_path, kind)
     planned = worker.prepare_request(app.root, workspace, source, _metadata(), Config())

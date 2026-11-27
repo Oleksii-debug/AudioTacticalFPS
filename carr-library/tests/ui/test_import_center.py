@@ -410,3 +410,33 @@ def test_model_choice_is_not_applied_after_library_folder_changes(center, monkey
     center.choose_ocr_models()
     assert center.custom_ocr_config is None and center.languages.selection == 3
     assert 'library folder changed' in center.status.value
+
+
+@pytest.mark.parametrize('change', ['same-path-new-library', 'closing'])
+def test_import_report_picker_rechecks_scope_before_destination_inspection(center, tmp_path, monkeypatch, change):
+    from carr_library.ui import import_center as ui, export_destination
+    target = tmp_path / 'report.txt'
+    original = b'Independent import report'
+    target.write_bytes(original)
+    center.library.root = tmp_path / 'private'
+    center.library.root.mkdir()
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+    def change_scope():
+        if change == 'same-path-new-library':
+            center.frame.library = SimpleNamespace(root=center.library.root)
+        else:
+            center.frame._closing = True
+    chooser = SimpleNamespace(ShowModal=lambda: wx.ID_OK, GetPath=lambda: str(target),
+                              Destroy=Mock(side_effect=change_scope))
+    wx.FileDialog = Mock(return_value=chooser)
+    approval = Mock(side_effect=AssertionError('A stale report cannot inspect destination bytes.'))
+    renderer = Mock(side_effect=AssertionError('A stale report cannot render.'))
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', approval)
+    monkeypatch.setattr(ui, 'batch_report', renderer)
+    center.save_report()
+    approval.assert_not_called()
+    renderer.assert_not_called()
+    chooser.Destroy.assert_called_once()
+    assert target.read_bytes() == original and not center.jobs
+    assert 'library folder changed' in center.status.value

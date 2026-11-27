@@ -38,6 +38,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     library_root = Path(library.root) if library is not None else None
     pronunciations = ()
     playback_generation = 0
+    playback_refresh = None
+    repeat_scheduled = None
     save_path = None
     last_audio = None
     source_loaded = source_loader is None
@@ -150,11 +152,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
     seek = wx.Button(dialog, label='Seek to &time')
+    playback_button = wx.Button(dialog, label='Playback controls...')
     cleanup = wx.Button(dialog, label='Normalize s&paces')
     commands = wx.Button(dialog, label='Find voice reader command...')
     keyboard_settings = wx.Button(dialog, label='Voice reader keyboard shortcuts...')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (seek, cleanup, commands, keyboard_settings, close):
+    for control in (seek, playback_button, cleanup, commands, keyboard_settings, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     dialog.SetSizer(layout)
@@ -179,6 +182,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             button.Enable(bool(current) and not busy)
         dictionary.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
+        playback_button.Enable(last_audio is not None and getattr(player, 'path', None) is not None and not busy)
         for control in (navigation_unit, previous_unit, current_unit, next_unit):
             control.Enable(source_loaded and not busy)
         read_unit.Enable(source_loaded and bool(current) and not busy)
@@ -263,16 +267,128 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
         run(activate, activated)
 
+    def playback_scope(*, source=True):
+        if not source_loaded:
+            raise ValueError('The reading session is no longer available.')
+        check_current(check_source=source)
+
+    def playback_failed(exc):
+        nonlocal playback_generation, repeat_scheduled
+        playback_generation += 1
+        repeat_scheduled = None
+        cancel.set()
+        cleanup = ''
+        try:
+            player.stop()
+        except Exception as error:
+            cleanup = f' Playback stop is unconfirmed: {error}'
+        if progress is not None:
+            try:
+                progress.refresh_audio_state()
+            except Exception as error:
+                cleanup += f' Progress feedback is unavailable: {error}'
+        try:
+            # Ownership cleanup still runs after a library switch; stale native
+            # controls must not receive its late status or focus changes.
+            check_current(check_source=False)
+            report(f'Playback did not start. {exc}{cleanup}')
+        except Exception:
+            pass
+
     def start_playback(action):
         generation = playback_generation
         def current_action():
-            check_current()
+            playback_scope()
             if cancel.is_set():
                 return
             action()
         play_when_quiet((progress,), current_action, schedule=wx.CallLater,
             alive=lambda: alive and generation == playback_generation,
-            on_error=lambda exc: report(f'Playback did not start. {exc}', focus=True))
+            on_error=playback_failed)
+
+    def poll_audio(event=None):
+        nonlocal playback_generation, repeat_scheduled
+        if not alive:
+            return
+        try:
+            if getattr(player, 'path', None) is not None:
+                # The timer only polls/stops. Full source authorization runs at
+                # every actual repeat or explicit audible admission.
+                playback_scope(source=False)
+                outcome = player.poll()
+                if outcome == 'sleep':
+                    playback_generation += 1
+                    repeat_scheduled = None
+                    if progress is not None:
+                        progress.refresh_audio_state()
+                    report('Sleep timer stopped playback and cancelled repeat.')
+                elif outcome == 'repeat-pending' and not busy and repeat_scheduled != playback_generation:
+                    generation = playback_generation
+                    repeat_scheduled = generation
+                    def repeat():
+                        nonlocal repeat_scheduled
+                        try:
+                            if generation == playback_generation:
+                                player.repeat_if_ready()
+                        finally:
+                            repeat_scheduled = None
+                    start_playback(repeat)
+            if playback_refresh is not None:
+                playback_refresh()
+        except Exception as exc:
+            try:
+                playback_failed(exc)
+            finally:
+                playback_timer.Stop()
+
+    def playback_control(action, *, audible=False):
+        nonlocal playback_generation, repeat_scheduled
+        playback_scope()
+        if busy:
+            raise ValueError('Finish or stop the current speech operation before controlling playback.')
+        playback_generation += 1
+        repeat_scheduled = None
+        # This is a fresh explicit action after Stop, admitted only while idle.
+        # A busy synthesis worker's pending cancellation is never cleared.
+        cancel.clear()
+        if audible:
+            start_playback(action)
+        else:
+            action()
+            if progress is not None:
+                progress.refresh_audio_state()
+
+    def show_playback(event=None):
+        nonlocal playback_refresh, playback_generation, repeat_scheduled
+        try:
+            playback_scope()
+            if last_audio is None or getattr(player, 'path', None) is None:
+                raise ValueError('Read text once before controlling its current recording.')
+            if busy:
+                raise ValueError('Finish or stop the current speech operation first.')
+            from .reader_playback import show_reader_playback
+            def subscribe(callback):
+                nonlocal playback_refresh
+                playback_refresh = callback
+            show_reader_playback(dialog, player, execute=playback_control,
+                                 stop=stop_audio, pause=pause_audio, subscribe=subscribe)
+        except Exception as exc:
+            try:
+                check_current(check_source=False)
+            except Exception:
+                return
+            report(str(exc), focus=True)
+        finally:
+            playback_refresh = None
+            playback_generation += 1
+            repeat_scheduled = None
+            # The old library or source may have disappeared during the modal.
+            try:
+                check_current()
+            except Exception:
+                pass
+            else:
+                editor.SetFocus()
 
     def reload(event=None):
         def discover_configured():
@@ -600,6 +716,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 speak(destination=Path(chooser.GetPath()))
 
     def pause_audio(event=None):
+        nonlocal playback_generation, repeat_scheduled
+        playback_generation += 1
+        repeat_scheduled = None
         try:
             if player.state == 'paused':
                 def resumed():
@@ -616,8 +735,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(str(exc), focus=True)
 
     def stop_audio(event=None):
-        nonlocal playback_generation
+        nonlocal playback_generation, repeat_scheduled
         playback_generation += 1
+        repeat_scheduled = None
         cancel.set()
         try:
             player.stop()
@@ -636,10 +756,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 if entry.ShowModal() == wx.ID_OK:
                     seconds = float(entry.GetValue())
                     def sought():
-                        player.seek(seconds)
+                        player.seek(seconds, start_if_stopped=False)
                         report(f'Playback at {player.position_seconds:.1f} seconds.'
                                + (' Position is approximate on this playback backend.' if player.position_is_approximate else ''))
-                    start_playback(sought)
+                    playback_control(sought, audible=True)
         except Exception as exc:
             report(str(exc), focus=True)
 
@@ -777,7 +897,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (export_audio, save_audio), (save_button, save_project),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
-        (original, compare), (seek, seek_audio), (cleanup, clean), (close, closing),
+        (original, compare), (seek, seek_audio), (playback_button, show_playback),
+        (cleanup, clean), (close, closing),
         (read_line, lambda event: speak(mode='line')),
         (read_paragraph, lambda event: speak(mode='paragraph')),
         (read_clipboard_button, read_clipboard), (dictionary, show_dictionary),
@@ -804,6 +925,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         'voice_reader.clipboard': (read_clipboard_button, read_clipboard),
         'voice_reader.dictionary': (dictionary, show_dictionary),
         'voice_reader.find': (find_button, find_replace),
+        'voice_reader.playback': (playback_button, show_playback),
         'voice_reader.previous_unit': (previous_unit, lambda event: navigate_unit(direction=-1)),
         'voice_reader.current_unit': (current_unit, navigate_unit),
         'voice_reader.next_unit': (next_unit, lambda event: navigate_unit(direction=1)),
@@ -826,6 +948,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     keyboard_settings.Bind(wx.EVT_BUTTON, keyboard.settings)
     autosave_timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, autosave_timer)
+    playback_timer = wx.Timer(dialog)
+    dialog.Bind(wx.EVT_TIMER, poll_audio, playback_timer)
     from .save_all import SaveResult, coordinator_for
     coordinator = coordinator_for(parent)
     def unsaved():
@@ -848,6 +972,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         capabilities()
         reload()
         autosave_timer.Start(5000)
+        playback_timer.Start(100)
         editor.SetFocus()
         dialog.ShowModal()
     finally:
@@ -855,7 +980,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         cancel.set()
         notices = []
         for cleanup, label in ((unregister, 'Save coordinator'),
-                               (autosave_timer.Stop, 'Reading-draft timer')):
+                               (autosave_timer.Stop, 'Reading-draft timer'),
+                               (playback_timer.Stop, 'Playback timer')):
             try:
                 cleanup()
             except Exception as exc:

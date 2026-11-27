@@ -255,6 +255,7 @@ jobs:
 
       - name: Match production dependencies before required source suites
         id: desktop_dependencies
+        if: ${{ !cancelled() && steps.desktop_runtime.conclusion == 'success' }}
         timeout-minutes: 10
         run: |
           & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
@@ -266,6 +267,7 @@ jobs:
 
       - name: Prepare the verified OCR engine before its required source regression
         id: ocr_runtime
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' }}
         timeout-minutes: 10
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -518,8 +520,28 @@ jobs:
           "CARR_CI_MODEL_DIR=$model" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      # In run45981870121 an unrelated native failure skipped publication
+      # acquisition, suppressing all304 source suites. Keep prerequisites
+      # independent while retaining every failure and overall-success requirement.
+      - name: Prepare verified audio before independent source acceptance
+        id: audio_runtime
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' }}
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          $audioInputs = Join-Path $bundleWork 'audio-inputs'
+          $audioRuntime = Join-Path $bundleWork 'reviewed-audio'
+          & $env:CARR_PYTHON packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-results/audio-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          & $env:CARR_PYTHON packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-results/audio-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Prepare explicitly pinned external publication test runtimes
         id: publication-runtime
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' }}
         timeout-minutes: 10
         run: |
           # Explicit CI dependency acquisition occurs before the offline test boundary.
@@ -577,7 +599,7 @@ jobs:
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
-        if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.audio_runtime.conclusion == 'success' && steps['publication-runtime'].conclusion == 'success' }}
         # Retain all installed cases and seals; the optional56 trust/native gates
         # and mandatory format/reader coverage add work to the previously35-minute lane.
         # Individual process/test budgets remain unchanged.
@@ -616,14 +638,8 @@ jobs:
           & $env:CARR_PYTHON packaging/native-launcher/probe_windows.py --launcher $launcher --child (Join-Path $launcherOutput 'windows_child_probe.exe') --report 'ci-results/native-launcher-process.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Copy-Item (Join-Path $launcherOutput 'build-evidence.json') 'ci-results/native-launcher-build.json'
-          $audioInputs = Join-Path $bundleWork 'audio-inputs'
-          $audioRuntime = Join-Path $bundleWork 'reviewed-audio'
-          & $env:CARR_PYTHON packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-results/audio-acquisition.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
-          & $env:CARR_PYTHON packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-results/audio-preparation.json'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioRuntime = $env:CARR_CI_AUDIO_DIR
+          if (-not $audioRuntime -or -not (Test-Path -LiteralPath $audioRuntime -PathType Container)) { throw 'The independently verified LGPL audio runtime is unavailable.' }
           $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
           $pythonArchive = Join-Path $bundleWork 'windows-python.tar.gz'
           Invoke-WebRequest -Uri $runtime.download.url -OutFile $pythonArchive
@@ -731,6 +747,35 @@ jobs:
           "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
           $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          # The same sealed wheel must exercise its actual native MCI transport.
+          # Silent synthetic PCM proves controls and lifetime, not audible quality.
+          & $python -I -B scripts/windows_reader_player_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-reader-player.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native reader playback failed.' }
+          $validatePlayer = @'
+          import hashlib, json, pathlib, sys
+          reports = []
+          for line in pathlib.Path('ci-results/full-bundle-reader-player.txt').read_text(encoding='utf-8-sig').splitlines():
+              try:
+                  value = json.loads(line)
+              except ValueError:
+                  continue
+              if isinstance(value, dict) and 'actual_windows_mci' in value:
+                  reports.append(value)
+          assert len(reports) == 1, 'Native installed reader playback evidence is missing or ambiguous.'
+          report = reports[0]
+          required = ('result', 'actual_windows_mci', 'paused_seek_no_play_command',
+                      'native_ab_sleep_skip_controls', 'installed_modules')
+          assert all(report.get(name) == 'PASS' for name in required), report
+          assert report['audible_listening'] == report['nvda'] == 'NOT_RUN'
+          assert pathlib.Path(report['package_origin']).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve())
+          expected = {name: hashlib.sha256((pathlib.Path('src/carr_library') / name).read_bytes()).hexdigest()
+                      for name in ('speech/player.py', 'ui/reader_playback.py')}
+          assert report['source_hashes'] == expected, report
+          pathlib.Path('ci-results/full-bundle-reader-player.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+          $validatePlayer | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native reader playback evidence is incomplete.' }
           # Test dependencies are installed only after production installation passes.
           & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -774,6 +819,37 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B scripts/windows_clip_editor_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-clips-native.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native portable clip editing failed.' }
+          & $python -I -B scripts/windows_epub_reading_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-recorded-epub.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed recorded EPUB playback failed.' }
+          $verifyRecordedEpub = @'
+          import json, pathlib, re, sys
+          raw = pathlib.Path('ci-results/full-bundle-recorded-epub.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  value, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(value, dict) and 'third_party_reader' in value:
+                  reports.append(value)
+          assert len(reports) == 1, 'Native recorded EPUB report is missing or ambiguous.'
+          report = reports[0]
+          assert report['result'] == report['status'] == report['native_keyboard'] == 'PASS', report
+          for key in ('epubcheck', 'third_party_reader', 'manual_keyboard', 'nvda'):
+              assert report[key] == 'NOT_RUN', (key, report[key])
+          required = set(["actual local production completes","actual publication imports as a retained EPUB","existing Reading Desk presents the exact source","recorded preparation borrows the current host worker","opening recorded audio does not start playback","native source highlight is an exact Unicode fragment","existing progress observes the owned transport","real WavePlayer opens the exact measured PCM interval","native pause retains the selected segment","native Stop releases prepared playback","native selection never starts audio","fresh source access stops archived playback visibly","closing recorded audio confirms owned cleanup","native Escape closes the existing reader after playback cleanup","original publication and retained bytes remain unchanged","reading does not create quotation approval","completed publication receipt still verifies","exact installed source: carr_library.reader.ebook_audio","exact installed source: carr_library.ui.ebook_audio_dialog","exact installed source: carr_library.ui.reading_desk","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.speech.player","exact installed source: carr_library.audio.process","exact installed source: carr_library.audio.cleanup","real native Windows controls"])
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
+          selected = pathlib.Path(sys.argv[1]).resolve(strict=True)
+          assert set(report['audio_runtime']) == {'ffmpeg', 'ffprobe'}
+          for name, evidence in report['audio_runtime'].items():
+              assert evidence['sha256'] == pin['output_files']['bin/' + name + '.exe']['sha256']
+              assert pathlib.Path(evidence['path']).resolve(strict=True) == selected / 'bin' / (name + '.exe')
+          pathlib.Path('ci-results/full-bundle-recorded-epub.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+          $verifyRecordedEpub | & $python -I -B - $env:CARR_PUBLISHING_AUDIO_DIR
+          if ($LASTEXITCODE -ne 0) { throw 'Recorded EPUB native evidence is incomplete.' }
           & $python -I -B scripts/windows_publishing_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-publishing-native.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native EPUB publishing failed.' }
           $verifyPublicationNative = @'
@@ -892,14 +968,15 @@ jobs:
           publication_modules = ('carr_library.studio.publishing', 'carr_library.ui.publishing_dialog', 'carr_library.ui.studio_dialog', 'carr_library.audio.audiobook', 'carr_library.audio.dsp', 'carr_library.studio.daisy')
           recording_modules = ('carr_library.audio.models', 'carr_library.audio.process', 'carr_library.audio.windows_job', 'carr_library.audio.cleanup', 'carr_library.audio.recording', 'carr_library.speech.runtime', 'carr_library.ui.recording_dialog', 'carr_library.ui.desktop_app')
           clip_modules = ('carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup', 'carr_library.backup_transcription', 'carr_library.backup_sidecars', 'carr_library.backup_producers', 'carr_library.durable_state')
-          reader_modules = ('carr_library.speech.reading', 'carr_library.speech.navigation', 'carr_library.ui.speech_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts', 'carr_library.ui.find_replace_dialog')
+          reader_modules = ('carr_library.speech.reading', 'carr_library.speech.navigation', 'carr_library.ui.speech_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.player', 'carr_library.ui.reader_playback')
           integrity_modules = ('carr_library.audio_runtime', 'carr_library.research.export_file')
           incremental_modules = ('carr_library.incremental_backup', 'carr_library.incremental_backup_cli', 'carr_library.sync.vault', 'carr_library.file_publication', 'carr_library.ui.incremental_backup_dialog')
           operations_modules = ["carr_library.operations.models","carr_library.operations._locks","carr_library.operations.broker","carr_library.operations.facade","carr_library.operations.cli","carr_library.ui.operations_dialog"]
-          for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules):
+          ebook_modules = ["carr_library.reader.ebook_audio","carr_library.ui.ebook_audio_dialog","carr_library.ui.reading_desk","carr_library.runtime_settings","carr_library.speech.player","carr_library.audio.process","carr_library.audio.cleanup"]
+          for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules, *ebook_modules):
               importlib.import_module(module_name)
           def installed_assistant_origins():
-              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules)}
+              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules, *ebook_modules)}
               assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in origins.values()), origins
               from hashlib import sha256
               for name in operations_modules:
@@ -1019,6 +1096,13 @@ jobs:
               'tests/ui/test_academic_actions.py',
               'tests/speech/test_reader_usability.py',
               'tests/speech/test_navigation.py',
+              'tests/reader/test_ebook_audio.py',
+              'tests/ui/test_ebook_audio_lifetime.py',
+              'tests/operations/test_worker_start_cleanup.py',
+              'tests/speech/test_player_controls.py',
+              'tests/speech/test_player_transport.py',
+              'tests/ui/test_reader_playback.py',
+              'tests/ui/test_reader_playback_actions.py',
               'tests/packaging/test_audio_runtime.py',
               'tests/packaging/test_audio_bundle.py',
               'tests/reader/test_export_reconciliation.py',
@@ -1069,7 +1153,13 @@ jobs:
           assert all(recording_counts.values()) and recording_counts['test_windows_audio_ownership'] == 5, recording_counts
           assert recording_counts['test_runtime'] == 13, recording_counts
           assert recording_required <= {case.get('name') for case in publication_cases}, recording_counts
-          reader_expected = {'test_reader_usability': 31, 'test_navigation': 27, 'test_progress_voice_actions': 22}
+          ebook_expected_modules = ('test_ebook_audio', 'test_ebook_audio_lifetime')
+          ebook_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in ebook_expected_modules}
+          ebook_required = set(["test_canonical_backup_restores_recorded_epub_without_original_source_or_old_root","test_parser_cleanup_owner_retains_source_until_actual_quiescence","test_decoder_cleanup_owner_retains_pcm_staging_before_session_close","test_recorded_preparation_uses_current_configured_runtime_factory","test_close_disposes_late_actual_worker_result_without_host_callback","test_completed_but_undelivered_result_is_closed_once_on_scope_change","test_failed_native_close_retains_pcm_and_quiet_until_existing_owner_reaps","test_close_uses_original_disposer_for_borrowed_resume_input","test_recorded_modal_return_rechecks_captured_reader_before_focus"])
+          ebook_seen = {case.get('name', '').split('[', 1)[0] for case in publication_cases}
+          assert all(ebook_counts.values()) and ebook_counts['test_ebook_audio_lifetime'] == 14, ebook_counts
+          assert ebook_required <= ebook_seen, sorted(ebook_required - ebook_seen)
+          reader_expected = {'test_reader_usability': 31, 'test_navigation': 27, 'test_progress_voice_actions': 22, 'test_player_controls': 37, 'test_player_transport': 11, 'test_reader_playback': 15, 'test_reader_playback_actions': 22}
           reader_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in reader_expected}
           reader_required = {"test_one_thousand_matching_pronunciation_rules_commit_one_undo_step", "test_literal_expansion_is_admitted_before_large_allocation_and_is_atomic", "test_regex_backreference_expansion_is_bounded_inside_the_real_child", "test_cancellation_during_many_literal_matches_leaves_the_copy_unchanged", "test_recovered_caret_roundtrips_native_crlf_and_surrogate_offsets", "test_completed_synthesis_rechecks_current_source_before_late_playback", "test_dictionary_requires_explicit_save_of_a_changed_rule_form_before_apply"}
           reader_seen = {case.get('name', '').split('[', 1)[0] for case in publication_cases}
@@ -1085,7 +1175,7 @@ jobs:
           incremental_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in incremental_expected}
           assert all(incremental_counts.values()), incremental_counts
           print(json.dumps({'status': 'PASS', 'incremental_installed_counts': incremental_counts, 'canonical_format': 4}), flush=True)
-          operations_expected = {"test_facade":22,"test_import_admission":6,"test_production_admission":18,"test_resources":18,"test_transcription_admission":10,"test_current_union":11,"test_operations_dialog":13,"test_operations_policy":37,"test_operations_cli":5}
+          operations_expected = {"test_facade":22,"test_import_admission":6,"test_production_admission":18,"test_resources":18,"test_transcription_admission":10,"test_current_union":11,"test_operations_dialog":13,"test_operations_policy":37,"test_operations_cli":5,"test_worker_start_cleanup":2}
           operations_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in operations_expected}
           assert operations_counts == operations_expected, operations_counts
           print(json.dumps({'status': 'PASS', 'operations_installed_counts': operations_counts,
@@ -1363,9 +1453,9 @@ jobs:
       # public dependency wheels only; no model, native DLLs, audio or OCR source payload,
       # Setup binary or user documents. Overall success and release qualifications remain required.
       - name: Run required integrated source workflows
-        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.audio_runtime.conclusion == 'success' }}
         # Run 45971365426/job140412333419 took31m13s for257 suites (09:33:17–10:04:30).
-        # The new304 selectors retain600s per suite and jobs3; only aggregate headroom changes.
+        # The new311 selectors retain600s per suite and jobs3; only aggregate headroom changes.
         timeout-minutes: 45
         run: |
           $suites = @(
@@ -1629,6 +1719,13 @@ jobs:
             'tests/ui/test_profile_project_exports.py',
             'tests/speech/test_reader_usability.py',
             'tests/speech/test_navigation.py',
+            'tests/reader/test_ebook_audio.py',
+            'tests/ui/test_ebook_audio_lifetime.py',
+            'tests/operations/test_worker_start_cleanup.py',
+            'tests/speech/test_player_controls.py',
+            'tests/speech/test_player_transport.py',
+            'tests/ui/test_reader_playback.py',
+            'tests/ui/test_reader_playback_actions.py',
             'tests/packaging/test_audio_runtime.py',
             'tests/packaging/test_audio_bundle.py',
             'tests/reader/test_export_reconciliation.py',
@@ -1705,6 +1802,7 @@ jobs:
               'tests/operations/test_resources.py' = 18
               'tests/operations/test_transcription_admission.py' = 10
               'tests/operations/test_current_union.py' = 11
+              'tests/operations/test_worker_start_cleanup.py' = 2
               'tests/ui/test_operations_dialog.py' = 13
               'tests/ui/test_operations_policy.py' = 37
               'tests/e2e/test_operations_cli.py' = 5
@@ -1718,6 +1816,11 @@ jobs:
             $readerExpected = @{
               'tests/speech/test_reader_usability.py' = 31
               'tests/speech/test_navigation.py' = 27
+              'tests/speech/test_player_controls.py' = 37
+              'tests/speech/test_player_transport.py' = 11
+              'tests/ui/test_reader_playback.py' = 15
+              'tests/ui/test_reader_playback_actions.py' = 22
+              'tests/ui/test_ebook_audio_lifetime.py' = 14
               'tests/ui/test_progress_voice_actions.py' = 22
             }
             foreach ($entry in $readerExpected.GetEnumerator()) {

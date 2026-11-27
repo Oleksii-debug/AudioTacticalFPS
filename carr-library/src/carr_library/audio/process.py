@@ -292,19 +292,17 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                 elif pipe is not None:
                     pipe.close()
 
-        if not owned_windows_job and stop_requested is None:
-            # Existing render/conversion callers keep their termination path.
-            _terminate(process)
-            release_streams()
-        else:
-            try:
-                cleanup_process()
-            except Exception as exc:
-                from .cleanup import pending_cleanup
-                raise pending_cleanup(cleanup_process,
-                    message='Audio process cleanup is still pending; its admission remains reserved.',
-                    callbacks=(release_streams,)) from exc
-            release_streams()
+        try:
+            cleanup_process()
+        except Exception as exc:
+            # Ordinary subprocesses and POSIX groups need the same retained
+            # cleanup lifetime when termination itself cannot be confirmed.
+            # Never close their streams or release caller staging prematurely.
+            from .cleanup import pending_cleanup
+            raise pending_cleanup(cleanup_process,
+                message='Audio process cleanup is still pending; its admission remains reserved.',
+                callbacks=(release_streams,)) from exc
+        release_streams()
 
 
 def fsync_directory(path):
