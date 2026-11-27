@@ -64,7 +64,12 @@ def _unique(pairs):
 
 
 def _open_json_file(path):
-    """Read one snapshot without blocking another process's atomic replacement."""
+    """Open a bounded snapshot with Windows read/write/delete sharing.
+
+    Delete sharing permits a compatible native operation; it does not make
+    MoveFileExW replace an open destination. The production writer retains its
+    bounded retry until this short-lived reader closes the snapshot.
+    """
     if os.name != 'nt':
         return path.open('rb')
     import ctypes
@@ -137,7 +142,7 @@ def sync_directory(path):
 
 
 def _replace_state(temporary, path):
-    """Allow a short Windows reader to release its non-delete-sharing handle.
+    """Allow a short Windows reader to release its open destination handle.
 
     Reading a tiny control/state file can overlap its atomic replacement on
     Windows. Retain one fully flushed staging file and retry only the Windows
