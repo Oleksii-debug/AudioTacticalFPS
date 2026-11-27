@@ -88,8 +88,10 @@ def supported_formats_text():
         'separately installed tool to a supported format, then import it as a new source. Original pagination '
         'and extraction fidelity must be checked separately. No converter or model is silently downloaded.', '',
         'Resource checks reject oversized, malformed or unsupported documents before publication; '
-        'the import report describes the result. Current source limit is 64 MiB, with additional bounded '
-        'archive, XML, MIME and extracted-text budgets. Large-library streaming is a separate capability.',
+        'the import report describes the result. TXT/PDF support a bounded 128 MiB streaming profile; '
+        'other in-memory formats retain the 64 MiB source limit. Larger TXT retains original form-feed '
+        'segments up to 4 MiB each (at most 1000), with exact text and no invented pagination. '
+        'Archive, XML, MIME, checkpoint, page and extracted-text budgets remain in force.',
     ))
     return '\n'.join(lines)
 
