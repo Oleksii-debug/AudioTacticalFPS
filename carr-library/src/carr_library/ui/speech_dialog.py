@@ -72,6 +72,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     explicit_reader_text = bool(text)
     save_path = None
     last_audio = None
+    last_reading_audio = None
     source_loaded = source_loader is None
     draft_store = None
     recovered = None
@@ -206,7 +207,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     playback_controls.SetName('Reader playback controls')
     appearance_button = wx.Button(dialog, label='Text appearance...')
     appearance_button.SetName('Reading appearance: font, colors and zoom')
-    for control in (seek, playback_controls, appearance_button):
+    focus_button = wx.Button(dialog, label='Reading focus...')
+    focus_button.SetName('Reading focus and approximate audio follow')
+    for control in (seek, playback_controls, appearance_button, focus_button):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -248,6 +251,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         pronunciation.Enable(source_loaded and not busy)
         find_button.Enable(source_loaded and not busy)
         text_tools_button.Enable(source_loaded and not busy)
+        focus_button.Enable(source_loaded and not busy)
         appearance_button.Enable(source_loaded and not busy and presentation_store is not None)
         spelling_button.Enable(source_loaded and not busy)
         playback_controls.Enable(not busy and last_audio is not None and getattr(player, 'path', None) is not None)
@@ -280,6 +284,44 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
+
+
+    def choose_reading_focus(event=None):
+        from ..speech.focus import FocusPlan
+        from .reading_focus import show_reading_focus
+        try:
+            if busy:
+                raise ValueError('Wait for the current reader operation before opening reading focus.')
+            playback_scope()
+            sync_document()
+            plan = FocusPlan(document)
+            position = native_insertion_offset(editor, document.text)
+            def guard():
+                if busy or getattr(parent, '_closing', False):
+                    raise ValueError('The current reader operation changed. Reopen reading focus.')
+                playback_scope(source=False)
+                plan.check(document)
+            def authorize():
+                guard()
+                source_guard()
+            def goto(offset):
+                authorize()
+                editor.SetInsertionPoint(native_cursor_position(editor, document.text, offset))
+                save_recovery(force=True)
+            matching_audio = last_reading_audio
+            if matching_audio is not None:
+                try:
+                    matching_audio.check(plan, getattr(player, 'path', None))
+                except ValueError:
+                    matching_audio = None
+            show_reading_focus(dialog, plan=plan, cursor=position, guard=guard, authorize=authorize,
+                player=player, audio=matching_audio, pause_audio=pause_audio, stop_audio=stop_audio,
+                goto=goto)
+        except Exception as exc:
+            report(str(exc), focus=True)
+        finally:
+            if alive:
+                editor.SetFocus()
 
     def choose_reading_tools(event=None):
         from .reading_tools import ReadingToolSnapshot, show_reading_tools
@@ -891,12 +933,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(str(exc), focus=True)
 
     def speak(event=None, *, from_cursor=False, destination=None):
-        nonlocal last_audio, playback_generation
+        nonlocal last_audio, last_reading_audio, playback_generation
         try:
             if registry is None or not voices:
                 raise ValueError('Choose an installed local voice first.')
             source_guard()
             content = selected_text(from_cursor)
+            render_document, render_signature = document, document._text_signature()
+            if from_cursor:
+                render_start, render_end = native_insertion_offset(editor, document.text), len(document.text)
+            else:
+                render_start, render_end = native_selection(editor, document.text)
+                if render_start == render_end:
+                    render_start, render_end = 0, len(document.text)
             index = voice_choice.GetSelection()
             if not 0 <= index < len(voices):
                 raise ValueError('Choose an installed local voice first.')
@@ -909,8 +958,16 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             output = destination or (Path(audio_files.name) / (uuid4().hex + '.wav'))
 
             def rendered(result):
-                nonlocal last_audio
-                last_audio = result.path
+                nonlocal last_audio, last_reading_audio
+                last_audio, last_reading_audio = result.path, None
+                if destination is None and document is render_document:
+                    try:
+                        from ..speech.focus import ReadingAudio
+                        last_reading_audio = ReadingAudio.from_render(render_document, render_signature,
+                            render_start, render_end, content, result)
+                    except (AttributeError, TypeError, ValueError):
+                        # A changed reading snapshot cannot acquire audio timing.
+                        last_reading_audio = None
                 if destination is None:
                     if cancel.is_set():
                         return
@@ -918,7 +975,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         player.play(result.path)
                         capabilities()
                         report(f'Playing {result.duration_seconds:.1f} seconds. F7 pauses or resumes; F8 stops. '
-                               'Word highlighting is unavailable for this voice.')
+                               'Reading focus offers approximate audio follow; this voice has no exact word timings.')
                     start_playback(playing)
                 else:
                     report(f'WAV saved: {result.path}. Duration {result.duration_seconds:.1f} seconds; '
@@ -1017,6 +1074,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def open_project(event=None):
         nonlocal document, save_path, draft_store, recovery_notice, last_audio, playback_generation
+        nonlocal last_reading_audio
         if busy:
             report('Stop the current render before opening another document.', focus=True)
             return
@@ -1045,7 +1103,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 raise ValueError('Open unrelated or unbound reading projects in the standalone voice reader.')
             playback_generation += 1
             player.stop()
-            last_audio = None
+            last_audio, last_reading_audio = None, None
             if progress is not None:
                 progress.refresh_audio_state()
             document, save_path = loaded, selected
@@ -1134,12 +1192,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         return resume, save_path
 
     def stop_for_reading_tab():
-        nonlocal playback_generation, repeat_scheduled, last_audio, playback_refresh
+        nonlocal playback_generation, repeat_scheduled, last_audio, playback_refresh, last_reading_audio
         playback_generation += 1
         repeat_scheduled = None
         cancel.set()
         player.stop()  # A close failure must veto the tab change.
-        last_audio, playback_refresh = None, None
+        last_audio, playback_refresh, last_reading_audio = None, None, None
         if progress is not None:
             progress.refresh_audio_state()
 
@@ -1185,6 +1243,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (original, compare), (seek, seek_audio), (playback_controls, show_playback),
         (appearance_button, choose_reading_appearance),
         (text_tools_button, choose_reading_tools),
+        (focus_button, choose_reading_focus),
         (cleanup, clean), (find_button, find_replace),
         (pronunciation, pronunciations), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)

@@ -57,6 +57,8 @@ def _native():
     import carr_library.ui.speech_dialog as reader_module
     import carr_library.speech.marks as marks_module
     import carr_library.ui.reading_tools as tools_module
+    import carr_library.speech.focus as focus_module
+    import carr_library.ui.reading_focus as focus_ui_module
 
     checks, errors, identities, evidence = [], [], {}, {}
     held, loop, reentry, aborting, cycles = [None], [None], [False], [False], [0]
@@ -112,7 +114,7 @@ def _native():
     checkout = Path(__file__).resolve().parents[1]
     installed = (Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR')
                  else Path(sysconfig.get_path('purelib')).resolve())
-    for module in (tabs_module, session_module, reading_module, native_tabs_module, reader_module, marks_module, tools_module):
+    for module in (tabs_module, session_module, reading_module, native_tabs_module, reader_module, marks_module, tools_module, focus_module, focus_ui_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         digest = sha256(actual.read_bytes()).hexdigest()
@@ -263,6 +265,40 @@ def _native():
                 index, saved = drafts()
                 check('first undo preserves second history and original source', saved[0].document.source_text == source
                       and saved[0].document.text == evidence['initial_display'] and saved[1].document.text == 'b' and saved[1].document.can_undo)
+                key(named('Reading focus and approximate audio follow', reader), wx.WXK_SPACE, 'focus_open')
+            elif stage[0] in ('focus_open', 'focus_running', 'focus_paused', 'focus_previous'):
+                focus = next((item for item in wx.GetTopLevelWindows()
+                    if item and isinstance(item, wx.Dialog) and item.IsShown()
+                    and item.GetTitle() == 'Reading focus and audio follow'), None)
+                if focus is None: return
+                if stage[0] == 'focus_open':
+                    check('native visual reading opens paused without an engine', not focus.pacer.running
+                          and not focus.following and focus.mode.GetSelection() == 0)
+                    evidence['focus_first_word'] = named('Current visual reading word', focus).GetValue()
+                    named('Visual reading words per minute', focus).SetValue(600)
+                    key(named('Start visual reading or audio follow', focus), wx.WXK_SPACE, 'focus_running')
+                elif stage[0] == 'focus_running':
+                    if named('Current visual reading word', focus).GetValue() == evidence['focus_first_word']:
+                        return
+                    check('actual native timer advances explicit visual reading',
+                          focus.timer.IsRunning() and focus.span is not None)
+                    key(named('Pause visual reading or audio follow', focus), wx.WXK_SPACE, 'focus_paused')
+                elif stage[0] == 'focus_paused':
+                    check('native visual pause keeps automatic movement stopped', not focus.pacer.running
+                          and not focus.following)
+                    key(named('Previous visual word', focus), wx.WXK_SPACE, 'focus_previous')
+                else:
+                    evidence['focus_cursor'] = focus.span[0]
+                    key(named('Use highlighted cursor and close', focus), wx.WXK_SPACE, 'focus_returned')
+            elif stage[0] == 'focus_returned':
+                check('explicit visual cursor return restores native reader focus',
+                      reader_module.native_insertion_offset(editor, editor.GetValue()) == evidence['focus_cursor']
+                      and wx.Window.FindFocus() is editor)
+                key(editor, ord('S'), 'focus_saved', wx.MOD_CONTROL)
+            elif stage[0] == 'focus_saved':
+                index, saved = drafts()
+                check('visual cursor persists through the original reading recovery',
+                      saved[0].cursor == evidence['focus_cursor'] and saved[0].document.source_text == source)
                 evidence['complete'] = True
                 key(wx.FindWindowById(wx.ID_CANCEL, reader), wx.WXK_SPACE, 'finished')
         def tick(event=None):

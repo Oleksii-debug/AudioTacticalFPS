@@ -318,8 +318,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         finally:
             pipe.close()
 
-    threads = [threading.Thread(target=read_pipe, args=(process.stdout, 'stdout'), daemon=True),
-               threading.Thread(target=read_pipe, args=(process.stderr, 'stderr'), daemon=True)]
+    threads, reader_pipes = [], []
     last_progress = None
     release_lifetime = None
 
@@ -379,7 +378,12 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                 raise AudioCancelled('Audio capture cancelled before lifetime admission.')
             process.stdin.write(b'\x01')
             process.stdin.flush()
-        for thread in threads:
+        # Allocation and startup both belong to the already-running child.
+        # A failed Thread constructor must not bypass owned process cleanup.
+        for pipe, name in ((process.stdout, 'stdout'), (process.stderr, 'stderr')):
+            thread = threading.Thread(target=read_pipe, args=(pipe, name), daemon=True)
+            threads.append(thread)
+            reader_pipes.append(pipe)
             thread.start()
         while process.poll() is None:
             check()
@@ -422,10 +426,13 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                     process.stdin.close()
                 except (BrokenPipeError, OSError):
                     pass
-            for thread, pipe in zip(threads, (process.stdout, process.stderr)):
+            for thread, pipe in zip(threads, reader_pipes):
                 if thread.ident is not None:
                     thread.join(timeout=2)
                 else:
+                    pipe.close()
+            for pipe in (process.stdout, process.stderr):
+                if pipe not in reader_pipes:
                     pipe.close()
 
 

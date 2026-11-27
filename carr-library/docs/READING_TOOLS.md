@@ -16,6 +16,14 @@ Cancellation, source/library changes, Stop and a closed modal invalidate late re
 
 See [LISTENING_SPEED.md](LISTENING_SPEED.md) for measured frame mapping and limits.
 
+## Optional reading focus
+
+**Reading focus…** opens a separate native, read-only view of the active reading copy. It starts paused. **Paced visual reading** advances deterministic word units at an explicit 40–1000 words per minute; Start, Pause and previous/next controls do not synthesize or start audio. No running timer is saved or restored. Up to 100000 word units are admitted in a chapter.
+
+**Audio follow — approximate** follows only audio captured from the same exact reading-copy text, selection and measured PCM frame count. The position is an estimate over the original recording duration. Available voice adapters report no exact word timings, so the interface does not claim them. Listening-speed conversion keeps the player's public position in original-recording seconds, preserving this meaning.
+
+The current word is highlighted without timer-driven keyboard focus changes. The status names its reading-copy character range and the original-source range where the existing source map provides one, marking approximate mappings. A text/tab/audio change stops following. Only **Use highlighted cursor and close** moves and saves the main editor's cursor. F7 and F8 remain explicit controls of the existing current audio.
+
 ## Verification status
 
 This increment was prepared while the local executor was unavailable. New bookmark, paragraph, reading-hook, ownership and measured-duration suites are required by source/installed CI. The existing actual Windows reading-tab probe now exercises native bookmark creation/navigation, paragraph Undo, persistence and a fresh reader restart. The listening probe exercises the existing native player with the derivative path. These new scenarios remain **NOT_RUN** until their exact commit's CI result is recorded; this document does not claim manual NVDA or acoustic qualification.
