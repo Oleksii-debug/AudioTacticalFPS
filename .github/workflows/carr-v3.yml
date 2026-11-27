@@ -57,12 +57,74 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare exact pinned private citation runtime
+        id: citation-runtime
+        run: |
+          $lock = Get-Content 'packaging/windows-citations.lock.json' -Raw | ConvertFrom-Json
+          if ($lock.url -ne "https://nodejs.org/dist/v$($lock.version)/node-v$($lock.version)-win-x64.zip") { throw 'Unexpected pinned Node archive URL.' }
+          $archive = Join-Path $env:RUNNER_TEMP 'carr-v3-node.zip'
+          $nodeRoot = Join-Path $env:RUNNER_TEMP 'carr-v3-citation-runtime'
+          Invoke-WebRequest -Uri $lock.url -OutFile $archive
+          $prepareNode = @'
+          import hashlib, json, pathlib, re, stat, sys, zipfile
+          sys.path.insert(0, str(pathlib.Path.cwd() / 'packaging'))
+          from prepare_windows_audio import _pe64, local, regular
+          archive_path, root, lock_path = map(pathlib.Path, sys.argv[1:])
+          raw = lock_path.read_bytes()
+          lock = json.loads(raw)
+          if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+', lock['version']) or set(lock['files']) != {'node.exe', 'LICENSE', 'README.md'}:
+              raise ValueError('Unexpected pinned Node inventory.')
+          archive_path = local(archive_path, exists=True)
+          if regular(archive_path).st_size != lock['archive_size']:
+              raise ValueError('Pinned Node archive size mismatch.')
+          files = {}
+          with archive_path.open('rb') as source:
+              archive_hash = hashlib.file_digest(source, 'sha256').hexdigest()
+              if archive_hash != lock['archive_sha256']:
+                  raise ValueError('Pinned Node archive checksum mismatch.')
+              source.seek(0)
+              with zipfile.ZipFile(source) as archive:
+                  root = local(root)
+                  root.mkdir(mode=0o700)
+                  for name, expected in sorted(lock['files'].items()):
+                      members = [item for item in archive.infolist() if item.filename == f'node-v{lock["version"]}-win-x64/{name}']
+                      if len(members) != 1:
+                          raise ValueError('Missing or duplicate selected Node member.')
+                      member = members[0]
+                      if (not 0 < member.file_size <= 128 * 1024**2 or member.is_dir() or member.flag_bits & 1
+                              or stat.S_IFMT(member.external_attr >> 16) not in (0, stat.S_IFREG)):
+                          raise ValueError('Invalid selected Node member.')
+                      digest, size = hashlib.sha256(), 0
+                      with archive.open(member) as incoming, (root / name).open('xb') as output:
+                          while block := incoming.read(1024**2):
+                              size += len(block)
+                              if size > member.file_size:
+                                  raise ValueError('Selected Node member exceeds declared size.')
+                              digest.update(block)
+                              output.write(block)
+                      if size != member.file_size or digest.hexdigest() != expected:
+                          raise ValueError('Selected Node file checksum mismatch.')
+                      files[name] = {'size': size, 'sha256': digest.hexdigest()}
+          _pe64(root / 'node.exe')
+          print(json.dumps({'status': 'PASS', 'version': lock['version'], 'source_lock_sha256': hashlib.sha256(raw).hexdigest(),
+              'archive_sha256': archive_hash, 'archive_size': lock['archive_size'], 'files': files,
+              'node_path': str(root / 'node.exe'), 'execution': 'NOT_RUN'}))
+          '@
+          $prepareNode | python -I -B - $archive $nodeRoot 'packaging/windows-citations.lock.json' | Tee-Object 'ci-v3-results/citation-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item 'packaging/windows-citations.lock.json' 'ci-v3-results/citation-runtime-lock.json'
+          $nodeRoot | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_V3_CITATIONS=$nodeRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
           $python = (Get-Command python.exe).Source
           $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @($python, $basePython, (Get-Command node.exe).Source,
+          $node = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source
+          $expectedNode = [System.IO.Path]::GetFullPath((Join-Path $env:CARR_V3_CITATIONS 'node.exe'))
+          $nodeLock = Get-Content 'packaging/windows-citations.lock.json' -Raw | ConvertFrom-Json
+          if ([System.IO.Path]::GetFullPath($node) -ne $expectedNode -or (Get-FileHash $node -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nodeLock.files.'node.exe') { throw 'Command discovery did not select the exact pinned Node executable.' }
+          $programs = @($python, $basePython, $node,
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
@@ -84,6 +146,9 @@ jobs:
             $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+            $nodeVersion = & $node --version
+            if ($LASTEXITCODE -ne 0 -or $nodeVersion.Trim() -ne "v$($nodeLock.version)") { throw 'Pinned Node runtime version check failed.' }
+            $nodeVersion | Set-Content 'ci-v3-results/citation-node-version.txt'
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
             & $python -I -B scripts/windows_platform_tools_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-platform-tools.txt'
@@ -98,9 +163,12 @@ jobs:
           python scripts/ci_check.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_operation_progress.py tests/ui/test_progress_numeric_limits.py tests/ui/test_progress_job_review.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/e2e/test_import_progress.py tests/storage/test_progress_preferences_backup.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate local services, DSP, integrity and provider permission boundaries
-        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.citation-runtime.outcome == 'success' }}
         run: |
-          node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
+          $node = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source
+          $nodeLock = Get-Content 'packaging/windows-citations.lock.json' -Raw | ConvertFrom-Json
+          if ([System.IO.Path]::GetFullPath($node) -ne [System.IO.Path]::GetFullPath((Join-Path $env:CARR_V3_CITATIONS 'node.exe')) -or (Get-FileHash $node -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nodeLock.files.'node.exe') { throw 'Service tests require the exact pinned Node executable.' }
+          & $node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/operations tests/transcription tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_operations_policy.py tests/ui/test_transcription_dialog.py tests/ui/test_platform_modal_lifecycle.py tests/ui/test_keyboard_settings.py tests/e2e/test_operations_cli.py tests/e2e/test_transcription_cli.py tests/e2e/test_import_progress.py tests/ingest/test_worker_publication_boundary.py tests/reader/test_export_no_clobber.py tests/reader/test_export_publication_boundary.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_transcription_backup.py tests/storage/test_state_backup_portability.py tests/storage/test_atomic_state_publication.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/packaging/test_delivery_archive.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

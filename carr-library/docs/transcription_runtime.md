@@ -54,7 +54,10 @@ selected interpreter, worker or model code. It records:
   environments; the resolved target is pinned too. For a virtual environment,
   the operational `pyvenv.cfg` home also identifies the base executable: a
   copied Windows launcher alone cannot identify its base Python installation.
-  The profile includes bounded adjacent Python executables, Python/VC runtime
+  The selected launch target and this operational base executable are pinned.
+  Unused sibling executable aliases, such as a hosted `python3.exe`, are not
+  execution inputs. A selected executable link's resolved target is checked
+  again after inspection. The profile includes bounded adjacent Python/VC runtime
   DLLs, Python `_pth` configuration and Python ZIP archives when present, plus
   native `.pyd`/`.dll` files immediately inside the base installation's `DLLs`
   directory. Base site-packages lookup follows that same operational home when

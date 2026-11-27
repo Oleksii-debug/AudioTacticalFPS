@@ -103,7 +103,10 @@ def _python_layout(python, resolved_python, *, cancel=None):
                 if number > MAX_MODEL_ENTRIES:
                     raise ValueError('The selected Python exceeds its support-directory inventory budget.')
                 name = entry.name.casefold()
-                selected = ((name.startswith('python') and name.endswith(('.exe', '.dll', '._pth', '.zip')))
+                # Only the selected launch target and operational base EXE
+                # execute. Unused sibling aliases such as hosted python3.exe
+                # are not dependencies; native/path support remains strict.
+                selected = ((name.startswith('python') and name.endswith(('.dll', '._pth', '.zip')))
                             or (name.startswith('vcruntime') and name.endswith('.dll'))
                             or (directory == native and name.endswith(('.pyd', '.dll'))))
                 if not selected:
@@ -247,6 +250,9 @@ def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=N
         'model_directory': str(model), 'model_name': model.name,
         'model_files': dict(sorted(model_files.items())), 'model_bytes': total,
     }
+    local_path(python.parent, exists=True)
+    if python.resolve(strict=True) != resolved_python:
+        raise ValueError('The selected Python executable link changed during inspection.')
     manifest['model_content_fingerprint'] = fingerprint(manifest['model_files'])
     manifest['fingerprint'] = fingerprint(manifest)
     return manifest
