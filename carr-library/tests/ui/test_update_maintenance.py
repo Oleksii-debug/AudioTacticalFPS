@@ -18,6 +18,9 @@ from carr_library.application import LibraryApp
 from carr_library.security.maintenance import UpdateConfiguration, MaintenanceSession
 from carr_library.security.controller import release_text
 from carr_library.security._files import json_bytes
+from carr_library.security.download_state import PausedDownload
+from carr_library.security.updates import UpdateCancelled
+from carr_library.progress import ProgressHub, bind_progress, operation_outcome
 
 
 def logical_ui():
@@ -110,7 +113,8 @@ def logical_ui():
     selected = ast.Module(body=[node for node in tree.body
         if isinstance(node, (ast.FunctionDef, ast.ClassDef)) and node.name in names], type_ignores=[])
     namespace = dict(wx=wx, threading=threading, UpdateConfiguration=UpdateConfiguration,
-                     MaintenanceSession=MaintenanceSession, release_text=release_text)
+                     MaintenanceSession=MaintenanceSession, release_text=release_text,
+                     PausedDownload=PausedDownload, UpdateCancelled=UpdateCancelled)
     exec(compile(selected, str(path), 'exec'), namespace)
 
     class Frame(Window):
@@ -118,18 +122,27 @@ def logical_ui():
             super().__init__()
             self.library, self.working, self.cancel_event = app, False, threading.Event()
             self.admission, self.queue, self.threads, self.reports, self.calls = 'thread', [], [], [], 0
+            self.hub, self.tasks, self.results = ProgressHub(), [], []
         def report(self, value):
             self.native('report'); self.reports.append(value)
-        def run_job(self, label, operation, *, done, failed):
+        def run_job(self, label, operation, *, done, failed, with_progress=False):
             self.native('run_job'); self.calls += 1
             if self.admission is False or self.admission is None:
                 return self.admission
             if isinstance(self.admission, type) and issubclass(self.admission, BaseException):
                 raise self.admission('actual host admission rejected')
             self.working = True
+            task = self.hub.start(label, unit='bytes') if with_progress else None
+            if task is not None:
+                self.tasks.append(task)
+            def work():
+                with bind_progress(task):
+                    value = operation()
+                self.results.append(value)
+                return value
             if self.admission == 'sync':
                 try:
-                    value = operation()
+                    value = work()
                 except (Exception, KeyboardInterrupt) as error:
                     self.working = False; failed(error)
                 else:
@@ -137,7 +150,7 @@ def logical_ui():
                 return None
             def run():
                 try:
-                    value = operation()
+                    value = work()
                 except (Exception, KeyboardInterrupt) as error:
                     self.queue.append(lambda error=error: failed(error))
                 else:

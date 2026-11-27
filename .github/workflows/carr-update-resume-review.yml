@@ -1,0 +1,159 @@
+name: Verified update pause and resume source review
+on:
+  push:
+    branches: [carr/update-resume-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-update-resume-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: update-resume-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the exact selected source and pinned trusted client
+        run: |
+          python -m pip install ".[test]"
+          python -m pip install --require-hashes -r packaging/trusted-client.lock
+      - name: Require every source signed-update case
+        run: |
+          set -euo pipefail
+          mkdir -p ci-update-resume
+          python -B -X utf8 - <<'PY' 2>&1 | tee ci-update-resume/source.txt
+          from hashlib import sha256
+          import importlib.util
+          import json
+          from pathlib import Path
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          root = Path.cwd().resolve()
+          purelib = Path(sysconfig.get_path('purelib')).resolve()
+          mode = "source"
+          names = ["carr_library.security.download_state","carr_library.security.updates","carr_library.security.https","carr_library.security._https_worker","carr_library.security.maintenance","carr_library.ui.update_maintenance","carr_library.security._files","carr_library.durable_state","carr_library.audio.process","carr_library.audio.windows_job"]
+          suites = ["tests/security/test_update_resume.py","tests/security/test_updates.py","tests/security/test_https_updates.py","tests/security/test_update_maintenance.py","tests/ui/test_update_maintenance.py"]
+          def inventory():
+              result = {}
+              for name in names:
+                  actual = Path(importlib.util.find_spec(name).origin).resolve()
+                  expected = root / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  if mode == 'installed':
+                      assert actual.is_relative_to(purelib) and not actual.is_relative_to(root / 'src'), name
+                  else:
+                      assert actual == expected.resolve(), (name, str(actual), str(expected))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == sha256(expected.read_bytes()).hexdigest(), name
+                  result[name] = {'path': str(actual), 'sha256': digest}
+              return result
+          class SourceProof:
+              before = None
+              def pytest_sessionstart(self, session):
+                  self.before = inventory()
+          proof = SourceProof()
+          with tempfile.TemporaryDirectory(prefix='carr-update-resume-source-') as temporary:
+              report = root / 'ci-update-resume/source.xml'
+              options = ['-q', '--import-mode=importlib', '-o', 'addopts=', '-o', 'xfail_strict=true',
+                         '--junitxml', str(report), '--basetemp', str(Path(temporary) / 'pytest')]
+              if mode == 'installed':
+                  options.extend(['-o', 'pythonpath='])
+              status = pytest.main([*options, *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter('testcase'))
+              assert status == 0 and cases, status
+              assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+                         for case in cases), 'Every selected case must pass without a skip.'
+              assert inventory() == proof.before
+              result = {'status': 'PASS', 'mode': mode, 'cases': len(cases), 'origins': proof.before}
+              (root / ('ci-update-resume/' + mode + '-identity.json')).write_text(
+                  json.dumps(result, indent=2, sort_keys=True), encoding='utf-8')
+              print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Require every installed signed-update case
+        if: "!cancelled()"
+        run: |
+          set -euo pipefail
+          mkdir -p ci-update-resume
+          python -I -B -X utf8 - <<'PY' 2>&1 | tee ci-update-resume/installed.txt
+          from hashlib import sha256
+          import importlib.util
+          import json
+          from pathlib import Path
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          root = Path.cwd().resolve()
+          purelib = Path(sysconfig.get_path('purelib')).resolve()
+          mode = "installed"
+          names = ["carr_library.security.download_state","carr_library.security.updates","carr_library.security.https","carr_library.security._https_worker","carr_library.security.maintenance","carr_library.ui.update_maintenance","carr_library.security._files","carr_library.durable_state","carr_library.audio.process","carr_library.audio.windows_job"]
+          suites = ["tests/security/test_update_resume.py","tests/security/test_updates.py","tests/security/test_https_updates.py","tests/security/test_update_maintenance.py","tests/ui/test_update_maintenance.py"]
+          def inventory():
+              result = {}
+              for name in names:
+                  actual = Path(importlib.util.find_spec(name).origin).resolve()
+                  expected = root / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  if mode == 'installed':
+                      assert actual.is_relative_to(purelib) and not actual.is_relative_to(root / 'src'), name
+                  else:
+                      assert actual == expected.resolve(), (name, str(actual), str(expected))
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == sha256(expected.read_bytes()).hexdigest(), name
+                  result[name] = {'path': str(actual), 'sha256': digest}
+              return result
+          class SourceProof:
+              before = None
+              def pytest_sessionstart(self, session):
+                  self.before = inventory()
+          proof = SourceProof()
+          with tempfile.TemporaryDirectory(prefix='carr-update-resume-installed-') as temporary:
+              report = root / 'ci-update-resume/installed.xml'
+              options = ['-q', '--import-mode=importlib', '-o', 'addopts=', '-o', 'xfail_strict=true',
+                         '--junitxml', str(report), '--basetemp', str(Path(temporary) / 'pytest')]
+              if mode == 'installed':
+                  options.extend(['-o', 'pythonpath='])
+              status = pytest.main([*options, *suites], plugins=[proof])
+              cases = list(ET.parse(report).iter('testcase'))
+              assert status == 0 and cases, status
+              assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+                         for case in cases), 'Every selected case must pass without a skip.'
+              assert inventory() == proof.before
+              result = {'status': 'PASS', 'mode': mode, 'cases': len(cases), 'origins': proof.before}
+              (root / ('ci-update-resume/' + mode + '-identity.json')).write_text(
+                  json.dumps(result, indent=2, sort_keys=True), encoding='utf-8')
+              print(json.dumps(result, sort_keys=True))
+          PY
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-update-resume
+          git rev-parse HEAD > ci-update-resume/commit.txt
+          python -m pip freeze > ci-update-resume/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: update-resume-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-update-resume
+          if-no-files-found: error
