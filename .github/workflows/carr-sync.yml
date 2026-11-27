@@ -51,7 +51,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify source crypto, history and native-controller boundaries
         run: |
-          python -m pytest -q -rs --junitxml=sync-ci-results/source.xml tests/sync tests/ui/test_portable_sync.py tests/ui/test_desktop_handlers.py --import-mode=importlib
+          python -m pytest -q -rs --junitxml=sync-ci-results/source.xml tests/sync tests/ui/test_portable_sync.py tests/ui/test_desktop_handlers.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/ui/test_incremental_backup_dialog.py --import-mode=importlib
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require incremental and publication boundaries without skips
+        timeout-minutes: 5
+        run: |
+          python scripts/ci_check.py --jobs 3 tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/ui/test_incremental_backup_dialog.py tests/sync/test_service_commit_boundaries.py 2>&1 | Tee-Object sync-ci-results/strict-incremental.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify installed snapshot transfer
         run: |
@@ -60,6 +65,11 @@ jobs:
       - name: Exercise actual native encrypted publication and restoration
         run: |
           python -I tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object sync-ci-results/native.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise installed native incremental backup and independent restoration
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/windows_incremental_backup_smoke.py --native 2>&1 | Tee-Object sync-ci-results/native-incremental.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain synthetic evidence only
         if: always()

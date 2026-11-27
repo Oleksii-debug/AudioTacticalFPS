@@ -25,7 +25,7 @@ def _emit(value, stream=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog='python -m carr_library backup-repository',
-        description='Local incremental storage; every saved snapshot restores through the complete-backup validator.')
+        description='Readable local incremental storage; every snapshot restores through the complete-library validator. Password-encrypted copies use the separate sync command.')
     commands = parser.add_subparsers(dest='command', required=True)
     for name, help_text in (
         ('init', 'Explicitly create a new repository directory.'),

@@ -42,7 +42,8 @@ def _action(frame):
     import wx
     dialog = wx.SingleChoiceDialog(frame,
         'Choose one operation. Repositories are local and created only by Initialize. '
-        'Every restore uses the existing complete-library backup validator.',
+        'Repositories contain readable backup data. The separate Portable snapshots workflow '
+        'supports password-encrypted copies. Every restore verifies the complete library backup.',
         'Incremental backup repository', [label for _, label in ACTIONS])
     dialog.SetName('Incremental backup action')
     try:
@@ -73,7 +74,7 @@ def _result_text(command, result):
                  'Unmarked interrupted reservations are not completed snapshots.', '']
         for row in result:
             lines += [row['created_at'], 'Snapshot SHA256: ' + row['snapshot_sha256'],
-                      'Canonical manifest SHA256: ' + row['backup_manifest_sha256'],
+                      'Full backup manifest SHA256: ' + row['backup_manifest_sha256'],
                       f"Files: {row['files']}; bytes: {row['payload_bytes']}", '']
         if any(row.get('older_history_unavailable') for row in result):
             lines.append('Older parent metadata is unavailable. A separately saved child token still restores that full snapshot.')
@@ -86,16 +87,16 @@ def _result_text(command, result):
     lines = []
     if command == 'create':
         lines += ['Snapshot published.', 'Snapshot SHA256: ' + result['snapshot_sha256'],
-                  'Canonical manifest SHA256: ' + result['backup_manifest_sha256'],
+                  'Full backup manifest SHA256: ' + result['backup_manifest_sha256'],
                   f"New chunks: {result['new_chunks']} ({result['new_bytes']} bytes).",
                   f"Reused chunks: {result['reused_chunks']} ({result['reused_bytes']} bytes).",
                   'Keep both checksums separately. Every retained payload was read and verified.',
                   'Includes the same typed state and retained inputs as the complete-library backup. '
                   'Unmanaged external files and credentials are excluded.']
     elif command == 'verify':
-        lines += ['All snapshot payloads and the complete canonical library backup were verified.',
+        lines += ['All snapshot payloads and the complete library backup were verified.',
                   'Snapshot SHA256: ' + result['snapshot_sha256'],
-                  'Canonical manifest SHA256: ' + result['backup_manifest_sha256']]
+                  'Full backup manifest SHA256: ' + result['backup_manifest_sha256']]
     elif command == 'materialize':
         lines += ['Ordinary full backup published:\n' + result['path'],
                   'Keep its manifest checksum separately:\n' + result['backup_manifest_sha256']]
@@ -103,6 +104,8 @@ def _result_text(command, result):
         lines += ['Library backup restored:\n' + result['path'],
                   'Open it explicitly through Library, Open existing library folder.',
                   'Restoration does not resume imports, contact providers or open old Studio outputs.']
+    if result.get('lock_cleanup_pending'):
+        lines.append('The snapshot was saved; its repository writer lock needs cleanup before another publication.')
     if result.get('resource_cleanup_pending'):
         lines.append('The snapshot was saved; its resource reservation needs review before another operation.')
     if result.get('staging_cleanup_pending'):

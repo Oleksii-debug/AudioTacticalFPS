@@ -189,7 +189,8 @@ def _create_snapshot(app, repository, *, parent=None, max_bytes=None,
               'backup_manifest_sha256': canonical_digest, 'parent': receipt.parent,
               'files': receipt.file_count, 'payload_bytes': receipt.total_bytes,
               'published': True, 'durability_confirmed': receipt.durability_confirmed,
-              'status': 'complete' if receipt.durability_confirmed else 'attention', **stats}
+              'lock_cleanup_pending': receipt.lock_cleanup_pending,
+              'status': 'complete' if receipt.durability_confirmed and not receipt.lock_cleanup_pending else 'attention', **stats}
     # A post-commit cleanup failure is visible but cannot undo the saved snapshot.
     _cleanup(temporary, result)
     return result

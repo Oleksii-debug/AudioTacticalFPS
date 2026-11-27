@@ -52,11 +52,13 @@ class VaultBusy(RuntimeError):
 
 
 class VaultMaterializedError(RuntimeError):
-    """The complete destination is visible, but its directory sync failed."""
-    def __init__(self, destination, token):
+    """The complete destination exists, but final durability/cleanup needs review."""
+    def __init__(self, destination, token, *, durability_confirmed=False, cleanup_pending=False):
         self.destination = Path(destination)
         self.transfer_token = token
-        super().__init__('Checkpoint payload was materialized, but disk durability is unconfirmed: '
+        self.durability_confirmed = durability_confirmed
+        self.cleanup_pending = cleanup_pending
+        super().__init__('Checkpoint payload is visible; final storage or ownership cleanup needs review: '
                          + str(self.destination))
 
 
@@ -71,6 +73,7 @@ class TransferReceipt:
     file_count: int
     total_bytes: int
     durability_confirmed: bool = True
+    lock_cleanup_pending: bool = False
 
 
 @dataclass(frozen=True)
@@ -405,6 +408,11 @@ class Vault:
         path = self._chunk_path(digest, create=True)
         if os.path.lexists(path):
             self._chunk(digest, len(raw), check)
+            # A previous attempt may have published this exact chunk before a
+            # directory flush failed. Reuse must finish that durability boundary.
+            _sync_directory(path.parent)
+            _sync_directory(path.parent.parent)
+            check()
             return digest, True
         _write_file(path, raw)
         _sync_directory(path.parent.parent)
@@ -433,94 +441,104 @@ class Vault:
         _plain(source, directory=True)
         if source.is_relative_to(self.root) or self.root.is_relative_to(source):
             raise VaultError('Prepared payload and vault must be separate directories.')
-        with self._locked():
-            if self._head() != expected_head:
-                raise VaultConflict('Checkpoint head changed; review the current generation before publishing.')
-            inventory = self._inventory(source, check)
-            files, directories, _, total = inventory
-            chunk_count = sum((info[2] + self.chunk_bytes - 1) // self.chunk_bytes for _, info in files)
-            metadata_bytes = (512 + len(label.encode('utf-8'))
-                + sum(len(path.encode('utf-8')) + 192 for path, _ in files)
-                + sum(len(path.encode('utf-8')) + 8 for path in directories))
-            if metadata_bytes + chunk_count * 67 > self.max_manifest_bytes:
-                raise VaultError('Chunk inventory exceeds the configured manifest budget.')
-            rows, completed, reused, written = [], 0, 0, 0
-            for index, (relative, expected) in enumerate(files):
-                check()
-                path = source / relative
-                if _identity(_plain(path)) != expected:
-                    raise VaultError('Prepared payload changed before transfer.')
-                digest, chunks, count = sha256(), [], 0
-                flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
-                with os.fdopen(os.open(path, flags), 'rb') as stream:
-                    if _identity(os.fstat(stream.fileno())) != expected:
-                        raise VaultError('Prepared payload changed while opening.')
-                    while count < expected[2]:
-                        check()
-                        raw = stream.read(min(self.chunk_bytes, expected[2] - count))
-                        if not raw:
-                            raise VaultError('Prepared payload was truncated during transfer.')
-                        digest.update(raw)
-                        identity, used = self._put_chunk(raw, check)
-                        chunks.append(identity)
-                        count += len(raw)
-                        completed += len(raw)
-                        reused += int(used)
-                        written += int(not used)
-                        if on_progress is not None:
-                            on_progress(TransferProgress('publish', index, len(files),
-                                completed, total, reused, written))
-                        check()
-                    if stream.read(1) or _identity(os.fstat(stream.fileno())) != expected:
+        committed_receipt = None
+        try:
+            with self._locked():
+                if self._head() != expected_head:
+                    raise VaultConflict('Checkpoint head changed; review the current generation before publishing.')
+                inventory = self._inventory(source, check)
+                files, directories, _, total = inventory
+                chunk_count = sum((info[2] + self.chunk_bytes - 1) // self.chunk_bytes for _, info in files)
+                metadata_bytes = (512 + len(label.encode('utf-8'))
+                    + sum(len(path.encode('utf-8')) + 192 for path, _ in files)
+                    + sum(len(path.encode('utf-8')) + 8 for path in directories))
+                if metadata_bytes + chunk_count * 67 > self.max_manifest_bytes:
+                    raise VaultError('Chunk inventory exceeds the configured manifest budget.')
+                rows, completed, reused, written = [], 0, 0, 0
+                for index, (relative, expected) in enumerate(files):
+                    check()
+                    path = source / relative
+                    if _identity(_plain(path)) != expected:
+                        raise VaultError('Prepared payload changed before transfer.')
+                    digest, chunks, count = sha256(), [], 0
+                    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+                    with os.fdopen(os.open(path, flags), 'rb') as stream:
+                        if _identity(os.fstat(stream.fileno())) != expected:
+                            raise VaultError('Prepared payload changed while opening.')
+                        while count < expected[2]:
+                            check()
+                            raw = stream.read(min(self.chunk_bytes, expected[2] - count))
+                            if not raw:
+                                raise VaultError('Prepared payload was truncated during transfer.')
+                            digest.update(raw)
+                            identity, used = self._put_chunk(raw, check)
+                            chunks.append(identity)
+                            count += len(raw)
+                            completed += len(raw)
+                            reused += int(used)
+                            written += int(not used)
+                            if on_progress is not None:
+                                on_progress(TransferProgress('publish', index, len(files),
+                                    completed, total, reused, written))
+                            check()
+                        if stream.read(1) or _identity(os.fstat(stream.fileno())) != expected:
+                            raise VaultError('Prepared payload changed during transfer.')
+                    if _identity(_plain(path)) != expected:
                         raise VaultError('Prepared payload changed during transfer.')
-                if _identity(_plain(path)) != expected:
-                    raise VaultError('Prepared payload changed during transfer.')
-                rows.append(dict(path=relative, size=count, sha256=digest.hexdigest(), chunks=chunks))
-                if on_progress is not None:
-                    on_progress(TransferProgress('publish', index + 1, len(files),
-                        completed, total, reused, written))
+                    rows.append(dict(path=relative, size=count, sha256=digest.hexdigest(), chunks=chunks))
+                    if on_progress is not None:
+                        on_progress(TransferProgress('publish', index + 1, len(files),
+                            completed, total, reused, written))
+                    check()
+                if self._inventory(source, check) != inventory:
+                    raise VaultError('Prepared payload tree changed during transfer.')
+                manifest = dict(version=1, kind='carr-portable-snapshot', parent=expected_head,
+                    created_at=datetime.now(timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z'),
+                    label=label, chunk_bytes=self.chunk_bytes, directories=list(directories),
+                    files=rows, total_bytes=total)
+                raw = _canonical(manifest)
+                if len(raw) > self.max_manifest_bytes:
+                    raise VaultError('Snapshot manifest exceeds the configured resource budget.')
+                identity = sha256(raw).hexdigest()
+                self._validate_manifest(manifest)
                 check()
-            if self._inventory(source, check) != inventory:
-                raise VaultError('Prepared payload tree changed during transfer.')
-            manifest = dict(version=1, kind='carr-portable-snapshot', parent=expected_head,
-                created_at=datetime.now(timezone.utc).isoformat(timespec='microseconds').replace('+00:00', 'Z'),
-                label=label, chunk_bytes=self.chunk_bytes, directories=list(directories),
-                files=rows, total_bytes=total)
-            raw = _canonical(manifest)
-            if len(raw) > self.max_manifest_bytes:
-                raise VaultError('Snapshot manifest exceeds the configured resource budget.')
-            identity = sha256(raw).hexdigest()
-            self._validate_manifest(manifest)
-            check()
-            self._check_root()
-            if self._head() != expected_head:
-                raise VaultConflict('Checkpoint head changed before publication.')
-            snapshots = self.root / _SNAPSHOTS
-            _plain(snapshots, directory=True)
-            target = snapshots / (identity + '.json')
-            if os.path.lexists(target):
-                if _read(target, self.max_manifest_bytes) != raw:
-                    raise VaultError('Snapshot identity already has different content.')
-            else:
-                _write_file(target, raw)
-            # The last cancellation check precedes the single HEAD commit. No
-            # user callback runs after successful publication or reports failure
-            # after that commit. A crash before HEAD may leave a complete orphan.
-            check()
-            published = False
-            def committed():
-                nonlocal published
-                published = True
-            try:
-                _write_file(self.root / _HEAD, _canonical(dict(version=1, snapshot=identity)),
-                            replace=True, _committed=committed)
-            except OSError:
-                if not published:
-                    raise
-                # HEAD is already replaced. Preserve the recovery identity and
-                # distinguish uncertain durability from a pre-publication error.
-                return replace(self._receipt(identity, manifest), durability_confirmed=False)
-            return self._receipt(identity, manifest)
+                self._check_root()
+                if self._head() != expected_head:
+                    raise VaultConflict('Checkpoint head changed before publication.')
+                snapshots = self.root / _SNAPSHOTS
+                _plain(snapshots, directory=True)
+                target = snapshots / (identity + '.json')
+                if os.path.lexists(target):
+                    if _read(target, self.max_manifest_bytes) != raw:
+                        raise VaultError('Snapshot identity already has different content.')
+                    _sync_directory(snapshots)
+                else:
+                    _write_file(target, raw)
+                # The last cancellation check precedes the single HEAD commit. No
+                # user callback runs after successful publication or reports failure
+                # after that commit. A crash before HEAD may leave a complete orphan.
+                check()
+                published = False
+                def committed():
+                    nonlocal published, committed_receipt
+                    published = True
+                    committed_receipt = self._receipt(identity, manifest)
+                try:
+                    _write_file(self.root / _HEAD, _canonical(dict(version=1, snapshot=identity)),
+                                replace=True, _committed=committed)
+                except OSError:
+                    if not published:
+                        raise
+                    # HEAD is already replaced. Preserve the recovery identity and
+                    # distinguish uncertain durability from a pre-publication error.
+                    committed_receipt = replace(committed_receipt, durability_confirmed=False)
+                return committed_receipt
+        except OSError:
+            if committed_receipt is None:
+                raise
+            # A lock release failure occurs after the immutable commit. Keep its
+            # identity and distinguish pending ownership cleanup from disk sync.
+            return replace(committed_receipt, lock_cleanup_pending=True)
 
     def _validate_manifest(self, value):
         fields = {'version', 'kind', 'parent', 'created_at', 'label', 'chunk_bytes',
@@ -636,52 +654,59 @@ class Vault:
             raise FileExistsError('Restore destination already exists.')
         if target.is_relative_to(self.root) or self.root.is_relative_to(target):
             raise VaultError('Materialized payload and vault must be separate directories.')
-        with self._locked():
-            manifest = self._manifest(snapshot_id, expected_token)
-            files = manifest['files']
-            completed = 0
-            with TemporaryDirectory(prefix='.carr-snapshot-', dir=target.parent) as temporary:
-                stage = Path(temporary)
-                for directory in manifest['directories']:
+        published, durable = False, False
+        try:
+            with self._locked():
+                manifest = self._manifest(snapshot_id, expected_token)
+                files = manifest['files']
+                completed = 0
+                with TemporaryDirectory(prefix='.carr-snapshot-', dir=target.parent) as temporary:
+                    stage = Path(temporary)
+                    for directory in manifest['directories']:
+                        check()
+                        (stage / directory).mkdir(mode=0o700)
+                    for index, row in enumerate(files):
+                        check()
+                        digest, count = sha256(), 0
+                        with (stage / row['path']).open('xb') as stream:
+                            for identity in row['chunks']:
+                                remaining = min(manifest['chunk_bytes'], row['size'] - count)
+                                raw = self._chunk(identity, remaining, check)
+                                stream.write(raw)
+                                digest.update(raw)
+                                count += len(raw)
+                                completed += len(raw)
+                                if on_progress is not None:
+                                    on_progress(TransferProgress('materialize', index, len(files),
+                                        completed, manifest['total_bytes']))
+                                check()
+                            stream.flush()
+                            os.fsync(stream.fileno())
+                        if count != row['size'] or digest.hexdigest() != row['sha256']:
+                            raise VaultError('Materialized checkpoint file failed integrity validation.')
+                        if on_progress is not None:
+                            on_progress(TransferProgress('materialize', index + 1, len(files),
+                                completed, manifest['total_bytes']))
+                        check()
+                    for directory in reversed(manifest['directories']):
+                        _sync_directory(stage / directory)
+                    _sync_directory(stage)
                     check()
-                    (stage / directory).mkdir(mode=0o700)
-                for index, row in enumerate(files):
-                    check()
-                    digest, count = sha256(), 0
-                    with (stage / row['path']).open('xb') as stream:
-                        for identity in row['chunks']:
-                            remaining = min(manifest['chunk_bytes'], row['size'] - count)
-                            raw = self._chunk(identity, remaining, check)
-                            stream.write(raw)
-                            digest.update(raw)
-                            count += len(raw)
-                            completed += len(raw)
-                            if on_progress is not None:
-                                on_progress(TransferProgress('materialize', index, len(files),
-                                    completed, manifest['total_bytes']))
-                            check()
-                        stream.flush()
-                        os.fsync(stream.fileno())
-                    if count != row['size'] or digest.hexdigest() != row['sha256']:
-                        raise VaultError('Materialized checkpoint file failed integrity validation.')
-                    if on_progress is not None:
-                        on_progress(TransferProgress('materialize', index + 1, len(files),
-                            completed, manifest['total_bytes']))
-                    check()
-                for directory in reversed(manifest['directories']):
-                    _sync_directory(stage / directory)
-                _sync_directory(stage)
-                check()
-                self._check_root()
-                _local(target)
-                published = False
-                def committed():
-                    nonlocal published
-                    published = True
-                try:
-                    _publish_directory(stage, target, _committed=committed)
-                except OSError as exc:
-                    if published:
-                        raise VaultMaterializedError(target, expected_token) from exc
-                    raise
-            return target
+                    self._check_root()
+                    _local(target)
+                    def committed():
+                        nonlocal published
+                        published = True
+                    try:
+                        _publish_directory(stage, target, _committed=committed)
+                        durable = True
+                    except OSError as exc:
+                        if published:
+                            raise VaultMaterializedError(target, expected_token) from exc
+                        raise
+                return target
+        except OSError as exc:
+            if published:
+                raise VaultMaterializedError(target, expected_token,
+                    durability_confirmed=durable, cleanup_pending=True) from exc
+            raise

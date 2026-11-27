@@ -16,7 +16,7 @@ from time import monotonic
 from unittest.mock import patch
 
 
-def main(argv=None):
+def run_native(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--source-root', type=Path, default=Path(__file__).resolve().parents[1] / 'src')
     parser.add_argument('--native', action='store_true')
@@ -195,6 +195,15 @@ def main(argv=None):
             app.Yield()
     result['status'] = 'PASS'
     sys.stdout.buffer.write((json.dumps(result, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
+
+def main(argv=None):
+    from carr_library.native_runtime import activate_bundled_runtime
+    handle = activate_bundled_runtime()
+    try:
+        return run_native(argv)
+    finally:
+        if handle is not None:
+            handle.close()
 
 
 if __name__ == '__main__':

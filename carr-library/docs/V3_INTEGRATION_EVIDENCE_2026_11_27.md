@@ -3,6 +3,69 @@
 This is a source/evidence checkpoint, not a declaration of full-platform completion.
 The technical scope remains [V3 finalization](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Reader appearance, paced reading and incremental snapshots
+
+This source continues exact `e4aa3ab89a9a600bfecf8c64ae9c4d6f232abdd8`.
+It composes appearance `55361b7` and pacing `190cc21`, then adapts the inspected
+PR173 incremental/Vault implementation to the existing full-backup v1-v5
+producer and current typed state. The source checkpoint is `20fa4c88`; subsequent
+native-runtime/disclosure and gate additions are part of this same reviewed
+composition. Exact new local execution is **NOT_RUN** during the executor outage.
+
+Appearance preserves the released `state/ui/reader-appearance.json` schema,
+uses the existing root-writer/native preference lock, and adds one typed backup
+sidecar. Native font, colour, zoom and system defaults affect presentation only;
+Windows high contrast takes priority. Paced reading uses an explicit text range,
+40–1,200 WPM and one to five whitespace-delimited words per step. Slow callbacks
+do not skip displayed groups. Pause/navigation/stop preserve exact source text
+and original selection; live speech must be stopped before visual pacing.
+
+Incremental snapshots reuse the existing immutable Vault chunks and each restore
+through the complete-library validator. Current recording, pending-source and
+translation states use their own producers; alternate donor runtime stacks are
+not imported. The shared application resource coordinator admits creation.
+Explicit new-folder initialization, independently retained tokens, current-head
+comparison and no-clobber restoration remain required. Verified reuse rehashes
+existing chunks. Real child-process interruption tests cover chunk/descriptor/HEAD
+boundaries, while post-publication durability, staging and resource cleanup
+preserve the saved identity and honest attention state. Independent source review
+also found a retry durability gap: reuse now flushes the verified chunk's own
+shard/chunks directories before acknowledging it. A failed prior flush cannot
+be upgraded to a durable successor merely by flushing HEAD. Post-commit
+writer-lock release failures now preserve the exact transport/service recovery
+identity, with focused regressions injecting failure after the actual lock
+release. They do not erase a committed destination or report unsent work.
+
+The current Windows workflow retains all 349 prior distinct test paths and
+requires 359, including strict source, installed and Linux gates. Native appearance
+and pacing run in the audio/main lanes; native incremental commands also run in
+the existing sync lane and complete installed bundle. Fourteen representative
+new JUnit identities are required. No native/library/model/provider/physical
+acceptance is inferred from this source composition.
+
+## Actual managed Windows update now passed at exact 55725629
+
+[Managed run45985890211](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45985890211)
+completed actual Inno A-to-B update, full-wrapper rollback after injected health
+refusal, Repair, Uninstall, Windows registration/vault checks, live application
+exclusion and real library backup/restore. User source preservation passed.
+Its immutable A is `665acf2c1fdb5a30a05ef31c482eb02dcaf1e141`; B is
+`55725629bc0cb79b62f7f3979842a573d5fd868f`. All eight required source suites
+passed 251 cases with zero failures/skips before the native workflow.
+
+- Setup A SHA256: `07e164443bf6e273c54b98e7f31750f8b0e30453620ad7b6c7c0744b3a4efa63`.
+- Setup B SHA256: `fe7acc40d4ab4604536d98fe87b64204c56531b6b538e2abaf1200c1b5d9150a`.
+- Verified update target: `a9f18468963d31cff83030c6535b7f3da4df44df50203e2035b899f7d9a11e4f`.
+- Text evidence artifact 15194245285: 84,552 bytes,
+  SHA256 `834cca98eabb1a3a269e846be81d58e8667ea2194a92624df2960017f112ccc4`.
+
+This confirms the corrected producer/consumer registration contract on that exact
+source. It does not qualify later integrated bytes. Authenticode was not claimed,
+production publisher remains unconfigured, manual NVDA remains NOT_RUN. At the
+latest observed read, main557 was running; e4aa independent publication,
+portable sync and bibliography succeeded, its audio and managed lanes were
+running, and main e4aa was queued.
+
 ## Integrated follow-up source while the executor is unavailable
 
 This composition extends exact `55725629bc0cb79b62f7f3979842a573d5fd868f`.

@@ -99,13 +99,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -I -B scripts/windows_media_conversion_smoke.py --native 2>&1 | Tee-Object audio-ci-results/native-media-conversion.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B scripts/windows_reader_appearance_smoke.py --native 2>&1 | Tee-Object audio-ci-results/native-reader-appearance.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -I -B scripts/windows_publication_smoke.py 2>&1 | Tee-Object audio-ci-results/native-audiobook-metadata.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require recording state and native-control contracts without skips
         timeout-minutes: 5
         run: |
-          python scripts/ci_check.py --jobs 3 tests/audio/test_capture_ownership.py tests/audio/test_owned_audio_processes.py tests/audio/test_recording.py tests/storage/test_recording_backup.py tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_audio_clips.py tests/ui/test_audio_publication.py tests/ui/test_audio_native_probe_policy.py tests/audio/test_publication_fsync.py tests/audio/test_clips.py tests/audio/test_effect_editing.py tests/ui/test_audio_effect_editing.py tests/audio/test_master_effects.py tests/reader/test_live_speech.py tests/ui/test_live_reading.py tests/storage/test_live_reading_backup.py tests/storage/test_optional_backup_roots.py tests/reader/test_media_overlay.py tests/reader/test_publication_state.py tests/ui/test_media_overlay.py tests/audio/test_media_conversion.py tests/storage/test_media_conversion_backup.py tests/ui/test_media_conversion.py tests/audio/test_clip_input_ownership.py tests/audio/test_clip_consolidation.py 2>&1 | Tee-Object audio-ci-results/strict-recording-controls.txt
+          python scripts/ci_check.py --jobs 3 tests/audio/test_capture_ownership.py tests/audio/test_owned_audio_processes.py tests/audio/test_recording.py tests/storage/test_recording_backup.py tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_audio_clips.py tests/ui/test_audio_publication.py tests/ui/test_audio_native_probe_policy.py tests/audio/test_publication_fsync.py tests/audio/test_clips.py tests/audio/test_effect_editing.py tests/ui/test_audio_effect_editing.py tests/audio/test_master_effects.py tests/reader/test_live_speech.py tests/ui/test_live_reading.py tests/storage/test_live_reading_backup.py tests/storage/test_optional_backup_roots.py tests/reader/test_media_overlay.py tests/reader/test_publication_state.py tests/ui/test_media_overlay.py tests/reader/test_appearance.py tests/ui/test_reader_appearance.py tests/reader/test_pacing.py tests/ui/test_paced_reading.py tests/ui/test_paced_reader_hooks.py tests/audio/test_media_conversion.py tests/storage/test_media_conversion_backup.py tests/ui/test_media_conversion.py tests/audio/test_clip_input_ownership.py tests/audio/test_clip_consolidation.py 2>&1 | Tee-Object audio-ci-results/strict-recording-controls.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run provider safety, source integrity and audio recovery regressions

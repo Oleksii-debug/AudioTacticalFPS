@@ -239,3 +239,35 @@ def test_unreadable_verified_subtree_never_publishes_a_partial_restore(library, 
     assert service.inspect(folder, receipt['token'])['verified']
     service.restore(folder, receipt['token'], destination)
     assert LibraryApp(destination).search(workspace, 'Retained exact source')
+
+@pytest.mark.parametrize('operation', ['publish', 'restore'])
+def test_actual_operation_lock_release_preserves_committed_recovery_identity(library, tmp_path, monkeypatch, operation):
+    from filelock import FileLock
+    _, workspace, service = library
+    folder, destination = tmp_path / 'portable', tmp_path / 'restored'
+    saved = service.publish(folder, 'Original checkpoint', None) if operation == 'restore' else None
+    release = FileLock.release
+    armed = [True]
+    def fail_after_release(lock, *args, **kwargs):
+        result = release(lock, *args, **kwargs)
+        if armed[0] and Path(lock.lock_file) == service.root / '.carr-portable.lock':
+            armed[0] = False
+            raise OSError('Injected after actual portable operation release')
+        return result
+    with monkeypatch.context() as patch:
+        patch.setattr(FileLock, 'release', fail_after_release)
+        if operation == 'publish':
+            result = service.publish(folder, 'Saved checkpoint', None)
+            assert result['status'] == 'attention' and result['operation_cleanup_pending']
+            assert result['history_saved'] and result['durability_confirmed']
+        else:
+            with pytest.raises(SyncRestoredError) as caught:
+                service.restore(folder, saved['token'], destination)
+            assert caught.value.destination == str(destination)
+            assert caught.value.token == saved['token'] and caught.value.durability_confirmed
+    assert not armed[0]
+    if operation == 'publish':
+        assert vault.Vault.open_existing(folder).head() == result['token']
+        assert service.inspect(folder, result['token'])['verified']
+    else:
+        assert LibraryApp(destination).search(workspace, 'Retained exact source')

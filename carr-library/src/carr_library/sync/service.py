@@ -242,124 +242,136 @@ class SyncService:
             _token(expected_head)
         if password is not None and (not isinstance(password, str) or not password):
             raise ValueError('An encryption password cannot be empty.')
-        with self._operation():
-            path = self._vault_path(folder)
-            key = self._vault_key(path)
-            state = self._state()
-            remembered = state['vaults'].get(key, {}).get('head')
-            vault = Vault(path)
-            actual = vault.head()
-            if actual != expected_head:
-                raise SyncConflict('The portable folder changed. Refresh and review it before publishing.')
-            if actual != remembered:
-                raise SyncConflict('This device has a different checkpoint history. Restore the reviewed checkpoint to a new folder, or publish to a separate empty portable folder.')
-            # Establish the local identity before external publication. No key or
-            # password is persisted. An interrupted upload reuses verified chunks.
-            _atomic_json(self.state_path, state)
-            cancelled_check(cancelled)
-            _message(on_status, 'Creating a checked backup of all libraries in this data folder.')
-            cache = self._cache()
-            with TemporaryDirectory(prefix='prepare-', dir=cache) as transient:
-                transient = Path(transient)
-                backup = transient / 'backup'
-                checksum = create_backup(self.app, backup, cancelled=cancelled)
-                cancelled_check(cancelled)
-                identity = sha256(json.dumps([key, checksum, label, expected_head,
-                    password is not None], ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
-                job = cache / identity
-                payload = job / 'payload'
-                ready = job / 'ready.json'
-                if os.path.lexists(job):
-                    local_path(job, exists=True, directory=True)
-                    metadata = read_json(ready)
-                    if (type(metadata) is not dict or set(metadata) != {'identity', 'backup_checksum', 'encrypted', 'archive_sha256', 'payload_sha256'}
-                            or metadata.get('backup_checksum') != checksum
-                            or metadata.get('encrypted') is not (password is not None)
-                            or metadata.get('identity') != identity):
-                        raise ValueError('The pending transfer cache is inconsistent. No checkpoint was published.')
-                    content = local_path(payload / ('snapshot.carr' if password is not None else 'snapshot.zip'), exists=True)
-                    if {p.name for p in payload.iterdir()} != {content.name}:
-                        raise ValueError('Unexpected pending transfer contents.')
-                    _token(metadata['payload_sha256']); _token(metadata['archive_sha256'])
-                    if hash_file(content, cancelled=cancelled) != metadata['payload_sha256']:
-                        raise ValueError('The prepared transfer changed. No checkpoint was published.')
-                    if password is not None:
-                        from .crypto import decrypt_file
-                        _message(on_status, 'Authenticating the existing encrypted transfer before resuming.')
-                        decrypt_file(content, transient / 'resume-check.zip', password, cancelled=cancelled)
-                        if hash_file(transient / 'resume-check.zip', cancelled=cancelled) != metadata['archive_sha256']:
-                            raise ValueError('The cached encrypted transfer does not match its prepared backup.')
-                    archive = transient / 'resume-check.zip' if password is not None else content
-                    cached = unpack_archive(archive, transient / 'resume-unpacked', cancelled=cancelled)
-                    transfer = _transfer_metadata(cached)
-                    if (transfer['backup_checksum'] != checksum or transfer['family_id'] != state['family_id']
-                            or transfer['label'] != label):
-                        raise ValueError('The pending transfer belongs to different library contents or history.')
-                    restore_backup(cached / 'backup', transient / 'resume-verified', checksum, cancelled=cancelled)
-                    cancelled_check(cancelled)
-                else:
-                    job.mkdir(mode=0o700)
-                    try:
-                        payload.mkdir(mode=0o700)
-                        source = transient / 'source'
-                        source.mkdir(mode=0o700)
-                        os.rename(backup, source / 'backup')
-                        transfer = {'kind': 'carr-portable-backup', 'version': 1,
-                            'family_id': state['family_id'], 'backup_checksum': checksum,
-                            'label': label, 'created_at': datetime.now(timezone.utc).isoformat()}
-                        write_json(source / INVENTORY, transfer)
-                        archive = transient / 'prepared.zip'
-                        archive_info = pack_directory(source, archive, cancelled=cancelled, on_status=on_status)
-                        if password is not None:
-                            from .crypto import encrypt_file
-                            _message(on_status, 'Encrypting the checkpoint in private local staging.')
-                            encrypt_file(archive, payload / 'snapshot.carr', password,
-                                         cancelled=cancelled)
-                        else:
-                            os.rename(archive, payload / 'snapshot.zip')
-                        content = payload / ('snapshot.carr' if password is not None else 'snapshot.zip')
-                        write_json(ready, {'identity': identity, 'backup_checksum': checksum,
-                            'encrypted': password is not None, 'archive_sha256': archive_info['sha256'],
-                            'payload_sha256': hash_file(content, cancelled=cancelled)})
-                    except BaseException:
-                        # This newly created job is entirely owned by this call.
-                        # Existing pending jobs are never removed on an error.
-                        shutil.rmtree(job)
-                        raise
-            # Finish private preparation cleanup before the externally visible
-            # commit. Its failure must not hide a published transfer code.
-            cancelled_check(cancelled)
-            def progress(value):
-                _message(on_status, f'Publishing checkpoint: {value.bytes_completed} of {value.total_bytes} bytes; {value.chunks_reused} verified chunks reused.')
-            receipt = vault.publish(payload, expected_head=expected_head,
-                label='Encrypted checkpoint' if password is not None else label,
-                cancelled=cancelled, on_progress=progress)
-            result = {'id': receipt.snapshot_id, 'token': receipt.transfer_token,
-                'head': receipt.snapshot_id, 'encrypted': password is not None,
-                'files': receipt.file_count, 'bytes': receipt.total_bytes,
-                'durability_confirmed': receipt.durability_confirmed,
-                'scope': 'All libraries in this data folder'}
-            state['vaults'][key] = {'head': receipt.snapshot_id, 'label': label}
-            try:
+        result = None
+        try:
+            with self._operation():
+                path = self._vault_path(folder)
+                key = self._vault_key(path)
+                state = self._state()
+                remembered = state['vaults'].get(key, {}).get('head')
+                vault = Vault(path)
+                actual = vault.head()
+                if actual != expected_head:
+                    raise SyncConflict('The portable folder changed. Refresh and review it before publishing.')
+                if actual != remembered:
+                    raise SyncConflict('This device has a different checkpoint history. Restore the reviewed checkpoint to a new folder, or publish to a separate empty portable folder.')
+                # Establish the local identity before external publication. No key or
+                # password is persisted. An interrupted upload reuses verified chunks.
                 _atomic_json(self.state_path, state)
-            except (OSError, ValueError) as exc:
-                raise SyncPublishedError(result) from exc
-            # No user callback or cancellation check follows publication.
-            # Cleanup is best effort; the immutable receipt remains authoritative.
-            cleanup_pending = False
-            try:
-                shutil.rmtree(job)
-            except OSError:
-                cleanup_pending = True
-            warnings = []
-            if not receipt.durability_confirmed:
-                warnings.append('Snapshot files and history are visible, but final storage durability was not confirmed. Keep the transfer code and verify the checkpoint before relying on it.')
-            if cleanup_pending:
-                warnings.append('Private transfer cache cleanup is pending.')
-            result.update(status='complete' if receipt.durability_confirmed else 'attention',
-                cleanup_pending=cleanup_pending, warnings=warnings,
-                message=('Checkpoint published and local history saved. Keep the transfer code separately from the portable folder.'
-                         if receipt.durability_confirmed else warnings[0]))
+                cancelled_check(cancelled)
+                _message(on_status, 'Creating a checked backup of all libraries in this data folder.')
+                cache = self._cache()
+                with TemporaryDirectory(prefix='prepare-', dir=cache) as transient:
+                    transient = Path(transient)
+                    backup = transient / 'backup'
+                    checksum = create_backup(self.app, backup, cancelled=cancelled)
+                    cancelled_check(cancelled)
+                    identity = sha256(json.dumps([key, checksum, label, expected_head,
+                        password is not None], ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
+                    job = cache / identity
+                    payload = job / 'payload'
+                    ready = job / 'ready.json'
+                    if os.path.lexists(job):
+                        local_path(job, exists=True, directory=True)
+                        metadata = read_json(ready)
+                        if (type(metadata) is not dict or set(metadata) != {'identity', 'backup_checksum', 'encrypted', 'archive_sha256', 'payload_sha256'}
+                                or metadata.get('backup_checksum') != checksum
+                                or metadata.get('encrypted') is not (password is not None)
+                                or metadata.get('identity') != identity):
+                            raise ValueError('The pending transfer cache is inconsistent. No checkpoint was published.')
+                        content = local_path(payload / ('snapshot.carr' if password is not None else 'snapshot.zip'), exists=True)
+                        if {p.name for p in payload.iterdir()} != {content.name}:
+                            raise ValueError('Unexpected pending transfer contents.')
+                        _token(metadata['payload_sha256']); _token(metadata['archive_sha256'])
+                        if hash_file(content, cancelled=cancelled) != metadata['payload_sha256']:
+                            raise ValueError('The prepared transfer changed. No checkpoint was published.')
+                        if password is not None:
+                            from .crypto import decrypt_file
+                            _message(on_status, 'Authenticating the existing encrypted transfer before resuming.')
+                            decrypt_file(content, transient / 'resume-check.zip', password, cancelled=cancelled)
+                            if hash_file(transient / 'resume-check.zip', cancelled=cancelled) != metadata['archive_sha256']:
+                                raise ValueError('The cached encrypted transfer does not match its prepared backup.')
+                        archive = transient / 'resume-check.zip' if password is not None else content
+                        cached = unpack_archive(archive, transient / 'resume-unpacked', cancelled=cancelled)
+                        transfer = _transfer_metadata(cached)
+                        if (transfer['backup_checksum'] != checksum or transfer['family_id'] != state['family_id']
+                                or transfer['label'] != label):
+                            raise ValueError('The pending transfer belongs to different library contents or history.')
+                        restore_backup(cached / 'backup', transient / 'resume-verified', checksum, cancelled=cancelled)
+                        cancelled_check(cancelled)
+                    else:
+                        job.mkdir(mode=0o700)
+                        try:
+                            payload.mkdir(mode=0o700)
+                            source = transient / 'source'
+                            source.mkdir(mode=0o700)
+                            os.rename(backup, source / 'backup')
+                            transfer = {'kind': 'carr-portable-backup', 'version': 1,
+                                'family_id': state['family_id'], 'backup_checksum': checksum,
+                                'label': label, 'created_at': datetime.now(timezone.utc).isoformat()}
+                            write_json(source / INVENTORY, transfer)
+                            archive = transient / 'prepared.zip'
+                            archive_info = pack_directory(source, archive, cancelled=cancelled, on_status=on_status)
+                            if password is not None:
+                                from .crypto import encrypt_file
+                                _message(on_status, 'Encrypting the checkpoint in private local staging.')
+                                encrypt_file(archive, payload / 'snapshot.carr', password,
+                                             cancelled=cancelled)
+                            else:
+                                os.rename(archive, payload / 'snapshot.zip')
+                            content = payload / ('snapshot.carr' if password is not None else 'snapshot.zip')
+                            write_json(ready, {'identity': identity, 'backup_checksum': checksum,
+                                'encrypted': password is not None, 'archive_sha256': archive_info['sha256'],
+                                'payload_sha256': hash_file(content, cancelled=cancelled)})
+                        except BaseException:
+                            # This newly created job is entirely owned by this call.
+                            # Existing pending jobs are never removed on an error.
+                            shutil.rmtree(job)
+                            raise
+                # Finish private preparation cleanup before the externally visible
+                # commit. Its failure must not hide a published transfer code.
+                cancelled_check(cancelled)
+                def progress(value):
+                    _message(on_status, f'Publishing checkpoint: {value.bytes_completed} of {value.total_bytes} bytes; {value.chunks_reused} verified chunks reused.')
+                receipt = vault.publish(payload, expected_head=expected_head,
+                    label='Encrypted checkpoint' if password is not None else label,
+                    cancelled=cancelled, on_progress=progress)
+                result = {'id': receipt.snapshot_id, 'token': receipt.transfer_token,
+                    'head': receipt.snapshot_id, 'encrypted': password is not None,
+                    'files': receipt.file_count, 'bytes': receipt.total_bytes,
+                    'durability_confirmed': receipt.durability_confirmed,
+                    'lock_cleanup_pending': receipt.lock_cleanup_pending, 'history_saved': False,
+                    'scope': 'All libraries in this data folder'}
+                state['vaults'][key] = {'head': receipt.snapshot_id, 'label': label}
+                try:
+                    _atomic_json(self.state_path, state)
+                    result['history_saved'] = True
+                except (OSError, ValueError) as exc:
+                    raise SyncPublishedError(result) from exc
+                # No user callback or cancellation check follows publication.
+                # Cleanup is best effort; the immutable receipt remains authoritative.
+                cleanup_pending = False
+                try:
+                    shutil.rmtree(job)
+                except OSError:
+                    cleanup_pending = True
+                warnings = []
+                if not receipt.durability_confirmed:
+                    warnings.append('Snapshot files and history are visible, but final storage durability was not confirmed. Keep the transfer code and verify the checkpoint before relying on it.')
+                if receipt.lock_cleanup_pending:
+                    warnings.append('The snapshot writer lock needs cleanup before another publication.')
+                if cleanup_pending:
+                    warnings.append('Private transfer cache cleanup is pending.')
+                result.update(status='complete' if receipt.durability_confirmed and not receipt.lock_cleanup_pending else 'attention',
+                    cleanup_pending=cleanup_pending, warnings=warnings,
+                    message=' '.join(['Checkpoint published and local history saved. Keep the transfer code separately from the portable folder.', *warnings]))
+                return result
+        except OSError:
+            if result is None:
+                raise
+            result.update(status='attention', operation_cleanup_pending=True,
+                message='Checkpoint published; local history or operation-lock cleanup needs review. Keep its transfer code.')
+            result.setdefault('warnings', []).append(result['message'])
             return result
 
     @contextmanager
@@ -435,41 +447,46 @@ class SyncService:
 
     def restore(self, folder, token, new_destination, password=None, *,
                 cancelled=lambda: False, on_status=None):
-        with self._operation():
-            destination = local_path(guard_data_directory(new_destination, purpose='restored library'))
-            vault_path = self._vault_path(folder)
-            for source in (self.root, self.cache_root, vault_path):
-                if destination.is_relative_to(source) or source.is_relative_to(destination):
-                    raise ValueError('Restore to a separate new directory outside the live library and portable folder.')
-            if os.path.lexists(destination):
-                raise FileExistsError('The restore destination already exists. Choose a new directory.')
-            local_path(destination.parent, exists=True, directory=True)
-            from .vault import _publish_directory
-            published, durable = False, False
-            def committed():
-                nonlocal published
-                published = True
-            try:
-                with TemporaryDirectory(prefix='.carr-portable-restore-', dir=destination.parent) as staging:
-                    prepared = Path(staging) / 'library'
-                    with self._opened(folder, token, password, cancelled, on_status) as (verified, metadata, _):
+        published, durable = False, False
+        try:
+            with self._operation():
+                destination = local_path(guard_data_directory(new_destination, purpose='restored library'))
+                vault_path = self._vault_path(folder)
+                for source in (self.root, self.cache_root, vault_path):
+                    if destination.is_relative_to(source) or source.is_relative_to(destination):
+                        raise ValueError('Restore to a separate new directory outside the live library and portable folder.')
+                if os.path.lexists(destination):
+                    raise FileExistsError('The restore destination already exists. Choose a new directory.')
+                local_path(destination.parent, exists=True, directory=True)
+                from .vault import _publish_directory
+                def committed():
+                    nonlocal published
+                    published = True
+                try:
+                    with TemporaryDirectory(prefix='.carr-portable-restore-', dir=destination.parent) as staging:
+                        prepared = Path(staging) / 'library'
+                        with self._opened(folder, token, password, cancelled, on_status) as (verified, metadata, _):
+                            cancelled_check(cancelled)
+                            _message(on_status, 'Restoring the checked checkpoint to the new data folder.')
+                            cancelled_check(cancelled)
+                            state = {'kind': 'carr-portable-state', 'version': 1,
+                                'family_id': metadata['family_id'],
+                                'vaults': {self._vault_key(vault_path): {'head': token, 'label': metadata['label']}}}
+                            _copy_verified_tree(verified, prepared, cancelled)
+                            _atomic_json(prepared / STATE, state)
+                        # Authenticated staging is closed before the commit. The
+                        # internal observer records rename success before fsync.
                         cancelled_check(cancelled)
-                        _message(on_status, 'Restoring the checked checkpoint to the new data folder.')
-                        cancelled_check(cancelled)
-                        state = {'kind': 'carr-portable-state', 'version': 1,
-                            'family_id': metadata['family_id'],
-                            'vaults': {self._vault_key(vault_path): {'head': token, 'label': metadata['label']}}}
-                        _copy_verified_tree(verified, prepared, cancelled)
-                        _atomic_json(prepared / STATE, state)
-                    # Authenticated staging is closed before the commit. The
-                    # internal observer records rename success before fsync.
-                    cancelled_check(cancelled)
-                    _publish_directory(prepared, destination, _committed=committed)
-                    durable = True
-            except Exception as exc:
-                if published:
-                    raise SyncRestoredError(destination, token, durability_confirmed=durable) from exc
-                raise
-            return {'id': token, 'token': token, 'destination': str(destination),
-                    'verified': True, 'durability_confirmed': True,
-                    'message': 'Checkpoint restored to a separate folder. Open that library folder when ready.'}
+                        _publish_directory(prepared, destination, _committed=committed)
+                        durable = True
+                except Exception as exc:
+                    if published:
+                        raise SyncRestoredError(destination, token, durability_confirmed=durable) from exc
+                    raise
+                return {'id': token, 'token': token, 'destination': str(destination),
+                        'verified': True, 'durability_confirmed': True, 'status': 'complete',
+                        'message': 'Checkpoint restored to a separate folder. Open that library folder when ready.'}
+        except OSError as exc:
+            if published:
+                raise SyncRestoredError(destination, token, durability_confirmed=durable) from exc
+            raise

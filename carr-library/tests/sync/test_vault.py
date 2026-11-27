@@ -467,3 +467,79 @@ def test_post_materialization_sync_failure_reports_visible_complete_destination(
     assert error.value.destination == target
     assert error.value.transfer_token == receipt.transfer_token
     assert tree(target) == tree(source)
+
+def test_reused_chunk_retries_its_own_directory_durability_before_head(tmp_path, monkeypatch):
+    source = payload(tmp_path / 'prepared')
+    vault = Vault(tmp_path / 'vault')
+    sync = module._sync_directory
+    failures, successful = [], []
+    blocked = [True]
+    def shard_sync(path):
+        path = Path(path)
+        if path.parent == vault.root / 'chunks':
+            if blocked[0]:
+                failures.append(path)
+                raise OSError('Injected chunk shard flush failure after native rename')
+            successful.append(path)
+        return sync(path)
+    monkeypatch.setattr(module, '_sync_directory', shard_sync)
+    for attempt in range(2):
+        with pytest.raises(OSError, match='shard flush'):
+            vault.publish(source, expected_head=None)
+        assert vault.head() is None
+        assert not list((vault.root / 'snapshots').iterdir())
+        assert any((vault.root / 'chunks').glob('*/*'))
+    assert len(failures) == 2 and failures[0] == failures[1]
+    blocked[0] = False
+    receipt = vault.publish(source, expected_head=None)
+    assert receipt.durability_confirmed and failures[0] in successful
+    restored = vault.materialize(receipt.snapshot_id, tmp_path / 'restored',
+                                 expected_token=receipt.transfer_token)
+    assert tree(restored) == tree(source)
+
+def test_actual_writer_release_failure_preserves_published_receipt(tmp_path, monkeypatch):
+    from filelock import FileLock
+    source = payload(tmp_path / 'prepared')
+    vault = Vault(tmp_path / 'vault')
+    release = FileLock.release
+    armed = [True]
+    def fail_after_release(lock, *args, **kwargs):
+        result = release(lock, *args, **kwargs)
+        if (armed[0] and Path(lock.lock_file).parent == vault.root
+                and (vault.root / 'head.json').exists()):
+            armed[0] = False
+            raise OSError('Injected after actual snapshot writer release')
+        return result
+    with monkeypatch.context() as patch:
+        patch.setattr(FileLock, 'release', fail_after_release)
+        receipt = vault.publish(source, expected_head=None)
+    assert not armed[0]
+    assert receipt.lock_cleanup_pending and receipt.durability_confirmed
+    assert vault.head() == receipt.snapshot_id
+    restored = vault.materialize(receipt.snapshot_id, tmp_path / 'restored',
+                                 expected_token=receipt.transfer_token)
+    assert tree(restored) == tree(source)
+
+
+def test_actual_materialize_lock_release_failure_reports_complete_destination(tmp_path, monkeypatch):
+    from filelock import FileLock
+    source = payload(tmp_path / 'prepared')
+    vault = Vault(tmp_path / 'vault')
+    receipt = vault.publish(source, expected_head=None)
+    target = tmp_path / 'visible'
+    release = FileLock.release
+    armed = [True]
+    def fail_after_release(lock, *args, **kwargs):
+        result = release(lock, *args, **kwargs)
+        if armed[0] and Path(lock.lock_file).parent == vault.root and target.exists():
+            armed[0] = False
+            raise OSError('Injected after actual materialization writer release')
+        return result
+    with monkeypatch.context() as patch:
+        patch.setattr(FileLock, 'release', fail_after_release)
+        with pytest.raises(module.VaultMaterializedError) as caught:
+            vault.materialize(receipt.snapshot_id, target, expected_token=receipt.transfer_token)
+    assert not armed[0] and caught.value.destination == target
+    assert caught.value.transfer_token == receipt.transfer_token
+    assert caught.value.durability_confirmed and caught.value.cleanup_pending
+    assert tree(target) == tree(source)
