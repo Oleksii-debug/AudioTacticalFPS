@@ -49,6 +49,7 @@ from .document_conversion import install_conversion_actions
 from .transcription_dialog import install_transcription_actions
 from .engine_settings import install_engine_settings_actions
 from .operations_dialog import install_operations_actions
+from .reading_import import install_reading_import_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -585,6 +586,7 @@ class DesktopFrame(WorkspaceFrame):
         install_transcription_actions(self)
         install_engine_settings_actions(self)
         install_operations_actions(self)
+        install_reading_import_actions(self)
         install_portable_sync_actions(self)
 
     def build_advanced_query(self, event=None):

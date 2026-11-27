@@ -115,6 +115,9 @@ jobs:
             'tests/ui/test_engine_settings.py',
             'tests/reader/test_scoped_pronunciation.py',
             'tests/ui/test_pronunciation_preview.py',
+            'tests/reader/test_legacy_reading_import.py',
+            'tests/storage/test_legacy_reading_backup.py',
+            'tests/ui/test_reading_import.py',
             'tests/ui/test_desktop_handlers.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/v3-shared-contracts.txt'
@@ -913,6 +916,12 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_progress_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed native historical reading import and revision selection
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_legacy_reading_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-reading-history.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise installed native task resources and completion-aware close
         timeout-minutes: 3
         run: |
@@ -932,4 +941,81 @@ jobs:
           name: carr-keyboard-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
           path: carr-library/keyboard-results/
           if-no-files-found: warn
+          retention-days: 7
+
+  portable-shared-contracts:
+    name: Linux / portable shared state and process boundaries
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Set up CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the existing portable dependency profile and record source identity
+        run: |
+          set -euo pipefail
+          mkdir -p portable-shared-results
+          git rev-parse HEAD > portable-shared-results/tested-commit.txt
+          python -m pip install '.[test,sync]'
+          python -m pip check
+          python -m pip list --format=json > portable-shared-results/installed-packages.json
+          python -m compileall -q src tests scripts
+          python -I -c "from carr_library.operations import ResourceBroker,OperationFacade; from carr_library.reader.legacy_reading import LegacyReadingStore; from carr_library.runtime_settings import EngineProfileStore; print('Installed shared modules imported successfully.')"
+      - name: Require portable publication, recovery and resource contracts
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          python scripts/ci_check.py --jobs 3 \
+            tests/test_transcription_receipt.py \
+            tests/test_transcription_service.py \
+            tests/storage/test_transcription_backup.py \
+            tests/operations/test_resources.py \
+            tests/operations/test_state.py \
+            tests/operations/test_transcription_admission.py \
+            tests/operations/test_heavy_admission.py \
+            tests/operations/test_facade.py \
+            tests/operations/test_policy.py \
+            tests/ui/test_operations_dialog.py \
+            tests/e2e/test_operations_cli.py \
+            tests/storage/test_publication_migration.py \
+            tests/ingest/test_canonical_publication_binding.py \
+            tests/ingest/test_publication_config_compatibility.py \
+            tests/e2e/test_import_worker_publication.py \
+            tests/ingest/test_worker_publication_boundary.py \
+            tests/audio/test_engine_profiles.py \
+            tests/audio/test_job_integrity.py \
+            tests/storage/test_state_json_reader.py \
+            tests/ui/test_engine_settings.py \
+            tests/reader/test_scoped_pronunciation.py \
+            tests/ui/test_pronunciation_preview.py \
+            tests/reader/test_legacy_reading_import.py \
+            tests/storage/test_legacy_reading_backup.py \
+            tests/ui/test_reading_import.py \
+            tests/ui/test_desktop_handlers.py \
+            2>&1 | tee portable-shared-results/strict-contracts.txt
+      - name: Preserve portable source evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: portable-shared-${{ github.event.pull_request.head.sha || github.sha }}
+          path: carr-library/portable-shared-results/
+          if-no-files-found: error
           retention-days: 7

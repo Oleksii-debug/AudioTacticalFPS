@@ -57,6 +57,12 @@ from .reader.narration import (
     MAX_SNAPSHOT_BYTES as MAX_NARRATION_BYTES,
     snapshot_narration_files, validate_narration_payload,
 )
+from .reader.legacy_reading import (
+    DIRECTORY as READING_IMPORTS, MAX_ARCHIVE_BYTES, MAX_ARCHIVES,
+    MAX_SNAPSHOT_BYTES as MAX_READING_IMPORT_BYTES, snapshot_import_files,
+    is_archive_path, validate_archive_payload, origin_archive, decode_origin,
+    validate_anchor_database, LegacyReadingStore,
+)
 from .keybindings import FILENAME as KEYBINDINGS, MAX_BYTES as MAX_KEYBINDINGS, decode_preferences
 from .keyboard_preferences import MAX_BYTES as MAX_KEYMAP_BYTES, validate_keymap
 from .evidence_drafts import (
@@ -96,7 +102,8 @@ _SIMPLE_SIDECARS = {
     PROGRESS_PREFERENCES: (MAX_PROGRESS_PREFERENCES, decode_progress_preferences),
     OCR_PRESETS: (MAX_PRESET_BYTES, validate_presets_bytes),
 }
-MAX_READER_BYTES = MAX_READING_STATE + MAX_NARRATION_BYTES + sum(row[0] for row in _SIMPLE_SIDECARS.values())
+MAX_READER_BYTES = (MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_READING_IMPORT_BYTES
+                    + sum(row[0] for row in _SIMPLE_SIDECARS.values()))
 
 
 def _reader_limit(name):
@@ -107,13 +114,15 @@ def _reader_limit(name):
         return MAX_READING_STATE
     if name in _SIMPLE_SIDECARS:
         return _SIMPLE_SIDECARS[name][0]
+    if is_archive_path(name):
+        return MAX_ARCHIVE_BYTES
     if re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return MAX_PROJECT_BYTES
     raise RestoreError('unsupported backup sidecar')
 
 
 def _reader_path(name):
-    return (name == READING_STATE or name in _SIMPLE_SIDECARS
+    return (name == READING_STATE or name in _SIMPLE_SIDECARS or is_archive_path(name)
             or re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name))
 
 def _optional_sidecar(path, maximum):
@@ -136,10 +145,11 @@ def _optional_sidecar(path, maximum):
         raise RestoreError('backup sidecar changed while reading')
     return raw
 
-def _snapshot_readers(root):
+def _snapshot_readers(root, *, cancelled=lambda: False):
     raw = ReadingState(root).snapshot()
     sidecars = {} if raw is None else {READING_STATE: raw}
     sidecars.update(snapshot_narration_files(root))
+    sidecars.update(snapshot_import_files(root, cancelled=cancelled))
     for name, (maximum, validate) in _SIMPLE_SIDECARS.items():
         raw = _optional_sidecar(Path(root) / name, maximum)
         if raw is not None:
@@ -169,8 +179,11 @@ def _validate_reading_locations(db, locations):
             raise RestoreError('reading-state location disagrees with the backup database, '
                                'or narration copy does not match its exact saved source')
 
-def _validate_readers(db, sidecars):
+def _validate_readers(db, sidecars, *, cancelled=lambda: False):
+    archives = {name: raw for name, raw in sidecars.items() if is_archive_path(name)}
     for name, raw in sidecars.items():
+        if cancelled():
+            raise InterruptedError('Reading state validation cancelled.')
         _reader_limit(name)
         try:
             if name == READING_STATE:
@@ -180,8 +193,16 @@ def _validate_readers(db, sidecars):
             elif name in _SIMPLE_SIDECARS:
                 _SIMPLE_SIDECARS[name][1](raw)
                 locations = set()
+            elif is_archive_path(name):
+                snapshot = validate_archive_payload(name, raw, cancelled=cancelled)
+                validate_anchor_database(db, snapshot.source_anchor, cancelled=cancelled)
+                locations = set()
             else:
                 project = validate_narration_payload(name, raw)
+                if project.legacy_origin is not None:
+                    snapshot = origin_archive(project.legacy_origin, project.original_text, archives,
+                                              cancelled=cancelled)
+                    validate_anchor_database(db, snapshot.source_anchor, cancelled=cancelled)
                 locations = {project.source_location} if project.source_location is not None else set()
         except (UnicodeError, ValueError) as exc:
             raise RestoreError('invalid reading state, narration copy or preferences in backup') from exc
@@ -499,12 +520,25 @@ def _studio_files(project, max_files):
                         yield item
 
 
-def _validate_studio_source(db, payload):
+def _validate_studio_source(db, payload, *, root=None):
     from .audio.backup import _studio
     from .reader.narration_text import NarrationDraft
     _studio(payload)
     reference = payload['source_reference']
     if reference is not None and reference['kind'] == 'saved-reading-copy':
+        if 'legacy_origin' in reference:
+            if root is None:
+                raise RestoreError('Imported reading audio requires its retained compact history')
+            original = NarrationDraft.from_dict(payload['draft']).source_text
+            try:
+                origin = decode_origin(reference['legacy_origin'], original)
+                snapshot = LegacyReadingStore(root).load(origin.archive_sha256,
+                                                         revision=origin.selected_revision)
+                if snapshot.source_text != original or snapshot.origin != origin:
+                    raise ValueError('Imported audio source history does not match')
+                validate_anchor_database(db, snapshot.source_anchor)
+            except ValueError as exc:
+                raise RestoreError('Invalid retained source history for the audio reading copy') from exc
         where = reference['source_location']
         if where is not None:
             try:
@@ -554,7 +588,7 @@ def _validate_studios(db, root, *, strict_assets=False):
                 raise RestoreError('archived sound inputs require their saved Studio project')
             continue
         payload = _audio_document(saved)
-        _validate_studio_source(db, payload)
+        _validate_studio_source(db, payload, root=root)
         if payload['project_id'] != project.name:
             raise RestoreError('saved audio project identity differs from its managed folder')
         recovery = saved.with_name(saved.name + '.recovery.json')
@@ -566,7 +600,7 @@ def _validate_studios(db, root, *, strict_assets=False):
                     or not isinstance(value['base_sha256'], str)
                     or not re.fullmatch('[0-9a-f]{64}', value['base_sha256'])):
                 raise RestoreError('invalid audio recovery draft')
-            _validate_studio_source(db, value['project'])
+            _validate_studio_source(db, value['project'], root=root)
             if value['project']['project_id'] != payload['project_id']:
                 raise RestoreError('audio recovery draft belongs to another project')
         input_assets(saved, project / 'audio', strict=strict_assets)
@@ -586,7 +620,7 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         if len(files) >= max_files or total > max_bytes:
             raise RestoreError('reading/audio sidecars exceed the backup file or byte budget')
         files[relative] = _identity(info)
-    for name in _snapshot_readers(root):
+    for name in _snapshot_readers(root, cancelled=cancelled):
         add(root / name)
     for path in _assistant_files(root, cancelled=cancelled):
         add(path)
@@ -765,7 +799,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-                _validate_readers(snapshot_storage.db, _snapshot_readers(app.root))
+                _validate_readers(snapshot_storage.db, _snapshot_readers(app.root, cancelled=cancelled),
+                                  cancelled=cancelled)
                 _validate_studios(snapshot_storage.db, app.root)
                 _validate_assistants(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_historical(app.root, cancelled=cancelled)
@@ -975,6 +1010,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         if type(entries) is not list or not minimum <= len(entries) <= max_sidecar_files:
             raise RestoreError('invalid sidecar manifest count')
         names, total, reader_total, narration_total, reader_count = {}, 0, 0, 0, 0
+        reading_import_total, reading_import_count = 0, 0
         assistant_total, assistant_jobs, assistant_controls = 0, 0, 0
         translation_total, translation_jobs, translation_caches = 0, 0, 0
         transcription_total, transcription_files, transcription_jobs = 0, 0, set()
@@ -1002,8 +1038,13 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     raise RestoreError('reader sidecar byte limit')
                 if entry[field].startswith(NARRATION_DIRECTORY + '/'):
                     narration_total += entry['size_bytes']
+                if is_archive_path(entry[field]):
+                    reading_import_total += entry['size_bytes']
+                    reading_import_count += 1
+                    if reading_import_total > MAX_READING_IMPORT_BYTES or reading_import_count > MAX_ARCHIVES:
+                        raise RestoreError('Retained reading-history count or byte limit')
             if (reader_total > MAX_READER_BYTES or narration_total > MAX_NARRATION_BYTES
-                    or reader_count > 1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2):
+                    or reader_count > 1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2 + MAX_ARCHIVES):
                 raise RestoreError('reader sidecar count or byte limit')
             if _assistant_path(entry[field]):
                 assistant_total += entry['size_bytes']
@@ -1094,7 +1135,8 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
         storage.check()
         if sidecars:
             checked_root = stage / SIDECARS if copy_files else sidecar_source
-            _validate_readers(storage.db, _snapshot_readers(checked_root))
+            _validate_readers(storage.db, _snapshot_readers(checked_root, cancelled=cancelled),
+                              cancelled=cancelled)
             _validate_studios(storage.db, checked_root, strict_assets=True)
             _validate_assistants(storage.db, checked_root, cancelled=cancelled)
             _validate_historical(checked_root, cancelled=cancelled)

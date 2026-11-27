@@ -631,7 +631,7 @@ def show_narration_projects(parent, store, *, workspace=None, guard=lambda: None
     guard()
     rows = store.list_projects(workspace)
     if workspace is None:
-        rows = tuple(row for row in rows if row['project'].source_location is None)
+        rows = tuple(row for row in rows if row['project'].workspace is None)
     if not rows:
         dialogs.show(parent, 'Reading copies', 'There are no saved reading copies or recovery drafts.')
         return None
@@ -648,8 +648,8 @@ def show_narration_projects(parent, store, *, workspace=None, guard=lambda: None
     project, saved_digest = store.load(project_id) if row['saved'] else (row['project'], None)
     def authorize(loaded):
         guard()
-        if (loaded.source_location is not None
-                and (workspace is None or loaded.source_location.workspace != workspace)):
+        if (loaded.workspace is not None
+                and (workspace is None or loaded.workspace != workspace)):
             raise ValueError('The reading project belongs to a different library. Open it in that library.')
     # Re-read identities after the selection dialog. A file or recovery draft
     # may have changed since the initial list was constructed.

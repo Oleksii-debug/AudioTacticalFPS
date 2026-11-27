@@ -130,7 +130,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_academic_comparison_actions', 'install_assistant_actions',
         'install_portable_sync_actions', 'install_language_actions', 'install_translation_actions',
         'install_conversion_actions', 'install_transcription_actions',
-        'install_engine_settings_actions', 'install_operations_actions')}
+        'install_engine_settings_actions', 'install_operations_actions', 'install_reading_import_actions')}
     env.update(installers)
     from carr_library.ui.audio_studio import install_audio_studio_actions
     from carr_library.ui.api_connections import install_api_connection_actions
@@ -275,7 +275,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('document_conversion', 'install_conversion_actions'),
                 ('transcription_dialog', 'install_transcription_actions'),
                 ('engine_settings', 'install_engine_settings_actions'),
-                ('operations_dialog', 'install_operations_actions')):
+                ('operations_dialog', 'install_operations_actions'),
+                ('reading_import', 'install_reading_import_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
                 if hasattr(module, 'wx'):
@@ -309,6 +310,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'audio.language_evidence' in keyboard.bindings
         assert 'engines.local' in keyboard.bindings
         assert 'operations.tasks' in keyboard.bindings
+        assert 'reading.import_legacy_copy' in keyboard.bindings
+        assert 'reading.open_legacy_history' in keyboard.bindings
         assert 'transcription.local' in keyboard.bindings
         assert 'Options/Keyboard shortcuts' in bindings
         assert value.menu_bar.GetMenuLabel(0) == '&File'
