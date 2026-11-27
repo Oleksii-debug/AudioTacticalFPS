@@ -241,11 +241,14 @@ def test_submission_does_not_adopt_unreceipted_recovery_data(submission):
     assert not (directory / 'job.json').exists()
 
 
-def test_submission_does_not_adopt_existing_unreceipted_output(submission):
-    from carr_library.studio.render import _output_name
+@pytest.mark.parametrize('legacy', [False, True])
+def test_submission_does_not_adopt_existing_unreceipted_output(submission, legacy):
+    from carr_library.studio.render import _output_name, _production_output_name
     service, project, output = submission
     job = 'existing-output'
-    existing = output / f'{_output_name(project.title)}-{job[:12]}'
+    name = (f'{_output_name(project.title)}-{job[:12]}' if legacy
+            else _production_output_name(project.title, job))
+    existing = output / name
     existing.mkdir()
     master = existing / 'master.wav'
     master.write_bytes(b'preserve existing output')
@@ -331,3 +334,63 @@ def test_completed_operation_options_cannot_hide_missing_outputs(tmp_path, voice
     assert service.run(job) == legacy
     assert read_json(receipt) == legacy
     assert read_json(marker) == legacy_owner
+
+
+
+def test_production_distinct_full_operation_ids_do_not_share_output(submission):
+    service, project, output = submission
+    first = 'sameprefix12-first'
+    second = 'sameprefix12-second'
+    assert first[:12] == second[:12]
+    assert service.submit(project, output, operation_id=first) == first
+    assert service.submit(project, output, operation_id=second) == second
+    saved_first, saved_second = service.get(first), service.get(second)
+    assert saved_first['destination'] != saved_second['destination']
+    assert Path(saved_first['destination']).parent == output
+    assert Path(saved_second['destination']).parent == output
+    reopened = ProductionService(service.root, voices=service.voices)
+    assert reopened.submit(project, output, operation_id=first) == first
+    assert reopened.submit(project, output, operation_id=second) == second
+    assert reopened.get(first) == saved_first
+    assert reopened.get(second) == saved_second
+
+
+def test_production_preserves_legacy_destination_on_replay(submission):
+    from carr_library.durable_state import atomic_json, read_json
+    from carr_library.studio.render import _output_name, _owner_receipt
+    service, project, output = submission
+    first, second = 'sameprefix12-first', 'sameprefix12-second'
+    service.submit(project, output, operation_id=first)
+    path = service.jobs_root / first / 'job.json'
+    state = service.get(first)
+    legacy = output / f'{_output_name(project.title)}-{first[:12]}'
+    state['destination'] = str(legacy)
+    atomic_json(path, state, replace=True)
+    legacy.mkdir()
+    marker = legacy / 'production-owner.json'
+    atomic_json(marker, _owner_receipt(state))
+    original = legacy / 'master.wav'
+    original.write_bytes(b'synthetic retained output')
+    raw, owner_raw = path.read_bytes(), marker.read_bytes()
+
+    # Replay of a prior receipt keeps its original location and bytes.
+    assert service.submit(project, output, operation_id=first) == first
+    assert service.get(first) == state
+    assert service.submit(project, output, operation_id=second) == second
+    assert Path(service.get(second)['destination']) != legacy
+    assert path.read_bytes() == raw and marker.read_bytes() == owner_raw
+    assert original.read_bytes() == b'synthetic retained output'
+    assert read_json(marker) == _owner_receipt(state)
+    # An orphaned legacy output of this operation still cannot be adopted.
+    path.unlink()
+    with pytest.raises(FileExistsError, match='without a matching job receipt'):
+        service.submit(project, output, operation_id=first)
+    assert original.read_bytes() == b'synthetic retained output'
+
+
+def test_production_output_component_stays_bounded():
+    from carr_library.studio.render import _production_output_name
+    name = _production_output_name('Український' * 100, 'a' * 80)
+    assert len(name) <= 83
+    assert len(name.encode('utf-8')) <= 255
+    assert name != _production_output_name('Український' * 100, 'a' * 79 + 'b')

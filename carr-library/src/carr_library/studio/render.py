@@ -73,6 +73,12 @@ def _output_name(title):
     return name
 
 
+def _production_output_name(title, job_id):
+    # A fixed-length digest of the entire case-sensitive operation ID avoids
+    # shared 12-character prefixes and keeps the old 83-character name bound.
+    return f'{_output_name(title)[:18]}-{sha256(job_id.encode("ascii")).hexdigest()}'
+
+
 def _operation_sha256(state):
     # Bind immutable render options, independently of mutable progress and
     # the project fingerprint (which intentionally describes only the project).
@@ -216,7 +222,8 @@ class ProductionService:
         if destination.is_relative_to(self.root):
             raise ValueError('Choose an output directory outside the private production state.')
         job_id = _id(operation_id) if operation_id else uuid4().hex
-        output = destination / f'{_output_name(project.title)}-{job_id[:12]}'
+        output = destination / _production_output_name(project.title, job_id)
+        legacy_output = destination / f'{_output_name(project.title)}-{job_id[:12]}'
         directory = self.jobs_root / job_id
         existing_path = directory / 'job.json'
 
@@ -225,7 +232,7 @@ class ProductionService:
                 previous = self.get(job_id)
             except FileNotFoundError:
                 return False
-            if (previous['fingerprint'] != project.fingerprint or previous['destination'] != str(output)
+            if (previous['fingerprint'] != project.fingerprint or previous['destination'] not in (str(output), str(legacy_output))
                     or previous['format'] != format or previous['stems'] != stems):
                 raise ValueError('This operation ID is already bound to a different production plan.')
             return True
@@ -243,11 +250,21 @@ class ProductionService:
                     raise ValueError('Production job has recovery data but no receipt; review it before resubmitting.')
                 regular(entry)
             # Never adopt another operation's output after a missing receipt.
-            try:
-                output.lstat()
-            except FileNotFoundError:
-                pass
-            else:
+            for candidate in (output, legacy_output):
+                try:
+                    candidate.lstat()
+                except FileNotFoundError:
+                    continue
+                # A known different legacy operation may share the old short
+                # prefix. Its directory is never adopted, changed or deleted.
+                if candidate == legacy_output and candidate != output:
+                    try:
+                        owner = read_json(candidate / 'production-owner.json')
+                    except FileNotFoundError:
+                        owner = None
+                    if (isinstance(owner, dict) and isinstance(owner.get('job'), str)
+                            and owner['job'] != job_id and owner['job'][:12] == job_id[:12]):
+                        continue
                 raise FileExistsError('Production output already exists without a matching job receipt.')
             self.projects.save(project)
             state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
