@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install exact source and declared tests
-        run: python -m pip install ".[test,sync]"
+        run: python -m pip install ".[test,sync,trusted-client]"
       - name: Prepare exact source and installed acceptance
         run: |
           mkdir -p ci-runtime-completion
