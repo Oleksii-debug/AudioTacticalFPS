@@ -1,0 +1,96 @@
+# Reviewed qualification of the existing optional adapter using pinned public
+# weights under the approved private noncommercial profile. No payload uploads.
+name: CARR canonical real MusicGen CPU qualification
+on:
+  push:
+    branches: [carr/musicgen-canonical-qualification-20261127-137c]
+    paths:
+      - carr-library/scripts/musicgen_canonical_qualification.py
+      - carr-library/src/carr_library/audio/music.py
+      - .github/workflows/carr-musicgen-canonical-qualification.yml
+  workflow_dispatch:
+    inputs:
+      accept_nc_weights:
+        description: Acquire the pinned MusicGen CC-BY-NC weights for this personal-use test
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: carr-musicgen-canonical-qualification-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  musicgen-cpu:
+    if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/carr/musicgen-canonical-qualification-20261127-137c') || inputs.accept_nc_weights == true }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Record exact qualification source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD 'HEAD^{tree}'
+          python -c "import ast,pathlib; tree=ast.parse(pathlib.Path('carr-library/scripts/musicgen_canonical_qualification.py').read_text()); codes=[n.value.right for n in ast.walk(tree) if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='probe' for t in n.targets)]; assert len(codes)==1; [ast.parse(ast.literal_eval(code)) for code in codes]; print('Canonical helper and embedded probe parsed')"
+      - name: Install reviewed build prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg pkg-config gcc g++ \
+            libavformat-dev libavcodec-dev libavdevice-dev libavutil-dev \
+            libswscale-dev libswresample-dev libavfilter-dev libsndfile1
+          df -h "$RUNNER_TEMP"
+      - name: Prepare isolated physical CPython runtime and exact upstream source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B carr-library/scripts/musicgen_canonical_qualification.py prepare-runtime \
+            --source-root "$GITHUB_WORKSPACE/carr-library" --root "$RUNNER_TEMP/carr-musicgen-canonical-install"
+      - name: Test exact worker imports and real Torch SDPA with network unavailable
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
+            env -i PATH=/usr/bin:/bin LANG=C.UTF-8 GITHUB_SHA="$GITHUB_SHA" \
+            LD_LIBRARY_PATH="$RUNNER_TEMP/carr-musicgen-canonical-install/runtime/lib" \
+            OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 \
+            "$RUNNER_TEMP/carr-musicgen-canonical-install/runtime/bin/python3.11" -I -B \
+            "$GITHUB_WORKSPACE/carr-library/scripts/musicgen_canonical_qualification.py" audit-import \
+            --source-root "$GITHUB_WORKSPACE/carr-library" --root "$RUNNER_TEMP/carr-musicgen-canonical-install"
+      - name: Acquire only the six exact pinned local model and tokenizer files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -B carr-library/scripts/musicgen_canonical_qualification.py prepare-assets \
+            --source-root "$GITHUB_WORKSPACE/carr-library" --root "$RUNNER_TEMP/carr-musicgen-canonical-install" \
+            --accept-personal-noncommercial
+          python -B carr-library/scripts/musicgen_canonical_qualification.py manifest \
+            --source-root "$GITHUB_WORKSPACE/carr-library" --root "$RUNNER_TEMP/carr-musicgen-canonical-install" \
+            --accept-personal-noncommercial
+      - name: Render genuine two-second neural audio through the existing adapter offline
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
+            env -i PATH=/usr/bin:/bin LANG=C.UTF-8 GITHUB_SHA="$GITHUB_SHA" \
+            LD_LIBRARY_PATH="$RUNNER_TEMP/carr-musicgen-canonical-install/runtime/lib" \
+            OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 \
+            "$RUNNER_TEMP/carr-musicgen-canonical-install/runtime/bin/python3.11" -I -B \
+            "$GITHUB_WORKSPACE/carr-library/scripts/musicgen_canonical_qualification.py" render \
+            --source-root "$GITHUB_WORKSPACE/carr-library" --root "$RUNNER_TEMP/carr-musicgen-canonical-install" \
+            --output "$RUNNER_TEMP/carr-musicgen-canonical-output/sample.wav" --accept-personal-noncommercial
+      # Deliberately no upload-artifact, cache save, public WAV, or model archive.
