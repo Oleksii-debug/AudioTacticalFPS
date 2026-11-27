@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "source_commit": "c5e37ec798cca301e8767577550ebf33e142abe4",
+  "run_id": 46004806890,
+  "job_id": 140525180697,
+  "aggregate": "FAIL",
+  "standard_install_repair_uninstall": {
+    "status": "PASS",
+    "checks": 6,
+    "actual_installed_app_self_test": true,
+    "checks_names": [
+      "active-application-blocks-uninstall",
+      "failed-bootstrap-preserves-previous",
+      "install",
+      "repair",
+      "uninstall",
+      "failed-environment-preserved"
+    ]
+  },
+  "distinct_a_to_b": {
+    "status": "FAIL_BEFORE_NATIVE",
+    "reason": "The harness expected an application-source.json sidecar absent from the sealed bundle contract; actual wheelhouse and hashed manifest are present.",
+    "native_cases": "NOT_RUN",
+    "installed_library_50": "NOT_RUN"
+  },
+  "artifact": {
+    "id": 15203956345,
+    "bytes": 976880,
+    "sha256": "b49eec8ddf2ea072583cb1dc8956a35c77edbdf3ac6ca93762fb3b8015c70506"
+  },
+  "repair": "Verify each actual sealed application wheel with its exact committed source and manifest hash, retain B proof under evidence, retain every distinct-generation, rollback, preservation and50 installed-library predicate.",
+  "production_publisher": "NOT_RUN",
+  "authenticode": "NOT_RUN",
+  "manual_nvda": "NOT_RUN"
+}

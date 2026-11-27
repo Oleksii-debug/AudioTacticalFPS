@@ -142,12 +142,30 @@ print(json.dumps(value, sort_keys=True))
     $previousWheel = $wheels[0].FullName
     $sourceProof = @'
 import hashlib, importlib.util, json, pathlib, shutil, sys
-previous, source, wheel, candidate_bundle, evidence = sys.argv[1:]
-previous, wheel, candidate_bundle, evidence = map(pathlib.Path, (previous, wheel, candidate_bundle, evidence))
+previous, source, wheel, candidate_bundle, candidate_project, candidate_source, candidate_manifest_hash, evidence = sys.argv[1:]
+previous, wheel, candidate_bundle, candidate_project, evidence = map(pathlib.Path,
+    (previous, wheel, candidate_bundle, candidate_project, evidence))
 spec = importlib.util.spec_from_file_location('previous_exact_wheel', previous / 'carr-library/packaging/source_wheel.py')
 verify = importlib.util.module_from_spec(spec); spec.loader.exec_module(verify)
 proof = verify.verify_application_wheel(wheel, previous, source)
-candidate = json.loads((candidate_bundle / 'application-source.json').read_text(encoding='utf-8'))
+# The sealed bundle contains its actual wheelhouse, not an application-source.json sidecar.
+# Re-prove B against its current exact checkout rather than inferring it from a filename.
+candidate_manifest_bytes = (candidate_bundle / 'bundle-manifest.json').read_bytes()
+assert hashlib.sha256(candidate_manifest_bytes).hexdigest() == candidate_manifest_hash
+candidate_manifest = json.loads(candidate_manifest_bytes)
+assert candidate_manifest['source_commit'] == candidate_source
+candidate_wheels = list((candidate_bundle / 'wheelhouse').glob('universal_research_library-*.whl'))
+assert len(candidate_wheels) == 1
+candidate_wheel = candidate_wheels[0]
+relative = candidate_wheel.relative_to(candidate_bundle).as_posix()
+with candidate_wheel.open('rb') as stream:
+    assert hashlib.file_digest(stream, 'sha256').hexdigest() == candidate_manifest['files'][relative]
+candidate_spec = importlib.util.spec_from_file_location('candidate_exact_wheel',
+    candidate_project / 'packaging/source_wheel.py')
+candidate_verify = importlib.util.module_from_spec(candidate_spec); candidate_spec.loader.exec_module(candidate_verify)
+candidate = candidate_verify.verify_application_wheel(candidate_wheel, candidate_project.parent, candidate_source)
+with (evidence / 'candidate-application-wheel.json').open('x', encoding='utf-8') as stream:
+    json.dump(candidate, stream, indent=2); stream.write('\n')
 assert proof['source_commit'] == source != candidate['source_commit']
 assert proof['wheel_sha256'] != candidate['wheel_sha256'], 'A must be its real source wheel, never relabeled B.'
 destination = evidence / 'previous-application-wheel'
@@ -167,7 +185,8 @@ with (destination / 'manifest.json').open('x', encoding='utf-8') as stream:
 print(json.dumps(manifest, sort_keys=True))
 '@
     Invoke-Checked $installedPython @('-I', '-B', '-c', $sourceProof, $previousRepository,
-        $PreviousSource, $previousWheel, $handoff.bundle, $evidence) 'previous-wheel-proof.log'
+        $PreviousSource, $previousWheel, $handoff.bundle, $project, $handoff.source_commit,
+        $handoff.manifest_sha256, $evidence) 'previous-wheel-proof.log'
 
     $arguments = @('-I', '-B', (Join-Path $previousProject 'packaging/build_windows_bundle.py'),
         '--wheel', $previousWheel, '--wheelhouse', (Join-Path $bundleWork 'wheelhouse'),
@@ -210,8 +229,12 @@ assert all(manifest[key] is True for key in ('bundled_python', 'bundled_model', 
     'bundled_native_runtime', 'bundled_native_launcher'))
 assert manifest['bundled_audio_runtime'] is False
 assert 0 < sum((bundle / name).stat().st_size for name in manifest['files']) < 2 * 1024**3
-wheel = json.loads((bundle / 'application-source.json').read_text(encoding='utf-8'))
 artifact = json.loads((evidence / 'previous-application-wheel/manifest.json').read_text(encoding='utf-8'))
+wheel_path = bundle / 'wheelhouse' / artifact['wheel_file']
+assert wheel_path.parent == bundle / 'wheelhouse'
+assert hashlib.sha256(wheel_path.read_bytes()).hexdigest() == manifest['files'][wheel_path.relative_to(bundle).as_posix()]
+source_verifier = module(previous / 'carr-library/packaging/source_wheel.py', 'previous_sealed_source')
+wheel = source_verifier.verify_application_wheel(wheel_path, previous, source)
 assert wheel['source_commit'] == artifact['source_commit'] == source
 assert wheel['wheel_sha256'] == artifact['wheel_sha256']
 (evidence / 'previous-build.json').write_bytes(raw_report)
@@ -229,7 +252,7 @@ print(json.dumps({'status': 'verified-build', 'source_commit': source, 'setup_sh
     $setupBytes = [Math]::Max($setupBytes, (Get-Item -LiteralPath $candidateSetup).Length)
     Require-Free (4 * ([long]$handoff.payload_bytes + [long]$handoff.installed_environment_bytes) +
         14 * $setupBytes + 512MB) 'Actual A, two rejected B generations, verified B and fresh-process TUF/target snapshots'
-    $candidateProof = Get-Content -LiteralPath (Join-Path $handoff.bundle 'application-source.json') -Raw | ConvertFrom-Json
+    $candidateProof = Get-Content -LiteralPath (Join-Path $evidence 'candidate-application-wheel.json') -Raw | ConvertFrom-Json
     Invoke-Checked $installedPython @('-I', '-B', 'packaging/probe_standard_update_windows.py',
         '--previous-build', $previousBuild, '--previous-bundle', $previousBundle,
         '--previous-source', $PreviousSource, '--previous-setup-sha256', $previousSetupSha,
