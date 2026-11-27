@@ -154,9 +154,9 @@ def test_binary_recordings_use_streaming_copy_not_json_materialization(library, 
     backup = tmp_path / 'backup'
     _, checksum = _backup(app, backup, shape)
     original = backup_compat.read_regular
-    def guarded(path, maximum):
+    def guarded(path, maximum, *, allow_empty=False):
         assert not str(path).endswith('.wav'), 'binary original reached the JSON reader'
-        return original(path, maximum)
+        return original(path, maximum, allow_empty=allow_empty)
     monkeypatch.setattr(backup_compat, 'read_regular', guarded)
     root = restore_backup(backup, tmp_path / 'restored', checksum)
     assert sha256((root / recording_backup.DIRECTORY / value['filename']).read_bytes()).hexdigest() == value['audio']['sha256']

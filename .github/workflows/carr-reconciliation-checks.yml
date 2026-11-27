@@ -79,8 +79,15 @@ jobs:
           purelib = pathlib.Path(sysconfig.get_path('purelib')).resolve()
           modules = ["carr_library.recording_backup","carr_library.audio.playback","carr_library.evidence_drafts","carr_library.ui.save_all","carr_library.runtime_settings","carr_library.speech.runtime","carr_library.speech.progress_speech","carr_library.backup_compat","carr_library.backup_sidecars","carr_library.library_backup","carr_library.state_recovery","carr_library.keybindings","carr_library.ui.keyboard_settings","carr_library.ui.productivity","carr_library.ui.reading_desk","carr_library.ui.save_actions","carr_library.ui.speech_dialog","carr_library.ui.studio_dialog","carr_library.ui.audio_studio","carr_library.speech.reading","carr_library.ui.scope_bindings","carr_library.ui.language_matrix","carr_library.research.export_file","carr_library.ui.export_destination","carr_library.ui.academic_actions","carr_library.ui.catalog_insights_actions","carr_library.ui.catalog_tools_dialog","carr_library.ui.desktop_app","carr_library.assistant.models","carr_library.assistant.planner","carr_library.assistant.service","carr_library.assistant.transcription","carr_library.transcription","carr_library.ui.assistant_dialog"]
           for name in modules:
-              source = pathlib.Path(importlib.import_module(name).__file__).resolve()
-              expected = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              module = importlib.import_module(name)
+              source = pathlib.Path(module.__file__).resolve()
+              relative = pathlib.Path(*name.split('.'))
+              if name == 'carr_library.transcription':
+                  expected = checkout / 'src' / relative / '__init__.py'
+                  assert hasattr(module, '__path__'), name
+                  assert not (checkout / 'src' / relative.with_suffix('.py')).exists(), name
+              else:
+                  expected = checkout / 'src' / relative.with_suffix('.py')
               assert source.is_relative_to(purelib) and not source.is_relative_to(checkout), name
               assert source.read_bytes() == expected.read_bytes(), name
           class NoExpectedFailures:
