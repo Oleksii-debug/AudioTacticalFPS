@@ -12,14 +12,17 @@ synthetic file-protocol peer. They exercise admission, source retention, process
 limits, pause/cancel/resume, checkpoint integrity, exports, editing and recovery.
 Their synthetic bytes are not recordings or model weights.
 
-A separate private integration check also launched the **unchanged supplied
-corrected worker**, SHA-256
+An earlier private integration snapshot launched the then-corrected supplied
+worker, SHA-256
 `21bcbe6c16f3b1d0cedec05469989e5b8256c5f2e3900f4b05f506c2c91df898`,
 with a synthetic installed inference backend. The application consumed that
 worker's actual checkpoint protocol, matched its actual reported installed-file
 inventory, retained the input, and verified TXT/SRT/VTT/JSON outputs. This
-establishes real compatibility with the supplied worker protocol. The private
-worker source and private proof inputs are not included in the public repository.
+snapshot established protocol compatibility for those exact worker bytes. It
+does not qualify later worker revisions or a different application commit.
+Current delivery acceptance requires a fresh private proof bound to its exact
+application commit/tree and worker digest. The private worker source and private
+proof inputs are not included in the public repository.
 
 **Real acoustic inference, model quality, native CPU/GPU compatibility, Windows
 ASR execution, NVDA listening and distribution rights remain separate
