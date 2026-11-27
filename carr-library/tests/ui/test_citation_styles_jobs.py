@@ -479,3 +479,32 @@ def test_closed_regeneration_keeps_worker_cancellation_and_ignores_delivery(form
     form.executor.finish(0)
     form.drain()
     assert form.dialog.status.value == before
+
+
+def test_ordered_editor_captures_current_scope_style_and_locale(form, monkeypatch):
+    from carr_library.ui import citation_clusters_dialog
+    child = N(ShowModal=Mock(), Destroy=Mock())
+    factory = Mock(return_value=child)
+    monkeypatch.setattr(citation_clusters_dialog, 'create_citation_clusters_dialog', factory)
+    dialog = form.dialog
+    dialog.style_choice.SetSelection(2)
+    dialog.locale_choice.SetSelection(2)
+    dialog.names_choice.SetSelection(1)
+    dialog.on_clusters()
+    options = factory.call_args.kwargs
+    assert options == dict(identity='selected-reference', style=dialog.styles[2].id,
+                           locale='uk-UA', name_mode='family-given')
+    child.ShowModal.assert_called_once()
+    child.Destroy.assert_called_once()
+    assert dialog.clusters_button.focused
+
+
+def test_ordered_editor_cannot_bypass_a_pending_parent_job(form, monkeypatch):
+    from carr_library.ui import citation_clusters_dialog
+    factory = Mock()
+    monkeypatch.setattr(citation_clusters_dialog, 'create_citation_clusters_dialog', factory)
+    dialog = form.dialog
+    dialog.on_preview()
+    assert not dialog.clusters_button.enabled
+    dialog.on_clusters()
+    factory.assert_not_called()

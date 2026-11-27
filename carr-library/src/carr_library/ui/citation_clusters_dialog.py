@@ -49,11 +49,12 @@ def create_citation_clusters_dialog(parent, controller, *, identity=None, style=
 
             self.groups = labelled('Citations in document &order', wx.ListBox(self.edit_page))
             self.groups.SetMinSize((-1, 105))
-            row = wx.BoxSizer(wx.HORIZONTAL)
+            row = wx.WrapSizer(wx.HORIZONTAL)
             self.up = wx.Button(self.edit_page, label='Move &up')
             self.down = wx.Button(self.edit_page, label='Move &down')
             self.remove_group = wx.Button(self.edit_page, label='Remove citation &group')
-            for button in (self.up, self.down, self.remove_group):
+            self.auto_notes = wx.Button(self.edit_page, label='Number notes by citation order')
+            for button in (self.up, self.down, self.remove_group, self.auto_notes):
                 self.editor_controls.append(button)
                 row.Add(button, 0, wx.ALL, 4)
             form.Add(row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 4)
@@ -135,6 +136,7 @@ def create_citation_clusters_dialog(parent, controller, *, identity=None, style=
             self.reload_item.Bind(wx.EVT_BUTTON, self.on_item)
             self.up.Bind(wx.EVT_BUTTON, lambda event: self.on_move(-1))
             self.down.Bind(wx.EVT_BUTTON, lambda event: self.on_move(1))
+            self.auto_notes.Bind(wx.EVT_BUTTON, self.on_auto_notes)
             self.generate.Bind(wx.EVT_BUTTON, self.on_preview)
             self.copy.Bind(wx.EVT_BUTTON, self.on_copy)
             self.save.Bind(wx.EVT_BUTTON, self.on_save)
@@ -168,6 +170,7 @@ def create_citation_clusters_dialog(parent, controller, *, identity=None, style=
             selected = ready and 0 <= group < len(groups)
             for control in (self.add_item, self.apply_item, self.remove_item, self.remove_group, self.reload_item):
                 control.Enable(selected)
+            self.auto_notes.Enable(ready and bool(groups))
             self.up.Enable(selected and group > 0)
             self.down.Enable(selected and group + 1 < len(groups))
             self.generate.Enable(ready and bool(groups) and not self.fields_dirty)
@@ -352,6 +355,12 @@ def create_citation_clusters_dialog(parent, controller, *, identity=None, style=
 
         def on_move(self, step):
             self.edit(lambda: (self.draft.move_group(self.group_index(), step), 0))
+
+        def on_auto_notes(self, event=None):
+            def operation():
+                self.draft.use_document_order()
+                return max(0, self.groups.GetSelection()), 0
+            self.edit(operation)
 
         def on_preview(self, event=None):
             if self.pending is not None or self.draft is None:

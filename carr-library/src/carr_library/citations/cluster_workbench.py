@@ -112,6 +112,13 @@ class CitationDraft:
         clusters.pop(group)
         self._save(clusters)
 
+    def use_document_order(self):
+        """Explicitly replace saved note positions with current order defaults."""
+        clusters = self.clusters
+        for group in clusters:
+            group.pop('note_index', None)
+        self._save(clusters)
+
     def move_group(self, group, step):
         clusters = self.clusters
         self._index(group, len(clusters))
