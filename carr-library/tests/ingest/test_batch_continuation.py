@@ -60,7 +60,21 @@ def test_5001_actual_files_reopen_last_page_import_and_backup_boundary(tmp_path)
         backup = root / 'snapshot'
         token = reopened.backup(backup)
         restored = LibraryApp(restore_backup(backup, root / 'restored', token))
-        assert not (restored.root / 'import-batches').exists()  # existing unpublished-source exclusion
+        recovered_first = restored.import_batch(workspace, first['batch_id'])
+        recovered_last = restored.import_batch(workspace, last['batch_id'])
+        assert recovered_first['counts']['queued'] == 5000
+        assert recovered_last['counts']['complete'] == 1
+        assert recovered_first['scan']['roots'] == []
+        assert recovered_first['scan']['next_offset'] is None
+        assert recovered_first['scan']['next_batch_id'] is None
+        assert all(Path(row['source']).is_relative_to(
+            restored.root / 'pending-imports' / 'originals')
+            for batch in (recovered_first, recovered_last) for row in batch['rows'])
+        review = restored.review_import_recovery(workspace, 'batch', first['batch_id'])
+        assert review['file_count'] == 5000 and review['previous_scan_incomplete'] is True
+        assert review['already_approved'] is False
+        with pytest.raises(PermissionError, match='Review restored imports'):
+            restored.run_import_batch(workspace, first['batch_id'])
         hit, = restored.search(workspace, 'document 5000')
         assert restored.copy(workspace, hit.ref, hit.revision, 'quote') == 'document 5000'
         assert journal(app, first).read_bytes() == saved

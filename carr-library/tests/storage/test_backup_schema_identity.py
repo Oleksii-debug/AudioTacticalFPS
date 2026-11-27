@@ -2,6 +2,7 @@
 from contextlib import closing
 from hashlib import sha256
 import json
+import shutil
 import sqlite3
 
 import pytest
@@ -9,7 +10,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.ingest.restore import RestoreError
 from carr_library.library_backup import create_backup, restore_backup
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from carr_library.storage.schema_identity import (
     expected_schema_fingerprint, schema_fingerprint,
 )
@@ -47,18 +48,39 @@ def forbid_writable_storage(monkeypatch):
     monkeypatch.setattr('carr_library.library_backup.Storage', refused)
 
 
+def historical_manifest(directory, manifest, version):
+    """Construct a historical envelope without newer V4 producer payloads.
+
+    Current imports retain their journals even after publication. Older backup
+    formats never contained this component; remove it from this synthetic test
+    fixture so the legacy reader reaches the database identity being tested.
+    """
+    manifest['version'] = version
+    if version < 4:
+        assert all(entry['filename'].startswith('pending-imports/')
+                   for entry in manifest['sidecars'])
+        shutil.rmtree(directory / 'pending-imports')
+        manifest['sidecars'] = []
+        del manifest['generated_audio_included']
+    if version < 3:
+        del manifest['sidecars']
+    if version == 1:
+        del manifest['schema_fingerprint']
+
+
 def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
     assert manifest['version'] == 4
-    assert manifest['schema_version'] == 4
+    assert manifest['schema_version'] == CURRENT_SCHEMA_VERSION
     assert set(manifest) == {'version', 'kind', 'schema_version',
                              'schema_fingerprint', 'database', 'assets', 'sidecars',
                              'generated_audio_included'}
-    assert manifest['sidecars'] == [] and manifest['generated_audio_included'] is False
+    assert 'pending-imports/manifest.json' in {entry['filename'] for entry in manifest['sidecars']}
+    assert manifest['generated_audio_included'] is False
     with closing(sqlite3.connect((directory / 'library.sqlite').as_uri() + '?mode=ro',
                                  uri=True)) as db:
         assert manifest['schema_fingerprint'] == schema_fingerprint(db)
-    assert manifest['schema_fingerprint'] == expected_schema_fingerprint(4)
+    assert manifest['schema_fingerprint'] == expected_schema_fingerprint(CURRENT_SCHEMA_VERSION)
     original = bundle_bytes(directory)
     target = restore_backup(directory, tmp_path / 'restored', write_manifest(directory, manifest))
     restored = LibraryApp(target)
@@ -85,11 +107,7 @@ def test_fingerprint_is_layout_identity_not_database_content(tmp_path):
 @pytest.mark.parametrize('version', [1, 2])
 def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
     app, workspace, topic, directory, manifest = backup
-    manifest['version'] = version
-    del manifest['sidecars']
-    del manifest['generated_audio_included']
-    if version == 1:
-        del manifest['schema_fingerprint']
+    historical_manifest(directory, manifest, version)
     digest = write_manifest(directory, manifest)
     original = bundle_bytes(directory)
     before = app.evidence(workspace, topic)[0]
@@ -105,7 +123,7 @@ def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
     'ALTER TABLE workspace_meta RENAME TO workspace_profile',
     'CREATE TABLE unknown_extension(value TEXT)',
     'DROP TRIGGER source_metadata_no_update',
-    'PRAGMA user_version=5',
+    'PRAGMA user_version=99',
 ])
 def test_different_layout_is_rejected_before_writable_open(
         backup, tmp_path, monkeypatch, version, sql):
@@ -115,13 +133,7 @@ def test_different_layout_is_rejected_before_writable_open(
     with closing(sqlite3.connect(database)) as db:
         db.execute(sql)
         db.commit()
-    manifest['version'] = version
-    if version < 3:
-        del manifest['sidecars']
-    if version < 4:
-        del manifest['generated_audio_included']
-    if version == 1:
-        del manifest['schema_fingerprint']
+    historical_manifest(directory, manifest, version)
     # A valid outer checksum cannot turn an incompatible layout into our schema.
     manifest['database']['size_bytes'] = database.stat().st_size
     manifest['database']['sha256'] = sha256(database.read_bytes()).hexdigest()

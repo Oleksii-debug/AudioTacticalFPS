@@ -173,8 +173,7 @@ class PlaybackTransport:
                 if self.prepared is not None:
                     self.prepared.check()
             except Exception:
-                self.stop(save=False)
-                self.prepared = None
+                self.withdraw()
                 raise
             before = self.player.status()
             # Save a measured position before sleep resets the native device.
@@ -198,6 +197,21 @@ class PlaybackTransport:
             self.player.stop()
             self._release()
             return self.status_text()
+
+    def withdraw(self):
+        """Stop without old-scope writes, then forget the prepared capability.
+
+        This remains callable after authorization is lost. A failed device
+        stop preserves ownership and notification suppression for safe retry.
+        """
+        with self.command():
+            self.stop(save=False)
+            self.prepared = None
+            self.segments = ()
+            self.authorize = lambda: None
+            self._saved_point = None
+            self.warning = ''
+            return 'Recording withdrawn. ' + self.status_text()
 
     def close(self):
         with self.command():

@@ -107,6 +107,7 @@ def test_refresh_and_selection_resolve_sources_outside_the_ui_thread(evidence):
     assert execute(current)
     assert current.note.value == 'Saved note'
     assert current.rows == app.evidence(current.workspace,current.topic)
+    assert not current.items.focused  # An ordinary background refresh does not move focus.
     current.select()
     assert current.frame.run_job.call_count == 2
     assert execute(current)
@@ -214,3 +215,57 @@ def test_newer_draft_is_not_replaced_by_an_earlier_refresh(evidence):
     complete(snapshot)
     assert current.note.value == 'A newer draft'
     assert 'newer unsaved note' in current.status.value
+
+
+def academic_frame(current, app):
+    from carr_library.ui.academic_tools import AcademicActions, AcademicScope
+    frame = current.frame
+    frame.library = app
+    frame.book = Mock()
+    frame.book.GetPageCount.return_value = 2
+    frame.book.GetPage.side_effect = [object(), current]
+    return AcademicActions(frame), AcademicScope(app, current.workspace, current.topic)
+
+
+def test_comparison_drilldown_uses_real_desktop_refresh_and_focuses_after_fresh_result(evidence):
+    current,app,_ = evidence
+    hit, = app.search(current.workspace,'original')
+    wanted = app.save_hit(current.workspace,current.topic,hit.ref,hit.revision,'Selected comparison note')
+    actions,scope = academic_frame(current,app)
+    actions.open_evidence(scope,SimpleNamespace(topic_id=current.topic,evidence_id=wanted))
+    assert not current.items.focused and current.displayed.evidence_id != wanted
+    assert execute(current)
+    assert current.displayed.evidence_id == wanted and current.quote.value == 'original'
+    assert current.note.value == 'Selected comparison note' and current.items.focused
+    current.frame.book.SetSelection.assert_called_once_with(1)
+
+
+def test_comparison_drilldown_retains_actual_unsaved_note_and_its_focus(evidence):
+    current,app,identity = evidence
+    current.note.SetValue('Actual unsaved comparison note')
+    actions,scope = academic_frame(current,app)
+    actions.open_evidence(scope,SimpleNamespace(topic_id=current.topic,evidence_id=identity))
+    current.frame.run_job.assert_not_called()
+    assert current.note.value == 'Actual unsaved comparison note' and current.note.focused
+    assert not current.items.focused and app.evidence(current.workspace,current.topic)[0].note == 'Saved note'
+
+
+@pytest.mark.parametrize('change',['scope','epoch','closed','draft'])
+def test_explicit_refresh_focus_cannot_outlive_authorized_snapshot_or_newer_draft(evidence,change):
+    current,_,identity = evidence
+    current.refresh(evidence_id=identity,focus=True)
+    _,operation,complete,_ = current.frame.run_job.call_args.args
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        snapshot = pool.submit(operation).result()
+    if change == 'scope':
+        current.frame.active = ('another','topic')
+    elif change == 'epoch':
+        current._evidence_epoch += 1
+    elif change == 'closed':
+        current.frame._closing = True
+    else:
+        current.note.SetValue('Newer note during source load')
+    complete(snapshot)
+    assert not current.items.focused
+    if change == 'draft':
+        assert current.note.value == 'Newer note during source load' and current.note.focused

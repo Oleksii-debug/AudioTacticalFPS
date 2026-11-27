@@ -25,6 +25,7 @@ _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
+_TRANSLATION = re.compile(r'state/translations/(?:[0-9a-f]{32}|languages-[a-zA-Z0-9_-]{1,100})\.json\Z')
 
 
 def _check_cancelled(cancelled):
@@ -75,8 +76,17 @@ def sidecar_limit(name):
         return _model('audio.playback_resume').MAX_BYTES
     if name.startswith('state/assistant/'):
         return _model('assistant.backup').limit(name)
+    if name.startswith('state/translations/'):
+        if _TRANSLATION.fullmatch(name) is None:
+            raise RestoreError('unsupported translation backup filename')
+        model = _model('assistant.translation')
+        return model.MAX_LANGUAGE_BYTES if PurePosixPath(name).name.startswith('languages-') else model.MAX_BYTES
     if name.startswith('audio-projects/'):
         return _model('audio.library_sidecars').limit(name)
+    if name.startswith('pending-imports/'):
+        return _model('ingest.pending_sidecars').limit(name)
+    if name.startswith('transcription-jobs/'):
+        return _model('transcription.backup').limit(name)
     if re.fullmatch(r'narration-projects/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return _model('reader.narration').MAX_PROJECT_BYTES
     if re.fullmatch(r'reading-copies/[0-9a-f]{32}\.json', name):
@@ -160,8 +170,27 @@ def validate_sidecar(db, name, raw):
                         raise ValueError('Playback range lies outside its exact saved source.')
         elif name.startswith('state/assistant/'):
             _model('assistant.backup').validate(name, raw)
+        elif name.startswith('state/translations/'):
+            model = _model('assistant.translation')
+            record = model.validate_backup_file(name, raw)
+            if record['schema'] == 'carr-translation-job/1':
+                plan = record['plan']
+                # Pasted text has no locations, but still belongs to one saved
+                # library/topic. Archived history remains valid backup data.
+                if db.execute('SELECT 1 FROM workspace_meta WHERE workspace=?',
+                              (plan['workspace'],)).fetchone() is None:
+                    raise ValueError('Translation belongs to a missing library.')
+                if plan['topic'] is not None and db.execute(
+                        'SELECT 1 FROM research_topic WHERE workspace=? AND id=?',
+                        (plan['workspace'], plan['topic'])).fetchone() is None:
+                    raise ValueError('Translation topic does not belong to its saved library.')
+            validate_locations(db, model.source_locations(record))
         elif name.startswith('audio-projects/'):
             _model('audio.library_sidecars').validate_metadata(db, name, raw)
+        elif name.startswith('pending-imports/'):
+            _model('ingest.pending_sidecars').validate_metadata(db, name, raw)
+        elif name.startswith('transcription-jobs/'):
+            _model('transcription.backup').validate_metadata(db, name, raw)
         elif name.startswith('narration-projects/'):
             project = _model('reader.narration').validate_narration_payload(name, raw)
             _validate_original_text(db, project.source_location, project.original_text)
@@ -198,14 +227,31 @@ def _collection_budgets(entries):
         if (len(narration) > model.MAX_PROJECTS * 2
                 or sum(size for _, size in narration) > model.MAX_SNAPSHOT_BYTES):
             raise RestoreError('narration producer snapshot budget exceeded')
+    translations = [(name, size) for name, size in entries if name.startswith('state/translations/')]
+    if translations:
+        model = _model('assistant.translation')
+        jobs = sum(re.fullmatch(r'state/translations/[0-9a-f]{32}\.json', name) is not None
+                   for name, _ in translations)
+        if jobs > model.MAX_JOBS or sum(size for _, size in translations) > model.MAX_SNAPSHOT_BYTES:
+            raise RestoreError('translation producer snapshot budget exceeded')
     projects = {PurePosixPath(name).parts[1] for name, _ in entries if name.startswith('audio-projects/')}
     if projects and len(projects) > _model('audio.managed').MAX_PROJECTS:
         raise RestoreError('managed audio project count limit')
+    jobs = {PurePosixPath(name).parts[1] for name, _ in entries if name.startswith('transcription-jobs/')}
+    if jobs and len(jobs) > _model('transcription.backup').MAX_JOBS:
+        raise RestoreError('transcription job count limit')
+    pending = [(name, size) for name, size in entries if name.startswith('pending-imports/')]
+    if pending:
+        model = _model('ingest.pending_sidecars')
+        if len(pending) > model.MAX_FILES or sum(size for _, size in pending) > model.MAX_BYTES:
+            raise RestoreError('pending import snapshot budget exceeded')
 
 
 def maximum_bytes(include_generated=False):
     # Validated PCM inputs are preserved even without derived audio outputs.
-    return MAX_BYTES + _model('audio.library_sidecars').MAX_BYTES
+    return (MAX_BYTES + _model('audio.library_sidecars').MAX_BYTES
+            + _model('ingest.pending_sidecars').MAX_BYTES
+            + _model('transcription.backup').MAX_BYTES)
 
 
 def normalize_manifest(manifest):
@@ -269,7 +315,7 @@ def normalize_manifest(manifest):
         raise RestoreError('invalid library manifest fields')
     if type(entries) is not list or len(entries) > MAX_FILES:
         raise RestoreError('invalid sidecar manifest')
-    names, portable_paths, total, media_total, copied = set(), {}, 0, 0, []
+    names, portable_paths, total, media_total, pending_total, transcription_total, copied = set(), {}, 0, 0, 0, 0, []
     for entry in entries:
         if (type(entry) is not dict or set(entry) != {'filename', 'size_bytes', 'sha256'}
                 or type(entry['size_bytes']) is not int
@@ -277,8 +323,16 @@ def normalize_manifest(manifest):
             raise RestoreError('invalid sidecar manifest entry')
         maximum = sidecar_limit(entry['filename'])
         audio = _model('audio.library_sidecars') if entry['filename'].startswith('audio-projects/') else None
-        minimum = audio.minimum(entry['filename']) if audio is not None else 1
+        pending = _model('ingest.pending_sidecars') if entry['filename'].startswith('pending-imports/') else None
+        transcription = _model('transcription.backup') if entry['filename'].startswith('transcription-jobs/') else None
+        minimum = (audio.minimum(entry['filename']) if audio is not None else
+                   pending.minimum(entry['filename']) if pending is not None else
+                   transcription.minimum(entry['filename']) if transcription is not None else 1)
         is_media = audio is not None and audio.streamed(entry['filename'])
+        if pending is not None and version != 4:
+            raise RestoreError('pending imports need their explicit version-4 manifest declaration')
+        if transcription is not None and version != 4:
+            raise RestoreError('transcription data requires the common version-4 manifest')
         if ((audio is not None and version != 4)
                 or (audio is not None and audio.generated(entry['filename']) and not generated)):
             raise RestoreError('managed audio needs its explicit version-4 manifest declaration')
@@ -293,7 +347,15 @@ def normalize_manifest(manifest):
             previous = portable_paths.setdefault(name.casefold(), name)
             if previous != name:
                 raise RestoreError('sidecar paths collide on a case-insensitive filesystem')
-        if is_media:
+        if pending is not None:
+            pending_total += entry['size_bytes']
+            if pending_total > pending.MAX_BYTES:
+                raise RestoreError('pending import manifest byte limit')
+        elif transcription is not None:
+            transcription_total += entry['size_bytes']
+            if transcription_total > transcription.MAX_BYTES:
+                raise RestoreError('transcription manifest byte limit')
+        elif is_media:
             media_total += entry['size_bytes']
             if media_total > audio.MAX_BYTES:
                 raise RestoreError('generated audio manifest byte limit')
@@ -335,6 +397,14 @@ def read_regular(path, maximum):
 
 
 def _ignored(name):
+    if name.startswith('state/translations/'):
+        leaf = PurePosixPath(name).name
+        if name != 'state/translations/' + leaf:
+            return False
+        if re.fullmatch(r'[0-9a-f]{32}\.lock', leaf):
+            return True
+        pending = re.fullmatch(r'\.(.+)\.[0-9a-f]{32}\.tmp', leaf)
+        return pending is not None and _TRANSLATION.fullmatch('state/translations/' + pending[1]) is not None
     if name.startswith('state/assistant/'):
         return _model('assistant.backup').ignored(name)
     path = PurePosixPath(name)
@@ -411,6 +481,12 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, c
         raise RestoreError('application state changed during backup; pause its producer and retry')
     entries.extend(_model('audio.library_sidecars').snapshot(db, root, stage,
         include_generated=include_generated, max_bytes=max_bytes - total, cancelled=cancelled))
+    retained_bytes = sum(entry['size_bytes'] for entry in entries)
+    entries.extend(_model('transcription.backup').snapshot(db, root, stage,
+        max_bytes=max_bytes - retained_bytes, cancelled=cancelled))
+    remaining = max_bytes - sum(entry['size_bytes'] for entry in entries)
+    entries.extend(_model('ingest.pending_sidecars').snapshot(db, root, stage,
+        max_bytes=remaining, cancelled=cancelled))
     _validate_playback_inventory(stage, entries)
     if len(entries) > MAX_FILES:
         raise RestoreError('combined sidecar inventory exceeds its file budget')
@@ -445,12 +521,18 @@ def check_namespace(directory, inventory):
 
 def restore(db, source, stage, inventory, *, cancelled=lambda: False, copy_files=True):
     source = source / inventory.payload_root if inventory.payload_root else source
-    audio_entries = []
+    audio_entries, pending_entries, transcription_entries = [], [], []
     for entry in inventory.entries:
         _check_cancelled(cancelled)
         name = entry['filename']
         if name.startswith('audio-projects/'):
             audio_entries.append(entry)
+            continue
+        if name.startswith('pending-imports/'):
+            pending_entries.append(entry)
+            continue
+        if name.startswith('transcription-jobs/'):
+            transcription_entries.append(entry)
             continue
         raw = read_regular(source / name, sidecar_limit(name))
         if len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']:
@@ -463,6 +545,12 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False, copy_files
     if audio_entries:
         _model('audio.library_sidecars').restore(db, source, stage, audio_entries,
             include_generated=inventory.generated_audio_included, cancelled=cancelled, copy_files=copy_files)
+    if pending_entries:
+        _model('ingest.pending_sidecars').restore(db, source, stage, pending_entries,
+            cancelled=cancelled, copy_files=copy_files)
+    if transcription_entries:
+        _model('transcription.backup').restore(db, source, stage, transcription_entries,
+            cancelled=cancelled, copy_files=copy_files)
     _validate_playback_inventory(source, inventory.entries)
     _check_cancelled(cancelled)
 
@@ -487,3 +575,17 @@ def publish(stage, destination, entries, *, sync_directory):
         parents.update(p for p in path.parents if p == destination or p.is_relative_to(destination))
     for parent in sorted(parents, key=lambda path: len(path.parts), reverse=True):
         sync_directory(parent)
+
+
+def initialize_restored(root, entries):
+    """Initialize typed recovery only after staging links are removed.
+
+    The caller retains its incomplete-restore marker throughout this step.
+    Restored queues require the producer's fresh review before any execution.
+    """
+    for prefix, module in (('audio-projects/', 'audio.library_sidecars'),
+                           ('transcription-jobs/', 'transcription.backup'),
+                           ('pending-imports/', 'ingest.pending_sidecars')):
+        selected = [entry for entry in entries if entry['filename'].startswith(prefix)]
+        if selected:
+            _model(module).initialize_restored(root, selected)

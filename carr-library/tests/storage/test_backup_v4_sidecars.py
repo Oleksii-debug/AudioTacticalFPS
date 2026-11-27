@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -53,8 +54,10 @@ def test_v4_preserves_exact_historical_reader_state(reading, tmp_path):
     checksum = app.backup(backup)
     value = manifest(backup)
     assert value['version'] == 4 and value['generated_audio_included'] is False
-    assert value['sidecars'] == [dict(filename='reading-state.json', size_bytes=len(source_bytes),
-                                     sha256=sha256(source_bytes).hexdigest())]
+    assert [entry for entry in value['sidecars'] if entry['filename'] == 'reading-state.json'] == [
+        dict(filename='reading-state.json', size_bytes=len(source_bytes),
+             sha256=sha256(source_bytes).hexdigest())]
+    assert any(entry['filename'] == 'pending-imports/manifest.json' for entry in value['sidecars'])
     before = files(backup)
     target = restore_backup(backup, tmp_path / 'Відновлена', checksum)
     assert ReadingState(target).resume(workspace, 'edition') == page.location
@@ -97,6 +100,11 @@ def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, sha
     folder = tmp_path / 'legacy'
     create_backup(app, folder)
     value = manifest(folder)
+    # V3 predates this captured-import component. Remove it only from the
+    # synthetic legacy fixture; the current producer keeps completed history.
+    value['sidecars'] = [entry for entry in value['sidecars']
+                         if not entry['filename'].startswith('pending-imports/')]
+    shutil.rmtree(folder / 'pending-imports')
     value['version'] = 3
     del value['generated_audio_included']
     if shape == 'reading_state':

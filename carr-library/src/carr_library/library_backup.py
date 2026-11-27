@@ -4,7 +4,7 @@ Backups include all workspaces, saved research, registered original files and
 explicitly validated reader/editor/settings sidecars. Unknown application state
 is refused, never silently discarded. Active job checkpoint formats require
 their producer's snapshot adapter; this is not a live-job backup claim.
-Retained files from failed/unpublished imports are deliberately not included.
+Pending imports use the producer's validated journal and captured-source adapter.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Format 4 unifies registered sidecars. Exact legacy formats 1/2 and the three
@@ -29,7 +29,7 @@ from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
-from .storage.revisions import Storage
+from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from . import backup_sidecars
 
@@ -144,13 +144,13 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
         with TemporaryDirectory(prefix='.carr-library-backup-', dir=destination.parent) as tmp:
             stage = Path(tmp)
             snapshot = stage / DATABASE
-            with closing(Storage(app.database, schema_version=4)) as storage:
+            with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.backup(snapshot)
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
             _check_budget(size, max_bytes)
-            with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+            with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 asset_budget = MAX_ASSET_BYTES if max_bytes is None else min(MAX_ASSET_BYTES, max_bytes - size)
                 entries = _copy_originals(snapshot_storage.db, app.assets, stage / ORIGINALS,
                                           max_bytes=asset_budget, cancelled=cancelled)
@@ -159,7 +159,7 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 state_budget = backup_sidecars.maximum_bytes(include_generated) if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
                     max_bytes=state_budget, include_generated=include_generated, cancelled=cancelled)
-            manifest = dict(version=4, kind='carr-library', schema_version=4,
+            manifest = dict(version=4, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
@@ -213,7 +213,7 @@ def _read_manifest(directory, expected_manifest_sha256):
     inventory = backup_sidecars.normalize_manifest(manifest)
     backup_sidecars.check_namespace(directory, inventory)
     if (manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 2:
@@ -341,12 +341,11 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
         backup_sidecars.publish(stage, destination, inventory.entries, sync_directory=_sync_directory)
-        from .audio.library_sidecars import initialize_restored
-        initialize_restored(destination, [entry for entry in inventory.entries
-                                         if entry['filename'].startswith('audio-projects/')])
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.
+    # A failed producer initialization leaves this root explicitly unopenable.
+    backup_sidecars.initialize_restored(destination, inventory.entries)
     (destination / INCOMPLETE).unlink()
     _sync_directory(destination)
     _sync_directory(destination.parent)

@@ -89,6 +89,37 @@ def test_scope_drift_stops_and_withdraws_recording(transport):
     assert control.prepared is None and control.player.state == 'stopped' and not muted
 
 
+def test_explicit_withdrawal_clears_scope_only_after_confirmed_stop(transport, monkeypatch):
+    control, _, muted, _, current = transport
+    control.segments = ((0, 'Prior source chapter'),)
+    control.play()
+    wait(control.player.native, lambda state: state.state == 'playing')
+    current[0] = False
+    monkeypatch.setattr(control, 'checkpoint', lambda *args: pytest.fail('Revoked scope must not save a position.'))
+    assert control.withdraw().startswith('Recording withdrawn.')
+    assert control.prepared is None and control.segments == ()
+    assert control.player.state == 'stopped' and not muted
+    current[0] = True
+    with pytest.raises(ValueError, match='Prepare a recording'):
+        control.play()
+
+
+def test_failed_withdrawal_keeps_device_ownership_until_retry_confirms_stop(transport, monkeypatch):
+    control, _, muted, _, current = transport
+    prepared = control.prepared
+    control.play()
+    wait(control.player.native, lambda state: state.state == 'playing')
+    current[0] = False
+    original = control.player.native.stop
+    monkeypatch.setattr(control.player.native, 'stop', Mock(side_effect=RuntimeError('still active')))
+    with pytest.raises(RuntimeError, match='still active'):
+        control.withdraw()
+    assert control.prepared is prepared and muted
+    monkeypatch.setattr(control.player.native, 'stop', original)
+    control.withdraw()
+    assert control.prepared is None and not muted
+
+
 def test_failed_stop_never_releases_its_progress_suppression(transport, monkeypatch):
     control, _, muted, _, _ = transport
     control.play()

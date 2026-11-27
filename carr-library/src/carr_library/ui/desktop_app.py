@@ -44,6 +44,7 @@ from .assistant_dialog import install_assistant_actions
 from .language_matrix import install_language_actions
 from .document_conversion import install_conversion_actions
 from .transcription import install_transcription_actions
+from .translation import install_translation_actions
 from .acquisition_dialog import show_acquisition_dialog
 
 
@@ -94,6 +95,8 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.bound_library = frame.library
         self.bound_workspace,self.bound_topic = services.workspace,services.topic
         self.results = {}
+        self._search_alive = True
+        self._init_paging()
         super().__init__(parent, services.search, services.load_context,
                          verified_copy=services.verified_copy)
         self.retrieval.SetItems(['Exact phrase', 'Whole word', 'All words on one page',
@@ -142,10 +145,74 @@ class DesktopSearchPanel(PagedSearchPanel):
         original = wx.Button(self, label='Open &original source file')
         original.Bind(wx.EVT_BUTTON, self.open_original)
         self.GetSizer().Add(original, 0, wx.ALL, 4)
+        navigation = wx.BoxSizer(wx.HORIZONTAL)
+        self.previous_result_page = wx.Button(self, label='&Previous result page')
+        self.next_result_page = wx.Button(self, label='&Next result page')
+        self.previous_result_page.SetName('Previous result page')
+        self.next_result_page.SetName('Next result page')
+        self.previous_result_page.Bind(wx.EVT_BUTTON, self.on_previous_result_page)
+        self.next_result_page.Bind(wx.EVT_BUTTON, self.on_next_result_page)
+        for button in (self.previous_result_page, self.next_result_page):
+            navigation.Add(button, 0, wx.ALL, 4)
+        self.GetSizer().Add(navigation, 0, wx.EXPAND)
+        self._set_page_navigation()
+        self.Bind(wx.EVT_WINDOW_DESTROY, self._search_destroyed)
         for control in (self.retrieval, self.result_mode, self.collection):
             control.Bind(wx.EVT_CHOICE, self.on_options_changed)
         for control in (self.query, *self.filters.values()):
             control.Bind(wx.EVT_TEXT, self.on_options_changed)
+
+    def _init_paging(self):
+        from carr_library.search.federated import _data_identity
+        self._search_data_identity = _data_identity(self.bound_library)
+        self._page_selections = {}
+        self._accepted_request = None
+        self._next_cursor = None
+        self._page_history, self._page_index, self._page_origin = [None], 0, 0
+
+    def _set_page_navigation(self):
+        for name, enabled in (
+                ('previous_result_page', self._accepted_request is not None and self._page_index > 0),
+                ('next_result_page', self._accepted_request is not None and self._next_cursor is not None)):
+            button = getattr(self, name, None)
+            if button is not None:
+                button.Enable(bool(enabled))
+
+    def _retire_page_handles(self):
+        # Only this panel's accepted page is retired. Other host consumers keep
+        # their own capabilities; a worker candidate never mutates this map.
+        selections = getattr(self.bound_library, '_selections', None)
+        if type(selections) is dict:
+            for ref, selected in getattr(self, '_page_selections', {}).items():
+                if selections.get(ref) is selected:
+                    selections.pop(ref)
+        self._page_selections = {}
+
+    def _reset_paging(self):
+        self._accepted_request = None
+        self._next_cursor = None
+        self._page_history, self._page_index, self._page_origin = [None], 0, 0
+        self._set_page_navigation()
+
+    def _search_current(self, epoch=None):
+        from carr_library.search.federated import _data_identity
+        try:
+            return (self._search_alive and not getattr(self.frame, '_closing', False)
+                    and self.frame.library is self.bound_library
+                    and self.frame.active == (self.bound_workspace, self.bound_topic)
+                    and self.model.workspace == self.bound_workspace
+                    and _data_identity(self.bound_library) == self._search_data_identity
+                    and (epoch is None or self._context_epoch == epoch))
+        except (OSError, ValueError, AttributeError, TypeError):
+            return False
+
+    def _search_destroyed(self, event):
+        if event.GetEventObject() is self:
+            self._search_alive = False
+            self._context_epoch += 1
+            self._retire_page_handles()
+            self._accepted_request = None
+        event.Skip()
 
     def on_build_query(self, event=None):
         if self.frame.working:
@@ -173,6 +240,8 @@ class DesktopSearchPanel(PagedSearchPanel):
     def on_options_changed(self, event=None):
         """Discard old results when query, filters or presentation change."""
         self._context_epoch += 1
+        self._retire_page_handles()
+        self._reset_paging()
         self.model.clear()
         self.results.clear()
         self.grid.refresh()
@@ -190,6 +259,8 @@ class DesktopSearchPanel(PagedSearchPanel):
                                  [f'Collection: {name}' for identity, name in pairs])
         self.collection.SetSelection(self.collection_ids.index(selected) if selected in self.collection_ids else 0)
         self._context_epoch += 1
+        self._retire_page_handles()
+        self._reset_paging()
         self.model.clear()
         self.results.clear()
         self.grid.refresh()
@@ -197,21 +268,18 @@ class DesktopSearchPanel(PagedSearchPanel):
         self.status.ChangeValue('Collections refreshed. Search again using the current selection.' if selected in self.collection_ids else
                                 'The selected collection is no longer available. Choose a collection and search again.')
 
-    def on_search(self, event):
-        if self.frame.working:
-            self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
-            return
+    def _search_request(self):
         workspace = self.model.workspace
         query = self.query.GetValue().strip()
         if not workspace or workspace != self.bound_workspace or not query:
             self.status.ChangeValue('Select a library and enter a query.')
             self.query.SetFocus()
-            return
+            return None
         retrieval = self.retrieval.GetSelection()
         if not 0 <= retrieval < len(self.MODES):
             self.status.ChangeValue('Choose a search mode first.')
             self.retrieval.SetFocus()
-            return
+            return None
         mode = self.MODES[retrieval]
         if mode == 'advanced':
             from carr_library.search.advanced import compile_query
@@ -221,58 +289,191 @@ class DesktopSearchPanel(PagedSearchPanel):
                 self.status.ChangeValue(f'Invalid advanced query: {exc}')
                 self.status.SetInsertionPoint(0)
                 self.status.SetFocus()
-                return
+                return None
         presentation = self.result_mode.GetSelection()
         if not 0 <= presentation < 2:
             self.status.ChangeValue('Choose Short quotations or Thematic excerpts first.')
             self.result_mode.SetFocus()
-            return
+            return None
         result_mode = ('short', 'thematic')[presentation]
         options = {key: control.GetValue().strip() or None for key, control in self.filters.items()}
         index = self.collection.GetSelection()
         if not 0 <= index < len(self.collection_ids):
             self.status.ChangeValue('Choose a search collection first.')
             self.collection.SetFocus()
-            return
+            return None
         options['collection'] = self.collection_ids[index]
+        return dict(workspace=workspace, query=query, mode=mode,
+                    result_mode=result_mode, authorized_topic=self.bound_topic, **options)
+
+    def on_search(self, event=None):
+        if self.frame.working:
+            self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
+            return
+        request = self._search_request()
+        if request is not None:
+            self._start_page(request, None, ([None], 0, 0))
+
+    def on_previous_result_page(self, event=None):
+        self._navigate_page(-1)
+
+    def on_next_result_page(self, event=None):
+        self._navigate_page(1)
+
+    def _navigate_page(self, direction):
+        if self.frame.working:
+            self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
+            return
+        if self._accepted_request is None:
+            self.status.ChangeValue('Choose Search before changing result pages.')
+            self.status.SetFocus()
+            return
+        request = self._search_request()
+        if request != self._accepted_request:
+            self.on_options_changed()
+            self.status.ChangeValue('Search options changed. Choose Search to start a new result sequence.')
+            self.status.SetFocus()
+            return
+        if (direction == 1 and self._next_cursor is None
+                or direction == -1 and self._page_index == 0):
+            self.status.ChangeValue('There is no further result page in that direction.')
+            self.status.SetFocus()
+            return
+        history, origin = list(self._page_history), self._page_origin
+        index = self._page_index + direction
+        if direction == 1:
+            history = history[:index] + [self._next_cursor]
+        if len(history) > 1000:
+            retired = len(history) - 1000
+            history, index, origin = history[retired:], index - retired, origin + retired
+        self._start_page(dict(request), history[index], (history, index, origin))
+
+    def _start_page(self, request, cursor, navigation):
+        from copy import copy
+        from carr_library.search.catalog_pages import SearchPage
+        if not self._search_current():
+            self.frame.report('The library, topic or data directory changed. Open its Search section again.')
+            return
+        library = self.bound_library
+        # Reuse the actual host search against an isolated selection cache. A
+        # failed or late-cancelled page must not evict the current page's handles.
+        candidate = copy(library)
+        candidate._selections = {}
         self._context_epoch += 1
         epoch = self._context_epoch
-        self.model.clear()
-        self.results.clear()
-        self.grid.refresh()
-        self.details.ChangeValue('')
         notes = []
 
-        def done(rows):
-            if self._context_epoch != epoch or self.model.workspace != workspace:
-                return
-            self.results = {r.ref: r for r in rows}
-            self.model.replace(workspace, (Hit(r.workspace, r.ref, r.revision, r.title,
-                r.author, r.edition, r.page, r.quote, r.citation) for r in rows))
-            self.grid.refresh()
-            info = f'{len(rows)} results.' if rows else 'No results. Change the query or source filters.'
-            if rows:
-                info += (' Short source quotations.' if result_mode == 'short' else
-                         ' Expanded source excerpts from the matching page or text segment.')
-                info += ' Showing excerpts from up to 100 matches. Use source filters to focus the search.'
-            if notes:
-                info += ' ' + ' '.join(dict.fromkeys(notes))
-            if mode == 'advanced':
-                info += (' Conditions are checked on one page or text segment at a time. '
-                         'A short excerpt may show only part of the matching text; More opens that source page.')
-            if any(not r.verified for r in rows):
-                info += ' Some extracted texts need independent review before quotation or export.'
-            self.status.ChangeValue(info)
-            if rows:
-                self.grid.select_rows([0])
-                self.grid.focus_row(0)
-                self._refresh_details()
-            else:
+        def cancelled():
+            if self.frame.cancel_event.is_set() or not self._search_current(epoch):
+                raise InterruptedError('Search stopped; the previous completed result page was kept.')
+            return False
+
+        def operation():
+            cancelled()
+            page = candidate.search_page(**request, cursor=cursor,
+                                         cancelled=cancelled, on_status=notes.append)
+            cancelled()
+            return page
+
+        def failed(error):
+            if self._search_current(epoch):
+                message = ('Search cancelled. ' if isinstance(error, (InterruptedError, TimeoutError))
+                           else 'Search failed: ' + str(error) + '. ')
+                self.status.ChangeValue(message + (
+                    'The previous completed result page and its source actions were kept.'
+                    if self._accepted_request is not None else
+                    'No new result page was accepted. Choose Search to retry.'))
+                self._set_page_navigation()
                 self.status.SetFocus()
 
-        self.frame.run_job('Searching the selected library', lambda: self.frame.library.search(
-            workspace, query, mode=mode, result_mode=result_mode, cancelled=self.frame.cancel_event.is_set,
-            authorized_topic=self.bound_topic, on_status=notes.append, **options), done)
+        def done(page):
+            cancelled()
+            if type(page) is not SearchPage:
+                raise TypeError('The search did not return a validated result page.')
+            rows = page.results
+            selections = dict(candidate._selections)
+            if len({row.ref for row in rows}) != len(rows) or {row.ref for row in rows} != set(selections):
+                raise ValueError('The result page and its source handles disagree.')
+            if any(ref in library._selections for ref in selections):
+                raise ValueError('A result handle is already owned by another completed search.')
+            workspace = request['workspace']
+            staged_model = copy(self.model)
+            staged_model.replace(workspace, (Hit(row.workspace, row.ref, row.revision, row.title,
+                row.author, row.edition, row.page, row.quote, row.citation) for row in rows))
+            history, index, origin = navigation
+            if cursor is None and page.next_cursor is not None:
+                from dataclasses import replace
+                # Returning to the first page must still validate the accepted
+                # catalog generation; None would silently begin a new search.
+                history = list(history)
+                history[index] = replace(page.next_cursor, edition_after=None,
+                                         editions_before=0, offset=0)
+            info = (f'Result page {origin + index + 1}: {len(rows)} results. '
+                    f'Source editions {page.edition_start}–{page.edition_end}; '
+                    f'matching-result offset {page.result_offset}.')
+            if rows:
+                info += (' Short source quotations.' if request['result_mode'] == 'short' else
+                         ' Expanded source excerpts from the matching page or text segment.')
+            info += (' Next continues through matching results or further source editions.'
+                     if page.next_cursor is not None else
+                     ' No further matching result page was found.')
+            if not rows and page.next_cursor is not None:
+                info += ' This source window has no matches; later windows remain available.'
+            if request['mode'] in ('thematic', 'semantic'):
+                info += ' Relevance ranking applies to this source window.'
+            if origin:
+                info += ' The oldest Previous entries were retired at the 1000-page history limit.'
+            if notes:
+                info += ' ' + ' '.join(dict.fromkeys(notes))
+            if request['mode'] == 'advanced':
+                info += (' Conditions are checked on one page or text segment at a time. '
+                         'A short excerpt may show only part of the matching text; More opens that source page.')
+            if any(not row.verified for row in rows):
+                info += ' Some extracted texts need independent review before quotation or export.'
+            # Keep the prior capabilities until the new model and controls have
+            # accepted the candidate. Rendering failure must remain reversible.
+            prior = (self.model.hits, self.results, self._accepted_request, self._next_cursor,
+                     self._page_history, self._page_index, self._page_origin)
+            selected_rows = self.grid.selected_rows()
+            selected_rows = tuple(selected_rows) if isinstance(selected_rows, (tuple, list)) else ()
+            cancelled()
+            try:
+                self.model.replace(workspace, staged_model.hits)
+                self.results = {row.ref: row for row in rows}
+                self._accepted_request, self._next_cursor = dict(request), page.next_cursor
+                self._page_history, self._page_index, self._page_origin = history, index, origin
+                self.grid.refresh()
+                cancelled()
+                self._set_page_navigation()
+                self.status.ChangeValue(info)
+                if rows:
+                    self.grid.select_rows([0])
+                    self.grid.focus_row(0)
+                    self._refresh_details()
+                else:
+                    self.details.ChangeValue('')
+                    self.status.SetFocus()
+                cancelled()
+            except Exception:
+                if self._context_epoch == epoch:
+                    (self.model.hits, self.results, self._accepted_request, self._next_cursor,
+                     self._page_history, self._page_index, self._page_origin) = prior
+                    if self._search_current(epoch):
+                        try:
+                            self.grid.refresh()
+                            self.grid.select_rows(list(selected_rows))
+                            self._set_page_navigation()
+                            self._refresh_details()
+                        except Exception:
+                            pass  # Preserve the original failure and retained source authority.
+                raise
+            self._retire_page_handles()
+            library._selections.update(selections)
+            self._page_selections = selections
+            while len(library._selections) > 2000:
+                del library._selections[next(iter(library._selections))]
+
+        self.frame.run_job('Searching the selected library', operation, done, failed=failed)
 
     def on_more(self, event):
         if self.frame.working:
@@ -582,6 +783,7 @@ class DesktopFrame(WorkspaceFrame):
         install_language_actions(self)
         install_conversion_actions(self)
         install_transcription_actions(self)
+        install_translation_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

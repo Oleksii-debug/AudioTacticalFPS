@@ -40,17 +40,17 @@ def status(state,done=0):
         'results_dir':'/status/path/has/no/authority','current':'ignored untrusted source path'}
  write(job/'job_status.json',raw(value))
 status('обробка')
-write(job/'fixture.started',b'controlled backend only')
+write(job/'logs'/'fixture.started',b'controlled backend only')
 if mode=='network':
  import socket
  try:socket.socket().connect(('127.0.0.1',9))
- except PermissionError:write(job/'network.denied',b'yes')
+ except PermissionError:write(job/'logs'/'network.denied',b'yes')
  else:raise AssertionError('Network audit did not refuse connect')
 if mode=='stuck':time.sleep(60)
 until=time.monotonic()+(.4 if mode=='slow' else 0)
 while (job/'pause.flag').exists() or time.monotonic()<until:
  if (job/'stop.flag').exists():
-  write(job/'controlled.partial.json',raw({'complete':False}));status('зупинено');sys.exit(2)
+  write(job/'logs'/'controlled.partial.json',raw({'complete':False}));status('зупинено');sys.exit(2)
  if (job/'pause.flag').exists():status('paused')
  time.sleep(.01)
 if mode=='grow':write(job/'oversized.tmp',b'x'*(2*1024*1024))
@@ -82,6 +82,9 @@ for count, source in enumerate(sources,1):
  payload={'txt':(text+'\n').encode(),'json':raw(meta),
  'srt':('1\n00:00:00,250 --> 00:00:01,750\n'+text+'\n').encode(),
  'vtt':('WEBVTT\n\n00:00:00.250 --> 00:00:01.750\n'+text+'\n').encode()}
+ if mode=='empty':
+  meta['text']='';meta['segments']=[]
+  payload={'txt':b'','srt':b'','vtt':b'WEBVTT\n\n','json':raw(meta)}
  if mode=='timestamp':payload['srt']=('1\n00:00:00,250 --> 00:00:60,000\n'+text+'\n').encode()
  if mode=='text':payload['txt']=b'different unverified text\n'
  for fmt in ('txt','srt','vtt','json'):

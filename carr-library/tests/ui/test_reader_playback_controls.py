@@ -155,6 +155,33 @@ def test_scope_change_before_ui_completion_discards_result_and_stops(controls, t
     controls.executor.run()
     pump(controls)
     assert controls.controller.player.state == 'stopped' and not controls.current()
+    assert controls.controller.prepared is None
+
+
+def test_changed_root_poll_withdraws_real_prepared_recording_after_confirmed_stop(controls, tmp_path):
+    path = pcm(tmp_path / 'recording.wav')
+    original = path.read_bytes()
+    controls.set_source(path, segments=((0, 'Exact prepared segment'),))
+    controls.executor.run()
+    pump(controls)
+    assert controls.controller.prepared is not None
+
+    def changed():
+        raise ValueError('The parent opened a different library.')
+
+    controls._guard = changed
+    controls.poll()  # Same real handler as the failed native acceptance case.
+    controls.executor.run()
+    pump(controls)
+    assert len(controls.executor.pending) == 1
+    controls.executor.run()
+    pump(controls)
+    assert not controls.busy and controls.controller.player.state == 'stopped'
+    assert controls.controller.prepared is None and controls.controller.segments == ()
+    assert path.read_bytes() == original
+    controls._guard = lambda: None
+    with pytest.raises(ValueError, match='Prepare a recording'):
+        controls.controller.play(resume=False)
 
 
 def test_rejected_real_executor_restores_ui_and_disposal_still_closes(controls):

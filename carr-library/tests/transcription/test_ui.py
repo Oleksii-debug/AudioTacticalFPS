@@ -33,7 +33,7 @@ def captured(setup):
 def test_preparation_is_separate_from_explicit_recognition_and_preserves_host_selection(setup):
     frame, actions, prepared, _, source = captured(setup)
     directory = actions.service.jobs_root / prepared.id
-    assert not (directory / 'fixture.started').exists()
+    assert not (directory / 'logs' / 'fixture.started').exists()
     assert source.name in describe_request(prepared)
     assert prepared.request_sha256 in describe_request(prepared)
     assert 'not quotation evidence' in describe_request(prepared)
@@ -212,7 +212,7 @@ def test_real_running_child_stops_when_window_scope_closes(setup):
     actions.accept(prepared)
     with ThreadPoolExecutor(max_workers=1) as executor:
         generation, future = actions.run(executor)
-        started = service.jobs_root / prepared.id / 'fixture.started'
+        started = service.jobs_root / prepared.id / 'logs' / 'fixture.started'
         deadline = time.monotonic() + 5
         while not started.exists():
             assert not future.done() and time.monotonic() < deadline
@@ -245,7 +245,7 @@ def test_withdrawn_real_job_terminalizes_only_its_observer_after_owned_future_st
     try:
         view._launch(lambda: actions.run(view.executor, set_running=view.set_running), applied.append)
         future = view.executor.futures[0]
-        started = service.jobs_root / prepared.id / 'fixture.started'
+        started = service.jobs_root / prepared.id / 'logs' / 'fixture.started'
         deadline = time.monotonic() + 5
         while not started.exists():
             assert not future.done() and time.monotonic() < deadline

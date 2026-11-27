@@ -49,6 +49,10 @@ def test_format4_restores_exact_profiles_reading_copy_and_uncommitted_draft(comp
     manifest = json.loads((folder / 'manifest.json').read_bytes())
     assert manifest['version'] == 4
     names = {entry['filename'] for entry in manifest['sidecars']}
+    assert {'pending-imports/manifest.json', 'pending-imports/imports.sqlite'} <= names
+    # The import producer builds its own snapshot envelope; these direct-copy
+    # producers must still preserve their exact original bytes and filenames.
+    names = {name for name in names if not name.startswith('pending-imports/')}
     assert names == {'keybindings.json', 'keyboard-shortcuts.json', 'evidence-drafts.json',
                      'reading-state.json', f'narration-projects/{project.id}.json'}
     original = {name: (app.root / name).read_bytes() for name in names}

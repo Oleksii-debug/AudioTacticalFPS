@@ -3,7 +3,8 @@
 Run: python -I tests/ui/native_assistant_smoke.py --native
 Checkout debugging only: append --source path/to/carr-library.
 Real wx keys open Main's Ctrl+Alt+J action, preview, run, review and close.
-No provider, model acquisition, real private documents or NVDA are involved.
+The optional planner uses the real gateway with a synthetic local transport.
+No live model, provider network, model acquisition, private documents or NVDA are involved.
 """
 from argparse import ArgumentParser
 import json
@@ -41,6 +42,9 @@ def run_native(source=None, timeout=120):
     import carr_library.assistant.service as service_module
     import carr_library.ui.assistant_actions as actions_module
     import carr_library.ui.assistant_dialog as dialog_module
+    import carr_library.ui.local_planner_actions as planning_actions_module
+    import carr_library.assistant.local_planner as planning_module
+    import carr_library.providers as providers_module
     import carr_library.ui.desktop_app as desktop_module
     from carr_library.application import LibraryApp
     from carr_library.ui.desktop_app import DesktopFrame
@@ -119,7 +123,8 @@ def run_native(source=None, timeout=120):
         return next(child for child in dialog.GetChildren() if child.GetName() == name)
 
     origins = {module.__name__: str(Path(module.__file__).resolve()) for module in
-               (application_module, service_module, actions_module, dialog_module, desktop_module)}
+               (application_module, service_module, actions_module, dialog_module, desktop_module,
+                planning_actions_module, planning_module, providers_module)}
     checkout = Path(__file__).resolve().parents[2]
     original_show = dialog_module.show_assistant
     phase = None
@@ -144,6 +149,8 @@ def run_native(source=None, timeout=120):
                 # return code of a real native Close that already hid it.
                 if dialog.IsModal() and dialog.IsShown():
                     dialog.EndModal(wx.ID_CANCEL)
+        if phase is reviewed_model:
+            kwargs['local_planner'] = planning_module.LocalPlanner(parent.library, transport=model_transport)
         return original_show(parent, on_ready=ready, **kwargs)
 
     dialog_module.show_assistant = instrumented_show
@@ -164,6 +171,22 @@ def run_native(source=None, timeout=120):
         unsaved_note = 'Synthetic unsaved note — keep this exact text.'
         identities = []
         pending = []
+
+        class ModelTransport:
+            def __init__(self):
+                self.calls = []
+            def post(self, profile, route, body, headers, **options):
+                if options['cancelled']():
+                    raise InterruptedError('Synthetic model request cancelled before transmission')
+                assert profile.local and profile.provider == 'openai-compatible' and route == '/chat/completions'
+                self.calls.append(json.loads(body))
+                proposal = {'schema':'carr-assistant-plan/1', 'summary':'A proposed source search',
+                    'steps':[{'tool':'library.search','arguments':{'query':'railway'}}]}
+                return json.dumps({'choices':[{'message':{'content':json.dumps(proposal)}}]}).encode()
+        model_transport = ModelTransport()
+        providers_module.ProfileStore(library.root/'api-connections.json').save(providers_module.ProviderProfile(
+            'native-local-model', 'Synthetic local planner', 'openai-compatible',
+            'http://127.0.0.1:8080/v1', 'synthetic-no-live-model', ('llm',), local=True))
 
         def close_native(dialog, controls):
             activate(controls['close'])
@@ -289,6 +312,50 @@ def run_native(source=None, timeout=120):
             finally:
                 frame.library = library
 
+        def reviewed_model(dialog, controls):
+            actions = controls['actions']
+            model_actions = controls['model_actions']
+            before = len(actions.service.jobs())
+            controls['instruction'].SetValue('Search the selected library for railway.')
+            selection_deadline = min(deadline, monotonic() + 8)
+            def select_profile():
+                try:
+                    chooser = next((window for window in wx.GetTopLevelWindows()
+                        if isinstance(window, wx.SingleChoiceDialog) and window.GetParent() is dialog
+                        and window.GetTitle() == 'Local planning connection'
+                        and window.IsShown() and window.IsModal()), None)
+                    if chooser is None:
+                        if monotonic() >= selection_deadline:
+                            raise TimeoutError('The native local-model profile chooser did not open.')
+                        wx.CallLater(20, select_profile)
+                        return
+                    chooser.SetSelection(0)
+                    activate(next(child for child in chooser.GetChildren()
+                        if isinstance(child, wx.Button) and child.GetId() == wx.ID_OK))
+                except BaseException:
+                    abort(traceback.format_exc())
+            wx.CallAfter(select_profile)
+            activate(controls['model'])
+            shown_request = json.JSONDecoder().raw_decode(controls['review'].GetValue().split('\n\n', 1)[1])[0]
+            check('native model review exposes exact prompt without request or tool execution',
+                model_actions.review is not None and not model_transport.calls
+                and len(actions.service.jobs()) == before and not controls['run'].IsEnabled()
+                and shown_request == model_actions.review.data)
+            check('exact model approval is a distinct named native action',
+                controls['model'].GetName() == 'Approve local model request')
+            activate(controls['model'])
+            check('approved synthetic model request yields only a separately reviewable typed proposal',
+                pump(lambda:not model_actions.busy and actions.plan is not None
+                    and controls['review'].GetValue().startswith('UNTRUSTED LOCAL MODEL PROPOSAL'))
+                and len(model_transport.calls) == 1 and len(actions.service.jobs()) == before
+                and controls['run'].IsEnabled() and actions.plan.scope.workspace_id == workspace
+                and actions.plan.steps[0].tool == 'library.search')
+            activate(controls['run'])
+            check('separate native Run executes the actual source search after model proposal review',
+                pump(lambda:not actions.busy and controls['review'].GetValue().startswith('complete:'))
+                and len(actions.service.jobs()) == before + 1 and len(model_transport.calls) == 1)
+            close_native(dialog, controls)
+
         try:
             frame = DesktopFrame(library)
             frame._open_workspace(workspace, topic)
@@ -307,7 +374,7 @@ def run_native(source=None, timeout=120):
             check('Main registry owns the actual assistant Ctrl+Alt+J action',
                   frame.keyboard_commands.shortcut('assistant.open') == 'Ctrl+Alt+J'
                   and frame.keyboard_commands.available('assistant.open'))
-            for phase in (successful_search, restart_review, close_running, changed_root):
+            for phase in (successful_search, restart_review, close_running, changed_root, reviewed_model):
                 previous = len(opened)
                 frame.Raise()
                 focus(frame.evidence.note)
@@ -329,7 +396,8 @@ def run_native(source=None, timeout=120):
             healthy()
             print(json.dumps({'status': 'PASS', 'checks': len(checks), 'wx': wx.version(),
                 'platform': platform.system(), 'origins': origins, 'native_key_backend': 'wx.UIActionSimulator',
-                'operation': 'real local source search; controlled actual-worker cancellation and transaction rollback',
+                'operation': 'real source search, cancellation and rollback; native two-stage model approval with synthetic transport',
+                'local_model_inference': 'NOT_RUN', 'provider_network': 'NOT_RUN',
                 'source_override': str(source) if source is not None else None, 'nvda': 'NOT_RUN'},
                 sort_keys=True), flush=True)
             return 0

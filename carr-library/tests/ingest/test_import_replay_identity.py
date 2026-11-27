@@ -10,7 +10,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.ingest.pipeline import Ingest, IngestError, canonical
-from carr_library.storage.revisions import Page, Storage
+from carr_library.storage.revisions import CURRENT_SCHEMA_VERSION, Page, Storage
 
 
 @pytest.fixture(params=('txt', 'pdf'))
@@ -156,7 +156,7 @@ def test_replay_rechecks_active_revision_before_registering(imported, monkeypatc
         # Simulate a separate SQLite writer immediately after the ingestion
         # snapshot has been checked. The exact active revision must be checked
         # again inside the membership transaction, even with unchanged bytes.
-        with closing(Storage(item.app.database, schema_version=4)) as storage:
+        with closing(Storage(item.app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
             with storage.transaction():
                 prior = storage.db.execute('SELECT asset,config FROM revision WHERE id=?',
                                            (item.initial['id'],)).fetchone()

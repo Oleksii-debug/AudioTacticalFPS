@@ -1,5 +1,5 @@
 """Typed operation choices for the existing job-directory protocol."""
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import math
 import re
 from threading import Event
@@ -151,6 +151,8 @@ class PreparedTranscription:
     profile_path: str
     profile_sha256: str
     warnings: tuple[str, ...] = ()
+    requires_reapproval: bool = False
+    budget: TranscriptionBudget = field(default_factory=TranscriptionBudget)
 
 
 @dataclass(frozen=True)

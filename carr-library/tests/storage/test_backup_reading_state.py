@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 import json
 import os
+import shutil
 
 import pytest
 
@@ -74,12 +75,15 @@ def test_complete_backup_preserves_reader_projects_drafts_and_shortcuts(reading_
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
-    names = {entry['filename'] for entry in manifest['sidecars']}
+    reader_entries = [entry for entry in manifest['sidecars']
+                      if not entry['filename'].startswith('pending-imports/')]
+    assert any(entry['filename'] == 'pending-imports/manifest.json' for entry in manifest['sidecars'])
+    names = {entry['filename'] for entry in reader_entries}
     assert names == {'reading-state.json', 'keybindings.json', 'ocr-language-presets.json',
                      f'narration-projects/{project.id}.json',
                      f'narration-projects/{project.id}.draft.json',
                      f'narration-projects/{manual.id}.json'}
-    for entry in manifest['sidecars']:
+    for entry in reader_entries:
         raw = (folder / entry['filename']).read_bytes()
         assert raw == source_files[entry['filename']]
         assert len(raw) == entry['size_bytes']
@@ -281,8 +285,11 @@ def test_legacy_backups_remain_usable_without_inventing_reading_state(tmp_path, 
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-    assert manifest['version'] == 4 and manifest['sidecars'] == []
+    assert manifest['version'] == 4 and manifest['sidecars']
+    assert all(entry['filename'].startswith('pending-imports/') for entry in manifest['sidecars'])
     assert manifest['generated_audio_included'] is False
+    # Earlier formats did not carry pending journals or captured sources.
+    shutil.rmtree(folder / 'pending-imports')
     manifest['version'] = version
     del manifest['sidecars']
     del manifest['generated_audio_included']

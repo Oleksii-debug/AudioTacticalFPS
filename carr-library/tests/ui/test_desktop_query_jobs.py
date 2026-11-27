@@ -8,6 +8,8 @@ from unittest.mock import Mock
 
 import pytest
 
+from carr_library.application import LibraryApp
+from carr_library.search.catalog_pages import SearchPage
 from carr_library.ui.search_model import Hit, SearchModel
 
 
@@ -33,11 +35,14 @@ def handlers():
 
 
 @pytest.fixture
-def panel(handlers):
+def panel(handlers, tmp_path):
     panel = object.__new__(handlers['DesktopSearchPanel'])
-    panel.bound_workspace, panel.bound_topic = 'library', 'topic'
+    app = LibraryApp(tmp_path / 'status-library')
+    workspace = app.create_workspace('Search status handlers')
+    topic = app.create_topic(workspace, 'Bound topic')
+    panel.bound_library, panel.bound_workspace, panel.bound_topic = app, workspace, topic
     panel.model = SearchModel()
-    panel.model.set_workspace('library')
+    panel.model.set_workspace(workspace)
     panel.query = Mock()
     panel.query.GetValue.return_value = 'history'
     panel.retrieval = Mock()
@@ -51,8 +56,12 @@ def panel(handlers):
     panel._context_epoch = 0
     panel.grid, panel.details, panel.status = Mock(), Mock(), Mock()
     panel._refresh_details = Mock()
+    app.search_page = Mock()
     panel.frame = SimpleNamespace(working=False, cancel_event=Event(), run_job=Mock(),
-        library=SimpleNamespace(search=Mock(), semantic_ranker=object()), report=Mock())
+        library=app, active=(workspace, topic), _closing=False, report=Mock())
+    panel._search_alive = True
+    panel._init_paging()
+    panel.previous_result_page, panel.next_result_page = Mock(), Mock()
     return panel
 
 
@@ -61,20 +70,21 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     def search(*args, on_status, cancelled, **kwargs):
         assert not cancelled()
         on_status(note)
-        return ()
-    panel.frame.library.search.side_effect = search
+        return SearchPage((), None, 0, 0, 0, False)
+    panel.frame.library.search_page.side_effect = search
     panel.on_search(None)
-    panel.frame.library.search.assert_not_called()
+    panel.frame.library.search_page.assert_not_called()
     _, operation, complete = panel.frame.run_job.call_args.args
     rows = operation()
     panel.status.ChangeValue.assert_not_called()
     complete(rows)
     assert note in panel.status.ChangeValue.call_args.args[0]
-    assert 'No results.' in panel.status.ChangeValue.call_args.args[0]
+    assert '0 results.' in panel.status.ChangeValue.call_args.args[0]
     panel.status.SetFocus.assert_called_once()
-    cancelled = panel.frame.library.search.call_args.kwargs['cancelled']
+    cancelled = panel.frame.library.search_page.call_args.kwargs['cancelled']
     panel.frame.cancel_event.set()
-    assert cancelled()
+    with pytest.raises(InterruptedError):
+        cancelled()
 
 
 def test_collection_refresh_distinguishes_all_books_and_preserves_selected_id(panel):
@@ -89,24 +99,25 @@ def test_collection_refresh_distinguishes_all_books_and_preserves_selected_id(pa
     assert len(set(labels)) == len(labels)
     assert panel.collection_ids == [None, 'other', 'selected']
     panel.collection.SetSelection.assert_called_once_with(2)
-    panel.frame.library.collections.assert_called_once_with('library')
+    panel.frame.library.collections.assert_called_once_with(panel.bound_workspace)
 
 
 def test_status_notes_belong_only_to_their_search_and_ignore_stale_completion(panel):
     def first(*args, on_status, **kwargs):
         on_status('Old fallback notice.')
-        return ()
-    panel.frame.library.search.side_effect = first
+        return SearchPage((), None, 0, 0, 0, False)
+    panel.frame.library.search_page.side_effect = first
     panel.on_search(None)
     _, old_operation, old_complete = panel.frame.run_job.call_args.args
     old_rows = old_operation()
-    panel.frame.library.search.side_effect = lambda *args, **kwargs: ()
+    panel.frame.library.search_page.side_effect = lambda *args, **kwargs: SearchPage((), None, 0, 0, 0, False)
     panel.on_search(None)
     _, operation, complete = panel.frame.run_job.call_args.args
     complete(operation())
     assert 'Old fallback notice.' not in panel.status.ChangeValue.call_args.args[0]
     previous = panel.status.ChangeValue.call_count
-    old_complete(old_rows)
+    with pytest.raises(InterruptedError):
+        old_complete(old_rows)
     assert panel.status.ChangeValue.call_count == previous
 
 

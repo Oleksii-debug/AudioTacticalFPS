@@ -23,7 +23,8 @@ def panel(tmp_path):
     workspace = app.create_workspace('UI integration')
     app.add_text(workspace, 'Source', 'A meaningful railway source quotation. Other source context.')
     instance.frame = SimpleNamespace(working=False, library=app, report=Mock(),
-                                     cancel_event=SimpleNamespace(is_set=lambda: False), run_job=Mock())
+                                     cancel_event=SimpleNamespace(is_set=lambda: False), run_job=Mock(),
+                                     active=(workspace, None), _closing=False)
     instance.model = SearchModel()
     instance.model.set_workspace(workspace)
     instance.bound_workspace = workspace
@@ -39,6 +40,9 @@ def panel(tmp_path):
     instance.filters = {}
     instance.results = {}
     instance._context_epoch = 0
+    instance._search_alive = True
+    instance._init_paging()
+    instance.previous_result_page, instance.next_result_page = Mock(), Mock()
     instance._refresh_details = Mock()
     return instance
 
@@ -48,8 +52,9 @@ def test_control_dispatches_presentation_to_real_application(panel, selection):
     panel.result_mode.GetSelection.return_value = selection
     panel.on_search(None)
     _, operation, done = panel.frame.run_job.call_args.args
-    rows = operation()
-    done(rows)
+    page = operation()
+    done(page)
+    rows = page.results
     assert rows and panel.model.hits[0].quote == rows[0].quote
     assert len(rows[0].quote) > len('railway')
     assert panel.frame.library.copy(rows[0].workspace, rows[0].ref, rows[0].revision, 'quote') == rows[0].quote
@@ -66,8 +71,9 @@ def test_invalid_control_selection_is_rejected_before_search(panel):
 def test_changed_options_clear_selection_and_discard_pending_search(panel):
     panel.on_search(None)
     _, operation, done = panel.frame.run_job.call_args.args
-    rows = operation()
-    done(rows)
+    page = operation()
+    done(page)
+    rows = page.results
     assert panel.model.hits and panel.results
     event = Mock()
     panel.result_mode.GetSelection.return_value = 1
@@ -75,7 +81,8 @@ def test_changed_options_clear_selection_and_discard_pending_search(panel):
     assert not panel.model.hits and not panel.results
     assert panel.details.ChangeValue.call_args.args == ('',)
     event.Skip.assert_called_once()
-    done(rows)
+    with pytest.raises(InterruptedError):
+        done(page)
     assert not panel.model.hits and not panel.results
 
 
@@ -84,8 +91,9 @@ def test_advanced_control_dispatches_to_real_scoped_search(panel):
     panel.query.GetValue.return_value = 'railway AND NOT airport'
     panel.on_search(None)
     _, operation, done = panel.frame.run_job.call_args.args
-    rows = operation()
-    done(rows)
+    page = operation()
+    done(page)
+    rows = page.results
     assert len(rows) == 1
     assert rows[0].quote == 'A meaningful railway source quotation.'
     assert 'one page or text segment' in panel.status.ChangeValue.call_args.args[0]
@@ -123,12 +131,13 @@ def test_query_builder_use_selects_advanced_and_invalidates_pending_results(pane
                         SimpleNamespace(show_query_builder=builder))
     panel.on_search(None)
     _, operation, done = panel.frame.run_job.call_args.args
-    rows = operation()
+    page = operation()
     panel.on_build_query()
     panel.retrieval.SetSelection.assert_called_once_with(panel.MODES.index('advanced'))
     panel.query.ChangeValue.assert_called_once_with('"railway" AND NOT "airport"')
     assert not panel.model.hits and not panel.results
-    done(rows)
+    with pytest.raises(InterruptedError):
+        done(page)
     assert not panel.model.hits and not panel.results
 
 

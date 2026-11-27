@@ -81,7 +81,7 @@ def test_changed_pinned_runtime_fails_before_worker_launch(setup, relative):
     path.write_bytes(path.read_bytes() + b'changed')
     with pytest.raises(ValueError, match='Checksum|changed'):
         run(service, job)
-    assert not (service.jobs_root / job.id / 'fixture.started').exists()
+    assert not (service.jobs_root / job.id / 'logs' / 'fixture.started').exists()
 
 
 def test_changed_request_requires_new_explicit_review(setup):
@@ -107,7 +107,7 @@ def test_no_plain_txt_or_self_asserted_status_reuse(setup):
     with pytest.raises(ValueError, match='no ownership proof'):
         run(service, job)
     assert (output / 'source-00001.txt').read_text('utf-8') == 'Unrelated old transcript'
-    assert not (directory / 'fixture.started').exists()
+    assert not (directory / 'logs' / 'fixture.started').exists()
 
 
 def test_pause_resume_and_stop_keep_owned_checkpoints(setup):
@@ -130,7 +130,7 @@ def test_pause_resume_and_stop_keep_owned_checkpoints(setup):
         with pytest.raises(InterruptedError):
             future.result(timeout=5)
     assert not (directory / 'receipt.json').exists()
-    assert (directory / 'controlled.partial.json').exists()
+    assert (directory / 'logs' / 'controlled.partial.json').exists()
     source.unlink()  # Resumption reads the approved owned snapshot, not an old external locator.
     reopened = TranscriptionService(service.app)
     reviewed, _ = reopened.review(job.id)
@@ -145,7 +145,7 @@ def test_unresponsive_native_step_is_stopped_within_bound_and_can_unlock(setup):
     directory = service.jobs_root / job.id
     with ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(run, service, job, control=control)
-        wait_for(lambda: (directory / 'fixture.started').exists())
+        wait_for(lambda: (directory / 'logs' / 'fixture.started').exists())
         start = time.monotonic()
         control.stop()
         with pytest.raises(InterruptedError):
@@ -165,7 +165,7 @@ def test_whole_run_deadline_stops_actual_child_before_receipt(setup):
         run(service, job)
     assert time.monotonic() - start < 8
     directory = service.jobs_root / job.id
-    assert (directory / 'fixture.started').exists()
+    assert (directory / 'logs' / 'fixture.started').exists()
     assert not (directory / 'receipt.json').exists()
 
 
@@ -206,7 +206,7 @@ def test_offline_python_audit_and_private_environment_are_actual_subprocess_prop
         monkeypatch.setenv(key, 'synthetic-value-that-must-not-reach-worker')
     service, job, _, _ = prepared(setup, 'network')
     assert run(service, job).sources == 1
-    assert (service.jobs_root / job.id / 'network.denied').read_bytes() == b'yes'
+    assert (service.jobs_root / job.id / 'logs' / 'network.denied').read_bytes() == b'yes'
 
 
 def test_completed_receipt_cannot_be_overwritten_and_tamper_is_detected(setup):

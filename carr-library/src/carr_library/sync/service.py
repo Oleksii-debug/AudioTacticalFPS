@@ -450,6 +450,9 @@ class SyncService:
             warnings = []
             if manifest.get('version', 0) <= 2:
                 warnings.append('This source backup format includes registered libraries and originals. Reading bookmarks, pending imports and optional studio state require their separate exports.')
+            if any(entry['filename'] == 'pending-imports/manifest.json'
+                   for entry in manifest.get('sidecars', ())):
+                warnings.append('Pending imports and captured source bytes are included. Restored imports remain paused until a new review in Import Center; old folder scan continuations stay disabled.')
             warnings.append('Only registered data and explicitly supported sidecars are included. External files, API credentials and unsupported project state require separate recovery arrangements.')
             if not manifest.get('generated_audio_included', False):
                 warnings.append('Generated audio is not included in this library checkpoint. Keep the Audio Studio project backup and finished exports separately.')
@@ -466,11 +469,13 @@ class SyncService:
                 'bytes': total_bytes,
                 'backup_checksum': metadata['backup_checksum'], 'warnings': warnings,
                 'restore_mode': 'new-folder-only', 'verified': True, 'label': metadata['label']}
-            yield verified, metadata, summary
+            pending_entries = tuple(entry for entry in manifest.get('sidecars', ())
+                                    if entry['filename'].startswith('pending-imports/'))
+            yield verified, metadata, summary, pending_entries
 
     def inspect(self, folder, token, password=None, *, cancelled=lambda: False, on_status=None,
                 on_progress=None):
-        with self._operation(), self._opened(folder, token, password, cancelled, on_status, on_progress) as (_, _, result):
+        with self._operation(), self._opened(folder, token, password, cancelled, on_status, on_progress) as (_, _, result, _):
             return result
 
     def restore(self, folder, token, new_destination, password=None, *,
@@ -485,7 +490,7 @@ class SyncService:
             if os.path.lexists(destination):
                 raise FileExistsError('The restore destination already exists. Choose a new directory.')
             local_path(destination.parent, exists=True, directory=True)
-            with self._opened(folder, token, password, cancelled, on_status, on_progress) as (verified, metadata, summary):
+            with self._opened(folder, token, password, cancelled, on_status, on_progress) as (verified, metadata, summary, pending_entries):
                 cancelled_check(cancelled)
                 _message(on_status, 'Restoring the checked checkpoint to the new data folder.')
                 cancelled_check(cancelled)
@@ -497,6 +502,10 @@ class SyncService:
                     prepared = Path(staging) / 'library'
                     _copy_verified_tree(verified, prepared, cancelled, total=summary['bytes'],
                                         on_progress=measured.bytes('Copying the verified library into private staging'))
+                    if pending_entries:
+                        from ..ingest.pending_sidecars import rebind_for_publication
+                        rebind_for_publication(prepared, destination, pending_entries,
+                                               prior_root=verified, cancelled=cancelled)
                     measured.phase('Publishing the restored library and checking durability')
                     _atomic_json(prepared / STATE, state)
                     cancelled_check(cancelled)

@@ -1,6 +1,7 @@
 """Restore both published V3 manifest shapes without weakening source binding."""
 from hashlib import sha256
 import json
+import shutil
 
 import pytest
 
@@ -19,6 +20,12 @@ def legacy_manifest(folder):
     value = manifest(folder)
     assert value['version'] == 4
     assert value.pop('generated_audio_included') is False
+    # Explicitly remove the newer captured-import component from this
+    # synthetic historical fixture; current V4 backups retain that history.
+    value['sidecars'] = [entry for entry in value['sidecars']
+                         if not entry['filename'].startswith('pending-imports/')]
+    if (folder / 'pending-imports').exists():
+        shutil.rmtree(folder / 'pending-imports')
     value['version'] = 3
     return value
 

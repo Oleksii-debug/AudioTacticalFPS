@@ -22,6 +22,7 @@ class TranscriptionActions:
         self.closed = self.busy = False
         self.control = TranscriptionControl()
         self.prepared = None
+        self.recovered_source = None
 
     def current(self, generation=None):
         try:
@@ -48,6 +49,7 @@ class TranscriptionActions:
         if type(prepared) is not PreparedTranscription or prepared.workspace != self.workspace:
             raise PermissionError('This prepared transcription belongs to another library.')
         self.prepared = prepared
+        self.recovered_source = prepared if prepared.requires_reapproval else None
         return prepared
 
     def start(self, executor, operation, *, progress=lambda event: None, set_running=lambda value: None):
@@ -92,9 +94,22 @@ class TranscriptionActions:
         selected = self.prepared
         if type(selected) is not PreparedTranscription or selected.workspace != self.workspace:
             raise PermissionError('Prepare or review the exact saved request before choosing Run.')
+        if selected.requires_reapproval:
+            raise PermissionError('Choose a current profile and prepare a new request from the restored inputs first.')
         return self.start(executor, lambda stopped, control, report: self.service.run(
             selected.id, approved_request_sha256=selected.request_sha256, control=control,
             cancelled=stopped, on_progress=report), **callbacks)
+
+    def reprepare(self, executor, manifest, *, options, budget, **callbacks):
+        self.ensure()
+        selected = self.recovered_source
+        if (type(selected) is not PreparedTranscription or not selected.requires_reapproval
+                or selected.workspace != self.workspace):
+            raise PermissionError('Review a restored source request before preparing new recognition.')
+        self.invalidate()
+        return self.start(executor, lambda stopped, control, report: self.service.prepare_recovered(
+            selected.id, manifest, approved_source_request_sha256=selected.request_sha256,
+            options=options, budget=budget, cancelled=stopped, on_progress=report), **callbacks)
 
     def finish(self, generation):
         if generation == self.generation:
@@ -108,7 +123,10 @@ class TranscriptionActions:
 
 
 def describe_request(prepared):
-    return ('Prepared source snapshots. Review this exact request, then choose Run / resume.\n'
+    recovery = ('RESTORED INERT REQUEST. Its old paths and approvals are provenance only. '
+                'Choose a current runtime profile, then Prepare snapshots from the retained inputs. '
+                'Review the new request before Run.\n\n') if prepared.requires_reapproval else ''
+    return (recovery + 'Prepared source snapshots. Review this exact request, then choose Run / resume.\n'
         'Preparing or selecting a saved request does not run recognition.\n\n'
         f'Job: {prepared.id}\nRequest SHA256: {prepared.request_sha256}\n'
         f'Private profile: {prepared.profile_path}\nProfile SHA256: {prepared.profile_sha256}\n'
@@ -116,6 +134,7 @@ def describe_request(prepared):
         f'Sources: {prepared.source_count}; retained bytes: {prepared.source_bytes}\n'
         + '\n'.join(prepared.source_names) + '\n\n'
         + json.dumps(prepared.options.to_dict(), ensure_ascii=False, indent=2)
+        + '\n\nApproved resource budget:\n' + json.dumps(prepared.budget.to_dict(), indent=2)
         + '\n\nJSON is retained for verification even when only another export is selected. '
           'Outputs are derivatives, not quotation evidence. Translation is into English only. '
           'Pause/stop is cooperative between inference calls; the supervisor stops an unresponsive owned process. '
@@ -227,7 +246,8 @@ class NativeTranscriptionDialog:
             control.Enable(not value)
         for name in ('profile', 'sources', 'prepare', 'jobs'):
             self.buttons[name].Enable(not value)
-        self.buttons['run'].Enable(not value and self.actions.prepared is not None and self.receipt is None)
+        self.buttons['run'].Enable(not value and self.actions.prepared is not None
+                                  and not self.actions.prepared.requires_reapproval and self.receipt is None)
         self.buttons['read'].Enable(not value and (self.receipt is not None or
             (self.actions.prepared is not None and bool(self.receipt_token.GetValue().strip()))))
         self.buttons['pause'].Enable(value)
@@ -271,6 +291,7 @@ class NativeTranscriptionDialog:
         try:
             if picker.ShowModal() == self.wx.ID_OK and self.current(generation):
                 self.sources = tuple(picker.GetPaths())
+                self.actions.recovered_source = None
                 self.source_list.Set(list(self.sources))
                 self.changed()
         finally:
@@ -345,10 +366,15 @@ class NativeTranscriptionDialog:
 
     def _review(self, prepared):
         self.actions.accept(prepared)
+        if prepared.requires_reapproval:
+            self.sources = ()
+            self.source_list.Set(['Retained input: ' + name for name in prepared.source_names])
         self.receipt = None
         self.receipt_token.ChangeValue('')
         self.review.ChangeValue(describe_request(prepared))
-        self.status.SetLabel('Request ready for explicit review. Choose Run / resume to authorize recognition.')
+        self.status.SetLabel('Restored inputs are inert. Choose a current profile and Prepare snapshots again.'
+            if prepared.requires_reapproval else
+            'Request ready for explicit review. Choose Run / resume to authorize recognition.')
         self.review.SetFocus()
 
     def prepare(self, event=None):
@@ -366,8 +392,12 @@ class NativeTranscriptionDialog:
         except (ValueError, TypeError) as exc:
             self.status.SetLabel(self._error(exc))
             return
-        self._launch(lambda: self.actions.prepare(self.executor, manifest, self.sources,
-            options=options, budget=budget, progress=self._progress, set_running=self.set_running), self._review)
+        if self.actions.recovered_source is not None and not self.sources:
+            self._launch(lambda: self.actions.reprepare(self.executor, manifest,
+                options=options, budget=budget, progress=self._progress, set_running=self.set_running), self._review)
+        else:
+            self._launch(lambda: self.actions.prepare(self.executor, manifest, self.sources,
+                options=options, budget=budget, progress=self._progress, set_running=self.set_running), self._review)
 
     def run(self, event=None):
         def complete(receipt):
@@ -411,7 +441,8 @@ class NativeTranscriptionDialog:
             finally:
                 self._dispose(picker)
         self._launch(lambda: self.actions.start(self.executor,
-            lambda stopped, control, report: self.actions.service.jobs(cancelled=stopped), set_running=self.set_running), choose)
+            lambda stopped, control, report: self.actions.service.jobs(workspace=self.actions.workspace,
+                cancelled=stopped), set_running=self.set_running), choose)
 
     def read(self, event=None):
         selected, receipt = self.actions.prepared, self.receipt

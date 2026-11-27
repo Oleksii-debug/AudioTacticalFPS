@@ -75,6 +75,8 @@ def test_complete_backup_ignores_only_exact_producer_temporaries(prepared, tmp_p
         digest = app.backup(snapshot)
     manifest = json.loads((snapshot / 'manifest.json').read_bytes())
     names = {entry['filename'] for entry in manifest['sidecars']}
+    assert {'pending-imports/manifest.json', 'pending-imports/imports.sqlite'} <= names
+    names = {name for name in names if not name.startswith('pending-imports/')}
     assert names == {'state/assistant/' + identity + '.json',
                      'state/assistant/' + identity + '.control.json'}
     restored = LibraryApp(restore_backup(snapshot, tmp_path / 'restore-controls', digest))

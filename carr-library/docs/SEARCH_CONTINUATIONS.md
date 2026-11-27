@@ -37,6 +37,31 @@ remain compatible. In-process callers can use `LibraryApp.search_page` and
 `FederatedSearch.search_page` with their returned immutable cursor objects.
 The cursors are not portable credentials or persistent cross-process tokens.
 
+## Main Search tab
+
+The Search tab in the main window uses the same `LibraryApp.search_page`
+continuation. It searches original sources in the currently selected library,
+rechecking the active topic's authorization when a topic is selected. The tab's
+collection, author, title, language, edition, retrieval mode and quotation
+presentation remain part of every page request. Previous result page and
+Next result page are named native buttons, reachable by Tab and activated with
+Space.
+
+Each page admits at most 500 filtered source editions and 100 result handles.
+Next continues both within a source window and into later windows; an empty
+window does not mean the whole library has no matches. The readable status
+reports the actual returned count, source edition range, result offset and
+whether further windows remain. Semantic and thematic rankings apply within
+the current source window.
+
+The tab keeps the completed page and its verified copy/context/save handles
+when navigation fails or is cancelled. A successfully displayed page withdraws
+the preceding tab-owned handles. Previous rereads sources and creates fresh
+handles under the original catalog-generation check, including when returning
+to the first page. Changing query or filters starts a new sequence; changing
+library, topic, physical data directory or closing the view withdraws pending
+work. Up to 1000 prior page requests are retained for Previous navigation.
+
 Validation uses real synthetic libraries, source imports and quote verification,
 including 501 editions, 23 selected libraries, all retrieval modes, exact scope
 changes, cancellation, old-handle rejection and identical-byte root replacement.

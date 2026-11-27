@@ -7,9 +7,11 @@ def choose_backup_options(parent):
     try:
         layout = wx.BoxSizer(wx.VERTICAL)
         description = wx.StaticText(dialog, label=(
-            'Back up completed libraries, original files, research notes, saved '
-            'projects and their input audio. Unfinished imports are excluded. '
-            'Generated audio can make the backup substantially larger.'))
+            'Back up libraries, original files, research notes, saved projects and '
+            'their input audio. Saved import queues, captured source bytes and '
+            'checkpoints are included. Restored imports require a new review; '
+            'old folder scan continuations stay disabled. Generated audio can '
+            'make the backup substantially larger.'))
         description.Wrap(560)
         layout.Add(description, 0, wx.EXPAND | wx.ALL, 12)
         generated = wx.CheckBox(dialog, label='Include generated audio saved in this library')

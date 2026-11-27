@@ -305,8 +305,14 @@ class PlaybackControls:
                     self._text(str(exc))
             if self.alive:
                 self.wx.CallAfter(apply)
+        def stopped():
+            if not self.current():
+                return self.controller.withdraw()
+            result = self.controller.stop()
+            # Authorization may change while the bounded device stop runs.
+            return result if self.current() else self.controller.withdraw()
         try:
-            self.executor.submit(lambda: self.controller.stop(save=self.current())).add_done_callback(finished)
+            self.executor.submit(stopped).add_done_callback(finished)
         except RuntimeError as exc:
             self.busy = False
             self._enable()

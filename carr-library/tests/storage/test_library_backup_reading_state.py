@@ -3,6 +3,7 @@ from errno import ENOSPC
 from hashlib import sha256
 import json
 import os
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -60,11 +61,12 @@ def test_application_backup_restores_exact_bookmarks_and_resume_for_both_librari
     digest = app.backup(folder)
     manifest = read_manifest(folder)
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
-    assert manifest['sidecars'] == [dict(filename=FILENAME, size_bytes=len(raw),
-                                        sha256=sha256(raw).hexdigest())]
+    assert [entry for entry in manifest['sidecars'] if entry['filename'] == FILENAME] == [
+        dict(filename=FILENAME, size_bytes=len(raw), sha256=sha256(raw).hexdigest())]
+    assert any(entry['filename'] == 'pending-imports/manifest.json' for entry in manifest['sidecars'])
     assert (folder / FILENAME).read_bytes() == raw
     assert {path.name for path in folder.iterdir()} == {
-        'manifest.json', 'library.sqlite', 'originals', FILENAME}
+        'manifest.json', 'library.sqlite', 'originals', FILENAME, 'pending-imports'}
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
     state = ReadingState(restored.root)
     assert state.path.read_bytes() == raw
@@ -434,6 +436,8 @@ def test_legacy_backup_restores_without_fabricating_reading_state(
     if version == 1:
         del manifest['schema_fingerprint']
     (folder / FILENAME).unlink()
+    # Remove the new component only when constructing a historical fixture.
+    shutil.rmtree(folder / 'pending-imports')
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored',
                                         write_manifest(folder, manifest)))
     state = ReadingState(restored.root)

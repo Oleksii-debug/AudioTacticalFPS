@@ -90,6 +90,81 @@ def batch_report(batch):
             '\n\n'.join(row_details(row) for row in batch.get('rows', ())) + '\n')
 
 
+
+def confirm_restored_import(parent, review):
+    """Native, keyboard-operable review of the exact captured-source selection."""
+    import wx
+    dialog = wx.Dialog(parent, title='Review restored import', size=(830, 650),
+                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    layout = wx.BoxSizer(wx.VERTICAL)
+    destinations = ', '.join(readable(item['name']) for item in review['destination_collections'])
+    summary = ('Library: ' + readable(review['workspace_name']) + '. Collections: '
+               + (destinations or 'Whole library; no collection assignment') + '.\n'
+               + f'{review["file_count"]} captured files; {review["source_bytes"]} bytes. '
+               'Only the saved local copies will be read. Recorded external folders are not followed.')
+    metadata = review.get('metadata')
+    if metadata is not None:
+        summary += ('\nTitle: ' + readable(metadata['title'])
+                    + '. Authors: ' + ', '.join(readable(a) for a in metadata['authors'])
+                    + '. Language: ' + readable(metadata['language'] or 'Not entered')
+                    + '. Edition: ' + readable(metadata['edition'] or 'Not entered')
+                    + '. Volume: ' + readable(metadata['volume'] or 'Not entered') + '.')
+    recognition = review.get('text_recognition')
+    if recognition is not None:
+        summary += ('\nText recognition language choice: ' + readable(recognition['languages'])
+                    + '. This approval does not verify OCR text or printed page labels.')
+    if review['continuations_disabled']:
+        summary += ' The old scan continuation is disabled.'
+    if review['previous_scan_incomplete']:
+        summary += (' The earlier scan did not cover all selected sources. '
+                    'Choose Add folder again for any sources that were never captured.')
+    if review['new_import_required']:
+        summary += (' The old inline TXT import did not save its title, work or collection choices. '
+                    'Approval creates a new ordinary import plan from these exact bytes. '
+                    'The old journal is preserved; its missing metadata is not inferred.')
+    heading = wx.TextCtrl(dialog, value=summary, style=wx.TE_MULTILINE | wx.TE_READONLY,
+                          size=(-1, 110))
+    heading.SetName('Restored import scope and continuation status')
+    layout.Add(heading, 0, wx.EXPAND | wx.ALL, 8)
+    files = wx.ListBox(dialog, choices=[
+        f'{i}. {readable(row["file"])} — {row["size"]} bytes'
+        for i, row in enumerate(review['files'], 1)])
+    files.SetName('Exact captured files in this restored import')
+    layout.Add(files, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+    details = wx.TextCtrl(dialog, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 90))
+    details.SetName('Selected captured file type and SHA256')
+    def selected(event=None):
+        index = files.GetSelection()
+        if 0 <= index < len(review['files']):
+            row = review['files'][index]
+            details.SetValue('File: ' + readable(row['file']) + '\nType: ' + row['mime']
+                             + '\nSHA256: ' + row['sha256'])
+        else:
+            details.SetValue('')
+    files.Bind(wx.EVT_LISTBOX, selected)
+    if review['files']:
+        files.SetSelection(0)
+        selected()
+    layout.Add(details, 0, wx.EXPAND | wx.ALL, 8)
+    consent = wx.CheckBox(dialog, label='I &reviewed this captured-source selection')
+    consent.SetName('Confirm review of this restored import scope')
+    layout.Add(consent, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+    buttons = wx.BoxSizer(wx.HORIZONTAL)
+    approve = wx.Button(dialog, wx.ID_OK, '&Approve captured sources')
+    approve.SetName('Approve captured sources without starting import')
+    approve.Disable()
+    consent.Bind(wx.EVT_CHECKBOX, lambda event: approve.Enable(consent.GetValue()))
+    buttons.Add(approve, 0, wx.RIGHT, 8)
+    buttons.Add(wx.Button(dialog, wx.ID_CANCEL, '&Cancel'))
+    layout.Add(buttons, 0, wx.ALL, 8)
+    dialog.SetSizer(layout)
+    dialog.SetMinSize((680, 500))
+    heading.SetFocus()
+    try:
+        return dialog.ShowModal() == wx.ID_OK and consent.GetValue()
+    finally:
+        dialog.Destroy()
+
 class ImportCenterActions:
     """Handlers separated from native construction for meaningful event tests."""
     def _bound(self):
@@ -228,6 +303,61 @@ class ImportCenterActions:
         self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
             cancelled=self._cancelled), done, planning=True)
+
+
+    def review_restored_imports(self, event=None):
+        import wx
+        if self.busy or self.frame.working:
+            self.report('An operation is already running. Wait or choose Cancel operation.')
+            return
+        try:
+            self._bound()
+            choices = self.library.import_recovery_items(self.workspace)
+            if not choices:
+                self.report('No restored imports require a new captured-source review in this library.')
+                return
+            if len(choices) == 1:
+                selected = choices[0]
+            else:
+                dialog = wx.SingleChoiceDialog(self, 'Choose a restored import to review.',
+                    'Restored imports', [readable(item['label']) for item in choices])
+                try:
+                    if dialog.ShowModal() != wx.ID_OK:
+                        return
+                    index = dialog.GetSelection()
+                finally:
+                    dialog.Destroy()
+                self._bound()
+                if not 0 <= index < len(choices):
+                    raise ValueError('Choose a restored import from the displayed list.')
+                selected = choices[index]
+            kind, identity = selected['kind'], selected['identity']
+
+            def reviewed(value):
+                self._bound()
+                if (value['kind'], value['identity'], value['workspace']) != (kind, identity, self.workspace):
+                    raise ValueError('The restored import review belongs to another selection.')
+                if not confirm_restored_import(self, value):
+                    self.report('Restored import remains paused; no source approval was saved.')
+                    return
+                self._bound()
+                checksum = value['checksum']
+                def approved(receipt):
+                    self._bound()
+                    if not receipt.get('approved') or receipt.get('checksum') != checksum:
+                        raise ValueError('The restored import did not return its reviewed approval.')
+                    batch_id = receipt.get('batch_id') or (identity if kind == 'batch' else None)
+                    self.refresh(selected=batch_id)
+                    self.report(receipt['message'] + (
+                        ' Choose Start queued files to execute the reviewed plan.' if batch_id else
+                        ' Close Import Center and choose Library, Resume interrupted import.'))
+                self._job('Approving captured import sources', lambda: self.library.approve_import_recovery(
+                    self.workspace, kind, identity, expected_checksum=checksum, confirmed=True,
+                    cancelled=self._cancelled), approved)
+            self._job('Preparing restored import review', lambda: self.library.review_import_recovery(
+                self.workspace, kind, identity, cancelled=self._cancelled), reviewed)
+        except Exception as exc:
+            self.report(str(exc))
 
     def next_scan_page(self, event=None):
         """Use the selected saved page's choices, never the mutable new-plan controls."""
@@ -493,6 +623,11 @@ def show_import_center(frame, workspace):
                 self.mutable.append(control)
                 actions.Add(control, 0, wx.EXPAND)
             layout.Add(actions, 0, wx.EXPAND | wx.ALL, 8)
+            self.recovery_button = wx.Button(self, label='Review restored &imports…')
+            self.recovery_button.SetName('Review restored imports and captured source permissions')
+            self.recovery_button.Bind(wx.EVT_BUTTON, self.review_restored_imports)
+            self.mutable.append(self.recovery_button)
+            layout.Add(self.recovery_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.status = wx.TextCtrl(self, style=wx.TE_MULTILINE | wx.TE_READONLY, size=(-1, 45))
             self.status.SetName('Import Center status')
             layout.Add(self.status, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)

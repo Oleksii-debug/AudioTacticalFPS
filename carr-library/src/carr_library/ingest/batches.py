@@ -360,6 +360,8 @@ class ImportBatchStore:
         self._authorize(workspace)
         with self._lock(batch_id):
             previous = self.get(workspace, batch_id)
+            from .recovery import require_approval
+            require_approval(self.root, 'batch', batch_id, previous)
             scan = previous.get('scan')
             if scan is None or scan['next_offset'] is None:
                 raise ValueError('This saved page has no continuation. Select new source folders to scan.')
@@ -510,6 +512,8 @@ class ImportBatchStore:
         with self._lock(batch_id):
             record = self.get(workspace, batch_id)
             self._authorize(workspace, record['collections'])
+            from .recovery import require_approval
+            require_approval(self.root, 'batch', batch_id, record)
             config = Config(**record['config'])
             for row in record['rows']:
                 if stop():

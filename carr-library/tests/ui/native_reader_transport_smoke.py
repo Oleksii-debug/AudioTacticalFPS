@@ -47,6 +47,10 @@ def main(argv=None):
                               'manual_listening': 'NOT_RUN', 'manual_nvda': 'NOT_RUN'}))
             return 77 if device['status'] == 'UNAVAILABLE' else 1
     application = wx.App(False)
+    # Yield dispatches the real native timers only while a GUI loop is active.
+    # Keep both objects alive for the whole probe; never substitute timer ticks.
+    event_loop = wx.GUIEventLoop()
+    activation = wx.EventLoopActivator(event_loop)
     def wait_for(predicate, message, timeout=45):
         end = time.monotonic() + timeout
         while time.monotonic() < end:

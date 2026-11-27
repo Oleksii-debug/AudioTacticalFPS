@@ -24,14 +24,16 @@ import sqlite3
 import ssl
 import tempfile
 from typing import Protocol
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, urlencode, urlsplit
 import uuid
 
 
 MAX_REQUEST = 512 * 1024
 MAX_RESPONSE = 128 * 1024 * 1024
 _ID = re.compile(r'[a-zA-Z0-9_-]{1,100}')
-CAPABILITIES = {'llm', 'tts', 'music', 'sound_effects'}
+CAPABILITIES = {'llm', 'tts', 'music', 'sound_effects', 'translation', 'translation_languages'}
+GOOGLE_TRANSLATE_ENDPOINT = 'https://translation.googleapis.com/language/translate/v2'
+_LANGUAGE = re.compile(r'[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8}){0,3}')
 
 
 class ProviderError(ValueError):
@@ -91,15 +93,18 @@ class ProviderProfile:
         for text in (self.name, self.model):
             if not isinstance(text, str) or not 1 <= len(text) <= 200 or any(ord(c) < 32 for c in text):
                 raise ProviderError('Profile name and model must be plain text.')
-        if self.provider not in ('elevenlabs', 'openai-compatible'):
+        if self.provider not in ('elevenlabs', 'openai-compatible', 'google-translate'):
             raise ProviderError('This provider adapter is not installed.')
         if (not isinstance(self.capabilities, tuple) or not self.capabilities
                 or set(self.capabilities) - CAPABILITIES or len(set(self.capabilities)) != len(self.capabilities)):
             raise ProviderError('Select supported, distinct capabilities.')
         if self.provider == 'openai-compatible' and self.capabilities != ('llm',):
             raise ProviderError('The compatible adapter currently supports text reasoning only.')
-        if self.provider == 'elevenlabs' and 'llm' in self.capabilities:
+        if self.provider == 'elevenlabs' and set(self.capabilities) - {'tts', 'music', 'sound_effects'}:
             raise ProviderError('The speech/music adapter does not support text reasoning.')
+        if self.provider == 'google-translate' and (
+                set(self.capabilities) != {'translation', 'translation_languages'} or self.model != 'nmt'):
+            raise ProviderError('Google Basic v2 requires the NMT translation and language-inventory capabilities.')
         if type(self.local) is not bool:
             raise ProviderError('Invalid local-service setting.')
         if not isinstance(self.endpoint, str) or len(self.endpoint) > 2048:
@@ -127,6 +132,8 @@ class ProviderProfile:
                 self.local or parts.hostname != 'api.elevenlabs.io' or port not in (None, 443)
                 or parts.path.rstrip('/') != '/v1'):
             raise ProviderError('ElevenLabs credentials are restricted to its official API host and /v1 base.')
+        if self.provider == 'google-translate' and (self.local or self.endpoint != GOOGLE_TRANSLATE_ENDPOINT):
+            raise ProviderError('Google Translation credentials are restricted to the official Basic v2 endpoint.')
         if self.credential_ref is not None and not re.fullmatch(r'url-api-[0-9a-f]{32}', self.credential_ref):
             raise ProviderError('Invalid opaque credential reference.')
 
@@ -286,9 +293,12 @@ class ProviderRequest:
     text: str
     voice: str | None = None
     duration_seconds: int | None = None
+    source_language: str | None = None
+    target_language: str | None = None
 
     def __post_init__(self):
-        if self.capability not in CAPABILITIES or not isinstance(self.text, str) or not self.text.strip():
+        if (self.capability not in CAPABILITIES or not isinstance(self.text, str)
+                or (not self.text.strip() and self.capability != 'translation_languages')):
             raise ProviderError('Choose a supported task and nonempty text.')
         if len(self.text.encode('utf-8')) > MAX_REQUEST // 2 or '\x00' in self.text:
             raise ProviderError('Task text exceeds its resource budget or contains NUL.')
@@ -306,9 +316,74 @@ class ProviderRequest:
                 raise ProviderError('This provider accepts at most 4100 prompt characters per music request.')
         elif self.duration_seconds is not None:
             raise ProviderError('Duration does not apply to this task.')
+        if self.capability in ('translation', 'translation_languages'):
+            if (not isinstance(self.target_language, str) or _LANGUAGE.fullmatch(self.target_language) is None
+                    or (self.source_language is not None and
+                        (not isinstance(self.source_language, str) or _LANGUAGE.fullmatch(self.source_language) is None))):
+                raise ProviderError('Choose an explicit supported target language; omit source for automatic detection.')
+            if self.capability == 'translation_languages' and (self.text or self.source_language is not None):
+                raise ProviderError('Language inventory requests do not transmit selected text or a source language.')
+            if self.capability == 'translation' and len(self.text) > 5000:
+                raise ProviderError('Split selected text into translation chunks of at most 5000 characters.')
+        elif self.source_language is not None or self.target_language is not None:
+            raise ProviderError('Language options apply only to translation requests.')
 
     def fingerprint(self, profile):
-        return _digest({'profile': profile.fingerprint, 'request': asdict(self)})
+        value = asdict(self)
+        if self.source_language is None and self.target_language is None:
+            # These bytes already identify approved legacy operations. New
+            # default fields must not invalidate their durable budget records.
+            value.pop('source_language')
+            value.pop('target_language')
+        return _digest({'profile': profile.fingerprint, 'request': value})
+
+
+def translation_result(output, capability):
+    """Validate provider text as inert derivative data, never as commands."""
+    def unique(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError
+            value[key] = item
+        return value
+    def language(value):
+        return isinstance(value, str) and _LANGUAGE.fullmatch(value) is not None
+    try:
+        if not isinstance(output, bytes) or not 0 < len(output) <= 4 * 1024 * 1024:
+            raise ValueError
+        value = json.loads(output, object_pairs_hook=unique,
+                           parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+        if type(value) is not dict or set(value) != {'data'} or type(value['data']) is not dict:
+            raise ValueError
+        data = value['data']
+        if capability == 'translation':
+            if set(data) != {'translations'} or type(data['translations']) is not list or len(data['translations']) != 1:
+                raise ValueError
+            result = data['translations'][0]
+            if (type(result) is not dict or set(result) - {'translatedText', 'detectedSourceLanguage', 'model'}
+                    or not isinstance(result.get('translatedText'), str) or not result['translatedText']
+                    or len(result['translatedText'].encode('utf-8')) > 256 * 1024 or '\x00' in result['translatedText']
+                    or ('detectedSourceLanguage' in result and not language(result['detectedSourceLanguage']))
+                    or ('model' in result and result['model'] != 'nmt')):
+                raise ValueError
+            return dict(result)
+        if capability != 'translation_languages' or set(data) != {'languages'}:
+            raise ValueError
+        rows = data['languages']
+        if type(rows) is not list or not 1 <= len(rows) <= 1000:
+            raise ValueError
+        seen = set()
+        for row in rows:
+            if (type(row) is not dict or set(row) != {'language', 'name'}
+                    or not language(row['language']) or row['language'] in seen
+                    or not isinstance(row['name'], str) or not 1 <= len(row['name']) <= 200
+                    or any(ord(c) < 32 for c in row['name'])):
+                raise ValueError
+            seen.add(row['language'])
+        return tuple(dict(row) for row in rows)
+    except (ValueError, TypeError, KeyError, UnicodeError, RecursionError):
+        raise ProviderError('Unsupported translation response; no returned instructions were executed.') from None
 
 
 @dataclass(frozen=True)
@@ -404,9 +479,22 @@ class BudgetLedger:
 class DirectTransport:
     """DNS-checked and address-pinned HTTP. No proxy, redirect or automatic retry."""
     def post(self, profile, route, payload, headers, *, cancelled=lambda: False):
+        return self._request('POST', profile, route, payload, headers, cancelled=cancelled)
+
+    def get(self, profile, route, parameters, headers, *, cancelled=lambda: False):
+        if (profile.provider != 'google-translate' or route != '/languages'
+                or type(parameters) is not dict or set(parameters) != {'target', 'model'}
+                or parameters['model'] != 'nmt' or not isinstance(parameters['target'], str)
+                or _LANGUAGE.fullmatch(parameters['target']) is None):
+            raise ProviderError('Unsupported language-inventory request.')
+        return self._request('GET', profile, route, None, headers,
+                             query=urlencode(parameters), cancelled=cancelled)
+
+    def _request(self, method, profile, route, payload, headers, *, query='', cancelled=lambda: False):
         parts = urlsplit(profile.endpoint)
         port = parts.port or (443 if parts.scheme == 'https' else 80)
-        if not re.fullmatch(r'/[a-zA-Z0-9_/-]+', route):
+        if not re.fullmatch(r'/[a-zA-Z0-9_/-]+', route) and not (
+                route == '' and profile.provider == 'google-translate' and method == 'POST'):
             raise ProviderError('Invalid adapter route.')
         host = parts.hostname
         try:
@@ -429,22 +517,24 @@ class DirectTransport:
                 host_header += ':' + str(port)
             if cancelled():
                 raise ProviderError('Provider operation cancelled before transmission.')
-            connection.request('POST', parts.path.rstrip('/') + route, body=payload,
+            connection.request(method, parts.path.rstrip('/') + route + ('?' + query if query else ''), body=payload,
                 headers={**headers, 'Host': host_header, 'Content-Type': 'application/json',
-                         'Accept': 'application/json' if route.endswith('/completions') else 'audio/mpeg',
+                         'Accept': ('application/json' if profile.provider == 'google-translate'
+                                    or route.endswith('/completions') else 'audio/mpeg'),
                          'Connection': 'close'})
             response = connection.getresponse()
             if response.status != 200:
                 raise ProviderError(f'Provider returned HTTP {response.status}; no automatic retry was made.')
             declared = response.getheader('Content-Length')
-            if declared and (not declared.isdecimal() or int(declared) > MAX_RESPONSE):
+            limit = 4 * 1024 * 1024 if profile.provider == 'google-translate' else MAX_RESPONSE
+            if declared and (not declared.isdecimal() or int(declared) > limit):
                 raise ProviderError('Provider response exceeds its resource budget.')
             data = bytearray()
             while block := response.read(65536):
                 if cancelled():
                     raise ProviderError('Provider operation cancelled; reconcile any possible charge before retrying.')
                 data.extend(block)
-                if len(data) > MAX_RESPONSE:
+                if len(data) > limit:
                     raise ProviderError('Provider response exceeds its resource budget.')
             if not data:
                 raise ProviderError('Provider returned an empty result.')
@@ -480,7 +570,16 @@ class ProviderGateway:
             raise ProviderError('LOCAL ONLY blocks every remote provider request.')
         if cancelled():
             raise ProviderError('Provider operation cancelled before transmission.')
-        if profile.provider == 'openai-compatible':
+        if profile.provider == 'google-translate':
+            if request.capability == 'translation':
+                route = ''
+                body = {'q': request.text, 'target': request.target_language, 'format': 'text', 'model': 'nmt'}
+                if request.source_language is not None:
+                    body['source'] = request.source_language
+            else:
+                route = '/languages'
+                body = {'target': request.target_language, 'model': 'nmt'}
+        elif profile.provider == 'openai-compatible':
             route = '/chat/completions'
             body = {'model': profile.model, 'messages': [{'role': 'user', 'content': request.text}], 'stream': False}
         elif request.capability == 'tts':
@@ -504,13 +603,15 @@ class ProviderGateway:
                 raise ProviderError('Reconnect this profile: its securely stored credential could not be read.') from None
             if not isinstance(secret, str) or not secret or any(ord(c) < 33 for c in secret):
                 raise ProviderError('Reconnect this profile: the stored credential is invalid.')
-            headers['xi-api-key' if profile.provider == 'elevenlabs' else 'Authorization'] = (
-                secret if profile.provider == 'elevenlabs' else 'Bearer ' + secret)
+            key = {'elevenlabs': 'xi-api-key', 'google-translate': 'x-goog-api-key'}.get(profile.provider, 'Authorization')
+            headers[key] = secret if key != 'Authorization' else 'Bearer ' + secret
         elif not profile.local:
             raise ProviderError('Reconnect this profile before using an external provider.')
         self.ledger.reserve(operation_id, approval, request.fingerprint(profile), estimated_micros)
         try:
-            output = self.transport.post(profile, route, raw, headers, cancelled=cancelled)
+            output = (self.transport.get(profile, route, body, headers, cancelled=cancelled)
+                      if request.capability == 'translation_languages' else
+                      self.transport.post(profile, route, raw, headers, cancelled=cancelled))
             if not isinstance(output, bytes) or not 0 < len(output) <= MAX_RESPONSE:
                 raise ProviderError('Invalid or oversized provider result.')
             if request.capability == 'llm':
@@ -521,6 +622,8 @@ class ProviderGateway:
                         raise ValueError
                 except (ValueError, TypeError, KeyError, IndexError):
                     raise ProviderError('Unsupported model response; no returned commands were executed.') from None
+            elif request.capability in ('translation', 'translation_languages'):
+                translation_result(output, request.capability)
             self.ledger.finish(operation_id, output_sha256=sha256(output).hexdigest())
             return output
         except BaseException as exc:

@@ -15,11 +15,13 @@ from ..audio.model_manifest import local_path
 from ..file_publication import publish_directory_no_replace
 from .files import (canonical, copy_snapshot, file_digest, read_bytes, read_json,
                     regular, sync_parent, write_new)
-from .models import (FORMATS, INPUT_SUFFIXES, PROTOCOL, PreparedTranscription,
+from .models import (INPUT_SUFFIXES, PROTOCOL, PreparedTranscription,
     TranscriptionBudget, TranscriptionControl, TranscriptionOptions, TranscriptionProgress,
-    TranscriptionReceipt, checksum, exact_keys, identity, positive)
+    TranscriptionReceipt, checksum, identity)
 from .protocol import preflight_outputs, verify_outputs
 from .runtime import TranscriptionRuntime, environment
+from .validation import (RESTORED_BYTES, RESTORED_NAME, validate_request,
+                         validate_receipt, validate_restored)
 
 
 MAX_REQUEST_BYTES = 8 * 1024**2
@@ -90,7 +92,7 @@ receipt exposes output names; recognized text is always a derived asset.
         callback(TranscriptionProgress(phase, completed, total, state))
 
     def prepare(self, workspace, manifest, sources, *, options=None, budget=None,
-                cancelled=lambda: False, on_progress=lambda event: None):
+                cancelled=lambda: False, on_progress=lambda event: None, _display_names=None):
         """Snapshot explicit files. This does not run recognition or edit originals."""
         options = TranscriptionOptions() if options is None else options
         budget = TranscriptionBudget() if budget is None else budget
@@ -98,6 +100,10 @@ receipt exposes output names; recognized text is always a derived asset.
             raise TypeError('Use typed transcription options and budgets.')
         if type(sources) not in (tuple, list) or not 1 <= len(sources) <= budget.max_sources:
             raise ValueError('Choose a bounded explicit list of audio/video files.')
+        if _display_names is not None and (type(_display_names) is not tuple or len(_display_names) != len(sources)
+                or any(not isinstance(name, str) or not 1 <= len(name) <= 512
+                       or any(ord(c) < 32 for c in name) for name in _display_names)):
+            raise ValueError('Invalid retained source display names.')
         self._workspace(workspace)
         guard = _Guard(self, budget.max_seconds, cancelled)
         guard.check()
@@ -133,7 +139,8 @@ receipt exposes output names; recognized text is always a derived asset.
                 payload = copy_snapshot(path, stage / 'inputs' / name,
                                         budget.max_input_bytes - total, guard.check)
                 total += payload['bytes']
-                snapshots.append({'name': name, 'display_name': path.name, **payload})
+                display_name = _display_names[number - 1] if _display_names is not None else path.name
+                snapshots.append({'name': name, 'display_name': display_name, **payload})
             request = {'schema': 'resonance-transcription-request/1', 'protocol': PROTOCOL,
                 'id': job_id, 'data_root': str(self.root), 'workspace': workspace,
                 'profile_path': str(runtime.manifest_path), 'profile_sha256': runtime.manifest_sha256,
@@ -156,54 +163,36 @@ receipt exposes output names; recognized text is always a derived asset.
                 shutil.rmtree(stage)
 
     @staticmethod
-    def _prepared(request, raw, *, warnings=()):
+    def _prepared(request, raw, *, warnings=(), requires_reapproval=False):
         return PreparedTranscription(request['id'], sha256(raw).hexdigest(), request['workspace'],
             len(request['sources']), sum(row['bytes'] for row in request['sources']),
             request['model_id'], request['model_revision'], TranscriptionOptions.from_dict(request['options']),
-            tuple(row['display_name'] for row in request['sources']), request['profile_path'], request['profile_sha256'], warnings)
+            tuple(row['display_name'] for row in request['sources']), request['profile_path'], request['profile_sha256'],
+            warnings, requires_reapproval, TranscriptionBudget.from_dict(request['budget']))
 
-    def _request(self, job_id, expected=None, check=lambda: None):
+    def _request(self, job_id, expected=None, check=lambda: None, *, allow_restored=False):
         directory = self._directory(job_id)
         value, raw = read_json(directory / 'request.json', MAX_REQUEST_BYTES, check)
-        exact_keys(value, ('schema', 'protocol', 'id', 'data_root', 'workspace', 'profile_path',
-                          'profile_sha256', 'model_id', 'model_revision', 'options', 'budget', 'sources'),
-                   'transcription request')
-        if (value['schema'] != 'resonance-transcription-request/1' or value['protocol'] != PROTOCOL
-                or value['id'] != job_id or value['data_root'] != str(self.root)):
-            raise PermissionError('This transcription request belongs to another job or data directory.')
+        options, budget = validate_request(value, job_id)
+        restored = directory / RESTORED_NAME
+        if restored.exists():
+            marker, _ = read_json(restored, RESTORED_BYTES, check)
+            validate_restored(marker, job_id, sha256(raw).hexdigest())
+            if not allow_restored:
+                raise PermissionError('Restored transcription is inert. Choose a current profile and prepare a new reviewed request.')
+        elif value['data_root'] != str(self.root):
+            raise PermissionError('This transcription request belongs to another data directory.')
         if expected is not None and checksum(expected) != sha256(raw).hexdigest():
             raise PermissionError('The reviewed transcription request changed; review it again.')
-        checksum(value['profile_sha256'])
-        if not isinstance(value['profile_path'], str) or not Path(value['profile_path']).is_absolute():
-            raise ValueError('The saved job requires its explicitly reviewed local profile.')
-        for key in ('model_id', 'model_revision'):
-            if not isinstance(value[key], str) or not 1 <= len(value[key]) <= 512:
-                raise ValueError('Invalid saved model identity.')
         self._workspace(value['workspace'])
-        options, budget = TranscriptionOptions.from_dict(value['options']), TranscriptionBudget.from_dict(value['budget'])
-        sources = value['sources']
-        if type(sources) is not list or not 1 <= len(sources) <= budget.max_sources:
-            raise ValueError('Invalid saved input list.')
-        total = 0
-        for number, row in enumerate(sources, 1):
-            exact_keys(row, ('name', 'display_name', 'bytes', 'sha256'), 'source snapshot')
-            if (not isinstance(row['name'], str) or Path(row['name']).suffix not in INPUT_SUFFIXES
-                    or row['name'] != f'source-{number:05d}' + Path(row['name']).suffix
-                    or not isinstance(row['display_name'], str) or not 1 <= len(row['display_name']) <= 512
-                    or any(ord(c) < 32 for c in row['display_name'])):
-                raise ValueError('Invalid saved source locator.')
-            checksum(row['sha256'])
-            total += positive(row['bytes'], 'source byte count', budget.max_input_bytes)
-        if total > budget.max_input_bytes:
-            raise ValueError('Saved source snapshots exceed the approved budget.')
         return directory, value, raw, options, budget
 
     def review(self, job_id):
         """Read the exact saved request for a fresh, explicit resume decision."""
-        _, request, raw, _, _ = self._request(job_id)
-        return self._prepared(request, raw), request
+        directory, request, raw, _, _ = self._request(job_id, allow_restored=True)
+        return self._prepared(request, raw, requires_reapproval=(directory / RESTORED_NAME).exists()), request
 
-    def jobs(self, *, cancelled=lambda: False):
+    def jobs(self, *, workspace=None, cancelled=lambda: False):
         self._bound()
         if not self.jobs_root.exists():
             return ()
@@ -225,9 +214,36 @@ receipt exposes output names; recognized text is always a derived asset.
             guard.check()
             if path.name.startswith('.'):
                 continue
-            _, request, raw, _, _ = self._request(identity(path.name), check=guard.check)
-            result.append(self._prepared(request, raw))
+            if workspace is not None:
+                preliminary, _ = read_json(path / 'request.json', MAX_REQUEST_BYTES, guard.check)
+                if type(preliminary) is dict and preliminary.get('workspace') != workspace:
+                    continue
+            directory, request, raw, _, _ = self._request(identity(path.name), check=guard.check, allow_restored=True)
+            result.append(self._prepared(request, raw, requires_reapproval=(directory / RESTORED_NAME).exists()))
         return tuple(result)
+
+    def prepare_recovered(self, job_id, manifest, *, approved_source_request_sha256,
+                          options=None, budget=None, cancelled=lambda: False, on_progress=lambda event: None):
+        """Create a new request from owned restored inputs and a current profile.
+
+        Original bytes, fingerprints and path strings remain untouched. Old
+        caches, profile paths and approvals never become execution authority.
+        """
+        directory, request, _, old_options, old_budget = self._request(job_id,
+            checksum(approved_source_request_sha256), allow_restored=True)
+        if not (directory / RESTORED_NAME).exists():
+            raise ValueError('Choose a restored inert transcription request.')
+        selected_budget = old_budget if budget is None else budget
+        if type(selected_budget) is not TranscriptionBudget:
+            raise TypeError('Use a typed transcription budget.')
+        guard = _Guard(self, selected_budget.max_seconds, cancelled)
+        with project_lock(directory):
+            self._inputs(directory, request, guard.check)
+            return self.prepare(request['workspace'], manifest,
+                [directory / 'inputs' / row['name'] for row in request['sources']],
+                options=old_options if options is None else options, budget=selected_budget,
+                cancelled=lambda: (guard.check() or False), on_progress=on_progress,
+                _display_names=tuple(row['display_name'] for row in request['sources']))
 
     @staticmethod
     def _tree_budget(root, budget, check, *, active=False):
@@ -452,37 +468,14 @@ receipt exposes output names; recognized text is always a derived asset.
     def verify(self, job_id, *, expected_receipt_sha256, cancelled=lambda: False):
         """Reopen only a hash-bound receipt; installation absence does not erase derivatives."""
         checksum(expected_receipt_sha256)
-        directory, request, raw, options, budget = self._request(job_id)
+        directory, request, raw, options, budget = self._request(job_id, allow_restored=True)
         guard = _Guard(self, budget.max_seconds, cancelled)
         with project_lock(directory):
             value, encoded = read_json(directory / 'receipt.json', MAX_REQUEST_BYTES, guard.check)
             if sha256(encoded).hexdigest() != expected_receipt_sha256:
                 raise ValueError('The retained transcription receipt changed.')
-            exact_keys(value, ('schema', 'id', 'request_sha256', 'profile_sha256', 'quotation_authority',
-                'accuracy_status', 'derivative_kind', 'sources', 'outputs', 'observed'), 'transcription receipt')
-            if (value['schema'] != 'resonance-transcription-receipt/1' or value['id'] != job_id
-                    or value['quotation_authority'] is not False or value['accuracy_status'] != 'not_qualified'
-                    or value['request_sha256'] != sha256(raw).hexdigest()
-                    or value['profile_sha256'] != request['profile_sha256']
-                    or canonical(value['sources']) != canonical(request['sources'])):
-                raise ValueError('The receipt is not bound to this approved derivative request.')
-            expected_names = set()
-            for row in request['sources']:
-                for fmt in FORMATS:
-                    if fmt == 'json' or fmt in options.formats:
-                        name = 'results/inputs/' + Path(row['name']).stem + '.' + fmt
-                        expected_names.update((name, name + '.v43-output.json'))
-            outputs = value['outputs']
-            if type(outputs) is not list or len(outputs) != len(expected_names):
-                raise ValueError('The receipt has an invalid output inventory.')
+            outputs = validate_receipt(value, request, raw)
             for row in outputs:
-                exact_keys(row, ('path', 'sha256', 'bytes'), 'receipt output')
-                if row['path'] not in expected_names:
-                    raise ValueError('An output path does not belong to this transcript.')
-                expected_names.remove(row['path'])
-                checksum(row['sha256'])
-                if type(row['bytes']) is not int or not 0 <= row['bytes'] <= budget.max_output_bytes:
-                    raise ValueError('An output exceeds its approved byte budget.')
                 path = directory / row['path']
                 if regular(path).st_size != row['bytes'] or file_digest(path, guard.check) != row['sha256']:
                     raise ValueError('A retained transcript output changed.')
@@ -498,7 +491,7 @@ receipt exposes output names; recognized text is always a derived asset.
         if type(receipt) is not TranscriptionReceipt:
             raise TypeError('Use the exact completed or freshly verified transcript receipt.')
         self.verify(receipt.id, expected_receipt_sha256=receipt.receipt_sha256, cancelled=cancelled)
-        directory, request, _, _, budget = self._request(receipt.id, receipt.request_sha256)
+        directory, request, _, _, budget = self._request(receipt.id, receipt.request_sha256, allow_restored=True)
         guard = _Guard(self, budget.max_seconds, cancelled)
         recorded, encoded = read_json(directory / 'receipt.json', MAX_REQUEST_BYTES, guard.check)
         if sha256(encoded).hexdigest() != receipt.receipt_sha256:

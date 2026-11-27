@@ -126,7 +126,7 @@ class Service:
         return dict(id=token, token=token, encrypted=password is not None,
             scope='All libraries in the published data folder', libraries=['Current library', 'Archived library'],
             schema_version=4, files=3, bytes=1200, backup_checksum=OTHER,
-            warnings=['Pending imports need their separate export.'], restore_mode='new-folder-only', verified=True)
+            warnings=['Pending imports are captured and require a new review after restore.'], restore_mode='new-folder-only', verified=True)
 
     def restore(self, folder, token, destination, password=None, **options):
         self._call('restore', folder=folder, token=token, destination=destination, password=password, **options)

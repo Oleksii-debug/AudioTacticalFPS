@@ -25,6 +25,9 @@ def test_native_option_protocol_defaults_off_and_disposes(accepted, checked, exp
     option.SetName.assert_called_once_with('Include generated audio saved in this library')
     option.SetFocus.assert_called_once()
     dialog.Destroy.assert_called_once()
+    description = wx.StaticText.call_args.kwargs['label']
+    assert 'captured source bytes' in description and 'require a new review' in description
+    assert 'Unfinished imports are excluded' not in description
 
 
 def prepare(classes, tmp_path, monkeypatch, selected):

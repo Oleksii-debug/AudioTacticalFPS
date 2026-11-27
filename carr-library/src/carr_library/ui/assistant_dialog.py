@@ -5,7 +5,7 @@ from pathlib import Path
 from .assistant_actions import AssistantActions
 
 
-def show_assistant(frame, *, production=None, on_ready=None):
+def show_assistant(frame, *, production=None, local_planner=None, on_ready=None):
     import wx
     from ..assistant import AssistantService, Scope, HELP, Plan, Step
     from ..assistant.production import LocalProduction
@@ -13,6 +13,8 @@ def show_assistant(frame, *, production=None, on_ready=None):
     production = production or LocalProduction(frame.library.root)
     service = AssistantService(frame.library, production=production)
     actions = AssistantActions(frame, service=service)
+    from .local_planner_actions import LocalPlanningActions
+    model_actions = LocalPlanningActions(actions, planner=local_planner)
     dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
@@ -20,6 +22,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
     alive, busy, plan, job_id = True, False, None, None
     window_alive = True
     measured = None
+    owned_work = None
     workspaces = frame.library.workspaces()
 
     def dispose(window):
@@ -70,7 +73,8 @@ def show_assistant(frame, *, production=None, on_ready=None):
                    value='LOCAL ONLY. Nothing executes until you review the plan and choose Run.')
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
-    for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
+    for identity, label in [('preview', '&Preview plan'), ('model', 'Review local &model...'),
+                             ('run', '&Run / resume'), ('pause', '&Pause'),
                              ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
@@ -82,7 +86,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
     buttons['pause'].Disable()
 
     def report(value):
-        if alive and actions.current():
+        if alive and window_alive and actions.current():
             review.ChangeValue(str(value))
 
     def post(callback):
@@ -99,118 +103,268 @@ def show_assistant(frame, *, production=None, on_ready=None):
         nonlocal plan, job_id
         plan, job_id = None, None
         actions.invalidate()
-        if alive and actions.current():
+        model_actions.invalidate()
+        if alive and window_alive and actions.current():
             buttons['run'].Disable()
+            model_button_label()
         if event is not None:
             event.Skip()
 
-    def preview(event=None):
+    def scope_from_controls():
+        index = scope_choice.GetSelection()
+        if not 0 <= index <= len(workspaces):
+            raise ValueError('Choose the library scope again.')
+        return Scope(workspaces[index - 1].id if index > 0 else None,
+                     (Path(input_folder.GetValue()),) if input_folder.GetValue().strip() else (),
+                     Path(output_folder.GetValue()) if output_folder.GetValue().strip() else None,
+                     allow_create=index == 0, allow_full_backup=full_backup.GetValue(),
+                     max_bytes=int(budget.GetValue()) * 1024 ** 2,
+                     max_files=int(file_budget.GetValue()),
+                     max_seconds=float(deadline.GetValue()))
+
+    def model_button_label():
+        if alive and window_alive and actions.current():
+            label = ('Approve local &model request' if model_actions.review is not None
+                     else 'Review local &model...')
+            buttons['model'].SetLabel(label)
+            buttons['model'].SetName(label.replace('&', ''))
+            dialog.Layout()
+
+    def accept_candidate(candidate, *, expected_generation, notice=''):
         nonlocal plan, job_id
+        if (not alive or not window_alive or not actions.current(expected_generation)
+                or candidate.scope.to_dict() != scope_from_controls().to_dict()):
+            raise PermissionError('The reviewed permissions changed; prepare the plan again.')
+        scope = candidate.scope
+        if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids') and 'script' not in step.arguments
+               for step in candidate.steps):
+            voices = tuple(item for item in production.voices() if item.available)
+            choice = wx.SingleChoiceDialog(dialog, 'Choose the default local voice for this production.',
+                                            'Production voice', [v.name + '; ' + ', '.join(v.languages) for v in voices])
+            try:
+                if choice.ShowModal() != wx.ID_OK:
+                    return False
+                if (not alive or not window_alive or not actions.current(expected_generation)
+                        or scope.to_dict() != scope_from_controls().to_dict()):
+                    raise PermissionError('The reviewed permissions changed while choosing a voice.')
+                selected = choice.GetSelection()
+            finally:
+                dispose(choice)
+            if not 0 <= selected < len(voices):
+                raise ValueError('Install and choose a local voice before narration.')
+            steps = tuple(Step(s.tool, {**s.arguments, 'voice_ids': [voices[selected].id]})
+                          if s.tool == 'audio.produce' and 'script' not in s.arguments else s for s in candidate.steps)
+            candidate = Plan(scope, steps, candidate.summary)
+        service.validate(candidate)
+        actions.ensure()
+        plan, job_id = actions.accept(candidate), None
+        model_actions.invalidate()
+        model_button_label()
+        report((notice + '\n\n' if notice else '') +
+               'LOCAL ONLY — the following operations have not run.\n\n' +
+               backup_notice(plan) + '\n\n' +
+               json.dumps(plan.to_dict(), ensure_ascii=False, indent=2) +
+               '\n\nChoose Run to authorize these exact operations inside these directories.')
+        buttons['run'].Enable()
+        review.SetFocus()
+        return True
+
+    def preview(event=None):
         try:
-            if busy:
+            if busy or not alive or not window_alive:
                 return
             invalidate()
             actions.ensure()
-            index = scope_choice.GetSelection()
-            scope = Scope(workspaces[index - 1].id if index > 0 else None,
-                          (Path(input_folder.GetValue()),) if input_folder.GetValue().strip() else (),
-                          Path(output_folder.GetValue()) if output_folder.GetValue().strip() else None,
-                          allow_create=index == 0, allow_full_backup=full_backup.GetValue(),
-                          max_bytes=int(budget.GetValue()) * 1024 ** 2,
-                          max_files=int(file_budget.GetValue()),
-                          max_seconds=float(deadline.GetValue()))
-            candidate = service.preview(instruction.GetValue(), scope)
-            if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids') and 'script' not in step.arguments
-                   for step in candidate.steps):
-                voices = tuple(item for item in production.voices() if item.available)
-                choice = wx.SingleChoiceDialog(dialog, 'Choose the default local voice for this production.',
-                                                'Production voice', [v.name + '; ' + ', '.join(v.languages) for v in voices])
-                try:
-                    generation = actions.generation
-                    if choice.ShowModal() != wx.ID_OK or not alive or not actions.current(generation):
-                        return
-                    selected = choice.GetSelection()
-                finally:
-                    dispose(choice)
-                if not 0 <= selected < len(voices):
-                    raise ValueError('Install and choose a local voice before narration.')
-                steps = tuple(Step(s.tool, {**s.arguments, 'voice_ids': [voices[selected].id]})
-                              if s.tool == 'audio.produce' and 'script' not in s.arguments else s for s in candidate.steps)
-                candidate = Plan(scope, steps, candidate.summary)
-                service.validate(candidate)
-            actions.ensure()
-            plan, job_id = actions.accept(candidate), None
-            report('LOCAL ONLY — no remote services or charges.\n\n' +
-                   backup_notice(plan) + '\n\n' +
-                   json.dumps(plan.to_dict(), ensure_ascii=False, indent=2) +
-                   '\n\nChoose Run to authorize these operations inside these directories.')
-            buttons['run'].Enable()
-            review.SetFocus()
+            generation = actions.generation
+            candidate = service.preview(instruction.GetValue(), scope_from_controls())
+            accept_candidate(candidate, expected_generation=generation)
         except Exception as exc:
             invalidate()
             report(str(exc))
-            if alive and actions.current():
+            if alive and window_alive and actions.current():
                 review.SetFocus()
 
-    def run(event=None):
-        nonlocal busy, job_id, measured
-        if busy or (plan is None and job_id is None):
-            return
+    def start_worker(owner, label, phase, completed):
+        """One captured future owns progress and cleanup until its worker ends."""
+        nonlocal measured, owned_work
+        if busy or not alive or not window_alive:
+            return False
+        observer = None
         try:
             actions.ensure()
             if getattr(frame, 'progress_actions', None) is not None:
                 from .operation_progress import OperationProgress
-                measured = OperationProgress(frame, 'Local assistant', phase='Starting the reviewed plan')
-            def progress(generation, completed, total, message):
-                if measured is not None and actions.current(generation):
-                    measured.update(phase=message, completed=completed, total=total)
+                observer = OperationProgress(frame, label, phase=phase)
+            measured = observer
+            def progress(generation, done, total, message):
+                if observer is not None and owner.current(generation):
+                    observer.update(phase=message, completed=done, total=total)
                 def deliver():
-                    if alive and actions.current(generation):
-                        report(f'{completed}/{total}: {message}')
+                    if alive and window_alive and owner.current(generation):
+                        report(message if total is None else f'{done}/{total}: {message}')
                 post(deliver)
-            generation, future = actions.start(executor, progress=progress, set_running=set_running)
-            job_id = actions.job_id
+            generation, future = owner.start(executor, progress=progress, set_running=set_running)
         except Exception as exc:
             set_running(False)
-            if measured is not None:
-                measured.failed(exc)
+            if observer is not None:
+                observer.failed(exc)
+            measured = None
             report(str(exc))
-            return
-        def finish(done):
+            model_button_label()
+            return False
+        owned = object()
+        owned_work = owned
+
+        def finished(done):
+            # This always runs after the real worker, including withdrawn or
+            # destroyed windows. It releases Python state, never native controls.
+            accepted = owner.finish(generation)
+            if not accepted or not alive or not window_alive:
+                if observer is not None:
+                    observer.finish(state='cancelled')
             def apply():
-                nonlocal busy
-                if not alive or not actions.finish(generation):
+                nonlocal measured, owned_work
+                if owned_work is not owned:
+                    if observer is not None and accepted:
+                        observer.finish(state='cancelled')
                     return
-                set_running(False)
+                owned_work = None
+                if measured is observer:
+                    measured = None
+                current = alive and window_alive and actions.current()
+                if current:
+                    set_running(False)
+                    model_button_label()
+                deliverable = accepted and owner.finish(generation)
+                if not current or not deliverable:
+                    if observer is not None and accepted:
+                        observer.finish(state='cancelled')
+                    if current and not deliverable and owner.current(generation):
+                        report('The local model request was cancelled. Review a new request before sending again.')
+                    return
+                publication_generation = actions.generation
+                reported = False
                 try:
                     result = done.result()
-                    if actions.cancel_event.is_set() and result.status == 'complete':
-                        result = service.get(result.id)
-                    if measured is not None:
-                        if result.status == 'complete':
-                            measured.complete()
-                        elif result.status == 'paused':
-                            measured.update(phase='Paused; review and resume the saved task', state='paused')
-                        else:
-                            measured.finish(state='cancelled' if result.status == 'cancelled' else 'failed')
-                    report(f'{result.status}: {result.completed} of {result.total} completed operations.\n' +
-                           json.dumps(result.results, ensure_ascii=False, indent=2) + '\n' + result.message)
+                    completed(result, observer)
+                    reported = True
                 except Exception as exc:
-                    if measured is not None:
-                        measured.failed(exc)
-                    report(str(exc))
+                    if observer is not None:
+                        if actions.cancel_event.is_set():
+                            observer.finish(state='cancelled')
+                        else:
+                            observer.failed(exc)
+                    if owned_work is None and actions.current(publication_generation):
+                        report(str(exc))
+                        reported = True
+                if reported and owned_work is None and not busy and alive and window_alive and actions.current():
+                    review.SetFocus()
+            try:
+                wx.CallAfter(apply)
+            except RuntimeError:
+                if observer is not None and accepted:
+                    observer.finish(state='cancelled')
+                actions.close()
+                model_actions.close()
+        future.add_done_callback(finished)
+        return True
+
+    def run(event=None):
+        nonlocal job_id
+        if busy or (plan is None and job_id is None):
+            return
+        def completed(result, observer):
+            if actions.cancel_event.is_set() and result.status == 'complete':
+                result = service.get(result.id)
+            if observer is not None:
+                if result.status == 'complete':
+                    observer.complete()
+                elif result.status == 'paused':
+                    observer.update(phase='Paused; review and resume the saved task', state='paused')
+                else:
+                    observer.finish(state='cancelled' if result.status == 'cancelled' else 'failed')
+            report(f'{result.status}: {result.completed} of {result.total} completed operations.\n' +
+                   json.dumps(result.results, ensure_ascii=False, indent=2) + '\n' + result.message)
+        if start_worker(actions, 'Local assistant', 'Starting the reviewed plan', completed):
+            job_id = actions.job_id
+
+    def model_request(event=None):
+        if busy or not alive or not window_alive or not actions.current():
+            return
+        try:
+            selected = model_actions.review
+            if selected is None:
+                invalidate()
+                profiles = model_actions.planner.available_profiles()
+                if not profiles:
+                    raise ValueError('Add a local OpenAI-compatible loopback profile in Settings > AI and API connections. '
+                                     'No model is downloaded or started by this action.')
+                generation = actions.generation
+                choice = wx.SingleChoiceDialog(dialog, 'Choose the local model already running on this computer.',
+                    'Local planning connection', [f'{p.name}; {p.model}; {p.endpoint}' for p in profiles])
+                try:
+                    if choice.ShowModal() != wx.ID_OK:
+                        return
+                    if not alive or not window_alive or not actions.current(generation):
+                        return
+                    index = choice.GetSelection()
+                finally:
+                    dispose(choice)
+                if not 0 <= index < len(profiles):
+                    return
+                selected = model_actions.prepare(instruction.GetValue(), scope_from_controls(), profiles[index].id)
+                report('REVIEW ONE LOCAL MODEL REQUEST — nothing has been sent or executed.\n'
+                       'Only the explicit goal and permission strings below are sent; selected files are not read. '
+                       'The endpoint is loopback only; the local server controls its own retention and forwarding. '
+                       'One request, remote-provider spending budget 0, no cloud fallback or automatic retry.\n\n' +
+                       json.dumps(selected.data, ensure_ascii=False, indent=2) +
+                       '\n\nChoose Approve local model request to send this exact prompt. '
+                       'The returned proposal requires a separate plan review and Run approval.')
+                model_button_label()
+                buttons['run'].Disable()
                 review.SetFocus()
-            post(apply)
-        future.add_done_callback(finish)
+                return
+            data = selected.data
+            if (data['scope'] != scope_from_controls().to_dict()
+                    or data['goal'] != instruction.GetValue()):
+                raise PermissionError('The goal or permissions changed; review a new exact local-model request.')
+            parent_generation = actions.generation
+            def completed(result, observer):
+                if (data['scope'] != scope_from_controls().to_dict()
+                        or data['goal'] != instruction.GetValue()):
+                    raise PermissionError('The goal or permissions changed while the model was responding.')
+                notice = ('UNTRUSTED LOCAL MODEL PROPOSAL — no tools executed.\n'
+                          f'Model: {result.model}\nEndpoint: {data["endpoint"]}\n'
+                          f'Local operation: {result.operation_id}\nRequest SHA256: {result.request_sha256}\n'
+                          f'Response SHA256: {result.response_sha256}\n'
+                          'Review every tool argument and then choose Run only if you approve this plan.')
+                accepted = accept_candidate(result.plan, expected_generation=parent_generation, notice=notice)
+                if observer is not None:
+                    if accepted:
+                        observer.complete()
+                    else:
+                        observer.finish(state='cancelled')
+            start_worker(model_actions, 'Local model plan proposal',
+                         'Sending one explicitly approved local request', completed)
+        except Exception as exc:
+            invalidate()
+            report(str(exc))
+            if alive and window_alive and actions.current():
+                review.SetFocus()
 
     def set_running(value):
         nonlocal busy
         busy = value
-        if not alive or not actions.current():
+        if not alive or not window_alive or not actions.current():
             return
-        for key in ('preview', 'run', 'jobs'):
+        for key in ('preview', 'model', 'jobs'):
             buttons[key].Enable(not value)
+        buttons['run'].Enable(not value and (plan is not None or job_id is not None))
         buttons['pause'].Enable(value)
+        pause_label = 'Cancel &model request' if value and model_actions.busy else '&Pause'
+        buttons['pause'].SetLabel(pause_label)
+        buttons['pause'].SetName(pause_label.replace('&', ''))
+        dialog.Layout()
         for control in (scope_choice, instruction, input_folder, output_folder, full_backup, budget, file_budget, deadline):
             control.Enable(not value)
 
@@ -219,6 +373,8 @@ def show_assistant(frame, *, production=None, on_ready=None):
         if busy or not alive or not actions.current():
             return
         try:
+            model_actions.invalidate()
+            model_button_label()
             rows = service.jobs()
         except (ValueError, OSError) as exc:
             report(str(exc))
@@ -255,8 +411,9 @@ def show_assistant(frame, *, production=None, on_ready=None):
         if not alive:
             return
         actions.close()
+        model_actions.close()
         if measured is not None and busy:
-            measured.finish(state='cancelled')
+            measured.cancel_requested()
         alive = False
         executor.shutdown(wait=False, cancel_futures=True)
         if window_alive and dialog.IsModal():
@@ -267,8 +424,9 @@ def show_assistant(frame, *, production=None, on_ready=None):
         if event.GetEventObject() is dialog:
             window_alive = alive = False
             actions.close()
+            model_actions.close()
             if measured is not None and busy:
-                measured.finish(state='cancelled')
+                measured.cancel_requested()
             executor.shutdown(wait=False, cancel_futures=True)
         event.Skip()
 
@@ -282,7 +440,7 @@ def show_assistant(frame, *, production=None, on_ready=None):
         if measured is not None:
             measured.cancel_requested()
 
-    for identity, callback in {'preview': preview, 'run': run, 'pause': pause,
+    for identity, callback in {'preview': preview, 'model': model_request, 'run': run, 'pause': pause,
                                'jobs': jobs, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction, budget, file_budget, deadline):
@@ -296,7 +454,9 @@ def show_assistant(frame, *, production=None, on_ready=None):
             controls = {'instruction': instruction, 'review': review,
                 'budget': budget, 'deadline': deadline, 'preview': buttons['preview'],
                 'run': buttons['run'], 'close': buttons['close'], 'output': output_folder,
-                'actions': actions}
+                'actions': actions, 'model_actions': model_actions, 'model': buttons['model'],
+                'pause': buttons['pause'], 'scope': scope_choice, 'input': input_folder,
+                'full_backup': full_backup, 'file_budget': file_budget}
             post(lambda: on_ready(dialog, controls))
         dialog.ShowModal()
     finally:

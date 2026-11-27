@@ -480,3 +480,106 @@ def test_model_choice_is_not_applied_after_library_folder_changes(center, monkey
     center.choose_ocr_models()
     assert center.custom_ocr_config is None and center.languages.selection == 3
     assert 'library folder changed' in center.status.value
+
+
+
+def recovery_ready(center, monkeypatch):
+    from carr_library.ui import import_center
+    center.library.import_recovery_items = Mock(return_value=(
+        dict(kind='batch', identity='first', label='Saved batch first'),))
+    value = dict(kind='batch', identity='first', workspace='library', checksum='a' * 64)
+    center.library.review_import_recovery = Mock(return_value=value)
+    center.library.approve_import_recovery = Mock(return_value=dict(
+        approved=True, checksum=value['checksum'], batch_id=None, message='Captured sources approved.'))
+    confirm = Mock(return_value=True)
+    monkeypatch.setattr(import_center, 'confirm_restored_import', confirm)
+    return value, confirm
+
+
+def test_restored_import_requires_displayed_review_then_separate_start(center, monkeypatch):
+    value, confirm = recovery_ready(center, monkeypatch)
+    center.review_restored_imports()
+    assert center.busy and len(center.jobs) == 1
+    center.library.approve_import_recovery.assert_not_called()
+    returned = center.jobs[0].operation()
+    assert returned == value
+    complete(center, center.jobs[0], returned)
+    confirm.assert_called_once_with(center, value)
+    assert center.busy and len(center.jobs) == 2
+    receipt = center.jobs[1].operation()
+    args, options = center.library.approve_import_recovery.call_args
+    assert args == ('library', 'batch', 'first')
+    assert options['expected_checksum'] == value['checksum'] and options['confirmed'] is True
+    assert options['cancelled']() is False
+    complete(center, center.jobs[1], receipt)
+    assert not center.busy and center.batch['batch_id'] == 'first'
+    assert 'Start queued files' in center.status.value
+    center.library.run_import_batch.assert_not_called()
+
+
+def test_cancelled_review_keeps_restored_import_inert(center, monkeypatch):
+    value, confirm = recovery_ready(center, monkeypatch)
+    confirm.return_value = False
+    center.review_restored_imports()
+    complete(center, center.jobs[0], center.jobs[0].operation())
+    assert not center.busy and len(center.jobs) == 1
+    center.library.approve_import_recovery.assert_not_called()
+    assert 'remains paused' in center.status.value
+
+
+@pytest.mark.parametrize('change', ['closed', 'closing', 'library'])
+def test_recovery_review_rechecks_live_host_after_modal_before_approval(center, monkeypatch, change):
+    from carr_library.ui import import_center
+    value, _ = recovery_ready(center, monkeypatch)
+    def changed(_parent, _value):
+        if change == 'closed':
+            center.closed = True
+        elif change == 'closing':
+            center.frame._closing = True
+        else:
+            center.frame.library = object()
+        return True
+    monkeypatch.setattr(import_center, 'confirm_restored_import', changed)
+    center.review_restored_imports()
+    complete(center, center.jobs[0], center.jobs[0].operation())
+    center.library.approve_import_recovery.assert_not_called()
+    assert len(center.jobs) == 1 and 'folder changed' in center.status.value
+
+
+def test_stale_recovery_result_does_not_open_or_approve_another_selection(center, monkeypatch):
+    value, confirm = recovery_ready(center, monkeypatch)
+    center.review_restored_imports()
+    changed = dict(value, identity='other')
+    complete(center, center.jobs[0], changed)
+    confirm.assert_not_called()
+    center.library.approve_import_recovery.assert_not_called()
+    assert 'another selection' in center.status.value
+
+
+def test_queued_recovery_approval_checks_scope_before_worker_call(center, monkeypatch):
+    value, _ = recovery_ready(center, monkeypatch)
+    center.review_restored_imports()
+    complete(center, center.jobs[0], center.jobs[0].operation())
+    center.frame.library = object()
+    with pytest.raises(ValueError, match='folder changed'):
+        center.jobs[1].operation()
+    center.library.approve_import_recovery.assert_not_called()
+
+
+def test_recovery_approval_uses_live_cancel_and_requires_exact_receipt(center, monkeypatch):
+    value, _ = recovery_ready(center, monkeypatch)
+    center.review_restored_imports()
+    complete(center, center.jobs[0], center.jobs[0].operation())
+    center.cancel_operation()
+    center.jobs[1].operation()
+    callback = center.library.approve_import_recovery.call_args.kwargs['cancelled']
+    assert callback() is True
+    complete(center, center.jobs[1], dict(approved=True, checksum='b' * 64, message='Wrong receipt.'))
+    assert 'reviewed approval' in center.status.value
+
+
+def test_recovery_button_reports_empty_scope_without_scheduling(center):
+    center.library.import_recovery_items = Mock(return_value=())
+    center.review_restored_imports()
+    assert not center.jobs
+    assert 'No restored imports' in center.status.value

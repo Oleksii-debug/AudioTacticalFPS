@@ -12,7 +12,7 @@ import tempfile
 import uuid
 
 from ..providers import (BudgetLedger, JobApproval, ProfileStore, ProviderGateway,
-                         ProviderProfile, ProviderRequest, ProviderError)
+                         ProviderProfile, ProviderRequest, ProviderError, GOOGLE_TRANSLATE_ENDPOINT)
 from ..research.export_file import _filename, _destination
 
 
@@ -148,16 +148,20 @@ def show_api_connections(frame):
                 dialog.Destroy()
 
         def configure(self, previous=None):
-            provider_index = self.choose('Provider adapter', ['Local or remote OpenAI-compatible text model', 'ElevenLabs speech, music and sound effects'])
+            provider_index = self.choose('Provider adapter', ['Local or remote OpenAI-compatible text model',
+                'ElevenLabs speech, music and sound effects', 'Google Translate Basic v2 (NMT)'])
             if provider_index is None:
                 return
-            provider = ('openai-compatible', 'elevenlabs')[provider_index]
+            provider = ('openai-compatible', 'elevenlabs', 'google-translate')[provider_index]
             fields = {}
-            for key, label, default in [('name', 'Friendly account name', ''),
+            prompts = [('name', 'Friendly account name', '')] if provider_index == 2 else [
+                    ('name', 'Friendly account name', ''),
                     ('endpoint', 'API base URL (loopback IP for local service)',
                      'http://127.0.0.1:8080/v1' if provider_index == 0 else 'https://api.elevenlabs.io/v1'),
-                    ('model', 'Installed model ID or provider model ID', '')]:
-                value = self.prompt('Connection profile', label, getattr(previous, key, default))
+                    ('model', 'Installed model ID or provider model ID', '')]
+            for key, label, default in prompts:
+                value = self.prompt('Connection profile', label,
+                    getattr(previous, key, default) if previous is not None and previous.provider == provider else default)
                 if value is None:
                     return
                 fields[key] = value.strip()
@@ -166,11 +170,14 @@ def show_api_connections(frame):
                 if kind is None:
                     return
                 local, capabilities = kind == 0, ('llm',)
-            else:
+            elif provider_index == 1:
                 cap = self.choose('Capability for this profile and model', ['Speech synthesis', 'Music generation', 'Sound effects'])
                 if cap is None:
                     return
                 local, capabilities = False, (('tts', 'music', 'sound_effects')[cap],)
+            else:
+                fields.update(endpoint=GOOGLE_TRANSLATE_ENDPOINT, model='nmt')
+                local, capabilities = False, ('translation', 'translation_languages')
             key = self.prompt('API key', 'API key (masked). Leave blank for local access or to keep an unchanged profile key.', password=True)
             if key is None:
                 return
@@ -224,6 +231,11 @@ def show_api_connections(frame):
         def run(self, event):
             try:
                 profile = self.selected()
+                if profile.provider == 'google-translate':
+                    self.status.SetValue('Use Research > Translate text to review the exact source, languages, '
+                        'chunks and remaining budget before a Google Translation request. Opening this profile sends nothing.')
+                    self.status.SetFocus()
+                    return
                 index = self.choose('Task', list(profile.capabilities))
                 if index is None:
                     return
@@ -280,4 +292,4 @@ def install_api_connection_actions(frame):
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'AI and API &connections...')
     frame.Bind(wx.EVT_MENU, lambda event: show_api_connections(frame), item)
-    frame.menu_bar.Append(menu, 'Se&ttings')
+    frame.menu_bar.Append(menu, 'Sett&ings')

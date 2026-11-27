@@ -192,6 +192,20 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/probe_operation_progress_native.py --native 2>&1 | Tee-Object 'ci-results/native-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed Main Search cursor controls and exact source actions
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' && steps.ocr_prepare.outcome == 'success' && steps.audio_prepare.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_main_search_pages_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-main-search-pages.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed translation review with an offline provider fixture
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' && steps.ocr_prepare.outcome == 'success' && steps.audio_prepare.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_translation_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-translation.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Exercise installed native transcription with an independent protocol fixture
         if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' && steps.ocr_prepare.outcome == 'success' && steps.audio_prepare.outcome == 'success' }}
         timeout-minutes: 3
@@ -320,6 +334,17 @@ jobs:
           & $env:CARR_PYTHON -I tests/ui/probe_catalog_insights_native.py 2>&1 | Tee-Object 'ci-results/native-catalog-insights.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # Make each independent native result available before the longer source
+      # suites finish. Uploading evidence never changes a failed gate outcome.
+      - name: Preserve installed native evidence before source regression
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-native-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/native-*.txt
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' && steps.ocr_prepare.outcome == 'success' && steps.audio_prepare.outcome == 'success' }}
         timeout-minutes: 30
@@ -341,9 +366,14 @@ jobs:
             'tests/assistant',
             'tests/ui/test_assistant_actions.py',
             'tests/ui/test_assistant_menu.py',
+            'tests/ui/test_local_planner_actions.py',
+            'tests/ui/test_local_planner_dialog.py',
             'tests/language_qualification',
             'tests/transcription',
             'tests/ingest/test_batch_continuation.py',
+            'tests/ingest/test_pending_backup.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/storage/test_translation_backup.py',
             'tests/ui/test_language_matrix_host.py',
             'tests/ui/test_backup_options.py',
             'tests/e2e/test_library_backup_cli.py',
@@ -454,6 +484,9 @@ jobs:
             'tests/search/test_literal_v2_composition.py',
             'tests/search/test_advanced_search.py',
             'tests/ui/test_desktop_query_jobs.py',
+            'tests/ui/test_desktop_search_pages.py',
+            'tests/ui/test_translation_ui.py',
+            'tests/e2e/test_google_translation_gateway.py',
             'tests/ui/test_scope_labels.py',
             'tests/ui/test_desktop_handlers.py',
             'tests/ui/test_research_actions.py',
@@ -685,6 +718,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_transcription_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-transcription-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_main_search_pages_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-main-search-pages.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_translation_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-translation.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_ocr_languages_smoke.py --require-bundled 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-languages-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -771,10 +808,15 @@ jobs:
                             'tests/assistant',
                             'tests/ui/test_assistant_actions.py',
                             'tests/ui/test_assistant_menu.py',
+                            'tests/ui/test_local_planner_actions.py',
+                            'tests/ui/test_local_planner_dialog.py',
                             'tests/ingest/test_import_replay_identity.py',
                             'tests/language_qualification',
                             'tests/transcription',
                             'tests/ingest/test_batch_continuation.py',
+                            'tests/ingest/test_pending_backup.py',
+                            'tests/e2e/test_import_worker_publication.py',
+                            'tests/storage/test_translation_backup.py',
                             'tests/ui/test_language_matrix_host.py',
                             'tests/conversion',
                             'tests/ui/test_document_conversion.py',
