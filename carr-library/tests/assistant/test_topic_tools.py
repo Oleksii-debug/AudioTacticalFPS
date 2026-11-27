@@ -316,4 +316,4 @@ def test_current_thirteen_tools_remain_allowed_alongside_exact_three_topic_tools
         'library.create', 'library.list', 'library.catalog', 'library.import', 'library.import_folder',
         'library.search', 'library.extract', 'library.backup', 'audio.produce',
         'document.convert', 'audio.effects', 'reader.control', 'player.control',
-        'topic.list', 'topic.create', 'topic.export'))
+        'topic.list', 'topic.create', 'topic.export', 'audio.transcribe'))

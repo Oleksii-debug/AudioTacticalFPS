@@ -40,6 +40,10 @@ def main(argv=None, *, trust_controller=None):
                         help='List configured local chat profiles without contacting them')
     parser.add_argument('--local-profile',
         help='Explicit saved profile ID for one proposal only; review its JSON before a separate --run')
+    source.add_argument('--list-transcription-profiles', action='store_true',
+                        help='List current local supplied-whisper registrations without activating them')
+    parser.add_argument('--transcription-profile',
+                        help='Explicit enabled local supplied-whisper profile ID for transcription Preview/Run')
     parser.add_argument('--workspace')
     parser.add_argument('--input-root', action='append', type=Path, default=[])
     parser.add_argument('--output-root', type=Path)
@@ -54,7 +58,9 @@ def main(argv=None, *, trust_controller=None):
     if args.local_profile is not None and (args.instructions is None or args.run):
         parser.error('--local-profile requires --instructions and cannot combine with --run. '
                      'Review the proposal in a separate invocation before execution.')
-    if (args.jobs or args.list_local_profiles or args.templates is not None) and args.run:
+    if args.transcription_profile is not None and args.instructions is None and args.resume is None:
+        parser.error('--transcription-profile requires --instructions or --resume.')
+    if (args.jobs or args.list_local_profiles or args.list_transcription_profiles or args.templates is not None) and args.run:
         parser.error('Listing or changing named settings never runs an operation.')
     if args.templates is not None and any((args.workspace, args.input_root, args.output_root,
             args.allow_create, args.allow_full_backup, *(value is not None for value in
@@ -87,7 +93,15 @@ def main(argv=None, *, trust_controller=None):
         app = LibraryApp(_data_directory(args.data_dir),
                          **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         production = LocalProduction(app.root, cancelled=stopped.is_set)
-        service = AssistantService(app, production=production)
+        transcription = None
+        if args.transcription_profile is not None:
+            from .transcription_tools import SelectedTranscription
+            transcription = SelectedTranscription(app, args.transcription_profile, current=lambda: not stopped.is_set())
+            print('Selected local transcription profile: ' + transcription.profile.name + '; '
+                  + transcription.profile.id + '; manifest SHA-256 ' + transcription.profile.manifest_sha256,
+                  file=sys.stderr, flush=True)
+        service = AssistantService(app, production=production,
+            **({'transcription': transcription} if transcription is not None else {}))
         if args.templates is not None:
             from .template_cli import run_templates
             result = run_templates(args.templates, service, cancelled=stopped.is_set)
@@ -95,6 +109,10 @@ def main(argv=None, *, trust_controller=None):
             result = [{'id': row.id, 'name': row.name, 'endpoint': row.endpoint, 'model': row.model}
                       for row in ProfileStore(app.root / 'api-connections.json').profiles()
                       if row.local and row.provider == 'openai-compatible' and row.capabilities == ('llm',)]
+        elif args.list_transcription_profiles:
+            from ..runtime_settings import EngineProfileStore
+            result = [asdict(row) for row in EngineProfileStore(app.root).snapshot().profiles
+                      if row.engine == 'supplied-whisper']
         elif args.jobs:
             result = [asdict(row) for row in service.jobs()]
         elif args.resume:

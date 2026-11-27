@@ -27,6 +27,13 @@ File derivatives need selected input/output folders, a source checksum and two n
 Conversion uses the existing local readers. Optional converter/OCR selections remain in Document conversion.
 Native reader.control/player.control plans are prepared from the assistant action inside the selected reader.
 Their receipts describe observed commands; playback start does not claim that the whole book was read.
+Transcribe "C:/Audio/source.wav" as "transcript" / Транскрибуй "C:/Audio/source.wav" як "транскрипт"
+An optional colon followed by a JSON settings object selects the existing worker settings, for example:
+Transcribe "C:/Audio/source.wav" as "transcript": {"model":"small","language":"uk","output_srt":true,"output_vtt":true,"output_json":true}
+Transcription needs an explicitly selected current supplied-whisper profile outside the plan.
+The source checksum and every effective setting are shown before Run. One source per step is retained
+by the existing local ASR service; exports publish to one new directory with separate provenance.
+Interrupted unbound preparation/inference requires a new reviewed plan. Accepted output is never rerun.
 Produce audio: [script text] / Озвуч: [текст сценарію]
 Audio prose is literal narration. Only an explicit JSON audio.produce step with input_kind="script"
 or a typed script object interprets role/music/pause directions.
@@ -81,6 +88,16 @@ def preview(value, scope):
         match = re.fullmatch(r'(?:export\s+topic|експортуй\s+тему)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
         if match:
             steps.append(Step('topic.export', {'topic': match.group(1), 'name': match.group(2)}))
+            continue
+        match = re.fullmatch(r'(?:transcribe|транскрибуй)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"(?:\s*:\s*(\{.*\}))?\.?', line, re.IGNORECASE)
+        if match:
+            from .transcription_tools import capture_source
+            source, captured = capture_source(match.group(1), scope)
+            args = {'path': str(source), 'source_sha256': captured['sha256'], 'name': match.group(2)}
+            if match.group(3) is not None:
+                from .validation import decode_state_json
+                args['settings'] = decode_state_json(match.group(3))
+            steps.append(Step('audio.transcribe', args))
             continue
         match = re.fullmatch(r'(?:convert|конвертуй)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
         if match:

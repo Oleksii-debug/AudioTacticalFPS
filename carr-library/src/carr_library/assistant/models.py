@@ -12,7 +12,7 @@ TOOLS = frozenset({
     'library.create', 'library.list', 'library.catalog', 'library.import',
     'library.import_folder', 'library.search', 'library.extract',
     'library.backup', 'audio.produce', 'document.convert', 'audio.effects',
-    'reader.control', 'player.control', 'topic.list', 'topic.create', 'topic.export',
+    'reader.control', 'player.control', 'topic.list', 'topic.create', 'topic.export', 'audio.transcribe',
 })
 SCHEMA = 'carr-assistant-plan/1'
 

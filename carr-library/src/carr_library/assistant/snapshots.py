@@ -178,3 +178,9 @@ def validate_state_tree(db, root, *, cancelled=lambda: False):
         value = validate_state_document(path.name, raw)
         if not path.name.endswith('.control.json'):
             validate_sources(db, value)
+            from .models import Step
+            from .transcription_tools import validate_retained_checkpoint
+            for step, checkpoint in zip(value['plan']['steps'], value['steps']):
+                if step['tool'] == 'audio.transcribe':
+                    validate_retained_checkpoint(root, Step(step['tool'], step['arguments']),
+                        value['plan']['scope'], checkpoint['intent'], cancelled=cancelled)

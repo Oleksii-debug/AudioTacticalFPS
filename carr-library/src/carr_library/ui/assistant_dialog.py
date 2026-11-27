@@ -36,7 +36,20 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
     current = frame.active[0] if frame.active else None
     scope_choice.SetSelection(next((i + 1 for i, row in enumerate(workspaces) if row.id == current), 0))
     input_folder = field('Allowed &input folder (optional; no other folders are readable)')
-    output_folder = field('Chosen &output folder (required for audio, text/topic exports or backup)')
+    output_folder = field('Chosen &output folder (required for audio, transcription, text/topic exports or backup)')
+    from ..runtime_settings import EngineProfileStore
+    try:
+        transcription_profiles = tuple(row for row in EngineProfileStore(bound_root).snapshot().profiles
+            if row.enabled and row.engine == 'supplied-whisper')
+        transcription_notice = ''
+    except (ValueError, OSError) as exc:
+        transcription_profiles = ()
+        transcription_notice = 'Local transcription profiles are unavailable: ' + str(exc)[:500]
+    transcription_choice = field('Local &transcription profile (explicit; no automatic selection)', wx.Choice,
+        choices=['No transcription profile selected'] + [row.name + '; ' + row.id for row in transcription_profiles])
+    transcription_choice.SetSelection(0)
+    if transcription_notice:
+        layout.Add(wx.StaticText(dialog, label=transcription_notice), 0, wx.ALL | wx.EXPAND, 5)
     choose_row = wx.BoxSizer(wx.HORIZONTAL)
     folder_buttons = []
     for label, target in [('Choose input folder', input_folder), ('Choose output folder', output_folder)]:
@@ -105,7 +118,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
     def input_identity():
         return (scope_choice.GetSelection(), input_folder.GetValue(), output_folder.GetValue(),
                 full_backup.GetValue(), instruction.GetValue(), budget.GetValue(),
-                file_budget.GetValue(), deadline.GetValue())
+                file_budget.GetValue(), deadline.GetValue(), transcription_choice.GetSelection())
 
     def invalidate(event=None):
         nonlocal plan, job_id, approved_inputs, revision
@@ -129,7 +142,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
         buttons['pause'].SetLabel(label)
         buttons['pause'].SetName(label.replace('&', ''))
         for control in (scope_choice, instruction, input_folder, output_folder, full_backup,
-                        budget, file_budget, deadline, *folder_buttons):
+                        budget, file_budget, deadline, transcription_choice, *folder_buttons):
             control.Enable(not busy)
 
     def post(callback):
@@ -153,6 +166,19 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
                      max_files=int(file_budget.GetValue()),
                      max_seconds=float(deadline.GetValue()))
 
+    def selected_transcription():
+        index = transcription_choice.GetSelection()
+        if not 0 <= index <= len(transcription_profiles):
+            raise ValueError('Choose a current local transcription profile or the explicit none option.')
+        return transcription_profiles[index - 1] if index else None
+
+    def bind_transcription(profile):
+        # Captured on the event thread, verified on the existing worker. No
+        # profile is inferred from a template, model response or restored job.
+        from ..assistant.transcription_tools import SelectedTranscription
+        service.transcription = (SelectedTranscription(bound_library, profile.id,
+            expected_profile=profile, current=lambda: not stopped()) if profile is not None else None)
+
     def preview(event=None):
         nonlocal plan, job_id, approved_inputs
         if busy:
@@ -161,6 +187,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
         try:
             scope = selected_scope()
             goal = instruction.GetValue()
+            selected_profile = selected_transcription()
             selected_inputs, selected_revision = input_identity(), revision
             cancel.clear()
             change_busy('preview')
@@ -170,6 +197,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
                     raise InterruptedError('Plan preview cancelled.')
                 # Audio plan validation may discover a cold local runtime. Keep
                 # that existing service and voice path off the event thread.
+                bind_transcription(selected_profile)
                 candidate = service.preview(goal, scope)
                 voices = None
                 if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids')
@@ -240,7 +268,10 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
                     plan, job_id = candidate, None
                     approved_inputs = selected_inputs, selected_revision
                     change_busy(None)
-                    report('LOCAL ONLY — no remote services or charges.\n\n' +
+                    profile_notice = ('' if selected_profile is None else
+                        'Selected local transcription profile: ' + selected_profile.name + '; '
+                        + selected_profile.id + '; manifest SHA-256 ' + selected_profile.manifest_sha256 + '\n\n')
+                    report('LOCAL ONLY — no remote services or charges.\n\n' + profile_notice +
                            json.dumps(plan.to_dict(), ensure_ascii=False, indent=2) +
                            '\n\nChoose Run to authorize these operations inside these directories.')
                     buttons['run'].Enable()
@@ -261,6 +292,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
         try:
             scope = selected_scope()
             goal = instruction.GetValue()
+            selected_profile = selected_transcription()
             selected_inputs = input_identity()
             request = local_plan_request(goal)
             store = ProfileStore(bound_root / 'api-connections.json')
@@ -306,6 +338,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
             def work():
                 if stopped():
                     raise InterruptedError('Local proposal cancelled before contacting the selected service.')
+                bind_transcription(selected_profile)
                 gateway = ProviderGateway(BudgetLedger(bound_root / 'api-operations.sqlite'))
                 return propose_local_plan(service, gateway, profile, goal, scope,
                     approval=approval, operation_id=operation_id, cancelled=stopped, profile_store=store)
@@ -353,6 +386,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
                 invalidate()
                 raise ValueError('The reviewed goal or scope changed. Preview the current inputs again.')
             selected_plan, selected_identity = plan, job_id
+            selected_profile = selected_transcription()
             cancel.clear()
             change_busy('run')
             token = progress.start('Running reviewed local plan', unit='operations').token if progress is not None else None
@@ -371,6 +405,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
                 nonlocal job_id
                 if stopped():
                     raise InterruptedError('Assistant stopped before submitting its reviewed plan.')
+                bind_transcription(selected_profile)
                 identity = selected_identity
                 if identity is None:
                     # submit revalidates the captured plan and may touch local
@@ -490,6 +525,8 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
                 # folders, full-backup permission and budgets must be chosen
                 # anew before a template can become a current approved plan.
                 scope_choice.SetSelection(0)
+                transcription_choice.SetSelection(0)
+                service.transcription = None
                 input_folder.ChangeValue('')
                 output_folder.ChangeValue('')
                 full_backup.SetValue(False)
@@ -540,6 +577,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
     for control in (input_folder, output_folder, instruction, budget, file_budget, deadline):
         control.Bind(wx.EVT_TEXT, invalidate)
     scope_choice.Bind(wx.EVT_CHOICE, invalidate)
+    transcription_choice.Bind(wx.EVT_CHOICE, invalidate)
     full_backup.Bind(wx.EVT_CHECKBOX, invalidate)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:
@@ -549,7 +587,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
                 'run': buttons['run'], 'model': buttons['model'], 'close': buttons['close'], 'output': output_folder,
                 'scope': scope_choice, 'input': input_folder, 'full_backup': full_backup,
                 'file_budget': file_budget, 'pause': buttons['pause'], 'jobs': buttons['jobs'],
-                'templates': buttons['templates'],
+                'templates': buttons['templates'], 'transcription_profile': transcription_choice,
                 'folder_buttons': tuple(folder_buttons)})
         dialog.ShowModal()
     finally:
