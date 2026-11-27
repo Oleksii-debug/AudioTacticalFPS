@@ -388,6 +388,8 @@ def inspect_epub(path, *, cancelled=lambda: False, max_bytes=32 * 1024**3):
         if provenance.get('schema') != 'resonance-epub/1':
             raise ValueError('Unsupported EPUB provenance.')
         script = _source_text(provenance.get('original_script'))
+        if provenance.get('source_display_encoding', 'literal-xml') != ('json-string' if '\f' in script else 'literal-xml'):
+            raise ValueError('The source-page encoding does not match its exact source text.')
         if sha256(script.encode('utf-8')).hexdigest() != provenance.get('source', {}).get('source_script_sha256'):
             raise ValueError('The original script differs from its recorded source hash.')
         if archive.getinfo('EPUB/styles.css').file_size != len(CSS) or archive.read('EPUB/styles.css') != CSS:
@@ -466,3 +468,376 @@ def inspect_epub(path, *, cancelled=lambda: False, max_bytes=32 * 1024**3):
         check()
         return provenance
 
+
+
+def validate_publication_receipt(record, *, publication_id=None):
+    """Validate passive receipt data without opening any recorded external path."""
+    required = {'schema', 'id', 'status', 'project_root', 'output', 'artifact',
+                'source', 'created', 'format', 'notice'}
+    if (not isinstance(record, dict) or set(record) != required
+            or record['schema'] != 'carr-audio-publication/1'
+            or not isinstance(record['id'], str) or not re.fullmatch('[0-9a-f]{32}', record['id'])
+            or publication_id is not None and record['id'] != publication_id
+            or record['status'] not in ('prepared', 'complete')
+            or record['format'] not in ('epub', 'daisy-2.02')):
+        raise ValueError('Invalid Audio Studio publication receipt.')
+    for key in ('project_root', 'output'):
+        if (not isinstance(record[key], str) or not 1 <= len(record[key]) <= 32768
+                or '\0' in record[key]):
+            raise ValueError('Invalid passive publication location.')
+    if (not isinstance(record['created'], str)
+            or not re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ', record['created'])
+            or not isinstance(record['notice'], str) or len(record['notice']) > 8192):
+        raise ValueError('Invalid publication receipt metadata.')
+    artifact = record['artifact']
+    if (not isinstance(artifact, dict) or set(artifact) != {'size', 'sha256'}
+            or type(artifact['size']) is not int or not 0 < artifact['size'] <= 32 * 1024**3
+            or not isinstance(artifact['sha256'], str) or not _HASH.fullmatch(artifact['sha256'])):
+        raise ValueError('Invalid completed publication byte identity.')
+    source = record['source']
+    required_source = {'job_id', 'job_sha256', 'project_id', 'project_sha256',
+                       'source_script_sha256', 'artifacts', 'origin', 'input_kind',
+                       'approved_library_evidence', 'frame_rate', 'frame_intervals'}
+    if (not isinstance(source, dict) or set(source) != required_source
+            or source['origin'] != 'carr-audio-production/1'
+            or source['input_kind'] not in ('narration', 'script')
+            or source['approved_library_evidence'] is not False
+            or type(source['frame_rate']) is not int or not 8000 <= source['frame_rate'] <= 192000
+            or not isinstance(source['artifacts'], list) or not 6 <= len(source['artifacts']) <= 100002
+            or not isinstance(source['frame_intervals'], list) or len(source['frame_intervals']) > 100000):
+        raise ValueError('Invalid publication source provenance.')
+    for key in ('job_id', 'job_sha256', 'project_id', 'project_sha256', 'source_script_sha256'):
+        if not isinstance(source[key], str) or not _HASH.fullmatch(source[key]):
+            raise ValueError('Invalid publication source identity.')
+    if source['job_id'] != source['project_id']:
+        raise ValueError('The publication source identities disagree.')
+    from ..research.export_file import _filename
+    names = set()
+    for item in source['artifacts']:
+        if (not isinstance(item, dict) or set(item) != {'name', 'size', 'sha256'}
+                or not isinstance(item['name'], str) or type(item['size']) is not int
+                or item['size'] < 0 or not isinstance(item['sha256'], str)
+                or not _HASH.fullmatch(item['sha256'])):
+            raise ValueError('Invalid publication source artifact.')
+        _filename(item['name'])
+        if item['name'].casefold() in names:
+            raise ValueError('Duplicate publication source artifact.')
+        names.add(item['name'].casefold())
+    seen = set()
+    for item in source['frame_intervals']:
+        if (not isinstance(item, dict)
+                or set(item) != {'event_id', 'scene_id', 'start_frame', 'end_frame',
+                                 'literal_narration', 'source_start', 'source_end'}
+                or not isinstance(item['event_id'], str) or not isinstance(item['scene_id'], str)
+                or not 1 <= len(item['event_id']) <= 100 or not 1 <= len(item['scene_id']) <= 100
+                or type(item['literal_narration']) is not bool
+                or type(item['start_frame']) is not int or type(item['end_frame']) is not int
+                or not 0 <= item['start_frame'] < item['end_frame'] <= source['frame_rate'] * 365 * 86400):
+            raise ValueError('Invalid original integer-frame provenance.')
+        identity = item['scene_id'], item['event_id']
+        if identity in seen:
+            raise ValueError('Duplicate publication frame provenance.')
+        seen.add(identity)
+        if item['literal_narration']:
+            if (type(item['source_start']) is not int or type(item['source_end']) is not int
+                    or not 0 <= item['source_start'] <= item['source_end'] <= 16 * 1024**2):
+                raise ValueError('Invalid literal narration source range.')
+        elif item['source_start'] is not None or item['source_end'] is not None:
+            raise ValueError('Only literal narration can claim exact source ranges.')
+    return record
+
+
+def publication_receipts(project_root, *, cancelled=lambda: False):
+    """Read-only typed inventory for the existing project snapshot transaction."""
+    root = local_path(project_root, exists=True)
+    folder = root / 'publications'
+    if not os.path.lexists(folder):
+        return {}
+    local_path(folder, root=root, exists=True)
+    result = {}
+    with os.scandir(folder) as entries:
+        for index, entry in enumerate(entries, 1):
+            if cancelled():
+                raise AudioCancelled('Publication receipt inventory cancelled.')
+            if index > 10000:
+                raise ValueError('Publication receipts exceed their inventory budget.')
+            path = folder / entry.name
+            regular(path)
+            if re.fullmatch(r'\.[0-9a-f]{32}\.lock', entry.name):
+                continue
+            if not re.fullmatch(r'[0-9a-f]{32}\.json', entry.name):
+                raise ValueError('Unexpected entry in the publication receipt directory.')
+            value = read_json(path)
+            validate_publication_receipt(value, publication_id=entry.name[:-5])
+            result['audio/publications/' + entry.name] = path
+    return result
+
+
+class PublicationService:
+    """Publish selected existing renders through the current Studio contracts."""
+    def __init__(self, project_root, *, private_root, ffmpeg=None, budget=None):
+        self.root = local_path(project_root, exists=True)
+        regular(self.root, directory=True)
+        self.private_root = local_path(private_root, exists=True)
+        regular(self.private_root, directory=True)
+        self.ffmpeg = ffmpeg
+        self.budget = budget or PublicationBudget()
+        if type(self.budget) is not PublicationBudget:
+            raise TypeError('Choose explicit bounded publication settings.')
+        self.receipts = self.root / 'publications'
+
+    def jobs(self, *, cancelled=lambda: False):
+        def check():
+            if cancelled():
+                raise AudioCancelled('Completed production listing cancelled.')
+        return completed_jobs(self.root, check)
+
+    def publications(self, *, cancelled=lambda: False):
+        return tuple(validate_publication_receipt(read_json(path), publication_id=path.stem)
+                     for path in publication_receipts(self.root, cancelled=cancelled).values())
+
+    def _source(self, job_id, check, progress):
+        progress('Verifying the completed source plan and audio artifact graph')
+        snapshot = load_source(self.root, job_id, check, self.budget)
+        _source_text(snapshot.project.original_script)
+        _text(snapshot.project.title, 'Publication title', maximum=512)
+        _segments(snapshot.project, snapshot.timeline, check)
+        return snapshot
+
+    def _destination(self, output, approval=None):
+        captured = capture_export_destination(output, private_root=self.private_root)
+        if approval is not None and (type(approval) is not ExportDestination or approval != captured):
+            raise ValueError('The export destination changed. Choose the filename again.')
+        captured = captured if approval is None else approval
+        if not captured.require_absent:
+            raise FileExistsError('Existing publication files are never overwritten.')
+        if captured.target.is_relative_to(self.root):
+            raise ValueError('Choose a publication destination outside the private audio project directory.')
+        return captured
+
+    def export_epub(self, job_id, output, *, language='und', creator='',
+                    cancelled=lambda: False, progress=None, approval=None):
+        return self._export(job_id, output, book_format='epub', language=language,
+            creator=creator, cancelled=cancelled, progress=progress, approval=approval)
+
+    def export_daisy(self, job_id, output, *, publisher, language='und', creator='',
+                     cancelled=lambda: False, progress=None, approval=None):
+        return self._export(job_id, output, book_format='daisy-2.02', language=language,
+            creator=creator, publisher=publisher, cancelled=cancelled,
+            progress=progress, approval=approval)
+
+    def _export(self, job_id, output, *, book_format, language, creator, publisher='',
+                cancelled, progress, approval):
+        if book_format == 'epub':
+            label, suffix, notice, inspect = 'EPUB', '.epub', NOTICE, inspect_epub
+            schema, member_name = 'resonance-epub/1', 'EPUB/audio/master.mp3'
+        elif book_format == 'daisy-2.02':
+            from . import daisy
+            daisy.language_tag(language)
+            label, suffix, notice, inspect = 'DAISY', '.zip', daisy.NOTICE, daisy.inspect_daisy
+            schema, member_name = 'resonance-daisy-2.02/1', 'master.mp3'
+            publisher = _text(publisher, 'DAISY publisher', maximum=512)
+        else:
+            raise ValueError('Choose EPUB 3 or DAISY 2.02 publication.')
+        language = language_tag(language)
+        creator = _text(creator, 'Creator', maximum=512, empty=True)
+        job_id = render_id(job_id)
+        approval = self._destination(output, approval)
+        output, parent = approval.target, approval.target.parent
+        if output.suffix.lower() != suffix:
+            raise ValueError(f'Choose a new {suffix} filename.')
+        # Unknown IDs do not create a render or publication directory.
+        from .jobs import checked_directory
+        checked_directory(self.root / 'renders' / job_id)
+        from .runtime import find_ffmpeg
+        binary = find_ffmpeg(self.ffmpeg)
+        if binary is None:
+            raise ValueError('Choose a verified local FFmpeg and sibling ffprobe installation.')
+        started = monotonic()
+        observer = progress
+        identity = uuid4().hex
+        lease = None
+        def progress(message):
+            if observer is not None:
+                try:
+                    observer(message)
+                except Exception:
+                    pass
+        def check():
+            if cancelled() or lease is not None and lease.cancelled():
+                raise AudioCancelled(f'{label} publication cancelled; completed files are retained.')
+            if monotonic() - started > self.budget.timeout:
+                raise TimeoutError(f'{label} publication exceeded its selected time budget.')
+        def stopping():
+            check()
+            return False
+        def scope():
+            check()
+            if self._destination(approval.requested) != approval:
+                raise ValueError('The selected publication directory changed during queued work.')
+        from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
+        request = ResourceRequest(cpu_slots=1, devices=('heavy-media',))
+        broker = ResourceBroker.for_app(self.private_root)
+        try:
+            with broker.reserve(request, operation_id='publication:' + identity,
+                                cancelled=cancelled, timeout=min(60, self.budget.timeout)) as admitted:
+                lease = admitted
+                with project_lock(self.root):
+                    snapshot = self._source(job_id, check, progress)
+                    state_digest = sha256(encode(snapshot.identity)).hexdigest()
+                    project, timeline, paths = snapshot.project, snapshot.timeline, snapshot.paths
+                    source_name = 'master.mp3' if snapshot.marker['output_name'] == 'master.mp3' else 'master.wav'
+                    source_path, source_receipt = paths[source_name]
+                    if shutil.disk_usage(parent).free < source_receipt['size'] * 4 + MAX_XML_TOTAL + self.budget.reserve_disk_bytes:
+                        raise OSError('Not enough free space for publication staging and the selected reserve.')
+                    scope()
+                    with TemporaryDirectory(prefix='.pending-' + label.lower() + '-', dir=parent) as temporary:
+                        staging = local_path(temporary, exists=True)
+                        selected_audio = staging / ('source' + source_path.suffix)
+                        progress('Copying the verified audio master')
+                        read_identity(source_path, check, self.budget.max_output_bytes,
+                                      expected=source_receipt, copy_to=selected_audio, allow_hardlinks=True)
+                        observed = inspect_audio(selected_audio, binary, check=check,
+                                                 timeout=min(30, self.budget.timeout))
+                        if (abs(observed.duration - timeline['duration']) > (.15 if source_name.endswith('.mp3') else 2 / project.sample_rate)
+                                or observed.sample_rate != timeline['sample_rate'] or observed.channels != timeline['channels']
+                                or (source_name.endswith('.mp3') and observed.codec != 'mp3')
+                                or (source_name.endswith('.wav') and not observed.codec.startswith('pcm_'))):
+                            raise ValueError('The actual recording does not match the completed frame timeline.')
+                        if source_name.endswith('.mp3'):
+                            audio = selected_audio
+                        else:
+                            from .ffmpeg import transcode
+                            progress('Encoding MP3 through the existing selected local FFmpeg')
+                            audio = staging / 'master.mp3'
+                            transcode(selected_audio, audio, ffmpeg=binary, format='mp3', cancelled=stopping)
+                            observed = inspect_audio(audio, binary, check=check, timeout=min(30, self.budget.timeout))
+                        check()
+                        if observed.codec != 'mp3' or observed.duration + 1e-6 < timeline['duration']:
+                            raise ValueError('The packaged MP3 does not cover the measured master duration.')
+                        if book_format == 'daisy-2.02' and (observed.sample_rate not in (16000, 22050, 24000, 32000, 44100, 48000)
+                                or observed.channels not in (1, 2)):
+                            raise ValueError('DAISY needs supported MPEG-1/2 mono or stereo audio.')
+                        audio_identity = _digest(audio, check, self.budget.max_output_bytes)
+                        source = {'job_id': job_id, 'job_sha256': state_digest, 'project_id': project.id,
+                            'project_sha256': project.fingerprint, 'source_script_sha256': timeline['source_sha256'],
+                            'artifacts': [{'name': name, **receipt} for name, (_, receipt) in sorted(paths.items())]
+                                + [{'name': 'plan.json', **snapshot.identity['plan']},
+                                   {'name': 'complete.json', **snapshot.identity['marker']}],
+                            'origin': 'carr-audio-production/1', 'input_kind': snapshot.plan.input_kind,
+                            'approved_library_evidence': False, 'frame_rate': project.sample_rate,
+                            'frame_intervals': snapshot.frames}
+                        provenance = {'schema': schema, 'publication_id': identity,
+                            'created': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                            'source': source,
+                            'audio': {'identity': audio_identity, 'media_type': 'audio/mpeg', 'codec': observed.codec,
+                                'duration': observed.duration, 'sample_rate': observed.sample_rate, 'channels': observed.channels,
+                                'source_artifact': source_name, 'reused': source_name.endswith('.mp3')},
+                            'validation': {'zip_xml_graph': 'verified on export',
+                                'external_reader_interoperability': 'NOT_RUN', 'nvda': 'NOT_RUN',
+                                'full_daisy_rule_conformance': 'NOT_CLAIMED'}}
+                        parts = (_parts(project, timeline, provenance, language, creator, check) if book_format == 'epub'
+                                 else daisy.parts(project, timeline, provenance, language, creator, publisher, check))
+                        metadata_bytes = sum(len(raw) for raw in parts.values())
+                        if metadata_bytes > MAX_XML_TOTAL or metadata_bytes + audio_identity['size'] > self.budget.max_output_bytes:
+                            raise ValueError('The publication exceeds its total metadata or byte budget.')
+                        staged = staging / ('publication' + suffix)
+                        progress('Packaging exact text and measured audio intervals')
+                        with ZipFile(staged, 'x', compression=ZIP_DEFLATED, allowZip64=True) as archive:
+                            if book_format == 'epub':
+                                mimetype = ZipInfo('mimetype')
+                                mimetype.compress_type = ZIP_STORED
+                                archive.writestr(mimetype, b'application/epub+zip')
+                            for name, raw in parts.items():
+                                check()
+                                archive.writestr(name, raw)
+                            member = ZipInfo(member_name)
+                            member.compress_type = ZIP_STORED
+                            digest, count = sha256(), 0
+                            from .publication_io import stable_reader
+                            with stable_reader(audio) as stream, archive.open(member, 'w', force_zip64=True) as target:
+                                while block := stream.read(1024 * 1024):
+                                    check()
+                                    count += len(block)
+                                    if count > audio_identity['size']:
+                                        raise ValueError('The staged recording grew during packaging.')
+                                    digest.update(block)
+                                    target.write(block)
+                            if {'size': count, 'sha256': digest.hexdigest()} != audio_identity:
+                                raise ValueError('The staged MP3 changed during publication packaging.')
+                        inspect(staged, cancelled=stopping, max_bytes=self.budget.max_output_bytes)
+                        archive_identity = _digest(staged, check, self.budget.max_output_bytes)
+                        progress('Rechecking source receipts and selected destination before publication')
+                        current = self._source(job_id, check, lambda _message: None)
+                        if current.identity != snapshot.identity:
+                            raise ValueError('The completed audio source changed during publication.')
+                        scope()
+                        record = {'schema': 'carr-audio-publication/1', 'id': identity, 'status': 'prepared',
+                            'project_root': str(self.root), 'output': str(output), 'artifact': archive_identity,
+                            'source': source, 'created': provenance['created'], 'notice': notice, 'format': book_format}
+                        validate_publication_receipt(record, publication_id=identity)
+                        self.receipts.mkdir(mode=0o700, parents=True, exist_ok=True)
+                        local_path(self.receipts, root=self.root, exists=True)
+                        receipt_path = self.receipts / (identity + '.json')
+                        atomic_json(receipt_path, record)
+                        progress('Prepared publication receipt: ' + identity)
+                        published = False
+                        try:
+                            scope()
+                            publish_noreplace(staged, output)
+                            published = True
+                            # Cancellation after atomic publication cannot discard
+                            # a complete artifact. Keep finalization independently bounded.
+                            final_deadline = monotonic() + 5
+                            def final_check():
+                                if monotonic() > final_deadline:
+                                    raise TimeoutError('The published file needs explicit receipt verification.')
+                            if _digest(output, final_check, self.budget.max_output_bytes) != archive_identity:
+                                raise ValueError('The publication changed before receipt finalization.')
+                            record['status'] = 'complete'
+                            atomic_json(receipt_path, record, replace=True)
+                        except Exception as exc:
+                            outcome = ('Publication was saved; receipt finalization needs verification.'
+                                       if published or not staged.exists() else 'Publication did not confirm completion.')
+                            if isinstance(exc, AudioCancelled) and not published and staged.exists():
+                                raise
+                            raise RuntimeError(outcome + ' Receipt: ' + identity
+                                               + '. Verify any retained output before retrying.') from exc
+                        progress(label + ' saved and its exact bytes verified')
+                        return record
+        except ResourceCancelled as exc:
+            raise AudioCancelled('Publication resource admission cancelled.') from exc
+
+    def verify(self, publication_id, *, output=None, cancelled=lambda: False):
+        if not isinstance(publication_id, str) or not re.fullmatch('[0-9a-f]{32}', publication_id):
+            raise ValueError('Choose a saved publication receipt ID.')
+        path = self.receipts / (publication_id + '.json')
+        record = validate_publication_receipt(read_json(path), publication_id=publication_id)
+        if record['project_root'] != str(self.root) and output is None:
+            raise ValueError('This receipt was restored elsewhere. Explicitly select the existing publication file.')
+        selected = local_path(output if output is not None else record['output'], exists=True)
+        started = monotonic()
+        def check():
+            if cancelled():
+                raise AudioCancelled('Publication verification cancelled.')
+            if monotonic() - started > self.budget.timeout:
+                raise TimeoutError('Publication verification exceeded its time budget.')
+        inspect = inspect_epub
+        if record['format'] == 'daisy-2.02':
+            from .daisy import inspect_daisy
+            inspect = inspect_daisy
+        with project_lock(self.root):
+            if validate_publication_receipt(read_json(path), publication_id=publication_id) != record:
+                raise ValueError('The publication receipt changed before verification.')
+            if _digest(selected, check, self.budget.max_output_bytes) != record['artifact']:
+                raise ValueError('The publication differs from its exact receipt.')
+            provenance = inspect(selected, cancelled=lambda: cancelled() or monotonic() - started > self.budget.timeout,
+                                 max_bytes=self.budget.max_output_bytes)
+            if provenance.get('publication_id') != publication_id or provenance.get('source') != record['source']:
+                raise ValueError('The publication source identity differs from its receipt.')
+            if _digest(selected, check, self.budget.max_output_bytes) != record['artifact']:
+                raise ValueError('The publication changed during structural verification.')
+            check()
+            record.update(status='complete', output=str(selected), project_root=str(self.root))
+            atomic_json(path, record, replace=True)
+            return record

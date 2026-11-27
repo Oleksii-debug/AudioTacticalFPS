@@ -644,6 +644,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
             files = [{'name': path.name, 'size': regular_file(path).st_size,
                       'sha256': sha256_file(path, cancelled=cancelled)} for path in sorted(staged_output.iterdir())]
             result = {'schema_version': 1, 'status': 'complete', 'run_key': run_key,
+                      'plan_sha256': digest(plan.to_dict()),
                       'input_kind': plan.input_kind,
                       'source_sha256': plan.source_sha256, 'output_name': output_name,
                       'duration_seconds': position / plan.sample_rate, 'sample_rate': plan.sample_rate,

@@ -205,6 +205,8 @@ def inspect_daisy(path, *, cancelled=lambda: False, max_bytes=32 * 1024**3):
                 or not re.fullmatch('[0-9a-f]{32}', provenance.get('publication_id', ''))):
             raise ValueError('Invalid DAISY publication provenance.')
         script = _source_text(provenance.get('original_script'))
+        if provenance.get('source_display_encoding', 'literal-xml') != ('json-string' if '\f' in script else 'literal-xml'):
+            raise ValueError('The source-page encoding does not match its exact source text.')
         source_identity = provenance.get('source')
         if (not isinstance(source_identity, dict)
                 or sha256(script.encode('utf-8')).hexdigest() != source_identity.get('source_script_sha256')):
