@@ -1,5 +1,7 @@
 """Optional local llama-server planning: proposals still require scoped review."""
-from .models import Plan, Scope, text
+import json
+
+from .models import Plan, SCHEMA, Scope, text
 from .profiles import ProviderProfile
 
 
@@ -30,6 +32,33 @@ paths, quotations or completed results. If the request is ambiguous, return an e
 and explain what is missing in summary. The human reviews the plan before execution.'''
 
 
+class LocalPlanClarification(ValueError):
+    """Non-executable clarification from the selected local model."""
+
+
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('Duplicate JSON keys in local model proposal.')
+        result[key] = value
+    return result
+
+
+def _parse_local_proposal(value, scope):
+    text(value, 'plan JSON', maximum=8 * 1024 * 1024)
+    parsed = json.loads(value, object_pairs_hook=_unique_object)
+    if (type(parsed) is dict and set(parsed) == {'schema', 'steps', 'summary'}
+            and parsed['schema'] == SCHEMA and parsed['steps'] == []):
+        summary = text(parsed['summary'], 'local model clarification', maximum=2048)
+        if any(not char.isprintable() and char != '\n' for char in summary):
+            raise ValueError('Invalid local model clarification.')
+        raise LocalPlanClarification(
+            'Local model requests clarification (untrusted text):\n' + summary +
+            '\nNo plan was submitted. Revise the instruction and preview again.')
+    return Plan.from_dict(parsed, scope=scope)
+
+
 def is_local_planner(profile):
     return (isinstance(profile, ProviderProfile) and profile.enabled and profile.local
             and profile.adapter == 'openai-compatible' and 'llm.chat' in profile.capabilities)
@@ -51,4 +80,4 @@ def propose_local_plan(gateway, profile, instruction, scope, *, cancelled=lambda
         timeout=min(120.0, scope.max_seconds), max_response_bytes=8 * 1024 * 1024)
     if cancelled():
         raise InterruptedError('Local plan proposal cancelled; nothing was submitted.')
-    return Plan.from_json(response['text'], scope=scope)
+    return _parse_local_proposal(response['text'], scope)

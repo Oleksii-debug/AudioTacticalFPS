@@ -43,7 +43,8 @@ def planner_server():
         def do_POST(self):
             state['requests'].append((self.path, json.loads(self.rfile.read(int(self.headers['Content-Length'])))))
             state['on_request']()
-            body = json.dumps({'choices': [{'message': {'content': json.dumps(state['plan'])}}]}).encode()
+            content = state.get('raw_plan', json.dumps(state['plan']))
+            body = json.dumps({'choices': [{'message': {'content': content}}]}).encode()
             self.send_response(state['status'])
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(body)))
@@ -187,3 +188,61 @@ def test_actual_cli_provider_failure_returns_no_executable_plan(configured, plan
     result = cli(app.root, '--instructions', instruction, '--local-profile', profile.id)
     assert result.returncode == 1 and not result.stdout and 'HTTP 503' in result.stderr
     assert AssistantService(app).jobs() == () and app.workspaces() == ()
+
+
+@pytest.mark.parametrize('raw', [
+    '{"steps":[{"tool":"shell","tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.search","arguments":{"query":"one","query":"two"}}]}',
+    '{"schema":"other","schema":"carr-assistant-plan/1","steps":[{"tool":"library.list"}]}',
+    '{"steps":[{"tool":"library.list","arguments":{},"arguments":{}}]}',
+    '{"steps":[{"tool":"library.list","arguments":{"nested":{"x":1,"x":2}}}]}',
+])
+def test_duplicate_json_keys_are_rejected_at_local_model_boundary(configured, planner_server, raw):
+    app, _, profile = configured
+    planner_server['raw_plan'] = raw
+    service = AssistantService(app)
+    with pytest.raises(ValueError, match='Duplicate JSON keys'):
+        service.propose_local('List libraries.', Scope(), profile_id=profile.id)
+    assert service.jobs() == () and app.workspaces() == ()
+
+
+def test_model_clarification_is_not_executable_and_preserves_message(configured, planner_server, tmp_path):
+    from carr_library.assistant.llm import LocalPlanClarification
+    app, _, profile = configured
+    question = 'Яку книгу імпортувати?'
+    planner_server['plan'] = {'schema': 'carr-assistant-plan/1', 'steps': [], 'summary': question}
+    service = AssistantService(app)
+    with pytest.raises(LocalPlanClarification, match=question):
+        service.propose_local('Import a book.', Scope(), profile_id=profile.id)
+    instruction = tmp_path / 'goal.txt'
+    instruction.write_text('Import a book.', encoding='utf-8')
+    result = cli(app.root, '--instructions', instruction, '--local-profile', profile.id)
+    assert result.returncode == 1 and not result.stdout
+    assert question in result.stderr and 'untrusted text' in result.stderr
+    assert service.jobs() == () and app.workspaces() == ()
+
+
+@pytest.mark.parametrize('invalid', [
+    {'summary': ''}, {'summary': 'x' * 2049}, {'summary': '\x1b[31m'},
+    {'schema': 'other'}, {'scope': {}}, {'extra': 'not permitted'},
+])
+def test_invalid_clarification_is_not_displayed_as_model_question(configured, planner_server, invalid):
+    from carr_library.assistant.llm import LocalPlanClarification
+    app, _, profile = configured
+    planner_server['plan'] = {'schema': 'carr-assistant-plan/1', 'steps': [],
+                              'summary': 'Which source?', **invalid}
+    service = AssistantService(app)
+    with pytest.raises((ValueError, PermissionError)) as rejected:
+        service.propose_local('Import a book.', Scope(), profile_id=profile.id)
+    assert not isinstance(rejected.value, LocalPlanClarification)
+    assert service.jobs() == () and app.workspaces() == ()
+
+
+def test_changed_profile_discards_model_clarification(configured, planner_server):
+    app, store, profile = configured
+    planner_server['plan'] = {'schema': 'carr-assistant-plan/1', 'steps': [], 'summary': 'Which source?'}
+    planner_server['on_request'] = lambda: store.save(replace(profile, model='edited-model'))
+    service = AssistantService(app)
+    with pytest.raises(PermissionError, match='profile changed'):
+        service.propose_local('Import a book.', Scope(), profile_id=profile.id)
+    assert service.jobs() == () and app.workspaces() == ()

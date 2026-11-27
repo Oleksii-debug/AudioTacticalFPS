@@ -145,7 +145,7 @@ class AssistantService:
     def propose_local(self, instruction, scope, *, profile_id, expected_profile=None,
                       cancelled=lambda: False):
         """Return a validated proposal only; submission remains a separate user action."""
-        from .llm import propose_local_plan
+        from .llm import LocalPlanClarification, propose_local_plan
         from .models import Step
         from .profiles import ProfileStore
         from .providers import Gateway
@@ -156,10 +156,18 @@ class AssistantService:
         profile = store.get(profile_id)
         if expected_profile is not None and profile != expected_profile:
             raise PermissionError('The selected planning profile changed. Reopen its selection before requesting a proposal.')
-        plan = propose_local_plan(Gateway(store.directory, mode='LOCAL_ONLY'), profile,
-                                  instruction, scope, cancelled=cancelled)
+        clarification = None
+        try:
+            plan = propose_local_plan(Gateway(store.directory, mode='LOCAL_ONLY'), profile,
+                                      instruction, scope, cancelled=cancelled)
+        except LocalPlanClarification as exc:
+            clarification = exc
         if store.get(profile_id) != profile:
             raise PermissionError('The selected planning profile changed. Review its settings and request a new proposal.')
+        if clarification is not None:
+            if cancelled():
+                raise InterruptedError('Local plan proposal cancelled; nothing was submitted.')
+            raise clarification
         self.validate(plan)
         if cancelled():
             raise InterruptedError('Local plan proposal cancelled; nothing was submitted.')
