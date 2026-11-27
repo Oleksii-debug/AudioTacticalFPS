@@ -288,35 +288,32 @@ def test_riff_size_must_describe_complete_container(tmp_path):
 def test_json_read_stays_bounded_when_file_grows_after_stat(tmp_path, monkeypatch):
     path = tmp_path / 'checkpoint.json'
     path.write_bytes(b'{}')
-    original = jobs.verified_reader
+    original = jobs._open_json_file
     observed = []
+    growth = 1024 ** 2
 
     @contextmanager
-    def growing_reader(path, **kwargs):
-        with original(path, **kwargs) as stream:
+    def growing_reader(selected):
+        with original(selected) as stream:
             class Reader:
                 def fileno(self):
                     return stream.fileno()
 
                 def read(self, count):
                     observed.append(count)
-                    try:
-                        with Path(path).open('ab') as writer:
-                            writer.write(b' ' * (1024 ** 2))
-                    except PermissionError as exc:
-                        assert os.name == 'nt' and exc.errno == errno.EACCES
-                        assert getattr(exc, 'winerror', None) in (None, 32)
-                        assert Path(path).read_bytes() == b'{}'
-                        # Native locking already rejected growth. Still inject
-                        # it at the read boundary to verify the parser's limit.
-                        return b'{}' + b' ' * (count - 2)
+                    # JSON state uses the actual shared snapshot handle on both
+                    # platforms; a concurrent writer must reach this byte limit.
+                    with Path(selected).open('ab') as writer:
+                        writer.write(b' ' * growth)
+                    assert Path(selected).stat().st_size == 2 + growth
                     return stream.read(count)
             yield Reader()
 
-    monkeypatch.setattr(jobs, 'verified_reader', growing_reader)
+    monkeypatch.setattr(jobs, '_open_json_file', growing_reader)
     with pytest.raises(ValueError, match='too large'):
         jobs.read_json(path, limit=128)
     assert observed == [129]
+    assert path.stat().st_size == 2 + growth
 
 
 @pytest.mark.parametrize('content', ['{"key":1,"key":2}', '{"key":NaN}', '{"key":Infinity}'])

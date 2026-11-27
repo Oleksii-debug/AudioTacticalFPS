@@ -93,7 +93,7 @@ def propose_local_plan(service, gateway, profile, instruction, scope, *,
                 or local_path(profile_store.path) != root / 'api-connections.json'
                 or local_path(gateway.ledger.path) != root / 'api-operations.sqlite'):
             raise PermissionError('Local planning must use this library\'s existing profiles and request ledger.')
-        ledger_stat = regular_file(gateway.ledger.path)
+        ledger_stat = regular_file(local_path(gateway.ledger.path))
         if ledger_stat.st_nlink != 1:
             raise PermissionError('The local request ledger cannot have a hard-link alias.')
         ledger_identity = ledger_stat.st_dev, ledger_stat.st_ino
@@ -104,7 +104,7 @@ def propose_local_plan(service, gateway, profile, instruction, scope, *,
                     or local_path(gateway.ledger.path) != root / 'api-operations.sqlite'):
                 raise PermissionError('The library or local request authorities changed during the proposal.')
             current_root = checked_directory(root).stat()
-            current_ledger = regular_file(gateway.ledger.path)
+            current_ledger = regular_file(local_path(gateway.ledger.path))
             if ((current_root.st_dev, current_root.st_ino) != root_identity
                     or (current_ledger.st_dev, current_ledger.st_ino) != ledger_identity
                     or current_ledger.st_nlink != 1):

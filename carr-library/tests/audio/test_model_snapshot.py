@@ -24,7 +24,8 @@ def test_approval_hash_cannot_authenticate_a_different_parsed_snapshot(tmp_path,
     approved['license_accepted'] = False
     replacement = json.dumps(approved).encode('utf-8')
     expected = sha256(replacement).hexdigest()
-    original_open = Path.open
+    original_open = module._open_json_file
+    original_bytes = path.read_bytes()
     replaced = False
 
     class ReplaceAfterRead:
@@ -45,19 +46,21 @@ def test_approval_hash_cannot_authenticate_a_different_parsed_snapshot(tmp_path,
             nonlocal replaced
             data = self.stream.read(size)
             if not replaced:
-                replaced = True
-                with original_open(path, 'wb') as changed:
+                assert data == original_bytes
+                with path.open('wb') as changed:
                     changed.write(replacement)
+                replaced = True
             return data
 
-    def racing_open(self, mode='r', *args, **kwargs):
-        stream = original_open(self, mode, *args, **kwargs)
-        return ReplaceAfterRead(stream) if self == path and mode == 'rb' and not replaced else stream
+    def racing_open(selected):
+        stream = original_open(selected)
+        return ReplaceAfterRead(stream) if selected == path and not replaced else stream
 
-    monkeypatch.setattr(Path, 'open', racing_open)
+    monkeypatch.setattr(module, '_open_json_file', racing_open)
     with pytest.raises(module.ModelManifestError, match='changed|snapshot'):
         module.LocalModelManifest.load(path, expected_sha256=expected)
     assert replaced
+    assert path.read_bytes() == replacement
 
 
 def test_asset_growth_after_budget_stat_cannot_pass_with_pinned_larger_hash(tmp_path, monkeypatch):
