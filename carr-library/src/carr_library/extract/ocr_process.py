@@ -16,7 +16,7 @@ import subprocess
 import sys
 import tempfile
 
-from .ocr_languages import model_ids
+from .ocr_languages import is_model_id, model_ids
 from .ocr_runtime import OcrRuntimeError
 
 _MAX_MODEL = 256 * 1024 * 1024
@@ -146,24 +146,47 @@ def _execute(command, cwd, remaining):
                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
 
 
+def _windows_inventory_rows(report):
+    """Canonicalize native separators only in a complete valid model listing."""
+    lines = report.splitlines(keepends=True)
+    if not lines:
+        return report
+    header = re.fullmatch(r'List of available languages in "[^"\r\n]+" \(([0-9]+)\):',
+                          lines[0].rstrip('\r\n'))
+    rows = [(index, line.rstrip('\r\n')) for index, line in enumerate(lines[1:], 1)
+            if line.rstrip('\r\n')]
+    if header is None or header[1] != str(len(rows)):
+        return report
+    identifiers = [value.replace('\\', '/') if value.startswith('script\\') else value
+                   for _, value in rows]
+    if (not all(is_model_id(value) for value in identifiers)
+            or len(set(identifiers)) != len(identifiers)):
+        return report
+    for (index, original), value in zip(rows, identifiers):
+        lines[index] = value + lines[index][len(original):]
+    return ''.join(lines)
+
+
 def normalize_ocr_query_output(data, directory):
-    """Map only the real engine's validated relative header to its source."""
-    if directory is None:
+    """Normalize only the real engine's validated directory and inventory rows."""
+    if directory is None and sys.platform != 'win32':
         return data
-    cwd = directory
     report = data.decode('utf-8')
-    match = re.search(r'^List of available languages in "([^"\r\n]+)"', report, re.MULTILINE)
-    if match is None:
-        raise OcrRuntimeError('The OCR engine did not report its model directory.')
-    reported = Path(match[1])
-    resolved = reported if reported.is_absolute() else cwd / reported
-    try:
-        same = resolved.samefile(directory)
-    except OSError:
-        same = False
-    if not same:
-        raise OcrRuntimeError('The OCR engine reported a different model directory.')
-    report = report[:match.start(1)] + str(directory) + report[match.end(1):]
+    if directory is not None:
+        match = re.search(r'^List of available languages in "([^"\r\n]+)"', report, re.MULTILINE)
+        if match is None:
+            raise OcrRuntimeError('The OCR engine did not report its model directory.')
+        reported = Path(match[1])
+        resolved = reported if reported.is_absolute() else directory / reported
+        try:
+            same = resolved.samefile(directory)
+        except OSError:
+            same = False
+        if not same:
+            raise OcrRuntimeError('The OCR engine reported a different model directory.')
+        report = report[:match.start(1)] + str(directory) + report[match.end(1):]
+    if sys.platform == 'win32':
+        report = _windows_inventory_rows(report)
     return report.encode('utf-8')
 
 
@@ -202,16 +225,18 @@ def run_ocr(runtime, argv, *, remaining):
     Original image/model files are never renamed, linked, or overwritten.
     """
     command = runtime.command(argv)
-    if sys.platform != 'win32' or all(arg.isascii() for arg in command[1:]):
+    if sys.platform != 'win32':
         return _execute(command, runtime.root, remaining)
-    model_option = _option(command, '--tessdata-dir')
-    model_directory = (_directory(Path(runtime.root or Path.cwd()) / Path(model_option[2]))
-                       if model_option else None)
     if _INFORMATIONAL.intersection(command):
         bound, cwd, report_directory = prepare_ocr_query(runtime, argv)
         result = _execute(bound, cwd, remaining)
         return subprocess.CompletedProcess(result.args, result.returncode,
             normalize_ocr_query_output(result.stdout, report_directory), result.stderr)
+    if all(arg.isascii() for arg in command[1:]):
+        return _execute(command, runtime.root, remaining)
+    model_option = _option(command, '--tessdata-dir')
+    model_directory = (_directory(Path(runtime.root or Path.cwd()) / Path(model_option[2]))
+                       if model_option else None)
 
     input_index, output_index = _positions(command)
     base = Path(runtime.root or Path.cwd()).absolute()

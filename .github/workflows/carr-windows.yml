@@ -158,15 +158,18 @@ jobs:
         run: |
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
           try {
             $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
-            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:CARR_OCR_DIR = $null
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
             & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py tests/extract/test_ocr_runtime.py tests/extract/test_runtime_identity.py
             if ($LASTEXITCODE -ne 0) { throw 'The actual OCR Unicode and provenance regression gate failed.' }
           }
           finally {
             $env:PATH = $previousPath
             $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
           }
 
       - name: Prepare the pinned shared audio runtime before its source regressions

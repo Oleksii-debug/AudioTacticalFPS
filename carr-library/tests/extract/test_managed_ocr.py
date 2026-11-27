@@ -434,3 +434,76 @@ def test_unbound_runtime_never_reinterprets_relative_models_after_cwd_change(tmp
                 ['tesseract', str(source), 'stdout'], remaining=lambda: 1)
     assert source.read_bytes() == b'path-binding fixture; native process must not run'
     assert list(temporary.iterdir()) == []
+
+
+@pytest.mark.parametrize('unicode_directory', [False, True], ids=['ascii-model-path', 'unicode-model-path'])
+def test_windows_native_script_inventory_reaches_strict_selection(tmp_path, monkeypatch, unicode_directory):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    from carr_library.extract.ocr_languages import model_ids
+    from carr_library.ui.ocr_selection import parse_installed_models
+    models = tmp_path / ('моделі' if unicode_directory else 'models')
+    models.mkdir()
+    runtime = OcrRuntime('tesseract', root=tmp_path, tessdata=models)
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    directory = './' if unicode_directory else str(models)
+    report = f'List of available languages in "{directory}" (2):\r\neng\r\nscript\\EnglishFixture\r\n'.encode()
+    diagnostics = b'Native diagnostic: script\\EnglishFixture\r\n'
+    calls = []
+    def execute(command, cwd, remaining):
+        calls.append((command, cwd))
+        return subprocess.CompletedProcess(command, 0, report, diagnostics)
+    monkeypatch.setattr(ocr_process, '_execute', execute)
+    argv = ['tesseract', '--list-langs']
+    result = ocr_process.run_ocr(runtime, argv, remaining=lambda: 1)
+    assert argv == ['tesseract', '--list-langs']
+    assert len(calls) == 1 and calls[0][1] == (models if unicode_directory else tmp_path)
+    expected = f'List of available languages in "{models}" (2):\r\neng\r\nscript/EnglishFixture\r\n'.encode()
+    assert result.stdout == expected and result.stderr == diagnostics
+    assert parse_installed_models(result.stdout, expected_directory=models) == ('eng', 'script/EnglishFixture')
+    with pytest.raises(ValueError, match='language selection'):
+        model_ids('script\\EnglishFixture')
+
+
+@pytest.mark.parametrize('rows', [
+    ['eng', 'script\\..\\eng'],
+    ['eng', 'script\\Latin\\nested'],
+    ['eng', 'Warning: script\\Latin'],
+    ['eng', 'script/Latin', 'script\\Latin'],
+], ids=['traversal', 'nested-path', 'diagnostic', 'aliased-duplicate'])
+def test_windows_inventory_does_not_bless_invalid_native_rows(monkeypatch, rows):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    from carr_library.ui.ocr_selection import parse_installed_models
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    report = ('List of available languages in "C:\\models" (' + str(len(rows)) + '):\r\n'
+              + '\r\n'.join(rows) + '\r\n').encode()
+    normalized = ocr_process.normalize_ocr_query_output(report, None)
+    assert normalized == report
+    with pytest.raises(ValueError):
+        parse_installed_models(normalized)
+
+
+def test_windows_inventory_preserves_diagnostics_headers_and_count_mismatch(monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='win32'))
+    for report in (
+        b'tesseract 5.5.4\r\nscript\\EnglishFixture\r\n',
+        b'Warning: script\\EnglishFixture\r\nList of available languages in "." (1):\r\neng\r\n',
+        b'List of available languages in "C:\\models\\script\\EnglishFixture" (1):\r\neng\r\n',
+        b'List of available languages in "." (2):\r\nscript\\EnglishFixture\r\n',
+    ):
+        assert ocr_process.normalize_ocr_query_output(report, None) == report
+
+
+def test_posix_inventory_keeps_native_rows_unchanged(monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.extract import ocr_process
+    monkeypatch.setattr(ocr_process, 'sys', SimpleNamespace(platform='linux'))
+    report = b'List of available languages in "." (1):\nscript\\EnglishFixture\n'
+    monkeypatch.setattr(ocr_process, '_execute', lambda command, cwd, remaining:
+        subprocess.CompletedProcess(command, 0, report, b''))
+    assert ocr_process.normalize_ocr_query_output(report, None) == report
+    assert ocr_process.run_ocr(OcrRuntime('tesseract'), ['tesseract', '--list-langs'],
+                              remaining=lambda: 1).stdout == report
