@@ -13,16 +13,18 @@ from ..audio.jobs import checked_directory, regular_file, verified_reader
 from ..catalog.intake import classify
 from ..extract.document_formats import FORMAT_BY_SUFFIX, extract_document
 from ..extract.page_ocr import Config
-from .models import ConversionBudget, ConversionError, MAX_REPORT_BYTES
+from .models import ConversionBudget, ConversionError, MAX_REPORT_BYTES, selected_text_encoding
 from .capabilities import CONVERSION_SUFFIXES, IMAGES, OFFICE_SUFFIXES
 from .legacy import LEGACY_SUFFIXES
 
 
-def _extract_records(source, data, suffix, config, budget, deadline):
+def _extract_records(source, data, suffix, config, budget, deadline, *, decoded_text=None):
     if suffix == '.txt':
-        if data.count(b'\f') >= budget.max_records:
+        if decoded_text is None and data.count(b'\f') >= budget.max_records:
             raise ConversionError('Text form-feed count exceeds the record budget.')
-        text = data.decode('utf-8-sig', errors='strict')
+        text = data.decode('utf-8-sig', errors='strict') if decoded_text is None else decoded_text
+        if text.count('\f') >= budget.max_records:
+            raise ConversionError('Text form-feed count exceeds the record budget.')
         if '\x00' in text or not text.strip():
             raise ConversionError('The original has no supported strict UTF-8 reading text.')
         return 'strict-utf8-v1', '\f', [
@@ -68,6 +70,28 @@ def _extract_records(source, data, suffix, config, budget, deadline):
     raise ConversionError('This suffix is not present in the existing reader registry.')
 
 
+def _decoded_plain_text(data, encoding, budget):
+    """Decode only an explicitly selected codec while retaining type screening."""
+    from ..catalog._filetype.archive import Exe, Pdf, Rtf, Zip
+    head = data[:262]
+    if (Exe().match(head) or head.startswith(b'\x7fELF')
+            or Zip().match(head) or Pdf().match(head) or Rtf().match(head)):
+        raise ConversionError('A binary or document signature cannot be selected as plain text.')
+    try:
+        text = data.decode(encoding, errors='strict')
+    except UnicodeError as exc:
+        raise ConversionError('The source is not valid in the explicitly selected text encoding.') from exc
+    if len(text) > budget.max_text_bytes:
+        raise ConversionError('Converted text exceeds its selected byte budget.')
+    encoded = text.encode('utf-8', errors='strict')
+    if len(encoded) > budget.max_text_bytes:
+        raise ConversionError('Converted text exceeds its selected byte budget.')
+    # The existing intake still rejects binary controls and disguised formats
+    # after decoding. Only the explicit codec differs from its UTF-8 default.
+    classify(encoded, '.txt')
+    return text
+
+
 def convert_request(message):
     """Consume only a caller-owned snapshot; write only its fixed private files."""
     budget = ConversionBudget(**message['budget'])
@@ -81,6 +105,12 @@ def convert_request(message):
     stage = checked_directory(source.parent)
     output, report = Path(message['output']), Path(message['report'])
     suffix = source.suffix.casefold()
+    encoding = None
+    if 'text_encoding' in message:
+        encoding = selected_text_encoding(message['text_encoding'])
+        if (encoding is None or encoding != message['text_encoding']
+                or suffix != '.txt' or 'adapter' in message):
+            raise ConversionError('Invalid explicit plain-text encoding request.')
     if (not source.is_absolute() or source.parent != stage or source.name != 'source' + suffix
             or suffix not in CONVERSION_SUFFIXES
             or output != stage / 'reading.txt' or report != stage / 'details.json'
@@ -105,8 +135,15 @@ def convert_request(message):
     else:
         if adapter is not None:
             raise ConversionError('The selected adapter cannot replace an existing document reader.')
-        classify(data, suffix)
-        engine, separator, records, warnings = _extract_records(source, data, suffix, config, budget, deadline)
+        decoded_text = None
+        if encoding is None:
+            classify(data, suffix)
+        else:
+            decoded_text = _decoded_plain_text(data, encoding, budget)
+        engine, separator, records, warnings = _extract_records(
+            source, data, suffix, config, budget, deadline, decoded_text=decoded_text)
+        if encoding is not None:
+            engine = 'explicit-text-encoding-v1'
     segments, encoded_size, characters, visible = [], 0, 0, False
     warnings = list(warnings)
     with output.open('xb') as stream:
@@ -140,6 +177,8 @@ def convert_request(message):
         raise ConversionError('The document has no supported readable text.')
     details = dict(engine=engine, separator=separator, segments=segments, warnings=warnings,
                    source_sha256=message['sha256'], source_size=len(data))
+    if encoding is not None:
+        details['source_encoding'] = encoding
     raw = (json.dumps(details, ensure_ascii=False, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
     if len(raw) > MAX_REPORT_BYTES:
         raise ConversionError('Conversion provenance exceeds its report budget.')

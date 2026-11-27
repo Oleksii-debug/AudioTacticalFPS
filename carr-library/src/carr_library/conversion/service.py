@@ -20,7 +20,10 @@ from ..ingest.worker import _invoke
 from .capabilities import CONVERSION_SUFFIXES, IMAGES, capabilities
 from .legacy import LEGACY_SUFFIXES, QUALIFIED_SUFFIXES, kind_for
 from .legacy_runtime import ToolSelection
-from .models import ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable, MAX_REPORT_BYTES
+from .models import (
+    ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable, MAX_REPORT_BYTES,
+    selected_text_encoding,
+)
 
 
 def _check(cancelled):
@@ -127,15 +130,16 @@ class ConversionService:
             raise FileExistsError('The reading text or its provenance report already exists. Choose another name.')
         return path, receipt
 
-    def extract(self, source, output, *, cancelled=lambda: False, broker=None):
+    def extract(self, source, output, *, encoding=None, cancelled=lambda: False, broker=None):
         """Use the caller's current application broker when supplied.
 
         The desktop passes its one ResourceBroker; standalone callers keep the
         existing explicit output-root API. A lease outlives native cleanup and
         both publications, including failure paths.
         """
+        encoding = selected_text_encoding(encoding)
         if broker is None:
-            return self._extract(source, output, cancelled=cancelled)
+            return self._extract(source, output, encoding=encoding, cancelled=cancelled)
         from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
         if not isinstance(broker, ResourceBroker):
             raise TypeError('Use the shared typed local resource coordinator.')
@@ -146,17 +150,19 @@ class ConversionService:
         try:
             with broker.reserve(request, operation_id='conversion:' + uuid4().hex,
                                 cancelled=cancelled, timeout=60) as lease:
-                return self._extract(source, output, cancelled=lease.cancelled)
+                return self._extract(source, output, encoding=encoding, cancelled=lease.cancelled)
         except ResourceCancelled as error:
             raise InterruptedError('Document conversion cancelled before resource admission.') from error
 
-    def _extract(self, source, output, *, cancelled):
+    def _extract(self, source, output, *, encoding, cancelled):
         if not callable(cancelled):
             raise ValueError('A conversion cancellation callback is required.')
         _check(cancelled)
         source, before = self._input(source)
         target, report_path = self._output(output)
         suffix = source.suffix.casefold()
+        if encoding is not None and suffix != '.txt':
+            raise ConversionError('An explicit text encoding applies only to plain .txt sources.')
         if suffix not in CONVERSION_SUFFIXES:
             raise ConversionUnavailable('This format is not enabled by the current document reader registry.')
         if suffix in LEGACY_SUFFIXES:
@@ -204,6 +210,8 @@ class ConversionService:
             message = dict(action='convert', source=str(snapshot), output=str(converted),
                 report=str(details_path), sha256=source_hash, source_size=count,
                 budget=asdict(self.budget), ocr_config=asdict(self.ocr_config), timeout=self.budget.timeout)
+            if encoding is not None:
+                message['text_encoding'] = encoding
             if suffix in LEGACY_SUFFIXES:
                 kind = kind_for(suffix)
                 message['adapter'] = dict(kind=kind, runtime=self.legacy_tools[kind].snapshot(stage, cancelled=cancelled))
@@ -245,7 +253,10 @@ class ConversionService:
                                       str(result.get('message', '') if isinstance(result, dict) else '')[:2000])
             details = read_json(details_path, limit=MAX_REPORT_BYTES)
             expected = {'engine', 'separator', 'segments', 'warnings', 'source_sha256', 'source_size'}
+            if encoding is not None:
+                expected.add('source_encoding')
             if (not isinstance(details, dict) or set(details) != expected
+                    or encoding is not None and details.get('source_encoding') != encoding
                     or details['source_sha256'] != source_hash or details['source_size'] != count
                     or not isinstance(details['engine'], str) or not 1 <= len(details['engine']) <= 200
                     or details['separator'] not in ('\f', '\n\n', '\n\f\n')
@@ -282,6 +293,8 @@ class ConversionService:
                 verified_for_quotation=False, original_modified=False,
                 printed_pages_reconstructed=False, elapsed_seconds=round(monotonic() - started, 3),
                 **{key: details[key] for key in ('engine', 'separator', 'segments', 'warnings')})
+            if encoding is not None:
+                report['source_encoding'] = encoding
             encoded = (json.dumps(report, ensure_ascii=False, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
             if len(encoded) > MAX_REPORT_BYTES:
                 raise ConversionError('The final provenance report exceeds its byte budget.')
@@ -331,7 +344,8 @@ class ConversionService:
                 raise
         return ConversionResult(target, report, report_path)
 
-    def extract_many(self, sources, *, cancelled=lambda: False, progress=None, broker=None):
+    def extract_many(self, sources, *, encoding=None, cancelled=lambda: False, progress=None, broker=None):
+        encoding = selected_text_encoding(encoding)
         results = []
         for index, source in enumerate(sources, 1):
             if index > self.budget.max_files:
@@ -339,7 +353,8 @@ class ConversionService:
             _check(cancelled)
             source, _ = self._input(source)
             name = re.sub(r'[^\w .-]', '_', source.stem, flags=re.UNICODE).strip(' .')[:48] or 'document'
-            result = self.extract(source, f'{index:04d}-{name}-reading.txt', cancelled=cancelled, broker=broker)
+            result = self.extract(source, f'{index:04d}-{name}-reading.txt', encoding=encoding,
+                                  cancelled=cancelled, broker=broker)
             results.append(result)
             if progress is not None:
                 progress(index, result)

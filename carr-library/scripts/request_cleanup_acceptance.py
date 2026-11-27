@@ -15,7 +15,8 @@ spec = importlib.util.spec_from_file_location(
 base = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(base)
 base.ORACLE_PATH, base.ORACLE = ORACLE_PATH, ORACLE
-base.SUPPORT = (*base.SUPPORT, 'tests/ui/test_operation_progress.py')
+base.SUPPORT = (*base.SUPPORT, 'tests/ui/test_operation_progress.py',
+                'tests/ui/test_keyboard_manager.py')
 read, write, require, file_hash = base.read, base.write, base.require, base.file_hash
 source_identity, installed_identity = base.source_identity, base.installed_identity
 runtime_identity, population = base.runtime_identity, base.population
@@ -86,7 +87,9 @@ def finalize(results):
                     headless_admission_cases=ORACLE.get('headless_admission_cases', 0),
                     canonical_state_cases=ORACLE.get('canonical_state_cases', 0),
                     ffmpeg_process_boundary_cases=ORACLE.get('ffmpeg_process_boundary_cases', 0),
-                    canonical_progress_numeric_cases=ORACLE.get('canonical_progress_numeric_cases', 0))
+                    canonical_progress_numeric_cases=ORACLE.get('canonical_progress_numeric_cases', 0),
+                    canonical_conversion_cases=ORACLE.get('canonical_conversion_cases', 0),
+                    canonical_studio_keyboard_cases=ORACLE.get('canonical_studio_keyboard_cases', 0))
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)

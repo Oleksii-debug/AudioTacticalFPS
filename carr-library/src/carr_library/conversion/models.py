@@ -16,6 +16,27 @@ class ConversionUnavailable(ConversionError):
     pass
 
 
+_TEXT_ENCODINGS = {
+    'utf-8': 'utf-8', 'utf-8-sig': 'utf-8-sig',
+    'utf-16': 'utf-16', 'utf-16-le': 'utf-16-le', 'utf-16-be': 'utf-16-be',
+    'windows-1251': 'cp1251', 'cp1251': 'cp1251',
+    'windows-1252': 'cp1252', 'cp1252': 'cp1252',
+    'iso-8859-1': 'iso-8859-1', 'ascii': 'ascii',
+}
+
+
+def selected_text_encoding(value):
+    """Validate an explicit TXT codec; absence retains strict UTF-8 intake."""
+    if value is None:
+        return None
+    if type(value) is not str or len(value) > 32:
+        raise ConversionError('Choose an explicitly supported plain-text encoding.')
+    selected = _TEXT_ENCODINGS.get(value.lower().replace('_', '-'))
+    if selected is None:
+        raise ConversionError('Choose an explicitly supported plain-text encoding.')
+    return selected
+
+
 @dataclass(frozen=True)
 class ConversionBudget:
     max_source_bytes: int = MAX_SOURCE_BYTES
