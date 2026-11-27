@@ -119,6 +119,33 @@ def run_native():
     try:
         with TemporaryDirectory(prefix='carr-native-sapi-') as directory:
             root = Path(directory).resolve()
+            windows = engines._windows_directory()
+            host64 = engines.SAPI5Engine()
+            host32 = engines.SAPI5Engine(engine_id='sapi5-32')
+            check('actual compatibility hosts use the shared Windows directory and distinct architectures',
+                  host64.binary == windows / 'System32/WindowsPowerShell/v1.0/powershell.exe'
+                  and host32.binary == windows / 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+                  and host64.id == 'sapi5' and host32.id == 'sapi5-32')
+            previous_root = os.environ.get('SystemRoot')
+            try:
+                os.environ['SystemRoot'] = str(root / 'untrusted-environment-root')
+                selected = engines._LazySAPI32Engine()._selected('sapi5-32:' + 'a' * 24)
+                unchanged = (selected.binary == host32.binary
+                             and engines.SAPI5Engine().binary == host64.binary)
+            finally:
+                if previous_root is None:
+                    os.environ.pop('SystemRoot', None)
+                else:
+                    os.environ['SystemRoot'] = previous_root
+            check('spoofed SystemRoot cannot redirect selected saved compatibility voice', unchanged)
+            try:
+                engines.SAPI5Engine(host64.binary, engine_id='sapi5-32')
+            except engines.EngineUnavailable:
+                refused = True
+            else:
+                refused = False
+            check('wrong-architecture compatibility host is refused before any process',
+                  refused and not processes)
             library = LibraryApp(root / 'library')
             workspace = library.create_workspace('Public synthetic native speech')
             book = library.add_text(workspace, 'Literal selected text',
@@ -338,6 +365,7 @@ def run_native():
                 'native_controls': 'EXECUTED', 'physical_playback': 'NOT_RUN', 'nvda': 'NOT_RUN',
                 'actual_native_pcm': metrics, 'com_client': 'pywin32', 'com_client_version': '312',
                 'private_entrypoint': 'EXECUTED', 'native_cancellation': 'OBSERVED',
+                'compatibility_host_admission': 'PASSIVE_ACTUAL_PATH_CHECKS',
                 'saved_cursor': 0, 'reading_state_sha256': sha256(before).hexdigest(),
                 'restored_state_sha256': sha256(SpeechPositionStore(restored).path.read_bytes()).hexdigest()}
     finally:

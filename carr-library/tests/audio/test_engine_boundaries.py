@@ -13,6 +13,13 @@ import pytest
 from carr_library.audio import engines
 
 
+@pytest.fixture(autouse=True)
+def synthetic_sapi_host(monkeypatch):
+    """These protocol doubles must not authorize a real compatibility host."""
+    monkeypatch.setattr(engines, '_system_powershell',
+                        lambda path=None, **options: Path(sys.executable).resolve())
+
+
 RECORD = dict(id='exact-installed-id', name='Installed Voice', language='en-US',
               version='fixture', default=True)
 

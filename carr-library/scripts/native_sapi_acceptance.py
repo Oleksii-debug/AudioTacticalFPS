@@ -115,6 +115,7 @@ def finalize(results):
         gate.require(native['physical_playback'] == 'NOT_RUN' and native['nvda'] == 'NOT_RUN'
             and native['com_client'] == 'pywin32' and native['com_client_version'] == '312'
             and native['private_entrypoint'] == 'EXECUTED'
+            and native['compatibility_host_admission'] == 'PASSIVE_ACTUAL_PATH_CHECKS'
             and native['native_cancellation'] == 'OBSERVED' and native['saved_cursor'] == 0
             and type(pcm['frames']) is int and pcm['frames'] > 0
             and pcm['sample_rate'] == 22050 and pcm['channels'] == 1

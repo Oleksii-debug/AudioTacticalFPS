@@ -3,7 +3,7 @@
   "feature": "Native SAPI through current audio engine, explicit punctuation and preserved saved identities",
   "base": "275a882be727aec2f2ed72e5f543fd449fcd40c3",
   "core_checkpoint": "5cd1ed9501cb9e14c302ea460d417b6e8b84c0ec",
-  "total_cases": 75,
+  "total_cases": 109,
   "fixture_multipliers": 1,
   "tests": {
     "tests/audio/test_native_sapi.py": {
@@ -47,10 +47,24 @@
       "test_punctuation_control_is_disabled_during_current_request": 2,
       "test_prepared_request_keeps_its_captured_punctuation_setting": 1,
       "test_ui_does_not_silently_admit_punctuation_for_an_unsupported_voice": 1
+    },
+    "tests/audio/test_sapi_host_admission.py": {
+      "test_serviced_hardlink_is_allowed_only_at_selected_system_host": 2,
+      "test_foreign_or_wrong_architecture_path_is_never_a_system_host": 8,
+      "test_linked_system_host_is_rejected_before_execution": 3,
+      "test_unavailable_system_host_is_refused": 2,
+      "test_architecture_is_typed_before_windows_lookup": 5,
+      "test_default_and_lazy_selection_ignore_spoofed_systemroot": 1,
+      "test_host_path_is_checked_again_before_each_request": 1,
+      "test_cancelled_request_never_resolves_a_host_or_launches": 1,
+      "test_windows_directory_uses_fixed_native_api": 1,
+      "test_invalid_native_windows_directory_is_refused": 6,
+      "test_nonwindows_never_resolves_environment_host": 1,
+      "test_unknown_sapi_identity_is_rejected_before_host_lookup": 3
     }
   },
   "native": {
-    "total_checks": 35,
+    "total_checks": 38,
     "expected_label_counter": {
       "actual Windows native reader controls": 1,
       "existing reviewed pywin32 dependency": 1,
@@ -86,7 +100,10 @@
       "native prepare event handled": 1,
       "native stop event handled": 1,
       "native restore cursor event handled": 1,
-      "native close event handled": 1
+      "native close event handled": 1,
+      "actual compatibility hosts use the shared Windows directory and distinct architectures": 1,
+      "spoofed SystemRoot cannot redirect selected saved compatibility voice": 1,
+      "wrong-architecture compatibility host is refused before any process": 1
     },
     "probe_modules": [
       "carr_library.audio.engines",
@@ -110,5 +127,13 @@
     "previous_total_cases": 71,
     "new_factory_cases": 4,
     "native_total_checks_unchanged": 35
+  },
+  "compatibility_host_restore": {
+    "base": "ac186ce5188f63b06f46886ce39b6225382c39b6",
+    "new_cases": 34,
+    "previous_total_cases": 75,
+    "new_native_checks": 3,
+    "previous_native_checks": 35,
+    "native_scope": "Actual Windows host paths and passive admission only; no PowerShell voice enumeration or rendering."
   }
 }

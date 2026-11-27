@@ -35,7 +35,10 @@ def test_invalid_controls_fail_before_engine_execution(tmp_path, setting, value)
         VoiceRegistry().synthesize('Test', tmp_path / 'voice.wav', voice='missing:voice', **{setting: value})
 
 
-def test_sapi_command_is_constant_and_text_remains_json_data(tmp_path):
+def test_sapi_command_is_constant_and_text_remains_json_data(tmp_path, monkeypatch):
+    # Protocol fixture only; the real installed-host case below stays unpatched.
+    monkeypatch.setattr('carr_library.audio.engines._system_powershell',
+                        lambda path=None, **options: Path(sys.executable).resolve())
     engine = SAPI5Engine(Path(sys.executable).resolve())
     captured = []
     def fake(command, **kwargs):
@@ -58,7 +61,10 @@ def test_sapi_command_is_constant_and_text_remains_json_data(tmp_path):
     assert (tmp_path / 'voice.wav').is_file()
 
 
-def test_sapi_unavailable_pitch_and_language_fail_closed(tmp_path):
+def test_sapi_unavailable_pitch_and_language_fail_closed(tmp_path, monkeypatch):
+    # Protocol fixture only; the real installed-host case below stays unpatched.
+    monkeypatch.setattr('carr_library.audio.engines._system_powershell',
+                        lambda path=None, **options: Path(sys.executable).resolve())
     engine = SAPI5Engine(Path(sys.executable).resolve())
     engine._records = {'sapi5:test': {'id':'id','name':'voice','language':'en-US','version':'fixture'}}
     with pytest.raises(EngineUnavailable, match='pitch'):

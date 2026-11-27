@@ -7,6 +7,7 @@ engines are selected explicitly by the user during local installation.
 from __future__ import annotations
 
 import base64
+import ctypes
 from dataclasses import dataclass
 import hashlib
 import inspect
@@ -127,6 +128,50 @@ def _binary(path):
     if not path.is_file():
         raise EngineUnavailable('The selected local executable is unavailable.')
     return path
+
+
+def _windows_directory():
+    """Read the shared OS directory; environment variables grant no host authority."""
+    if os.name != 'nt':
+        raise EngineUnavailable('SAPI 5 requires Windows and installed local voices.')
+    try:
+        kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        read = kernel32.GetSystemWindowsDirectoryW
+        read.argtypes = [ctypes.POINTER(ctypes.c_wchar), ctypes.c_uint]
+        read.restype = ctypes.c_uint
+        buffer = ctypes.create_unicode_buffer(32768)
+        length = read(buffer, len(buffer))
+    except (AttributeError, OSError) as exc:
+        raise EngineUnavailable('The installed Windows directory is unavailable.') from exc
+    if not 0 < length < len(buffer):
+        raise EngineUnavailable('The installed Windows directory is unavailable.')
+    root = Path(buffer.value)
+    if not root.is_absolute():
+        raise EngineUnavailable('The installed Windows directory is not an absolute local path.')
+    root = local_path(root)
+    if not root.is_dir():
+        raise EngineUnavailable('The installed Windows directory is unavailable.')
+    return root
+
+
+def _system_powershell(path=None, *, architecture):
+    """Allow serviced hardlinks only at the exact OS compatibility-host path."""
+    if type(architecture) is not str or architecture not in ('32', '64'):
+        raise ValueError('Select the 32-bit or 64-bit SAPI compatibility architecture.')
+    root = _windows_directory()
+    folder = 'SysWOW64' if architecture == '32' else 'System32'
+    expected = root / folder / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
+    candidate = expected if path is None else Path(path).absolute()
+    if candidate != expected:
+        raise EngineUnavailable('SAPI compatibility requires the exact installed Windows PowerShell host for its architecture.')
+    # local_path rejects network paths, every symlink/reparse ancestor and ADS.
+    # Windows servicing can hardlink the genuine executable into WinSxS; that
+    # host admission does not change the general local-asset helpers.
+    checked = local_path(candidate)
+    info = checked.lstat()
+    if checked != expected or not stat.S_ISREG(info.st_mode) or info.st_nlink < 1:
+        raise EngineUnavailable('The installed Windows PowerShell host is not a regular file.')
+    return checked
 
 
 def _output(path):
@@ -323,18 +368,19 @@ class SAPI5Engine:
     voice_controls = ('rate', 'volume')
 
     def __init__(self, powershell=None, *, engine_id='sapi5', timeout=300):
-        if powershell is None:
-            if os.name != 'nt':
-                raise EngineUnavailable('SAPI 5 requires Windows and installed local voices.')
-            powershell = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
-        self.binary = _binary(powershell)
+        if engine_id not in ('sapi5', 'sapi5-32'):
+            raise ValueError('Choose a supported SAPI compatibility engine identity.')
+        self._powershell_architecture = '32' if engine_id == 'sapi5-32' else '64'
+        self.binary = _system_powershell(powershell, architecture=self._powershell_architecture)
         self.id = engine_id
         self.timeout = _timeout(timeout)
         self._records = {}
         self._default = None
 
     def _call(self, request, *, cancelled=lambda: False):
-        command = [self.binary, '-NoLogo', '-NoProfile', '-NonInteractive', '-Sta', '-EncodedCommand',
+        _cancelled(cancelled)
+        binary = _system_powershell(self.binary, architecture=self._powershell_architecture)
+        command = [binary, '-NoLogo', '-NoProfile', '-NonInteractive', '-Sta', '-EncodedCommand',
                    base64.b64encode(_SAPI_SCRIPT.encode('utf-16-le')).decode('ascii')]
         return _run(command, data=json.dumps(request, ensure_ascii=True).encode('utf-8'),
                     cancelled=cancelled, timeout=self.timeout, env=offline_environment(),
@@ -1010,9 +1056,7 @@ class _LazySAPI32Engine:
         if not isinstance(voice, str) or re.fullmatch(r'sapi5-32:(?:[0-9a-f]{24}|default)', voice) is None:
             raise EngineUnavailable('Choose an exact saved 32-bit SAPI voice identifier.')
         if self._adapter is None:
-            root = Path(os.environ.get('SystemRoot', r'C:\Windows'))
-            binary = root / 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
-            self._adapter = SAPI5Engine(binary, engine_id=self.id)
+            self._adapter = SAPI5Engine(engine_id=self.id)
         return self._adapter
 
     def voices(self, *, cancelled=lambda: False):
@@ -1121,8 +1165,7 @@ def default_registry(*, dordiai_manifest=None, piper_executable=None, piper_mani
         if include_powershell:
             # Preserve explicit 32-bit-only compatibility without silently
             # replacing the native sapi5 owner or rebinding saved voice IDs.
-            root = Path(os.environ.get('SystemRoot', r'C:\Windows'))
-            binary = root / 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+            binary = _windows_directory() / 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
             if binary.is_file():
                 engines.append(SAPI5Engine(binary, engine_id='sapi5-32'))
         else:

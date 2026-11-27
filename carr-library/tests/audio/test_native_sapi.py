@@ -171,6 +171,8 @@ def test_native_cache_identity_distinguishes_host_without_relabeling_voice(monke
     assert record['com_client_version'] == '312'
     helper = Path(worker.__file__).resolve()
     assert record['native_worker_sha256'] == sha256(helper.read_bytes()).hexdigest()
+    # A synthetic host only for comparing the historical cache schema.
+    monkeypatch.setattr(api, '_system_powershell', lambda path=None, **options: Path(sys.executable).resolve())
     legacy = api.SAPI5Engine(Path(sys.executable).resolve())
     legacy._records, legacy._default = value._records, voice.id
     assert legacy.cache_identity(voice.id) != record
@@ -260,6 +262,7 @@ def test_default_windows_discovery_never_constructs_powershell(monkeypatch):
     monkeypatch.setattr(api, 'os', SimpleNamespace(name='nt', environ={}))
     monkeypatch.setattr(api, 'NativeSAPI5Engine', lambda: SimpleNamespace(id='sapi5'))
     monkeypatch.setattr(api, 'SAPI5Engine', lambda *args, **kwargs: pytest.fail('Implicit PowerShell host.'))
+    monkeypatch.setattr(api, '_windows_directory', lambda: pytest.fail('Eager compatibility-host discovery.'))
     monkeypatch.setattr(api.shutil, 'which', lambda name: None)
     registry = api.default_registry()
     assert list(registry.engines) == ['sapi5', 'sapi5-32']
@@ -308,7 +311,7 @@ def test_saved_32_bit_voice_resolves_only_after_explicit_identity_selection(monk
     class ExistingCompatibility:
         id = 'sapi5-32'
         _default = selected
-        def __init__(self, binary, *, engine_id):
+        def __init__(self, binary=None, *, engine_id):
             creations.append((binary, engine_id))
         def voices(self, *, cancelled):
             cancelled()
