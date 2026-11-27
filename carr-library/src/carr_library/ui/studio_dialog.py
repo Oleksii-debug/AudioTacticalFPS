@@ -716,10 +716,12 @@ def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
     from .studio_clips import show_clip_editor
+    from .studio_pronunciation import show_studio_pronunciations
     from .publishing_dialog import show_publishing
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
                             ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
+                            ('Review spoken-line pronunciation...', lambda e: show_studio_pronunciations(frame)),
                             ('Publish synchronized EPUB3...', lambda e: show_publishing(frame)),
                             ('Publish DAISY 2.02...', lambda e: show_publishing(frame, initial_format='daisy-2.02')),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
