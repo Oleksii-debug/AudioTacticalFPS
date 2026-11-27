@@ -1,0 +1,48 @@
+name: Isolated Windows state rename diagnostic
+
+on:
+  push:
+    branches: [carr/diagnose-state-rename-bc067-20261127]
+    paths:
+      - carr-library/scripts/windows_state_rename_diagnostic.py
+      - .github/workflows/carr-state-rename-diagnostic.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-state-rename-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  actual-windows-rename:
+    runs-on: windows-2022
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11.9'
+          architecture: x64
+      - name: Observe real child publication with held Windows readers
+        run: |
+          python -I -B -X utf8 carr-library/scripts/windows_state_rename_diagnostic.py --report state-rename-diagnostic.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve complete synthetic native evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: state-rename-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: state-rename-diagnostic.json
+          if-no-files-found: error
+          retention-days: 7
