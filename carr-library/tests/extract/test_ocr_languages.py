@@ -311,3 +311,49 @@ def test_old_and_managed_presets_roundtrip_through_checked_library_backup(tmp_pa
     restored = restore_backup(folder, tmp_path / 'restored', checksum)
     assert (restored / models.FILENAME).read_bytes() == before
     assert models.load_presets(restored) == rows
+
+
+def test_native_script_inventory_keeps_canonical_portable_identity(monkeypatch):
+    native = runtime(monkeypatch, codes=('eng', 'osd', 'script/Latin'), portable=True)
+    native_script = r'script\Latin' if os.name == 'nt' else 'script/Latin'
+    models._capture.side_effect = ['tesseract 5.5.4\n', report('eng', 'osd', native_script)]
+
+    catalog = models.discover_languages()
+
+    assert catalog.codes == native.languages == ('eng', 'osd', 'script/Latin')
+    assert catalog.validate('script/Latin+eng') == ('script/Latin', 'eng')
+    assert catalog.integrity == 'portable_sha256' and catalog.manifest_sha256 == 'a' * 64
+    native.assert_unchanged.assert_called_once()
+
+
+def test_backslash_script_report_is_only_a_native_windows_spelling():
+    native_report = report('eng', r'script\Latin')
+    if os.name == 'nt':
+        assert models.parse_language_report(native_report) == ('eng', 'script/Latin')
+    else:
+        with pytest.raises(models.OcrLanguageError):
+            models.parse_language_report(native_report)
+    # Output normalization never admits filesystem spellings as user choices.
+    with pytest.raises(ValueError):
+        Config(languages=r'script\Latin')
+    with pytest.raises(ValueError):
+        models.model_ids(r'script\Latin')
+
+
+@pytest.mark.parametrize('codes', [
+    (r'script\Latin', 'script/Latin'),
+    (r'script\Latin', 'script/latin'),
+], ids=['same-model-alias', 'casefold-model-alias'])
+def test_native_script_aliases_cannot_create_duplicate_inventory_entries(codes):
+    with pytest.raises(models.OcrLanguageError):
+        models.parse_language_report(report('eng', *codes))
+
+
+@pytest.mark.parametrize('code', [
+    r'script\..\eng', r'script\Latin\eng', r'other\Latin',
+    r'C:\eng', r'\script\Latin', r'script\CON',
+], ids=['parent-traversal', 'nested-path', 'other-directory',
+        'drive-path', 'rooted-path', 'reserved-device'])
+def test_native_report_normalization_does_not_admit_unsafe_paths(code):
+    with pytest.raises(models.OcrLanguageError):
+        models.parse_language_report(report('eng', code))

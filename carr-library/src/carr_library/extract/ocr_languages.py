@@ -147,6 +147,12 @@ def parse_language_report(report):
     if header is None:
         raise OcrLanguageError('The OCR engine returned an unsupported model inventory.')
     codes = lines[1:]
+    if os.name == 'nt':
+        # Native Tesseract emits std::filesystem::path::string(), including
+        # Windows separators. Canonicalize only its one supported script
+        # prefix here; configured model IDs and stored paths stay strict.
+        codes = tuple('script/' + code[7:] if code.startswith('script\\') else code
+                      for code in codes)
     if (int(header[1]) != len(codes) or len(codes) > MAX_MODELS
             or any(not valid_model_code(code) for code in codes)
             or len({code.casefold() for code in codes}) != len(codes)):
