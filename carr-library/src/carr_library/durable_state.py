@@ -136,8 +136,54 @@ def sync_directory(path):
             os.close(descriptor)
 
 
+def _replace_open_state(temporary, path):
+    """Replace a delete-sharing Windows snapshot with POSIX rename semantics.
+
+    MoveFileExW (used by os.replace) cannot replace an open destination even
+    when it shares delete access. FileRenameInfoEx keeps the old handle valid
+    while new readers see the fully flushed replacement. No unlink gap or
+    permission override is used.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    class RenameInfo(ctypes.Structure):
+        _fields_ = [('Flags', wintypes.DWORD), ('RootDirectory', wintypes.HANDLE),
+                    ('FileNameLength', wintypes.DWORD), ('FileName', wintypes.WCHAR * 1)]
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    rename = kernel.SetFileInformationByHandle
+    rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    rename.restype = wintypes.BOOL
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+
+    # Explicit UTF-16 byte length also handles non-BMP names correctly.
+    name = str(Path(path).absolute()).encode('utf-16-le')
+    buffer = ctypes.create_string_buffer(max(ctypes.sizeof(RenameInfo),
+        RenameInfo.FileName.offset + len(name) + 2))
+    info = RenameInfo.from_buffer(buffer)
+    info.Flags = 0x1 | 0x2  # REPLACE_IF_EXISTS | POSIX_SEMANTICS
+    info.RootDirectory = None
+    info.FileNameLength = len(name)
+    ctypes.memmove(ctypes.addressof(buffer) + RenameInfo.FileName.offset, name, len(name))
+    # DELETE; share READ | WRITE | DELETE; OPEN_EXISTING; OPEN_REPARSE_POINT.
+    handle = create(str(temporary), 0x00010000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if not rename(handle, 22, buffer, len(buffer)):  # FileRenameInfoEx
+            raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        close(handle)
+
+
 def _replace_state(temporary, path):
-    """Allow a short Windows reader to release its non-delete-sharing handle.
+    """Publish over a snapshot, or wait briefly for a non-delete-sharing reader.
 
     Reading a tiny control/state file can overlap its atomic replacement on
     Windows. Retain one fully flushed staging file and retry only the Windows
@@ -151,9 +197,22 @@ def _replace_state(temporary, path):
             os.replace(temporary, path)
             return
         except PermissionError as exc:
+            if os.name == 'nt' and getattr(exc, 'winerror', None) == 5:
+                try:
+                    _replace_open_state(temporary, path)
+                    return
+                except OSError as native_error:
+                    # Older filesystems may not implement FileRenameInfoEx.
+                    # Keep the same bounded legacy retry for that case; never
+                    # reinterpret an unrelated error as successful publication.
+                    code = getattr(native_error, 'winerror', None)
+                    if code not in (1, 5, 32, 33, 50, 87, 120):
+                        raise
+                    if code in (5, 32, 33):
+                        exc = native_error
             delay = next(delays, None)
             if getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
-                raise
+                raise exc
             time.sleep(delay)
 
 
