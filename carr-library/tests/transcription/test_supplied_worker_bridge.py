@@ -25,6 +25,13 @@ SYNTHETIC_WORKER = r'''
 import hashlib, json, os, pathlib, socket, subprocess, sys, time, uuid
 MODE = __MODE__
 job = pathlib.Path(sys.argv[sys.argv.index('--job-dir') + 1])
+import traceback
+def synthetic_error(kind, value, trace):
+    details = {'type': kind.__name__, 'winerror': getattr(value, 'winerror', None),
+               'errno': getattr(value, 'errno', None), 'message': str(value),
+               'traceback': ''.join(traceback.format_exception(kind, value, trace))[:16000]}
+    (job / 'synthetic-worker-error.json').write_text(json.dumps(details), encoding='utf-8')
+sys.excepthook = synthetic_error
 cfg = json.loads((job / 'job_config.json').read_text(encoding='utf-8'))
 options = cfg['settings']
 sources = sorted(pathlib.Path(cfg['folders'][0]).iterdir())
