@@ -162,6 +162,9 @@ jobs:
           & $python -I -B packaging/prepare_ffmpeg_runtime.py --archive $archive --destination $audio --verify-native | Tee-Object 'workflow-templates-ci-results/audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_FFMPEG=$(Join-Path $audio 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # Retained production regressions discover this same reviewed runtime by name.
+          # Only the byte-verified private runtime directory is added for later steps.
+          $audio | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Enforce actual Python and FFmpeg outbound blocks
         id: firewall
@@ -171,8 +174,8 @@ jobs:
           $path = 'workflow-templates-ci-results/offline-firewall.json'
           $programs = @([IO.Path]::GetFullPath($env:CARR_BATCH_PYTHON), [IO.Path]::GetFullPath($env:CARR_FFMPEG))
           $names = @(("CARR-Templates-" + [guid]::NewGuid().ToString('N')), ("CARR-Templates-" + [guid]::NewGuid().ToString('N')))
-          $before = @(Get-NetFirewallProfile | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
-          if ($before.Count -ne 3 -or (@($before.name | Sort-Object) -join ',') -ne 'Domain,Private,Public') { throw 'Expected all three actual firewall profiles.' }
+          $before = @(Get-NetFirewallProfile -PolicyStore ActiveStore | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
+          if ($before.Count -ne 3 -or (@($before.name | Sort-Object) -join ',') -ne 'Domain,Private,Public' -or @($before | Where-Object { $_.enabled -notin @('True', 'False') }).Count -ne 0) { throw 'Expected all three actual firewall profiles with restorable explicit values.' }
           foreach ($name in $names) {
             if (@(Get-NetFirewallRule -Name $name -ErrorAction SilentlyContinue).Count -ne 0) { throw 'Refuse a pre-existing rule identity.' }
           }
@@ -193,7 +196,7 @@ jobs:
               if ($filters.Count -ne 1 -or $filters[0].Program -ine $programs[$i] -or [string]$rule.Action -ne 'Block' -or [string]$rule.Direction -ne 'Outbound' -or [string]$rule.Enabled -ne 'True') { throw 'The actual program/block rule differs.' }
               $receipt.actual_rules += @{ name = [string]$rule.Name; program = [string]$filters[0].Program; action = [string]$rule.Action; direction = [string]$rule.Direction; enabled = [string]$rule.Enabled }
             }
-            $receipt.profiles_enabled = @(Get-NetFirewallProfile | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
+            $receipt.profiles_enabled = @(Get-NetFirewallProfile -PolicyStore ActiveStore | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
             if ($receipt.profiles_enabled.Count -ne 3 -or @($receipt.profiles_enabled | Where-Object enabled -ne 'True').Count -ne 0) { throw 'An actual firewall profile is not enabled.' }
             $receipt.status = 'PASS'
           } catch {
@@ -252,10 +255,10 @@ jobs:
           foreach ($profile in $receipt.profiles_before) {
             try {
               if ($profile.name -notin @('Domain', 'Private', 'Public') -or $profile.enabled -notin @('True', 'False')) { throw 'Invalid saved profile value.' }
-              Set-NetFirewallProfile -Name $profile.name -Enabled ([bool]::Parse($profile.enabled))
+              Set-NetFirewallProfile -Name $profile.name -Enabled ([string]$profile.enabled)
             } catch { $failures += $_.Exception.Message }
           }
-          $receipt.profiles_restored = @(Get-NetFirewallProfile | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
+          $receipt.profiles_restored = @(Get-NetFirewallProfile -PolicyStore ActiveStore | Sort-Object Name | ForEach-Object { @{ name = [string]$_.Name; enabled = [string]$_.Enabled } })
           $receipt.owned_rules_absent = $true
           foreach ($name in $receipt.rule_names) {
             if (@(Get-NetFirewallRule -PolicyStore ActiveStore -Name $name -ErrorAction SilentlyContinue).Count -ne 0) { $receipt.owned_rules_absent = $false }

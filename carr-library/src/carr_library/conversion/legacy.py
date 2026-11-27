@@ -309,8 +309,80 @@ _LEGACY_HTML_DOCTYPES = {
 }
 
 
-def _chm_html(raw):
-    """Discard a known inert legacy declaration; never open or resolve its DTD."""
+def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
+    """Normalize only a legacy orphan paragraph end with the existing parser.
+
+    HTML's in-body rule treats an end-p token without an open p as an empty
+    paragraph. Preserve that boundary by inserting its missing start token.
+    Every other token, nesting rule, hidden/active-content rule and budget is
+    still enforced by the current non-executing preview reader.
+    https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
+    """
+    from ..extract.document_formats_text import (
+        _Budget, _HTMLPreview, _decode, _html_encoding, _CHUNK, _MAX_TOKEN, _MAX_DEPTH)
+    if not 0 < len(raw) <= MAX_MEMBER_BYTES:
+        raise ConversionError('CHM HTML normalization exceeds its source byte budget.')
+    budget = _Budget(max_chars, None, deadline)
+    text = _decode(raw, budget, _html_encoding(raw))
+    encoding = next(iter(budget.encodings))
+    end_token = re.compile(r'</[ \t\r\n]*p[ \t\r\n]*>', re.IGNORECASE)
+
+    class ParagraphEnds(_HTMLPreview):
+        def __init__(self):
+            super().__init__(budget, encoding=encoding)
+            self.insertions = []
+            self.line_number = 1
+            self.line_start = 0
+
+        def handle_endtag(self, tag):
+            if (tag == 'p' and any(item[0] == 'body' for item in self.stack)
+                    and not any(item[0] == 'p' for item in self.stack)):
+                line, column = self.getpos()
+                while self.line_number < line:
+                    budget.check()
+                    self.line_start = text.index('\n', self.line_start) + 1
+                    self.line_number += 1
+                offset = self.line_start + column
+                if end_token.match(text, offset) is None:
+                    raise ValueError('Unsupported legacy paragraph end token.')
+                self.insertions.append(offset)
+                # This is the one synthetic start-p token. It inherits the
+                # current suppression state and contributes no source text.
+                budget.node()
+                self._flush()
+                self.stack.append(('p', bool(self.stack and self.stack[-1][1])))
+                if len(self.stack) > _MAX_DEPTH:
+                    raise ValueError('HTML nesting budget exceeded.')
+            return super().handle_endtag(tag)
+
+    parser = ParagraphEnds()
+    for start in range(0, len(text), _CHUNK):
+        budget.check()
+        parser.feed(text[start:start + _CHUNK])
+        if len(parser.rawdata) > _MAX_TOKEN:
+            raise ValueError('HTML token budget exceeded.')
+    parser.finish()
+    budget.check()
+    if not parser.insertions:
+        return raw
+    pieces, previous = [], 0
+    for offset in parser.insertions:
+        budget.check()
+        pieces.extend((text[previous:offset], '<p>'))
+        previous = offset
+    pieces.append(text[previous:])
+    result = ''.join(pieces).encode(encoding, 'strict')
+    if len(result) > MAX_MEMBER_BYTES:
+        raise ConversionError('CHM HTML normalization exceeds its output byte budget.')
+    budget.check()
+    warning = 'legacy_html_orphan_paragraph_end_normalized'
+    if notices is not None and warning not in notices:
+        notices.append(warning)
+    return result
+
+
+def _chm_html(raw, *, max_chars=10_000_000, deadline=None, notices=None):
+    """Normalize declared legacy HTML only; never open or resolve its DTD."""
     pattern = (rb"""\A(?P<prefix>(?:\xef\xbb\xbf)?[ \t\r\n]*)<!DOCTYPE[ \t\r\n]+HTML"""
         rb"""[ \t\r\n]+PUBLIC[ \t\r\n]+(?P<q>['"])(?P<public>[^'"<>\[\]\r\n]{1,100})(?P=q)"""
         rb"""(?:[ \t\r\n]+(?P<sq>['"])(?P<system>[^'"<>\[\]\r\n]{1,120})(?P=sq))?[ \t\r\n]*>""")
@@ -321,7 +393,8 @@ def _chm_html(raw):
     system = (match.group('system') or b'').decode('ascii', 'strict')
     if system not in _LEGACY_HTML_DOCTYPES.get(public, ()):
         return raw
-    return match.group('prefix') + b'<!DOCTYPE html>' + raw[match.end():]
+    reading = match.group('prefix') + b'<!DOCTYPE html>' + raw[match.end():]
+    return _chm_paragraph_ends(reading, max_chars=max_chars, deadline=deadline, notices=notices)
 
 
 def _chm(source, data, budget, deadline, selection):
@@ -377,7 +450,9 @@ def _chm(source, data, budget, deadline, selection):
         for name in order:
             _remaining(deadline)
             raw = read_member(html[name])
-            reading_bytes = _chm_html(raw)
+            reading_bytes = _chm_html(raw,
+                max_chars=min(budget.max_text_bytes - characters, 10_000_000),
+                deadline=deadline, notices=notices)
             if reading_bytes != raw and 'known_legacy_html_doctype_ignored_without_dtd_resolution' not in notices:
                 notices.append('known_legacy_html_doctype_ignored_without_dtd_resolution')
             extracted = extract_document(reading_bytes, '.html', max_bytes=MAX_MEMBER_BYTES,

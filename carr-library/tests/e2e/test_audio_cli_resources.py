@@ -126,7 +126,8 @@ def test_fresh_cli_waits_on_selected_library_and_cancel_preserves_the_other_leas
         assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['occupied-by-desktop']
     assert signal.getsignal(signal.SIGINT) == previous
     assert broker.snapshot()['leases'] == [] and source.read_bytes() == before
-    assert not list(args.audio_output.iterdir())
+    assert {path.name for path in args.audio_output.iterdir()} == {'.render.lock'}
+    assert (args.audio_output / '.render.lock').is_file()
 
 
 def test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releasing_another(tmp_path, monkeypatch):
@@ -140,7 +141,7 @@ def test_failed_cli_renderer_releases_its_admission_after_cleanup_without_releas
         assert not settings['cancelled']()
         raise RuntimeError('Owned synthetic renderer is fully settled.')
     monkeypatch.setattr(production, '_render_locked', failed)
-    with broker.reserve(ResourceRequest(cpu_slots=0), operation_id='passive-owner'):
+    with broker.reserve(ResourceRequest(cpu_slots=0, memory_bytes=1), operation_id='passive-owner'):
         with redirect_stderr(io.StringIO()), pytest.raises(RuntimeError, match='fully settled'):
             run_audio(args)
         assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['passive-owner']
@@ -234,4 +235,7 @@ def test_cli_project_manifest_path_cannot_replace_registered_music_authority(tmp
         run_audio(args)
     assert not EngineProfileStore(library).path.exists()
     assert ResourceBroker.for_app(library).snapshot()['leases'] == []
-    assert list(output.iterdir()) == [model_root]
+    assert {path.name for path in output.iterdir()} == {'.render.lock', 'models'}
+    assert (output / '.render.lock').is_file()
+    assert {path.name for path in model_root.iterdir()} == {'project-choice.json'}
+    assert (model_root / 'project-choice.json').read_bytes() == selected.read_bytes()

@@ -12,6 +12,11 @@ import traceback
 ROOT = Path(__file__).resolve().parents[1]
 ORACLE_PATH = ROOT / 'scripts' / 'workflow_template_oracle.json'
 ORACLE = json.loads(ORACLE_PATH.read_text(encoding='utf-8'))
+GATE_NAME = 'workflow-template-gate.json'
+NATIVE_WORK = 'native-workflow-fixtures'
+NATIVE_SECONDS = 240
+CASE_FIELD = 'new_template_cases'
+DISPATCH_PATH = Path(__file__)
 spec = importlib.util.spec_from_file_location(
     '_workflow_template_base', ROOT / 'scripts' / 'audio_batch_acceptance.py')
 base = importlib.util.module_from_spec(spec)
@@ -25,12 +30,17 @@ runtime_identity, population = base.runtime_identity, base.population
 checkout_inventory, source_python_inventory = base.checkout_inventory, base.source_python_inventory
 
 
+def adapter_identity():
+    return {'qualification_adapter_sha256': file_hash(__file__),
+            'qualification_dispatch_sha256': file_hash(DISPATCH_PATH)}
+
+
 def tests(mode, results, work):
     require(sys.platform == 'win32', 'These regressions require actual native Windows execution.')
     result = base.tests(mode, results, work)
     path = results / (mode + '-gate.json')
     report = read(path)
-    report['qualification_adapter_sha256'] = file_hash(__file__)
+    report.update(adapter_identity())
     write(path, report)
     return result
 
@@ -39,7 +49,8 @@ def tests(mode, results, work):
 def native(results, work):
     report = {'schema': 1, 'status': 'FAIL', 'mode': 'native',
               'oracle_sha256': file_hash(ORACLE_PATH),
-              'qualification_adapter_sha256': file_hash(__file__)}
+              **adapter_identity()}
+
     log = results / 'native-runner.txt'
     try:
         report.update(source_identity(results))
@@ -49,8 +60,8 @@ def native(results, work):
         report['wheel_sha256'] = installed['wheel_sha256']
         with log.open('wb') as output:
             result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', str(probe),
-                '--work', str(work / 'native-workflow-fixtures')], cwd=work,
-                stdout=output, stderr=subprocess.STDOUT, timeout=240, check=False)
+                '--work', str(work / NATIVE_WORK)], cwd=work,
+                stdout=output, stderr=subprocess.STDOUT, timeout=NATIVE_SECONDS, check=False)
         report['native_exit'] = result.returncode
         require(result.returncode == 0, 'The actual native workflow probe failed.')
         values = [json.loads(line) for line in log.read_text(encoding='utf-8-sig').splitlines()
@@ -61,6 +72,9 @@ def native(results, work):
         require(value['status'] == 'PASS' and value['actual_windows'] is True
                 and value['isolated'] is True and Counter(value['checks']) == expected,
                 'Native fields or actual check population differ from the declared oracle.')
+        require(all(key in value and type(value[key]) is type(expected) and value[key] == expected
+                    for key, expected in ORACLE['native'].get('required_fields', {}).items()),
+                'The probe omitted a required exact typed native observation.')
         require(value['metrics'] == ORACLE['native']['expected_metrics'],
                 'Actual workflow save/run/restore measurements differ.')
         require(set(value['module_origins']) == set(ORACLE['native']['probe_modules']),
@@ -89,7 +103,7 @@ def native(results, work):
 def finalize(results):
     gate = {'schema': 1, 'status': 'FAIL', 'source_cases': ORACLE['total_cases'],
             'installed_cases': ORACLE['total_cases'], 'oracle_sha256': file_hash(ORACLE_PATH),
-            'qualification_adapter_sha256': file_hash(__file__),
+            **adapter_identity(),
             'native_checks': ORACLE['native']['total_checks'],
             'nvda': 'NOT_RUN', 'language_model_quality': 'NOT_QUALIFIED', 'physical_audio': 'NOT_RUN'}
     try:
@@ -130,8 +144,9 @@ def finalize(results):
             for name, expected in phase['runner_sha256'].items():
                 require(file_hash(ROOT / 'scripts' / name) == expected, 'A runner changed after execution.')
         for mode in ('source', 'installed'):
-            require(read(results / (mode + '-gate.json'))['qualification_adapter_sha256']
-                    == gate['qualification_adapter_sha256'], 'The qualification adapter changed.')
+            require(all(read(results / (mode + '-gate.json'))[key] == value
+                        for key, value in adapter_identity().items()),
+                    'The qualification adapter or selected dispatcher changed.')
         native_phase = read(results / 'native-gate.json')
         require(os.environ.get('NATIVE_OUTCOME') == 'success' and native_phase['status'] == 'PASS'
                 and native_phase['native_exit'] == 0
@@ -140,7 +155,7 @@ def finalize(results):
         require(all(native_phase[key] == source[key] for key in source)
                 and native_phase['wheel_sha256'] == installed['wheel_sha256']
                 and native_phase['oracle_sha256'] == gate['oracle_sha256']
-                and native_phase['qualification_adapter_sha256'] == gate['qualification_adapter_sha256']
+                and all(native_phase[key] == value for key, value in adapter_identity().items())
                 and native_phase['probe_sha256'] == file_hash(ROOT / ORACLE['native']['probe'])
                 and native_phase['native_output_sha256'] == file_hash(results / 'native-runner.txt'),
                 'The native receipt belongs to a different source, wheel, probe or oracle.')
@@ -164,13 +179,13 @@ def finalize(results):
         gate.update(status='PASS', wheel_sha256=installed['wheel_sha256'],
                     actual_ffmpeg=runtime, native_gui='PASS', actual_outbound_block='PASS',
                     firewall_cleanup='PASS', existing_cases_retained=ORACLE['retained_cases'],
-                    new_template_cases=ORACLE['new_cases'],
                     native_receipt_sha256=file_hash(results / 'native-gate.json'))
+        gate[CASE_FIELD] = ORACLE['new_cases']
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)
         gate['reason'] = type(error).__name__ + ': ' + str(error)
-    write(results / 'workflow-template-gate.json', gate)
+    write(results / GATE_NAME, gate)
     print(json.dumps(gate, ensure_ascii=False), flush=True)
     return 0 if gate['status'] == 'PASS' else 1
 

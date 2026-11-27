@@ -112,7 +112,13 @@ def prove(result, source, before):
 def test_real_calibre_unprotected_format_retains_original_and_bound_text(tmp_path, suffix):
     source = book(tmp_path, suffix)
     before = source.read_bytes()
-    result = convert(tmp_path, source, 'calibre')
+    try:
+        result = convert(tmp_path, source, 'calibre')
+    except ConversionError:
+        if suffix == '.tcr':
+            diagnose = runpy.run_path(str(Path(__file__).with_name('native_diagnostics.py')))['diagnose_selected_fixture']
+            diagnose('calibre', source, selected('calibre'), tmp_path / 'reading-output')
+        raise
     assert 'FIRST CALIBRE READING PAGE' in result.path.read_text(encoding='utf-8')
     assert 'SECOND SOURCE PARAGRAPH.' in result.path.read_text(encoding='utf-8')
     assert result.report['engine'] == 'selected-calibre-' + suffix[1:]
@@ -203,13 +209,80 @@ def test_real_chm_static_toc_order_does_not_execute_or_read_active_content(tmp_p
     prove(result, source, before)
 
 
-def test_real_chm_public_publisher_help_exercises_compressed_container(tmp_path):
+def _diagnose_public_chm(source, stage, monkeypatch):
+    """Only the pinned redistributable publisher fixture; never user content."""
+    import json
+    import time
+    from carr_library.conversion import legacy
+    from carr_library.extract import document_formats_text as html
+    deadline = time.monotonic() + 30
+    def read(args):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError('Publisher HTML diagnostic deadline exceeded.')
+        child = subprocess.run([str(selected('chm')), *map(str, args)],
+            cwd=stage, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=min(5, remaining), check=True)
+        if len(child.stdout) > legacy.MAX_MEMBER_BYTES:
+            raise ValueError('Publisher HTML diagnostic output exceeded its bound.')
+        return child.stdout
+    rows = legacy._chm_listing(read(['l', '-slt', '-ba', '-sccUTF-8', '-tchm', '--', source]),
+                               128 * 1024**2)
+    parser = html._HTMLPreview
+    class Trace(parser):
+        def report(self, label, tag=None):
+            print('PUBLIC_CHM_PARSE_CONTEXT', json.dumps({
+                'stage': label, 'tag': tag, 'position': self.getpos(),
+                'open_elements': [entry[0] for entry in self.stack][-128:]},
+                ensure_ascii=True), flush=True)
+        def handle_starttag(self, tag, attrs):
+            try:
+                return super().handle_starttag(tag, attrs)
+            except ValueError:
+                self.report('start', tag)
+                raise
+        def handle_endtag(self, tag):
+            try:
+                return super().handle_endtag(tag)
+            except ValueError:
+                self.report('end', tag)
+                raise
+        def finish(self):
+            try:
+                return super().finish()
+            except ValueError:
+                self.report('finish')
+                raise
+    with monkeypatch.context() as patch:
+        patch.setattr(html, '_HTMLPreview', Trace)
+        for row in sorted(rows, key=lambda row: row['name']):
+            if row['directory'] or Path(row['name']).suffix.lower() not in ('.html', '.htm', '.xhtml'):
+                continue
+            if not 0 < row['bytes'] <= legacy.MAX_MEMBER_BYTES:
+                raise ValueError('Publisher HTML diagnostic member exceeded its bound.')
+            raw = read(['x', '-so', '-y', '-spd', '-sccUTF-8', '-tchm', '--', source, row['name']])
+            assert len(raw) == row['bytes']
+            try:
+                legacy.extract_document(legacy._chm_html(raw, deadline=deadline), '.html',
+                    max_bytes=legacy.MAX_MEMBER_BYTES, max_chars=10_000_000, deadline=deadline)
+            except Exception as error:
+                print('PUBLIC_CHM_PARSE_MEMBER', json.dumps({'member': row['name'],
+                    'bytes': len(raw), 'sha256': sha256(raw).hexdigest(),
+                    'reason': type(error).__name__ + ': ' + str(error)}, ensure_ascii=True), flush=True)
+                raise
+
+
+def test_real_chm_public_publisher_help_exercises_compressed_container(tmp_path, monkeypatch):
     supplied = Path(os.environ['CARR_7ZIP_HELP'])
     assert supplied.is_file() and supplied.resolve().is_relative_to(selected('chm').parent.resolve())
     source = tmp_path / 'Publisher help.chm'
     source.write_bytes(supplied.read_bytes())
     before = source.read_bytes()
-    result = convert(tmp_path, source, 'chm')
+    try:
+        result = convert(tmp_path, source, 'chm')
+    except ConversionError:
+        _diagnose_public_chm(source, tmp_path, monkeypatch)
+        raise
     assert '7-Zip' in result.path.read_text(encoding='utf-8')
     assert len(result.report['segments']) > 2
     prove(result, source, before)

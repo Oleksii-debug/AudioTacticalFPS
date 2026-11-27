@@ -235,7 +235,9 @@ def test_chm_worker_uses_declared_toc_and_existing_inert_html_reader(tmp_path, m
     stage.mkdir()
     selected = legacy_runtime.ToolSelection.capture(executable, 'chm').snapshot(stage)
     members = {
-        'a.htm': b'<html><body><p>Second page</p><script>UNSAFE_SCRIPT_TEXT</script></body></html>',
+        'a.htm': (b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">'
+                  b'<html><body><p>Second page<div></div></p>'
+                  b'<script>UNSAFE_SCRIPT_TEXT</script></body></html>'),
         'z.htm': b'<html><body><p>First page</p></body></html>',
         'contents.hhc': b'<param name="Local" value="z.htm"><param name="Local" value="a.htm">',
     }
@@ -256,6 +258,11 @@ def test_chm_worker_uses_declared_toc_and_existing_inert_html_reader(tmp_path, m
     assert [row['logical_locator']['chm_member'] for row in details['segments']] == ['z.htm', 'a.htm']
     assert all(row['physical_index'] is None and row['status'] == 'review_required' for row in details['segments'])
     assert all('--' in arguments for arguments in calls)
+    for row in details['segments']:
+        locator = row['logical_locator']
+        original_member = members[locator['chm_member']]
+        assert locator['member_sha256'] == sha256(original_member).hexdigest()
+        assert locator['parsed_member_sha256'] == sha256(legacy._chm_html(original_member)).hexdigest()
 
 
 def test_chm_truncated_member_publishes_no_complete_worker_report(tmp_path, monkeypatch):
@@ -270,7 +277,11 @@ def test_chm_truncated_member_publishes_no_complete_worker_report(tmp_path, monk
     assert not (stage / 'reading.txt').exists() and not (stage / 'details.json').exists()
 
 
-@pytest.mark.parametrize('operation', ['outside_read', 'outside_write', 'socket', 'process', 'allowed_output'])
+@pytest.mark.parametrize('operation', [
+    'outside_read', 'outside_write', 'socket', 'process', 'allowed_output',
+    'cleanup_file', 'cleanup_directory', 'cleanup_outside_file', 'cleanup_outside_directory',
+    'cleanup_program', 'cleanup_unknown',
+])
 def test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs(tmp_path, operation):
     stage, root = tmp_path / 'stage', tmp_path / 'runtime'
     stage.mkdir()
@@ -285,11 +296,18 @@ def test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs(tm
     sentinel.write_text('PRIVATE_MARKER', encoding='utf-8')
     program = r'''
 import os, pathlib, runpy, socket, subprocess, sys, types
-for name in ('calibre', 'calibre.ebooks', 'calibre.ebooks.conversion', 'calibre.ebooks.conversion.cli', 'calibre.constants'):
+for name in ('calibre', 'calibre.ebooks', 'calibre.ebooks.conversion', 'calibre.ebooks.conversion.cli',
+             'calibre.constants', 'calibre.utils', 'calibre.utils.safe_atexit'):
     module = types.ModuleType(name)
     module.__path__ = []
     sys.modules[name] = module
 sys.modules['calibre.constants'].__version__ = '9.19.0'
+cleanup = sys.modules['calibre.utils.safe_atexit']
+cleanup.worker = None
+cleanup.RMTREE_ACTION, cleanup.UNLINK_ACTION, cleanup.RUN_PROGRAM_ACTION = 'rmtree', 'unlink', 'run_program'
+def unexpected_cleanup_worker(*args):
+    raise AssertionError('The generic vendor cleanup worker must not start.')
+cleanup._send_command = unexpected_cleanup_worker
 operation, private = sys.argv[1:3]
 def convert(args):
     if operation == 'outside_read':
@@ -300,6 +318,24 @@ def convert(args):
         socket.socket()
     elif operation == 'process':
         subprocess.run([sys.executable, '-c', 'pass'], check=True)
+    elif operation.startswith('cleanup_'):
+        local = pathlib.Path(args[2]).parent / 'calibre-temp'
+        local.mkdir()
+        child = local / 'still-owned.tmp'
+        child.write_text('RETAIN UNTIL NATIVE EXIT', encoding='utf-8')
+        if operation == 'cleanup_file':
+            cleanup._send_command('unlink', str(child))
+        elif operation == 'cleanup_directory':
+            cleanup._send_command('rmtree', str(local))
+        elif operation == 'cleanup_outside_file':
+            cleanup._send_command('unlink', private)
+        elif operation == 'cleanup_outside_directory':
+            cleanup._send_command('rmtree', str(pathlib.Path(private).parent))
+        elif operation == 'cleanup_program':
+            cleanup._send_command('run_program', [sys.executable, '-c', 'pass'])
+        else:
+            cleanup._send_command('unreviewed', str(child))
+        assert child.read_text(encoding='utf-8') == 'RETAIN UNTIL NATIVE EXIT'
     pathlib.Path(args[2]).write_text('Allowed output', encoding='utf-8')
     return 0
 sys.modules['calibre.ebooks.conversion.cli'].main = convert
@@ -310,9 +346,11 @@ runpy.run_path(sys.argv[0], run_name='__main__')
     result = subprocess.run([sys.executable, '-I', '-B', '-c', program, operation, str(sentinel),
         str(helper), str(source), str(target), str(root), '1024'],
         cwd=stage, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15, check=False)
-    if operation == 'allowed_output':
+    if operation in ('allowed_output', 'cleanup_file', 'cleanup_directory'):
         assert result.returncode == 0, result.stderr.decode('utf-8', 'replace')
         assert target.read_text() == 'Allowed output'
+        if operation.startswith('cleanup_'):
+            assert (stage / 'calibre-temp' / 'still-owned.tmp').read_text() == 'RETAIN UNTIL NATIVE EXIT'
     else:
         assert result.returncode != 0
         assert target.read_bytes() == b''
@@ -448,3 +486,69 @@ def test_excessive_code_handle_inventory_is_refused_before_any_native_lease(tmp_
         with legacy_runtime.admitted_runtime({'sha256': '0' * 64}, tmp_path, 'calibre',
                                             time.monotonic() + 5):
             pytest.fail('Excessive native inventory reached execution.')
+
+
+@pytest.mark.parametrize('encoding', ['utf-8', 'utf-8-sig', 'cp1251'])
+def test_chm_legacy_orphan_paragraph_end_preserves_decoding_and_text_order(encoding):
+    from carr_library.extract.document_formats import extract_document
+    declaration = '<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">'
+    charset = 'utf-8' if encoding == 'utf-8-sig' else encoding
+    text = (declaration + '<html><head><meta charset="' + charset + '"></head><body>'
+            '<p>До<table><tr><td>Середина</td></tr></table>\r\n</P>\n<p>Після</p></body></html>')
+    original = text.encode(encoding)
+    notices = []
+    reading = legacy._chm_html(original, notices=notices)
+    assert original == text.encode(encoding)
+    assert '<p></P>' in reading.decode(encoding)
+    assert notices == ['legacy_html_orphan_paragraph_end_normalized']
+    extracted = extract_document(reading, '.html')
+    words = '\n'.join(row['raw_text'] for row in extracted['records'])
+    assert words.index('До') < words.index('Середина') < words.index('Після')
+    assert all(row['physical_index'] is None and row['printed_label'] is None
+               for row in extracted['records'])
+
+
+def test_chm_paragraph_normalization_keeps_active_hidden_and_literal_tokens_inert():
+    from carr_library.extract.document_formats import extract_document
+    raw = (b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">'
+           b'<html><body>VISIBLE</p>'
+           b'<script>const text = "</p>"; ACTIVE_SCRIPT</script>'
+           b'<style>.x { content: "</p>"; } ACTIVE_STYLE</style>'
+           b'<object><p>ACTIVE_OBJECT<div></div></p></object>'
+           b'<div hidden>HIDDEN_VALUE</p></div><p>END</p></body></html>')
+    reading = legacy._chm_html(raw)
+    assert b'<script>const text = "</p>"; ACTIVE_SCRIPT</script>' in reading
+    assert b'<style>.x { content: "</p>"; } ACTIVE_STYLE</style>' in reading
+    extracted = extract_document(reading, '.html')
+    text = '\n'.join(row['raw_text'] for row in extracted['records'])
+    assert 'VISIBLE' in text and 'END' in text
+    assert not any(value in text for value in ('ACTIVE_SCRIPT', 'ACTIVE_STYLE', 'ACTIVE_OBJECT', 'HIDDEN_VALUE'))
+
+
+@pytest.mark.parametrize('body', [
+    b'<html><body>text</div></body></html>',
+    b'<html><body><p><b>text<table></table></b></p></body></html>',
+    b'<html><body>text</p extra="unsupported"></body></html>',
+])
+def test_chm_paragraph_normalization_does_not_relax_other_malformed_structure(body):
+    raw = b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">' + body
+    with pytest.raises(ValueError):
+        legacy._chm_html(raw)
+
+
+def test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract():
+    from carr_library.extract.document_formats import extract_document
+    raw = b'<!DOCTYPE html><html><body>Reading</p></body></html>'
+    assert legacy._chm_html(raw) == raw
+    with pytest.raises(ValueError, match='nesting'):
+        extract_document(raw, '.html')
+
+
+@pytest.mark.parametrize('limit', ['text', 'deadline'])
+def test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets(limit):
+    raw = (b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">'
+           b'<html><body>Bounded reading text</p></body></html>')
+    options = {'max_chars': 2} if limit == 'text' else {'deadline': time.monotonic() - 1}
+    expected = ValueError if limit == 'text' else TimeoutError
+    with pytest.raises(expected):
+        legacy._chm_html(raw, **options)

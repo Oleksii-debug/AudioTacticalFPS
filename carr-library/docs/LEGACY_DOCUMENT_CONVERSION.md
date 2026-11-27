@@ -85,9 +85,10 @@ https://djvu.sourceforge.net/doc/man/djvutxt.html
 
 .github/workflows/carr-legacy-converters.yml has independent Windows jobs for
 calibre, DjVuLibre and CHM. Each builds an exact source-bound wheel, verifies all
-installed Python bytes and runs under -I. The current oracle requires 163
+installed Python bytes and runs under -I. The current oracle requires 179
 portable boundary cases from both source and installed wheel: the 162 exercised
-by the recorded DjVu run plus the explicit qualified-selection regression.
+by the recorded DjVu run, one explicit qualified-selection regression, ten
+CHM paragraph-normalization cases, and six additional private cleanup boundary cases.
 The current DjVu native fixtures use the ordinary service admission path, with
 legacy_preview=False; that successor gate must still pass on its own exact head.
 
@@ -145,3 +146,27 @@ closure and all nine source/installed fixtures must pass before any format is
 advertised; no stdio limit or process isolation is altered. The cancellation
 fixture uses a synthetic valid literal TCR dictionary because the publisher's
 compressor failed on its repetitive input; actual decoding remains required.
+
+Observed CHM correction (2026-11-27): the publisher's compressed help file closes
+an already implicitly closed paragraph in cmdline/commands/bench.htm. For the
+four declared known legacy HTML doctypes only, the CHM adapter reuses the existing
+inert parser and its text/node/token/depth/time budgets to insert an empty start
+paragraph before that unmatched closing paragraph. Every other structure check
+remains in force, and general HTML import is unchanged. Active and hidden content
+stay omitted. Original member bytes and transformed parser bytes have separate
+retained SHA256 values, and the report records this normalization. The actual
+CHM successor still must pass before .chm can be qualified.
+
+Observed calibre correction (2026-11-27): its pinned safe_atexit component tried
+to start a generic cleanup daemon when the actual conversion created a persistent
+temporary directory. The fixed wrapper now validates and delegates only that
+component's unlink/rmtree registrations for descendants of the private stage to
+the existing outer conversion owner. It creates no helper, stored callback or
+new job store. Program registrations, outside paths, network and subprocess
+execution remain rejected. Temporary bytes stay owned until native settlement
+and are then removed by the existing stage cleanup, including cancellation.
+The pinned publisher source used for this narrow adaptation is:
+https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/utils/safe_atexit.py
+https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/ptempfile.py
+The six actual unprotected formats and the three native refusal/budget/cancel
+cases must still pass from source and installed wheel before calibre is enabled.
