@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   preserve-completed-receipts:
-    runs-on: windows-2022
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
       PYTHONUTF8: '1'
@@ -26,8 +26,8 @@ jobs:
       - name: Read only the two pinned immutable public Windows artifacts
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          $head = (git rev-parse HEAD).Trim()
-          if ($LASTEXITCODE -ne 0 -or $head -cne $env:GITHUB_SHA) { throw 'Unexpected reader checkout.' }
-          python -I -B -X utf8 .github/scripts/carr_windows_687_receipts.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python3 -I -B -X utf8 .github/scripts/carr_windows_687_receipts.py
