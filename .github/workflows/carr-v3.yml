@@ -121,7 +121,7 @@ jobs:
           $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:PATH = "$env:CARR_V3_CITATIONS$([System.IO.Path]::PathSeparator)$env:PATH"
-          $node = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source
+          $node = (Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
           $expectedNode = [System.IO.Path]::GetFullPath((Join-Path $env:CARR_V3_CITATIONS 'node.exe'))
           $pythonNode = (& python -I -c "import shutil; print(shutil.which('node') or '')").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -172,7 +172,7 @@ jobs:
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.citation-runtime.outcome == 'success' }}
         run: |
           $env:PATH = "$env:CARR_V3_CITATIONS$([System.IO.Path]::PathSeparator)$env:PATH"
-          $node = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source
+          $node = (Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
           $expectedNode = [System.IO.Path]::GetFullPath((Join-Path $env:CARR_V3_CITATIONS 'node.exe'))
           $pythonNode = (& python -I -c "import shutil; print(shutil.which('node') or '')").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
