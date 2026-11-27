@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import time
+import threading
 import venv
 
 import pytest
@@ -457,12 +458,35 @@ def test_stop_flag_cancellation_and_explicit_resume(prepared):
     _, _, service, original, configure = prepared
     configure('pause-once')
     identity = service.submit([original])
-    started = time.monotonic()
-    stopped = service.run(identity, timeout=30, cancelled=lambda: time.monotonic() - started > .5)
+    path = service._path(identity)
+    original_bytes = original.read_bytes()
+    running = threading.Event()
+    observed = []
+
+    def worker_progress(done, total, phase):
+        if phase == 'running':
+            # This is the actual child-published protocol snapshot, not a
+            # parent admission notification or an assumed startup duration.
+            status = read_json(path / 'job_status.json')
+            if status['state'] == 'running' and status['result_state'] == 'running':
+                observed.append(status['run_id'])
+                running.set()
+
+    stopped = service.run(identity, timeout=30, cancelled=running.is_set, progress=worker_progress)
+    assert observed and running.is_set()
     assert stopped['status'] == 'stopped'
-    assert service.get(identity)['sources'][0]['sha256'] == sha256(original.read_bytes()).hexdigest()
+    assert (path / 'continued').read_text(encoding='utf-8') == 'completed files will be retained'
+    stopped_status = read_json(path / 'job_status.json')
+    assert stopped_status['state'] == stopped_status['result_state'] == 'stopped'
+    assert stopped_status['run_id'] == observed[0]
+    assert stopped['done'] == 0 and stopped['receipts'] == stopped['artifacts'] == []
+    assert original.read_bytes() == original_bytes
+    assert service.get(identity)['sources'][0]['sha256'] == sha256(original_bytes).hexdigest()
     resumed = service.run(identity, timeout=30)
     assert resumed['status'] == 'completed', resumed['last_error']
+    verified = service.verify(identity)
+    assert verified['done'] == 1 and len(verified['receipts']) == 1 and len(verified['artifacts']) == 6
+    assert original.read_bytes() == original_bytes
 
 
 def test_actual_child_timeout_is_failed_and_original_remains(prepared):
