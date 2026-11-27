@@ -110,8 +110,14 @@ def main():
         library.create_workspace('Native playlist acceptance')
         frame = desktop_app.DesktopFrame(library)
         executor = frame.executor
-        frame.Bind(wx.EVT_WINDOW_DESTROY,
-            lambda event: (destroyed.append(True) if event.GetEventObject() is frame else None, event.Skip()))
+        native_frame_id = frame.GetId()
+        def frame_destroyed(event):
+            if event.GetId() == native_frame_id:
+                destroyed.append(True)
+            event.Skip()
+        def frame_is_destroyed():
+            return bool(destroyed) and not bool(frame)
+        frame.Bind(wx.EVT_WINDOW_DESTROY, frame_destroyed)
         original_picker = wx.FileDialog
         picked = []
         other = player.WavePlayer()
@@ -282,7 +288,7 @@ def main():
                 check('saved queue reopens after original files moved', frame._playback_owner is None
                       and not _wave_output._UNRELEASED_OUTPUTS)
                 frame.Close()
-                pump(lambda: bool(destroyed), 'Desktop did not acknowledge native Close')
+                pump(frame_is_destroyed, 'Desktop did not acknowledge native Close')
             except Exception:
                 errors.append(traceback.format_exc())
             finally:
@@ -301,13 +307,16 @@ def main():
             owner = getattr(frame, '_playback_owner', None)
             if owner is not None:
                 owner.close()
-            if not destroyed:
-                frame.cancel_event.set()
-                pump(lambda: not frame.working, 'Failure-path playlist review cleanup', allow_errors=True)
-                frame.Close()
-                pump(lambda: bool(destroyed), 'Failure-path desktop close', allow_errors=True)
+            if not frame_is_destroyed():
+                if not destroyed and bool(frame):
+                    frame.cancel_event.set()
+                    pump(lambda: not frame.working, 'Failure-path playlist review cleanup', allow_errors=True)
+                    frame.Close()
+                pump(frame_is_destroyed, 'Failure-path desktop close', allow_errors=True)
             executor.shutdown(wait=True, cancel_futures=True)
-    print(json.dumps({'status': 'PASS', 'checks': checks, 'source_identity': identities,
+    print(json.dumps({'status': 'PASS', 'checks': checks,
+        'native_frame_id': native_frame_id, 'native_destroy_event': bool(destroyed),
+        'native_wrapper_deleted': not bool(frame), 'source_identity': identities,
         'actual_windows_waveout': 'PASS', 'actual_native_queue_controls': 'PASS',
         'instance_volume_isolation': 'PASS', 'audible_listening': 'NOT_RUN', 'nvda': 'NOT_RUN'},
         ensure_ascii=False), flush=True)

@@ -11,6 +11,7 @@ def create_reading_narration(parent, *, capture, execute, guard, wx_module=None)
         def __init__(self):
             super().__init__(parent, title='Read or skip reviewed reading content', size=(780, 690),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self._native_window_id = self.GetId()
             self.alive, self.working, self.cancel_pending = True, False, None
             self.reviewed, self.rows, self.policy, self.buttons = None, (), None, {}
             self.preview_selection = None
@@ -205,7 +206,7 @@ def create_reading_narration(parent, *, capture, execute, guard, wx_module=None)
 
         def destroyed(self, event):
             try:
-                if event.GetEventObject() is self:
+                if event.GetId() == self._native_window_id:
                     self.invalidate()
             finally:
                 event.Skip()

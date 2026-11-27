@@ -273,11 +273,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Require canonical capture, editing, publication and local planning
-        timeout-minutes: 12
-        run: |
-          python scripts/ci_check.py --jobs 3 tests/extract/test_language_detection.py tests/extract/test_ocr_language_regions.py tests/storage/test_ocr_language_presets.py tests/ui/test_ocr_selection.py tests/audio/test_metadata.py tests/audio/test_metadata_cleanup_scope.py tests/audio/test_metadata_publication.py tests/audio/test_metadata_stream_hash.py tests/audio/test_metadata_review.py tests/ui/test_audio_metadata_dialog.py tests/ui/test_audio_metadata_lifetime.py tests/audio/test_audio_process.py tests/e2e/test_source_file.py tests/extract/test_raster_pages.py tests/e2e/test_raster_import.py tests/catalog/test_streaming_intake.py tests/catalog/test_archive_portability.py tests/catalog/test_intake_portability.py tests/ingest/test_large_source_intake.py tests/ingest/test_batch_continuation.py tests/ingest/test_batch_continuation_cli.py tests/e2e/test_import_legacy_config.py tests/e2e/test_import_commit_supervisor.py tests/ui/test_import_center.py tests/audio/test_recording.py tests/audio/test_conversion_batch.py tests/ui/test_audio_conversion_dialog.py tests/studio/test_audio_conversion_cli.py tests/audio/test_capture_admission.py tests/audio/test_capture_windows_lifetime.py tests/ui/test_recording_dialog.py tests/studio/test_clip_editing.py tests/studio/test_clip_dialog.py tests/studio/test_project_effects.py tests/studio/test_studio_controller.py tests/ui/test_studio_output_settings.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/ui/test_trust_lifetime.py tests/speech/test_player_controls.py tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/speech/test_playlist_recovery.py tests/ui/test_audio_playback.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/studio/test_publishing.py tests/studio/test_publishing_boundaries.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/assistant/test_translation_source.py tests/assistant/test_translation_batch.py tests/assistant/test_translation_batch_cli.py tests/assistant/test_translation_batch_ui.py tests/assistant/test_translation_local.py tests/assistant/test_translation_local_ui.py tests/packaging/test_installer_process.py tests/packaging/test_standard_installer.py tests/assistant/test_local_tools.py tests/assistant/test_workflow_templates.py tests/assistant/test_workflow_template_handlers.py tests/assistant/test_workflow_template_parameters.py tests/assistant/test_workflow_templates_cli.py tests/assistant/test_workflow_template_editor.py tests/assistant/test_player_tools.py tests/assistant/test_search_paging.py tests/assistant/test_local_planning.py tests/assistant/test_planning_handlers.py tests/assistant/test_translation_v3.py tests/reader/test_ebook_audio.py tests/speech/test_pronunciation_review.py tests/speech/test_pronunciation_handlers.py tests/speech/test_pronunciation_reader_hook.py tests/speech/test_voice_preferences.py tests/storage/test_voice_preferences_backup.py tests/ui/test_voice_preferences_dialog.py tests/speech/test_reading_presentation.py tests/speech/test_reading_presentation_handlers.py tests/speech/test_reading_presentation_reader_hook.py tests/storage/test_reader_preferences_backup.py tests/speech/test_reading_tabs.py tests/speech/test_reading_marks.py tests/speech/test_reading_focus.py tests/ui/test_reading_focus.py tests/ui/test_reader_focus_hook.py tests/ui/test_reading_tools.py tests/speech/test_narration_policy.py tests/ui/test_reading_narration.py tests/ui/test_reader_listening_hook.py tests/operations/test_worker_start_cleanup.py tests/studio/test_measured_audio.py tests/ui/test_book_duration_dialog.py tests/speech/test_listening.py tests/ui/test_reader_tabs.py tests/ui/test_reader_voice_recovery.py tests/audio/test_recording_controls.py tests/audio/test_recording_monitor.py tests/studio/test_book_batch.py tests/studio/test_book_cli.py tests/studio/test_book_landmarks.py tests/ui/test_book_batch_dialog.py tests/storage/test_backup_publications.py tests/storage/test_backup_incremental.py tests/ui/test_backup_incremental_dialog.py tests/speech/test_clipboard_reader.py tests/ui/test_desktop_integration.py tests/ui/test_desktop_settings.py tests/storage/test_desktop_preferences.py tests/speech/test_playback_devices.py tests/speech/test_spelling.py tests/speech/test_spelling_handlers.py tests/speech/test_spelling_reader_hook.py tests/packaging/test_hunspell_build.py tests/ui/test_native_reading_presentation_driver.py tests/studio/test_pronunciation.py tests/studio/test_pronunciation_dialog.py tests/studio/test_pronunciation_render.py tests/audio/test_audiobook.py tests/audio/test_effect_presets.py tests/studio/test_audiobook_publication.py tests/speech/test_navigation.py tests/ui/test_reader_navigation.py tests/speech/test_find_replace.py tests/speech/test_find_replace_reader_hook.py tests/speech/test_player_transport.py tests/ui/test_find_replace_dialog.py tests/operations/test_facade.py tests/operations/test_import_admission.py tests/operations/test_production_admission.py tests/operations/test_resources.py tests/operations/test_transcription_admission.py tests/ui/test_operations_dialog.py tests/ui/test_operations_policy.py tests/e2e/test_operations_cli.py tests/storage/test_state_replacement.py tests/reader/test_export_reconciliation.py 2>&1 | Tee-Object 'ci-v3-results/canonical-production-tests.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Exercise installed native production and independent reading tabs
         timeout-minutes: 18
         run: |
@@ -338,14 +333,177 @@ jobs:
         run: |
           python scripts/ci_check.py tests/progress/test_progress_contract.py tests/progress/test_progress_feedback.py tests/progress/test_progress_preferences.py tests/ui/test_progress_job_results.py tests/ui/test_progress_panel_state.py tests/e2e/test_import_progress.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_progress_numeric_limits.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/storage/test_progress_preferences_backup.py tests/progress/test_progress_media_integration.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Validate local services, DSP, integrity and provider permission boundaries
-        run: |
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/transcription tests/academic_integration tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/e2e/test_import_publication_receipt_integrity.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: carr-v3-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/ci-v3-results/
+          retention-days: 7
+
+  # Each matrix row has its own VM. Native desktop scenarios stay serial in
+  # native-studio; every matrix row and the broad service job remain required
+  # for the workflow to succeed. The canonical inventory is pinned separately.
+  canonical-source:
+    name: V3 required source shard ${{ matrix.shard }}/2
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact application and native desktop dependencies
+        id: install-runtime
+        run: |
+          New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-v3-results/tested-commit.txt'
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-v3-results/tested-tree.txt'
+          $expected = '${{ github.event.pull_request.head.sha || github.sha }}'
+          if ((Get-Content 'ci-v3-results/tested-commit.txt' -Raw).Trim() -ne $expected) { throw 'Unexpected source revision.' }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the same verified OCR runtime for source validation
+        timeout-minutes: 10
+        run: |
+          $ocrWork = Join-Path $env:RUNNER_TEMP 'carr-v3-ocr'
+          New-Item -ItemType Directory -Force $ocrWork | Out-Null
+          python -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $ocrWork 'ocr'
+          $ocrSource = Join-Path $ocrWork 'ocr-corresponding-source.tar'
+          python packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-v3-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare explicitly pinned private test audio runtime
+        id: audio-runtime
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-audio'
+          $audioInputs = Join-Path $env:RUNNER_TEMP 'carr-audio-inputs'
+          python packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-v3-results/audio-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          python packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audio | Tee-Object 'ci-v3-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Require the exact canonical 139-suite coverage guard
+        run: |
+          python scripts/ci_check.py tests/packaging/test_v3_source_shards.py 2>&1 | Tee-Object 'ci-v3-results/source-coverage-guard.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require canonical capture, editing, publication and local planning
+        timeout-minutes: 12
+        run: |
+          python -I -B -S scripts/v3_source_shards.py --shard ${{ matrix.shard }} --output 'ci-v3-results/source-coverage.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $selection = Get-Content 'ci-v3-results/source-coverage.json' -Raw | ConvertFrom-Json
+          $suites = @($selection.suites)
+          if ($selection.status -ne 'COVERAGE_VALID' -or $selection.required_count -ne 139 -or $selection.shard -ne ${{ matrix.shard }}) { throw 'V3 source coverage identity differs.' }
+          python scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object 'ci-v3-results/canonical-production-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Keep this source shard and coverage evidence only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-v3-source-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/ci-v3-results/
+          retention-days: 7
+
+  service-boundaries:
+    name: V3 broad local service boundaries
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact application and native desktop dependencies
+        id: install-runtime
+        run: |
+          New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-v3-results/tested-commit.txt'
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-v3-results/tested-tree.txt'
+          $expected = '${{ github.event.pull_request.head.sha || github.sha }}'
+          if ((Get-Content 'ci-v3-results/tested-commit.txt' -Raw).Trim() -ne $expected) { throw 'Unexpected source revision.' }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the same verified OCR runtime for source validation
+        timeout-minutes: 10
+        run: |
+          $ocrWork = Join-Path $env:RUNNER_TEMP 'carr-v3-ocr'
+          New-Item -ItemType Directory -Force $ocrWork | Out-Null
+          python -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $ocrWork 'ocr'
+          $ocrSource = Join-Path $ocrWork 'ocr-corresponding-source.tar'
+          python packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-v3-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare explicitly pinned private test audio runtime
+        id: audio-runtime
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-v3-audio'
+          $audioInputs = Join-Path $env:RUNNER_TEMP 'carr-audio-inputs'
+          python packaging/acquire_audio_runtime.py --output $audioInputs --download | Tee-Object 'ci-v3-results/audio-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          python packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audio | Tee-Object 'ci-v3-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Validate local services, DSP, integrity and provider permission boundaries
+        run: |
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/transcription tests/academic_integration tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/e2e/test_import_publication_receipt_integrity.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Keep broad local service test evidence only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-v3-services-${{ github.run_id }}-${{ github.run_attempt }}
           path: carr-library/ci-v3-results/
           retention-days: 7

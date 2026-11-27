@@ -553,6 +553,7 @@ class NativeSearchCenter:
         import wx
         self.wx = wx
         self.window = self.parent = wx.Dialog(frame, title='Research Search Center', size=(980, 850))
+        self._native_window_id = self.window.GetId()
         self._window_alive = True
         self._deferred_destroy = False
         self.window.SetMinSize((800, 700))
@@ -687,7 +688,7 @@ class NativeSearchCenter:
         self.window.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.window:
+        if event.GetId() == self._native_window_id:
             self._window_alive = False
             self._deferred_destroy = False
             self.controller.dispose()

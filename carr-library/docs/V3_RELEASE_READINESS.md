@@ -13,6 +13,11 @@ bound to the stated source identities.
 
 | Recent exact checkpoint | Actual result | Evidence and scope |
 | --- | --- | --- |
+| 9f broad source composition | **2432 passed in 102 quick suites; 2113 in 109 production suites; 3218 in 95 reconciled suites; zero failures/skips** | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). The separate direct regression passed 987 cases with one intentional Windows-only deselection. These selections overlap. |
+| 9f completed Windows and Linux components | **15 workflow jobs completed successfully**, including both ASR selections, native reading/templates/bibliography/keyboard/lifetime and both compiled launchers | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). ASR completed 734 Linux and 733 Windows cases, six Windows native handle barriers, 15 native ASR and 31 installed incremental-backup checks. Hosted controls retain their stated qualification limits. |
+| 9f integrated desktop evidence | **Native Import Center and all 137 metadata checks passed; recording closure and Book completion still failed** | [Exact recovered phase evidence](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). Nine metadata installed origins, source-wheel bytes and full-lock/SBOM parity passed. Source phase 56 remained in progress at the snapshot, beyond its configured 35-minute limit; no source coverage is inferred. |
+| 9f V3 canonical and progress coverage | **103 of 139 canonical suite reports completed with 2304 passes; all 14 progress suites passed 280 cases** | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). The canonical phase reached its unchanged 12-minute deadline with 36 reports absent. Earlier 463 source, 289 provider and 809 installed-recovery cases passed. The later native and broad selections were skipped by failed prerequisites, so complete V3 acceptance was not established. |
+| Focused 925 recording and Book diagnostics | **25 recording and 29 Book UI source controls passed; all 57 actual recording native checks passed** | [Exact diagnostic](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). Book reached the second book's master assembly but exceeded its 90-second native guard. CLI completed 11 passes and two 90-second child timeouts; the batch suite had ten completed passing call records before a fatal native exception and no final JUnit report. Diagnostic-timer involvement remains unproven. |
 | 64a broad source composition | **2426 passed in 102 quick suites; 2107 in 109 production suites; 3212 in 95 reconciled suites; zero failures/skips** | [Exact checkpoint](acceptance/20261127-64aadb-completed-gates-and-diagnostics.json). Separate direct regression passed 987 cases with one intentional Windows-only deselection. These selections overlap. |
 | 64a hosted Windows components | **55 reading, 60 template/exchange, 69 bibliography, 91 keyboard, 26 source and 26 installed lifetime, and both 9-check compiled launchers passed** | [Exact checkpoint](acceptance/20261127-64aadb-completed-gates-and-diagnostics.json). Corresponding source selections, artifacts and native limitations are recorded separately. The lifetime gate also passed 277 cases and 37 subtests. |
 | Corrected isolated ASR component e6e7ee59 | **14 profile and 49 dialog source cases; 15 native ASR and 31 installed incremental-backup checks passed** | [Exact component run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46068567199/job/140739732047). The real matching native destruction event and dead original wrapper both passed. This isolated component result does not replace the full successor's gates or qualify acoustic inference/manual NVDA. |
@@ -170,6 +175,40 @@ The actual malformed-package RECORD and runtime-drift ASR cases passed in2fb Lin
 An independent finite audit against both current authority documents at09c found no additional confirmed mandatory public-source glue omission outside the integrated rows. It traced actual current modules rather than treating a checklist or earlier PASS as implementation evidence. The observed Book UI correction passed the exact 8b6 source gates. The 64a checkpoint closes the earlier installed-recovery fixtures and exposes the later Windows byte-integrity, native modal/layout and observer failures recorded above. The reviewed successor preserves every required suite, exact installed-origin checks and all existing phase/suite/job deadlines. Its current execution outcome is linked from PR152; earlier PASS records remain bound to their original trees.
 
 A source-complete claim requires closing the finite rows and rerunning the assembled candidate. External qualification and distribution prerequisites below remain independent.
+
+## Reviewed native-lifetime and completion correction
+
+The source composition [4ba611e1](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/4ba611e1396d024c7047ff0b6f790067a61877ab)
+combines independently reviewed recording/Book/player/operations observers,
+four production owner-destruction filters, direct desktop hotkey/tray cleanup,
+the renderer's disk-sampling cadence and complete V3 source scheduling. All 24
+changed source/workflow/guide bodies were read back by root and an independent
+reviewer. The complete 1344-file tree retains 1320 unrelated 9f blobs, with 21
+modifications and three new source-scheduling files. No diagnostic workflow or
+diagnostic ancestry enters the ordinary candidate.
+
+The renderer now starts its ordinary 0.2-second quiet interval after a completed
+accounting traversal. It retains mandatory forced scans, fresh cancellation,
+per-entry cancellation, source attestations and publication space reservation.
+Source review establishes that correction's scope; only actual Book completion
+can establish its timing result. The isolated successor
+[9f5e9e21/run46077443673](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46077443673)
+was queued at the evidence snapshot with the same 90-second native Book,
+600-second suite and 12-minute source-phase deadlines.
+
+V3 runs the same exact ordered 139-suite inventory in required independent
+70/69-suite Windows jobs, with two isolated source workers on each VM. A
+content-bound manifest and partition controls reject missing, extra, duplicate,
+reordered or overlapping coverage. The broad source command moves unchanged
+to its own required job; the native job is byte-identical after removing only
+those moved source blocks. No skip, continue-on-error or timeout relaxation is
+introduced. The ordinary assembled head still requires its own actual gates;
+PR152 records the current execution outcome.
+
+The Ukrainian startup guide now describes the implemented ASR review/resume
+flow, raster input bounds and the distinct private-model and signed-distribution
+requirements. These clarifications do not expand the supported-format or
+qualification claims below.
 
 ## Explicit capability limits
 

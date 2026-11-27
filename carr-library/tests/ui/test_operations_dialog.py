@@ -300,3 +300,97 @@ def test_open_existing_canonical_transcription_keeps_selected_library_and_never_
     with pytest.raises(ValueError, match='data folder changed'):
         open_transcription_job(frame, identity, selected, library=app, library_root=app.root)
     assert len(opened) == 1
+
+
+def test_native_tasks_destroy_observer_uses_captured_id_for_a_different_wrapper():
+    import ast
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_operations_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    observer, = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name == 'destroyed']
+    module = ast.fix_missing_locations(ast.Module(body=[observer], type_ignores=[]))
+    state, skipped = {'native_id': -31994}, []
+    environment = {'detached_state': state}
+    exec(compile(module, str(script), 'exec'), environment)
+
+    class Event:
+        def __init__(self, identity): self.identity = identity
+        def GetId(self): return self.identity
+        def GetEventObject(self):
+            pytest.fail('Deleted native task view cannot depend on its Python wrapper.')
+        def Skip(self): skipped.append(self.identity)
+
+    environment['destroyed'](Event(-31993))
+    assert 'destroyed' not in state
+    environment['destroyed'](Event(-31994))
+    assert state == {'native_id': -31994, 'destroyed': True}
+    assert skipped == [-31993, -31994]
+    assignment, = [node for node in ast.walk(tree) if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name)
+                and target.value.id == 'detached_state' and isinstance(target.slice, ast.Constant)
+                and target.slice.value == 'native_id' for target in node.targets)]
+    bind, = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute) and node.func.attr == 'Bind'
+        and any(isinstance(arg, ast.Name) and arg.id == 'destroyed' for arg in node.args)]
+    assert assignment.lineno < bind.lineno and ast.unparse(assignment.value) == 'detached.GetId()'
+
+
+@pytest.mark.parametrize('missing', ['event', 'dead-wrapper', 'late-callback', None])
+def test_native_tasks_completion_requires_event_deleted_wrapper_and_unchanged_job(tmp_path, missing):
+    import ast
+    from dataclasses import asdict
+    from carr_library.assistant import AssistantService, Scope
+    from pathlib import Path
+    from types import SimpleNamespace
+    import traceback
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_operations_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    tick, = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == 'tick']
+    factory = ast.parse('def make_tick(gate, detached):\n    return None\n').body[0]
+    factory.body = [tick, ast.Return(value=ast.Name(id='tick', ctx=ast.Load()))]
+    module = ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[]))
+    app = LibraryApp(tmp_path / 'native-owner-control')
+    workspace = app.create_workspace('Native destruction fixture')
+    assistant = AssistantService(app)
+    identity = assistant.submit(assistant.preview('List books', Scope(workspace)))
+    original = asdict(assistant.get(identity))
+    checks, errors, stopped, exits, advanced = [], [], [], [], []
+    phase, clock = ['destroyed', 0.0], [0.0]
+    state = {'native_id': -31994, 'before': 'Retained task view',
+             'destroyed': missing != 'event', 'late': missing != 'late-callback'}
+
+    class Detached:
+        controller = SimpleNamespace(status='Retained task view')
+        def __bool__(self): return missing == 'dead-wrapper'
+        def Destroy(self): pytest.fail('Observation must not force native destruction.')
+
+    def check(label, value):
+        assert value, label
+        checks.append(label)
+
+    def advance(name):
+        advanced.append(name)
+        phase[:] = [name, clock[0]]
+
+    environment = dict(monotonic=lambda: clock[0], deadline=120.0, phase=phase, held=[None],
+        window=lambda title: None, detached_state=state, check=check,
+        assistant=assistant, identity=identity, advance=advance,
+        timer=SimpleNamespace(Stop=lambda: stopped.append(True)),
+        application=SimpleNamespace(ExitMainLoop=lambda: exits.append(True)),
+        abort=errors.append, traceback=traceback)
+    exec(compile(module, str(script), 'exec'), environment)
+    callback = environment['make_tick'](None, Detached())
+    callback()
+    if missing is not None:
+        assert not checks and not errors and not stopped and not exits and not advanced
+        clock[0] = 16.0
+        callback()
+        assert len(errors) == 1 and 'Native Tasks/resources timed out at destroyed' in errors[0]
+        assert not stopped and not exits and not advanced
+    else:
+        assert len(checks) == 3 and not errors
+        assert stopped == [True] and exits == [True] and advanced == ['complete']
+    assert asdict(assistant.get(identity)) == original and len(assistant.jobs()) == 1

@@ -183,7 +183,8 @@ def desktop(tmp_path):
     manager.invoke = lambda identity: invoked.append(identity) or True
     frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path), active=('workspace', None),
         _closing=False, working=False, report=reports.append, keyboard_commands=manager,
-        Bind=Mock(), Unbind=Mock(), IsEnabled=lambda: True)
+        Bind=Mock(), Unbind=Mock(), IsEnabled=lambda: True,
+        GetId=lambda: -31994, GetHandle=lambda: 123)
     wx = SimpleNamespace(Timer=Timer, EVT_TIMER='timer', EVT_HOTKEY='hotkey', EVT_WINDOW_DESTROY='destroy',
                          EVT_BUTTON=SimpleNamespace(typeId='button'), CommandEvent=Event)
     owner = DesktopIntegration(frame, wx_module=wx)
@@ -284,10 +285,10 @@ def test_win32_adapter_requires_exact_window_and_retains_native_no_repeat(monkey
 def test_direct_native_destroy_cleans_only_the_actual_owner_and_drops_late_timer(tmp_path):
     e = desktop(tmp_path)
     e.owner.watch_clipboard(True)
-    child = SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock())
+    child = SimpleNamespace(GetId=lambda: -31993, GetEventObject=lambda: object(), Skip=Mock())
     e.owner._destroyed(child)
     assert not e.owner.closed and e.owner.timer.running
-    actual = SimpleNamespace(GetEventObject=lambda: e.frame, Skip=Mock())
+    actual = SimpleNamespace(GetId=lambda: -31994, GetEventObject=lambda: e.frame, Skip=Mock())
     e.owner._destroyed(actual)
     assert e.owner.closed and not e.owner.timer.running
     e.owner.timer.Stop = lambda: pytest.fail('Late callback touched a destroyed native timer.')
@@ -349,3 +350,299 @@ def test_tray_uses_semantic_actions_and_uncertain_removal_is_visible_and_retryab
     assert e.owner.tray is None and icon.destroyed
     e.owner.wx = e.wx
     e.owner.close()
+
+
+def test_native_probe_observes_frame_id_before_deleted_python_wrapper():
+    import ast
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_desktop_integration_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    observer, = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name == 'frame_destroyed']
+    module = ast.fix_missing_locations(ast.Module(body=[observer], type_ignores=[]))
+    destroyed, skipped = [], []
+    environment = dict(native_frame_id=-31994, destroyed=destroyed)
+    exec(compile(module, str(script), 'exec'), environment)
+
+    class Event:
+        def __init__(self, identity): self.identity = identity
+        def GetId(self): return self.identity
+        def GetEventObject(self):
+            pytest.fail('Deleted native owner identity must not depend on its Python wrapper.')
+        def Skip(self): skipped.append(self.identity)
+
+    environment['frame_destroyed'](Event(-31993))
+    assert not destroyed
+    environment['frame_destroyed'](Event(-31994))
+    assert destroyed == [True] and skipped == [-31993, -31994]
+    assignment, = [node for node in ast.walk(tree) if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == 'native_frame_id' for target in node.targets)]
+    bind, = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute) and node.func.attr == 'Bind'
+        and any(isinstance(arg, ast.Name) and arg.id == 'frame_destroyed' for arg in node.args)]
+    assert assignment.lineno < bind.lineno and ast.unparse(assignment.value) == 'frame.GetId()'
+
+
+@pytest.mark.parametrize('event_seen, peer_alive', [(False, False), (False, True), (True, True), (True, False)])
+def test_native_probe_close_wait_requires_both_event_and_dead_original_peer(event_seen, peer_alive):
+    import ast
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_desktop_integration_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+                 and node.name in ('frame_is_destroyed', 'pump')]
+    assert {node.name for node in functions} == {'frame_is_destroyed', 'pump'}
+    module = ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[]))
+    clock, yields = [0.0], []
+
+    class Peer:
+        def __bool__(self): return peer_alive
+        def Close(self): pytest.fail('Observation cannot force Close.')
+        def Destroy(self): pytest.fail('Observation cannot force Destroy.')
+
+    def sleep(seconds):
+        assert seconds == .01
+        clock[0] += seconds
+
+    environment = dict(frame=Peer(), destroyed=[True] if event_seen else [], errors=[],
+        app=SimpleNamespace(Yield=lambda: yields.append(True)),
+        time=SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    exec(compile(module, str(script), 'exec'), environment)
+    predicate = environment['frame_is_destroyed']
+    assert predicate() is (event_seen and not peer_alive)
+    if event_seen and not peer_alive:
+        environment['pump'](predicate, 'owned native close')
+        assert not yields and clock[0] == 0
+    else:
+        with pytest.raises(TimeoutError, match='owned native close'):
+            environment['pump'](predicate, 'owned native close')
+        assert 12 <= clock[0] < 12.02 and yields
+    labels = {'Native DesktopFrame did not acknowledge destruction.', 'Failure-path desktop cleanup did not destroy the frame.'}
+    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name) and node.func.id == 'pump'
+             and len(node.args) > 1 and isinstance(node.args[1], ast.Constant)
+             and node.args[1].value in labels]
+    assert len(calls) == 2
+    assert all(isinstance(call.args[0], ast.Name) and call.args[0].id == 'frame_is_destroyed' for call in calls)
+
+
+class CleanupTray:
+    def __init__(self):
+        self.active, self.installed, self.alive = True, True, True
+        self.refuse_remove, self.refuse_destroy = False, False
+        self.removals = self.destroys = 0
+
+    def __bool__(self):
+        return self.alive
+
+    def IsIconInstalled(self):
+        assert self.alive
+        return self.installed
+
+    def RemoveIcon(self):
+        assert self.alive
+        self.removals += 1
+        if self.refuse_remove:
+            return False
+        self.installed = False
+        return True
+
+    def Destroy(self):
+        assert self.alive and not self.installed
+        self.destroys += 1
+        if self.refuse_destroy:
+            raise RuntimeError('tray destruction unconfirmed')
+        self.alive = False
+
+
+class DeletedDesktopPeer:
+    def __init__(self):
+        self.native_calls = []
+
+    def __bool__(self):
+        return False
+
+    def GetId(self):
+        self.native_calls.append('id')
+        raise RuntimeError('original native frame already deleted')
+
+    def GetHandle(self):
+        self.native_calls.append('handle')
+        raise RuntimeError('original native frame already deleted')
+
+    def Unbind(self, *args, **kwargs):
+        self.native_calls.append('unbind')
+        raise RuntimeError('original native frame already deleted')
+
+
+def cleanup_window(tmp_path, monkeypatch):
+    import ctypes
+    from carr_library.ui.desktop_integration import WindowsHotkeyAPI
+
+    value = desktop(tmp_path)
+    api = SimpleNamespace(RegisterHotKey=Mock(return_value=1),
+                          UnregisterHotKey=Mock(return_value=1))
+    monkeypatch.setattr(ctypes, 'WinDLL', lambda *args, **kwargs: api, raising=False)
+    value.owner.hotkeys.platform = 'win32'
+    value.owner.hotkeys.native = WindowsHotkeyAPI(value.frame)
+    value.owner.hotkeys.enable({'desktop.show': 'Ctrl+Alt+Shift+K'})
+    value.owner.watch_clipboard(True)
+    value.owner._tick()
+    value.owner.tray = CleanupTray()
+    value.api = api
+    return value
+
+
+def replace_deleted_peer(value, *, handle=123):
+    dead = DeletedDesktopPeer()
+    proxy = SimpleNamespace(GetId=lambda: -31994, GetHandle=lambda: handle, Unbind=Mock())
+    value.owner.frame = value.owner.hotkeys.frame = value.owner.hotkeys.native.frame = dead
+    native_event = SimpleNamespace(GetId=lambda: -31994, GetEventObject=lambda: proxy, Skip=Mock())
+    return dead, proxy, native_event
+
+
+def test_native_destroy_uses_current_base_proxy_after_original_frame_wrapper_is_dead(tmp_path, monkeypatch):
+    value = cleanup_window(tmp_path, monkeypatch)
+    tray = value.owner.tray
+    value.owner.reader, value.owner._assistant_reader = object(), object()
+    dead, proxy, native_event = replace_deleted_peer(value)
+
+    value.owner._destroyed(native_event)
+
+    assert value.owner.closed and value.owner._cleanup_complete
+    assert value.owner.reader is value.owner._assistant_reader is None
+    assert value.owner.watch.closed and not value.owner.watch.enabled
+    assert value.owner.watch.pending is None and not value.owner.timer.running
+    assert not value.owner.hotkeys._registered and value.owner.hotkeys._cleanup_complete
+    value.api.UnregisterHotKey.assert_called_once_with(123, 0x4200)
+    assert not tray.active and not tray.alive and value.owner.tray is None
+    assert tray.removals == tray.destroys == 1
+    assert [call.args[0] for call in proxy.Unbind.call_args_list] == ['timer', 'hotkey', 'destroy']
+    assert dead.native_calls == [] and not getattr(value.owner, 'cleanup_error', None)
+    native_event.Skip.assert_called_once()
+    calls = value.owner._read.call_count
+    value.owner._tick()
+    value.owner.hotkeys._event(event())
+    assert value.owner._read.call_count == calls and not value.invoked
+    value.owner.close()
+    assert value.api.UnregisterHotKey.call_count == 1 and tray.destroys == 1
+
+
+def test_failed_close_attempts_every_owner_and_real_destroy_can_retry_retained_resources(tmp_path, monkeypatch):
+    value = cleanup_window(tmp_path, monkeypatch)
+    tray = value.owner.tray
+    tray.refuse_remove = True
+    value.api.UnregisterHotKey.return_value = 0
+    stop = value.owner.timer.Stop
+    stop_error = RuntimeError('timer stop unconfirmed')
+    value.owner.timer.Stop = Mock(side_effect=stop_error)
+    value.frame.Unbind.side_effect = RuntimeError('native unbind unconfirmed')
+
+    with pytest.raises(RuntimeError) as caught:
+        value.owner.close()
+
+    message = str(caught.value)
+    assert caught.value.__cause__ is stop_error
+    assert 'timer stop unconfirmed' in message and 'native unbind unconfirmed' in message
+    assert 'confirm shortcut release' in message and 'confirm tray-icon removal' in message
+    assert value.owner.cleanup_error == message
+    assert value.owner.closed and not value.owner._cleanup_complete
+    assert value.owner.watch.closed and value.owner.watch.pending is None
+    value.owner.timer.Stop.assert_called_once()
+    value.api.UnregisterHotKey.assert_called_once_with(123, 0x4200)
+    assert [call.args[0] for call in value.frame.Unbind.call_args_list] == ['timer', 'hotkey']
+    assert value.owner._destroy_bound and value.owner.hotkeys._registered == {0x4200: 'desktop.show'}
+    assert value.owner.tray is tray and not tray.active and tray.alive
+    assert tray.removals == 1 and tray.destroys == 0
+    value.owner.hotkeys._event(event())
+    assert not value.invoked
+
+    value.owner.timer.Stop = stop
+    value.api.UnregisterHotKey.return_value = 1
+    tray.refuse_remove = False
+    dead, proxy, native_event = replace_deleted_peer(value)
+    value.owner._destroyed(native_event)
+    assert value.owner._cleanup_complete and not value.owner._destroy_bound
+    assert not value.owner.timer.running and value.owner.hotkeys._registered == {}
+    assert value.owner.tray is None and not tray.alive
+    assert tray.removals == 2 and tray.destroys == 1
+    assert value.api.UnregisterHotKey.call_count == 2 and dead.native_calls == []
+    assert [call.args[0] for call in proxy.Unbind.call_args_list] == ['timer', 'hotkey', 'destroy']
+    assert value.owner.cleanup_error == message  # The observed first failure is not erased.
+
+
+def test_global_key_close_preserves_release_and_unbind_errors_before_retry():
+    value = hotkeys()
+    value.owner.enable({'desktop.show': 'Ctrl+Alt+Shift+K'})
+    value.native.refuse_release = True
+    value.frame.Unbind.side_effect = RuntimeError('hotkey binding still owned')
+
+    with pytest.raises(RuntimeError) as caught:
+        value.owner.close()
+
+    assert 'confirm shortcut release' in str(caught.value)
+    assert 'hotkey binding still owned' in str(caught.value)
+    assert value.owner.closed and not value.owner.enabled and not value.owner._cleanup_complete
+    assert value.owner._registered == {0x4200: 'desktop.show'} and value.owner._bound
+    value.owner._event(event())
+    assert not value.dispatched
+    value.native.refuse_release = False
+    value.frame.Unbind.side_effect = None
+    value.owner.close()
+    assert not value.native.keys and not value.owner._registered and not value.owner._bound
+    assert value.owner._cleanup_complete and value.frame.Unbind.call_count == 2
+    value.owner.close()
+    assert value.frame.Unbind.call_count == 2
+
+
+def test_destroy_proxy_with_wrong_hwnd_cannot_release_a_different_window(tmp_path, monkeypatch):
+    value = cleanup_window(tmp_path, monkeypatch)
+    tray = value.owner.tray
+    dead, proxy, native_event = replace_deleted_peer(value, handle=456)
+
+    value.owner._destroyed(native_event)
+
+    assert value.owner.closed and not value.owner._cleanup_complete
+    assert 'destruction owner changed' in value.owner.cleanup_error
+    value.api.UnregisterHotKey.assert_not_called()
+    proxy.Unbind.assert_not_called()
+    assert value.owner.hotkeys._registered == {0x4200: 'desktop.show'}
+    assert value.owner.watch.closed and value.owner.watch.pending is None
+    assert not value.owner.timer.running and not tray.alive and value.owner.tray is None
+    assert dead.native_calls and all(call in ('handle', 'unbind') for call in dead.native_calls)
+    native_event.Skip.assert_called_once()
+
+
+def test_tray_destroy_failure_does_not_prevent_key_release_or_discard_retry_owner(tmp_path, monkeypatch):
+    value = cleanup_window(tmp_path, monkeypatch)
+    tray = value.owner.tray
+    tray.refuse_destroy = True
+
+    with pytest.raises(RuntimeError, match='tray destruction unconfirmed'):
+        value.owner.close()
+
+    assert not value.owner.hotkeys._registered and value.owner.hotkeys._cleanup_complete
+    assert value.owner.tray is tray and tray.alive and not tray.installed and not tray.active
+    assert value.owner._destroy_bound and not value.owner._cleanup_complete
+    assert tray.removals == 1 and tray.destroys == 1
+    tray.refuse_destroy = False
+    value.owner.close()
+    assert value.owner._cleanup_complete and value.owner.tray is None and not tray.alive
+    assert tray.removals == 1 and tray.destroys == 2
+    value.api.UnregisterHotKey.assert_called_once_with(123, 0x4200)
+
+
+def test_missing_destroy_proxy_still_attempts_owned_cleanup_and_preserves_error(tmp_path, monkeypatch):
+    value = cleanup_window(tmp_path, monkeypatch)
+    native_event = SimpleNamespace(GetId=lambda: -31994,
+        GetEventObject=Mock(side_effect=RuntimeError('native event owner unavailable')), Skip=Mock())
+
+    value.owner._destroyed(native_event)
+
+    assert value.owner.closed and value.owner._cleanup_complete
+    assert value.owner.watch.pending is None and not value.owner.timer.running
+    assert value.owner.hotkeys._registered == {} and value.owner.tray is None
+    assert value.owner.cleanup_error == 'Native destruction owner: native event owner unavailable'
+    native_event.Skip.assert_called_once()

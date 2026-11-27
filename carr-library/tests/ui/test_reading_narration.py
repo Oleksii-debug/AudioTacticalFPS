@@ -81,9 +81,11 @@ class Editor:
 class Widget:
     def __init__(self, parent=None, *args, **kwargs):
         self.owner, self.dead, self.enabled = get_ident(), False, True
+        self.native_id = id(self)
         self.value, self.selection, self.handlers = kwargs.get('value', ''), -1, {}
         self.rows, self.label, self.name = list(kwargs.get('choices', [])), kwargs.get('label', ''), ''
     def native(self): assert get_ident() == self.owner and not self.dead
+    def GetId(self): self.native(); return self.native_id
     def SetName(self, value): self.native(); self.name = value
     def Wrap(self, value): self.native()
     def Add(self, *args, **kwargs): self.native()
@@ -104,7 +106,9 @@ class Widget:
         self.native()
         self.dead = True
         if 'destroy' in self.handlers:
-            self.handlers['destroy'](SimpleNamespace(GetEventObject=lambda: self, Skip=lambda: None))
+            peer = object()  # wx may return a replacement wrapper after native deletion.
+            self.handlers['destroy'](SimpleNamespace(
+                GetId=lambda: self.native_id, GetEventObject=lambda: peer, Skip=lambda: None))
 
 
 def wx_module():
@@ -403,7 +407,7 @@ def test_direct_native_destroy_after_worker_completion_revokes_queued_policy_ado
 def test_child_control_destroy_does_not_revoke_policy_owner(policy_ui):
     state, dialog = policy_ui, policy_ui.dialog
     skipped = Mock()
-    dialog.destroyed(SimpleNamespace(GetEventObject=lambda: dialog.list, Skip=skipped))
+    dialog.destroyed(SimpleNamespace(GetId=dialog.list.GetId, GetEventObject=lambda: dialog.list, Skip=skipped))
     assert dialog.alive and not dialog.dead
     skipped.assert_called_once()
     dialog.mark(); state.worker.finish()
@@ -473,3 +477,39 @@ def test_quiet_feedback_delay_rechecks_exact_projection_before_real_playback(ren
         held.pop()()
     state.player.play.assert_not_called()
     assert result.path.is_file()  # A completed private render is still owned by normal reader cleanup.
+
+
+@pytest.mark.parametrize('worker_finished', [False, True])
+def test_replacement_native_owner_destroy_cancels_held_policy_result(policy_ui, monkeypatch, worker_finished):
+    state, dialog = policy_ui, policy_ui.dialog
+    before = state.document.to_dict()
+    entered, release = Event(), Event()
+    real = ReadingDocument.from_dict.__func__
+
+    def held(cls, value):
+        if get_ident() != state.editor.owner:
+            entered.set()
+            assert release.wait(5)
+        return real(cls, value)
+
+    monkeypatch.setattr(ReadingDocument, 'from_dict', classmethod(held))
+    dialog.mark()
+    try:
+        assert entered.wait(5)
+        # A child native ID must not withdraw the owner, even if an event
+        # exposes the owner's old Python wrapper.
+        skipped = Mock()
+        dialog.destroyed(SimpleNamespace(GetId=dialog.list.GetId,
+            GetEventObject=lambda: dialog, Skip=skipped))
+        skipped.assert_called_once()
+        assert dialog.alive and dialog.cancel_pending is not None
+        if worker_finished:
+            release.set()
+            state.worker.pending[0][0].result(timeout=5)
+        assert state.document.to_dict() == before and not state.saves
+        dialog.Destroy()  # The fake emits a different wrapper with the captured owner ID.
+        assert dialog.dead and not dialog.alive and dialog.cancel_pending is None
+    finally:
+        release.set()
+    state.worker.finish()
+    assert state.document.to_dict() == before and not state.saves and not state.store.path.exists()
