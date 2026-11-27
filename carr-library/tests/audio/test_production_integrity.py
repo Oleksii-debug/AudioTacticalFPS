@@ -115,10 +115,10 @@ def test_final_directory_race_preserves_other_empty_directory(tmp_path, monkeypa
     original = production.publish_noreplace
     raced = []
 
-    def race(source, destination):
+    def race(source, destination, **options):
         destination.mkdir()
         raced.append(destination.stat().st_ino)
-        return original(source, destination)
+        return original(source, destination, **options)
 
     monkeypatch.setattr(production, 'publish_noreplace', race)
     plan = production.parse_script('[output sample_rate=8000 stems=false]\n[pause .1]')
@@ -138,8 +138,8 @@ class UnusedEngine:
     def synthesize(self, *args, **kwargs):
         raise AssertionError('Silence requires no speech engine')
 original = production.publish_noreplace
-def stop_after_move(source, destination):
-    original(source, destination)
+def stop_after_move(source, destination, **options):
+    original(source, destination, **options)
     os._exit(17)
 production.publish_noreplace = stop_after_move
 plan = production.parse_script('[output sample_rate=8000 stems=false]\\n[pause .1]')
@@ -180,3 +180,87 @@ def test_inherited_ffreport_does_not_create_unrequested_file(tmp_path, monkeypat
     output = audio.process_voice(source, tmp_path / 'output.wav', ffmpeg=FFMPEG, sample_rate=8000)
     assert audio.wav_info(output).frames == 800
     assert not report.exists()
+
+
+@pytest.mark.parametrize('boundary', ['final-reservation', 'stage-directory-sync'])
+def test_stop_at_final_publication_boundary_retains_chunks_and_resumes(tmp_path, monkeypatch, boundary):
+    calls = []
+
+    class ObservedEngine(SyntheticEngine):
+        def synthesize(self, text, output, **kwargs):
+            calls.append(text)
+            return super().synthesize(text, output, **kwargs)
+
+    engine = ObservedEngine()
+    plan = production.parse_script('[output sample_rate=8000 stems=false]\nFixture')
+    stopped = False
+    armed = False
+    observed = []
+    actual_check = production.check_cancelled
+    actual_reserve = jobs.ChunkCache.reserve
+    actual_sync = jobs._sync_directory
+
+    def check_then_arm(cancelled):
+        nonlocal armed
+        actual_check(cancelled)
+        if list(tmp_path.glob('.work-*/finished/complete.json')):
+            armed = True
+
+    def reserve_then_stop(cache, amount):
+        nonlocal stopped
+        result = actual_reserve(cache, amount)
+        if armed and amount == 0 and not observed and boundary == 'final-reservation':
+            observed.append(boundary)
+            stopped = True
+        return result
+
+    def sync_then_stop(directory):
+        nonlocal stopped
+        actual_sync(directory)
+        path = Path(directory)
+        if (armed and path.name == 'finished' and (path / 'complete.json').is_file()
+                and not observed and boundary == 'stage-directory-sync'):
+            observed.append(boundary)
+            stopped = True
+
+    monkeypatch.setattr(production, 'check_cancelled', check_then_arm)
+    monkeypatch.setattr(jobs.ChunkCache, 'reserve', reserve_then_stop)
+    monkeypatch.setattr(jobs, '_sync_directory', sync_then_stop)
+    with pytest.raises(jobs.RenderCancelled, match='retained for resume'):
+        render(plan, tmp_path, engine=engine, cancelled=lambda: stopped)
+    assert observed == [boundary] and calls == ['Fixture']
+    assert json.loads((tmp_path / 'render-journal.json').read_text('utf-8'))['state'] == 'cancelled'
+    assert not list((tmp_path / 'renders').iterdir())
+    assert not list(tmp_path.glob('.work-*'))
+    retained = {path: jobs.sha256_file(path) for path in (tmp_path / 'cache').glob('*.wav')}
+    assert retained
+
+    stopped, armed = False, False
+    completed = render(plan, tmp_path, engine=engine, cancelled=lambda: stopped)
+    assert calls == ['Fixture']
+    assert audio.wav_info(completed['output']).frames == 800
+    assert all(jobs.sha256_file(path) == checksum for path, checksum in retained.items())
+    assert json.loads((tmp_path / 'render-journal.json').read_text('utf-8'))['state'] == 'complete'
+
+
+def test_stop_after_complete_directory_move_keeps_completed_result(tmp_path, monkeypatch):
+    actual_publish = production.publish_noreplace
+    observed = []
+    stopped = False
+
+    def publish_then_stop(source, destination, **options):
+        nonlocal stopped
+        result = actual_publish(source, destination, **options)
+        observed.append(Path(destination))
+        stopped = True
+        return result
+
+    monkeypatch.setattr(production, 'publish_noreplace', publish_then_stop)
+    plan = production.parse_script('[output sample_rate=8000 stems=false]\nFixture')
+    completed = render(plan, tmp_path, cancelled=lambda: stopped)
+    assert stopped and observed == [Path(completed['output']).parent]
+    assert audio.wav_info(completed['output']).frames == 800
+    assert json.loads((tmp_path / 'render-journal.json').read_text('utf-8'))['state'] == 'complete'
+    replay = render(plan, tmp_path)
+    assert replay['output'] == completed['output']
+    assert len(list((tmp_path / 'renders').iterdir())) == 1

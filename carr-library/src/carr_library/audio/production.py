@@ -796,7 +796,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
             atomic_json(staged_output / 'complete.json', result)
             check_cancelled(cancelled)
             cache.reserve(0)
-            publish_noreplace(staged_output, output_dir)
+            publish_noreplace(staged_output, output_dir, cancelled=cancelled)
             state.update(state='complete', output=str(output_dir / output_name), duration_seconds=result['duration_seconds'])
             atomic_json(journal, state)
             on_status(f"Audio production complete: {result['duration_seconds']:.2f} seconds.")
