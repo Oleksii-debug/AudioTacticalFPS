@@ -1,4 +1,4 @@
-name: Resonance remaining native diagnostics 2429
+name: Resonance remaining native diagnostics f4cc
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   remaining-native:
-    name: Frozen 2429 Windows native probes
+    name: Frozen f4cc Windows native probes
     runs-on: windows-2022
     timeout-minutes: 55
     defaults:
@@ -36,7 +36,7 @@ jobs:
       - name: Check out the frozen application source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: 2429ba2a5918b3a32efb0688f9265233fd2de1bc
+          ref: f4cc2e11cac1576652dee55bf9984935379ac864
           persist-credentials: false
 
       - name: Set up native x64 CPython
@@ -56,10 +56,10 @@ jobs:
           "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           New-Item -ItemType Directory -Force 'ci-results' | Out-Null
           $actual = (git rev-parse HEAD).Trim()
-          if ($actual -ne '2429ba2a5918b3a32efb0688f9265233fd2de1bc') { throw 'The diagnostic checkout is not the frozen application commit.' }
+          if ($actual -ne 'f4cc2e11cac1576652dee55bf9984935379ac864') { throw 'The diagnostic checkout is not the frozen application commit.' }
           $actual | Set-Content 'ci-results/tested-commit.txt'
           $actualTree = (git rev-parse 'HEAD^{tree}').Trim()
-          if ($actualTree -ne '79e59f21b57e7284d0093cc4b5e588655551dde5') { throw 'The diagnostic source tree changed.' }
+          if ($actualTree -ne '580d3c34d8182d821f83247689d1138f0efe0a93') { throw 'The diagnostic source tree changed.' }
           $actualTree | Set-Content 'ci-results/tested-tree.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
@@ -204,7 +204,7 @@ jobs:
           })
           $failed = @($rows | Where-Object { $_.outcome -ne 'success' })
           $status = if ($failed.Count -eq 0 -and $rows.Count -eq 13) { 'PASS' } else { 'FAIL' }
-          [ordered]@{ status=$status; source_commit='2429ba2a5918b3a32efb0688f9265233fd2de1bc'; source_tree='79e59f21b57e7284d0093cc4b5e588655551dde5';
+          [ordered]@{ status=$status; source_commit='f4cc2e11cac1576652dee55bf9984935379ac864'; source_tree='580d3c34d8182d821f83247689d1138f0efe0a93';
             diagnostic_only=$true; final_main_acceptance_still_required=$true; probes=$rows
           } | ConvertTo-Json -Depth 6 | Tee-Object 'ci-results/native-tail-summary.json'
           if ($status -ne 'PASS') { throw 'At least one required native diagnostic probe failed or did not run.' }
@@ -213,7 +213,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: carr-native-tail-2429-${{ github.run_id }}-${{ github.run_attempt }}
+          name: carr-native-tail-f4cc-${{ github.run_id }}-${{ github.run_attempt }}
           path: carr-library/ci-results/
           if-no-files-found: warn
           retention-days: 7
