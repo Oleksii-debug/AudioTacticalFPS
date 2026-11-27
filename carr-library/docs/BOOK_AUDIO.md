@@ -166,6 +166,17 @@ is not silently copied into the backup. After restore, existing ZIP verification
 requires explicit selection of the file. Restored Book jobs still require fresh
 output selection and a new Run review before another measured publication.
 
+### Recovering a publication interrupted after its final file appeared
+
+An abrupt process stop can leave the published ZIP hard-linked to a temporary
+staging file. Verification deliberately refuses that linked file. Keep the
+original ZIP unchanged and do not repeat Publish. Make an explicit ordinary
+file copy at a fresh path, then choose that copy when verifying the saved
+publication receipt in Studio. The same exact receipt digest, Book source
+metadata, archive structure and PCM content must still verify. This does not
+render or synthesize again. The application neither removes an unknown alias
+nor silently adopts an existing output.
+
 ## Desktop lifetime and accessibility
 
 The dialog uses the existing desktop worker and ProgressHub. Source checks,

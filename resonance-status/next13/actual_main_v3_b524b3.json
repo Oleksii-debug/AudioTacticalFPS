@@ -1,0 +1,2548 @@
+{
+  "schema": "resonance-current-head-native-monitor/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+  "observed_at_utc": "2026-11-27 21:22:18 UTC",
+  "scope": [
+    "carr-windows.yml",
+    "carr-v3.yml"
+  ],
+  "completed": [
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140730000135,
+      "name": "Exact source syntax and package metadata",
+      "status": "SUCCESS",
+      "actual": [
+        {
+          "explicit_packages": 31,
+          "inventory_sha256": "6b765d7cc42b137897c7707ccf00bf37332ba6091691f2a741ca48ba025c5173",
+          "python_files": 1029,
+          "scope": "Compilation and TOML only; no runtime qualification",
+          "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+          "status": "PASS"
+        },
+        {
+          "status": "PASS",
+          "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+          "parsed_bodies": 124,
+          "failed_bodies": 0,
+          "controls": 6,
+          "control_failures": 0,
+          "workflow_size_limit_bytes": 500000,
+          "workflow_size_controls": 4,
+          "report": "/home/runner/work/AudioTacticalFPS/AudioTacticalFPS/carr-library/ci-syntax-results/workflow-powershell.json",
+          "runtime_qualification": "NOT_RUN"
+        }
+      ],
+      "artifact": {
+        "id": 15231226164,
+        "name": "carr-workflow-syntax-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 12721,
+        "sha256": "772559d81efd579822ba249d1980650530f265297fa3e8d939586e02498c2320"
+      }
+    },
+    {
+      "workflow_run": 46065563791,
+      "job_id": 140729992947,
+      "name": "Required Linux Flite speech",
+      "status": "SUCCESS",
+      "actual": {
+        "status": "PASS",
+        "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "cases": [
+          "test_actual_chunked_synthesis_and_budget",
+          "test_actual_local_pcm_speech_and_three_distinct_voices",
+          "test_actual_volume_reduction_and_source_invariance",
+          "test_cancel_synthesis_leaves_no_partial_audio",
+          "test_no_overwrite_existing_audio",
+          "test_unsupported_native_controls_do_not_silently_apply"
+        ],
+        "suite_log_sha256": "c087d0e13901db1358b064346475f39c9f86bc9c1ddd05a16562f37c5eff4829",
+        "capability_report_sha256": "c386b0546bfc1255a1acbfa315168e4fe13d2e2981cf1dc305c2cadaf64e327e",
+        "runner": "scripts/ci_check.py with its unchanged full offline socket policy"
+      },
+      "artifact": {
+        "id": 15230259954,
+        "name": "carr-flite-46065563791-1",
+        "bytes": 16868,
+        "sha256": "719d6d58e016dfbefa59263fc5c5c07278263fc10f0866fd01be45a3adc7f9e6"
+      }
+    },
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211122,
+      "name": "Windows native commands and draft recovery",
+      "status": "SUCCESS",
+      "source_suites": [
+        {
+          "suite": "tests/ui/test_command_registry.py",
+          "passed": 107
+        },
+        {
+          "suite": "tests/storage/test_keyboard_preferences.py",
+          "passed": 32
+        },
+        {
+          "suite": "tests/ui/test_keyboard_manager.py",
+          "passed": 37
+        },
+        {
+          "suite": "tests/ui/test_reader_command_dispatch.py",
+          "passed": 15
+        },
+        {
+          "suite": "tests/ui/test_reader_keymap_context.py",
+          "passed": 11
+        },
+        {
+          "suite": "tests/storage/test_evidence_drafts.py",
+          "passed": 19
+        },
+        {
+          "suite": "tests/ui/test_evidence_draft_recovery.py",
+          "passed": 17
+        }
+      ],
+      "source_cases": 238,
+      "native": [
+        {
+          "checks": 34,
+          "native_key_backend": "wx.UIActionSimulator",
+          "nvda": "NOT_RUN",
+          "origins": {
+            "carr_library.application": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\application.py",
+            "carr_library.keyboard_preferences": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\keyboard_preferences.py",
+            "carr_library.ui.desktop_app": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_app.py",
+            "carr_library.ui.keyboard_settings": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\keyboard_settings.py"
+          },
+          "platform": "Windows",
+          "settings_controls": "native; command filter and shortcut text supplied by probe",
+          "source_override": null,
+          "status": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "checks": 23,
+          "native_key_backend": "wx.UIActionSimulator",
+          "nvda": "NOT_RUN",
+          "origins": {
+            "carr_library.reader.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_desk.py",
+            "carr_library.reader.reading_state": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\reader\\reading_state.py",
+            "carr_library.ui.reading_desk": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_desk.py",
+            "carr_library.ui.reading_shortcuts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\reading_shortcuts.py"
+          },
+          "platform": "Windows",
+          "source_override": null,
+          "status": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        },
+        {
+          "checks": 14,
+          "nvda": "NOT_RUN",
+          "origins": {
+            "carr_library.evidence_drafts": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\evidence_drafts.py",
+            "carr_library.ui.desktop_evidence_panel": "D:\\a\\_temp\\carr-keyboard-python\\Lib\\site-packages\\carr_library\\ui\\desktop_evidence_panel.py"
+          },
+          "platform": "Windows",
+          "source_override": null,
+          "status": "PASS",
+          "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+        }
+      ],
+      "artifact": {
+        "id": 15229944225,
+        "name": "carr-keyboard-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 8084,
+        "sha256": "53921362f4264a3d3b207011bbcf982e7bc9051d7a9fc810de47e49b993825b6"
+      }
+    },
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211445,
+      "name": "Required Linux Flite speech",
+      "status": "SUCCESS",
+      "actual": {
+        "status": "PASS",
+        "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "cases": [
+          "test_actual_chunked_synthesis_and_budget",
+          "test_actual_local_pcm_speech_and_three_distinct_voices",
+          "test_actual_volume_reduction_and_source_invariance",
+          "test_cancel_synthesis_leaves_no_partial_audio",
+          "test_no_overwrite_existing_audio",
+          "test_unsupported_native_controls_do_not_silently_apply"
+        ],
+        "suite_log_sha256": "7cfbbab0451903fb9117af0ed32deb4332cbdca6b0c1b2dc427fec53ded95910",
+        "capability_report_sha256": "c386b0546bfc1255a1acbfa315168e4fe13d2e2981cf1dc305c2cadaf64e327e",
+        "runner": "scripts/ci_check.py with its unchanged full offline socket policy"
+      },
+      "artifact": {
+        "id": 15230578806,
+        "name": "carr-flite-46065563731-1",
+        "bytes": 16868,
+        "sha256": "ff051c21f7c8d4320c15d54aa3137fb71497a1020c54ff3cc90d5d270dd8b309"
+      }
+    },
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211226,
+      "name": "main_linux_sync",
+      "status": "SUCCESS",
+      "source_suites": [
+        {
+          "suite": "tests/sync/test_archive.py",
+          "passed": 26
+        },
+        {
+          "suite": "tests/sync/test_crypto.py",
+          "passed": 59
+        },
+        {
+          "suite": "tests/sync/test_service.py",
+          "passed": 18
+        },
+        {
+          "suite": "tests/sync/test_complete_state.py",
+          "passed": 2
+        },
+        {
+          "suite": "tests/sync/test_cli.py",
+          "passed": 5
+        },
+        {
+          "suite": "tests/sync/test_vault.py",
+          "passed": 46
+        },
+        {
+          "suite": "tests/sync/test_service_commit_boundaries.py",
+          "passed": 13
+        },
+        {
+          "suite": "tests/ui/test_portable_sync.py",
+          "passed": 103
+        },
+        {
+          "suite": "tests/operations/test_resources_posix.py",
+          "passed": 1
+        }
+      ],
+      "source_cases": 273,
+      "source_attestation": {
+        "payload_files": 455,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 384,
+        "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+        "status": "PASS",
+        "wheel_sha256": "acddc29a8332fc10748970e43814cd2ce3a98abb6c0863bccad852cf714b83ba"
+      },
+      "installed": {
+        "status": "PASS",
+        "installed_module": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/service.py",
+        "tests": 272,
+        "failed_or_skipped": 0,
+        "suite_counts": {
+          "test_vault": 46,
+          "test_complete_state": 2,
+          "test_crypto": 59,
+          "test_cli": 5,
+          "test_portable_sync": 103,
+          "test_archive": 26,
+          "test_service": 18,
+          "test_service_commit_boundaries": 13
+        },
+        "source_origins": {
+          "carr_library.sync.archive": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/archive.py",
+            "source_sha256": "c61ec3488a48029c4236f8c478dc518d71c5b69f1dbb62e90f5c1d708b12ec4d"
+          },
+          "carr_library.sync.crypto": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/crypto.py",
+            "source_sha256": "5096319ea0d41e1e78052434641e51be093d700be7c3600afc5793970c1ff805"
+          },
+          "carr_library.sync.service": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/service.py",
+            "source_sha256": "d23a2e87ea6a0c1f53605929e331c28aa1a311b59b4283c9ebc2727ecf614734"
+          },
+          "carr_library.sync.vault": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/vault.py",
+            "source_sha256": "9984a6b9641b212dbbb5739fcba2622b977784511f57c1f2a13aa0e9f056aa22"
+          },
+          "carr_library.sync.cli": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/sync/cli.py",
+            "source_sha256": "aab55ca7490c150c80427adc3c993d133dc153b11ff808972ddf86b1c0783240"
+          },
+          "carr_library.ui.portable_sync": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/ui/portable_sync.py",
+            "source_sha256": "e70d507f9abe57f61d8801dbdc4fda390a30720713880ef038366c60c33ef47a"
+          },
+          "carr_library.file_publication": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/file_publication.py",
+            "source_sha256": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0"
+          },
+          "carr_library.library_backup": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/library_backup.py",
+            "source_sha256": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7"
+          },
+          "carr_library.pending_backup": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/pending_backup.py",
+            "source_sha256": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b"
+          },
+          "carr_library.backup_sidecars": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/backup_sidecars.py",
+            "source_sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+          },
+          "carr_library.backup_producers": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/backup_producers.py",
+            "source_sha256": "27c238476275174508724ffdfdde4d80be794616136a59db1121f52372e545dd"
+          },
+          "carr_library.state_backup": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/state_backup.py",
+            "source_sha256": "85d23df41fa9ef1526202204ee2602437b7ef0bc29e89c3da48521ffa9f3c868"
+          }
+        },
+        "nvda": "NOT_RUN"
+      },
+      "actual_posix_fork": {
+        "status": "PASS",
+        "actual_posix_fork": true,
+        "cases": 1,
+        "failed": 0,
+        "skipped": 0,
+        "installed_modules": {
+          "carr_library.operations.models": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/models.py",
+            "sha256": "52c7385b3cfa243a86767cdd28498bc7c2d7141480133419f75b20482f88c9ee"
+          },
+          "carr_library.operations._locks": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/_locks.py",
+            "sha256": "cfed74a38aaec5e5fbbc707d30df2a1b20bc982750526c6371898d7d877151dc"
+          },
+          "carr_library.operations.broker": {
+            "path": "/home/runner/work/_temp/carr-sync-python/lib/python3.11/site-packages/carr_library/operations/broker.py",
+            "sha256": "9f0341fb617dc9f2a1efb68377df6a724b9b93248c152f2229fcd5d07dd26882"
+          }
+        },
+        "qualification": "Actual fork ownership; no Windows skip substitutes for this required Linux case"
+      },
+      "artifact": {
+        "id": 15229984239,
+        "name": "carr-sync-ubuntu-24.04-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 17649,
+        "sha256": "531e1b4d11eaf03f5250f8442fcd810beb93931f1257400fae80763a1ac10d78"
+      }
+    },
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211272,
+      "name": "main_windows_sync",
+      "status": "SUCCESS",
+      "source_suites": [
+        {
+          "suite": "tests/sync/test_archive.py",
+          "passed": 26
+        },
+        {
+          "suite": "tests/sync/test_crypto.py",
+          "passed": 59
+        },
+        {
+          "suite": "tests/sync/test_service.py",
+          "passed": 18
+        },
+        {
+          "suite": "tests/sync/test_complete_state.py",
+          "passed": 2
+        },
+        {
+          "suite": "tests/sync/test_cli.py",
+          "passed": 5
+        },
+        {
+          "suite": "tests/sync/test_vault.py",
+          "passed": 46
+        },
+        {
+          "suite": "tests/sync/test_service_commit_boundaries.py",
+          "passed": 13
+        },
+        {
+          "suite": "tests/ui/test_portable_sync.py",
+          "passed": 103
+        }
+      ],
+      "source_cases": 272,
+      "source_attestation": {
+        "payload_files": 455,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 384,
+        "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+        "status": "PASS",
+        "wheel_sha256": "0ff7025f7050f658c934b4dbdffc7add582af11afa1c265f7ca81ee30281fe93"
+      },
+      "installed": {
+        "status": "PASS",
+        "installed_module": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py",
+        "tests": 272,
+        "failed_or_skipped": 0,
+        "suite_counts": {
+          "test_crypto": 59,
+          "test_service_commit_boundaries": 13,
+          "test_portable_sync": 103,
+          "test_vault": 46,
+          "test_archive": 26,
+          "test_complete_state": 2,
+          "test_cli": 5,
+          "test_service": 18
+        },
+        "source_origins": {
+          "carr_library.sync.archive": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\archive.py",
+            "source_sha256": "c61ec3488a48029c4236f8c478dc518d71c5b69f1dbb62e90f5c1d708b12ec4d"
+          },
+          "carr_library.sync.crypto": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\crypto.py",
+            "source_sha256": "5096319ea0d41e1e78052434641e51be093d700be7c3600afc5793970c1ff805"
+          },
+          "carr_library.sync.service": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py",
+            "source_sha256": "d23a2e87ea6a0c1f53605929e331c28aa1a311b59b4283c9ebc2727ecf614734"
+          },
+          "carr_library.sync.vault": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\vault.py",
+            "source_sha256": "9984a6b9641b212dbbb5739fcba2622b977784511f57c1f2a13aa0e9f056aa22"
+          },
+          "carr_library.sync.cli": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\cli.py",
+            "source_sha256": "aab55ca7490c150c80427adc3c993d133dc153b11ff808972ddf86b1c0783240"
+          },
+          "carr_library.ui.portable_sync": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\ui\\portable_sync.py",
+            "source_sha256": "e70d507f9abe57f61d8801dbdc4fda390a30720713880ef038366c60c33ef47a"
+          },
+          "carr_library.file_publication": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\file_publication.py",
+            "source_sha256": "84ec54a1fef89330e35479972fa3f4ac29dabdc5c4791d05cf35016353256ee0"
+          },
+          "carr_library.library_backup": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\library_backup.py",
+            "source_sha256": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7"
+          },
+          "carr_library.pending_backup": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\pending_backup.py",
+            "source_sha256": "a88ab3c0a9b2aeff622ed4ec36b8d6450d5cf17077a504c749ea732180f0871b"
+          },
+          "carr_library.backup_sidecars": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\backup_sidecars.py",
+            "source_sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+          },
+          "carr_library.backup_producers": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\backup_producers.py",
+            "source_sha256": "27c238476275174508724ffdfdde4d80be794616136a59db1121f52372e545dd"
+          },
+          "carr_library.state_backup": {
+            "path": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\state_backup.py",
+            "source_sha256": "85d23df41fa9ef1526202204ee2602437b7ef0bc29e89c3da48521ffa9f3c868"
+          }
+        },
+        "nvda": "NOT_RUN"
+      },
+      "native": {
+        "status": "PASS",
+        "checks": [
+          "modules are loaded from the installed distribution",
+          "real desktop Library menu opens the snapshot window",
+          "snapshot window is modeless and parent-owned",
+          "paths, code, history, preview and status have accessible names",
+          "native command is enabled: Refresh history",
+          "native button event: Refresh history",
+          "snapshot worker finishes through the event loop",
+          "native command is enabled: Publish snapshot…",
+          "password entry uses named native masked controls",
+          "native button event: Publish snapshot…",
+          "snapshot worker finishes through the event loop",
+          "real service publishes a transfer receipt",
+          "publication and listing never autofill the trust code",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "snapshot worker finishes through the event loop",
+          "verified scope includes the archived library",
+          "restore becomes available only after verification",
+          "native command is enabled: Restore to new folder…",
+          "password entry uses named native masked controls",
+          "native button event: Restore to new folder…",
+          "snapshot worker finishes through the event loop",
+          "real verified library exists at the new destination",
+          "restored library retains archived scope",
+          "current library and notebook never switch",
+          "main frame stays available",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "worker reaches cancellation boundary",
+          "native command is enabled: Cancel operation",
+          "native button event: Cancel operation",
+          "snapshot worker finishes through the event loop",
+          "cancelled work never accepts a verification preview",
+          "native command is enabled: Verify code…",
+          "password entry uses named native masked controls",
+          "native button event: Verify code…",
+          "second worker reaches close boundary",
+          "native command is enabled: Close",
+          "native button event: Close",
+          "normal close waits for worker cancellation",
+          "window closes after safe worker completion",
+          "parent drops the closed modeless window"
+        ],
+        "python": "3.11.9",
+        "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+        "encrypted": true,
+        "modules": {
+          "carr_library.ui.portable_sync": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\ui\\portable_sync.py",
+          "carr_library.sync.service": "D:\\a\\_temp\\carr-sync-python\\Lib\\site-packages\\carr_library\\sync\\service.py"
+        },
+        "nvda": "NOT_RUN"
+      },
+      "retained_optional_wheel_receipt": {
+        "status": "PASS",
+        "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+        "wheels": [
+          {
+            "distribution": "cffi",
+            "name": "cffi-2.1.1-cp311-cp311-win_amd64.whl",
+            "sha256": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0",
+            "bytes": 185096
+          },
+          {
+            "distribution": "cryptography",
+            "name": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+            "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c",
+            "bytes": 3824692
+          },
+          {
+            "distribution": "pycparser",
+            "name": "pycparser-3.12-py3-none-any.whl",
+            "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e",
+            "bytes": 62600
+          },
+          {
+            "distribution": "securesystemslib",
+            "name": "securesystemslib-1.6.0-py3-none-any.whl",
+            "sha256": "1c1aa00f058f4851f038d409c8ca4a727db854a91f07ec3a0fa047bb93e43e0e",
+            "bytes": 874777
+          },
+          {
+            "distribution": "tuf",
+            "name": "tuf-7.0.1-py3-none-any.whl",
+            "sha256": "d30434bda6e079ab303fb30d1b3006d939a10ca34783b1573d61cd9b802fa45c",
+            "bytes": 56253
+          },
+          {
+            "distribution": "urllib3",
+            "name": "urllib3-2.8.0-py3-none-any.whl",
+            "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3",
+            "bytes": 135717
+          }
+        ],
+        "locks": {
+          "packaging/windows-cp311.lock": "a080f413266ed8942deb0dedd82304721cb39ea7b9eddd96d2cba542086d7f4a",
+          "packaging/trusted-client.lock": "51117188b2dbce9dac63c45ffdf0e913b19778eb8e44f1dcfb6a2a723d5ff856",
+          "packaging/windows-sync-test-cp311.lock": "ea8bab4a5fc3b7e579f75244439ddc1a38872070a46867f9f18719bec7af69fc",
+          "packaging/windows-sync-cp311.lock": "0a827bc66a49ddd698a97f4ae4e4d39006e734b2fefd0fc2994875e41275ebdf"
+        },
+        "source_tests": "PASS",
+        "installed_tests": "PASS",
+        "native_encrypted_transfer": "PASS",
+        "production_entitlement": "UNCONFIGURED",
+        "manual_nvda": "NOT_RUN"
+      },
+      "artifact": {
+        "id": 15230204077,
+        "name": "carr-sync-windows-2022-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 5122355,
+        "sha256": "e13938e6a81ec21c6b97dcceab08ef73b1921bff57afb8702110d55d1478afd8"
+      }
+    },
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211377,
+      "name": "main_linux_trust",
+      "status": "SUCCESS",
+      "source_suites": [
+        {
+          "suite": "tests/packaging/test_managed_launch_boundary.py",
+          "passed": 8
+        },
+        {
+          "suite": "tests/packaging/test_managed_update_native_policy.py",
+          "passed": 7
+        },
+        {
+          "suite": "tests/packaging/test_native_launcher_bundle.py",
+          "passed": 19
+        },
+        {
+          "suite": "tests/packaging/test_standard_installer.py",
+          "passed": 102
+        },
+        {
+          "suite": "tests/security/test_anchor_locking.py",
+          "passed": 1
+        },
+        {
+          "suite": "tests/security/test_canonical_boundary.py",
+          "passed": 27
+        },
+        {
+          "suite": "tests/security/test_controller.py",
+          "passed": 10
+        },
+        {
+          "suite": "tests/security/test_entitlements.py",
+          "passed": 30
+        },
+        {
+          "suite": "tests/security/test_idle_renewal.py",
+          "passed": 4
+        },
+        {
+          "suite": "tests/security/test_independent_review_boundaries.py",
+          "passed": 5
+        },
+        {
+          "suite": "tests/security/test_installation.py",
+          "passed": 39
+        },
+        {
+          "suite": "tests/security/test_managed_installation.py",
+          "passed": 34
+        },
+        {
+          "suite": "tests/security/test_managed_registration.py",
+          "passed": 10
+        },
+        {
+          "suite": "tests/security/test_publication_integrity.py",
+          "passed": 18
+        },
+        {
+          "suite": "tests/security/test_refresh.py",
+          "passed": 5
+        },
+        {
+          "suite": "tests/security/test_updates.py",
+          "passed": 23
+        },
+        {
+          "suite": "tests/ui/test_trust_status_handlers.py",
+          "passed": 11
+        },
+        {
+          "suite": "tests/packaging/test_installed_trusted_client_probe.py",
+          "passed": 34
+        }
+      ],
+      "source_cases": 387,
+      "source_attestation": {
+        "payload_files": 455,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 384,
+        "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+        "status": "PASS",
+        "wheel_sha256": "f745957228a405b01f1e616d4da90fc80538c304e03a614ff0f12b42d515490b"
+      },
+      "installed": {
+        "status": "PASS",
+        "cases": 353,
+        "failed_or_skipped": 0,
+        "suite_counts": {
+          "tests/packaging/test_managed_launch_boundary.py": 8,
+          "tests/packaging/test_managed_update_native_policy.py": 7,
+          "tests/packaging/test_native_launcher_bundle.py": 19,
+          "tests/packaging/test_standard_installer.py": 102,
+          "tests/security/test_anchor_locking.py": 1,
+          "tests/security/test_canonical_boundary.py": 27,
+          "tests/security/test_controller.py": 10,
+          "tests/security/test_entitlements.py": 30,
+          "tests/security/test_idle_renewal.py": 4,
+          "tests/security/test_independent_review_boundaries.py": 5,
+          "tests/security/test_installation.py": 39,
+          "tests/security/test_managed_installation.py": 34,
+          "tests/security/test_managed_registration.py": 10,
+          "tests/security/test_publication_integrity.py": 18,
+          "tests/security/test_refresh.py": 5,
+          "tests/security/test_updates.py": 23,
+          "tests/ui/test_trust_status_handlers.py": 11
+        },
+        "installed_origins": {
+          "carr_library.security.anchors": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/anchors.py",
+            "sha256": "531ccecfa8dc792a936ff858f4ab281606e2abfedd42950db6a53d440956e343",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.boundary": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/boundary.py",
+            "sha256": "60fe38d06826ed0822d565742e2c6ce744c85dbb6ebd3b2277d6990f72a579ec",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.controller": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/controller.py",
+            "sha256": "b9893e3d55d2e30049c6b35192e0a7c12717d3788ba40bd4e8bd1b51d0c26aa8",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.entitlements": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/entitlements.py",
+            "sha256": "d94c111f60e5b82c5ac932dd5aced6f41ae534694a3c5028a60931c46e8fe95b",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.installation": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/installation.py",
+            "sha256": "bfe8a293c01da92874574ebbf354473aa4970abbb94de5d07b7a8ac7b87ce6e4",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.managed_installation": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/managed_installation.py",
+            "sha256": "d719e0e3f772b52658693ff5a7ea05518adfa8b7c1d8e3bf7012e0ebc4cb2959",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.refresh": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/refresh.py",
+            "sha256": "e85d72183279fc0a48b5979e091cd82761d14d9500a3b351eb3c2c80e469712b",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.updates": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/updates.py",
+            "sha256": "1214febd0e4b34450e57e9d0707cdc1db928aca3ed197749315ccf6d6ba48777",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.windows_registration": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/security/windows_registration.py",
+            "sha256": "fb1b15d9fb031e4260e66205bd79109901bdd830f91477f129f89f29f3bba1c5",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.installation_lease": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/installation_lease.py",
+            "sha256": "fc72fadf3262b03e678ae2f66c4bcd25844537c0dcc43be8c3916414dd63f45a",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.managed_installation": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/managed_installation.py",
+            "sha256": "1582a4f24401e98345210d08b013b1a9a50f87e9f694597cc498f3db1a761e93",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.ui.trust_status": {
+            "path": "/home/runner/work/_temp/carr-trust-python/lib/python3.11/site-packages/carr_library/ui/trust_status.py",
+            "sha256": "b4922b2105bea6ad74edea86bfad705a9a98fa2a7c448608c89b93384e8f83c1",
+            "qualification": "installed-source-presence-only; native wx NOT_RUN"
+          }
+        },
+        "packaging_evidence": "Reviewed source helpers; separate actual native setup gates are required",
+        "production_issuer": "UNCONFIGURED",
+        "manual_nvda": "NOT_RUN"
+      },
+      "artifact": {
+        "id": 15231605415,
+        "name": "trusted-client-ubuntu-24.04-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 59269,
+        "sha256": "c3ac221ddc892910aaafcf09e6bd93a08b4cc82b662ccf54d3d404e08de833ac"
+      }
+    },
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211762,
+      "name": "Required signed client and maintenance / Windows",
+      "status": "SUCCESS",
+      "source_suites": [
+        {
+          "suite": "tests/packaging/test_managed_launch_boundary.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/packaging/test_managed_update_native_policy.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/packaging/test_native_launcher_bundle.py",
+          "passed": 19,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/packaging/test_standard_installer.py",
+          "passed": 102,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_anchor_locking.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_canonical_boundary.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_controller.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_entitlements.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_idle_renewal.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_independent_review_boundaries.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_installation.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_managed_installation.py",
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_managed_registration.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_publication_integrity.py",
+          "passed": 18,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_refresh.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_updates.py",
+          "passed": 23,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/ui/test_trust_status_handlers.py",
+          "passed": 11,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/packaging/test_installed_trusted_client_probe.py",
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_windows_vault.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0
+        }
+      ],
+      "source_cases": 388,
+      "source_attestation": {
+        "payload_files": 455,
+        "project_name": "universal-research-library",
+        "project_version": "0.2.0.dev2",
+        "required_runtime_files": 384,
+        "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+        "status": "PASS",
+        "wheel_sha256": "4de8b8f153ab9a3252cf041dfa497832668e2aafd774cf1b3514ae0fa369d457"
+      },
+      "installed": {
+        "status": "PASS",
+        "cases": 354,
+        "failed_or_skipped": 0,
+        "suite_counts": {
+          "tests/packaging/test_managed_launch_boundary.py": 8,
+          "tests/packaging/test_managed_update_native_policy.py": 7,
+          "tests/packaging/test_native_launcher_bundle.py": 19,
+          "tests/packaging/test_standard_installer.py": 102,
+          "tests/security/test_anchor_locking.py": 1,
+          "tests/security/test_canonical_boundary.py": 27,
+          "tests/security/test_controller.py": 10,
+          "tests/security/test_entitlements.py": 30,
+          "tests/security/test_idle_renewal.py": 4,
+          "tests/security/test_independent_review_boundaries.py": 5,
+          "tests/security/test_installation.py": 39,
+          "tests/security/test_managed_installation.py": 34,
+          "tests/security/test_managed_registration.py": 10,
+          "tests/security/test_publication_integrity.py": 18,
+          "tests/security/test_refresh.py": 5,
+          "tests/security/test_updates.py": 23,
+          "tests/ui/test_trust_status_handlers.py": 11,
+          "tests/security/test_windows_vault.py": 1
+        },
+        "installed_origins": {
+          "carr_library.security.anchors": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\anchors.py",
+            "sha256": "531ccecfa8dc792a936ff858f4ab281606e2abfedd42950db6a53d440956e343",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.boundary": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\boundary.py",
+            "sha256": "60fe38d06826ed0822d565742e2c6ce744c85dbb6ebd3b2277d6990f72a579ec",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.controller": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\controller.py",
+            "sha256": "b9893e3d55d2e30049c6b35192e0a7c12717d3788ba40bd4e8bd1b51d0c26aa8",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.entitlements": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\entitlements.py",
+            "sha256": "d94c111f60e5b82c5ac932dd5aced6f41ae534694a3c5028a60931c46e8fe95b",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.installation": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\installation.py",
+            "sha256": "bfe8a293c01da92874574ebbf354473aa4970abbb94de5d07b7a8ac7b87ce6e4",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.managed_installation": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\managed_installation.py",
+            "sha256": "d719e0e3f772b52658693ff5a7ea05518adfa8b7c1d8e3bf7012e0ebc4cb2959",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.refresh": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\refresh.py",
+            "sha256": "e85d72183279fc0a48b5979e091cd82761d14d9500a3b351eb3c2c80e469712b",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.updates": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\updates.py",
+            "sha256": "1214febd0e4b34450e57e9d0707cdc1db928aca3ed197749315ccf6d6ba48777",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.security.windows_registration": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\security\\windows_registration.py",
+            "sha256": "fb1b15d9fb031e4260e66205bd79109901bdd830f91477f129f89f29f3bba1c5",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.installation_lease": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\installation_lease.py",
+            "sha256": "fc72fadf3262b03e678ae2f66c4bcd25844537c0dcc43be8c3916414dd63f45a",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.managed_installation": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\managed_installation.py",
+            "sha256": "1582a4f24401e98345210d08b013b1a9a50f87e9f694597cc498f3db1a761e93",
+            "qualification": "imported-installed-runtime"
+          },
+          "carr_library.ui.trust_status": {
+            "path": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py",
+            "sha256": "b4922b2105bea6ad74edea86bfad705a9a98fa2a7c448608c89b93384e8f83c1",
+            "qualification": "imported-installed-runtime"
+          }
+        },
+        "packaging_evidence": "Reviewed source helpers; separate actual native setup gates are required",
+        "production_issuer": "UNCONFIGURED",
+        "manual_nvda": "NOT_RUN"
+      },
+      "native": {
+        "status": "PASS",
+        "checks": [
+          "Actual desktop Help exposes the signed client status",
+          "Signed status uses the existing configurable keyboard registry",
+          "Repeated module installation does not duplicate the Help command",
+          "Native Help event reaches the status action",
+          "Default status is a named native read-only multiline control",
+          "Private default shows perpetual operation and no fake authority actions",
+          "Terms and profile are readable before accepting",
+          "Import requires explicit native checkbox acceptance",
+          "Native acceptance event enables import",
+          "Reviewed signed grant is durably verified"
+        ],
+        "nvda": "NOT_RUN",
+        "production_authority": "NOT_CONFIGURED",
+        "production_installer_upgrade": "NOT_RUN",
+        "ui_module": "D:\\a\\_temp\\carr-trust-python\\Lib\\site-packages\\carr_library\\ui\\trust_status.py"
+      },
+      "artifact": {
+        "id": 15230818016,
+        "name": "trusted-client-windows-2022-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 61678,
+        "sha256": "e12b24e77b67bca9db1e48be5c2a951ce1b192f26df3e33a6ffb39ed052bf40b"
+      }
+    },
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211298,
+      "name": "Required native managed update / Windows x64 / real standard setup A-to-B and rollback",
+      "status": "SUCCESS",
+      "source_suites": [
+        {
+          "suite": "tests/security/test_managed_installation.py",
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/security/test_managed_registration.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/packaging/test_standard_installer.py",
+          "passed": 102,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/packaging/test_managed_launch_boundary.py",
+          "passed": 8,
+          "failed": 0,
+          "skipped": 0
+        },
+        {
+          "suite": "tests/packaging/test_managed_update_native_policy.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0
+        }
+      ],
+      "source_cases": 161,
+      "source_binding_and_bundle_receipts": [
+        {
+          "status": "PASS",
+          "source_commit": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+          "source_tree": "7113483d1d6287ed60c5115704232d66f7dde501",
+          "locks": {
+            "windows-cp311.lock": {
+              "sha256": "75aff80e44ecfbcf23be9db25e5f8ca34eba3b59cdb7ab14f26967bc3c4eb3ff",
+              "count": 17,
+              "pins": {
+                "defusedxml": "0.7.1",
+                "filelock": "3.29.0",
+                "lxml": "6.1.3",
+                "numpy": "2.4.6",
+                "pillow": "13.0.0",
+                "platformdirs": "4.10.0",
+                "pypdf": "7.1.1",
+                "pypdfium2": "5.13.0",
+                "python-docx": "1.2.0",
+                "typing-extensions": "4.16.0",
+                "wxpython": "4.2.4",
+                "bibtexparser": "2.1.0",
+                "pylatexenc": "2.11",
+                "quickjs-ng": "0.18.0.2",
+                "cryptography": "50.0.2",
+                "cffi": "2.1.1",
+                "pycparser": "3.12"
+              }
+            },
+            "windows-semantic-cp311.lock": {
+              "sha256": "9e37f548a044e6534e2675ef0e1b49cef3b5e91f202e6c206dc011ff336d236d",
+              "count": 53,
+              "pins": {
+                "defusedxml": "0.7.1",
+                "annotated-doc": "0.0.7",
+                "annotated-types": "0.8.0",
+                "anyio": "4.16.0",
+                "certifi": "2026.11.20",
+                "charset-normalizer": "3.5.3",
+                "colorama": "0.4.6",
+                "fastembed": "0.9.1",
+                "filelock": "3.29.0",
+                "flatbuffers": "25.12.19",
+                "fsspec": "2026.9.0",
+                "h11": "0.16.0",
+                "hf-xet": "1.8.0",
+                "httpcore": "1.0.9",
+                "httpx": "0.28.1",
+                "huggingface-hub": "1.16.1",
+                "idna": "3.20",
+                "loguru": "0.7.3",
+                "lxml": "6.1.3",
+                "markdown-it-py": "4.3.0",
+                "mdurl": "0.1.2",
+                "mmh3": "5.3.1",
+                "numpy": "2.3.5",
+                "onnxruntime": "1.32.0",
+                "packaging": "26.4",
+                "pillow": "13.0.0",
+                "platformdirs": "4.10.0",
+                "protobuf": "7.36.2",
+                "py-rust-stemmers": "0.1.8",
+                "pydantic": "2.14.4",
+                "pydantic-core": "2.50.5",
+                "pygments": "2.21.0",
+                "pypdf": "7.1.1",
+                "pypdfium2": "5.13.0",
+                "python-docx": "1.2.0",
+                "pyyaml": "6.0.4",
+                "requests": "2.34.2",
+                "rich": "15.0.0",
+                "shellingham": "1.5.4",
+                "tokenizers": "0.23.3",
+                "tqdm": "4.70.1",
+                "typer": "0.29.3",
+                "typing-extensions": "4.16.0",
+                "typing-inspection": "0.4.5",
+                "urllib3": "2.8.0",
+                "win32-setctime": "1.2.1",
+                "wxpython": "4.2.4",
+                "bibtexparser": "2.1.0",
+                "pylatexenc": "2.11",
+                "quickjs-ng": "0.18.0.2",
+                "cryptography": "50.0.2",
+                "cffi": "2.1.1",
+                "pycparser": "3.12"
+              }
+            }
+          },
+          "downloaded_core_wheels": [
+            {
+              "name": "bibtexparser-2.1.0-py3-none-any.whl",
+              "distribution": "bibtexparser",
+              "version": "2.1.0",
+              "sha256": "3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"
+            },
+            {
+              "name": "cffi-2.1.1-cp311-cp311-win_amd64.whl",
+              "distribution": "cffi",
+              "version": "2.1.1",
+              "sha256": "42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0"
+            },
+            {
+              "name": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+              "distribution": "cryptography",
+              "version": "50.0.2",
+              "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c"
+            },
+            {
+              "name": "defusedxml-0.7.1-py2.py3-none-any.whl",
+              "distribution": "defusedxml",
+              "version": "0.7.1",
+              "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+            },
+            {
+              "name": "filelock-3.29.0-py3-none-any.whl",
+              "distribution": "filelock",
+              "version": "3.29.0",
+              "sha256": "96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258"
+            },
+            {
+              "name": "lxml-6.1.3-cp311-cp311-win_amd64.whl",
+              "distribution": "lxml",
+              "version": "6.1.3",
+              "sha256": "7ae4949f212a53b007dbc355884fda122545c5764a54256c9217e419a62a6559"
+            },
+            {
+              "name": "numpy-2.4.6-cp311-cp311-win_amd64.whl",
+              "distribution": "numpy",
+              "version": "2.4.6",
+              "sha256": "1e254a00cdf42b1e4d5b3d68d33af63268d41340d8885df2ab6470f2e1500147"
+            },
+            {
+              "name": "pillow-13.0.0-cp311-cp311-win_amd64.whl",
+              "distribution": "pillow",
+              "version": "13.0.0",
+              "sha256": "d7710eb676e9bb68965cb045be0d333b4c0d7f9dfbaa7fbf121385b1588683d3"
+            },
+            {
+              "name": "platformdirs-4.10.0-py3-none-any.whl",
+              "distribution": "platformdirs",
+              "version": "4.10.0",
+              "sha256": "fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a"
+            },
+            {
+              "name": "pycparser-3.12-py3-none-any.whl",
+              "distribution": "pycparser",
+              "version": "3.12",
+              "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+            },
+            {
+              "name": "pylatexenc-2.11-py2.py3-none-any.whl",
+              "distribution": "pylatexenc",
+              "version": "2.11",
+              "sha256": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+            },
+            {
+              "name": "pypdf-7.1.1-py3-none-any.whl",
+              "distribution": "pypdf",
+              "version": "7.1.1",
+              "sha256": "04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1"
+            },
+            {
+              "name": "pypdfium2-5.13.0-py3-none-win_amd64.whl",
+              "distribution": "pypdfium2",
+              "version": "5.13.0",
+              "sha256": "47dcca2a8d507b5fd24f94c3c9d48fb379430f097bc20f01beff6c963ffbcedb"
+            },
+            {
+              "name": "python_docx-1.2.0-py3-none-any.whl",
+              "distribution": "python-docx",
+              "version": "1.2.0",
+              "sha256": "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+            },
+            {
+              "name": "quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl",
+              "distribution": "quickjs-ng",
+              "version": "0.18.0.2",
+              "sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
+            },
+            {
+              "name": "typing_extensions-4.16.0-py3-none-any.whl",
+              "distribution": "typing-extensions",
+              "version": "4.16.0",
+              "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+            },
+            {
+              "name": "wxpython-4.2.4-cp311-cp311-win_amd64.whl",
+              "distribution": "wxpython",
+              "version": "4.2.4",
+              "sha256": "f48fe7b9f22c7733a06b5901559b5b7e4835fa852cbef0f620ffd0a0030aaf73"
+            }
+          ],
+          "semantic_profile": "Recorded only; not used by this core installation lane"
+        },
+        {
+          "bundle_manifest_sha256": "300de2ac46d9ffbb3eb04f0fce1733ed8f03e50f9b81e7f06516ea834753d966",
+          "payload_files": 365,
+          "project_name": "universal-research-library",
+          "project_version": "0.2.0.dev1",
+          "required_runtime_files": 297,
+          "source_commit": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+          "source_tree": "7113483d1d6287ed60c5115704232d66f7dde501",
+          "wheel_sha256": "cf1e09e5959e077ad857fe0811d0d1483fac9ce93622a5a638186fffd9cd0f4b"
+        },
+        {
+          "status": "PASS",
+          "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+          "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+          "locks": {
+            "windows-cp311.lock": {
+              "sha256": "a080f413266ed8942deb0dedd82304721cb39ea7b9eddd96d2cba542086d7f4a",
+              "count": 15,
+              "pins": {
+                "defusedxml": "0.7.1",
+                "filelock": "3.29.0",
+                "lxml": "6.1.3",
+                "numpy": "2.4.6",
+                "pillow": "13.0.0",
+                "platformdirs": "4.10.0",
+                "pypdf": "7.1.1",
+                "pypdfium2": "5.13.0",
+                "python-docx": "1.2.0",
+                "typing-extensions": "4.16.0",
+                "wxpython": "4.2.4",
+                "bibtexparser": "2.1.0",
+                "pylatexenc": "2.11",
+                "quickjs-ng": "0.18.0.2",
+                "comtypes": "1.5.0"
+              }
+            },
+            "windows-semantic-cp311.lock": {
+              "sha256": "944d1200826aca692439626e729024f3d3578a5002f771c6c15b5711f9950f08",
+              "count": 51,
+              "pins": {
+                "defusedxml": "0.7.1",
+                "annotated-doc": "0.0.7",
+                "annotated-types": "0.8.0",
+                "anyio": "4.16.0",
+                "certifi": "2026.11.20",
+                "charset-normalizer": "3.5.3",
+                "colorama": "0.4.6",
+                "fastembed": "0.9.1",
+                "filelock": "3.29.0",
+                "flatbuffers": "25.12.19",
+                "fsspec": "2026.9.0",
+                "h11": "0.16.0",
+                "hf-xet": "1.8.0",
+                "httpcore": "1.0.9",
+                "httpx": "0.28.1",
+                "huggingface-hub": "1.16.1",
+                "idna": "3.20",
+                "loguru": "0.7.3",
+                "lxml": "6.1.3",
+                "markdown-it-py": "4.3.0",
+                "mdurl": "0.1.2",
+                "mmh3": "5.3.1",
+                "numpy": "2.3.5",
+                "onnxruntime": "1.32.0",
+                "packaging": "26.4",
+                "pillow": "13.0.0",
+                "platformdirs": "4.10.0",
+                "protobuf": "7.36.2",
+                "py-rust-stemmers": "0.1.8",
+                "pydantic": "2.14.4",
+                "pydantic-core": "2.50.5",
+                "pygments": "2.21.0",
+                "pypdf": "7.1.1",
+                "pypdfium2": "5.13.0",
+                "python-docx": "1.2.0",
+                "pyyaml": "6.0.4",
+                "requests": "2.34.2",
+                "rich": "15.0.0",
+                "shellingham": "1.5.4",
+                "tokenizers": "0.23.3",
+                "tqdm": "4.70.1",
+                "typer": "0.29.3",
+                "typing-extensions": "4.16.0",
+                "typing-inspection": "0.4.5",
+                "urllib3": "2.8.0",
+                "win32-setctime": "1.2.1",
+                "wxpython": "4.2.4",
+                "bibtexparser": "2.1.0",
+                "pylatexenc": "2.11",
+                "quickjs-ng": "0.18.0.2",
+                "comtypes": "1.5.0"
+              }
+            }
+          },
+          "downloaded_core_wheels": [
+            {
+              "name": "bibtexparser-2.1.0-py3-none-any.whl",
+              "distribution": "bibtexparser",
+              "version": "2.1.0",
+              "sha256": "3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e"
+            },
+            {
+              "name": "comtypes-1.5.0-py3-none-any.whl",
+              "distribution": "comtypes",
+              "version": "1.5.0",
+              "sha256": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+            },
+            {
+              "name": "defusedxml-0.7.1-py2.py3-none-any.whl",
+              "distribution": "defusedxml",
+              "version": "0.7.1",
+              "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+            },
+            {
+              "name": "filelock-3.29.0-py3-none-any.whl",
+              "distribution": "filelock",
+              "version": "3.29.0",
+              "sha256": "96f5f6344709aa1572bbf631c640e4ebeeb519e08da902c39a001882f30ac258"
+            },
+            {
+              "name": "lxml-6.1.3-cp311-cp311-win_amd64.whl",
+              "distribution": "lxml",
+              "version": "6.1.3",
+              "sha256": "7ae4949f212a53b007dbc355884fda122545c5764a54256c9217e419a62a6559"
+            },
+            {
+              "name": "numpy-2.4.6-cp311-cp311-win_amd64.whl",
+              "distribution": "numpy",
+              "version": "2.4.6",
+              "sha256": "1e254a00cdf42b1e4d5b3d68d33af63268d41340d8885df2ab6470f2e1500147"
+            },
+            {
+              "name": "pillow-13.0.0-cp311-cp311-win_amd64.whl",
+              "distribution": "pillow",
+              "version": "13.0.0",
+              "sha256": "d7710eb676e9bb68965cb045be0d333b4c0d7f9dfbaa7fbf121385b1588683d3"
+            },
+            {
+              "name": "platformdirs-4.10.0-py3-none-any.whl",
+              "distribution": "platformdirs",
+              "version": "4.10.0",
+              "sha256": "fb516cdb12eb0d857d0cd85a7c57cea4d060bee4578d6cf5a14dfdf8cbf8784a"
+            },
+            {
+              "name": "pylatexenc-2.11-py2.py3-none-any.whl",
+              "distribution": "pylatexenc",
+              "version": "2.11",
+              "sha256": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+            },
+            {
+              "name": "pypdf-7.1.1-py3-none-any.whl",
+              "distribution": "pypdf",
+              "version": "7.1.1",
+              "sha256": "04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1"
+            },
+            {
+              "name": "pypdfium2-5.13.0-py3-none-win_amd64.whl",
+              "distribution": "pypdfium2",
+              "version": "5.13.0",
+              "sha256": "47dcca2a8d507b5fd24f94c3c9d48fb379430f097bc20f01beff6c963ffbcedb"
+            },
+            {
+              "name": "python_docx-1.2.0-py3-none-any.whl",
+              "distribution": "python-docx",
+              "version": "1.2.0",
+              "sha256": "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+            },
+            {
+              "name": "quickjs_ng-0.18.0.2-cp310-abi3-win_amd64.whl",
+              "distribution": "quickjs-ng",
+              "version": "0.18.0.2",
+              "sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
+            },
+            {
+              "name": "typing_extensions-4.16.0-py3-none-any.whl",
+              "distribution": "typing-extensions",
+              "version": "4.16.0",
+              "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+            },
+            {
+              "name": "wxpython-4.2.4-cp311-cp311-win_amd64.whl",
+              "distribution": "wxpython",
+              "version": "4.2.4",
+              "sha256": "f48fe7b9f22c7733a06b5901559b5b7e4835fa852cbef0f620ffd0a0030aaf73"
+            }
+          ],
+          "semantic_profile": "Recorded only; not used by this core installation lane"
+        },
+        {
+          "bundle_manifest_sha256": "1beb751497d77c8ad045f5db5f8e06b6abc3d2a8a24a45ea74f4f08a258039b1",
+          "payload_files": 455,
+          "project_name": "universal-research-library",
+          "project_version": "0.2.0.dev2",
+          "required_runtime_files": 384,
+          "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+          "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+          "wheel_sha256": "168db345f87c4d678110ece45ac129dd23babbdb3f3b54c814e6790278007c26"
+        }
+      ],
+      "native": {
+        "actual_backup_restore": "PASS",
+        "actual_inno": "PASS",
+        "actual_windows_registration": "PASS",
+        "actual_windows_vault": "PASS",
+        "authenticode": "NOT_CLAIMED",
+        "full_wrapper_rollback": "PASS",
+        "host_package": "D:\\a\\_temp\\carr-managed-upgrade-private\\host\\Lib\\site-packages\\carr_library\\__init__.py",
+        "live_app_exclusion": "PASS",
+        "nvda": "NOT_RUN",
+        "production_publisher": "NOT_CONFIGURED",
+        "repair": "PASS",
+        "schema": 1,
+        "setup_a_sha256": "1183f07e6f62cec490de95599c8034746fe6d7bce04df7c156ebdf5321119ab6",
+        "setup_b_sha256": "9f6be254a650d341408d472674188524a4db1d3dec0dcb34413791dd5947abec",
+        "source_a": "665acf2c1fdb5a30a05ef31c482eb02dcaf1e141",
+        "source_b": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "status": "PASS",
+        "target_sha256": "0cd3c3be4496d7d14c689d0e9752f248e960736e6928427e99d37786c88e2082",
+        "uninstall": "PASS",
+        "update": "PASS",
+        "user_source_preserved": "PASS"
+      },
+      "artifact": {
+        "id": 15231562639,
+        "name": "managed-update-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+        "bytes": 89656,
+        "sha256": "faba32397d16164f0997485070fe995113d64fae7303773d43c648cc47c8cd3f"
+      }
+    },
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211274,
+      "name": "Required current composition / Windows source regressions",
+      "status": "FAILURE",
+      "actual": {
+        "whole_suites": 124,
+        "passed_whole_suites": 122,
+        "failed_whole_suites": 2,
+        "passed_cases": 3200,
+        "failed_cases": 2,
+        "skipped_cases": 0,
+        "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+        "strict_whole_verdicts": [
+          {
+            "status": "PASS",
+            "suite": "tests/reader/test_braille.py",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_braille_actions.py",
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_project_effects.py",
+            "passed": 25,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_backup_studio_effects.py",
+            "passed": 21,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/integrations/test_dordiai_host_lifecycle.py",
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_engine_settings_lifetime.py",
+            "passed": 33,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_listening.py",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_playback_devices.py",
+            "passed": 53,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_reader_listening_hooks.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/packaging/test_installed_trusted_client_probe.py",
+            "passed": 34,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_wave_output.py",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_playlist.py",
+            "passed": 21,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_playlist_recovery.py",
+            "passed": 36,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_audio_playback.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/audio/test_conversion_batch.py",
+            "passed": 42,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_audio_conversion_batch.py",
+            "passed": 21,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_conversion_batch_cli.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_reader_playback.py",
+            "passed": 52,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_reader_playback_actions.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_clip_dialog.py",
+            "passed": 45,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/packaging/test_standard_installer.py",
+            "passed": 102,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_reader_usability.py",
+            "passed": 33,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/security/test_idle_renewal.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_translation_local.py",
+            "passed": 39,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_translation_v3.py",
+            "passed": 64,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/transcription/test_export_publication.py",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_publication_validation.py",
+            "passed": 12,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_reading_marks.py",
+            "passed": 36,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_reading_tools.py",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_reading_tabs.py",
+            "passed": 25,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_reader_tabs.py",
+            "passed": 20,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_reading_presentation.py",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_reading_presentation_handlers.py",
+            "passed": 20,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_reading_presentation_reader_hook.py",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_native_reading_presentation_driver.py",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_voice_preferences.py",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_voice_preferences_backup.py",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_voice_preferences_dialog.py",
+            "passed": 12,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_progress_job_review.py",
+            "passed": 48,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_reader_navigation_ui.py",
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_reader_view_hooks.py",
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_reader_preferences_state.py",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_book_batch.py",
+            "passed": 29,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_book_cli.py",
+            "passed": 18,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_book_batch_dialog.py",
+            "passed": 18,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_backup_book_batches.py",
+            "passed": 33,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/audio/test_recording.py",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/audio/test_recording_controls.py",
+            "passed": 30,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/audio/test_recording_monitor.py",
+            "passed": 21,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_recording_dialog.py",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_backup_recording_controls.py",
+            "passed": 20,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/catalog/test_streaming_intake.py",
+            "passed": 16,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/e2e/test_raster_import.py",
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/extract/test_raster_pages.py",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_batch_continuation.py",
+            "passed": 18,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_batch_continuation_cli.py",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_import_center.py",
+            "passed": 42,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/e2e/test_research_search_cli.py",
+            "passed": 15,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/search/test_federated.py",
+            "passed": 100,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_federated_search.py",
+            "passed": 114,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/search/test_search_paging.py",
+            "passed": 27,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_scan_root_binding.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/reader/test_export_reconciliation.py",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/packaging/test_ci_check.py",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_desktop_preferences.py",
+            "passed": 22,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_desktop_integration.py",
+            "passed": 37,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_desktop_settings.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_desktop_host_lifecycle.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_narration_receipt.py",
+            "passed": 79,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_local_schedules.py",
+            "passed": 43,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_local_schedules.py",
+            "passed": 21,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_backup_local_schedules.py",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/packaging/test_local_schedules_cli.py",
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_transcription_backup.py",
+            "passed": 143,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_spelling.py",
+            "passed": 55,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_spelling_handlers.py",
+            "passed": 20,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/speech/test_spelling_reader_hook.py",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/packaging/test_hunspell_build.py",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/packaging/test_library_scale_benchmark.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/audio/test_envelopes.py",
+            "passed": 64,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_envelope_workflow.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_clip_operations.py",
+            "passed": 59,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_project_history.py",
+            "passed": 29,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_clip_history_dialog.py",
+            "passed": 22,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_translation_layout.py",
+            "passed": 33,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_translation_layout.py",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_translation_layout_cli.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "FAIL",
+            "suite": "tests/assistant/test_translation_partition.py",
+            "passed": 25,
+            "failed": 1,
+            "skipped": 0,
+            "exit": 1
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_save_all.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/academic_integration/test_word_records.py",
+            "passed": 50,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/academic_integration/test_word_bridge.py",
+            "passed": 20,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/academic_integration/test_word_worker.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_word_citations.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_google_oauth.py",
+            "passed": 49,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_google_oauth.py",
+            "passed": 15,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_translation_epub_layout.py",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_translation_epub_layout.py",
+            "passed": 6,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_translation_epub_cli.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_clip_copy.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/studio/test_clip_copy_dialog.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/extract/test_docx_rich.py",
+            "passed": 55,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_translation_rich_docx.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_translation_rich_docx.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/assistant/test_translation_rich_docx_cli.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/extract/test_docx_ordered.py",
+            "passed": 9,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/extract/test_docx_omitted_content.py",
+            "passed": 20,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/extract/test_docx_hidden_styles.py",
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_application_atomic_docx_gate.py",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_import_replay_identity.py",
+            "passed": 24,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_terminal_replay_registration.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_txt_replay_registration.py",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_import_publication_point.py",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_native_recording_driver.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_scoped_locator_capacity.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_locator_integrity.py",
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_printed_label_integrity.py",
+            "passed": 37,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ingest/test_checked_catalog_commit.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/search/test_search_query_work.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/operations/test_broker_scope.py",
+            "passed": 20,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "FAIL",
+            "suite": "tests/packaging/test_library_capacity_measurement.py",
+            "passed": 23,
+            "failed": 1,
+            "skipped": 0,
+            "exit": 1
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_backup_capacity.py",
+            "passed": 28,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_backup_capacity_cli.py",
+            "passed": 3,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/ui/test_backup_capacity.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "status": "PASS",
+            "suite": "tests/storage/test_crash_backup.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          }
+        ]
+      },
+      "failures": [
+        {
+          "suite": "tests/assistant/test_translation_partition.py",
+          "test": "test_partition_checks_actual_root_again_before_next_transfer",
+          "line": 206,
+          "evidence": "progress callback attempted directory rename; allowed OSError captured by pytest.raises, but changed remained False. Underlying exception not exposed; root owns evidence-preserving platform fixture correction."
+        },
+        {
+          "suite": "tests/packaging/test_library_capacity_measurement.py",
+          "test": "test_actual_capacity_cli_keeps_separate_setup_public_receipts_restart_and_backup",
+          "evidence": "build, measure, restart PASS; operations failed OperationalError('attempt to write a readonly database') after completed_public_imports=3. Existing separate observer repair, not yet qualified on this head."
+        }
+      ],
+      "artifact": {
+        "id": 15231917878,
+        "name": "carr-completion-source-34f51bf95b981931349593552ee80d00b57f737a-1",
+        "bytes": 71084,
+        "sha256": "2a517a3820ff8874893ad71daf46bee57895b0cf22e31ec63ad2a2314dcafb21",
+        "name_note": "Artifact name uses the event merge-context identifier; exact actual checkout and workflow_run.head_sha are b524b3ac3453864903ec415ce7a5f048da09d700."
+      }
+    }
+  ],
+  "pending": {
+    "main_desktop_job": 140732211222,
+    "v3_native_job": 140729992383
+  },
+  "qualification": "Only individually completed jobs and exact source/installed/native subsets above are qualified on this C3 commit. Main Import Center and V3 retained-source/search phase have actual failures whose active-job traces remain unavailable. Main full-bundle, V3 installed/native, owner-candidate input retention and current fast-source job remain pending. Real managed A665acf-to-B b524 upgrade/rollback/Repair/Uninstall passed; production publisher remains NOT_CONFIGURED and Authenticode NOT_CLAIMED. Manual NVDA, physical/acoustic quality and private inference remain NOT_RUN. No prior-head result transfer and no overall release qualification.",
+  "refs_changed": false,
+  "evidence_mode": "Full completed job logs and GitHub artifact metadata were read; artifact ZIP payloads were not downloaded in this observation.",
+  "required_failed_phases": [
+    {
+      "workflow_run": 46065563731,
+      "job_id": 140732211222,
+      "step": 20,
+      "name": "Exercise native Import Center and durable batch workflow",
+      "conclusion": "FAILURE",
+      "job_status": "IN_PROGRESS",
+      "trace": "UNAVAILABLE: active job log endpoint returned BlobNotFound; cause unestablished",
+      "later_independent_step": 41
+    },
+    {
+      "workflow_run": 46065563791,
+      "job_id": 140729992383,
+      "step": 7,
+      "name": "Require retained large-source, raster and search-page contracts after verified OCR setup",
+      "conclusion": "FAILURE",
+      "job_status": "IN_PROGRESS",
+      "expected_whole_modules": 17,
+      "expected_cases": 525,
+      "trace": "UNAVAILABLE: active job log endpoint returned BlobNotFound; cause unestablished",
+      "later_independent_step": 8
+    },
+    {
+      "workflow_run": 46065563791,
+      "job_id": 140729992383,
+      "step": 8,
+      "name": "Verify installed source translation, backup and import publication integrity",
+      "conclusion": "FAILURE",
+      "job_status": "IN_PROGRESS",
+      "trace": "UNAVAILABLE: active job log endpoint returned BlobNotFound; cause unestablished",
+      "later_independent_step": 10
+    }
+  ]
+}

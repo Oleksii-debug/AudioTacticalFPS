@@ -98,13 +98,18 @@ def test_real_raw_frame_iteration_checks_cancellation_before_following_block(tmp
     def check():
         if stop:
             raise AudioCancelled('Stopped after first actual PCM block.')
-    with path.open('rb') as source, measured.pcm_reader(source, check) as reader:
-        blocks = measured._frames(reader, reader.getnframes(), check)
-        first = next(blocks)
-        assert len(first) == 1024 * 1024
-        stop.append(True)
-        with pytest.raises(AudioCancelled):
-            next(blocks)
+    with pytest.raises(AudioCancelled, match='Stopped after first actual PCM block'):
+        with path.open('rb') as source, measured.pcm_reader(source, check) as reader:
+            blocks = measured._frames(reader, reader.getnframes(), check)
+            first = next(blocks)
+            assert len(first) == 1024 * 1024
+            position = source.tell()
+            stop.append(True)
+            try:
+                next(blocks)
+            finally:
+                assert source.tell() == position
+    assert source.closed
 
 
 def test_same_path_pcm_replacement_after_read_is_not_a_verified_snapshot(tmp_path):

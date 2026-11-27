@@ -3,6 +3,7 @@ from hashlib import sha256
 import importlib.util
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -117,7 +118,7 @@ def test_real_cli_rejects_unreviewed_approval_or_changed_source(rendered, change
     assert not r.publisher.publications()
 
 
-def test_actual_child_death_after_publish_keeps_prepared_receipt_and_never_repeats(rendered):
+def test_actual_child_death_after_publish_keeps_prepared_receipt_and_never_repeats(rendered, monkeypatch):
     r = rendered
     reviewed = invoke(r, 'duration-review', *options(r))
     assert reviewed.returncode == 0, reviewed.stderr
@@ -130,6 +131,32 @@ def test_actual_child_death_after_publish_keeps_prepared_receipt_and_never_repea
     refused = invoke(r, 'duration-publish', *options(r), '--approval', approved)
     assert refused.returncode == 1 and not refused.stdout
     assert (r.output.read_bytes(), r.output.stat().st_mtime_ns) == before
-    complete = r.publisher.verify(receipt['id'])
-    assert complete['status'] == 'complete'
+    # The real crash happened before the publisher's temporary alias was
+    # removed. Do not silently adopt or unlink that still-linked output.
+    assert r.output.stat().st_nlink > 1
+    record = r.publisher.receipts / (receipt['id'] + '.json')
+    recorded = record.read_bytes()
+    with pytest.raises(ValueError, match='without links'):
+        r.publisher.verify(receipt['id'])
+    assert record.read_bytes() == recorded
+    assert (r.output.read_bytes(), r.output.stat().st_mtime_ns) == before
+
+    # The owner explicitly selects a new ordinary copy; the existing verifier
+    # still requires the exact receipt, source metadata and every PCM frame.
+    selected = r.output.with_name('explicitly-selected-recovery-copy.zip')
+    assert not selected.exists()
+    shutil.copyfile(r.output, selected)
+    assert selected.stat().st_nlink == 1 and selected.read_bytes() == before[0]
+    calls = tuple(r.e.voices.received)
+    original_job = r.e.production.get(r.plan.job_id(1))
+    def no_render(*args, **kwargs):
+        raise AssertionError('Explicit receipt verification must not render or synthesize.')
+    monkeypatch.setattr(r.e.production, 'run', no_render)
+    monkeypatch.setattr(r.e.voices, 'synthesize', no_render)
+    complete = r.publisher.verify(receipt['id'], output=selected)
+    assert complete['id'] == receipt['id'] and complete['artifact'] == receipt['artifact']
+    assert complete['status'] == 'complete' and Path(complete['output']) == selected
+    assert r.e.production.get(r.plan.job_id(1)) == original_job
+    assert tuple(r.e.voices.received) == calls
+    assert r.output.stat().st_nlink > 1
     assert (r.output.read_bytes(), r.output.stat().st_mtime_ns) == before

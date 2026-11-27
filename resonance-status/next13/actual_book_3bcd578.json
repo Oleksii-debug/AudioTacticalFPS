@@ -1,0 +1,103 @@
+{
+  "schema": "resonance-book-actual-source/1",
+  "source_commit": "3bcd578c5b468e9748c7eab0398262ae967bddb6",
+  "source_tree": "ff34ca286a78e1a04778294742fe552c938ac21d",
+  "run_id": 46069879622,
+  "job_id": 140744000730,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069879622/job/140744000730",
+  "status": "FAIL",
+  "source": {
+    "whole_suites": 6,
+    "passed": 92,
+    "failed": 6,
+    "skipped": 0,
+    "suites": [
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_book_effects.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/studio/test_measured_audio.py",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "FAIL",
+        "suite": "tests/studio/test_measured_pcm.py",
+        "passed": 18,
+        "failed": 1,
+        "skipped": 0,
+        "pytest_exit": 1
+      },
+      {
+        "status": "FAIL",
+        "suite": "tests/studio/test_book_measured_cli.py",
+        "passed": 8,
+        "failed": 1,
+        "skipped": 0,
+        "pytest_exit": 1
+      },
+      {
+        "status": "PASS",
+        "suite": "tests/ui/test_book_effects.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "pytest_exit": 0
+      },
+      {
+        "status": "FAIL",
+        "suite": "tests/ui/test_book_duration_dialog.py",
+        "passed": 13,
+        "failed": 4,
+        "skipped": 0,
+        "pytest_exit": 1
+      }
+    ]
+  },
+  "installed": "NOT_RUN",
+  "native": "NOT_RUN",
+  "artifact": {
+    "id": 15232198610,
+    "name": "book-effects-measured-windows-3bcd578c5b468e9748c7eab0398262ae967bddb6-1",
+    "bytes": 12965,
+    "sha256": "28cd215c9ed96ea062a2761623602442e271e9559d0ff7bb8626855564c1dca8"
+  },
+  "actual_setup": "Exact source/helper/lock/embedded Python preflight and existing dependency/audio acquisition passed.",
+  "retention": "Closed bounded diagnostic text/JSON/XML inventory and artifact upload passed.",
+  "failures": [
+    {
+      "case": "test_real_raw_frame_iteration_checks_cancellation_before_following_block",
+      "cause": "Cancellation was caught inside the reader context, leaving its required exit cancellation check outside pytest.raises.",
+      "fix": "Assert cancellation around complete context and preserve actual first block/no following read/file closure."
+    },
+    {
+      "case": "test_actual_child_death_after_publish_keeps_prepared_receipt_and_never_repeats",
+      "cause": "Actual os._exit after hard-link publication leaves a staging alias; original output is still linked and existing verifier correctly refuses it.",
+      "fix": "Preserve refusal/unchanged prepared receipt and original bytes; explicitly copy to fresh unlinked file and select it through existing strict verifier. No automatic cleanup/adoption."
+    },
+    {
+      "case": "test_child_close_stops_actual_partition_and_never_closes_parent_service",
+      "cause": "Fixture calls obsolete is_set on actual ProductionService boolean close state.",
+      "fix": "Use actual bool; keep all current close/cancel/borrowed-owner assertions."
+    },
+    {
+      "cases": [
+        "test_exact_host_lifetime_suppresses_stale_worker_callbacks[topic-late]",
+        "test_exact_host_lifetime_suppresses_stale_worker_callbacks[library-object-late]",
+        "test_exact_host_lifetime_suppresses_stale_worker_callbacks[root-identity-late]"
+      ],
+      "cause": "Fixture froze UI before legitimate progress while the original scope was still current.",
+      "fix": "Freeze immediately before scope revocation; retain exact no-late-status/focus/capability changes and replacement canary."
+    }
+  ],
+  "product_code_changes": "NONE",
+  "successor_execution": "NOT_RUN; no passing source/installed/native verdict transferred."
+}

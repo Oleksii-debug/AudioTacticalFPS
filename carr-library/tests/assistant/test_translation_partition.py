@@ -8,6 +8,7 @@ from dataclasses import replace
 from hashlib import sha256
 from io import BytesIO
 import importlib.util
+import os
 from pathlib import Path
 import shutil
 from uuid import NAMESPACE_URL, uuid5
@@ -191,22 +192,44 @@ def test_partition_checks_actual_root_again_before_next_transfer(bound, tmp_path
     layout, _, _ = larger(bound)
     identities = saved(bound, layout)
     original_root = bound.app.root
+    original_info = original_root.stat()
+    original_identity = original_info.st_dev, original_info.st_ino
     moved = tmp_path / 'moved-owned-library'
     calls = len(bound.state['calls'])
-    changed = False
+    changed = renamed = False
+    denied = None
     def progress(done, total, phase):
-        nonlocal changed
+        nonlocal changed, renamed, denied
         if done == 1 and not changed:
-            original_root.rename(moved)
+            try:
+                original_root.rename(moved)
+            except OSError as error:
+                # A real Windows sharing lock may forbid this actual rename.
+                # Require its specific native refusal; no mock or skip stands
+                # in for the successful replacement branch on other systems.
+                assert os.name == 'nt' and error.winerror in (5, 32, 33)
+                denied = error
+                raise
+            renamed = True
             original_root.mkdir()
             changed = True
     try:
         with pytest.raises((ValueError, PermissionError, OSError)):
             bound.service.resume(identities[0], progress=progress)
-        assert changed and len(bound.state['calls']) - calls == 1
+        assert len(bound.state['calls']) - calls == 1
+        if denied is None:
+            assert changed and renamed
+            moved_info = moved.stat()
+            assert (moved_info.st_dev, moved_info.st_ino) == original_identity
+            assert original_root.is_dir() and not tuple(original_root.iterdir())
+        else:
+            assert not changed and not renamed and not moved.exists()
+            current = original_root.stat()
+            assert (current.st_dev, current.st_ino) == original_identity
     finally:
         if changed:
             shutil.rmtree(original_root)
+        if renamed:
             moved.rename(original_root)
     assert len(bound.service.get(identities[0])['receipts']) == 1
 

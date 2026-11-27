@@ -143,7 +143,7 @@ def test_child_close_stops_actual_partition_and_never_closes_parent_service(meas
         e.frame.working = False
     assert not thread.is_alive() and len(result) == 1 and isinstance(result[0], Exception)
     assert not m.output.exists() and not list(m.output.parent.glob('.pending-measured*'))
-    assert not e.service._closed.is_set() and not e.production._closed.is_set()
+    assert not e.service._closed.is_set() and not e.production._closed
     assert m.voices.closed == 0
 
 
@@ -185,6 +185,9 @@ def test_exact_host_lifetime_suppresses_stale_worker_callbacks(measured, phase, 
             assert not thread.is_alive() and len(results) == 1
             callback, value = results[0]
             assert not isinstance(value, Exception), str(value)
+            # Progress before revocation belongs to the still-current view.
+            # Only the later callback must leave this captured state untouched.
+            before = (widget.value, widget.enabled, widget.focused)
             swap()
             e.frame.working = False
             callback(value)

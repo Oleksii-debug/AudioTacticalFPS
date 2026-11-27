@@ -1,0 +1,121 @@
+{
+  "schema": "resonance-observed-fixture-corrections-and-native-inspection/1",
+  "parent_commit": "3bcd578c5b468e9748c7eab0398262ae967bddb6",
+  "parent_tree": "ff34ca286a78e1a04778294742fe552c938ac21d",
+  "status": "SOURCE_REVIEWED_EXACT_SUCCESSOR_NOT_RUN",
+  "changes": [
+    {
+      "path": "carr-library/tests/studio/test_measured_pcm.py",
+      "preimage": "a7de7443e179fc378a4137427056ec22ce17317f",
+      "sha": "a8cb8ecfc05508ef33a6b8a0e2f123cc197a6ae0"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_measured_cli.py",
+      "preimage": "2d703df23fe6591cc48cf80152b465070cb365fc",
+      "sha": "07d107d1c10eb341f43cfcd8a0823ba1f93554cb"
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_duration_dialog.py",
+      "preimage": "c1c1baa6a4b63e52732fd46e176da52725c43b7c",
+      "sha": "d9516c2bf87ea38c34149d87185cb201ba3a34f5"
+    },
+    {
+      "path": "carr-library/docs/BOOK_AUDIO.md",
+      "preimage": "bcc78b120503e76848fd7d890b84562c36a75abd",
+      "sha": "29637ca47032875179fed9aa027f329d9588f0da"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": "c703f6820091cda802fa77dd88fef9b5118064ec",
+      "sha": "f13660682c7174720821e684a5af7e936f79656a"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": "a1b4b0e65ea15a3810287ba3ee76a81a52c7f8bf",
+      "sha": "3141764b3c0ea1b8c76c4a3d0396c1e12022340d"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_partition.py",
+      "preimage": "8caaeee36ca5a4fcfa05968ea701206396c1f8fa",
+      "sha": "d9204f853fd7fbdab8afbac7e9f148ced9f2264f"
+    },
+    {
+      "path": ".github/workflows/carr-next13-partition.yml",
+      "preimage": null,
+      "sha": "038571f82a18114882c58ad3fb6b0fba19346f85"
+    },
+    {
+      "path": "carr-library/scripts/windows_native_dialog_inventory.py",
+      "preimage": null,
+      "sha": "67de0f57908edfc436fda7401f83010d2d2d4a7d"
+    },
+    {
+      "path": ".github/workflows/carr-next14-native-dialog.yml",
+      "preimage": null,
+      "sha": "830cea1c5f50f9e13c90b7fde3c7bf8dceef44e7"
+    }
+  ],
+  "durable_reports": [
+    {
+      "path": "resonance-status/next13/book_actual_fixture_corrections.json",
+      "sha": "f7cfe4f87bb25d5df2a543f46efa147017c41473"
+    },
+    {
+      "path": "resonance-status/next13/actual_book_3bcd578.json",
+      "sha": "f3ee610ff05b4b22b88ab627281ccb5e773d061b"
+    },
+    {
+      "path": "resonance-status/next13/actual_capacity_2f0c1f5.json",
+      "sha": "c89dc959c8f9248b366b80dbd04f7357672ebfb4"
+    },
+    {
+      "path": "resonance-status/next13/actual_main_v3_b524b3.json",
+      "sha": "c444d69c8b404209d3f2c4e2675384201e8d200b"
+    }
+  ],
+  "book": {
+    "actual_parent": "92 PASS/6 FAIL, zero skips; installed/native NOT_RUN.",
+    "successor": "Three fixture corrections from actual trace; same98source/98installed/native77/18. Product/native Book source unchanged.",
+    "review": "Root exact-diff and independent peer accepted STATIC_NOT_RUN.",
+    "cancellation": "Assert cancellation through complete PCM reader close, preserve first1MiB block and unchanged subsequent stream position.",
+    "crash": "Real post-publication child death leaves linked output. Keep refusal and unchanged original receipt/bytes; explicitly selected ordinary byte-identical copy uses existing verifier without render or synthesis.",
+    "ui": "Use actual bool closed API and compare late callbacks with state at actual view revocation."
+  },
+  "partition": {
+    "actual_parent": "C3 Windows source case raised before changed=True, then failed unconditional changed assertion. Underlying Winerror was not printed and is not assumed.",
+    "successor": "Only a real Windows5/32/33 rename refusal may use unchanged-root-inode/absent-moved-folder branch. Actual successful replacement still requires original moved inode and empty canary directory. Both retain exactly one provider call and one receipt.",
+    "whole_cases": 26,
+    "existing_functions": 12,
+    "product_source": "UNCHANGED",
+    "review": "Root and Locate ACCEPTED_STATIC_NOT_RUN.",
+    "diagnostic": "Two actual platforms, same strict ci_check600-second child, complete26 source cases; exact fixture/companions/six current translation sources/locks and all package Python bytes before/after.",
+    "installed": "NOT_RUN in this source-only diagnostic; required full installed26 retained."
+  },
+  "native_window_inventory": {
+    "scope": "Synthetic owned Windows dialogs only; not product acceptance.",
+    "purpose": "C4's actual nativebackup failure hides missing title HWND versus missing direct IDNO child. Capture exact title/PID/owner-bound HWND, class and child IDs before selecting a correction.",
+    "runtime": "Exact current hashed wx dependency lock and setupPython3.11; no app/library writes, private inputs or audio.",
+    "bounds": "At most32 owned top-level windows,128 own children,512characters per native string,256KiBJSON,25second watchdog.",
+    "cleanup": "EndDialog is explicitly synthetic fixture cleanup only. Native No-button, keyboard and product qualification remain NOT_RUN regardless of diagnostic success.",
+    "no_required_gate_replaced": true
+  },
+  "required_followup": [
+    "Run corrected Book source98 + isolated installed98 + actualnative77/18.",
+    "Run actual partition whole26 onWindowsandLinux.",
+    "Observe owned-window inventory before changing shared nativequestion discovery; original44backupchecks remain required and currentlyFAILED.",
+    "Complete legacy converter source/native/docs and fullgate union; diagnose current fullmain/V3/ASRnative failures."
+  ],
+  "refs": {
+    "canonical": "UNCHANGED",
+    "integration_pr173": "UNCHANGED b524b3",
+    "capacity_c3_profiles": "UNCHANGED ACTIVE",
+    "branches_to_validate": [
+      "carr/ci-next12-book-20261127-5a9e",
+      "carr/ci-next13-partition-20261127-5a9e",
+      "carr/ci-next14-native-dialog-20261127-5a9e"
+    ]
+  },
+  "qualification": "NOT_ESTABLISHED",
+  "public_binary_distribution": "NOT_AUTHORIZED",
+  "private_inputs": "EXCLUDED"
+}
