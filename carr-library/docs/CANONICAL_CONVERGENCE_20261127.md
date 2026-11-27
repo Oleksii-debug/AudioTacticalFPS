@@ -490,3 +490,38 @@ remain. The application-host CLI launches are unchanged. Both components have
 exact full readback and independent source review. They make no performance or
 execution claim before the successor runs. The 600-second suite, 12-minute ASR
 job and 120-second native probe budgets are unchanged.
+
+
+### Actual V3 Windows byte-fixture diagnostic before publication
+
+The first 8b6 V3 run completed before the successor branch update. Its 28 earlier
+strict suites passed 463 cases with zero failures/skips, covering signed-client
+source boundaries, helper/voice controls and citation/DOCX regeneration. Actual
+native signed-client and Hunspell checks also passed within their stated scope.
+The provider step then completed 287 passes and one failure; installed recovery
+and all later stages were not reached. Its exact artifact and log are retained
+in the 8b6 checkpoint. The intermediate 2ea assembly was never published.
+
+The sole failure was in the real local-translation CLI fixture: default text
+writing changed its LF input to Windows CRLF before the application read it.
+The application correctly exported those exact selected bytes, while the test
+expected the original LF Python string. The actual CLI reads source bytes and
+the ReadingDocument exporter writes retained bytes; production normalization
+would have broken the required preservation contract.
+
+Reviewed component `ae678f847158edbdac4242a04d47cc9fa58e8641` writes explicit
+UTF-8 bytes and executes the same existing case for both LF and CRLF. All 48
+assertion lines in the file and all timing bounds remain, including the two
+strict source/export byte comparisons, local approval, exact server call count
+and offline export after profile removal. The loopback suite grows from 12 to
+13 cases. Full Windows installed acceptance requires both exact `[lf]` and
+`[crlf]` testcase IDs. The V3 consumer already normalizes parametrized names,
+and the exact two-suite isolated-loopback selector stays unchanged. Root and
+independent source review approved the corrected bytes; successor execution
+is still required.
+
+Coupled component `4f56e29c5c46d35ae85c529ee29b288f0bd6c9ef` preserves both
+the reviewed 2ea assembly and ae678 correction as parents. Its sole workflow
+change replaces the old unparametrized installed-test requirement with both
+exact newline variants. Reversing that one replacement reproduces the complete
+reviewed Windows workflow byte for byte, including both typed SBOM validations.

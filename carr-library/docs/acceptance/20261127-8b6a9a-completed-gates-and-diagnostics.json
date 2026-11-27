@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "recorded_at": "2026-11-27T19:06:00Z",
+  "recorded_at": "2026-11-27T19:16:16Z",
   "source_commit": "8b6a9ac5dc1cb1fe53f433f6326cb4702b759fee",
   "source_tree": "c5480c55322aeefa5b61ca34e3b575717441af7f",
   "qualification": "Exact completed source and hosted-Windows component evidence only;not an all-gates or distribution PASS.",
@@ -760,18 +760,311 @@
         "transcription_backup": 4.83
       },
       "note": "All16 selected suites completed. Slow UI and CLI totals are observed suite timings; no per-test attribution or corrected-fixture timing is asserted."
-    }
-  ],
-  "unfinished": [
+    },
     {
-      "id": "v3_installed",
+      "id": "v3_windows",
       "run_id": 46048547798,
       "job_id": 140673874907,
-      "status": "IN_PROGRESS_AT_CHECKPOINT",
-      "observed_at": "2026-11-27T19:04:00Z",
-      "note": "Only completed individual steps are known; publication of the successor can supersede this run. No completed V3 gate is claimed."
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46048547798/job/140673874907",
+      "status": "FAIL",
+      "failed_step": "Require bounded provider transport and durable translation boundaries",
+      "earlier_strict_reports": {
+        "completed_suites": 28,
+        "junit": {
+          "passed": 463,
+          "failed": 0,
+          "skipped": 0
+        },
+        "suites": [
+          {
+            "suite": "tests/security/test_anchor_locking.py",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_canonical_boundary.py",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_controller.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_entitlements.py",
+            "passed": 31,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_idle_renewal.py",
+            "passed": 4,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_independent_review_boundaries.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_publication_integrity.py",
+            "passed": 13,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_refresh.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_updates.py",
+            "passed": 23,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_update_polling.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/security/test_installation.py",
+            "passed": 21,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/speech/test_python_helper.py",
+            "passed": 39,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/integrations/test_dordiai_voices.py",
+            "passed": 40,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/integrations/test_dordiai_speech.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/integrations/test_dordiai_settings.py",
+            "passed": 17,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/integrations/test_dordiai_probe_cancellation.py",
+            "passed": 7,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/integrations/test_dordiai_convergence.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ui/test_studio_progress_results.py",
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/ui/test_worker_cleanup.py",
+            "passed": 2,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/speech/test_discovery_cancellation.py",
+            "passed": 5,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_state_snapshot_identity.py",
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/citations/test_csl.py",
+            "passed": 79,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/academic_integration/test_documents.py",
+            "passed": 10,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/academic_integration/test_regeneration.py",
+            "passed": 21,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/academic_integration/test_formatting.py",
+            "passed": 32,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/academic_integration/test_end_to_end.py",
+            "passed": 11,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/storage/test_durable_state_publication.py",
+            "passed": 8,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          },
+          {
+            "suite": "tests/academic_integration/test_citation_ui.py",
+            "passed": 14,
+            "failed": 0,
+            "skipped": 0,
+            "exit": 0
+          }
+        ]
+      },
+      "earlier_native_reports": [
+        {
+          "status": "PASS",
+          "checks": [
+            "Actual desktop Help exposes the signed client status",
+            "Native Help event reaches the status action",
+            "Default status is a named native read-only multiline control",
+            "Private default shows perpetual operation and no fake authority actions",
+            "Terms and profile are readable before accepting",
+            "Import requires explicit native checkbox acceptance",
+            "Native acceptance event enables import",
+            "Reviewed signed grant is durably verified",
+            "Configured polling uses an actual running wx.Timer",
+            "Native idle timer holds metadata checks while the frame is working",
+            "Native idle transition verifies signed metadata on the background thread",
+            "Automatic native checks leave payloads and existing signed permission untouched",
+            "Configured update status retains the explicit native repository review action",
+            "Accepted native Close stops the polling timer before owner destruction",
+            "Native owner destruction stops the metadata worker",
+            "Native owner destruction stops or destroys the actual timer"
+          ],
+          "nvda": "NOT_RUN",
+          "production_authority": "NOT_CONFIGURED",
+          "production_installer_upgrade": "NOT_RUN",
+          "ui_module": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\trust_status.py",
+          "polling_module": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\security\\polling.py"
+        },
+        {
+          "status": "PASS",
+          "checks": [
+            "exact selected native library hash",
+            "actual C API, UTF-8 dictionary and affix expansion",
+            "exact Unicode/CRLF reading offsets",
+            "selected-text scope with original character positions",
+            "overlong tokens are explicitly uncheckable",
+            "actual native result remains review-only",
+            "explicit correction preserves source and one undo",
+            "external dictionary bytes remain unchanged",
+            "declared legacy encoding with no replacement decoding",
+            "same-size changed dictionary is rejected before use",
+            "malformed dictionary cannot report a complete review",
+            "actual mid-staging/check cancellation reaps and removes private copies",
+            "actual worker deadline reaps and removes private copies",
+            "native engine bytes remain unchanged"
+          ],
+          "native_library_sha256": "ddf1bdd36cffb3d67d6c3f34f48edca81e02c4a91138a27c19674f5c4ddb98c2",
+          "native_library_bytes": 822272,
+          "application_modules": {
+            "carr_library.speech.spelling": "68610a425ada45d4d821e5ba6f27b781389a41789f556e996e3aaeb92816aae1",
+            "carr_library.speech.spelling_worker": "25cd33e7d6ffeaffee7e6bb12a3880293064fd324ee3c4a4667e8cc8a9321b9b",
+            "carr_library.ui.spelling_dialog": "f2df60215e500aaa7767c312682a557f261d42f0f81de0c94d5d4dc314ef1795"
+          },
+          "dictionaries": "Original synthetic fixtures; no language-quality qualification",
+          "native_windows": "EXECUTED",
+          "manual_nvda": "NOT_RUN",
+          "distribution_clearance": "NOT_GRANTED"
+        },
+        {
+          "status": "PASS",
+          "checks": 14,
+          "installed_modules": {
+            "carr_library.speech.spelling": "68610a425ada45d4d821e5ba6f27b781389a41789f556e996e3aaeb92816aae1",
+            "carr_library.speech.spelling_worker": "25cd33e7d6ffeaffee7e6bb12a3880293064fd324ee3c4a4667e8cc8a9321b9b",
+            "carr_library.ui.spelling_dialog": "f2df60215e500aaa7767c312682a557f261d42f0f81de0c94d5d4dc314ef1795"
+          },
+          "dll_sha256": "ddf1bdd36cffb3d67d6c3f34f48edca81e02c4a91138a27c19674f5c4ddb98c2"
+        }
+      ],
+      "provider_pytest": {
+        "passed": 287,
+        "failed": 1,
+        "skipped": 0,
+        "elapsed_seconds": 74.89
+      },
+      "failure": {
+        "suite": "tests/assistant/test_translation_local_loopback.py",
+        "case": "test_actual_cli_requires_local_approval_and_keeps_completed_work_offline",
+        "location": "221",
+        "actual": "Export preserved Windows CRLF bytes written by the fixture",
+        "expected": "original.encode() contained LF bytes",
+        "first_mismatch_offset": 5950,
+        "diagnosis": "The fixture used default text newline conversion, but asserted a cross-platform exact byte expectation. Production source preservation remains required."
+      },
+      "installed_recovery_and_later_gates": "NOT_RUN",
+      "artifact": {
+        "id": 15226525433,
+        "sha256": "1412c95538b64fb290fde9e1789ad6dfea189dc73324101b811e04350a0631e0"
+      }
     }
   ],
+  "unfinished": [],
   "not_qualified": [
     "Human Windows11/NVDA and real speech/audio/listening quality",
     "Private ASR/cloning/music/LLM or live local-translation model quality and rights",
@@ -849,6 +1142,41 @@
       ],
       "preserved_assertion_lines": 148,
       "note": "The legacy resolved-path control retains real installed-distribution coverage using a copied interpreter and genuine3-file RECORD-backed marker package imported by the actual child. Legacy refusal,explicit rereview and success assertions remain."
+    },
+    {
+      "commit": "ae678f847158edbdac4242a04d47cc9fa58e8641",
+      "status": "SOURCE_APPROVE",
+      "reviewers": [
+        "root",
+        "independent_spec_reviewer"
+      ],
+      "execution": "NOT_RUN",
+      "paths": [
+        {
+          "path": "carr-library/tests/assistant/test_translation_local_loopback.py",
+          "blob": "4628de8d3b3fab56d051aa364777e08770ed2425"
+        }
+      ],
+      "preserved_assertion_lines": 48,
+      "note": "The existing real CLI case now writes exact UTF-8 bytes and runs for both LF and CRLF. Both original-input and exported-original byte equality assertions,local approval,retained completion,ledger/call counts and timing limits are unchanged. Full Windows installed acceptance must require both exact parametrized testcase IDs."
     }
-  ]
+  ],
+  "coupled_consumer_review": {
+    "status": "SOURCE_APPROVE",
+    "commit": "4f56e29c5c46d35ae85c529ee29b288f0bd6c9ef",
+    "workflow_blob": "faa52b3fb74221864a3d5925c21130d0945120ea",
+    "test_blob": "4628de8d3b3fab56d051aa364777e08770ed2425",
+    "one_exact_replacement": true,
+    "old_sbom_parity_preserved": true,
+    "required_case_ids": [
+      "test_actual_cli_requires_local_approval_and_keeps_completed_work_offline[lf]",
+      "test_actual_cli_requires_local_approval_and_keeps_completed_work_offline[crlf]"
+    ],
+    "execution": "NOT_RUN",
+    "independent_reviewer": "spec_audit",
+    "parents": [
+      "2ea268f8b2ac6d8e84c43915b3c7f5806899783e",
+      "ae678f847158edbdac4242a04d47cc9fa58e8641"
+    ]
+  }
 }
