@@ -313,7 +313,8 @@ def test_installation_registers_one_shared_command_without_starting_work(monkeyp
         GetMenuLabel=lambda index: '&File', GetMenu=lambda index: menu), Bind=Mock())
     registered = []
     if manager_installed:
-        def register(spec, item):
+        def register(spec, item, *, fallback_unassigned=False):
+            assert fallback_unassigned is False
             registry.register(spec)
             registry.validate(overrides)
             registered.append((spec, item))

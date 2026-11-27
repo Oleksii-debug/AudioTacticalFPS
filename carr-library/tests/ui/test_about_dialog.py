@@ -236,7 +236,10 @@ def test_help_installer_registers_one_semantic_command_before_or_after_keyboard_
     host, bar, bindings = menu_host()
     registered = []
     if keyboard_ready:
-        host.keyboard_commands = N(register_menu_command=lambda spec, item: registered.append((spec, item)))
+        def register(spec, item, *, fallback_unassigned=False):
+            assert fallback_unassigned is False
+            registered.append((spec, item))
+        host.keyboard_commands = N(register_menu_command=register)
     calls = []
     monkeypatch.setitem(sys.modules, 'wx', N(ID_ANY=-1, EVT_MENU='menu'))
     monkeypatch.setattr(about, 'show_about', lambda frame, event: calls.append((frame, event)))

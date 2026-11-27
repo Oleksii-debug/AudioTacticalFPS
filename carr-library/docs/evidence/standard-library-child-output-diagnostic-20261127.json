@@ -1,0 +1,77 @@
+{
+  "schema": "carr.standard-library-child-output-diagnostic.v1",
+  "status": "SOURCE_REVIEW_PENDING_RUNTIME_NOT_RUN",
+  "base_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+  "base_tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+  "observed_run": {
+    "run_id": 46066498865,
+    "job_id": 140732969789,
+    "status": "FAIL",
+    "artifact": {
+      "run": 46066498865,
+      "commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "id": 15232821513,
+      "bytes": 1777762,
+      "sha256": "e1871dbd86a345f902c56e1a2ca4f476cdd5f3f6799b6d81c3e786c5b10e3d64",
+      "kind": "standard-managed-health-repaired-installed-library-failure"
+    },
+    "failure": "probe_standard_update_windows.py:436: The exact installed audio-free library qualification failed.",
+    "original_child_returncode": "NOT_RETAINED",
+    "original_child_output": "NOT_RETAINED"
+  },
+  "independent_reads": [
+    {
+      "commit": "71658ecbbb07cf20249b2621993c1c16c0e692b3",
+      "run_id": 46070357198,
+      "job_id": 140745556028,
+      "status": "SUCCESS",
+      "scope": "Fixed receipt groups and raw81+81 JUnit."
+    },
+    {
+      "commit": "f5b648c758796c308aa5eb46ddcc6c96f3324440",
+      "run_id": 46070548354,
+      "job_id": 140746191660,
+      "status": "SUCCESS",
+      "scope": "All90 exact member names, with no library directory/file or snapshot/test-dependencies record in the archive."
+    }
+  ],
+  "verified_partial_results": {
+    "source_regressions": 81,
+    "installed_regressions": 81,
+    "regression_failures": 0,
+    "regression_skips": 0,
+    "standard_install_checks": 6,
+    "ordinary_maintenance_checks": 4,
+    "fresh_restart_recovery": "rolled-back; actual_fresh_process, actual_windows_vault and fresh_tuf_verification are true",
+    "complete_managed_update": "NOT_QUALIFIED; no final native.json/proof.json",
+    "installed_library_50": "NOT_QUALIFIED; no test XML/report retained"
+  },
+  "source_control_flow_inference": "The exact parent failure at line436 occurs after committedB activation and its actual self-test returned successfully, but before the last two managed-uninstall checks and before a final15-check receipt. This inference is not a substitute for a complete native result.",
+  "diagnostic_change": [
+    "Keep existing run_owned, exact fixed argv, environment, cwd and1800-second budget.",
+    "Retain its already capped2MiB combined output bytes in a fresh exclusive native-library-process.log only after the existing owner has settled.",
+    "Write a fresh companion record containing exact returncode/byte count/SHA256 and candidate/manifest identity. Emit only the same record and a24000-byte error tail into the parent log.",
+    "Preserve every nonzero failure and every existing report/manifest/source/50-case/snapshot/firewall/cleanup predicate."
+  ],
+  "unchanged": {
+    "product_source": true,
+    "qualify_standard_library_ps1": true,
+    "qualify_standard_library_py": true,
+    "installer_generations": [
+      "91332206578b4d8dc779fec08c8d51a67962b0ff",
+      "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f"
+    ],
+    "source_regressions": 81,
+    "installed_regressions": 81,
+    "install_checks": 6,
+    "maintenance_checks": 4,
+    "managed_checks": 15,
+    "library_cases": 50
+  },
+  "limits": {
+    "underlying_child_cause": "NOT_OBSERVED",
+    "no_guessed_product_repair": true,
+    "previous_failure_preserved": true,
+    "ordinary_success": "NOT_RUN"
+  }
+}

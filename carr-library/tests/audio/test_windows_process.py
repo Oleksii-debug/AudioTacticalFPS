@@ -192,26 +192,74 @@ def test_job_uses_kill_on_close_without_breakaway_and_closes_on_configuration_fa
 
 @pytest.mark.parametrize('exited', [False, True])
 def test_windows_stop_closes_owned_job_even_after_helper_exit(monkeypatch, exited):
+    from carr_library.audio import recording_process
+
     calls = []
     monkeypatch.setattr(engines, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(recording_process, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(recording_process, 'time', SimpleNamespace(
+        monotonic=lambda: 10.0,
+        sleep=lambda seconds: calls.append(('sleep', seconds))))
     monkeypatch.setattr(engines.subprocess, 'run',
                         lambda *args, **kwargs: pytest.fail('Cleanup must not launch a PID-based tree killer.'))
 
+    # The current owner must retain the job while a descendant remains active,
+    # including when the leader had already exited before cancellation began.
+    active = iter((1, 0))
+
+    class Query:
+        def __call__(self, handle, kind, pointer, size, returned):
+            assert handle == 101 and kind == 1 and returned is None
+            assert process._carr_job.handle == handle
+            assert size == ctypes.sizeof(recording_process._Accounting)
+            accounting = ctypes.cast(
+                pointer, ctypes.POINTER(recording_process._Accounting)).contents
+            accounting.active_processes = next(active)
+            calls.append(('active-processes', accounting.active_processes))
+            return True
+
+    class Kernel:
+        QueryInformationJobObject = Query()
+
+        def TerminateJobObject(self, handle, status):
+            assert handle == 101 and status == 1
+            calls.append(('terminate-job', handle, status))
+            if process.returncode is None:
+                process.returncode = 1
+            return True
+
+        def CloseHandle(self, handle):
+            assert handle == 101 and process._carr_job.handle == handle
+            assert calls[-1] == ('active-processes', 0)
+            calls.append(('close-job', handle))
+            return True
+
     class Process:
         returncode = 0 if exited else None
-        _carr_job = SimpleNamespace(close=lambda: calls.append('job'))
-        _handle = SimpleNamespace(Close=lambda: calls.append('handle'))
-        def poll(self): return self.returncode
-        def kill(self):
-            self.returncode = 1
-            calls.append('kill')
-        def wait(self, *, timeout):
-            assert timeout == 5
-            calls.append('wait')
+        _handle = SimpleNamespace(Close=lambda: calls.append('leader-handle'))
+
+        def poll(self):
             return self.returncode
 
-    engines._stop(Process())
-    assert calls == (['job', 'wait', 'handle'] if exited else ['job', 'kill', 'wait', 'handle'])
+        def kill(self):
+            pytest.fail('Cleanup must stop the retained job, not a leader PID.')
+
+        def wait(self, *, timeout):
+            assert timeout == 5 and self.returncode is not None
+            calls.append(('wait', timeout))
+            return self.returncode
+
+    process = Process()
+    process._carr_job = SimpleNamespace(handle=101, api=SimpleNamespace(
+        kernel=Kernel(), error=lambda: AssertionError('Synthetic native API failed.')),
+        close=lambda: pytest.fail('The retained job must not close before native accounting settles.'))
+    engines._stop(process)
+    assert calls == [
+        ('terminate-job', 101, 1), ('wait', 5), 'leader-handle',
+        ('active-processes', 1), ('sleep', .02), ('active-processes', 0),
+        ('close-job', 101)]
+    assert process._carr_job.handle is None
+    assert process.returncode == (0 if exited else 1)
 
 
 @pytest.mark.parametrize('failure', ['reader', 'writer'])

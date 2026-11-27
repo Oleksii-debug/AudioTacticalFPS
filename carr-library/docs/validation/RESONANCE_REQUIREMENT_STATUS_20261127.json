@@ -405,5 +405,20 @@
     "status": "PASS",
     "voice_metadata": "SYNTHETIC_PROTOCOL_ONLY",
     "nvda": "NOT_RUN"
+  },
+  "post_code_snapshot_harness_repairs": {
+    "baseline_source": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "baseline_tree": "9b1de961f054691406da899dc5377266c8e17703",
+    "reconciliation": "docs/validation/CANONICAL_FINAL_RECONCILIATION_20261127.json#/post_code_snapshot_harness_repairs",
+    "implementation_paths": 13,
+    "changed_existing_test_modules": 8,
+    "unchanged_case_sum": 109,
+    "product_sources_unchanged": true,
+    "protected_source_cases": 5813,
+    "protected_installed_cases": 5485,
+    "native_families": 21,
+    "early_native_shell_checks_separate": 3,
+    "full_platform_status": "NOT_QUALIFIED",
+    "qualification": "The existing authoring baseline and 24 requirement rows are retained. Read the exact final candidate's actual receipts; all failed predecessor runs remain historical failures."
   }
 }

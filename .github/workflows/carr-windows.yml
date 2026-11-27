@@ -163,6 +163,16 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import json,pathlib,sys,pythoncom,pywintypes,win32com.client; assert all(pathlib.Path(m.__file__).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve()) for m in (pythoncom,pywintypes,win32com.client)); pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED); pythoncom.CoUninitialize(); print(json.dumps({'status':'PASS','pinned_pywin32_native_abi':'PASS','actual_office':'NOT_RUN'}))" | Tee-Object 'ci-results/word-runtime-abi.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Prove fixed PowerShell native classification before bundle work
+        timeout-minutes: 4
+        run: |
+          $sourceCommit = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceCommit -cne $env:CARR_EXPECTED_SOURCE_COMMIT) { throw 'The shell classification probe requires the exact event source.' }
+          $sourceTree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/standard_qualification_shell_acceptance.py --source-commit $sourceCommit --source-tree $sourceTree --output ci-results/standard-qualification-shell.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare the verified OCR engine before its required source regression
         timeout-minutes: 10
         run: |

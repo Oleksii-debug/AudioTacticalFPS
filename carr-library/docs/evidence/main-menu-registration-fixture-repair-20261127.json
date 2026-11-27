@@ -1,0 +1,193 @@
+{
+  "schema": "carr.main-menu-registration-fixture-reconciliation.v1",
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "parent_commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+  "observed": {
+    "run_id": 46069523389,
+    "job_id": 140742846265,
+    "source_commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "conclusion": "FAIL",
+    "source_step_elapsed_seconds": 3897.538,
+    "required_suite_summary": {
+      "total": 451,
+      "passed": 443,
+      "failed": 8
+    },
+    "source_case_executions": {
+      "passed": 11446,
+      "failed": 9,
+      "skipped": 0
+    },
+    "unique_test_population": "NOT_INFERRED_FROM_OVERLAPPING_SUITE_EXECUTIONS",
+    "exact_protected_source_gate": "NOT_RUN_AFTER_SOURCE_FAILURE",
+    "artifact": {
+      "id": 15235016953,
+      "bytes": 336662,
+      "sha256": "81c3dfb38b9f4a3b427ec3dda9ce3eb3d557a6be866e7092351ae69ef58c9cc7",
+      "independent_zip_read": "NOT_RUN"
+    },
+    "raw_job_log_sha256": "f8f1267f32533fd84e79657341db59d76b33132f5c4111abdf77765a543c3286",
+    "affected_modules": [
+      {
+        "at": "2026-11-27T21:47:52.9760334Z",
+        "status": "FAIL",
+        "suite": "tests/ui/test_translation_dialog.py",
+        "passed": 15,
+        "failed": 1,
+        "skipped": 0,
+        "exit": 1
+      },
+      {
+        "at": "2026-11-27T21:50:19.3470431Z",
+        "status": "FAIL",
+        "suite": "tests/ui/test_transcription_v43_dialog.py",
+        "passed": 41,
+        "failed": 1,
+        "skipped": 0,
+        "exit": 1
+      },
+      {
+        "at": "2026-11-27T21:52:59.4181928Z",
+        "status": "FAIL",
+        "suite": "tests/ui/test_about_dialog.py",
+        "passed": 13,
+        "failed": 1,
+        "skipped": 0,
+        "exit": 1
+      },
+      {
+        "at": "2026-11-27T22:08:01.5072618Z",
+        "status": "FAIL",
+        "suite": "tests/ui/test_translation_scopes.py",
+        "passed": 11,
+        "failed": 1,
+        "skipped": 0,
+        "exit": 1
+      }
+    ],
+    "cause": "Four manager-present test doubles accept only (spec, item). The current shared wrapper forwards the typed keyword fallback_unassigned=False, so those doubles raise TypeError before the original registration assertions."
+  },
+  "current_contract": {
+    "path": "src/carr_library/ui/keyboard_settings.py",
+    "blob": "58912be85954a059c680783ccda66769757ec491",
+    "signatures": [
+      "KeyboardManager.register_menu_command(self, spec, item, *, fallback_unassigned=False)",
+      "register_menu_command(frame, spec, item, *, fallback_unassigned=False)"
+    ],
+    "behavior": "The wrapper forwards the flag to the current manager. These four ordinary command installers use the default strict registration path. Conflict-tolerant unassignment remains opt-in."
+  },
+  "changes": [
+    {
+      "path": "tests/ui/test_translation_dialog.py",
+      "prior_blob": "11e65f4f9ee6ad3cf18b1aba2bebe68b15764252",
+      "sha256": "2b48e0049ac480cb3d4810210f5809e8b6c681e57789be858ff32e85a21cb1be",
+      "change": "Update the exact keyword-only double signature and assert fallback_unassigned is False before its existing registration/recording behavior."
+    },
+    {
+      "path": "tests/ui/test_transcription_v43_dialog.py",
+      "prior_blob": "581598ca55aad537f2476e8027302673887187e1",
+      "sha256": "5e6337c90ee2c08ea86a4b7978eb1f3dae4d30f6e002e26c0c59f77bd303b765",
+      "change": "Update the exact keyword-only double signature and assert fallback_unassigned is False before its existing registration/recording behavior."
+    },
+    {
+      "path": "tests/ui/test_about_dialog.py",
+      "prior_blob": "b0c960c2310ccf725ad3bc946d5fb555d9a2ead6",
+      "sha256": "f3f0f9fe68862c1a6cbadaa1890886289a2a98fbcfbbf4239c08c86e295b5642",
+      "change": "Update the exact keyword-only double signature and assert fallback_unassigned is False before its existing registration/recording behavior."
+    },
+    {
+      "path": "tests/ui/test_translation_scopes.py",
+      "prior_blob": "20acb784e92d40da9f6a88702632c1d0521e2b3a",
+      "sha256": "bae455efa3e340582860be8f7cf93a9b6fb1e07ecb6b0aa1237152b9b3e73ad4",
+      "change": "Update the exact keyword-only double signature and assert fallback_unassigned is False before its existing registration/recording behavior."
+    }
+  ],
+  "preservation": [
+    "No product, workflow, dependency, process-owner or oracle changes.",
+    "Every prior test function, parametrization and existing assertion is retained.",
+    "Current semantic command IDs, idempotency, callback bindings, no-work-on-install and saved shortcut assertions remain.",
+    "The before-manager branch remains unchanged; the after-manager branch now asserts the current strict flag explicitly.",
+    "The known two Windows process fixture failures are owned by the separate e248 component.",
+    "No old run result is transferred to this repaired source."
+  ],
+  "counters": {
+    "whole_module_case_counts": {
+      "tests/ui/test_translation_dialog.py": 16,
+      "tests/ui/test_transcription_v43_dialog.py": 42,
+      "tests/ui/test_about_dialog.py": 14,
+      "tests/ui/test_translation_scopes.py": 12
+    },
+    "total_cases": 84,
+    "failed_before": 4,
+    "function_counts": {
+      "tests/ui/test_translation_dialog.py": {
+        "test_preview_and_approval_are_distinct_and_bind_exact_data": 1,
+        "test_changed_ui_selection_requires_new_preview": 7,
+        "test_estimated_cost_over_budget_revokes_prior_preview": 1,
+        "test_controller_rejects_service_for_another_library": 1,
+        "test_close_is_idempotent_and_late_worker_callbacks_do_not_touch_widgets": 1,
+        "test_translation_cannot_start_beside_another_shared_operation": 2,
+        "test_failed_worker_submission_releases_dialog_controls": 1,
+        "test_translation_installer_registers_one_semantic_command_and_keeps_overrides": 2
+      },
+      "tests/ui/test_transcription_v43_dialog.py": {
+        "test_all_seventeen_native_settings_remain_typed_and_language_is_explicit": 1,
+        "test_native_value_boundary_reuses_the_service_contract": 4,
+        "test_unselected_native_choice_never_borrows_a_previous_setting": 1,
+        "test_modal_close_requests_stop_and_waits_for_its_operation": 1,
+        "test_settled_worker_releases_modal_even_if_main_frame_drops_changed_root_callback": 1,
+        "test_changed_library_cannot_start_an_operation": 1,
+        "test_already_running_shared_operation_is_never_replaced": 1,
+        "test_submission_failure_unlocks_controls_and_keeps_dialog_open": 1,
+        "test_late_callbacks_cannot_publish_into_newer_operation": 1,
+        "test_prepare_freezes_exact_settings_and_never_starts_worker_until_separate_action": 1,
+        "test_new_job_reenables_settings_without_modifying_prepared_job": 1,
+        "test_pause_resume_and_stop_apply_only_to_the_current_running_job": 1,
+        "test_verify_outputs_uses_existing_receipt_service_without_runtime_chooser": 1,
+        "test_stale_progress_after_completed_or_new_job_does_not_touch_status": 1,
+        "test_native_error_summary_does_not_include_oserror_source_filename": 1,
+        "test_installation_registers_one_shared_command_without_starting_work": 2,
+        "test_reading_action_reuses_existing_editor_only_after_service_reverification": 2,
+        "test_saved_runtime_profile_is_readmitted_before_prepare_and_start": 1,
+        "test_changed_saved_profile_cannot_enter_supervisor": 3,
+        "test_new_job_drops_machine_profile_selection_without_rebinding_outputs": 1,
+        "test_saved_runtime_picker_shows_only_enabled_transcription_profiles": 1,
+        "test_shared_profile_selector_preserves_explicit_scope_and_contract": 3,
+        "test_profile_cancel_or_invalid_choice_does_not_change_saved_selection": 2,
+        "test_library_wide_profile_uses_one_entrypoint_without_adopting_active_workspace": 1,
+        "test_workspace_profiles_keep_their_existing_active_scope_requirement": 2,
+        "test_verified_supplied_result_uses_one_actual_future_and_survives_late_cancel": 1,
+        "test_observer_failure_cannot_suppress_verified_supplied_result": 2,
+        "test_failed_supplied_service_never_becomes_a_verified_host_result": 2,
+        "test_stop_keeps_owned_cancellation_when_progress_observer_has_closed": 1
+      },
+      "tests/ui/test_about_dialog.py": {
+        "test_actual_metadata_and_notice_reads_use_the_existing_async_none_returning_host": 1,
+        "test_duplicate_host_callbacks_do_not_read_or_display_the_notice_twice": 1,
+        "test_late_catalogue_is_not_displayed_in_a_replaced_or_closing_library": 3,
+        "test_close_cancels_a_real_active_worker_and_discards_its_late_callback": 1,
+        "test_busy_or_failed_admission_never_starts_io_and_restores_dialog_controls": 2,
+        "test_selected_inventory_failure_is_explicit_and_never_displays_fabricated_text": 1,
+        "test_scope_changes_after_notice_picker_prevent_payload_job": 1,
+        "test_help_installer_registers_one_semantic_command_before_or_after_keyboard_manager": 2,
+        "test_missing_help_host_is_rejected_before_menu_or_binding_mutation": 1,
+        "test_native_control_names_readonly_text_and_close_cancel_use_actual_dialog_handlers": 1
+      },
+      "tests/ui/test_translation_scopes.py": {
+        "test_scope_ui_requires_separate_exact_approval_and_never_sends_on_preview": 1,
+        "test_scope_ui_change_revokes_review_before_child_creation": 8,
+        "test_failed_preview_revokes_prior_scope_review": 1,
+        "test_scope_menu_is_additive_idempotent_and_preserves_existing_shortcuts": 2
+      }
+    },
+    "case_identity_source": "Exact outer source-step CASE_START records in the observed job; unchanged test identities and parametrizations."
+  },
+  "validation": {
+    "exact_reverse_fixture_replacement": "PASS",
+    "old_top_level_test_names": "UNCHANGED",
+    "source_contract_review": "PASS",
+    "new_python_execution": "NOT_RUN",
+    "new_installed_execution": "NOT_RUN",
+    "new_native_execution": "NOT_RUN"
+  }
+}

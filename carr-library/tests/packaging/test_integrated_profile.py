@@ -12,9 +12,10 @@ spec.loader.exec_module(builder)
 def test_integrated_lock_preserves_every_previously_admitted_semantic_hash():
     prior = builder.read_lock(ROOT / 'packaging/windows-semantic-cp311.lock')
     current = builder.read_lock(ROOT / 'packaging/windows-integrated-cp311.lock')
-    assert len(prior) == 53 and len(current) == 56
+    assert len(prior) == 54 and len(current) == 56
     assert {name: current[name] for name in prior} == prior
-    assert set(current) - set(prior) == {'tuf', 'securesystemslib', 'pywin32'}
+    # pywin32 is already a shared, hash-pinned semantic dependency.
+    assert set(current) - set(prior) == {'tuf', 'securesystemslib'}
     review = json.loads((ROOT / 'packaging/trusted-client-dependencies.json').read_text(encoding='utf-8'))
     for component in review['dependencies']:
         assert current[component['name']][0] == component['version']

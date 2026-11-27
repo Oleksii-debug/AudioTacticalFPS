@@ -1,0 +1,550 @@
+{
+  "schema": "carr.final-main-inert-artifact-read-plan.v1",
+  "status": "WAITING_FOR_ACTUAL_COMPLETED_ARTIFACT",
+  "candidate": {
+    "source_commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "source_tree": "9b1de961f054691406da899dc5377266c8e17703",
+    "run_id": 46069523389,
+    "job_id": 140742846265,
+    "workflow": ".github/workflows/carr-windows.yml",
+    "workflow_blob": "48ce451b12048babec276abd8f60cd9698b3c954"
+  },
+  "reuse": {
+    "reader_source": "b2773b8c9f1e67348f020b3cf01652d614914a43",
+    "reader_path": "carr-library/scripts/converter_artifact_diagnostics.py",
+    "reader_blob": "b37c8e3232770f0fa226ad45e63fa7f7eeac177d",
+    "workflow": ".github/workflows/carr-converter-diagnostics.yml",
+    "workflow_blob": "8eea8c1f56144c0f00a0591410970528a2c90b44",
+    "runtime": "Existing Ubuntu24.04 isolated CPython3.11 stdlib reader; no application import or subprocess from archive contents.",
+    "reader_interactive_gate": {
+      "path": "carr-library/scripts/reader_interactive_native_gate.py",
+      "blob": "7e415972d50ae4851934e60e585b739add6242e4"
+    }
+  },
+  "launch_boundary": {
+    "artifact_id": null,
+    "artifact_sha256": null,
+    "artifact_bytes": null,
+    "reader_branch": null,
+    "rule": "Do not launch until the completed run exposes exact artifact metadata. Pin run/head/id/size/digest, verify all metadata and archive bytes before any selected member is decoded. Missing or partial qualification receipts never become PASS."
+  },
+  "existing_bounds": {
+    "archive_bytes": 8388608,
+    "members": 10000,
+    "expanded_bytes": 536870912,
+    "member_bytes": 4194304,
+    "rendered_json_characters": 262144,
+    "adjustment": "Inspect actual archive/member metadata first. Any necessary finite increase must record the measured size and retain exact digest, duplicate/path and expansion checks; never silently truncate a required receipt or counter."
+  },
+  "closed_selection": {
+    "optional_archive_prefix": "ci-results/",
+    "root_exact_names": [
+      "source-syntax-preflight.json",
+      "tested-commit.txt",
+      "tested-tree.txt",
+      "installed-packages.json",
+      "native-runtime.json",
+      "installed-self-test.json",
+      "installed-ocr-catalogue.json",
+      "installed-ocr-catalogue-console.json",
+      "native-academic-library.txt",
+      "native-advanced-search.txt",
+      "core-fallback.txt",
+      "full-lock-source-inventory.json",
+      "word-runtime-abi.json",
+      "ocr-preparation.json",
+      "managed-ocr-unicode.txt",
+      "windows-regression-boundaries.txt",
+      "local-audio-setup.txt",
+      "audio-runtime.json",
+      "integrated-tests.txt",
+      "v3-additive-source-proof.json",
+      "local-planning-loopback-source.txt",
+      "citation-styles-native.txt",
+      "translation-native.json",
+      "translation-native.txt",
+      "translation-v3-native.json",
+      "translation-v3-native.txt",
+      "translation-v3-native-proof.json",
+      "search-pagination-native.txt",
+      "search-pagination-native-proof.json",
+      "trust-native.txt",
+      "trust-native-proof.json",
+      "word-native.txt",
+      "word-native-proof.json",
+      "language-matrix-native.txt",
+      "native-import-center.txt",
+      "native-v3-reading.txt",
+      "native-ocr-languages.txt",
+      "native-document-formats.txt",
+      "native-ocr-models.txt",
+      "native-desktop.txt",
+      "native-evidence-pages.txt",
+      "native-academic-workflows.txt",
+      "native-academic.txt",
+      "native-notebook-search.txt",
+      "native-ebook-reader.txt",
+      "native-catalog-tools.txt",
+      "native-ebook-contents.txt",
+      "native-reading-desk.txt",
+      "native-catalog-insights.txt",
+      "native-launcher-build.json",
+      "native-launcher-process.json",
+      "model-acquisition.json",
+      "native-runtime-preparation.json",
+      "full-bundle-build.json",
+      "full-bundle-native-runtime.json",
+      "sealed-sbom.json",
+      "full-bundle-firewall.json",
+      "core-bundle-install.txt",
+      "core-bundle-self-test.json",
+      "native-launcher-installed.json",
+      "native-launcher-installed.txt",
+      "native-launcher-installed-proof.json",
+      "offline-bundle-ocr-catalogue.json",
+      "installed-launchers.json",
+      "core-bundle-native.txt",
+      "full-bundle-academic-native.txt",
+      "full-bundle-citation-styles.txt",
+      "full-bundle-translation-native.json",
+      "full-bundle-translation-native.txt",
+      "full-bundle-translation-v3-native.json",
+      "full-bundle-translation-v3-native.txt",
+      "full-bundle-translation-v3-native-proof.json",
+      "full-bundle-language-matrix.txt",
+      "full-bundle-native-playback.txt",
+      "full-bundle-native-save-all.json",
+      "full-bundle-native-save-all.txt",
+      "full-bundle-native-audio-effects.txt",
+      "full-bundle-native-progress.txt",
+      "full-bundle-audio-native.txt",
+      "full-bundle-encrypted-native.txt",
+      "full-bundle-advanced-search.txt",
+      "full-bundle-v3-reading-native.txt",
+      "full-bundle-ocr-languages-native.txt",
+      "full-bundle-verified.json",
+      "full-bundle-encrypted-transfer.txt",
+      "full-bundle-transcription-native.txt",
+      "full-bundle-transcription-proof.json",
+      "full-bundle-supplied-transcription-native.json",
+      "full-bundle-supplied-transcription-native.txt",
+      "full-bundle-supplied-transcription-proof.json",
+      "full-bundle-progress-native.txt",
+      "full-bundle-progress-proof.json",
+      "full-bundle-native-operations.txt",
+      "full-bundle-native-operations-proof.json",
+      "full-bundle-native-legacy-reading.txt",
+      "full-bundle-native-legacy-reading-proof.json",
+      "full-bundle-native-state-matrix.txt",
+      "full-bundle-native-state-matrix-proof.json",
+      "full-bundle-native-about.txt",
+      "full-bundle-native-about-proof.json",
+      "full-bundle-continuation-native.txt",
+      "full-bundle-continuation-native-proof.json",
+      "full-bundle-native-search-pagination.txt",
+      "full-bundle-native-search-pagination-proof.json",
+      "full-bundle-native-trust.txt",
+      "full-bundle-native-trust-proof.json",
+      "full-bundle-r7-live-native.json",
+      "full-bundle-r7-live-native.txt",
+      "full-bundle-live-playback-native.json",
+      "full-bundle-r7-streamed-native.json",
+      "full-bundle-r7-streamed-native.txt",
+      "full-bundle-r7-effects-native.json",
+      "full-bundle-r7-effects-native.txt",
+      "full-bundle-r7-clips-native.json",
+      "full-bundle-r7-clips-native.txt",
+      "full-bundle-studio-controls-native.json",
+      "full-bundle-studio-controls-native.txt",
+      "full-bundle-r7-publication-native.json",
+      "full-bundle-r7-publication-native.txt",
+      "full-bundle-native-word.txt",
+      "full-bundle-native-word-proof.json",
+      "full-bundle-native-recording.txt",
+      "full-bundle-native-recording-proof.json",
+      "full-bundle-incremental-native.json",
+      "full-bundle-audio-batches-native.json",
+      "full-bundle-media-overlay-native.json",
+      "full-bundle-legacy-asr-native.json",
+      "full-bundle-playback-queue-native.json",
+      "full-bundle-workflow-templates-native.json",
+      "full-bundle-book-duration-native.json",
+      "full-bundle-provider-recovery-native.json",
+      "full-bundle-native-sapi.json",
+      "full-bundle-local-voice-helper-native.json",
+      "full-bundle-registered-progress-native.json",
+      "full-bundle-reader-session-native.json",
+      "full-bundle-topic-native.json",
+      "full-bundle-assistant-transcription-native.json",
+      "full-bundle-workflows.xml",
+      "full-bundle-workflows.txt",
+      "full-bundle-workflows.json",
+      "v3-additive-installed-proof.json",
+      "full-bundle-advanced-planning-proof.json",
+      "full-bundle-bounded-inventory-proof.json",
+      "source-wheel-proof.json",
+      "tested-application-wheel.json",
+      "full-bundle-local-planning-loopback-proof.json",
+      "full-bundle-local-planning-loopback.txt"
+    ],
+    "private_work_directories": "Do not recurse into *-work, fixture, temporary profile or runtime payload directories.",
+    "public_wheel": "Only the single tested-application-wheel/<wheel> named by tested-application-wheel.json may be hashed and, if required, read as an inert nested ZIP. Never import or execute it.",
+    "translation": {
+      "directory": "full-bundle-local-translation",
+      "root": [
+        "local-translation-gate.json",
+        "firewall.json",
+        "acceptance.txt"
+      ],
+      "population_directories": [
+        "existing",
+        "local"
+      ],
+      "population_names": [
+        "source-junit.xml",
+        "installed-junit.xml",
+        "source-origins.json",
+        "installed-origins.json",
+        "source-pytest.txt",
+        "installed-pytest.txt"
+      ],
+      "native": {
+        "basenames": [
+          "native-selected-advanced",
+          "native-document",
+          "native-chapter",
+          "native-batch",
+          "native-local-selected",
+          "native-local-document",
+          "native-local-chapter",
+          "native-local-batch"
+        ],
+        "extensions": [
+          ".json",
+          ".txt"
+        ],
+        "scope": "Only these eight exact native flow receipts and matching text logs; no recursive fixture selection."
+      }
+    },
+    "standard_installer": [
+      "inputs.json",
+      "native.json",
+      "proof.json",
+      "disk-budget.json",
+      "payload-manifest.json",
+      "good-build.json",
+      "negative-build.json"
+    ],
+    "standard_update": [
+      "inputs.json",
+      "disk-budget.json",
+      "original-build.json",
+      "previous-build.json",
+      "original-manifest.json",
+      "previous-manifest.json",
+      "candidate-application-wheel.json",
+      "original-candidate-application-wheel.json",
+      "original-maintenance.json",
+      "native.json",
+      "proof.json",
+      "library.json",
+      "native-restart-crash-after-activation.json",
+      "native-restart-recover.json",
+      "original-install.log",
+      "maintenance-install.log",
+      "native-probe.log",
+      "verdict.log"
+    ],
+    "standard_additional": {
+      "managed_logs": "Only direct standard-update/native-managed-*.log",
+      "application_wheel_receipts": [
+        "standard-update/original-application-wheel/manifest.json",
+        "standard-update/previous-application-wheel/manifest.json"
+      ],
+      "library": "Only standard-update/standard-library-[32 lowercase hexadecimal characters]/{before-test-dependencies.json,installed-library.json,qualification.log,snapshot.log,test-dependencies.log,library-1..6.xml,library-1..6-origins.json,library-1..6.log}."
+    },
+    "reader_interactive": {
+      "directory": "full-bundle-reader-interactive-native",
+      "names": [
+        "native-proof.json",
+        "appearance.stdout.txt",
+        "appearance.stderr.txt",
+        "assistant.stdout.txt",
+        "assistant.stderr.txt"
+      ],
+      "scope": "A separate mandatory full-bundle helper outside the 21 r7-native kinds. No temporary source, PCM or fixture directory is selected."
+    }
+  },
+  "protected_oracles": [
+    {
+      "path": "carr-library/scripts/v3_acceptance_oracles.json",
+      "blob": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+      "source_modules": 252,
+      "source_cases": 5813,
+      "installed_modules": 239,
+      "installed_cases": 5485
+    },
+    {
+      "path": "carr-library/scripts/r7_native_oracles.json",
+      "blob": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+      "families": 21
+    },
+    {
+      "path": "carr-library/scripts/local_translation_oracles.json",
+      "blob": "a954839a9e373b60f13f35b16c57d7160e43750c",
+      "local_cases_per_mode": 38
+    },
+    {
+      "path": "carr-library/scripts/translation_scope_oracles.json",
+      "blob": "2f2f032e4e3b8d3263e1a7bec1e5fe731bfab9d2",
+      "existing_cases_per_mode": 286
+    },
+    {
+      "path": "carr-library/scripts/reader_appearance_acceptance_oracle.json",
+      "blob": "a63625ec4911c9258927fff5dd8f32e7efe9f665",
+      "native_base_checks": 69,
+      "additional_checks_only_when_high_contrast_false": 2
+    },
+    {
+      "path": "carr-library/scripts/assistant_interactive_acceptance_oracle.json",
+      "blob": "bb16b437acbb980999729a5312ae4322dcd69198",
+      "native_checks": 26
+    }
+  ],
+  "required_comparisons": {
+    "source": "v3-additive-source-proof.json must bind the actual head and exactly252 protected module totals summing5813. Each explicit source module must have exactly one passing no-failure/no-skip receipt in integrated-tests.txt. The broad assistant selector overlaps some explicit selections; do not sum all CASE_START events into a unique protected population.",
+    "installed": "Parse full-bundle-workflows.xml as inert XML and compare each of239 protected modules' complete function multiplicities to the committed oracle, with no failures/errors/skips. Cross-check v3-additive-installed-proof.json and its5485 protected sum. Additional retained baseline cases remain separately counted.",
+    "native": "For each mapped receipt, require source/tree, status, exact label Counter, typed fields, metrics, digest/equality inventories, exact module set and installed origins against the unchanged r7 oracle. Read the corresponding retained text log when the native receipt carries an integer check count. Source/probe/fixture SHA256 must bind the exact source files, and runtime SHA must agree with the selected runtime receipt where required.",
+    "loopback": "Both source and sealed-installed numeric-loopback planning populations must be14 with no failure/skip; the installed receipt must retain the exact three-file staging closure, installed process-owner hash and sealed manifest identity.",
+    "translation": "Four raw existing/local × source/installed JUnit Counters must reconcile as286+38=324 per mode. Require all eight native flows and exact current installed/wheel/fixture/harness identity, plus final owned firewall rule removal and prior-profile restoration.",
+    "standard": "Require ordinary installer6, original-maintenance4, managed-update15, installed-library50 and explicit crash/recovery receipts. Match original913322, maintenance3cef and current candidate source/setup/manifest identities. Preserve independently observed partial maintenance success if a later step fails; do not infer successful rollback from an exception path.",
+    "source_runtime": "Match tested commit/tree, source-wheel receipt and actual retained public-wheel hash; compare full runtime pins and sealed bundle/source/SBOM boundaries. Native module hashes may be checked against inert wheel members and exact checked-out source bytes without importing application code.",
+    "final_verdict": "Separate successful inert archive reading from application acceptance. Require the completed main job's actual conclusion and every required receipt; report absent/failed/partial records explicitly.",
+    "reader_interactive": "Require the separate native-proof.json PASS, exact current source/tree and all seven source-file SHA256 bindings. Check its appearance and assistant receipts against their respective complete Counter/status/module inventories: appearance 69 plus exactly two extra controls only when high_contrast is False, assistant 26. Match retained stdout bytes to each stdout_sha256 and parse the same terminal JSON record independently. Require exact Unicode fixture source hashes, typed positive assistant PCM frames/rate and a valid prepared-PCM digest. This is distinct from the 21 r7 kinds; no physical audio, NVDA or whole-book completion claim."
+  },
+  "native_receipts": [
+    {
+      "kind": "save-actions",
+      "path": "full-bundle-native-save-all.json"
+    },
+    {
+      "kind": "live",
+      "path": "full-bundle-r7-live-native.json"
+    },
+    {
+      "kind": "live-playback",
+      "path": "full-bundle-live-playback-native.json"
+    },
+    {
+      "kind": "streamed",
+      "path": "full-bundle-r7-streamed-native.json"
+    },
+    {
+      "kind": "effects",
+      "path": "full-bundle-r7-effects-native.json"
+    },
+    {
+      "kind": "clips",
+      "path": "full-bundle-r7-clips-native.json"
+    },
+    {
+      "kind": "studio-controls",
+      "path": "full-bundle-studio-controls-native.json"
+    },
+    {
+      "kind": "publication",
+      "path": "full-bundle-r7-publication-native.json"
+    },
+    {
+      "kind": "audio-batches",
+      "path": "full-bundle-audio-batches-native.json"
+    },
+    {
+      "kind": "media-overlay",
+      "path": "full-bundle-media-overlay-native.json"
+    },
+    {
+      "kind": "legacy-asr",
+      "path": "full-bundle-legacy-asr-native.json"
+    },
+    {
+      "kind": "playback-queue",
+      "path": "full-bundle-playback-queue-native.json"
+    },
+    {
+      "kind": "workflow-templates",
+      "path": "full-bundle-workflow-templates-native.json"
+    },
+    {
+      "kind": "book-duration",
+      "path": "full-bundle-book-duration-native.json"
+    },
+    {
+      "kind": "provider-recovery",
+      "path": "full-bundle-provider-recovery-native.json"
+    },
+    {
+      "kind": "native-sapi",
+      "path": "full-bundle-native-sapi.json"
+    },
+    {
+      "kind": "local-voice-helper",
+      "path": "full-bundle-local-voice-helper-native.json"
+    },
+    {
+      "kind": "registered-progress",
+      "path": "full-bundle-registered-progress-native.json"
+    },
+    {
+      "kind": "legacy-reader-session",
+      "path": "full-bundle-reader-session-native.json"
+    },
+    {
+      "kind": "assistant-topics",
+      "path": "full-bundle-topic-native.json"
+    },
+    {
+      "kind": "assistant-transcription",
+      "path": "full-bundle-assistant-transcription-native.json"
+    }
+  ],
+  "limits": [
+    "This is a read-only plan and fixed source map, not an executed reader or acceptance result.",
+    "The full workflow remains source/run specific; auxiliary or earlier component successes do not fill missing main receipts.",
+    "No private payload, model, recorded audio, user source or credential is extracted, imported, executed or republished.",
+    "The source/module/function/native populations are not added together into a misleading single total."
+  ],
+  "review": {
+    "status": "BOUNDED_INDEPENDENT_SOURCE_REVIEW",
+    "candidate": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "corrections": [
+      "Added the mandatory separate reader-interactive five-file receipt family and both exact native oracles.",
+      "Made all eight translation native basenames explicit, including native-selected-advanced.",
+      "Added only snapshot.log and test-dependencies.log inside the already bounded standard-library UUID directory for failed-child diagnosis."
+    ],
+    "limits": "No artifact has been read and no acceptance result is inferred. The later native-library-process.log/.json diagnostic successor is not present in frozen f169 and is not required here."
+  },
+  "post_f169_candidate_overlay": {
+    "schema": "carr.final-main-inert-artifact-read-overlay.v1",
+    "status": "WAITING_FOR_NEW_IMMUTABLE_CANDIDATE_AND_COMPLETED_ARTIFACT",
+    "scope": "Add only the newly authored early shell-classification receipt family and retained standard-library child diagnostics. All earlier plan fields are preserved exactly as authored for frozen f169; their WAITING status is historical, not the current outcome.",
+    "frozen_plan": {
+      "commit": "bcd1b565ee14d0dc12222367b782607034217fd2",
+      "blob": "aef2fb791a3eb7c9b6337b265e8d5d2e4f1c0364",
+      "source_commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+      "run_id": 46069523389,
+      "job_id": 140742846265,
+      "observed_job_conclusion": "failure",
+      "failed_step": "Run required integrated source workflows",
+      "later_installed_native_and_standard_qualification": "NOT_RUN",
+      "rule": "Preserve this failed historical source run. Neither the successor plan nor earlier successful component runs fills its missing main acceptance receipts."
+    },
+    "future_candidate": {
+      "source_commit": null,
+      "source_tree": null,
+      "run_id": null,
+      "job_id": null,
+      "artifact_id": null,
+      "artifact_sha256": null,
+      "artifact_bytes": null,
+      "rule": "Bind every identity from the eventual immutable actual run and its completed artifact metadata. No candidate, run, artifact or acceptance verdict is inferred from this document."
+    },
+    "expected_source_bindings": [
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "blob": "3a3c73ca547e6b7b590555657eed0ddc88c6777e",
+        "sha256": "ab6cc3ba7d484ccaa7c88a5b6c522c7e416cbae0ec004f0d79f587c422cdd8aa"
+      },
+      {
+        "path": "carr-library/packaging/probe_standard_update_windows.py",
+        "blob": "3ac3401e48e937c78142e8d296cb408f32df0429",
+        "sha256": "103c1eff3fa1e6d18dedf0dd588c3024eaef4e79f320a1cf9d9a16c9995cb44e"
+      },
+      {
+        "path": "carr-library/scripts/standard_qualification_shell_acceptance.py",
+        "blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+        "sha256": "102db305ff704b743f696aad77df7b4d23ba8328dc310b710dff9b443b083d54",
+        "observed_at_commit": "5d09d9a8677d15587d9965a9f25ce40184e55f34"
+      }
+    ],
+    "source_admission": "Before reading acceptance, verify these exact files in the new checked-out source and bind all unchanged protected oracles, probes, runtime and public-wheel identities from that same immutable source. If any listed file differs, stop and review an explicit source-map successor; do not silently accept a stale plan.",
+    "closed_selection_additions": {
+      "root_exact_names": [
+        "standard-qualification-shell.json",
+        "standard-qualification-shell-absent.log",
+        "standard-qualification-shell-fixed.log",
+        "standard-qualification-shell-poisoned.log"
+      ],
+      "standard_update_exact_names": [
+        "native-library-process.json",
+        "native-library-process.log"
+      ],
+      "cumulative_root_exact_name_count": 151,
+      "scope": "Only these six exact new members, relative to the same optional ci-results/ prefix. No additional private fixture, stage, temporary profile, executable or runtime directory is selected."
+    },
+    "shell_classification": {
+      "schema": "carr-standard-qualification-shell/1",
+      "checks": [
+        "absent-pathext-refuses-before-python",
+        "fixed-exe-runs-absolute-isolated-python-in-pipeline",
+        "ambient-extension-poison-cannot-change-fixed-environment"
+      ],
+      "expected": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "fixed_pathext": ".EXE",
+        "observed_fixed_pathext": ".EXE;.CPL",
+        "host_environment_unchanged": true,
+        "owned_process_family": true,
+        "fixture_cleanup": "PASS",
+        "installed_library_50": "NOT_RUN_BY_THIS_SMOKE",
+        "managed_upgrade_15": "NOT_RUN_BY_THIS_SMOKE"
+      },
+      "observation_modes": [
+        "absent",
+        "fixed",
+        "poisoned"
+      ],
+      "comparison": "Require schema, PASS, exact candidate commit/tree, the complete three-label Counter and the typed values above. Require exactly one observation for each mode, an integer returncode and bounded output_bytes, and verify every retained log's complete byte length and SHA256 against that observation. Each output_file must be its corresponding exact selected basename.",
+      "negative_control": "The absent observation must have a nonzero returncode, python_started false, shell version 5.1.*, observed PATHEXT .CPL, and the retained CantActivateDocumentInPipeline refusal. It is an intentional negative control, not a successful Python execution.",
+      "positive_controls": "Fixed and poisoned must each have returncode zero, python_started true, shell version 5.1.* and observed PATHEXT .EXE;.CPL. Require each retained child record to report PASS/Windows/isolated/no_bytecode and a positive integer pid. Compare its exact child record with the corresponding retained CARR_PIPELINE_CHILD log record and selected Python identity; the two pids need not equal.",
+      "source_binding": "Require the exact four source_sha256 keys emitted by the helper: packaging/probe_standard_update_windows.py, scripts/qualify_standard_library.ps1, scripts/standard_qualification_shell_acceptance.py and installed/security/standard_windows.py. Compare checked-out helper/qualifier bytes, the exact extracted Invoke-Logged function digest, and the installed product module digest against the same tested public wheel/current source. Match Python and fixed-shell identity hashes to the available selected runtime/native evidence; do not manufacture an origin field absent from this receipt.",
+      "retained_vs_unretained": "The selected logs are retained exact owned-process stdout/stderr. The private marker and tee files are not selected or extracted; a tee_sha256 declaration alone is not an independent read of those files.",
+      "limits": "The smoke establishes three actual shell-classification controls only. It does not qualify installed-library50, maintenance4, managed-update15, models, private assets or the full application."
+    },
+    "retained_standard_library_child": {
+      "schema": 1,
+      "json": "standard-update/native-library-process.json",
+      "log": "standard-update/native-library-process.log",
+      "exact_fields": [
+        "schema",
+        "source_commit",
+        "manifest_sha256",
+        "returncode",
+        "output_file",
+        "output_bytes",
+        "output_sha256"
+      ],
+      "maximum_log_bytes": 2097152,
+      "comparison": "Require the exact seven-field receipt, schema1 and typed integer returncode/output_bytes. Match source_commit and manifest_sha256 to the actual candidate B and its sealed payload; require output_file native-library-process.log and verify the complete raw log length and SHA256 before decoding. Successful installed-library acceptance requires returncode zero plus the unchanged independent library.json50-case/firewall/source-generation checks.",
+      "failure_scope": "Retain nonzero child results and their raw log as failure evidence. If the owned process raises before this diagnostic receipt is written, report the missing receipt explicitly. Neither zero child status nor diagnostic availability replaces library50 or proves rollback/restart success."
+    },
+    "preserved_contracts": {
+      "baseline_root_exact_names": 147,
+      "r7_native_families": 21,
+      "separate_reader_interactive_family": "All five files and both exact native oracles remain mandatory.",
+      "protected_source_cases": 5813,
+      "protected_installed_cases": 5485,
+      "planning_loopback_cases": 14,
+      "translation_cases_per_mode": 324,
+      "translation_native_flows": 8,
+      "standard_installer_checks": 6,
+      "original_maintenance_checks": 4,
+      "managed_update_checks": 15,
+      "installed_library_cases": 50,
+      "rule": "All prior exact Counters, source/tree/wheel/runtime/module bindings, expansion/path/duplicate limits and partial/FAIL rules remain. The new shell3 controls are separate and are not added into any protected test or native-family population."
+    },
+    "execution": "NOT_RUN: documentation and source review only. No reader, runtime, workflow or branch is launched by this overlay."
+  }
+}

@@ -20,7 +20,9 @@ def test_word_profile_extends_exact_base_graph_with_one_reviewed_platform_wheel(
     builder = module('build_windows_bundle')
     base = builder.read_lock(ROOT / 'packaging/windows-cp311.lock')
     word = builder.read_lock(ROOT / 'packaging/windows-word-cp311.lock')
-    assert {key: value for key, value in word.items() if key != 'pywin32'} == base
+    # The native-SAPI base now contains the same reviewed bridge as Word.
+    assert len(base) == len(word) == 18
+    assert word == base
     assert word['pywin32'][0] == '312'
     assert set(word['pywin32'][1]) == {'d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a'}
     sbom = json.loads((ROOT / 'packaging/windows-word-sbom.cdx.json').read_text(encoding='utf-8'))

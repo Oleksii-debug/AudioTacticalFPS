@@ -180,7 +180,8 @@ def test_translation_installer_registers_one_semantic_command_and_keeps_override
         GetMenu=lambda index: (research, tools)[index]), Bind=Mock())
     registrations = []
     if manager_installed:
-        def register(spec, item):
+        def register(spec, item, *, fallback_unassigned=False):
+            assert fallback_unassigned is False
             registry.register(spec)
             registry.validate(overrides)
             registrations.append((spec, item))

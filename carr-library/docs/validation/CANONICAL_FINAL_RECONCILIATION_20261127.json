@@ -6124,5 +6124,251 @@
     "Exact component runs qualify only their named source and fixture/runtime. They do not transfer whole-candidate PASS.",
     "Full candidate source, isolated installed,21 native families, ordinary installer, distinct managed update/restart/library and all main workflow gates must bind the immutable final source.",
     "Manual NVDA, real models/acoustics/hardware and distribution/private service authority remain separate full-platform requirements."
-  ]
+  ],
+  "post_code_snapshot_harness_repairs": {
+    "schema": "resonance-reviewed-harness-successor/1",
+    "status": "SOURCE_REVIEWED_INTEGRATED_RUNTIME_PENDING",
+    "baseline": {
+      "commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+      "tree": "9b1de961f054691406da899dc5377266c8e17703"
+    },
+    "binding_scope": "The code_snapshot and every historical source/packaging row remain immutable reviewed history. This additive overlay identifies the later fixture and CI harness bindings in the exact Git tree containing this file; no prior PASS is transferred.",
+    "rows": [
+      {
+        "path": ".github/workflows/carr-audio.yml",
+        "previous_blob": "dbe443ebd50f0b75b4ab8a0bac04d3e38b9edaa8",
+        "current_blob": "87f5f3aeba9c2d8a6445bf5c002ec828193693a3",
+        "component_commit": "e1117945071dcc1df9d1b6f0f0c90576030d7725",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/audio-pr-head-binding-repair-20261127.json",
+        "scope": "Match strict source identity to actual checkout and admit the dedicated immutable audio-ref trigger; all existing audio gates retained.",
+        "historical_bindings": []
+      },
+      {
+        "path": "carr-library/tests/audio/test_windows_process.py",
+        "previous_blob": "351bb15ac939d10838b09d6c0704baa9e4817857",
+        "current_blob": "1feefefff2168cd59d0bad1581b82c218c875601",
+        "component_commit": "e24834989c15f47e1ac6644415299b0a13e2e84e",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/audio-owned-stop-fixture-repair-20261127.json",
+        "scope": "Update the existing two-case native Job double to the retained-handle/accounting protocol; preserve descendant wait and forbid premature close/PID termination.",
+        "historical_bindings": []
+      },
+      {
+        "path": "carr-library/packaging/probe_standard_update_windows.py",
+        "previous_blob": "d966966e0858ef656457ddbd173fbebc41c58fec",
+        "current_blob": "3ac3401e48e937c78142e8d296cb408f32df0429",
+        "component_commit": "0b0ea6f3e499ebf7a0d2aaf00433f18bf40fc79e",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/standard-qualification-executable-classification-repair-20261127.json",
+        "scope": "Retain settled bounded library child output and supply exactly PATHEXT=.EXE to this CI qualification child; no product environment or qualifier change.",
+        "historical_bindings": []
+      },
+      {
+        "path": "carr-library/scripts/standard_qualification_shell_acceptance.py",
+        "previous_blob": null,
+        "current_blob": "ec240ce21e39f261a09bf4403179be894c548e8d",
+        "component_commit": "5d09d9a8677d15587d9965a9f25ce40184e55f34",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/standard-qualification-shell-native-extension-expectation-20261127.json",
+        "scope": "Add three actual owned Windows PowerShell classification checks with exact child/source identities, poisoning refusal and cleanup before PASS; account for its own .CPL initialization.",
+        "historical_bindings": []
+      },
+      {
+        "path": ".github/workflows/carr-standard-native.yml",
+        "previous_blob": "df803b263811311cf8c8714fc1463f8576800912",
+        "current_blob": "8576d395d47795ba06020ae8d30d2d81704a2033",
+        "component_commit": "0b0ea6f3e499ebf7a0d2aaf00433f18bf40fc79e",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/standard-qualification-executable-classification-repair-20261127.json",
+        "scope": "Run the three bounded native classification checks before expensive standard preparation, retaining all existing standard gates.",
+        "historical_bindings": [
+          {
+            "pointer": "/other_absent_paths/0/current_owners/1",
+            "historical_blob": "df803b263811311cf8c8714fc1463f8576800912",
+            "preservation": "The prior reviewed baseline row remains unchanged; this overlay supplies the successor binding."
+          },
+          {
+            "pointer": "/other_absent_paths/23/current_owners/2",
+            "historical_blob": "df803b263811311cf8c8714fc1463f8576800912",
+            "preservation": "The prior reviewed baseline row remains unchanged; this overlay supplies the successor binding."
+          }
+        ]
+      },
+      {
+        "path": ".github/workflows/carr-windows.yml",
+        "previous_blob": "48ce451b12048babec276abd8f60cd9698b3c954",
+        "current_blob": "3a3c73ca547e6b7b590555657eed0ddc88c6777e",
+        "component_commit": null,
+        "binding": "Root integration adds only the independently reviewed early native shell step to the exact baseline workflow.",
+        "evidence": "docs/validation/INTEGRATED_SOURCE_F169_FAILURE_20261127.json",
+        "scope": "Run the same three native classification checks with actual HEAD bound to the existing expected PR-head-or-event identity before OCR; all prior workflow bytes preserved.",
+        "historical_bindings": [
+          {
+            "pointer": "/other_absent_paths/0/current_owners/0",
+            "historical_blob": "9290e4b60cbe014822aab80235efc11f5dcbad80",
+            "preservation": "The prior reviewed baseline row remains unchanged; this overlay supplies the successor binding."
+          },
+          {
+            "pointer": "/other_absent_paths/23/current_owners/3",
+            "historical_blob": "9290e4b60cbe014822aab80235efc11f5dcbad80",
+            "preservation": "The prior reviewed baseline row remains unchanged; this overlay supplies the successor binding."
+          }
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_translation_dialog.py",
+        "previous_blob": "11e65f4f9ee6ad3cf18b1aba2bebe68b15764252",
+        "current_blob": "b500a8891738435b08beb5e0cb1b1d71f4f92ed0",
+        "component_commit": "09c2583593df82ed05e66f4632afb0e35af98e9b",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/main-menu-registration-fixture-repair-20261127.json",
+        "scope": "Reconcile the existing manager double with the explicit keyword-only fallback_unassigned=False contract; assert strict False and preserve every original test identity and assertion.",
+        "historical_bindings": []
+      },
+      {
+        "path": "carr-library/tests/ui/test_transcription_v43_dialog.py",
+        "previous_blob": "581598ca55aad537f2476e8027302673887187e1",
+        "current_blob": "2ace4cb0a267d63c1ae0e5a192757df0a7b3906c",
+        "component_commit": "09c2583593df82ed05e66f4632afb0e35af98e9b",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/main-menu-registration-fixture-repair-20261127.json",
+        "scope": "Reconcile the existing manager double with the explicit keyword-only fallback_unassigned=False contract; assert strict False and preserve every original test identity and assertion.",
+        "historical_bindings": [
+          {
+            "pointer": "/other_absent_paths/22/tests/0",
+            "historical_blob": "581598ca55aad537f2476e8027302673887187e1",
+            "preservation": "The prior reviewed baseline row remains unchanged; this overlay supplies the successor binding."
+          }
+        ]
+      },
+      {
+        "path": "carr-library/tests/ui/test_about_dialog.py",
+        "previous_blob": "b0c960c2310ccf725ad3bc946d5fb555d9a2ead6",
+        "current_blob": "6c3c061abb0d18eab8a4a28c1219ac3f906d7ea8",
+        "component_commit": "09c2583593df82ed05e66f4632afb0e35af98e9b",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/main-menu-registration-fixture-repair-20261127.json",
+        "scope": "Reconcile the existing manager double with the explicit keyword-only fallback_unassigned=False contract; assert strict False and preserve every original test identity and assertion.",
+        "historical_bindings": []
+      },
+      {
+        "path": "carr-library/tests/ui/test_translation_scopes.py",
+        "previous_blob": "20acb784e92d40da9f6a88702632c1d0521e2b3a",
+        "current_blob": "dd0289bae13dafcc22ae9ac204b735dbe445013a",
+        "component_commit": "09c2583593df82ed05e66f4632afb0e35af98e9b",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/main-menu-registration-fixture-repair-20261127.json",
+        "scope": "Reconcile the existing manager double with the explicit keyword-only fallback_unassigned=False contract; assert strict False and preserve every original test identity and assertion.",
+        "historical_bindings": []
+      },
+      {
+        "path": "carr-library/tests/packaging/test_offline_runtime_policy.py",
+        "previous_blob": "4d332a1c88c3698228e8059d39cbc960eacc294d",
+        "current_blob": "d9c5dcead80ffcef6ef7a439b743889be01e9cd6",
+        "component_commit": "cd2e6b0aeeeebdb9af3a7b05784f414ec635a480",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/offline-policy-fixture-process-owner-repair-20261127.json",
+        "scope": "Copy the exact standalone process owner into the isolated copied-runner fixture and verify its bytes after the actual child; retain all offline-policy and source-origin assertions.",
+        "historical_bindings": []
+      },
+      {
+        "path": "carr-library/tests/packaging/test_word_profile.py",
+        "previous_blob": "f56d9f71c3fc8eeb3b4f620ac94545f5a024679a",
+        "current_blob": "4d672ef6f40b4c1fd0e61a321190589858fa43bb",
+        "component_commit": "528c9caf9d129caad8ffbfd35f8c9c5707f25e19",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/packaging-profile-expectation-repair-20261127.json",
+        "scope": "Assert the complete unchanged Word graph equals the complete unchanged base graph, which now already includes the exact shared pywin32 pin; retain explicit version/hash and SBOM checks.",
+        "historical_bindings": []
+      },
+      {
+        "path": "carr-library/tests/packaging/test_integrated_profile.py",
+        "previous_blob": "5ea602a0ff8622f5fd44549fc8b79ed767f07d15",
+        "current_blob": "afa289d51afce01b55b39dba4bb95fa146076636",
+        "component_commit": "528c9caf9d129caad8ffbfd35f8c9c5707f25e19",
+        "binding": "The exact component bytes are copied into the immutable tree containing this overlay.",
+        "evidence": "docs/evidence/packaging-profile-expectation-repair-20261127.json",
+        "scope": "Reconcile the exact semantic graph cardinality to its existing 54 locked packages while retaining complete semantic-to-integrated version/hash preservation and exact TUF additions.",
+        "historical_bindings": []
+      }
+    ],
+    "product_sources": {
+      "prefix": "carr-library/src/carr_library/",
+      "unchanged_from_baseline": true,
+      "blob_count": 425
+    },
+    "preserved_automatic_populations": {
+      "source_selector_strings": 451,
+      "installed_content_selectors": 315,
+      "installed_explicit_arguments": 14,
+      "protected_source_cases": 5813,
+      "protected_installed_cases": 5485,
+      "focused_cases_per_mode": 911,
+      "studio_cases_per_mode": 211,
+      "native_families": 21,
+      "standard_source_cases": 81,
+      "standard_installed_cases": 81,
+      "ordinary_installation_checks": 6,
+      "original_maintenance_checks": 4,
+      "managed_update_checks": 15,
+      "installed_standard_library_cases": 50,
+      "early_native_shell_checks_separate": 3
+    },
+    "preserved_gate_bindings": {
+      "carr-library/scripts/v3_acceptance_oracles.json": "7287a4c1a8d74b6e197fa26c05165e06a909174c",
+      "carr-library/scripts/r7_native_oracles.json": "c5c734d4d2ed9bda27da443433485f9873a4af76",
+      "carr-library/scripts/r7_native_gate.py": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+      "carr-library/scripts/ci_check.py": "5937231e2f3a00a163b0e10b9707df27f279b134",
+      "carr-library/scripts/ci_watchdog.py": "10482b73dca31ab90796f4c2c2dcc105c20c9969",
+      "carr-library/scripts/qualify_standard_library.py": "47e868ebfd69cab27a395cda436a4eece1c60643",
+      "carr-library/scripts/qualify_standard_library.ps1": "1a4417a3c40e50033d5eb40bb3ed6db1bac3d962",
+      "carr-library/scripts/ci_standard_update.ps1": "0c949fa71eb4e3ebc9e542a42f7f4334347f9e5b"
+    },
+    "changed_existing_test_modules": {
+      "carr-library/tests/audio/test_windows_process.py": 15,
+      "carr-library/tests/ui/test_translation_dialog.py": 16,
+      "carr-library/tests/ui/test_transcription_v43_dialog.py": 42,
+      "carr-library/tests/ui/test_about_dialog.py": 14,
+      "carr-library/tests/ui/test_translation_scopes.py": 12,
+      "carr-library/tests/packaging/test_offline_runtime_policy.py": 3,
+      "carr-library/tests/packaging/test_word_profile.py": 4,
+      "carr-library/tests/packaging/test_integrated_profile.py": 3
+    },
+    "unchanged_case_sum": 109,
+    "protected_changed_cases": {
+      "source": 91,
+      "installed": 84
+    },
+    "retained_observed_results": [
+      {
+        "source": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+        "run_id": 46069523389,
+        "status": "FAIL",
+        "suites": 451,
+        "passed_suites": 443,
+        "failed_suites": 8,
+        "passed_executions": 11446,
+        "failed_executions": 9,
+        "skipped": 0,
+        "evidence": "docs/validation/INTEGRATED_SOURCE_F169_FAILURE_20261127.json"
+      },
+      {
+        "source": "e24834989c15f47e1ac6644415299b0a13e2e84e",
+        "run_id": 46074050421,
+        "status": "PASS_WITH_SEVEN_EXPLICIT_SKIPS",
+        "passed": 2259,
+        "failed": 0,
+        "skipped": 7,
+        "evidence": "docs/evidence/audio-r34-observed-results-20261127.json"
+      },
+      {
+        "source": "30673a5ee70a7d241c842a6577c5480260bfb8bf",
+        "run_id": 46071021445,
+        "status": "FAIL_BEFORE_FIRST_INSTALLED_LIBRARY_PYTHON_SNAPSHOT",
+        "evidence": "docs/evidence/standard-qualification-child-failure-independent-read-20261127.json"
+      }
+    ],
+    "qualification": "The new composition must execute its own required source, isolated installed, native and standard gates. Component successes and reviewed assertions do not qualify an unexecuted composition."
+  }
 }

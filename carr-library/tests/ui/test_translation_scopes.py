@@ -85,7 +85,8 @@ def test_scope_menu_is_additive_idempotent_and_preserves_existing_shortcuts(monk
         GetMenuLabel=lambda index: '&Tools', GetMenu=lambda index: menu), Bind=Mock(), report=Mock())
     registrations = []
     if manager_installed:
-        def register(spec, item):
+        def register(spec, item, *, fallback_unassigned=False):
+            assert fallback_unassigned is False
             registry.register(spec)
             registry.validate(overrides)
             registrations.append((spec, item))

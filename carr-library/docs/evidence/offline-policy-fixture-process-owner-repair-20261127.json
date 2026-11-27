@@ -1,0 +1,76 @@
+{
+  "schema": "carr.offline-policy-ci-fixture-closure-repair.v1",
+  "status": "OBSERVED_MAIN_FIXTURE_FAILURE_SUCCESSOR_NOT_RUN",
+  "baseline": {
+    "source": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "tree": "9b1de961f054691406da899dc5377266c8e17703",
+    "run_id": 46069523389,
+    "job_id": 140742846265,
+    "failed_step": "Run required integrated source workflows",
+    "decoded_log_sha256": "f8f1267f32533fd84e79657341db59d76b33132f5c4111abdf77765a543c3286",
+    "failed_step_number": 19
+  },
+  "observed": {
+    "module": "tests/packaging/test_offline_runtime_policy.py",
+    "case": "test_ci_child_opts_out_before_fake_runtime_import",
+    "module_passed": 2,
+    "module_failed": 1,
+    "module_skipped": 0,
+    "exact_boundary": "ci_check._windows_launcher loads ROOT/src/carr_library/audio/windows_process.py before launching the pytest child.",
+    "failure": "FileNotFoundError: the copied fixture omitted src/carr_library/audio/windows_process.py.",
+    "child_summary": "Required suites complete: 1; passed=0; failed=1",
+    "scope": "The copied runner failed before the fake ORT child could run; the two other fresh-interpreter offline-policy cases passed."
+  },
+  "artifact": {
+    "id": 15235016953,
+    "bytes": 336662,
+    "sha256": "81c3dfb38b9f4a3b427ec3dda9ce3eb3d557a6be866e7092351ae69ef58c9cc7",
+    "inspection": "The complete decoded job log was read. Artifact metadata is retained separately; no archive execution or independent ZIP inspection is claimed."
+  },
+  "closure": {
+    "test_before_blob": "4d332a1c88c3698228e8059d39cbc960eacc294d",
+    "ci_runner": {
+      "path": "scripts/ci_check.py",
+      "blob": "5937231e2f3a00a163b0e10b9707df27f279b134"
+    },
+    "watchdog": {
+      "path": "scripts/ci_watchdog.py",
+      "blob": "10482b73dca31ab90796f4c2c2dcc105c20c9969"
+    },
+    "added_owner": {
+      "path": "src/carr_library/audio/windows_process.py",
+      "blob": "2dd7caa0300fe9a9c28583cdc0cdd25867c45c92",
+      "sha256": "b9636fe98e4a8a594c8a6680d1ac507ef857869cd18964b24cee573ac0447272",
+      "imports": "Python standard library only; no sibling or application import closure is required."
+    },
+    "change": "Copy the current owner bytes into its existing expected relative path in the private fixture. Verify those exact bytes remain unchanged after actual child completion.",
+    "preserved": [
+      "The outer fresh interpreter still uses -I -S and the inherited explicit telemetry opt-ins.",
+      "The fake ORT module still refuses import before all five opt-outs and requires its legacy disable API.",
+      "The child still proves its exact fake-runtime origin and a real passing JUnit case.",
+      "Current source-bound Windows Job Object launch and complete-family cleanup remain active; no owner bypass, mock owner, PID killer or environment authority was added.",
+      "All production files and runner/watchdog code remain byte-exact."
+    ]
+  },
+  "population": {
+    "source_only": true,
+    "module_cases": 3,
+    "changed_existing_cases": 1,
+    "added_cases": 0,
+    "removed_cases": 0,
+    "function_counter": {
+      "test_package_overrides_optins_before_native_import_and_calls_legacy_api": 1,
+      "test_unprotected_preloaded_runtime_requires_restart": 1,
+      "test_ci_child_opts_out_before_fake_runtime_import": 1
+    },
+    "current_main_source_selected": true,
+    "current_main_installed_selected": false
+  },
+  "validation": {
+    "source_readback": "Exact GitData readback accompanies delivery; no executor or runtime claim.",
+    "runtime": "NOT_RUN",
+    "next": "The repaired current fixture must execute in a fresh Windows source cohort. The old f169 failure remains preserved.",
+    "no_product_or_workflow_or_oracle_changes": true,
+    "no_ref_changes": true
+  }
+}

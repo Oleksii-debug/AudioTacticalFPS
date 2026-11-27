@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-audio.yml
   push:
-    branches: [carr-library, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*']
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*', 'carr/audio-native-*']
     paths:
       - carr-library/**
       - .github/workflows/carr-audio.yml
@@ -36,6 +36,7 @@ jobs:
       TRANSFORMERS_OFFLINE: '1'
       DO_NOT_TRACK: '1'
       CARR_LONG_AUDIO_TESTS: '1'
+      CARR_EXPECTED_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
