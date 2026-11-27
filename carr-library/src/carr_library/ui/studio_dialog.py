@@ -916,6 +916,7 @@ def install_studio_actions(frame):
     from .engine_settings import show_engine_settings
     from .studio_clips import show_clip_editor
     from .studio_pronunciation import show_studio_pronunciations
+    from .audio_metadata_dialog import show_audio_metadata
     from .publishing_dialog import show_publishing
     from .command_registry import CommandSpec
     from .keyboard_settings import register_menu_command
@@ -928,6 +929,7 @@ def install_studio_actions(frame):
             ('audio.publish_daisy', 'Publish DAISY 2.02...', '', lambda e: show_publishing(frame, initial_format='daisy-2.02')),
             ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
             ('audio.convert_batch', 'Convert a batch of audio files...', '', lambda e: show_audio_conversion(frame, batch=True)),
+            ('audio.metadata', 'Review audio metadata and cover...', '', lambda e: show_audio_metadata(frame)),
             ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)

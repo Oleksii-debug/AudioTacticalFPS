@@ -523,6 +523,8 @@ def _ignored(name):
     if backup_transcription.ignored(name):
         return True
     path = PurePosixPath(name)
+    if path.parent.as_posix() == 'state/audio-metadata':
+        return path.name == '.choices.lock' or path.name.startswith('.pending-')
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
     if name in ('state/studio/.input-review.lock',
