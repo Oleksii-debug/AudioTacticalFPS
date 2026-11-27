@@ -774,3 +774,77 @@ def test_native_confirmation_failed_cleanup_retains_handle_for_retry(confirmatio
     operation.close.side_effect = None
     confirmation.close()
     assert confirmation.pending is None
+
+
+def test_native_confirmation_waits_for_answer_controls_to_become_ready(confirmation_probe, monkeypatch):
+    controls = {201: dict(kind='Button', text='Yes', owner=0,
+                         visible=False, enabled=True, id=6)}
+    confirmation, _, constructor = _native_confirmation_tree(
+        confirmation_probe, monkeypatch, controls=controls)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is False
+    confirmation.api.PostMessageW.assert_not_called()
+    constructor.assert_not_called()
+    confirmation.api.IsWindowVisible.side_effect = lambda window: True
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=True) is True
+    confirmation.api.PostMessageW.assert_called_once_with(201, 0x00F5, 0, 0)
+
+
+def test_native_confirmation_cleanup_drains_current_title_without_retargeting(confirmation_probe, monkeypatch):
+    confirmation, operation, constructor = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    titles = ('Other confirmation', 'Synthetic confirmation')
+    assert confirmation.dismiss(99, titles) is True
+    assert constructor.call_args.args[0]['answer'] == 'No'
+    assert confirmation.dismiss(99, titles) is True
+    constructor.assert_called_once()
+    operation.poll.return_value = True
+    assert confirmation.dismiss(99, titles) is True
+    assert confirmation.pending is None
+
+
+def test_native_confirmation_cleanup_rejects_another_owner(confirmation_probe, monkeypatch):
+    confirmation, operation, _ = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    assert confirmation.reply(99, 'Synthetic confirmation', accept=False) is False
+    with pytest.raises(AssertionError, match='cannot retarget'):
+        confirmation.dismiss(98, ('Synthetic confirmation',))
+    operation.poll.assert_not_called()
+    operation.close.assert_not_called()
+
+
+def test_native_confirmation_helper_expires_without_wx_polling(confirmation_probe, monkeypatch):
+    import subprocess
+    process = Mock()
+    process.poll.return_value = None
+    monkeypatch.setattr(subprocess, 'Popen', Mock(return_value=process))
+    monkeypatch.setenv('SystemRoot', str(Path.cwd()))
+    timer = Mock()
+    timer_factory = Mock(return_value=timer)
+    monkeypatch.setattr(confirmation_probe, 'Timer', timer_factory)
+    request = dict(hwnd=101, owner=99, pid=301, title='Synthetic confirmation',
+                   yes='Yes', no='No', answer='Yes')
+    operation = confirmation_probe.AccessibleAnswer(request)
+    interval, expire = timer_factory.call_args.args
+    assert interval == 8 and timer.daemon is True
+    timer.start.assert_called_once()
+    process.kill.assert_not_called()
+    expire()  # The UI thread never calls operation.poll().
+    process.kill.assert_called_once()
+    process.poll.return_value = 1
+    operation.close()
+    timer.cancel.assert_called_once()
+    process.communicate.assert_called_once_with(timeout=1)
+
+
+def test_native_confirmation_helper_thread_failure_closes_launched_process(confirmation_probe, monkeypatch):
+    import subprocess
+    process = Mock()
+    process.poll.return_value = None
+    monkeypatch.setattr(subprocess, 'Popen', Mock(return_value=process))
+    monkeypatch.setenv('SystemRoot', str(Path.cwd()))
+    timer = Mock()
+    timer.start.side_effect = RuntimeError('Synthetic timer startup failure')
+    monkeypatch.setattr(confirmation_probe, 'Timer', Mock(return_value=timer))
+    with pytest.raises(RuntimeError, match='timer startup failure'):
+        confirmation_probe.AccessibleAnswer(dict(hwnd=101))
+    process.kill.assert_called_once()
+    process.communicate.assert_called_once_with(timeout=1)
+    timer.cancel.assert_called_once()
