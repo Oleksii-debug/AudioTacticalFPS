@@ -1,0 +1,134 @@
+name: CARR legacy import receipt component
+
+on:
+  push:
+    branches: [carr/import-legacy-raster-review-2aa-20261127]
+    paths:
+      - 'carr-library/tests/e2e/test_import_legacy_config.py'
+      - 'carr-library/tests/e2e/test_import_commit_supervisor.py'
+      - '.github/workflows/carr-import-legacy-component.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-import-legacy-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  installed-legacy-receipts:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      CARR_TEST_COMMIT: ${{ github.sha }}
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the current package and the existing native OCR runtime
+        run: |
+          set -euo pipefail
+          mkdir -p legacy-import-results
+          test "$(git rev-parse HEAD)" = "$CARR_TEST_COMMIT"
+          git rev-parse HEAD | tee legacy-import-results/tested-commit.txt
+          git rev-parse 'HEAD^{tree}' | tee legacy-import-results/tested-tree.txt
+          python -m pip install '.[test]'
+          python -m pip check
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+      - name: Stage only the two immutable suites outside the checkout
+        run: |
+          set -euo pipefail
+          python -I - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          import sysconfig
+          import carr_library.application as application
+          from carr_library.extract import page_ocr, raster_pages
+          from carr_library.ingest import worker, pipeline
+
+          source = Path.cwd()
+          suite_root = Path(os.environ['RUNNER_TEMP']) / 'carr-legacy-import-installed'
+          suite_root.mkdir()
+          (suite_root / 'scripts').mkdir()
+          (suite_root / 'tests' / 'e2e').mkdir(parents=True)
+          names = ('test_import_legacy_config.py', 'test_import_commit_supervisor.py')
+          for name in names:
+              shutil.copyfile(source / 'tests' / 'e2e' / name, suite_root / 'tests' / 'e2e' / name)
+          shutil.copyfile(source / 'scripts' / 'ci_check.py', suite_root / 'scripts' / 'ci_check.py')
+          (suite_root / 'pytest.ini').write_text('[pytest]\naddopts =\n', encoding='utf-8')
+
+          installed = Path(sysconfig.get_path('purelib')).resolve()
+          modules = (application, page_ocr, raster_pages, worker, pipeline)
+          proof = {}
+          for module in modules:
+              path = Path(module.__file__).resolve()
+              assert path.is_relative_to(installed), (module.__name__, str(path))
+              relative = path.relative_to(installed)
+              original = source / 'src' / relative
+              actual, expected = path.read_bytes(), original.read_bytes()
+              assert actual == expected, module.__name__
+              proof[module.__name__] = {'path': str(path), 'sha256': hashlib.sha256(actual).hexdigest()}
+          (source / 'legacy-import-results' / 'installed-source.json').write_text(
+              json.dumps(proof, indent=2) + '\n', encoding='utf-8')
+          # Run this assertion in each actual pytest child as well. No checkout
+          # configuration or source package is copied into the installed stage.
+          checks = [
+              'from pathlib import Path',
+              'import sysconfig',
+              'def pytest_sessionstart(session):',
+              '    from carr_library import application',
+              '    from carr_library.ingest import worker',
+              "    root = Path(sysconfig.get_path('purelib')).resolve()",
+              '    for module in (application, worker):',
+              '        assert Path(module.__file__).resolve().is_relative_to(root)',
+          ]
+          (suite_root / 'conftest.py').write_text('\n'.join(checks) + '\n', encoding='utf-8')
+          with Path(os.environ['GITHUB_ENV']).open('a', encoding='utf-8') as stream:
+              stream.write('CARR_LEGACY_SUITE_ROOT=' + str(suite_root) + '\n')
+          print(json.dumps(proof, indent=2))
+          PY
+      - name: Require all 24 legacy and 26 supervisor cases with unchanged strict CI policy
+        run: |
+          set -euo pipefail
+          python -I "$CARR_LEGACY_SUITE_ROOT/scripts/ci_check.py" --jobs 1 \
+            tests/e2e/test_import_legacy_config.py \
+            tests/e2e/test_import_commit_supervisor.py 2>&1 | tee legacy-import-results/required-suites.txt
+          python -I - <<'PY'
+          from pathlib import Path
+          import re
+          log = Path('legacy-import-results/required-suites.txt').read_text(encoding='utf-8')
+          expected = {'tests/e2e/test_import_legacy_config.py': 24,
+                      'tests/e2e/test_import_commit_supervisor.py': 26}
+          rows = re.findall(r'PASS: (tests/\S+): junit_passed=(\d+), failed=0, skipped=0, pytest_exit=0', log)
+          assert dict((name, int(count)) for name, count in rows) == expected, rows
+          assert 'Required suites complete: 2; passed=2; failed=0' in log
+          print('INSTALLED LEGACY RECEIPTS: 50 PASS / 0 FAIL / 0 SKIP')
+          PY
+      - name: Preserve exact installed component evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-import-legacy-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/legacy-import-results/
+          retention-days: 7
