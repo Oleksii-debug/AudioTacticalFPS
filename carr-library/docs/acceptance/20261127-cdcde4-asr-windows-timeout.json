@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "tested_commit": "cdcde47065bb3909bd93ca2a26985f5c0305449b",
+  "tested_tree": "1f7b7073c812fc8e17f638fd0380da95f8d73f11",
+  "status": "INCOMPLETE_TIMEOUT",
+  "run_id": 46036192809,
+  "job_id": 140634476678,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46036192809/job/140634476678",
+  "evidence_source": "Returned Windows ASR job log; both strict suite timeouts and subsequent cancellation are retained.",
+  "incomplete_suites": [
+    {
+      "suite": "tests/transcription/test_supplied_worker_bridge.py",
+      "timeout_seconds": 600
+    },
+    {
+      "suite": "tests/transcription/test_v5_worker_profile.py",
+      "timeout_seconds": 600
+    }
+  ],
+  "completed_suites": {
+    "suites": [
+      {
+        "suite": "tests/transcription/test_profile_controls.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/transcription/test_runtime_review.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/storage/test_transcription_review_restore.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "totals": {
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "job_timeout_minutes": 12,
+  "job_conclusion": "cancelled",
+  "transcription_backup_windows": "NOT_RUN",
+  "reviewed_correction": {
+    "commit": "e7fa3c2fa0cbd7ef28cd5b27bcbf702738a0f148",
+    "scope": "Use an actual no-pip, no-system-site selected virtual environment for the standard-library synthetic worker. Retain selected lexical interpreter, all original assertions and suite/job deadlines; keep the explicit legacy resolved-host-runtime control.",
+    "execution": "NOT_RUN"
+  }
+}

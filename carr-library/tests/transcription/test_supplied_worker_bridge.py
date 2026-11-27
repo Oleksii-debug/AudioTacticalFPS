@@ -141,10 +141,22 @@ def prepared(tmp_path):
     models.mkdir()
     original = tmp_path / 'Лекція.wav'
     original.write_bytes(b'Synthetic media bytes; deliberately no acoustic inference.')
+    # The protocol peer imports only the standard library. Select its own real
+    # interpreter without inheriting the application's installed packages;
+    # every production runtime/model inspection and child check still runs.
+    environment = tmp_path / 'selected-python'
+    venv.EnvBuilder(with_pip=False, system_site_packages=False,
+                    symlinks=os.name != 'nt').create(environment)
+    python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
     def configure(mode='complete'):
         worker = tmp_path / ('worker-' + mode + '.py')
         worker.write_text(SYNTHETIC_WORKER.replace('__MODE__', repr(mode)), encoding='utf-8')
-        service.configure(Path(sys.executable).resolve(), worker, models)
+        configured = service.configure(python, worker, models)
+        inventory = configured['runtime_inventory']
+        assert inventory['python_executable'] == str(python.absolute())
+        assert inventory['python_configuration']
+        assert all(row == {'present': False}
+                   for row in inventory['runtime_distributions'].values())
         return worker
     configure()
     return app, workspace, service, original, configure
@@ -583,6 +595,10 @@ def test_selected_runtime_changes_are_refused_before_child_launch(
 
 def test_legacy_resolved_interpreter_configuration_still_runs(prepared):
     _, _, service, original, _ = prepared
+    # This control deliberately retains the original resolved host-runtime
+    # selection, including its actual installed distribution inventory.
+    selected = service.configuration()
+    service.configure(Path(sys.executable).resolve(), selected['worker'], selected['models_dir'])
     config = read_json(service.root / 'engine.json')
     for key in ('python_binding', 'runtime_inventory', 'models_inventory',
                 'fingerprint', 'profile_id', 'execution_review_required'):

@@ -95,6 +95,9 @@ def altered_timeline(service, state, mutate):
 
 def test_actual_ffmpeg_completed_job_to_verified_epub(source_job, tmp_path):
     service, state = source_job
+    owner = read_json(Path(state['destination']) / 'production-owner.json')
+    assert owner == {'job': state['id'], 'fingerprint': state['fingerprint'],
+                     'operation_sha256': state['operation_sha256']}
     output = tmp_path / 'synchronized.epub'
     original = {row['path']: sha256(Path(row['path']).read_bytes()).hexdigest() for row in state['artifacts']}
     messages = []
@@ -367,3 +370,100 @@ def test_invalid_publication_metadata_does_not_create_output(source_job, tmp_pat
     with pytest.raises(ValueError):
         PublicationService(service).export_epub(state['id'], tmp_path / 'invalid.epub', language=language, creator=creator)
     assert not (tmp_path / 'invalid.epub').exists()
+
+
+def test_actual_legacy_completed_owner_remains_publishable_without_new_option_evidence(source_job, tmp_path):
+    service, state = source_job
+    marker = Path(state['destination']) / 'production-owner.json'
+    owner = read_json(marker)
+    assert owner['operation_sha256'] == state.pop('operation_sha256')
+    owner.pop('operation_sha256')
+    atomic_json(marker, owner, replace=True)
+    checkpoint(service, state)
+
+    output = tmp_path / 'legacy.epub'
+    publisher = PublicationService(service)
+    receipt = publisher.export_epub(state['id'], output)
+
+    assert receipt['status'] == 'complete' and publisher.verify(receipt['id']) == receipt
+    assert inspect_epub(output)['original_script'] == SCRIPT
+    assert service.get(state['id']) == state
+    assert read_json(marker) == {'job': state['id'], 'fingerprint': state['fingerprint']}
+    assert 'operation_sha256' not in service.get(state['id'])
+
+
+@pytest.mark.parametrize('change', ['missing-operation', 'changed-operation', 'job', 'fingerprint', 'extra'])
+def test_modern_publication_requires_exact_owner_before_any_source_artifact_read(
+        source_job, tmp_path, monkeypatch, change):
+    service, state = source_job
+    marker = Path(state['destination']) / 'production-owner.json'
+    owner = read_json(marker)
+    assert owner['operation_sha256'] == state['operation_sha256']
+    if change == 'missing-operation':
+        owner.pop('operation_sha256')
+    elif change == 'changed-operation':
+        owner['operation_sha256'] = '0' * 64 if owner['operation_sha256'] != '0' * 64 else '1' * 64
+    elif change == 'job':
+        owner['job'] = '0' * 32 if state['id'] != '0' * 32 else '1' * 32
+    elif change == 'fingerprint':
+        owner['fingerprint'] = '0' * 64 if state['fingerprint'] != '0' * 64 else '1' * 64
+    else:
+        owner['unreviewed'] = True
+    atomic_json(marker, owner, replace=True)
+    marker_bytes = marker.read_bytes()
+    publisher = PublicationService(service)
+    output = tmp_path / 'refused-owner.epub'
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Unmatched production ownership must be refused before reading any source artifact.')
+
+    monkeypatch.setattr(publishing, '_read', forbidden)
+    with pytest.raises(ValueError, match='belongs to another production'):
+        publisher.export_epub(state['id'], output)
+
+    assert not output.exists() and not publisher.receipts.exists()
+    assert not list(tmp_path.glob('.pending-epub-*'))
+    assert marker.read_bytes() == marker_bytes and service.get(state['id']) == state
+
+
+@pytest.mark.parametrize('option,value', [('format', 'mp3'), ('stems', True)])
+def test_publication_rechecks_saved_operation_options_before_source_read(
+        source_job, tmp_path, monkeypatch, option, value):
+    service, state = source_job
+    marker = Path(state['destination']) / 'production-owner.json'
+    original_owner = marker.read_bytes()
+    assert state[option] != value
+    state[option] = value
+    checkpoint(service, state)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Changed saved operation options must be refused before reading source artifacts.')
+
+    monkeypatch.setattr(publishing, '_read', forbidden)
+    output = tmp_path / 'refused-options.epub'
+    with pytest.raises(ValueError, match='operation options changed'):
+        PublicationService(service).export_epub(state['id'], output)
+
+    assert not output.exists() and marker.read_bytes() == original_owner
+    assert not list(tmp_path.glob('.pending-epub-*'))
+
+
+def test_operation_owner_change_after_real_archive_creation_prevents_publication(source_job, tmp_path):
+    service, state = source_job
+    marker = Path(state['destination']) / 'production-owner.json'
+    assert read_json(marker)['operation_sha256'] == state['operation_sha256']
+    changed = []
+    def mutate(message):
+        if message.startswith('Rechecking source receipts'):
+            owner = read_json(marker)
+            owner['operation_sha256'] = '0' * 64 if owner['operation_sha256'] != '0' * 64 else '1' * 64
+            atomic_json(marker, owner, replace=True)
+            changed.append(True)
+
+    output = tmp_path / 'late-owner.epub'
+    with pytest.raises(ValueError, match='belongs to another production'):
+        PublicationService(service).export_epub(state['id'], output, progress=mutate)
+
+    assert changed == [True] and not output.exists()
+    assert not list(tmp_path.glob('.pending-epub-*'))
+    assert service.get(state['id']) == state

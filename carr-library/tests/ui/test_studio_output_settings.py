@@ -1,4 +1,5 @@
 import ast
+import json
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
@@ -286,7 +287,10 @@ def test_studio_non_boolean_saved_stems_are_not_adopted(invalid):
 def test_studio_output_controls_follow_the_actual_busy_owner():
     from carr_library.ui import studio_dialog
     source = Path(studio_dialog.__file__).read_text(encoding='utf-8')
-    functions = [node for node in ast.walk(ast.parse(source))
+    owners = [node for node in ast.parse(source).body
+              if isinstance(node, ast.FunctionDef) and node.name == 'show_studio']
+    assert len(owners) == 1
+    functions = [node for node in owners[0].body
                  if isinstance(node, ast.FunctionDef) and node.name == 'controls']
     assert len(functions) == 1
     class Control(StudioOptionControl):
@@ -383,7 +387,8 @@ def test_studio_changed_restored_options_use_real_pending_input_admission(tmp_pa
             assert len(rows) == 2, f.reports
             fresh = next(row for row in rows if row['id'] != old_job)
             assert (fresh['format'], fresh['stems']) == ('flac', False)
-            assert fresh['project'] == project.to_dict() and fresh['status'] == 'pending'
+            assert fresh['project'] == json.loads(json.dumps(project.to_dict()))
+            assert fresh['status'] == 'pending'
             assert receipt.read_bytes() == original_receipt
             assert service.get(old_job)['recovery']['requires_output_directory'] is True
             assert not f.saves

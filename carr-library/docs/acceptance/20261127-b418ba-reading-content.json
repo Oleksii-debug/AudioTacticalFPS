@@ -1,0 +1,194 @@
+{
+  "schema": 1,
+  "tested_commit": "b418baf6cd5c4a00cdd9c7337efba053bd3b870b",
+  "tested_tree": "fdec0918f0bb64127435fe8002be8a34f8bc1ae3",
+  "status": "PASS",
+  "source": {
+    "run_id": 46041684875,
+    "job_id": 140650696183,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46041684875/job/140650696183",
+    "suites": [
+      {
+        "suite": "tests/speech/test_narration_policy.py",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_reading_tools.py",
+        "passed": 14,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_reading_narration.py",
+        "passed": 29,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_reader_focus_hook.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/speech/test_reading.py",
+        "passed": 49,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/speech/test_session.py",
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/speech/test_reading_tabs.py",
+        "passed": 23,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_reader_tabs.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/speech/test_source.py",
+        "passed": 37,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_reader_navigation.py",
+        "passed": 8,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_reader_voice_recovery.py",
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_native_reading_presentation_driver.py",
+        "passed": 17,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "totals": {
+      "passed": 244,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "installed_native": {
+    "run_id": 46041684875,
+    "job_id": 140650696642,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46041684875/job/140650696642",
+    "report": {
+      "result": "PASS",
+      "checks": 55,
+      "check_names": [
+        "installed exact source: carr_library.speech.tabs",
+        "installed exact source: carr_library.speech.session",
+        "installed exact source: carr_library.speech.reading",
+        "installed exact source: carr_library.ui.reader_tabs",
+        "installed exact source: carr_library.ui.speech_dialog",
+        "installed exact source: carr_library.speech.marks",
+        "installed exact source: carr_library.ui.reading_tools",
+        "installed exact source: carr_library.speech.focus",
+        "installed exact source: carr_library.ui.reading_focus",
+        "installed exact source: carr_library.speech.narration",
+        "installed exact source: carr_library.ui.reading_narration",
+        "actual native Windows notebook and text controls",
+        "first native tab contains exact Unicode source with native line endings",
+        "first native keyboard edit is retained",
+        "first copy saves original and independent undo",
+        "actual native bookmark name and list controls are available",
+        "native bookmark action persists exact text and cursor",
+        "native bookmark navigation restores cursor and reader focus",
+        "native paragraph split is undoable and preserves the original",
+        "native paragraph Undo restores the bookmarked text version",
+        "Control T creates and focuses a separate native page",
+        "second copy receives an actual independent keyboard edit",
+        "separate durable identities and originals",
+        "Control Tab restores the first native editor and text",
+        "Control Tab restores the second text and cursor",
+        "actual Control A selects the exact second reading copy",
+        "actual category and Read Skip native choices are accessible",
+        "unmarked content is unclassified and Read by default",
+        "native mark retains explicit selection and unchanged source",
+        "native keyboard selects Skip",
+        "native Skip is a saved reading policy",
+        "fully skipped native preview is explicitly empty with no engine",
+        "native keyboard explicitly re-enables Read",
+        "Read restores every narration character without text edits",
+        "explicit Skip is retained before native restart",
+        "closing category tools restores actual reader keyboard focus",
+        "native End positions the cursor after the reviewed selection",
+        "typed policy is retained in the current existing tab draft",
+        "native Save retains the explicitly positioned saved cursor",
+        "fresh reader recovers both pages and selected identity",
+        "restart restores saved cursor with no installed voice",
+        "restart retains explicit category and Skip without granting audio timing",
+        "restored native policy exposes the exact selected region",
+        "restart retains first edited Unicode text",
+        "restart retains the native-created bookmark and exact version",
+        "first undo is independent after actual reader restart",
+        "first undo preserves second history and original source",
+        "native visual reading opens paused without an engine",
+        "actual native timer advances explicit visual reading",
+        "native visual pause keeps automatic movement stopped",
+        "explicit visual cursor return restores native reader focus",
+        "visual cursor persists through the original reading recovery",
+        "content policy survived native close restart and explicit re-enabling",
+        "both owned reader modal lifetimes completed",
+        "actual native tabs workflow completed twice"
+      ],
+      "source_identity": {
+        "carr_library.speech.tabs": "93f6d4ed84050faba9a4166cb620aa1425349879613495351fa68fb17e3b4ae7",
+        "carr_library.speech.session": "f6626c3778fd5d14df21c9137691734ef690d6cd6f0854d6096ad8153d45a5d6",
+        "carr_library.speech.reading": "6fbd9dd19476765c2bbb8550e7ad299f558207d32d0b4aef7fc0c07c5c2800c5",
+        "carr_library.ui.reader_tabs": "f4003603f56b5d17f9cfc58ca382c974e0bab0ec337e97df60a19e0ddab6da47",
+        "carr_library.ui.speech_dialog": "c8d423f3cf7ad0bfe961a132163f6a7aa5c0b2bd71ead895e9b6eba8640f6c9c",
+        "carr_library.speech.marks": "1ac2b00bdafdc3973d9bc1d003dd6d8f6c7c36a14abb5990de22da0359988c9e",
+        "carr_library.ui.reading_tools": "c05273d89411fab40cc2765a561ead3705ab16705e0000da0688a32a689edeaf",
+        "carr_library.speech.focus": "d268d7f2f9af46ca7c9af24f4544c35efb72d0a07a75b8d9e13c3b99d5548f89",
+        "carr_library.ui.reading_focus": "ad753e40cdfd00d08e20ed5e5826b57302afcd9e7e27462cc9fc5dff7b610a25",
+        "carr_library.speech.narration": "3c329eeaeff1e02f40ba9a728243c73cc18ba09f90ae98b3e4972e9ec74ac330",
+        "carr_library.ui.reading_narration": "3b9ac9d26ed5952f7f2f2b4804169e5026e9562482f3438b612c3ddb159c695a"
+      },
+      "native_reading_tabs": "PASS",
+      "keyboard_and_restart": "PASS",
+      "reading_content_policy": "PASS",
+      "voice_inventory": "EXPLICIT_EMPTY_FIXTURE",
+      "speech_engine": "NOT_RUN",
+      "manual_nvda": "NOT_RUN"
+    }
+  },
+  "evidence_source": "Returned completed source and installed native Windows job logs.",
+  "qualification": {
+    "human_nvda": "NOT_RUN",
+    "speech_engine": "NOT_RUN",
+    "voice_inventory": "EXPLICIT_EMPTY_FIXTURE",
+    "scope": "Actual native tabs, keyboard, durable cursor and reading policy recovery; source cancellation/deferred-play tests are separately included in the strict source reports."
+  }
+}

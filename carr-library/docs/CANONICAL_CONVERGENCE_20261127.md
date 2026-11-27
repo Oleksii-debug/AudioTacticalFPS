@@ -310,3 +310,48 @@ Windows source and69 installed native checks. See the [parent quick record](acce
 and [parent bibliography record](acceptance/20261127-cdcde4-bibliography.json).
 These records confirm the existing namespace infrastructure and parent component;
 they do not qualify the newly added translation suite or the assembled successor.
+
+
+## Shared producer callers and actual b418 execution
+
+The next composition closes concrete failures observed on exact commit
+`b418baf6cd5c4a00cdd9c7337efba053bd3b870b`, tree
+`fdec0918f0bb64127435fe8002be8a34f8bc1ae3`. It contains two product call-site
+corrections and seven test-file corrections/extensions. No workflow selection,
+network boundary, source/installed-origin check or time budget changes.
+
+| Reviewed component | Resulting behavior |
+| --- | --- |
+| Publication ownership — `10804eb1ac92fe9704ae840bf7997435371aafee` | Publication uses the same exact owner receipt as Studio rendering. New receipts retain their operation seal; valid legacy receipts remain legacy. Missing/changed/extra ownership fields, changed options and a late owner change still refuse publication before acceptance. The shared source check covers EPUB, DAISY and measured PCM. All prior publication assertions remain, with nine additional real-rendered-source cases. |
+| Book preview — `11ced77a28d3ef6862da2af308eaafa458743077` | Fresh preview uses the exact full-job-ID destination helper used by submission. Existing and legacy job destinations remain unchanged, and restored jobs still require explicit relocation. Preview/prepare equality and UI approval membership stay enforced. Backup fixtures first prove rejection of a stale operation seal, then construct individually valid changed jobs to exercise the separate immutable Book-plan relation. |
+| Isolated ASR protocol fixtures — `e7fa3c2fa0cbd7ef28cd5b27bcbf702738a0f148` | The synthetic standard-library workers use real no-pip, no-system-site virtual environments and retain the selected lexical interpreter through reconfiguration. All227 original assertion lines remain. The explicit legacy resolved-host-interpreter control remains. The 600-second suite and12-minute ASR job budgets are unchanged. Application CLI execution still uses the installed application interpreter. |
+| Studio test ownership and representation — `0f5a95be8d23e7f7b0e86edfb1e102f9e8de69a4` | The busy-controls test executes the actual direct closure in `show_studio`, avoiding another dialog's same-named function. Restored projects are compared as complete JSON receipts, preserving all fields, approval-before-read, original receipt bytes, pending state and worker assertions. |
+
+Each component has a full-content readback and an independent source review.
+Corrected execution is still required; the earlier results below are not assigned
+to the successor merely because its source review passed.
+
+### Exact b418 results
+
+| Gate | Actual result | Evidence |
+| --- | --- | --- |
+| Reading | 244 strict source cases and55 installed native checks passed. Both native policy/restart rounds completed, including the formerly failing cursor assertion. | [Reading](acceptance/20261127-b418ba-reading-content.json) |
+| Bibliography/import | 1252 strict Windows source cases and69 installed native checks passed; exact wheel and uploaded evidence hashes are retained. | [Bibliography](acceptance/20261127-b418ba-bibliography.json) |
+| Automatic OCR | 133 source cases passed with zero failures/skips. | [OCR](acceptance/20261127-b418ba-automatic-ocr.json) |
+| Workflow templates source | 182 strict cases and12 identity/parser checks passed; installed native result is separate. | [Templates](acceptance/20261127-b418ba-templates-source.json) |
+| Compiled native launcher | The same nine native checks passed for pinned Zig and MSVC, using a synthetic child. Actual Python installation, signing and human NVDA remain unqualified. | [Launchers](acceptance/20261127-b418ba-native-launchers.json) |
+| Quick composition | 2315 passing and40 failing cases in101 completed reports; one additional ASR bridge suite exceeded600seconds. The new local translation component passed100 protocol,9 UI and12 real isolated-loopback/CLI cases. | [Quick diagnostic](acceptance/20261127-b418ba-expanded-reader-diagnostic.json) |
+| Academic production | 1977 passing and103 failing cases in109 suites. Publication/Book caller drift and three ASR child-start waits are recorded explicitly. | [Production diagnostic](acceptance/20261127-b418ba-production-diagnostic.json) |
+| Reconciled source | 3201 passing and6 failing cases in95 suites. All185 transcription-backup cases passed in7.49seconds; the six failures belong to the repaired Book/Studio fixture preconditions. | [Reconciliation diagnostic](acceptance/20261127-b418ba-reconciled-diagnostic.json) |
+
+The preceding cdc Windows ASR run exceeded600seconds in both supplied-worker
+suites and then reached its12-minute job cancellation. Three completed suites
+passed32 cases; backup and later gates had not run. See the [exact incomplete
+record](acceptance/20261127-cdcde4-asr-windows-timeout.json). It provides no Windows
+backup timing or corrected-worker acceptance claim.
+
+The new local translation results exercise synthetic protocol responses and the
+existing approval, source/profile, receipt, batch and export boundaries. They do
+not establish live-server/model quality, native translation accessibility, or
+human linguistic acceptance. All previously stated private-runtime, corpus,
+Windows11/NVDA, language and distribution qualification limits remain.

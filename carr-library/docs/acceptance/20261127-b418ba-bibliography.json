@@ -1,0 +1,269 @@
+{
+  "schema": 1,
+  "tested_commit": "b418baf6cd5c4a00cdd9c7337efba053bd3b870b",
+  "tested_tree": "fdec0918f0bb64127435fe8002be8a34f8bc1ae3",
+  "status": "PASS",
+  "run_id": 46041684857,
+  "job_id": 140650696144,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46041684857/job/140650696144",
+  "evidence_source": "Returned completed Windows bibliography source, wheel identity, installed native and artifact logs.",
+  "source": {
+    "suites": [
+      {
+        "suite": "tests/research/test_bibtex_import.py",
+        "passed": 95,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/research/test_csl_author_boundaries.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/citations/test_custom_csl.py",
+        "passed": 132,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/citations/test_csl.py",
+        "passed": 79,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/citations/test_custom_workbench.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_citation_styles_jobs.py",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_academic_library_dialog.py",
+        "passed": 56,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_academic_actions.py",
+        "passed": 61,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/citations/test_bibliography_workbench.py",
+        "passed": 26,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ui/test_academic_export_handler.py",
+        "passed": 59,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/catalog/test_reference_exchange.py",
+        "passed": 64,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/catalog/test_archive_portability.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/catalog/test_intake_portability.py",
+        "passed": 32,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/catalog/test_bibliography.py",
+        "passed": 39,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ingest/test_txt_replay_registration.py",
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/ingest/test_import_replay_identity.py",
+        "passed": 22,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_export_reconciliation.py",
+        "passed": 20,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_file_export.py",
+        "passed": 54,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_binary_file_export.py",
+        "passed": 35,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_export_no_clobber.py",
+        "passed": 80,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_bibliographic_locators.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_evidence_export.py",
+        "passed": 40,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/reader/test_academic_documents.py",
+        "passed": 41,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/e2e/test_academic_workflow.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/e2e/test_academic_workflows.py",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/storage/test_academic_migration.py",
+        "passed": 44,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/e2e/test_academic_document_export.py",
+        "passed": 10,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/e2e/test_export_destination.py",
+        "passed": 6,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      },
+      {
+        "suite": "tests/research/test_academic_library.py",
+        "passed": 118,
+        "failed": 0,
+        "skipped": 0,
+        "exit": 0
+      }
+    ],
+    "totals": {
+      "passed": 1252,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "wheel": {
+    "payload_files": 429,
+    "project_name": "universal-research-library",
+    "project_version": "0.2.0.dev2",
+    "required_runtime_files": 356,
+    "source_commit": "b418baf6cd5c4a00cdd9c7337efba053bd3b870b",
+    "source_tree": "fdec0918f0bb64127435fe8002be8a34f8bc1ae3",
+    "wheel_sha256": "c3b832980abaf273f8aba36e8313c85bd3911fca02620a2c0e19e48388352cbf"
+  },
+  "installed_native": {
+    "checks": 69,
+    "custom_style_file_choice": "controlled path only",
+    "installed_modules": {
+      "carr_library.citations.bibliography_workbench": "b9178766082eb38164daec7812d255b02d7333009a077cc494d0835908889d7f",
+      "carr_library.citations.csl": "a2d7a9764d661cec6574e19e9ae51c9a8c80aafe160cc860ee28b9e97011f07b",
+      "carr_library.research.bibtex_import": "1aa6ba1a25a52ff5df759464de629f30544ee1caa52948a3735fc626d9a19379",
+      "carr_library.ui.academic_library_dialog": "0bc2d54ded5abd5077a8b5280fca523214f8881ddcf2156e912fa52c4dd7542d",
+      "carr_library.ui.citation_styles_dialog": "b9b08e6598810d9fa508212fb00a83c5621f57652c271d1d9bd9c18d5c6ebe96"
+    },
+    "installer": "NOT_RUN",
+    "manual_keyboard": "NOT_RUN",
+    "native_clipboard": "PASS",
+    "native_custom_style": "PASS",
+    "native_file_pickers": "NOT_RUN",
+    "native_keyboard": "PASS",
+    "nvda": "NOT_RUN",
+    "platform": "Windows-10-10.0.20348-SP0",
+    "python": "3.11.9",
+    "result": "PASS",
+    "service_exports": [
+      "text",
+      "html",
+      "docx"
+    ],
+    "style": "harvard",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  },
+  "artifact": {
+    "id": 15221639261,
+    "sha256": "25c0a8530cdbe14737aad442e7436eceef20da664e009b1f6dcd13f9aa82b78f",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46041684857/artifacts/15221639261"
+  },
+  "qualification": {
+    "scope": "1252 strict Windows source cases and69 installed native checks. File choices are controlled by the test fixture.",
+    "human_nvda": "NOT_RUN",
+    "native_file_picker": "NOT_ESTABLISHED_BY_THIS_RECORD"
+  }
+}
