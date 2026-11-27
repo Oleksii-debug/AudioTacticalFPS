@@ -3,36 +3,78 @@
 ## Result and scope
 
 Linux source and installed measurements completed for actual retained corpora of
-1,000, 10,000 and 50,000 logical pages. Windows source and installed measurements
-completed the 1,000- and 10,000-page cases, then exceeded the existing 600-second
-owned-child limit while **building** the 50,000-page corpus. There is no Windows
-50,000-page query result or complete Windows aggregate report.
+1,000, 10,000 and 50,000 logical pages. Windows source and installed modes now
+also have completed 50,000-page query measurements from a separately declared
+fresh experiment. The original Windows run completed its smaller cases and
+exceeded its 600-second setup bound at 50,000 pages; that historical outcome
+remains incomplete and is retained below.
 
 These are measured samples, with **performance acceptance NOT_ASSESSED**.
 The configured three result pages per trial do not exhaust any tested corpus.
 They do not establish native application, human accessibility, neural inference,
 cold-disk, retrieval-quality, physical-device or large-PDF acceptance.
 
-## Separate Windows 50,000-page follow-up — 21:40 UTC
+## Completed Windows 50,000-page follow-up
 
-The current follow-up [run46071323514](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071323514)
-uses commit `87939e06609e133774c5b7361f345d028f0514db` and the unchanged P4 application
-source tree `9e29c116a1db0644ff6a1a2ca4ed36a02e1f2e16`. It creates a new 50,000-page
-corpus in each Windows import mode with an explicitly recorded 1,200-second
-**setup-only** allowance. Query child 600 seconds and public search 60 seconds remain
-unchanged, as do memory, file-count, output and process-ownership bounds. This
-new execution is pending; it supplies no Windows 50,000 query or acceptance claim.
+[Run 46071323514](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071323514)
+completed successfully in source and isolated installed modes at commit
+`87939e06609e133774c5b7361f345d028f0514db`. Both modes first passed
+**19/19 benchmark contract cases**. They then created independent fresh
+50,000-page corpora, with a declared 1,200-second setup-only allowance and
+unchanged 600-second query-child and 60-second public-search budgets.
+
+Both corpora have the deterministic content SHA256
+`9da1e4d252251e444f2b964b07f31a50d645793c306614671a19b758728e1edb`.
+The application source tree is `9e29c116a1db0644ff6a1a2ca4ed36a02e1f2e16`;
+both full production Python inventories have SHA256
+`bf94d2d8d5a3d739fefda55e4f7a2a8f88fd9f50a118f14f3d70dc2d88339eac`.
+This is the named P4 measurement source, not a qualification of a later
+application composition or a controlled comparison with the earlier Linux run.
+
+All times below are seconds and RSS is whole-process peak MiB. Each measurement
+contains three first-page and six continuation observations, **zero search
+timeouts**, and zero exhausted trials. The configured sample bound does not
+traverse the full result set. Small-sample nearest-rank p95 may be the maximum.
+
+| Import | Search | Corpus setup | First p50 | First p95 | Continuation p50 | Continuation p95 | Peak RSS MiB |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| source | phrase | 695.798 | 1.436 | 1.442 | 1.423 | 1.443 | 38.621 |
+| source | thematic | 695.798 | 1.327 | 1.339 | 1.306 | 1.319 | 39.031 |
+| installed | phrase | 698.922 | 1.457 | 1.493 | 1.455 | 1.494 | 37.746 |
+| installed | thematic | 698.922 | 1.395 | 1.397 | 1.394 | 1.406 | 37.660 |
+
+| Import | Job | Artifact | Archive bytes | Archive SHA256 |
+| --- | --- | --- | ---: | --- |
+| source | 140748673508 | 15234155805 | 40,334 | `bec43ecf0d2e65fa31fbd12939f05b51e765fe042ca7336a3a4ebf325adb7c42` |
+| installed | 140748673678 | 15233482059 | 40,617 | `37b513e16ab299f9c4154774d632c6ec5b09146687e49b991695b82e044148a4` |
+
+The [capture manifest](evidence/source-pages-windows50000-20261127/capture-manifest.json)
+and all 28 original members are retained byte-for-byte in this repository,
+including the [source report](evidence/source-pages-windows50000-20261127/source/experiment-windows50000/source-pages.json)
+and [installed report](evidence/source-pages-windows50000-20261127/installed/experiment-windows50000/source-pages.json).
+[Read-only verification run 46074147848](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46074147848)
+validated exact run/head/attempt, archive metadata/digests, bounded member
+inventories and original-byte hashes without executing artifact contents.
+Configuration, phase reports, the harness, all 376 Python source identities and
+19 strict JUnit cases per mode were cross-checked. The 231,325 retained original
+bytes preserve BOM/CRLF; the capture manifest is a new provenance wrapper.
+Each fresh corpus contains 391 editions, 25,600,000 logical characters and
+26,349,609 retained UTF-8 bytes. Setup peak RSS measured 103.980 MiB for source
+and 102.391 MiB for installed; it is separate from the query peaks above.
+The earlier 600-second Windows setup interruption below remains incomplete.
+This separate successful experiment changes no application deadline and does
+not establish performance acceptance, cold-disk latency, retrieval quality,
+native interaction, neural inference or human accessibility.
 
 The initial follow-up at `e2ed6814473fe0443a195d79264217579d420655`,
-[run46070047919](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46070047919),
-correctly stopped before corpus creation because an existing timeout regression
-relied on a 1e-12-second real-clock deadline. Eighteen other contract cases passed
-in each mode. The successor fixture drives the real application's monotonic
-budget deterministically, retaining actual corpus/search execution and every
-original no-fabricated-result assertion. No application search code or acceptance
-deadline changes. The original 600-second setup failure below remains unchanged.
+[run 46070047919](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46070047919),
+stopped before corpus creation when an existing deadline fixture relied on a
+1e-12-second real clock difference. Eighteen other cases passed in each mode.
+The successful successor drives the real application's monotonic budget
+deterministically, retaining actual corpus/search execution and every original
+no-fabricated-result assertion. Search implementation and budgets are unchanged.
 
-## Exact evidence
+## Original experiment and exact evidence
 
 - [Measurement run 46059259121](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46059259121)
   tested commit `8cb61be3dfd9be2447737dafacb428d850be774d`.
@@ -85,7 +127,7 @@ A matching reported-hardware fingerprint is not evidence of the same physical
 machine. Source-versus-installed timing differences cannot be attributed to
 installation mode from this experiment.
 
-## Actual sampled latency
+## Original experiment: actual sampled latency
 
 All latencies are **seconds**; RSS is MiB (1,048,576 bytes). Each completed
 measurement below reported zero search timeouts and zero exhausted trials.
@@ -114,7 +156,7 @@ The full raw values and per-call source-copy evidence are retained in the JSON.
 | Windows | source | 10,000 | phrase | 0.372 | 0.406 | 0.374 | 0.384 | 38.691 |
 | Windows | source | 10,000 | thematic | 0.279 | 0.304 | 0.276 | 0.281 | 38.582 |
 
-## Windows incomplete case
+## Original experiment: Windows incomplete case
 
 Both Windows jobs retain the same explicit incomplete outcome: two completed
 sizes, followed by an `AudioError` from the owned child's unchanged time
@@ -125,9 +167,9 @@ took 6.125 and 54.937 seconds respectively. These values describe those runs.
 
 The receipts do not isolate the cause of the nonlinear setup cost. They do not
 prove a query timeout, a memory leak, a device problem, or a Windows scale pass.
-Further profiling or a separately declared measurement budget is required
-before drawing a 50,000-page Windows conclusion; no application acceptance
-deadline or guard has been changed.
+The separately declared follow-up above now supplies actual Windows 50,000-page
+query observations. The original interrupted receipt itself remains incomplete;
+no application acceptance deadline or guard has been changed.
 
 See [the benchmark protocol](SOURCE_PAGE_BENCHMARK.md) for invocation,
 identity checks, owned process cleanup and interpretation limits.

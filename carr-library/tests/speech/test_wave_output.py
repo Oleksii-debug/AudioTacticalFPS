@@ -417,6 +417,22 @@ def filename_player(monkeypatch, *, selected=True, clock=lambda: 100.0):
 
 def test_long_pcm_uses_same_output_without_requesting_live_volume_and_keeps_transport_controls(
         filename_pair, monkeypatch, driver):
+    # complete() acknowledges buffers, including Reset's unplayed returns.
+    # This case separately models actual played TIME_SAMPLES and the WinMM
+    # Open/Reset counter origin; neither operation changes the player policy.
+    native_open, native_reset = driver.waveOutOpen, driver.waveOutReset
+    def opened(result, *args):
+        code = native_open(result, *args)
+        if code == 0 and result is not None:
+            driver.position = 0
+        return code
+    def reset(handle):
+        code = native_reset(handle)
+        if code == 0:
+            driver.position = 0
+        return code
+    monkeypatch.setattr(driver, 'waveOutOpen', opened)
+    monkeypatch.setattr(driver, 'waveOutReset', reset)
     short, long, original = filename_pair
     clock = [100.0]
     player, device, checked = filename_player(monkeypatch, clock=lambda: clock[0])
@@ -440,6 +456,11 @@ def test_long_pcm_uses_same_output_without_requesting_live_volume_and_keeps_tran
         player.enable_repeat(True)
         player.set_sleep_timer(10)
         for _ in range(20):
+            assert driver.unit == 2 and driver.queued
+            align = driver.last_format.align
+            lengths = [driver.prepared[identity].length for identity in driver.queued]
+            assert align > 0 and all(length > 0 and length % align == 0 for length in lengths)
+            driver.position += sum(lengths) // align
             driver.complete()
             if player.state == 'stopped':
                 break

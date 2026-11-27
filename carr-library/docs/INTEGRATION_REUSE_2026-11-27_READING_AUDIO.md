@@ -10,6 +10,89 @@ Canonical `carr-library` was last checked at
 The existing composition is extended through its current services and persisted
 formats; the canonical service layout is not copied over competing implementations.
 
+## Publication ownership and playback fixture reconciliation — 2026-11-27, 22:10 UTC
+
+The successor reuses the renderer's exact `_owner_receipt(state)` in the existing
+scene-publication ownership comparison. The validated operation identity,
+strict equality, restored-output refusal and subsequent artifact/source checks
+remain required. Existing measured adapters retain their earlier snapshot path.
+Sixteen additive real-media tests cover current and historical EPUB/DAISY
+publication plus refusal of wrong, missing, invented or extra owner evidence and
+tampered saved options. The original failing reader roundtrip and every prior
+publishing test byte are retained.
+
+The one new WaveOutput regression now separates simulated played samples from
+buffers merely returned by Reset. Its native counter starts at zero on successful
+Open/Reset and advances from actual queued PCM bytes divided by the admitted
+frame alignment. It retains the original end-position, repeat, sleep, volume,
+source and Close predicates. Playback production code is unchanged by this
+fixture correction.
+
+Both changes have independent bounded source review and exact blob readback.
+The component successor requires 52 common modules plus the unchanged Linux
+POSIX module, adding existing scene-publication, DAISY and measured-audio
+regressions to the earlier 49-module selection. Every source/installed mode keeps
+its complete installed-source inventory and strict zero-failure/error/skip
+verdict. These new repairs remain NOT_RUN at this composition checkpoint.
+
+## New observations after the repaired composition — 2026-11-27, 22:00 UTC
+
+The fresh component selection at `415cf906b53ad46fb15c4a4880791075cf49c76c`
+completed its Linux installed mode with **1,591 PASS and two FAIL**, plus
+12 passed subtests. The previous seven failures are resolved. The two newly
+exercised failures are narrated EPUB publication's obsolete two-field owner
+receipt comparison and the new long-path native-completion test. The required
+corrections and exact successor execution remain open. Windows source and
+installed modes are still running; their outcome is not inferred from Linux.
+
+The separate Windows 50,000-page measurement at
+`87939e06609e133774c5b7361f345d028f0514db` now completed successfully in both
+source and installed modes. Each first passed 19 benchmark contract cases.
+Setup measured 695.798/698.922 seconds; the sampled phrase/thematic first-page
+medians range from 1.327 to 1.457 seconds, with no search timeouts. The
+[scale report](SOURCE_PAGE_BENCHMARK_RESULTS_2026-11-27.md) retains exact
+source/corpus/artifact identities, p50/p95 samples and memory interpretation.
+These measured samples do not assign performance acceptance, exhaust the result
+set, or reclassify the original 600-second setup interruption.
+
+## E3 V3 completion and current verification — 2026-11-27, 21:53 UTC
+
+The composed candidate `415cf906b53ad46fb15c4a4880791075cf49c76c` contains
+34 intended changes, read back as 24 exact blob identities and ten complete
+text comparisons, with no other changes or deletions. Its source tree is
+`8b44c19467a891d6a7c19d527f67568830ed2a1f`. Component verification
+[46072595751](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46072595751)
+runs 49 common module selectors plus the Linux-only POSIX module, in separate
+OS/import-mode jobs with complete installed-source inventory checks. These
+jobs are pending, not a current component PASS.
+
+E3 [V3 run46063682482](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682482)
+has now ended at its 75-minute job limit with a cancelled conclusion. Its
+native stage fails specifically on an obsolete translation accessible-name
+expectation in `windows_v3_smoke.py`; the required label now matches the actual
+`Google API account and edition` control. The one-string repair retains every
+other native dialog, required name, Close identifier and real SAPI/render/restart
+predicate. It is not evidence of an audio renderer failure.
+
+The final broad pytest selection reached the displayed 97% progress and one
+failure marker before cancellation. It has no complete JUnit verdict or final
+failure traceback, so the failed case is not guessed and progress is not a
+passing-case count. Artifact `15233064588`, 51,989 bytes, has SHA256
+`c104b5dd74deaa6499465490633a0f19c423bc4faa6e2e275061666ca0c4e991`.
+The V3 successor permits 110 minutes for the expanded whole job and emits each
+failure identity/trace as it occurs. It retains the identical pytest arguments,
+selection, assertions, native/product timeouts, skip rules and final strict
+JUnit verdict. No earlier interruption is reclassified as success.
+
+At this review checkpoint, the V3-only overlay changes that native fixture,
+orchestration/diagnostics and evidence notes; its application source remains
+the component candidate above. The later publication-owner correction is
+recorded separately in the newer checkpoint. The focused native workflow verifies the exact triggering
+wheel and all installed Python source bytes before the original source/installed
+reader and EPUB probes. It uses the existing authorized endpoint preparation,
+without changing its allowed branch, helper bytes, consent or device selection.
+Only public bounded receipts are retained.
+
 ## Reviewed repair successor — 2026-11-27, 21:42 UTC
 
 The canonical head and all three authority blobs above were checked again without

@@ -8,7 +8,8 @@ user library.
 
 This is a measurement tool. A completed report is **not a performance
 acceptance verdict**. The [2026-11-27 measured results](SOURCE_PAGE_BENCHMARK_RESULTS_2026-11-27.md)
-retain complete Linux samples and explicitly incomplete Windows 50,000-page setup.
+retain complete Linux samples, the original incomplete Windows setup, and a
+separate successful Windows 50,000-page experiment with its declared setup bound.
 
 ## Run a bounded experiment
 

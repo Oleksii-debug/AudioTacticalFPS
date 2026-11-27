@@ -419,3 +419,130 @@ def test_original_line_measurements_survive_tolerated_playback_clamping():
     assert segments[1]['measured_start'] == raw_start
     assert [(row['measured_start'], row['measured_end']) for row in segments] == [
         (row['start'], row['end']) for row in timeline['lines']]
+
+
+def _operation_owner_publication_fixture(source_job, *, legacy):
+    """Use actual completed media; change only the documented legacy receipt shape."""
+    from carr_library.studio.render import _operation_sha256
+    service, state = source_job
+    owner_path = Path(state['destination']) / 'production-owner.json'
+    owner = read_json(owner_path)
+    assert owner == {'job': state['id'], 'fingerprint': state['fingerprint'],
+                     'operation_sha256': _operation_sha256(state)}
+    assert state['operation_sha256'] == owner['operation_sha256']
+    if legacy:
+        del state['operation_sha256']
+        del owner['operation_sha256']
+        checkpoint(service, state)
+        atomic_json(owner_path, owner, replace=True)
+    assert service.get(state['id']) == state
+    return service, state, owner_path, owner
+
+
+@pytest.mark.parametrize('legacy', [False, True], ids=['current-operation', 'legacy-owner'])
+@pytest.mark.parametrize('book_format', ['epub3', 'daisy-2.02'])
+def test_actual_publication_uses_current_or_legacy_exact_production_owner(
+        source_job, tmp_path, legacy, book_format):
+    from carr_library.durable_state import encode
+    from carr_library.studio.daisy import inspect_daisy
+    service, state, owner_path, owner = _operation_owner_publication_fixture(
+        source_job, legacy=legacy)
+    original_owner = owner_path.read_bytes()
+    original_artifacts = {row['path']: sha256(Path(row['path']).read_bytes()).hexdigest()
+                          for row in state['artifacts']}
+    publisher = PublicationService(service)
+    output = tmp_path / ('owner-compatible.zip' if book_format == 'daisy-2.02'
+                         else 'owner-compatible.epub')
+    if book_format == 'daisy-2.02':
+        record = publisher.export_daisy(state['id'], output, language='uk',
+            publisher='Synthetic ownership acceptance')
+        provenance = inspect_daisy(output)
+    else:
+        record = publisher.export_epub(state['id'], output, language='uk')
+        provenance = inspect_epub(output)
+    assert record['status'] == 'complete'
+    assert record['artifact']['sha256'] == sha256(output.read_bytes()).hexdigest()
+    assert provenance['original_script'] == SCRIPT
+    assert provenance['source']['job_sha256'] == sha256(encode(state)).hexdigest()
+    assert provenance['source']['project_sha256'] == state['fingerprint']
+    assert publisher.verify(record['id']) == record
+    assert service.get(state['id']) == state
+    assert owner_path.read_bytes() == original_owner
+    assert read_json(owner_path) == owner
+    assert original_artifacts == {
+        name: sha256(Path(name).read_bytes()).hexdigest() for name in original_artifacts}
+
+
+@pytest.mark.parametrize('legacy,change', [
+    (False, 'wrong-operation'), (False, 'missing-operation'),
+    (False, 'extra-field'), (False, 'wrong-job'), (False, 'wrong-fingerprint'),
+    (True, 'invented-operation'), (True, 'extra-field'),
+    (True, 'wrong-job'), (True, 'wrong-fingerprint'),
+])
+def test_publication_rejects_nonexact_owner_before_artifact_or_audio_access(
+        source_job, tmp_path, monkeypatch, legacy, change):
+    from carr_library.studio.render import _operation_sha256
+    service, state, owner_path, owner = _operation_owner_publication_fixture(
+        source_job, legacy=legacy)
+    if change == 'wrong-operation':
+        assert owner['operation_sha256'] != '0' * 64
+        owner['operation_sha256'] = '0' * 64
+    elif change == 'missing-operation':
+        del owner['operation_sha256']
+    elif change == 'invented-operation':
+        owner['operation_sha256'] = _operation_sha256(state)
+    elif change == 'extra-field':
+        owner['unreviewed'] = True
+    elif change == 'wrong-job':
+        owner['job'] = 'f' * 32 if state['id'] != 'f' * 32 else 'e' * 32
+    elif change == 'wrong-fingerprint':
+        owner['fingerprint'] = '0' * 64
+    else:
+        raise AssertionError(change)
+    atomic_json(owner_path, owner, replace=True)
+    original_owner = owner_path.read_bytes()
+    job_path = service.jobs_root / state['id'] / 'job.json'
+    original_job = job_path.read_bytes()
+    def no_artifact_or_audio(*args, **kwargs):
+        pytest.fail('An unbound production owner reached artifact or native audio access.')
+    monkeypatch.setattr(publishing, '_read', no_artifact_or_audio)
+    monkeypatch.setattr(service, '_runtime', no_artifact_or_audio)
+    publisher = PublicationService(service)
+    output = tmp_path / 'rejected-owner.epub'
+    with pytest.raises(ValueError, match='belongs to another production'):
+        publisher.export_epub(state['id'], output)
+    assert not output.exists()
+    assert not publisher.receipts.exists()
+    assert owner_path.read_bytes() == original_owner
+    assert job_path.read_bytes() == original_job
+
+
+@pytest.mark.parametrize('change', ['digest', 'format', 'stems'])
+def test_publication_rechecks_saved_operation_even_when_owner_matches(
+        source_job, tmp_path, monkeypatch, change):
+    service, state, owner_path, owner = _operation_owner_publication_fixture(
+        source_job, legacy=False)
+    if change == 'digest':
+        assert state['operation_sha256'] != '0' * 64
+        state['operation_sha256'] = owner['operation_sha256'] = '0' * 64
+        atomic_json(owner_path, owner, replace=True)
+    elif change == 'format':
+        assert state['format'] == 'wav'
+        state['format'] = 'flac'
+    else:
+        state['stems'] = not state['stems']
+    checkpoint(service, state)
+    job_path = service.jobs_root / state['id'] / 'job.json'
+    original_job, original_owner = job_path.read_bytes(), owner_path.read_bytes()
+    def no_artifact_or_audio(*args, **kwargs):
+        pytest.fail('Invalid saved operation options reached source media or native audio.')
+    monkeypatch.setattr(publishing, '_read', no_artifact_or_audio)
+    monkeypatch.setattr(service, '_runtime', no_artifact_or_audio)
+    publisher = PublicationService(service)
+    output = tmp_path / 'rejected-operation.epub'
+    with pytest.raises(ValueError, match='operation options changed'):
+        publisher.export_epub(state['id'], output)
+    assert not output.exists()
+    assert not publisher.receipts.exists()
+    assert job_path.read_bytes() == original_job
+    assert owner_path.read_bytes() == original_owner

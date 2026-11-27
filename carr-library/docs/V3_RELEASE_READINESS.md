@@ -26,7 +26,7 @@ qualify a later composition.
 | V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard, opt-in global/tray controls, progress, favorites, exact-language defaults and named profiles | P3 native control groups passed, including the corrected preparation, preferences and Close behavior. The ordinary E3 gate still failed long-path queue playback, recorded EPUB playback and other named native stages. The reviewed route and EPUB successors are NOT_RUN. Manual Windows 11/NVDA remains open. |
 | V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion and existing clip/player/Director contracts | P3 native source and installed Book controls passed. The P4 component run reports two Book assertions requiring the prepared real-preview/fixture corrections. Full capture and sealed-bundle acceptance remain open, as do neural long-form quality and physical audio review. |
 | V3-06/08 | Incremental backup and authenticated local portable snapshots over the canonical backup formats and schema 6 | Earlier native encrypted review/restore evidence remains retained. P4 native-format/foreign-flat backup regressions retain passive restored state; one obsolete iterator fixture needs the prepared scandir correction. These results do not establish a cloud/WebDAV service or shared live databases. |
-| V3-07 | Explicit streamed UTF-8 originals up to the selected 128 MiB limit, bounded fragments and source authority; scoped/ranked source windows and federated continuation | Actual greater-than-64-MiB suites and earlier native intake/literal/ranked/federated controls are retained. Ranking is local to each source window. Linux measurements through 50,000 pages and Windows through 10,000 are retained; the fresh Windows 50,000 build is in progress, with no completed latency result. Performance acceptance and multi-gigabyte PDF remain open. |
+| V3-07 | Explicit streamed UTF-8 originals up to the selected 128 MiB limit, bounded fragments and source authority; scoped/ranked source windows and federated continuation | Actual greater-than-64-MiB suites and earlier native intake/literal/ranked/federated controls are retained. Ranking is local to each source window. Linux measurements through 50,000 pages are retained; the separate Windows 50,000-page source and installed experiment now completed with zero sampled search timeouts. Performance acceptance and multi-gigabyte PDF remain open. |
 | V3-08 | Existing CSL/source citations extended through reviewed live Word COM plans and named native review | The focused Word integration suite passed 84 cases in each of four Linux/Windows source/installed modes. Modeled COM and native review controls do not qualify an actual Microsoft Word installation, publisher deployment or human interaction. |
 | V3-09 | Typed current-reader and Book/batch assistant routes through existing services and stores | P3 native domain controls and earlier bounded state-I/O evidence are retained. The current full aggregate is incomplete. Deterministic tools do not certify a local LLM or grant model output shell authority. |
 | V3-21 | Owner reference creation/lifecycle and authenticated protected profile transfer through the existing crypto and package publisher | P3 source and installed native reference/protected-transfer controls passed, including the corrected Close revocation. This does not establish rights to a voice, actual owner-model inference, training or language/listening quality. |
@@ -49,7 +49,7 @@ combined into a successful release gate.
 | P3 product `10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a`, [preflight 46063639311](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063639311) | All native control groups passed, including source and installed preparation/Undo, voice preferences, protected transfer and Book controls. The long Windows source block completed 125 of its 151 module suites successfully before its 25-minute aggregate cutoff. | 125 completed PASS reports do not establish that all 151 suites completed. Focused native success does not qualify the full wheel or bundle. |
 | Focused Word integration | 84 cases passed in each of four Linux/Windows source/installed modes. | Actual Office installation, manual NVDA and document interaction remain separate. |
 | Focused ordinary import admission | 100 cases passed in each of four Linux/Windows source/installed modes. | These focused admission results do not replace the complete source/installed aggregate. Exact heads and receipts remain in the integration ledger. |
-| E3 ordinary evaluation `49fe25ade1d91dc4b283fe3b0fd29cc6b4e921ae`, application-identical to P3 | Four ordinary workflows are green. The main Windows workflow completed FAIL; V3 was still running at this snapshot. | The six-workflow same-head condition is not satisfied. |
+| E3 ordinary evaluation `49fe25ade1d91dc4b283fe3b0fd29cc6b4e921ae`, application-identical to P3 | Four ordinary workflows are green. The main Windows workflow completed FAIL; V3 subsequently reached its 75-minute job limit with a cancelled conclusion. | The six-workflow same-head condition is not satisfied. |
 | P4 component head `07425b55fdcd703e0e9150c5c5479b37bb64c750`, [run 46069568992](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069568992), Linux job 140742999592 | Source: 37 module reports, 34 clean, 1,150 cases passed and 7 failed, with no skips. Installed: the same seven failures, 1,150 passed and 12 passed subtests. | These are two separate source/installed results, not 2,300 distinct tests. The seven failures are confined to OCR (4), Book (2) and the obsolete backup-iterator fixture (1). The repairs require their own run. |
 
 The four green E3 workflows are
@@ -65,15 +65,38 @@ Earlier step output must not be counted again. The three preserved source
 failures are the old benchmark-clock fixture, the launcher-bundle fixture missing
 copied guides, and the federated-label fixture lacking the current
 `next_cursor` field. Their successors preserve the original behavioral
-assertions. A proposed 75-minute aggregate allowance for the successor does not
+assertions. The successor's 75-minute aggregate allowance does not
 alter the existing 600-second per-suite limits or retroactively pass this run.
 [V3 46063682482](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682482)
-remains unfinished at this snapshot.
+subsequently ended at its 75-minute job limit. Its native failure is an obsolete
+translation accessible-name expectation, corrected by one literal matching the
+actual control. The final source selection displayed 97% progress and one
+failure marker but produced no complete JUnit verdict or final traceback.
+The failed case is not inferred from progress. The successor retains the exact
+pytest selection and predicates, adds immediate failure reports, and allows
+110 minutes for the entire expanded job. Those V3-only changes preserve the application
+source of component candidate `415cf906b53ad46fb15c4a4880791075cf49c76c`;
+the separate publication-owner correction below requires its own fresh execution.
 
 The main workflow also retains known capture, reader queue/EPUB, Import Center
 and sealed-bundle failures. Passing preparation and preferences in the P3
 preflight does not erase those ordinary-gate failures. Earlier capture diagnosis
 and the existing consent/policy settings remain unchanged.
+
+### Latest component observation — 2026-11-27, 22:00 UTC
+
+The composed candidate `415cf906b53ad46fb15c4a4880791075cf49c76c` is running
+[source and installed component verification](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46072595751)
+in four independent OS/import-mode jobs. Linux installed completed with
+**1,591 passed and two failed cases**, plus 12 passed subtests. The previous
+seven Book/OCR/backup failures are resolved in this run. Its broader selection
+now exposes a real publication-owner compatibility gap in narrated EPUB export
+and one new long-path completion regression. Their independently reviewed
+successors are now included: publication reuses the renderer's strict canonical
+owner receipt, with 16 additional actual-media/refusal cases; the playback test
+models the native played-sample and Open/Reset counter contract. Both require
+fresh execution. The passing EPUB initialization module does not close
+publication or native playback acceptance. Windows modes are still active.
 
 ### Prepared successors and the next evidence boundary
 
@@ -104,16 +127,17 @@ and the existing consent/policy settings remain unchanged.
   branch. Actual source/installed reader and EPUB output acceptance belongs to
   the ordinary evaluation branch with its existing authorized audio setup.
 
-The [scale report](SOURCE_PAGE_BENCHMARK_RESULTS_2026-11-27.md) retains measured
-Linux cases through 50,000 pages, smaller completed Windows cases and the earlier
-incomplete Windows 50,000 setup. The fresh Windows 50,000 follow-up
+The [scale report](SOURCE_PAGE_BENCHMARK_RESULTS_2026-11-27.md) now retains the
+successful fresh Windows 50,000-page source and installed experiment,
 [46071323514](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071323514)
-passed its source benchmark contract and began its actual source corpus build at
-21:40:20 UTC; the installed companion was starting. No completed 50,000-page
-Windows latency or resource result exists at this snapshot. The explicit
-1,200-second setup allowance, 600-second query-child allowance and 60-second
-public-search budget describe this fresh run only. They do not reclassify a
-previous timeout or introduce a performance PASS threshold.
+at `87939e06609e133774c5b7361f345d028f0514db`. Both modes passed 19 benchmark
+contract cases. Actual corpus setup took 695.798 and 698.922 seconds; first-page
+median phrase/thematic calls ranged from 1.327 to 1.457 seconds, with zero sampled
+search timeouts. The exact raw observations, memory interpretation and small
+sample limits are in the scale report. The declared 1,200-second setup allowance,
+600-second query-child allowance and 60-second public-search budget belong to
+this new experiment; the original interrupted trial remains incomplete.
+Performance acceptance, exhaustive retrieval and cold-disk behavior remain open.
 
 The implementation, exact candidate execution, physical/human qualification and
 rights/distribution decisions remain separate. Synthetic PCM, modeled providers

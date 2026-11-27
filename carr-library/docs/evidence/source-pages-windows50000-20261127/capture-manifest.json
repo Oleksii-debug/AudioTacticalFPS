@@ -1,0 +1,364 @@
+{
+  "schema": "carr-source-page-receipt-capture/1",
+  "scope": "Unmodified public synthetic CI evidence; no performance acceptance or new application execution",
+  "measurement": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "run": 46071323514,
+    "attempt": 1,
+    "head": "87939e06609e133774c5b7361f345d028f0514db",
+    "branch": "carr/source-pages-windows50k-evaluation-20261127",
+    "source_job": 140748673508,
+    "installed_job": 140748673678,
+    "source_tree": "9e29c116a1db0644ff6a1a2ca4ed36a02e1f2e16",
+    "pyproject_blob": "5e73dcc7fb68ea22fd7bbd2c65c4eb783badde6a"
+  },
+  "reader": {
+    "run": 46074147848,
+    "job": 140757806559,
+    "head": "5ece623bb27c5b86ad906483ecc8de6a82bef339",
+    "tree": "1b11ca05133cb8eb07e01f00bd424bbf83d6047f",
+    "script_blob": "22a972a1d614b2cf442cdd2d38963b6611b7c273",
+    "workflow_blob": "76571a53b8a35867093bb637da102a9f69558d6e",
+    "completed_at_utc": "2026-11-27T22:03:07Z",
+    "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]"
+  },
+  "artifacts": [
+    {
+      "id": 15234155805,
+      "node_id": "MDg6QXJ0aWZhY3QxNTIzNDE1NTgwNQ==",
+      "name": "carr-source-pages-windows50000-source-87939e06609e133774c5b7361f345d028f0514db-1",
+      "size_in_bytes": 40334,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15234155805",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15234155805/zip",
+      "expired": false,
+      "digest": "sha256:bec43ecf0d2e65fa31fbd12939f05b51e765fe042ca7336a3a4ebf325adb7c42",
+      "created_at": "2026-11-27T21:52:26Z",
+      "updated_at": "2026-11-27T21:52:26Z",
+      "expires_at": "2026-12-04T21:52:26Z",
+      "workflow_run": {
+        "id": 46071323514,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/source-pages-windows50k-evaluation-20261127",
+        "head_sha": "87939e06609e133774c5b7361f345d028f0514db"
+      }
+    },
+    {
+      "id": 15233482059,
+      "node_id": "MDg6QXJ0aWZhY3QxNTIzMzQ4MjA1OQ==",
+      "name": "carr-source-pages-windows50000-installed-87939e06609e133774c5b7361f345d028f0514db-1",
+      "size_in_bytes": 40617,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15233482059",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15233482059/zip",
+      "expired": false,
+      "digest": "sha256:37b513e16ab299f9c4154774d632c6ec5b09146687e49b991695b82e044148a4",
+      "created_at": "2026-11-27T21:53:36Z",
+      "updated_at": "2026-11-27T21:53:36Z",
+      "expires_at": "2026-12-04T21:53:35Z",
+      "workflow_run": {
+        "id": 46071323514,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/source-pages-windows50k-evaluation-20261127",
+        "head_sha": "87939e06609e133774c5b7361f345d028f0514db"
+      }
+    }
+  ],
+  "captured_files": [
+    {
+      "path": "source/application-source.json",
+      "artifact": 15234155805,
+      "archive_member": "application-source.json",
+      "size_bytes": 456,
+      "sha256": "68f6ab5608f74155c48e1bc281363347f0d7e4aedaf848055ff86b32bbe88903",
+      "git_blob_sha": "a91dee08504021bf8303ad218853e714629a6d62"
+    },
+    {
+      "path": "source/benchmark-contract.txt",
+      "artifact": 15234155805,
+      "archive_member": "benchmark-contract.txt",
+      "size_bytes": 102,
+      "sha256": "b5b00d24219260773fd73187457d83bbb7032018f8d9703d4a074c3fbf062da4",
+      "git_blob_sha": "9fdb69c9e8d21239e81ab7f80fbc1e9464b3e00b"
+    },
+    {
+      "path": "source/benchmark-contract.xml",
+      "artifact": 15234155805,
+      "archive_member": "benchmark-contract.xml",
+      "size_bytes": 3049,
+      "sha256": "2c37ed901af2c3bff71b67bbc5a1cd33979eb45b3ceb798126a9b66845ef9815",
+      "git_blob_sha": "a1e3da825d185421d01fe7e6558d7a1d34caf77f"
+    },
+    {
+      "path": "source/experiment-windows50000/50000/build.json",
+      "artifact": 15234155805,
+      "archive_member": "experiment-windows50000/50000/build.json",
+      "size_bytes": 1391,
+      "sha256": "b77a225491877f86f7c59878362e203931d1f624868985b11f9ac4f196088f66",
+      "git_blob_sha": "ba5d5bf88d4549b2fd5c2c910c24e6d6a2d03b4b"
+    },
+    {
+      "path": "source/experiment-windows50000/50000/corpus.json",
+      "artifact": 15234155805,
+      "archive_member": "experiment-windows50000/50000/corpus.json",
+      "size_bytes": 627,
+      "sha256": "5e8e888ab1f7d7161f4118edd4747b9e5a480b82efa72345ee19fdc2626a3f3d",
+      "git_blob_sha": "42f33d418e6f7e4909fa678757658930b27baf09"
+    },
+    {
+      "path": "source/experiment-windows50000/50000/phrase.json",
+      "artifact": 15234155805,
+      "archive_member": "experiment-windows50000/50000/phrase.json",
+      "size_bytes": 4542,
+      "sha256": "397319c0a29c71975381fedf28dfce8fa9cf7b602ae503558983c8be2e4f0757",
+      "git_blob_sha": "46c7b5d03ebc58715ca66f43d29c0dbdeeb67e02"
+    },
+    {
+      "path": "source/experiment-windows50000/50000/thematic.json",
+      "artifact": 15234155805,
+      "archive_member": "experiment-windows50000/50000/thematic.json",
+      "size_bytes": 4845,
+      "sha256": "546e3227a0939ec60ddb81c2bcbf62746f203115bfcbd82b10471426950a4180",
+      "git_blob_sha": "d4d67440fe4de91a856afc5ad7061ffd05d9aa00"
+    },
+    {
+      "path": "source/experiment-windows50000/benchmark-harness.py",
+      "artifact": 15234155805,
+      "archive_member": "experiment-windows50000/benchmark-harness.py",
+      "size_bytes": 36505,
+      "sha256": "815b12bdc8b3fe04196b53d5e64b5a2d79b03bb61ba683b36f8670789a29709b",
+      "git_blob_sha": "2bec78a098bc54f9ff76524d27e5a810b234a248"
+    },
+    {
+      "path": "source/experiment-windows50000/run.json",
+      "artifact": 15234155805,
+      "archive_member": "experiment-windows50000/run.json",
+      "size_bytes": 47048,
+      "sha256": "ea0eb1bb1adf9208c376f37756f8ba9ec908dc577c04cbbdc38c62ef4b11b19c",
+      "git_blob_sha": "c677bdd54cc3b990dfa38c7df8fd0197b5e91de0"
+    },
+    {
+      "path": "source/experiment-windows50000/source-pages.json",
+      "artifact": 15234155805,
+      "archive_member": "experiment-windows50000/source-pages.json",
+      "size_bytes": 13261,
+      "sha256": "cf21939c804d8bc35da14109ecb1d7a0d215fb1dcc15e7e14d04354ca9604e0b",
+      "git_blob_sha": "682f8998d65f20759b1e724fd8c75cba81559023"
+    },
+    {
+      "path": "source/installed-packages.json",
+      "artifact": 15234155805,
+      "archive_member": "installed-packages.json",
+      "size_bytes": 2568,
+      "sha256": "e6b7383329339494c93378a99aba47d6c83462ca5d467c8f16ac34110cd129ca",
+      "git_blob_sha": "055cafb66ca3539c06b5bbedeee276903e3151de"
+    },
+    {
+      "path": "source/measurement.txt",
+      "artifact": 15234155805,
+      "archive_member": "measurement.txt",
+      "size_bytes": 571,
+      "sha256": "d4337d7a7195b6c245808600cc160fea173c100deeb25c6b396dd5948856899e",
+      "git_blob_sha": "b5cc10e0930b572af9cac397f927fe26bcd9a177"
+    },
+    {
+      "path": "source/prior-trial.json",
+      "artifact": 15234155805,
+      "archive_member": "prior-trial.json",
+      "size_bytes": 625,
+      "sha256": "804a00e3061b50ab425bec0387190964cd8dc657feaabc8fd0d5914bf665bca5",
+      "git_blob_sha": "9f31945720021428c5b96a71b6d4ecc2c236817d"
+    },
+    {
+      "path": "source/tested-commit.txt",
+      "artifact": 15234155805,
+      "archive_member": "tested-commit.txt",
+      "size_bytes": 42,
+      "sha256": "d55b1fab2bf0e45f1d73b23b7de48f513b5d1b5ef902a56fdfad081585a04745",
+      "git_blob_sha": "951daa8a092e36f3d85b8d87f1dc4ba0bbcbd54c"
+    },
+    {
+      "path": "installed/application-source.json",
+      "artifact": 15233482059,
+      "archive_member": "application-source.json",
+      "size_bytes": 456,
+      "sha256": "68f6ab5608f74155c48e1bc281363347f0d7e4aedaf848055ff86b32bbe88903",
+      "git_blob_sha": "a91dee08504021bf8303ad218853e714629a6d62"
+    },
+    {
+      "path": "installed/benchmark-contract.txt",
+      "artifact": 15233482059,
+      "archive_member": "benchmark-contract.txt",
+      "size_bytes": 102,
+      "sha256": "53f3b8326fbbc5a91588dbabfef8d2a4b8dde00240e86b8f95d39220149977fa",
+      "git_blob_sha": "d596ae5c1dedb481ab7ba23a2e7d32803232aef7"
+    },
+    {
+      "path": "installed/benchmark-contract.xml",
+      "artifact": 15233482059,
+      "archive_member": "benchmark-contract.xml",
+      "size_bytes": 3049,
+      "sha256": "4d6106f8844adbcc5cc7ca0b93ba441a42d42417abac8cb74050ba0882c3a233",
+      "git_blob_sha": "152afd0b634d0b5f2f7c7fb7e34810fbce558e1e"
+    },
+    {
+      "path": "installed/experiment-windows50000/50000/build.json",
+      "artifact": 15233482059,
+      "archive_member": "experiment-windows50000/50000/build.json",
+      "size_bytes": 1391,
+      "sha256": "a2fdef07346992117dc89d5d1b5eba0decc490a649d39e1695d05a46db45e775",
+      "git_blob_sha": "a151a439ee96a15c237dbffbab906be1621c6c18"
+    },
+    {
+      "path": "installed/experiment-windows50000/50000/corpus.json",
+      "artifact": 15233482059,
+      "archive_member": "experiment-windows50000/50000/corpus.json",
+      "size_bytes": 627,
+      "sha256": "c996c0156827abc2a8ded2a368177b848334b2916a9f20599e84a19f3dcef8a7",
+      "git_blob_sha": "bb2c03ecbfd239cb3b1d22bdc403a374b9c18f9f"
+    },
+    {
+      "path": "installed/experiment-windows50000/50000/phrase.json",
+      "artifact": 15233482059,
+      "archive_member": "experiment-windows50000/50000/phrase.json",
+      "size_bytes": 4542,
+      "sha256": "ce81040ef3b2ad76491c780f4bc6d297efff43a8e633d82742915a6d9e9375c5",
+      "git_blob_sha": "8ec29671195b1c1e87a52fc54c77cb8ae9db287d"
+    },
+    {
+      "path": "installed/experiment-windows50000/50000/thematic.json",
+      "artifact": 15233482059,
+      "archive_member": "experiment-windows50000/50000/thematic.json",
+      "size_bytes": 4864,
+      "sha256": "668865a9c2a1f05a4eea50ccf32993af82df2aa41b77499c1ccf24b7706b1211",
+      "git_blob_sha": "4b90c89d7d36399872e0a223c60e858a06891e1b"
+    },
+    {
+      "path": "installed/experiment-windows50000/benchmark-harness.py",
+      "artifact": 15233482059,
+      "archive_member": "experiment-windows50000/benchmark-harness.py",
+      "size_bytes": 36505,
+      "sha256": "815b12bdc8b3fe04196b53d5e64b5a2d79b03bb61ba683b36f8670789a29709b",
+      "git_blob_sha": "2bec78a098bc54f9ff76524d27e5a810b234a248"
+    },
+    {
+      "path": "installed/experiment-windows50000/run.json",
+      "artifact": 15233482059,
+      "archive_member": "experiment-windows50000/run.json",
+      "size_bytes": 47056,
+      "sha256": "07e4a23b70f571d91632574bec746948d7b108290752f29aabe7673179656af2",
+      "git_blob_sha": "8b5c0132583d24e56b1947397ab3f00b87c96118"
+    },
+    {
+      "path": "installed/experiment-windows50000/source-pages.json",
+      "artifact": 15233482059,
+      "archive_member": "experiment-windows50000/source-pages.json",
+      "size_bytes": 13283,
+      "sha256": "60405e03bc84df6888024fb7354f0b26a586bf615220bac3b9e687ab5f29b65b",
+      "git_blob_sha": "f9172d168c2e3becc87ccfce73cd11f8fffb50e3"
+    },
+    {
+      "path": "installed/installed-packages.json",
+      "artifact": 15233482059,
+      "archive_member": "installed-packages.json",
+      "size_bytes": 2568,
+      "sha256": "e6b7383329339494c93378a99aba47d6c83462ca5d467c8f16ac34110cd129ca",
+      "git_blob_sha": "055cafb66ca3539c06b5bbedeee276903e3151de"
+    },
+    {
+      "path": "installed/measurement.txt",
+      "artifact": 15233482059,
+      "archive_member": "measurement.txt",
+      "size_bytes": 583,
+      "sha256": "8e4cb187953bb7fb6b4b66c629e410e5ae7cd097241835fca6fed6f85029a355",
+      "git_blob_sha": "91f9b256eeb35b04037d371c6514887fb62ab7ed"
+    },
+    {
+      "path": "installed/prior-trial.json",
+      "artifact": 15233482059,
+      "archive_member": "prior-trial.json",
+      "size_bytes": 625,
+      "sha256": "9e0ab5e4c0aca1cb2279a527b26096de83c03511d67a896bec29e44954ca54c0",
+      "git_blob_sha": "565aaab88df5198ebf99c27fac3bb8b746338324"
+    },
+    {
+      "path": "installed/tested-commit.txt",
+      "artifact": 15233482059,
+      "archive_member": "tested-commit.txt",
+      "size_bytes": 42,
+      "sha256": "d55b1fab2bf0e45f1d73b23b7de48f513b5d1b5ef902a56fdfad081585a04745",
+      "git_blob_sha": "951daa8a092e36f3d85b8d87f1dc4ba0bbcbd54c"
+    }
+  ],
+  "verification": {
+    "all_original_bytes": true,
+    "file_count": 28,
+    "total_bytes": 231325,
+    "method": "Pinned ZIP digest and metadata verified in the isolated reader; all emitted base64 chunks independently reconstructed and checked against each member length/SHA256; raw configuration, phase, harness, module inventories and JUnit counts cross-checked.",
+    "identities": [
+      {
+        "mode": "source",
+        "configuration_sha256": "ea0eb1bb1adf9208c376f37756f8ba9ec908dc577c04cbbdc38c62ef4b11b19c",
+        "harness_sha256": "815b12bdc8b3fe04196b53d5e64b5a2d79b03bb61ba683b36f8670789a29709b",
+        "production_python_inventory_sha256": "bf94d2d8d5a3d739fefda55e4f7a2a8f88fd9f50a118f14f3d70dc2d88339eac",
+        "source_inventory_sha256": "9c8bc0ca220c0fea5663c144ee5632610370424803d22ce39f763c07211be49b",
+        "python_modules": 376,
+        "contract": {
+          "passed": 19,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "corpus_content_sha256": "9da1e4d252251e444f2b964b07f31a50d645793c306614671a19b758728e1edb",
+        "actual_pages": 50000,
+        "actual_editions": 391,
+        "actual_characters": 25600000,
+        "original_utf8_bytes": 26349609
+      },
+      {
+        "mode": "installed",
+        "configuration_sha256": "07e4a23b70f571d91632574bec746948d7b108290752f29aabe7673179656af2",
+        "harness_sha256": "815b12bdc8b3fe04196b53d5e64b5a2d79b03bb61ba683b36f8670789a29709b",
+        "production_python_inventory_sha256": "bf94d2d8d5a3d739fefda55e4f7a2a8f88fd9f50a118f14f3d70dc2d88339eac",
+        "source_inventory_sha256": "9c8bc0ca220c0fea5663c144ee5632610370424803d22ce39f763c07211be49b",
+        "python_modules": 376,
+        "contract": {
+          "passed": 19,
+          "failed": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "corpus_content_sha256": "9da1e4d252251e444f2b964b07f31a50d645793c306614671a19b758728e1edb",
+        "actual_pages": 50000,
+        "actual_editions": 391,
+        "actual_characters": 25600000,
+        "original_utf8_bytes": 26349609
+      }
+    ]
+  },
+  "prior_trial": {
+    "run": 46059259121,
+    "head": "8cb61be3dfd9be2447737dafacb428d850be774d",
+    "windows_source_job": 140709243181,
+    "windows_installed_job": 140709243113,
+    "status": "Original 600-second Windows build timeout retained; original Windows 50000-page queries remain NOT_RUN."
+  },
+  "limits": {
+    "build_seconds": 1200,
+    "query_child_seconds": 600,
+    "public_search_seconds": 60,
+    "page_budget": 64,
+    "character_budget": 1000000,
+    "result_limit": 20,
+    "pages_per_trial": 3,
+    "repeats": 3
+  },
+  "claims": {
+    "performance_acceptance": "NOT_ASSESSED",
+    "retrieval_quality": "NOT_MEASURED",
+    "neural_inference": "NOT_RUN",
+    "native_application_acceptance": "NOT_RUN",
+    "cold_disk": "NOT_MEASURED",
+    "corpus_exhaustion": "NOT_CLAIMED"
+  }
+}
