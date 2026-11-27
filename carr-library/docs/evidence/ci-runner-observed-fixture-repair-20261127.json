@@ -33,5 +33,34 @@
     "same_gate": ".github/workflows/carr-ci-runner.yml",
     "windows_cases": 48,
     "linux_cases": 49
+  },
+  "followup": {
+    "source_commit": "668671ce245931e610780f335770030c1234a001",
+    "run_id": 46053391341,
+    "linux": {
+      "job_id": 140689987733,
+      "status": "PASS",
+      "required_cases": 49,
+      "artifact": {
+        "id": 15224394531,
+        "bytes": 107665,
+        "digest": "sha256:ce04b69924438bbcea1fa76fa2c091859cfbaa332bdf5f7494d93537bfbb60c8"
+      },
+      "scope": "Strict gate PASS; exact JUnit/source receipt is retained in the artifact. The short completed-job stdout does not reproduce every Counter."
+    },
+    "windows": {
+      "job_id": 140689988045,
+      "status": "FAIL",
+      "passed": 47,
+      "failed": 1,
+      "elapsed_seconds": 9.36,
+      "artifact": {
+        "id": 15225232732,
+        "bytes": 113717,
+        "digest": "sha256:8ef87971e71479b37705a7f2a6a7849ca1f83fb05773f70a78dec6b01747e6d6"
+      },
+      "error": "ValueError converting an empty descendant.pid immediately after path creation; the observing start wrapper raised before returning the actual process to the runner. Its fixture fallback then killed only the leader, and outer private cleanup encountered WinError32 on the descendant-held file."
+    },
+    "repair": "The synthetic child closes a same-directory ready file before atomically renaming it to the PID marker. Until the observing wrapper returns, it retains ownership and settles the complete existing process family on any observation exception. No product runner, timeout or case population changes."
   }
 }
