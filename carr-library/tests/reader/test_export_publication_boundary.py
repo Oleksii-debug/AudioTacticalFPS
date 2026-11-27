@@ -1,4 +1,5 @@
 """Fault injection at the create-only publication boundary, with real files."""
+import importlib.util
 import os
 from pathlib import Path
 import subprocess
@@ -43,8 +44,15 @@ def test_process_exit_immediately_after_create_only_publication(tmp_path, binary
     private = tmp_path / 'private'
     private.mkdir()
     payload = 'Точна цитата\r\nExact original.'
+    probe = tmp_path / 'publication_bytecode_probe.py'
+    probe.write_text('loaded = True\n', encoding='utf-8')
+    probe_cache = Path(importlib.util.cache_from_source(str(probe)))
     code = '''
-import os, sys
+import importlib.util, os, sys
+spec = importlib.util.spec_from_file_location('publication_bytecode_probe', sys.argv[5])
+probe = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(probe)
+assert probe.loaded is True
 from carr_library.research import export_file
 operation = 'rename' if os.name == 'nt' else 'link'
 actual = getattr(os, operation)
@@ -57,10 +65,11 @@ payload = sys.argv[4]
 writer(sys.argv[1], payload.encode() if sys.argv[3] == '1' else payload,
        private_root=sys.argv[2], require_absent=True)
 '''
-    child = subprocess.run([sys.executable, '-c', code, str(target), str(private),
-                            str(int(binary)), payload], capture_output=True, timeout=30)
+    child = subprocess.run([sys.executable, '-B', '-c', code, str(target), str(private),
+                            str(int(binary)), payload, str(probe)], capture_output=True, timeout=30)
     assert child.returncode == 74, child.stderr
     assert target.read_bytes() == payload.encode()
+    assert not probe_cache.exists(), 'The publication crash child wrote bytecode into its runtime environment.'
     residue = list(tmp_path.glob('.research-export-*'))
     if os.name == 'nt':
         # The single native no-replace rename must leave no second link,
