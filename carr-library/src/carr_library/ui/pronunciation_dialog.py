@@ -124,7 +124,9 @@ def read_dictionary(path, *, encoding='unicode', report=None, cancelled=lambda: 
         raise ValueError('The dictionary changed while reading it.')
     raw = b''.join(chunks)
     kind = path.suffix.lower().lstrip('.')
-    if kind == 'json':
+    if kind not in ('dic', 'rex', 'bxd'):
+        # Preserve the original JSON import API for a caller-selected filename.
+        # Only the three explicitly recognized foreign suffixes select conversion.
         with TemporaryDirectory(prefix='resonance-pronunciation-import-') as temporary:
             selected = Path(temporary) / 'dictionary.json'
             selected.write_bytes(raw)

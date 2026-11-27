@@ -223,3 +223,14 @@ def test_documented_dic_doubled_special_symbols_are_literal_patterns(rule, text,
     _parsed, _document, _snapshot, preview = rendered(
         ('# ordinary comment\n' + rule + '\n').encode(), 'dic', text)
     assert preview.after == expected
+
+
+def test_existing_canonical_json_import_keeps_its_caller_selected_filename(tmp_path):
+    from carr_library.speech.reading import export_dictionary
+    selected = tmp_path / 'reviewed.rules'
+    rules = (PronunciationRule('retained', 'existing JSON'),)
+    export_dictionary(rules, selected)
+    before = selected.read_bytes()
+    imported, token = read_dictionary(selected)
+    assert imported == rules and token == sha256(before).hexdigest()
+    assert selected.read_bytes() == before
