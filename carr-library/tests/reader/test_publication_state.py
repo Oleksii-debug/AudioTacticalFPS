@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.ingest.restore import RestoreError
 from carr_library.library_backup import create_backup, restore_backup, verify_backup
 from carr_library.reader.media_overlay import PreparedOverlay
 from carr_library.reader.publication_state import (
@@ -84,10 +85,12 @@ def test_unreadable_optional_cursor_is_never_treated_as_empty_or_overwritten(tmp
         return real(path, *args, **kwargs)
     with monkeypatch.context() as patch:
         patch.setattr(Path, 'lstat', refused)
-        with pytest.raises(failure):
+        with pytest.raises(RestoreError) as loaded:
             store.load(selected)
-        with pytest.raises(failure):
+        assert type(loaded.value.__cause__) is failure
+        with pytest.raises(RestoreError) as saved:
             store.remember(selected, 4)
+        assert type(saved.value.__cause__) is failure
     assert store.path.read_bytes() == before
 
 
