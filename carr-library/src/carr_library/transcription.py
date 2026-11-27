@@ -462,18 +462,28 @@ class TranscriptionService:
                 'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
                 'OMP_NUM_THREADS': '2', 'OPENBLAS_NUM_THREADS': '2'})
             stop_at, notice_at = None, 0.0
+            observer_available = progress is not None
+            def notify(done, total, phase):
+                nonlocal observer_available
+                if observer_available:
+                    try:
+                        progress(done, total, phase)
+                    except Exception:
+                        # A detached UI must not kill the worker or reverse a
+                        # durable result. Disable only this optional observer.
+                        observer_available = False
             def poll():
                 nonlocal stop_at, notice_at
                 now = time.monotonic()
                 if cancelled() and stop_at is None:
                     atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
                     stop_at = now
-                if progress is not None and now - notice_at >= .5 and prior.exists():
+                if observer_available and now - notice_at >= .5 and prior.exists():
                     notice_at = now
                     try:
                         current = read_json(prior)
-                        progress(current.get('done', 0), len(job['sources']),
-                                 str(current.get('state', 'running'))[:200])
+                        notify(current.get('done', 0), len(job['sources']),
+                               str(current.get('state', 'running'))[:200])
                     except (ValueError, OSError):
                         pass
                 return stop_at is not None and now - stop_at >= 3
@@ -497,8 +507,7 @@ class TranscriptionService:
                 job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
                            last_error='Stopped. Saved worker results will be verified on the next resume.')
                 self._save(path, job)
-                if progress is not None:
-                    progress(0, len(job['sources']), 'stopped')
+                notify(0, len(job['sources']), 'stopped')
                 return job
             try:
                 status = read_json(prior) if prior.exists() else {}
@@ -522,8 +531,7 @@ class TranscriptionService:
                 job.update(status='stopped' if stop_at is not None else 'failed',
                            last_error=str(failure or exc)[:3000])
             self._save(path, job)
-            if progress is not None:
-                progress(job['done'], len(job['sources']), job['status'])
+            notify(job['done'], len(job['sources']), job['status'])
             return job
 
     def verify(self, identity, *, cancelled=lambda: False):

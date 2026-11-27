@@ -43,6 +43,9 @@ def publish():
     temp.write_text(json.dumps(status), encoding='utf-8')
     os.replace(temp, job / 'job_status.json')
 publish()
+if MODE == 'progress-wait':
+    while not (job / 'progress-observed').exists():
+        time.sleep(.02)
 if MODE == 'network':
     socket.create_connection(('127.0.0.1', 9))
 if MODE == 'outside-write':
@@ -374,3 +377,83 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
     monkeypatch.undo()
     configure('complete')
     assert service.run(identity, timeout=30)['status'] == 'completed'
+
+
+def test_progress_observer_failure_during_actual_child_does_not_kill_recognition(prepared):
+    _, _, service, original, configure = prepared
+    configure('progress-wait')
+    identity = service.submit([original])
+    notices = []
+
+    def broken(done, total, phase):
+        notices.append((done, total, phase))
+        (service._path(identity) / 'progress-observed').write_text('release synthetic worker')
+        raise RuntimeError('Synthetic detached progress observer')
+
+    result = service.run(identity, timeout=10, progress=broken)
+    assert notices and len(notices) == 1
+    assert result['status'] == service.get(identity)['status'] == 'completed'
+    assert service.verify(identity)['done'] == 1
+    assert len(result['artifacts']) == 6 and result['last_error'] == ''
+
+
+def test_final_progress_observer_failure_cannot_reverse_durable_completed_result(prepared):
+    _, _, service, original, _ = prepared
+    identity = service.submit([original])
+    final_notices = []
+
+    def broken(done, total, phase):
+        if phase == 'completed':
+            assert service.get(identity)['status'] == 'completed'
+            final_notices.append((done, total))
+            raise RuntimeError('Synthetic detached completion observer')
+
+    result = service.run(identity, timeout=10, progress=broken)
+    assert final_notices == [(1, 1)]
+    assert result == service.get(identity)
+    assert result['status'] == 'completed' and result['last_error'] == ''
+    assert service.verify(identity)['done'] == 1
+
+
+def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(prepared, tmp_path):
+    _, _, service, original, configure = prepared
+    configure('cancel-after-first')
+    second = tmp_path / 'second-observer-stop.wav'
+    second.write_bytes(b'Another synthetic stop fixture.')
+    identity = service.submit([original, second])
+    path = service._path(identity)
+    notices = []
+
+    def cancelled():
+        status = path / 'job_status.json'
+        return status.exists() and read_json(status).get('done') == 1
+
+    def broken(done, total, phase):
+        if phase == 'stopped':
+            notices.append((done, total))
+            raise RuntimeError('Synthetic detached stop observer')
+
+    result = service.run(identity, timeout=10, cancelled=cancelled, progress=broken)
+    assert notices
+    assert result == service.get(identity) and result['status'] == 'stopped'
+    assert result['done'] == 0 and result['artifacts'] == []
+    assert len(list((path / 'receipts').glob('*.result.json'))) == 1
+    assert len(list((path / 'results').rglob('*.*'))) == 6
+    configure('complete')
+    assert service.run(identity, timeout=10)['status'] == 'completed'
+
+
+@pytest.mark.parametrize('mode, error', [('missing-output', 'export is missing'),
+                                        ('timeout', 'time allowance')])
+def test_progress_observer_failure_preserves_real_child_or_receipt_failure(prepared, mode, error):
+    _, _, service, original, configure = prepared
+    configure(mode)
+    identity = service.submit([original])
+
+    def broken(done, total, phase):
+        raise RuntimeError('Synthetic observer failure must not replace the engine error')
+
+    result = service.run(identity, timeout=1, progress=broken)
+    assert result == service.get(identity) and result['status'] == 'failed'
+    assert error in result['last_error']
+    assert 'observer' not in result['last_error'] and result['artifacts'] == []
