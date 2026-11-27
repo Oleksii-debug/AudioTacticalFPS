@@ -39,7 +39,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_NATIVE_CORRECTION_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Require actual EPUB transport regression suite
+        run: |
+          New-Item -ItemType Directory -Force 'ci-platform-lifetime' | Out-Null
+          python scripts/ci_check.py --diagnostics --jobs 1 tests/reader/test_ebook_audio.py 2>&1 | Tee-Object 'ci-platform-lifetime/epub-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require real Windows lifecycle and EPUB playback with egress blocked
+        if: "!cancelled()"
         run: |
           $ErrorActionPreference = 'Stop'
           New-Item -ItemType Directory -Force 'ci-platform-lifetime' | Out-Null

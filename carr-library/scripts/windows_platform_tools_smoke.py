@@ -365,6 +365,9 @@ def run_native():
                 return original_run(title, observed_operation, done=done, failed=failed)
 
             host.run_job = observe_job
+            # A modeless dialog owns a real visible native parent, as in the desktop.
+            host.Show()
+            check('profile lifetime host is shown: ' + destruction, host.IsShown())
             owner = build_transcription_dialog(host, TranscriptionController(library.root, service=held))
             page = owner.profile_view
             page.profiles = tuple(held.profiles)
@@ -438,7 +441,9 @@ def run_native():
                     if phase[0] == 'start':
                         print('CHECK: ASR native lifetime ' + destruction + ': start', flush=True)
                         owner.Show()
+                        print('CHECK: ASR native lifetime ' + destruction + ': owner shown', flush=True)
                         click(owner.start_button)
+                        print('CHECK: ASR native lifetime ' + destruction + ': start returned', flush=True)
                         phase[0] = 'running'
                     elif phase[0] == 'running' and held.running.is_set():
                         assert page.pending and not frame.cancel_event.is_set()
