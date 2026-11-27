@@ -1,0 +1,172 @@
+name: CARR native script OCR closure
+
+on:
+  push:
+    branches: [carr/ocr-native-script-inventory-af5-20261127]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-script-ocr:
+    name: Windows real script model source and installed
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the actual desktop package in a fresh environment
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($sourceCommit -cne $env:EXPECTED_SOURCE_COMMIT) { throw 'Checkout does not match the exact event head.' }
+          $sourceCommit | Set-Content 'ci-results/tested-commit.txt'
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
+      - name: Prepare the exact pinned native OCR runtime
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-ocr-script-ci'
+          New-Item -ItemType Directory -Force $bundleWork | Out-Null
+          & $env:CARR_PYTHON -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $bundleWork 'ocr'
+          $ocrSource = Join-Path $bundleWork 'ocr-corresponding-source.tar'
+          & $env:CARR_PYTHON packaging/prepare_windows_ocr.py --cache (Join-Path $bundleWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "TESSDATA_PREFIX=$(Join-Path $ocr 'tessdata')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $ocr | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Prepare the exact test font for real OCR fixtures
+        timeout-minutes: 2
+        run: |
+          # A test fixture only. It is outside src and never joins the product wheel.
+          $font = @'
+          import hashlib, json, pathlib, urllib.request
+          target = pathlib.Path('DejaVuSans.ttf')
+          url = 'https://raw.githubusercontent.com/matplotlib/matplotlib/4aeb773422464799998d900198b35cb80e94b3e1/lib/matplotlib/mpl-data/fonts/ttf/DejaVuSans.ttf'
+          with urllib.request.urlopen(url, timeout=45) as response:
+              raw = response.read(756073)
+          assert len(raw) == 756072
+          blob = hashlib.sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
+          assert blob == '5267218852f631928716a8005d7bf4b492aaf83d'
+          with target.open('xb') as stream:
+              stream.write(raw)
+          from PIL import ImageFont
+          ImageFont.truetype(str(target), 72)
+          print(json.dumps({'status': 'PASS', 'git_blob': blob, 'sha256': hashlib.sha256(raw).hexdigest(), 'test_fixture_only': True}))
+          '@
+          $font | & $env:CARR_PYTHON -I -B - | Tee-Object 'ci-results/ocr-test-font.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+
+      - name: Require original real OCR and native report source regressions
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON -B scripts/ci_check.py --jobs 2 tests/extract/test_ocr_runtime.py tests/extract/test_ocr_languages.py 2>&1 | Tee-Object 'ci-results/ocr-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the same original and new cases from the installed application
+        timeout-minutes: 6
+        run: |
+          $installed = @'
+          import json, os, pathlib, runpy, subprocess, sys, xml.etree.ElementTree as ET
+          root = pathlib.Path.cwd()
+          policy = runpy.run_path(str(root / 'scripts/ci_check.py'))['PYTEST_CHILD']
+          proof = f"""
+          from pathlib import Path
+          import carr_library, sys
+          package = Path(carr_library.__file__).resolve().parent
+          assert package.is_relative_to(Path(sys.prefix).resolve()), str(package)
+          source = Path({str(root / 'src/carr_library')!r})
+          for relative in ('extract/ocr_languages.py', 'extract/ocr_runtime.py',
+                           'extract/ocr_process.py', 'extract/runtime_identity.py'):
+              assert (package / relative).read_bytes() == (source / relative).read_bytes(), relative
+          print('INSTALLED_ORIGIN_PASS:', str(package), flush=True)
+          """
+          env = dict(os.environ)
+          for key in ('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS'):
+              env.pop(key, None)
+          env['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+          results = []
+          for suite, expected in (('test_ocr_runtime.py', 41), ('test_ocr_languages.py', 110)):
+              report = root / 'ci-results' / ('installed-' + suite + '.xml')
+              command = [sys.executable, '-I', '-B', '-c', proof + '\n' + policy,
+                         '-q', '-o', 'addopts=', '-o', 'pythonpath=',
+                         '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',
+                         '--import-mode=importlib', '--junitxml', str(report),
+                         '--', str(root / 'tests/extract' / suite)]
+              process = subprocess.run(command, cwd=root, env=env, timeout=300, check=False)
+              cases = list(ET.parse(report).iter('testcase')) if report.is_file() else []
+              failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+              skipped = sum(case.find('skipped') is not None for case in cases)
+              result = dict(suite=suite, expected=expected, passed=len(cases)-failed-skipped,
+                            failed=failed, skipped=skipped, pytest_exit=process.returncode)
+              result['status'] = 'PASS' if process.returncode == 0 and len(cases) == expected and failed == skipped == 0 else 'FAIL'
+              results.append(result)
+              print(json.dumps(result, sort_keys=True), flush=True)
+          (root / 'ci-results/ocr-installed-summary.json').write_text(json.dumps(results, indent=2) + '\n', encoding='utf-8')
+          assert all(row['status'] == 'PASS' for row in results), results
+          '@
+          $installed | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-results/ocr-installed.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve exact source and synthetic OCR evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-ocr-native-script-${{ github.sha }}
+          path: carr-library/ci-results/
+          if-no-files-found: error
+          retention-days: 7
