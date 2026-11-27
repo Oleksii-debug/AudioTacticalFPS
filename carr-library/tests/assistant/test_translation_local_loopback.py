@@ -180,3 +180,89 @@ def test_actual_protocol_rejection_is_uncertain_and_never_retried(tmp_path, serv
     with pytest.raises(ProviderError, match='already been attempted'):
         service.resume(identity)
     assert len(server.state['requests']) == 2
+
+
+def cli(app, *arguments):
+    # Same exact installed/source package as this parent, never another checkout.
+    package_parent = str(Path(carr_library.__file__).resolve().parent.parent)
+    code = ('import sys; sys.path.insert(0,sys.argv.pop(1)); '
+            'from carr_library.assistant.translation_cli import main; raise SystemExit(main())')
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', code, package_parent,
+        '--data-dir', str(app.root), *map(str, arguments)], capture_output=True,
+        text=True, encoding='utf-8', timeout=90)
+    return result, json.loads(result.stdout) if result.stdout.strip() else None
+
+
+def test_actual_cli_requires_local_approval_and_keeps_completed_work_offline(tmp_path, server):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('CLI local translator')
+    ProfileStore(app.root / 'state/providers').save(server.profile)
+    result, _ = cli(app, 'languages', '--profile', server.profile.id, '--approve-remote')
+    assert result.returncode == 1 and not server.state['requests'], result.stderr
+    result, rows = cli(app, 'languages', '--profile', server.profile.id, '--approve-local')
+    assert result.returncode == 0 and rows[0]['targets'] == ['uk'], result.stderr
+    selected = tmp_path / 'selected.txt'
+    original = 'First paragraph. ' * 350 + '\nSecond paragraph 🙂.'
+    selected.write_text(original, encoding='utf-8')
+    options = ['--profile', server.profile.id, '--input', selected, '--source', 'en',
+               '--target', 'uk', '--budget', '0']
+    result, review = cli(app, 'preview', *options)
+    assert result.returncode == 0 and review['calls'] == 2, result.stderr
+    before = len(server.state['requests'])
+    result, _ = cli(app, 'submit', *options, '--review-sha256', review['review_sha256'], '--approve-remote')
+    assert result.returncode == 1 and len(server.state['requests']) == before, result.stderr
+    result, saved = cli(app, 'submit', *options, '--review-sha256', review['review_sha256'], '--approve-local')
+    assert result.returncode == 0 and len(server.state['requests']) == before, result.stderr
+    result, completed = cli(app, 'resume', saved['id'])
+    assert result.returncode == 0 and completed['status'] == 'complete', result.stderr
+    ProfileStore(app.root / 'state/providers').remove(server.profile.id)
+    result, exported = cli(app, 'export', saved['id'], '--output', tmp_path / 'offline')
+    assert result.returncode == 0 and exported['status'] == 'complete', result.stderr
+    assert (tmp_path / 'offline/original.txt').read_bytes() == original.encode()
+    report = json.loads((tmp_path / 'offline/translation-provenance.json').read_bytes())
+    assert report['local_runtime_identity'] == 'not attested by the local API'
+    assert report['quotation_authority'] is False
+    assert len(server.state['requests']) == before + 2
+    assert selected.read_bytes() == original.encode()
+
+
+def test_actual_cli_existing_library_batch_uses_saved_children_and_source_lineage(tmp_path, server):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Explicit CLI local batch')
+    entries = [app.add_text(workspace, 'Book ' + str(i), 'Original ' + str(i) + '\nRetained paragraph.')
+               for i in range(2)]
+    originals = [(app.assets.resolve(row['asset']), app.assets.resolve(row['asset']).read_bytes()) for row in entries]
+    ProfileStore(app.root / 'state/providers').save(server.profile)
+    result, _ = cli(app, 'languages', '--profile', server.profile.id, '--approve-local')
+    assert result.returncode == 0, result.stderr
+    batch_file = tmp_path / 'chosen.json'
+    batch_file.write_text(json.dumps({'schema': 'carr-translation-batch-input/1',
+        'title': 'Reviewed local source order', 'items': [
+            {'profile': server.profile.id, 'workspace': workspace, 'edition': row['edition'],
+             'source': 'en', 'target': 'uk', 'budget': '0'}
+            for row in entries]}), encoding='utf-8')
+    options = ['--batch-file', batch_file]
+    result, review = cli(app, 'batch-preview', *options)
+    assert result.returncode == 0 and review['calls'] == 2, result.stderr
+    result, _ = cli(app, 'batch-submit', *options,
+        '--approve-remote', '--review-sha256', review['review_sha256'])
+    assert result.returncode == 1, result.stderr
+    result, prepared = cli(app, 'batch-submit', *options,
+        '--approve-local', '--review-sha256', review['review_sha256'])
+    assert result.returncode == 0 and prepared['total'] == 2 and prepared['status'] == 'queued', result.stderr
+    assert len(server.state['requests']) == 1
+    result, finished = cli(app, 'batch-resume', prepared['id'])
+    assert result.returncode == 0 and finished['status'] == 'complete', result.stderr
+    result, exported = cli(app, 'batch-export', prepared['id'], '--output', tmp_path / 'batch-exports')
+    assert result.returncode == 0 and exported['status'] == 'complete', result.stderr
+    for index, row in enumerate(entries, 1):
+        output = tmp_path / 'batch-exports' / f'{index:04d}-translation'
+        report = json.loads((output / 'translation-provenance.json').read_bytes())
+        assert report['source_anchor']['edition'] == row['edition']
+        assert report['quotation_authority'] is False
+        assert (output / 'original.txt').read_bytes() == originals[index - 1][1]
+    assert all(path.read_bytes() == raw for path, raw in originals)
+    before = len(server.state['requests'])
+    result, reused = cli(app, 'batch-resume', prepared['id'])
+    assert result.returncode == 0 and reused['status'] == 'complete', result.stderr
+    assert len(server.state['requests']) == before == 3

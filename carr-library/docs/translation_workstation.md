@@ -1,4 +1,4 @@
-# Optional selected-text translation: Google Basic v2 and Advanced v3
+# Optional selected-text translation: Google Basic/Advanced and explicit local LibreTranslate
 
 Tools → Translate selected text uses the existing provider profiles, Windows
 Credential Manager, permission envelope, usage ledger, JobStore and reversible
@@ -380,3 +380,44 @@ synthetic localhost HTTP and CLI children). The latter must use the existing
 strict direct-pytest loopback gate, never the all-connections-denied
 `ci_check.py` selection. Native control checks and real model/linguistic
 qualification remain separate evidence.
+
+
+### Local CLI and native controls
+
+Use the existing installed entry point, with an existing private library:
+
+```text
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY languages --profile LOCAL_PROFILE --approve-local
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY preview --profile LOCAL_PROFILE --input SELECTED.txt --source en --target uk --budget 0
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY submit --profile LOCAL_PROFILE --input SELECTED.txt --source en --target uk --budget 0 --review-sha256 REVIEW_SHA --approve-local
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY resume JOB_ID
+python -m carr_library.assistant.translation_cli --data-dir LIBRARY export JOB_ID --output NEW_DIRECTORY
+```
+
+`LOCAL_PROFILE` is the explicitly configured enabled profile ID; no command
+accepts a credential or starts a server. Reading a language cache omits the
+approval flag. `--approve-remote` refuses a local discovery or submission.
+Source-bound `--workspace/--edition` and reading-position options remain
+available instead of `--input`; their exact lineage is included in the review.
+A batch uses the existing `carr-translation-batch-input/1` description,
+`batch-preview`, `batch-submit`, `batch-resume` and `batch-export`.
+Pass `--approve-local` for its local rows and `--approve-remote` for any
+remote rows, with the unchanged full batch review hash. Preparation sends no text.
+
+In the existing native workspace, a configured local profile appears in
+**Translation provider profile** alongside enabled Google accounts. Tab and
+Shift+Tab reach the same named text, language, preview, run, pause and export
+controls. Local discovery and selected-text transfer show separate confirmations
+containing the exact loopback endpoint. The existing **Document batches** view
+shows every local/remote endpoint and reservation before its confirmation.
+An unsupported local glossary, nonzero price or **auto** target is rejected;
+it never selects another adapter.
+
+`scripts/windows_translation_local_smoke.py` exercises real native named
+controls, Space/foreground focus, the existing serial worker and ordinary batch
+jobs with synthetic local protocol responses. It checks exported bytes and
+decoded receipts, rejects changed review settings, forbids every DNS lookup
+and credential read, and reports hashes of the actual installed modules.
+Its confirmation/file picker seams are controlled test fixtures; actual
+LibreTranslate models, translation quality, screen-reader listening and
+server egress remain explicitly unqualified.

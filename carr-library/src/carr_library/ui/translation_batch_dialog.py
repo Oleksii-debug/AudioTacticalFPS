@@ -19,7 +19,8 @@ HELP = (
     'per-document USD reservations. Prepare asks permission for that unchanged review and saves ordinary '
     'translation jobs; it sends no text. Run/resume is a separate explicit action. '
     'Accepted chunks are reused. A paused document or uncertain provider charge stops this invocation; '
-    'no automatic paid retry or new approval is inferred.\n\n'
+    'no automatic paid retry or new approval is inferred. Local LibreTranslate uses its explicit loopback profile '
+    'and zero external cost; a mixed batch explicitly approves both local and remote transfers.\n\n'
     'Saved batches retain their existing approvals and expiry. Export requires all documents to be verified '
     'complete and an explicitly chosen new directory, including after restore. Originals remain unchanged; '
     'translated text has no source-quotation authority. Limits: 32 documents and two million selected characters. '
@@ -246,15 +247,18 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
                 for index, row in enumerate(frozen, 1))
             message = (f"Approve transfer of these {len(frozen)} documents, "
                 f"{sum(len(row['text']) for row in frozen)} exact characters, in this order?\n"
-                f"Total local reservation: {total} USD. Provider terms and charges apply; this is not a "
-                f"provider-enforced billing limit.\nReview SHA-256: {review_hash}\n{accounts}\n\n"
+                f"Total reservation: {total} USD. Remote provider terms and charges apply; this is not a "
+                f"provider-enforced billing limit. Explicit local profiles reserve zero external cost; their "
+                f"server/model identity and egress are not attested.\nReview SHA-256: {review_hash}\n{accounts}\n\n"
                 "Prepare saves approvals only. A separate Run/resume starts transmission.")
             if wx.MessageBox(message, 'Approve exact translation batch', wx.YES_NO | wx.NO_DEFAULT, dialog) != wx.YES:
                 return
             guard()
             def work():
                 identity = batches.submit(frozen, title=frozen_title, review_sha256=review_hash,
-                                          approve_remote=True, cancelled=stopped)
+                                          approve_remote=any(not row['profile']['local'] for row in frozen),
+                                          approve_local=any(row['profile']['adapter'] == 'libretranslate-local' for row in frozen),
+                                          cancelled=stopped)
                 return identity, batches.get(identity), retained(identity)
             begin('Preparing approved translation documents', work,
                   lambda value: prepared(value[0], value[1], value[2]))
@@ -269,8 +273,9 @@ def create_translation_batch_dialog(frame, *, items=(), wx_module=None):
             return
         identity = current
         def work():
-            retained(identity)
-            service.gateway = Gateway(service.directory / 'provider', mode='APPROVED_REMOTE')
+            review = retained(identity)
+            service.gateway = Gateway(service.directory / 'provider',
+                mode='LOCAL_ONLY' if all(row['profile']['local'] for row in review['items']) else 'APPROVED_REMOTE')
             from ..progress import current_progress
             progress = current_progress()
             def advanced(done, total, phase):
