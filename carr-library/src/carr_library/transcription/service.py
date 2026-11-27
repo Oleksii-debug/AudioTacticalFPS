@@ -576,7 +576,8 @@ class TranscriptionService:
                     or runtime.get('packages') != profile['runtime_distributions']):
                 raise ValueError('The worker checkpoint does not match the selected runtime/model identity.')
             self._verify_source(state, source, cancel=cancel)
-            text_path, meta_path = marker.with_name(key + '.txt'), marker.with_name(key + '.json')
+            text_path = local_path(marker.with_name(key + '.txt'), root=cache_root, exists=True)
+            meta_path = local_path(marker.with_name(key + '.json'), root=cache_root, exists=True)
             # Decode the exact bytes verified against the captured checkpoint.
             # A second pathname read would let an unverified local edit enter
             # the immutable receipt after its digest had already passed.
