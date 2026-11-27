@@ -3,8 +3,8 @@
   "repository": "Oleksii-debug/AudioTacticalFPS",
   "canonical_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
   "canonical_tree": "682b267cb237804c7a15e6ac0285b9b6861b847c",
-  "status": "DRAFT_RECOVERY_ARCHIVE_NOT_RELEASE",
-  "source_execution": "Checkpoint5 validation failed before citation/runtime tests: malformed archived Windows workflow transport and Windows checkout newline conversion. Corrected exact source bytes and archive -text attributes; fresh CI is required. Local actual 279 citation tests passed on Python3.12.14/QuickJS-NG0.18.0.2. This archive is not the active integrated application.",
+  "status": "DRAFT_COMPONENT_RECOVERY_NOT_FINAL_APPLICATION",
+  "source_execution": "Checkpoint6 exact candidate/configuration check PASS; actual Python3.11 citation five suites279PASS185.03s; Windows actual PowerShell64blocks0errors. Windows finite runner suite failed first on a synthetic partial PID-marker publication before ownership admission; checkpoint7 corrects only that fixture and requires fresh Windows/POSIX runs. Full local application integration is interrupted by unavailable executor.",
   "files": [
     {
       "path": ".github/workflows/carr-bibliography.yml",
@@ -1220,11 +1220,13 @@
       "path": "carr-library/tests/packaging/test_ci_check.py",
       "base_ref": "25c7e78e5e0ea415b9938afbf1412826c18deabd",
       "base_blob": "6d5adb9063d36647d4b7678809c73cbc88d402d0",
-      "new_blob": "4cf1b76caf583fbe059680110d19ca38f9477ad7",
-      "status": "DRAFT_SOURCE_NOT_COMPILED_OR_TESTED",
+      "new_blob": "bc05942a32e086cc86238802bffc9023cc4123cd",
+      "status": "SOURCE_REVIEWED_NATIVE_RERUN_PENDING",
       "readback": true,
       "owner": "root",
-      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_ci_check.py"
+      "saved_path": "recovery/canonical-composition-20261127/sources/carr-library/tests/packaging/test_ci_check.py",
+      "supersedes_blob": "4cf1b76caf583fbe059680110d19ca38f9477ad7",
+      "review_note": "Only the synthetic descendant PID marker is now published by a closed sibling file plus os.replace, after opening its held lock. All 82 original self.assert calls and the real descendant/lock/interpreter assertions remain. This fixes the observed empty-marker race before Popen ownership admission; production ci_check.py is unchanged."
     },
     {
       "path": "carr-library/tests/packaging/test_native_checks_manifest.py",
@@ -1833,7 +1835,8 @@
     "Five earlier base_commit fields are normalized into base_ref without changing their recorded base identity.",
     "The current Windows workflow candidate still has two explicit review findings (no-audio standard-installer input and command-registry import path). It must not be activated unchanged.",
     "Checkpoint5 corrects only the bounded legacy citation memory profile and reviewed workflow source. Actual PowerShell parsing and CPython3.11 replay are pending a separate validation run. Archive objects are not a final platform build.",
-    "Checkpoint6 repairs the archived Windows workflow transport using bounded chunks and verified Git blob dd71a09369ec77e6d00181111c534fe25857c5aa; adds recovery-local .gitattributes '* -text' so native source hash gates use unchanged committed bytes. Validation failures were retained and not relabelled."
+    "Checkpoint6 repairs the archived Windows workflow transport using bounded chunks and verified Git blob dd71a09369ec77e6d00181111c534fe25857c5aa; adds recovery-local .gitattributes '* -text' so native source hash gates use unchanged committed bytes. Validation failures were retained and not relabelled.",
+    "Checkpoint7 keeps the native failure evidence and repairs only atomic readiness publication inside the existing synthetic descendant fixture. No production process cleanup change or timeout/assertion relaxation. Fresh Windows and POSIX full finite runner selections replace no earlier evidence."
   ],
   "root_notes": {
     "builder": {
@@ -1940,6 +1943,39 @@
         "status": "PENDING_AT_CHECKPOINT"
       },
       "release_claim": false
+    },
+    {
+      "validation_commit": "4292bb0974009a5082f53cd36a921139aaf6bd8b",
+      "run_id": 45982468090,
+      "candidate_compilation": {
+        "files": 150,
+        "python": 137,
+        "status": "PASS"
+      },
+      "citation_job": {
+        "id": 140449598922,
+        "status": "PASS",
+        "cases": 279,
+        "seconds": 185.03,
+        "python": "3.11.18",
+        "quickjs_ng": "0.18.0.2",
+        "suites": 5,
+        "installed": "NOT_RUN",
+        "nvda": "NOT_RUN"
+      },
+      "powershell_job": {
+        "id": 140449598522,
+        "status": "PASS",
+        "blocks": 64,
+        "errors": 0
+      },
+      "native_process_job": {
+        "id": 140449599005,
+        "status": "FAIL",
+        "first_cause": "ValueError converting empty synthetic PID marker before runner owns Popen; held-lock cleanup then reports WinError32.",
+        "production_failure_proven": false
+      },
+      "release_claim": false
     }
   ],
   "deletions": [
@@ -1955,7 +1991,7 @@
     "shared": "8c981c7e947f8d144c8706b5ea022990517c7dd9",
     "note": "Latest public deltas are being reconciled in an isolated local composition; this archive still changes only recovery records and does not activate the application."
   },
-  "checkpoint": 6,
+  "checkpoint": 7,
   "public_composition_decisions": {
     "manifest_blob": "e4060c83eca99e44a58cd7b4ea682110a9aad29c",
     "shared_parent": "96294e97498f2133bf93f02ce72f84b6e709c72b",

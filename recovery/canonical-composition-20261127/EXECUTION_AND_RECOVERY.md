@@ -64,3 +64,7 @@ The single-PCM/effects work has completed several focused portable runs and an i
 6. Reconcile the latest public parents, finish the real application merge and update PR143 only with evidence for that exact composition. Native Windows, installed-origin, human NVDA/listening, private engine/model and rights qualification remain separate gates.
 
 No private source, owner engine bytes, model weights, recordings, signing material, business policy or endpoint was published by this checkpoint. The earlier automatic review rejected publication of the whole unfinished local commit; it remains unpublished. Public-derived archive repairs and this factual execution record are narrower independently reviewed work.
+
+## Subsequent remote results and bounded native correction
+
+Run 45982468090 completed 279 citation tests on Python 3.11.18 / QuickJS-NG 0.18.0.2 in 185.03 seconds and parsed all 64 PowerShell blocks without errors. The Windows process suite failed first when the fixture parent read an empty, newly created PID marker; ownership admission had not yet returned to production runner code. The subsequent held-file cleanup error therefore does not establish a production cleanup failure after admission. Checkpoint 7 changes only synthetic marker publication to a fully written sibling followed by `os.replace`, after opening the held lock, and retains all 82 existing assertion calls. Fresh full finite Windows and POSIX tests are required; no timeout, assertion or production cleanup behavior was weakened.
