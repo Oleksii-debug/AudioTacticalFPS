@@ -201,5 +201,26 @@
     "runtime_cleanup=PASS",
     "owned-modal-unwound"
   ],
-  "runtime_status": "NOT_RUN"
+  "runtime_status": "FOLLOWUP_CORRECTION_NOT_RUN",
+  "followup_observed": {
+    "commit": "ac47716ab40a839ed289e08ebe73a919216c8f12",
+    "run": 46007037492,
+    "job": 140532682503,
+    "status": "FAIL",
+    "source_cases": 268,
+    "installed_cases": 268,
+    "selected_advanced_native": "PASS_WITH_REQUIRED_CLEANUP",
+    "scoped_document_native": "FAIL_BEFORE_VAULT_SETUP",
+    "error": "KeyError: asset",
+    "artifact": {
+      "id": 15202676085,
+      "bytes": 4498653,
+      "sha256": "ca9c84f530dfd187f04ee0bd07b67fab9d098206615f7ebc210553524aab23c1"
+    },
+    "evidence": "Actual strict source/installed/native helper phase output in job log; detailed new JUnit/artifact inventory not independently reread."
+  },
+  "followup_corrections": [
+    "Probe binds the explicit imported EPUB edition through existing capture_selection retained asset identities; import_file revision receipts do not supply add_text's asset shortcut.",
+    "Structured UI only invalidates preview when checked edition membership/order changes. Calling values() to submit the unchanged selection must not erase its reviewed approval."
+  ]
 }

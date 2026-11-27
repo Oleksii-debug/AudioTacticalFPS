@@ -27,7 +27,7 @@ def run_native(args, progress, runtime_owner):
     import wx
     from carr_library.application import LibraryApp
     from carr_library.assistant.translation import TranslationService
-    from carr_library.assistant.translation_selection import blocks
+    from carr_library.assistant.translation_selection import blocks, capture_selection, DocumentSelection
     from carr_library.assistant.translation_scope import TranslationScopeService
     from carr_library.assistant.translation_state import split_text
     from carr_library.providers import (
@@ -89,11 +89,18 @@ def run_native(args, progress, runtime_owner):
         make_book = runpy.run_path(str(fixture_path))['book']
         epub_path = root / 'synthetic.epub'
         make_book(epub_path)
-        epub_book = library.import_file(workspace, epub_path, title='Native EPUB document')
+        epub_edition = 'native-scoped-epub'
+        epub_book = library.import_file(workspace, epub_path, title='Native EPUB document',
+                                        edition_id=epub_edition)
         if text_book['state'] != 'complete' or epub_book['state'] != 'complete':
             raise AssertionError('The real synthetic source import failed.')
-        original = {book['asset']: library.assets.resolve(book['asset']).read_bytes()
-                    for book in (text_book, epub_book)}
+        retained = capture_selection(library, workspace,
+            [DocumentSelection(text_book['edition']), DocumentSelection(epub_edition)], mode='batch')
+        original = {item['asset_sha256']: library.assets.resolve(item['asset_sha256']).read_bytes()
+                    for item in retained['items']}
+        if len(original) != 2:
+            raise AssertionError('Both real retained synthetic originals must be independently bound.')
+        progress('synthetic-sources-verified', retained_originals=len(original))
         exports = root / 'exports'
         exports.mkdir()
         vault = WindowsCredentialVault()
@@ -206,7 +213,7 @@ def run_native(args, progress, runtime_owner):
                     elif phase[0] == 1 and not frame.working:
                         listing = child(dialog, 'Documents to translate; Space checks each item')
                         assert listing.GetCount() == 2
-                        wanted = {text_book['edition']} if args.mode == 'document' else {epub_book['edition']}
+                        wanted = {text_book['edition']} if args.mode == 'document' else {epub_edition}
                         if args.mode == 'batch':
                             wanted.add(text_book['edition'])
                         for index, label in enumerate(listing.GetItems()):
