@@ -726,3 +726,28 @@ new diagnostic ancestry is imported. The final documentation child adds this
 historical terminal record. Source approval alone is not execution; the
 complete ordinary successor and the separately identified Book diagnostic
 retain their own actual gates.
+
+
+## Completed focused Book proof and reviewed scheduling successor
+
+The [compact exact-head record](acceptance/20261127-9f5e9e-focused-book-acceptance.json)
+binds run 46077443673 to 9f5e9e214e9a0df8c599069222e225c21f964564. Both Windows jobs
+succeeded: native 140768371374 at 23:07:43 UTC and source 140768371037 at 23:13:21 UTC.
+The exact 5adc renderer/test blobs passed 79 source controls across three suites,
+57 recording checks, 16 installed V3/SAPI groups and the full 13 CLI plus 17 batch
+cases. The first native Book result was verified at 55.328 seconds; exact resume,
+source preservation, normal owner destruction and the original 90/600/720-second
+limits all passed. Artifact identities and decoded-log hashes are in the record.
+
+This closes the observed focused Book/recording outcomes for that candidate.
+The ordinary 95ef production source result (2165 cases/109 suites, including 25
+admission controls) remains a separate 95ef observation. No result is copied to
+the next ordinary tree or used as complete 95ef V3/full-Windows acceptance.
+
+Component db5d7af5acc6956d7773e9b2362b617db5244f21 changes only the reviewed
+partition: Book batch moves out of old shard 1 position 51 into a required dedicated
+VM. The unchanged 139-entry manifest becomes 69/69/1; all other assignments/order,
+two workers per VM, 600-second suites, 720-second phases and 45-minute jobs remain.
+V3 then has five required jobs: native, three source partitions and broad source.
+Historical measured durations motivate the change; its new execution is
+**NOT_RUN**. The ordinary final composition still requires its own gates.

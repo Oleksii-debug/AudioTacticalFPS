@@ -268,3 +268,35 @@ The following require evidence or inputs beyond source completion:
 - Optional online accounts, external provider permissions and billing. No paid call or secret access is implied by implementing a provider adapter.
 
 The default remains local/offline operation with access to user-owned data. This technical work does not activate paid services, select prices, publish private voices/books/models or waive third-party notices and corresponding-source obligations.
+
+
+## Completed focused Windows Book acceptance — 2026-11-27 23:13 UTC
+
+The [exact 9f5 evidence](acceptance/20261127-9f5e9e-focused-book-acceptance.json)
+replaces only the earlier queued status of that isolated diagnostic. Run 46077443673
+completed successfully: native job 140768371374 ended at 23:07:43 UTC and
+Book-source job 140768371037 at 23:13:21 UTC. The installed inventory matched all
+341 Python files to 9f5. Three source-control suites passed 79 cases; recording
+reported 57 native checks and the installed V3/SAPI probe 16 check groups.
+
+The two-book/three-part native flow passed both explicit Run approvals,
+WAV/FLAC publication and exact hash/mtime reuse with originals preserved. Its
+first completion was observed at 55.328 seconds and the second Run also finished
+inside the unchanged 90-second guard. Book CLI passed 13 cases in 196.88 seconds;
+Book batch passed 17 in 517.45 seconds, with zero failures/skips and complete JUnit
+reports. The 600-second suite, 720-second phase and 90-second CLI-child limits
+were unchanged. This is actual component acceptance, not a general capacity
+measurement or a full ordinary-head result.
+
+Separate ordinary 95ef Linux production evidence remains bound to 95ef:
+job 140771992614 passed 2165 cases in 109 suites, including all 25 production
+admission controls. It is not transferred to 9f5 or a later candidate.
+
+The independently reviewed scheduling successor db5d7af5 preserves the exact
+139-suite manifest and all limits while moving Book batch alone to a required
+third source VM: 69/69/1 suites, with Book CLI still in the second partition.
+Observed earlier work plus the 517.45-second Book run projects an optimistic
+810.43-second finish in its old720-second partition; this is a scheduling
+projection, not a future timing guarantee. The new partition and forthcoming
+ordinary composition remain **NOT_RUN** in this record. All qualification
+limits above remain unchanged.
