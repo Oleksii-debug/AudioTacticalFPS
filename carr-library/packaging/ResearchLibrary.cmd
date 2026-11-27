@@ -19,7 +19,13 @@ if not exist "%~dp0.venv\.installation-complete" (
   pause
   exit /b 1
 )
-if exist "%~dp0models\minilm-manifest.json" (
+set "CARR_LAUNCH_SUBCOMMAND="
+if "%~1"=="transcribe" set "CARR_LAUNCH_SUBCOMMAND=1"
+if "%~1"=="studio" set "CARR_LAUNCH_SUBCOMMAND=1"
+if "%~1"=="assistant" set "CARR_LAUNCH_SUBCOMMAND=1"
+if defined CARR_LAUNCH_SUBCOMMAND (
+  "%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library %*
+) else if exist "%~dp0models\minilm-manifest.json" (
   "%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library --model-dir "%~dp0models\minilm" --model-manifest "%~dp0models\minilm-manifest.json" %*
 ) else (
   "%~dp0.venv\Scripts\python.exe" -I -B -X utf8 -m carr_library %*

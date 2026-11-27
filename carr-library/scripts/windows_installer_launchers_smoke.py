@@ -97,6 +97,22 @@ def exercise(bundle):
                      'CheckInstallation.cmd did not complete its native dependency checks.')
         _require(marker.is_file(), 'The real installation completion marker disappeared.')
         checks.append(name + ': completed install passed')
+
+    _require((bundle / 'models' / 'minilm-manifest.json').is_file(),
+             'Subcommand launcher checks require the complete MiniLM bundle.')
+    for command, expected in (
+            ('transcribe', ('Supplied local Whisper transcription', '--workspace', 'create-folder')),
+            ('studio', ('Local reading and audio production', '--input-root', 'capabilities')),
+            ('assistant', ('Scoped local assistant', '--instructions', '--allow-full-backup'))):
+        result = _run_launcher(cmd, bundle, 'ResearchLibrary.cmd', command, '--help')
+        output = result.stdout + result.stderr
+        _require(result.returncode == 0,
+                 f'ResearchLibrary.cmd {command} --help failed: '
+                 f'exit={result.returncode}; {output[-4000:]}')
+        _require(all(text in output for text in expected) and '--model-manifest' not in output,
+                 f'ResearchLibrary.cmd {command} reached the wrong command parser: {output[-4000:]}')
+        _require(marker.is_file(), 'The real installation completion marker disappeared.')
+        checks.append(f'ResearchLibrary.cmd {command}: installed subcommand help passed')
     return checks
 
 
