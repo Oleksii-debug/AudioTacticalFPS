@@ -140,6 +140,18 @@ def _tempo_filters(value):
     return filters
 
 
+def _echo_decay(value):
+    """Keep positive echo gains representable by FFmpeg's float32 parser."""
+    # aecho rejects zero coefficients; normal float32 values also avoid
+    # dependence on a native worker's denormal/flush-to-zero mode.
+    if value < 2.0 ** -126:
+        raise ValueError('Echo reflection gain is too small. Choose zero mix for a dry signal '
+                         'or increase mix/decay.')
+    fixed = f'{value:.8f}'
+    # Preserve previously accepted fixed-format graphs and their defaults.
+    return fixed if float(fixed) > 0 else f'{value:.17g}'
+
+
 def _extended_effect(effect, sample_rate):
     p = dict(effect.parameters)
     values = {name: p.get(name, spec[0])
@@ -163,9 +175,11 @@ def _extended_effect(effect, sample_rate):
     if kind == 'deesser':
         return [f'deesser=i={v["intensity"]:.8f}:m={v["max_reduction"]:.8f}:f={v["frequency"]:.8f}']
     if kind == 'reverb':
+        if v['mix'] == 0:
+            return []
         # Four bounded reflections, not convolution or an RT60 simulation.
         delays = '|'.join(f'{v["room_ms"] * factor:.8f}' for factor in (1, 1.73, 2.39, 3.11))
-        decays = '|'.join(f'{v["mix"] * v["decay"] ** i:.8f}' for i in (1, 2, 3, 4))
+        decays = '|'.join(_echo_decay(v['mix'] * v['decay'] ** i) for i in (1, 2, 3, 4))
         return [f'aecho=1:{1 / (1 + v["mix"]):.8f}:{delays}:{decays}']
     if kind == 'chorus':
         if v['mix'] == 0:
@@ -224,10 +238,15 @@ def effect_filters(effects, *, sample_rate=48000):
                 selected += f":mix={p['mix']:.8f}"
             filters.append(selected)
         elif effect.kind == 'delay':
+            decay = p.get('decay', 0.25)
+            if decay == 0 or p.get('mix') == 0:
+                continue
             if 'mix' in p:
-                filters.append(f"aecho=1:{1 / (1 + p['mix']):.8f}:{p.get('delay_ms', 250):.8f}:{p.get('decay', 0.25) * p['mix']:.8f}")
+                reflection = _echo_decay(decay * p['mix'])
+                filters.append(f"aecho=1:{1 / (1 + p['mix']):.8f}:{p.get('delay_ms', 250):.8f}:{reflection}")
             else:
-                filters.append(f"aecho=0.8:0.9:{p.get('delay_ms', 250):.8f}:{p.get('decay', 0.25):.8f}")
+                reflection = _echo_decay(decay)
+                filters.append(f"aecho=0.8:0.9:{p.get('delay_ms', 250):.8f}:{reflection}")
         elif effect.kind == 'denoise':
             selected = f"afftdn=nr={p.get('reduction_db', 10):.8f}"
             if 'floor_db' in p:

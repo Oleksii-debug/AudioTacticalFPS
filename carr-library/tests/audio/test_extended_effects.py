@@ -305,3 +305,59 @@ def test_cancel_after_processed_effect_preserves_accepted_chunk_for_resume(tmp_p
     result = render_project(plan, root, engine=engine, ffmpeg=ffmpeg)
     assert len(engine.calls) == 1
     _assert_measured_production(result)
+
+
+@pytest.mark.parametrize('effect', [
+    Effect('reverb', (('mix', 0),)),
+    Effect('delay', (('mix', 0),)),
+    Effect('delay', (('decay', 0),)),
+])
+def test_actual_zero_echo_controls_preserve_the_dry_pcm(tmp_path, ffmpeg, effect):
+    source = tone(tmp_path / 'original.wav', rate=48000)
+    before = hashlib.sha256(source.read_bytes()).digest()
+    dry = process_voice(source, tmp_path / 'dry.wav', ffmpeg=ffmpeg)
+    selected = process_voice(source, tmp_path / 'zero-echo.wav', ffmpeg=ffmpeg,
+                             effects=(effect,))
+    assert wav_info(selected).frames == wav_info(dry).frames
+    assert samples(selected, 0) == samples(dry, 0)
+    assert samples(selected, 1) == samples(dry, 1)
+    assert hashlib.sha256(source.read_bytes()).digest() == before
+
+
+@pytest.mark.parametrize('effect', [
+    Effect('reverb', (('decay', .01),)),
+    Effect('delay', (('mix', 1e-8),)),
+])
+def test_actual_small_positive_echo_coefficients_are_not_serialized_as_zero(tmp_path, ffmpeg, effect):
+    source = tone(tmp_path / 'original.wav', rate=48000)
+    before = hashlib.sha256(source.read_bytes()).digest()
+    selected = process_voice(source, tmp_path / 'quiet-echo.wav', ffmpeg=ffmpeg,
+                             effects=(effect,))
+    original, result = wav_info(source), wav_info(selected)
+    assert result.channels == 2 and result.rate == 48000
+    assert result.frames > original.frames
+    assert 0 < measure_peak(selected)['peak'] < .951
+    assert hashlib.sha256(source.read_bytes()).digest() == before
+
+
+@pytest.mark.parametrize('effect', [
+    Effect('reverb', (('mix', 1e-300),)),
+    Effect('delay', (('mix', 1e-300),)),
+    Effect('delay', (('decay', 1e-300),)),
+])
+def test_unrepresentable_positive_echo_is_rejected_before_starting_ffmpeg(tmp_path, monkeypatch, effect):
+    from carr_library.audio import ffmpeg as module
+
+    source = tone(tmp_path / 'original.wav')
+    before = source.read_bytes()
+    output = tmp_path / 'never-published.wav'
+    calls = []
+
+    def forbidden(*args, **kwargs):
+        calls.append(True)
+        raise AssertionError('An unrepresentable echo must fail before native execution.')
+
+    monkeypatch.setattr(module, 'run_ffmpeg', forbidden)
+    with pytest.raises(ValueError, match='reflection gain is too small'):
+        process_voice(source, output, ffmpeg='not-invoked', effects=(effect,))
+    assert not calls and not output.exists() and source.read_bytes() == before

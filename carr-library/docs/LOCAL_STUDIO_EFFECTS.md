@@ -26,6 +26,11 @@ defaults and units from that model.
 - Width operates after the role's stereo placement. When enabled, the declared
   effect chain processes that stereo signal. Existing chains without width
   keep their former mono-effects-then-pan order.
+- Zero reverb/delay mix, or zero delay decay, keeps the dry signal without
+  adding an echo tail. Small positive reflections retain a nonzero native
+  coefficient; values below the normal float32 range are refused before
+  native execution with an explicit instruction to increase mix/decay or use
+  zero mix. This avoids an underflow-dependent runtime failure.
 - Reverb is four bounded reflections. It is not convolution or a calibrated
   room/RT60 model. Denoise/declip/declick do not guarantee restoration of missing
   information. No speech, music or voice quality is inferred from signal tests.
