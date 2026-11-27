@@ -44,7 +44,9 @@ def dialog(monkeypatch):
             self.native()
             fixture.driver(self)
             return 2
-    wx = SimpleNamespace(Dialog=Dialog, StaticText=Widget, TextCtrl=Widget,
+    class StaticText(Widget):
+        pass
+    wx = SimpleNamespace(Dialog=Dialog, StaticText=StaticText, TextCtrl=Widget,
         Button=Widget, BoxSizer=Widget, GridSizer=Widget, ID_CANCEL=2,
         EVT_BUTTON='button')
     for key in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'EXPAND', 'ALL',
@@ -82,7 +84,14 @@ def dialog(monkeypatch):
             stop=lambda: actions.append(('stop',)), pause=lambda: actions.append(('pause',)),
             subscribe=subscriptions.append)
     fixture.show = show
-    fixture.find = lambda name: next(widget for widget in widgets if widget.name == name)
+    def find(name):
+        # A StaticText label and its explicitly named TextCtrl are distinct
+        # native widgets. Change the editable control, never its caption.
+        matches = [widget for widget in widgets
+                   if not isinstance(widget, StaticText) and widget.name == name]
+        assert len(matches) == 1, (name, matches)
+        return matches[0]
+    fixture.find = find
     fixture.press = lambda name: fixture.find(name).handlers['button'](None)
     return fixture
 

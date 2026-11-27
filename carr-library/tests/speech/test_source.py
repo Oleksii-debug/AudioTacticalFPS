@@ -221,6 +221,11 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def GetStringSelection(self): self.native(); return ''
         def SetInsertionPoint(self, value): self.native(); self.cursor = value
         def GetInsertionPoint(self): self.native(); return self.cursor
+        def GetLastPosition(self): self.native(); return len(self.value)
+        def GetRange(self, start, end):
+            self.native()
+            assert 0 <= start <= end <= len(self.value)
+            return self.value[start:end]
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
         def SetFocus(self): self.native(); assert self.enabled
@@ -289,6 +294,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
 
     ui.show_speech_reader(parent, source_guard=scope,
         source_loader=lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled))
+    assert not any('Operation did not complete.' in message for message in statuses), statuses
     assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
     assert guard_calls
     if recovery_case in ('legacy', 'foreign', 'revision'):
