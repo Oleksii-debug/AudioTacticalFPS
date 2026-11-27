@@ -31,11 +31,36 @@ _NOTICES = {
 }
 
 
+class _RegistryOwner:
+    """Keep an activated registry until all selections and active calls release it."""
+
+    def __init__(self, registry):
+        self.registry = registry
+        self._lock = threading.Lock()
+        self._references = 1
+
+    def retain(self):
+        with self._lock:
+            if not self._references:
+                raise ValueError('The selected progress voice is closed.')
+            self._references += 1
+
+    def release(self):
+        with self._lock:
+            self._references -= 1
+            last = self._references == 0
+        if last:
+            # Registry.close releases every provider, including a warm private
+            # worker. Never run it while another selection is synthesizing.
+            self.registry.close()
+
+
 class LocalProgressSpeech:
     """One selected voice, bounded private PCM, and an independently owned player."""
 
     def __init__(self, registry, voice_id, *, library_root=None,
-                 _player_factory=WavePlayer, _clock=time.monotonic, _guard=lambda: None):
+                 _player_factory=WavePlayer, _clock=time.monotonic, _guard=lambda: None,
+                 _registry_owner=None):
         if not isinstance(registry, VoiceRegistry):
             raise ValueError('Use the configured local voice registry for progress speech.')
         voice = registry.get(voice_id)
@@ -49,6 +74,10 @@ class LocalProgressSpeech:
         self.label = f'{voice.name}; {voice.language}; {voice.engine}'
         self._player_factory, self._clock, self._guard = _player_factory, _clock, _guard
         self._run_lock, self._closed = threading.Lock(), threading.Event()
+        self._selection_lock = threading.Lock()
+        # Direct construction borrows a caller's registry. Explicit activation
+        # owns its new registry; copied views share that lifetime safely.
+        self._registry_owner = _registry_owner
         self._possibly_audible = False
         self._retained = None
 
@@ -60,13 +89,30 @@ class LocalProgressSpeech:
 
     def close(self):
         """Cancel this selection without touching any other audio device/session."""
-        self._closed.set()
+        with self._selection_lock:
+            if self._closed.is_set():
+                return
+            self._closed.set()
+        if self._registry_owner is not None:
+            self._registry_owner.release()
 
     def copy_selection(self):
         """An independent notification player for another native progress view."""
         self._guard()
-        return LocalProgressSpeech(self.registry, self.voice.id, library_root=self.library_root,
-            _player_factory=self._player_factory, _clock=self._clock, _guard=self._guard)
+        owner = self._registry_owner
+        with self._selection_lock:
+            if self._closed.is_set():
+                raise ValueError('The selected progress voice is closed.')
+            if owner is not None:
+                owner.retain()
+        try:
+            return LocalProgressSpeech(self.registry, self.voice.id, library_root=self.library_root,
+                _player_factory=self._player_factory, _clock=self._clock, _guard=self._guard,
+                _registry_owner=owner)
+        except BaseException:
+            if owner is not None:
+                owner.release()
+            raise
 
     def notification_text(self, event, *, state=None):
         words = _NOTICES[self.language]
@@ -94,8 +140,14 @@ class LocalProgressSpeech:
             return False
         if not self._run_lock.acquire(blocking=False):
             return False
-        temporary = player = None
+        temporary = player = owner = None
         try:
+            with self._selection_lock:
+                if self._closed.is_set():
+                    return False
+                if self._registry_owner is not None:
+                    self._registry_owner.retain()
+                    owner = self._registry_owner
             if not self.quiescent:
                 raise RuntimeError('The previous progress audio device has not confirmed silence.')
             self._guard()
@@ -167,6 +219,8 @@ class LocalProgressSpeech:
                         temporary.cleanup()
                 finally:
                     self._run_lock.release()
+                    if owner is not None:
+                        owner.release()
 
 
 def activate_progress_voice(library_root, voice_id, *, _registry_factory=None):
@@ -183,8 +237,14 @@ def activate_progress_voice(library_root, voice_id, *, _registry_factory=None):
         if load_settings(state_root) != settings:
             raise ValueError('Local engine settings changed. Select the progress voice again.')
 
-    guard()
-    return LocalProgressSpeech(registry, voice_id, library_root=root, _guard=guard)
+    owner = _RegistryOwner(registry)
+    try:
+        guard()
+        return LocalProgressSpeech(registry, voice_id, library_root=root, _guard=guard,
+                                   _registry_owner=owner)
+    except BaseException:
+        owner.release()
+        raise
 
 
 def play_when_quiet(controllers, start, *, schedule, alive, on_error, _clock=time.monotonic):
