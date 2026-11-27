@@ -26,11 +26,6 @@ from uuid import uuid4
 PRODUCT = Path(__file__).resolve().parents[1]
 PINS = PRODUCT / 'packaging' / 'local-llm-proof-inputs.json'
 ALIAS = 'carr-qwen3-06b-q8-qualification'
-FORMAT_GUIDANCE = (
-    ' Reply with raw JSON only, without Markdown fences. The schema field must be '
-    'the string "carr-assistant-plan/1", summary a short string, and steps an array. '
-    'Each step has a string tool and an object arguments.'
-)
 
 
 def require(condition, message):
@@ -154,7 +149,6 @@ def main():
         'source_commit': subprocess.check_output(['git', '-C', str(PRODUCT), 'rev-parse', 'HEAD'], text=True).strip(),
         'model': pins['model'], 'runtime': pins['runtime'], 'licenses': pins['licenses'],
         'cases': [], 'actual_transport': [], 'assistant_jobs_created': None, 'automatic_tools_executed': None,
-        'synthetic_prompt_format_guidance': FORMAT_GUIDANCE,
         'limitations': ['Linux CPU only', 'Synthetic prompts only', 'No language-quality benchmark',
                         'No native Windows or installed-package qualification', 'No OS network-denial test'],
         'runtime_options': {'cpu_threads': 2, 'context_tokens': 2048, 'prediction_tokens': 256,
@@ -259,7 +253,6 @@ def main():
             )
             first = None
             for label, instruction, scope, expected_tool, refusal in cases:
-                instruction += FORMAT_GUIDANCE
                 request = local_plan_request(instruction)
                 approval = JobApproval(uuid4().hex, profile.fingerprint, (request.fingerprint(profile),),
                                        allow_loopback=True)

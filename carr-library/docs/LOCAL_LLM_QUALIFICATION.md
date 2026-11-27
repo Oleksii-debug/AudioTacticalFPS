@@ -34,12 +34,15 @@ permission refusals, cancellation and no-send assertions are unchanged.
 
 ## Acceptance
 
-The synthetic instructions all include the same short output-type reminder:
-raw JSON, a string schema identifier, a string summary and an array of steps.
-It supplies no expected tool or argument. This narrowly qualified prompt style
-is recorded verbatim in each response record; it is not a general instruction-
-following score. A previous run without this reminder produced fenced JSON with
+The product's existing `assistant.llm.SYSTEM` instruction now explicitly asks
+for raw JSON without Markdown or reasoning, a string schema identifier, a string
+summary and an array of steps containing a string tool and object arguments.
+It supplies no expected tool or argument. The parser, tool validator, caller
+scope, gateway and approval logic are unchanged. The pinned source hash binds
+the actual inference to this product prompt; synthetic user instructions contain
+only their requested operations. A previous actual run returned fenced JSON with
 an incorrectly nested schema and was correctly rejected by the product parser.
+This narrow correction benefits the real proposal workflow as well as the probe.
 
 
 The probe requires actual English and Ukrainian model proposals to pass the

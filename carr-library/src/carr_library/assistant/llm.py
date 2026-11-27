@@ -10,9 +10,11 @@ from .service import AssistantService
 from ..providers import JobApproval, ProviderGateway, ProviderProfile, ProviderRequest
 
 
-SYSTEM = """Propose a plan for a local research library. Return one JSON object
-with exactly schema, summary and steps. schema is carr-assistant-plan/1.
-Each step has tool and arguments. Allowed tools:
+SYSTEM = """Propose a plan for a local research library. Return one raw JSON object,
+without Markdown fences, reasoning or text outside the object.
+Include exactly schema, summary and steps. schema must be the string
+"carr-assistant-plan/1", summary a short string, and steps an array.
+Each step has exactly a string tool and an object arguments. Allowed tools:
 library.create(name), library.list(), library.catalog(after?,limit?),
 library.import(path), library.import_folder(path),
 library.search(query,mode?,limit?), library.extract(edition,name),

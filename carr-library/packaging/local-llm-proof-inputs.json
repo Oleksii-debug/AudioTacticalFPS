@@ -36,11 +36,11 @@
     }
   ],
   "product_source_sha256": {
-    "assistant/llm.py": "a2d1a105c861ac4a504be3ca22ab3c81eba3f445a2b45395d223e65bb035f02a",
+    "assistant/llm.py": "2c4177af9977e2c7adad381e7b12cc44b28d44f75b50c48832135d6a6298f1a1",
     "assistant/models.py": "5a0521b5dcfef5bb9b57e01fec1e453b9dbee6db7883fee2ccd0178944d4ca1b",
     "assistant/service.py": "3b354f01d06396359b98233a59255a47530531c7d5d9d946f191b5d92e7928a7",
     "providers.py": "d41a3a484440404f838c29d70eae11047978de2e4adc66586ad1970ee940cc6f"
   },
   "equivalent_reviewed_product_commit": "bbd7f662162c139bf4d4cf06f32257c141b9884a",
-  "equivalence_scope": "Only the four explicitly hashed proposal/permission modules; not a whole-build qualification."
+  "equivalence_scope": "The proposal SYSTEM prompt is clarified in this proof; the parser and remaining three hashed permission/gateway modules are byte-identical to bbd7. Not a whole-build qualification."
 }
