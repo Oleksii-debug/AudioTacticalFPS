@@ -147,11 +147,20 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
     for installer in (*installers.values(), ebook):
         installer.assert_called_once_with(value)
-    register.assert_called_once()
-    registered_frame, spec, item = register.call_args.args
-    assert registered_frame is value and spec.command_id == 'research.advanced_query'
-    assert spec.default_shortcut == 'Ctrl+Alt+Q'
-    assert item.title == 'Build advanced query\tCtrl+Alt+Q'
+    registered = {call.args[1].command_id: call.args for call in register.call_args_list}
+    expected = {
+        'research.advanced_query': ('Build advanced query', 'Ctrl+Alt+Q'),
+        'library.ocr_models': ('OCR language models: Fast and Best...', ''),
+        'academic.acquire_sources': ('DOI lookup and open-access sources...', ''),
+        'help.document_formats': ('Document formats', ''),
+    }
+    assert set(registered) == set(expected)
+    for identity, (caption, shortcut) in expected.items():
+        registered_frame, spec, item = registered[identity]
+        assert registered_frame is value and spec.context == 'main'
+        assert spec.default_shortcut == shortcut
+        assert item.title.split('\t', 1)[0] == caption
+        assert any(call.args[2] is item for call in value.Bind.call_args_list)
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide

@@ -543,16 +543,26 @@ class DesktopFrame(WorkspaceFrame):
             ('&Help', [('Keyboard guide\tF1', self.help),
                 ('Document formats', lambda event: show_text(self, 'Document formats', supported_formats_text())),
                 ('Check this installation', self.check_installation)])]
+        # New integrated commands participate in the same searchable, persistent
+        # keymap as the existing menus. These IDs remain independent of captions.
+        command_ids = {
+            ('&Library', 'OCR language models: Fast and Best...'): 'library.ocr_models',
+            ('&Research', 'Build advanced query'): 'research.advanced_query',
+            ('&Academic', 'DOI lookup and open-access sources...'): 'academic.acquire_sources',
+            ('&Help', 'Document formats'): 'help.document_formats',
+        }
         for label, actions in menus:
             menu = wx.Menu()
             for title, handler in actions:
                 item = menu.Append(wx.ID_ANY, title)
                 self.Bind(wx.EVT_MENU, handler, item)
-                if title.startswith('Build advanced query'):
+                caption, _, shortcut = title.partition('\t')
+                identity = command_ids.get((label, caption))
+                if identity is not None:
                     from .command_registry import CommandSpec
                     from .keyboard_settings import register_menu_command
-                    register_menu_command(self, CommandSpec('research.advanced_query',
-                        'Build advanced query', 'main', 'Ctrl+Alt+Q'), item)
+                    register_menu_command(self, CommandSpec(identity,
+                        caption.rstrip('.…'), 'main', shortcut), item)
             self.menu_bar.Append(menu, label)
         self.SetMenuBar(self.menu_bar)
         cancel = wx.Button(self.host, label='Cancel current operation')

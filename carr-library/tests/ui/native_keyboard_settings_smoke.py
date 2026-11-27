@@ -177,6 +177,14 @@ def run_native(source=None, timeout=120):
             frame.GetMenuBar().Append(menu, '&Probe')
             frame.Bind(wx.EVT_MENU, lambda event: calls.append(event.GetId()), action)
             manager = frame.keyboard_commands
+            integrated_commands = {
+                'library.ocr_models': 'OCR language models: Fast and Best',
+                'academic.acquire_sources': 'DOI lookup and open-access sources',
+                'help.document_formats': 'Document formats',
+            }
+            for identity in integrated_commands:
+                check('integrated command is available by stable ID: ' + identity,
+                      manager.available(identity) and manager.shortcut(identity) == '')
             manager.register_menu_command(CommandSpec(test_id, test_caption, 'main', 'Ctrl+Shift+J'), action)
             check('extension command uses the production stable-ID registry', manager.available(test_id))
             keymap = manager.store.path
@@ -304,6 +312,12 @@ def run_native(source=None, timeout=120):
                                   if child.GetName() == 'Search commands by name')
                     results = next(child for child in dialog.GetChildren()
                                    if child.GetName() == 'Matching commands and shortcuts')
+                    for identity, caption in integrated_commands.items():
+                        search.SetValue(caption)
+                        check('native launcher finds the integrated command: ' + identity,
+                              pump(lambda: results.GetCount() == 1
+                                   and caption in results.GetString(0))
+                              and 'Not assigned' in results.GetString(0))
                     search.SetValue(test_caption)
                     check('native launcher finds an available command with no assigned shortcut',
                           pump(lambda: results.GetCount() == 1)
