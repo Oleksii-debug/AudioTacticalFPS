@@ -92,8 +92,14 @@ def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_TYPE
             raise ValueError('Invalid historical reading-state manifest.')
     entries = root_entries(manifest)
     validate_state(entries, max_files=max_files, max_bytes=max_bytes)
+    from . import legacy_transcription_schema as transcription
+    # Normalize root-relative names before applying the flag, including older
+    # state lists. Inert archival retention cannot override an explicit cache
+    # exclusion in the authenticated original manifest.
+    if not manifest['generated_audio_included'] and any(
+            transcription.is_cache_file(item['filename']) for item in entries):
+        raise ValueError('Transcription cache requires explicit manifest inclusion.')
     if layout == 'root':
-        from . import legacy_transcription_schema as transcription
         metadata_bytes = media_bytes = input_bytes = queue_candidates = 0
         has_queue = any(item['filename'] == LEGACY_QUEUE for item in entries)
         for item in entries:

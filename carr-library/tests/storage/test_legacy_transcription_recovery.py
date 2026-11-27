@@ -403,3 +403,94 @@ def test_stale_running_label_is_retained_but_never_becomes_a_current_job(tmp_pat
     assert row['historical'] and row['recorded_status'] == 'running'
     assert not (restored / 'state/transcription').exists()
     assert TranscriptionService(restored).jobs() == ()
+
+
+
+@pytest.mark.parametrize('worker', ['worker', 'worker-history/' + '1' * 32 + '-' + '2' * 32])
+@pytest.mark.parametrize('suffix', ['cache.json', 'receipt.json', 'json', 'txt'])
+@pytest.mark.parametrize('cache_layout', ['', '33/', 'verified-v1/', 'verified-v1/33/'])
+@pytest.mark.parametrize('shape', ['state-v3', 'state-v4', 'root-v4', 'state-v5'])
+def test_historical_asr_cache_requires_explicit_inclusion_in_every_supported_envelope(
+        worker, suffix, cache_layout, shape):
+    job, source, key = '1' * 32, '2' * 32, '3' * 64
+    root = f'state/transcription/jobs/{job}/'
+    cache = root + f'{worker}/logs/cache/{cache_layout}{key}.{suffix}'
+    retained = root + f'inputs/{source}/source.wav'
+    accepted = root + f'artifacts/{source}/{job}/transcript.txt'
+    worker_result = root + f'{worker}/results/{source}/source.txt'
+    names = [retained, accepted, worker_result, cache]
+    state_list = shape.startswith('state-')
+    field = 'state' if state_list else 'sidecars'
+    entries = [dict(filename=name[6:] if state_list else name,
+                    size_bytes=0 if name == cache and suffix == 'txt' else 1,
+                    sha256='4' * 64) for name in names]
+    version = int(shape[-1])
+    manifest = dict(version=version, kind='carr-library', schema_version=5,
+                    schema_fingerprint='5' * 64, database={}, assets=[],
+                    generated_audio_included=True)
+    manifest[field] = entries
+    extra_names = set()
+    if shape in ('state-v4', 'state-v5'):
+        # This pure envelope check does not attest a pending component; the
+        # complete-library parser retains its existing independent validator.
+        manifest['pending'] = {} if shape == 'state-v4' else None
+    if shape == 'state-v5':
+        manifest['reading_state'] = dict(filename='reading-state.json',
+                                         size_bytes=1, sha256='4' * 64)
+        extra_names.add('reading-state.json')
+    assert schema.is_cache_file(cache)
+    assert not any(schema.is_cache_file(name) for name in names[:-1])
+    backup_historical.validate_manifest(manifest)
+    assert {row['filename'] for row in backup_historical.root_entries(manifest)} == set(names) | extra_names
+    manifest['generated_audio_included'] = False
+    with pytest.raises(ValueError, match='Transcription cache requires explicit manifest inclusion'):
+        backup_historical.validate_manifest(manifest)
+    # The current exact historical envelopes require this field. Removing it
+    # cannot turn a cache exclusion into permission or select another format.
+    manifest.pop('generated_audio_included')
+    with pytest.raises(ValueError, match='Unsupported historical'):
+        backup_historical.validate_manifest(manifest)
+    manifest['generated_audio_included'] = False
+    manifest[field] = entries[:-1]
+    backup_historical.validate_manifest(manifest)
+    assert {row['filename'] for row in backup_historical.root_entries(manifest)} == set(names[:-1]) | extra_names
+
+
+@pytest.mark.parametrize('worker', ['worker', 'worker-history/' + '1' * 32 + '-' + '2' * 32])
+def test_recomputed_outer_manifest_cannot_override_optional_historical_cache_exclusion(tmp_path, worker):
+    app, _ = app_at(tmp_path)
+    old = canonical_data(tmp_path / 'old', complete=True)
+    cache = old.job_root / worker / 'logs/cache/verified-v1/33' / ('3' * 64 + '.txt')
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_bytes(b'Optional historical recognition cache; not accepted output.')
+    backup = tmp_path / 'historical-with-cache'
+    _, manifest = common_backup(app, backup, old)
+    assert any(schema.is_cache_file(row['filename']) for row in manifest['sidecars'])
+
+    def reseal():
+        raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
+                          separators=(',', ':')) + '\n').encode('utf-8')
+        (backup / 'manifest.json').write_bytes(raw)
+        return digest(raw)
+
+    manifest['generated_audio_included'] = True
+    accepted = reseal()
+    verify_backup(backup, accepted)
+    restored = restore_backup(backup, tmp_path / 'accepted-inert-history', accepted)
+    assert not (restored / 'state/transcription').exists()
+    saved, = recovery.jobs(restored)
+    assert recovery.read_transcript(restored, saved['reference'], old.source['id'])['text'] == old.text
+    # The retained original manifest keeps the explicit inclusion through the
+    # current typed producer and another complete backup.
+    again = tmp_path / 'accepted-rebackup'
+    verify_backup(again, create_backup(LibraryApp(restored), again))
+
+    manifest['generated_audio_included'] = False
+    rejected = reseal()
+    before = tree(backup)
+    with pytest.raises(ValueError, match='Transcription cache requires explicit manifest inclusion'):
+        verify_backup(backup, rejected)
+    destination = tmp_path / 'never-published'
+    with pytest.raises(ValueError, match='Transcription cache requires explicit manifest inclusion'):
+        restore_backup(backup, destination, rejected)
+    assert not destination.exists() and tree(backup) == before
