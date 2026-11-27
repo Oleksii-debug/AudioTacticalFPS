@@ -114,7 +114,7 @@ def state_paths(root, *, cancelled=lambda: False):
                         raise ValueError('A pending media stage must be a directory.')
                     continue
                 if (p == ('.state.lock',) or len(p) == 2 and _JOB.fullmatch(p[0])
-                        and p[1] in ('.job.lock', '.control.lock')):
+                        and p[1] in ('.render.lock', '.control.lock')):
                     if info.st_size > 1:
                         raise ValueError('A media native lock has unexpected bytes.')
                     continue

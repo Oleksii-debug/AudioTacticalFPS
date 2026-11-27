@@ -103,6 +103,9 @@ def test_combined_budget_counts_original_and_derivative_and_releases_after_refus
     from carr_library.audio.ffmpeg import silence
     from carr_library.audio.jobs import file_identity, regular_file
     from dataclasses import replace
+    # The fixture is private and stopped. The PCM writer correctly refuses an
+    # existing file, so replace this setup input explicitly before measuring.
+    session.document.audio.unlink()
     silence(session.document.audio, 300000, sample_rate=8000)
     session.document.audio_identity = file_identity(regular_file(session.document.audio))
     session.document.audio_sha256 = sha256_file(session.document.audio)

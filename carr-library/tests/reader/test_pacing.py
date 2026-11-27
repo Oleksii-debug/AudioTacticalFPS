@@ -74,7 +74,8 @@ def test_invalid_source_ranges_are_rejected(start, end):
 
 
 @pytest.mark.parametrize('text', ['', '   ', 'a\0b', '\ud800', 'x' * (MAX_TEXT_CHARACTERS + 1),
-                                  'x ' * (MAX_TOKENS + 1)])
+                                  'x ' * (MAX_TOKENS + 1)],
+                         ids=('empty', 'whitespace', 'nul', 'surrogate', 'character-budget', 'token-budget'))
 def test_empty_invalid_or_oversized_input_never_creates_a_presentation(text):
     with pytest.raises(ValueError):
         PacedText(text, 0, len(text))

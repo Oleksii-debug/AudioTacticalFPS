@@ -158,9 +158,16 @@ def main():
             assert studio.playback.state == 'stopped', 'Queue setup must not start an audio device.'
             studio.sleep_minutes.ChangeValue('1')
             studio.apply_sleep()
-            assert 0 < studio.playback.sleep_remaining_seconds <= 60
+            wait_for(lambda: studio.playback.sleep_remaining_seconds is not None,
+                     'The actual owned sleep-timer action did not settle.', timeout=5)
+            remaining = studio.playback.sleep_remaining_seconds
+            assert 0 < remaining <= 60, (
+                f'Actual sleep timer exceeded its selected minute: remaining={remaining!r}, '
+                f'deadline={studio.playback._sleep_deadline!r}, clock={studio.playback._clock()!r}')
             studio.sleep_minutes.ChangeValue('0')
             studio.apply_sleep()
+            wait_for(lambda: studio.playback.sleep_remaining_seconds is None,
+                     'Turning the actual sleep timer off did not settle.', timeout=5)
             assert studio.playback.sleep_remaining_seconds is None
             studio.clear_playlist()
             assert not studio.playback.playlist and studio.playlist_choice.GetCount() == 0

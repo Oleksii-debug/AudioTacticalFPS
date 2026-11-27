@@ -362,7 +362,15 @@ class WavePlayer:
         elif type(seconds) not in (int, float) or not math.isfinite(seconds) or not 0 < seconds <= 7 * 86400:
             raise ValueError('Choose a sleep timer between zero and seven days, or turn it off.')
         else:
-            self._sleep_deadline = self._clock() + seconds
+            started = self._clock()
+            deadline = started + seconds
+            # A same-tick read can otherwise return 60.00000000000001 for
+            # a requested sixty seconds when addition crosses a float binade.
+            # Correct only upward rounding; retain exact ordinary deadlines
+            # and the original deadline when another view borrows the player.
+            if deadline - started > seconds:
+                deadline = math.nextafter(deadline, -math.inf)
+            self._sleep_deadline = deadline
 
     @property
     def sleep_remaining_seconds(self):

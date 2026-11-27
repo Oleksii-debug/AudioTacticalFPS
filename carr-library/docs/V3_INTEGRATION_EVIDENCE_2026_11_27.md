@@ -3,6 +3,40 @@
 This is a source/evidence checkpoint, not a declaration of full-platform completion.
 The technical scope remains [V3 finalization](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Actual c68d native audio and strict follow-up corrections
+
+Exact source `c68d950a1696c1600c90ab129c379a422e88a632` audio
+[run45996200703](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45996200703),
+job140496095412, passed the installed native live reader, recorded EPUB/DAISY,
+Studio playback and appearance/pacing probes with actual SAPI and reviewed FFmpeg.
+The later strict selection passed 34 of 37 suites. Broad regressions after that
+failed step did not execute.
+
+Three failing suites had separate concrete causes. Oversized pacing parameter
+values exceeded Windows' PYTEST_CURRENT_TEST environment limit before their
+assertions; explicit short test IDs retain every value and assertion. Complete
+media backup expected an obsolete .job.lock, while its actual project guard
+creates .render.lock; the inventory now excludes only that precise existing
+native lock, preserving link/type/size/location refusal. Its obsolete app.storage
+fixture now explicitly opens and closes the real Storage connection. The new
+recorded-playback byte-budget fixture now removes its own stopped synthetic PCM
+before recreating it, preserving the production no-overwrite rule and budget.
+
+The next exact db15 audio run45998971701 stopped earlier on the existing native
+sleep-duration assertion, before the new recording/source suites. The log did
+not report its actual remaining value. Review found a deterministic float
+addition defect that can report slightly over 60 seconds on the same monotonic
+tick. The correction rounds only an upward-rounded deadline down by one adjacent
+float, keeps exact ordinary/borrowed deadlines, and retains the strict native
+assertion with actual duration diagnostics. New deterministic tests cover the
+previously failing clocks. This is a confirmed numeric correction, not proof
+that no other native cause exists. The exact rerun remains required.
+
+Source donors: pacing 088bd17, media backup d0bd482, sleep 49a907a, plus the root
+controlled-PCM fixture correction. Their new tests are NOT_RUN locally while
+the executor remains unavailable. No native physical-device or manual NVDA
+acceptance is inferred from these automatic probes.
+
 ## Speech preparation, segmented recording and current-service ASR commands
 
 This source continues `c68d950a1696c1600c90ab129c379a422e88a632` with

@@ -246,3 +246,34 @@ def test_empty_playlist_replacement_releases_device_without_closing_controller(t
     player.play(path)
     assert player.state == 'playing'
     player.close()
+
+
+@pytest.mark.parametrize('start', [31.9, 63.999999999, 65500.123456789],
+                         ids=['small-binade', 'near-power-two', 'large-binade'])
+def test_same_tick_sleep_remaining_never_exceeds_the_requested_duration(native_player, start):
+    player, state = native_player
+    state['clock'] = start
+    # These exact clocks reproduce upward float-addition rounding in the old
+    # deadline formula; the public remaining-duration contract is still exact.
+    assert (start + 60) - start > 60
+    player.set_sleep_timer(60)
+    remaining = player.sleep_remaining_seconds
+    assert 0 < remaining <= 60
+    assert math.isclose(remaining, 60, rel_tol=0, abs_tol=2 * math.ulp(start + 60))
+    state['clock'] = start + 30
+    assert 0 < player.sleep_remaining_seconds <= 30
+    assert player.poll() is None
+    state['clock'] = player._sleep_deadline
+    assert player.poll() == 'sleep'
+    assert player.sleep_remaining_seconds is None
+
+
+def test_exact_sleep_deadline_and_borrowed_configuration_are_not_shifted(native_player):
+    player, state = native_player
+    state['clock'] = 100
+    player.set_sleep_timer(60)
+    assert player._sleep_deadline == 160 and player.sleep_remaining_seconds == 60
+    saved = player.capture_configuration()
+    state['clock'] = 117
+    player.restore_configuration(saved)
+    assert player._sleep_deadline == 160 and player.sleep_remaining_seconds == 43

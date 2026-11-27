@@ -1,5 +1,5 @@
 """Actual prepared/partial/complete media snapshots, not a processor activation."""
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 import os
 from pathlib import Path
 import struct
@@ -17,6 +17,7 @@ from carr_library.audio.runtime import resolve_ffmpeg
 from carr_library.library_backup import create_backup, restore_backup, verify_backup
 from carr_library.operations.broker import ResourceBroker
 from carr_library.operations.models import ResourceLimits
+from carr_library.storage.revisions import CURRENT_SCHEMA_VERSION, Storage
 
 
 def prepare(tmp_path, *, count=1):
@@ -182,7 +183,8 @@ def test_snapshot_ignores_only_unacknowledged_exact_staging_and_refuses_linked_s
     (stage / 'unacknowledged.partial').write_bytes(b'not a completed result')
     files = media_backup.state_paths(app.root)
     assert not any(stage in path.parents for path in files)
-    media_backup.validate_state_tree(app.storage.db, app.root)
+    with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
+        media_backup.validate_state_tree(storage.db, app.root)
     os.link(stage / 'unacknowledged.partial', tmp_path / 'unregistered-stage-alias')
     with pytest.raises(ValueError):
         media_backup.state_paths(app.root)
@@ -198,3 +200,41 @@ def test_stale_control_is_retained_as_data_and_cannot_cancel_a_new_restored_run(
     restored = restore_backup(target, tmp_path / 'restored', receipt)
     replay = MediaConversionService(restored, ffmpeg=resolve_ffmpeg())
     assert replay.run(identity)['status'] == 'complete'
+
+
+def test_snapshot_guard_matches_actual_project_lock_without_exporting_native_lock_bytes(tmp_path):
+    app, service, identity, _ = prepare(tmp_path)
+    before = media_backup.state_paths(app.root)
+    job = service.root / identity
+    with media_backup.snapshot_guard(app.root):
+        assert (job / '.render.lock').stat().st_size == 1
+        assert media_backup.state_paths(app.root) == before
+        assert not any(path.name.endswith('.lock') for path in before)
+        with pytest.raises(RuntimeError):
+            with project_lock(job):
+                pytest.fail('The backup guard did not acquire the actual renderer lock.')
+    assert media_backup.state_paths(app.root) == before
+    with project_lock(job):
+        assert media_backup.state_paths(app.root) == before
+
+
+@pytest.mark.parametrize('case', [
+    'obsolete-job-name', 'namespace-render-name', 'input-render-name', 'oversized-render', 'aliased-render',
+])
+def test_only_exact_current_native_lock_locations_are_excluded(tmp_path, case):
+    app, service, identity, _ = prepare(tmp_path)
+    job = service.root / identity
+    if case == 'obsolete-job-name':
+        path, raw = job / '.job.lock', b'0'
+    elif case == 'namespace-render-name':
+        path, raw = service.root / '.render.lock', b'0'
+    elif case == 'input-render-name':
+        path, raw = job / 'inputs/.render.lock', b'0'
+    else:
+        path, raw = job / '.render.lock', b'00' if case == 'oversized-render' else b'0'
+    path.write_bytes(raw)
+    if case == 'aliased-render':
+        os.link(path, tmp_path / 'unregistered-native-lock-alias')
+    with pytest.raises((ValueError, OSError)):
+        media_backup.state_paths(app.root)
+    assert path.read_bytes() == raw
