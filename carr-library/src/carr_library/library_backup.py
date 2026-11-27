@@ -160,7 +160,7 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
             if pending is not None:
                 manifest['pending'] = pending
-            backup_sidecars.normalize_manifest(manifest)
+            backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -212,7 +212,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
             or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
-    inventory = backup_sidecars.normalize_manifest(manifest)
+    inventory = backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
     backup_sidecars.check_namespace(directory, inventory, cancelled=cancelled)
     if (manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
@@ -282,7 +282,7 @@ def _copy_database(source, target, library_manifest, *, cancelled=lambda: False)
 
 def _verify_contents(source, stage, manifest, *, copy_originals=False, new_root=None, cancelled=lambda: False):
     """Authenticate the common backup format using only a private database copy."""
-    inventory = backup_sidecars.normalize_manifest(manifest)
+    inventory = backup_sidecars.normalize_manifest(manifest, cancelled=cancelled)
     _plain(source / ORIGINALS, directory=True)
     snapshot = stage / DATABASE
     _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)

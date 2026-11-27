@@ -1,5 +1,5 @@
 """Real pending worker/journal recovery, plus untrusted-backup failure cases."""
-from contextlib import closing
+from contextlib import closing, contextmanager
 from copy import deepcopy
 from hashlib import sha256
 import json
@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 
+from carr_library import pending_backup as pending
 from carr_library.application import LibraryApp
 from carr_library.catalog.intake import snapshot
 from carr_library.extract.page_ocr import Config
@@ -590,3 +591,171 @@ def test_pending_restore_cancel_at_namespace_scan_exit(app, tmp_path, monkeypatc
                             cancelled=lambda: cancelled)
     assert not (stage / '.pending-import-restore').exists()
     assert not (tmp_path / 'restored').exists()
+
+
+def _boundary_manifest(tmp_path):
+    checksum = 'a' * 64
+    filename = 'import-requests/' + 'b' * 32 + '.json'
+    asset = dict(filename=checksum + '.txt', size_bytes=1, sha256=checksum, mime='text/plain')
+    return dict(version=1, data_dir=str(tmp_path), files=[
+        dict(filename=filename, size_bytes=1, sha256='c' * 64),
+        dict(filename='originals/' + asset['filename'], size_bytes=1, sha256=checksum),
+    ], assets=[asset], sources=[dict(filename=filename, row_id=None,
+                                     source=str(tmp_path / 'text.txt'), asset_sha256=checksum)])
+
+
+@pytest.mark.parametrize('section,field', (('assets', 'mime'), ('sources', 'filename'),
+                                           ('sources', 'asset_sha256')))
+@pytest.mark.parametrize('bad', ([], {}, [0], {'bad': 1}, None, 123))
+def test_pending_manifest_rejects_non_string_membership_fields(tmp_path, section, field, bad):
+    metadata = _boundary_manifest(tmp_path)
+    pending.validate_pending(metadata)
+    metadata[section][0][field] = bad
+    with pytest.raises(ValueError, match='Invalid pending'):
+        pending.validate_pending(metadata)
+
+
+@pytest.mark.parametrize('cancel_at', range(1, 7))
+def test_pending_manifest_cancel_at_each_validation_boundary(tmp_path, cancel_at):
+    metadata = _boundary_manifest(tmp_path)
+    calls = 0
+
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls >= cancel_at
+
+    with pytest.raises(InterruptedError, match='cancelled'):
+        pending.validate_pending(metadata, cancelled=cancelled)
+
+
+@pytest.mark.parametrize('directory', ('import-requests', 'import-batches', 'import-requests/reviews'))
+@pytest.mark.parametrize('kind', ('committed', 'transient', 'uppercase', 'unknown', 'directory', 'hardlink'))
+def test_pending_inventory_filesystem_boundaries(tmp_path, directory, kind):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    filename = 'a' * 32 + '.json'
+    target = parent / filename
+    if kind == 'committed':
+        target.write_bytes(b'{}')
+        assert set(pending._inventory(root)) == {directory + '/' + filename}
+    elif kind == 'transient':
+        target.with_suffix('.tmp').touch()
+        assert not pending._inventory(root)
+    else:
+        if kind == 'uppercase':
+            (parent / ('A' * 32 + '.json')).touch()
+        elif kind == 'unknown':
+            target.with_suffix('.bak').touch()
+        elif kind == 'directory':
+            target.mkdir()
+        else:
+            outside = tmp_path / 'outside'
+            outside.write_bytes(b'{}')
+            os.link(outside, target)
+        with pytest.raises(ValueError):
+            pending._inventory(root)
+
+
+@pytest.mark.parametrize('directory', ('import-requests', 'import-batches', 'import-requests/reviews'))
+@pytest.mark.parametrize('failure', (PermissionError, NotADirectoryError))
+def test_pending_inventory_scandir_errors_fail_closed(tmp_path, monkeypatch, directory, failure):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    real = os.scandir
+
+    def denied(path):
+        if Path(path) == parent:
+            raise failure('scan denied')
+        return real(path)
+
+    monkeypatch.setattr(os, 'scandir', denied)
+    with pytest.raises(failure, match='scan denied'):
+        pending._inventory(root)
+
+
+@pytest.mark.parametrize('directory', ('import-requests', 'import-batches', 'import-requests/reviews'))
+@pytest.mark.parametrize('moment', ('entry', 'exit'))
+def test_pending_inventory_cancel_inside_scan_and_at_exit(tmp_path, monkeypatch, directory, moment):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    (parent / ('a' * 32 + '.json')).touch()
+    real = os.scandir
+    stopped = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal stopped
+        with real(path) as entries:
+            if Path(path) == parent and moment == 'entry':
+                def interrupt():
+                    nonlocal stopped
+                    for entry in entries:
+                        stopped = True
+                        yield entry
+                yield interrupt()
+            else:
+                yield entries
+        if Path(path) == parent and moment == 'exit':
+            stopped = True
+
+    with monkeypatch.context() as m:
+        m.setattr(os, 'scandir', observed)
+        with pytest.raises(InterruptedError, match='cancelled'):
+            pending._inventory(root, cancelled=lambda: stopped)
+
+
+def _boundary_checkpoints(db):
+    db.row_factory = sqlite3.Row
+    db.execute('CREATE TABLE checkpoint(job TEXT, ordinal INTEGER, payload TEXT)')
+    asset = dict(sha256='a' * 64, mime='text/plain')
+    raw = 'Перша сторінка.\fSecond page.'.encode('utf-8')
+    jobs = {'job': dict(id='job', asset=asset['sha256'], count=2,
+                       config=json.dumps({'kind': 'logical_segment'}))}
+    for ordinal, segment in enumerate(raw.decode().split('\f'), 1):
+        value = dict(raw_text=segment, provenance=dict(asset_sha256=asset['sha256'], method='strict_utf8'),
+                     status='candidate', blocks=[], warnings=[])
+        db.execute('INSERT INTO checkpoint VALUES (?, ?, ?)', ('job', ordinal, json.dumps(value)))
+    db.commit()
+    return asset, raw, jobs
+
+
+@pytest.mark.parametrize('field,bad', (('raw_text', 'altered'), ('provenance', {}),
+    ('status', 'verified'), ('blocks', ['unexpected']), ('warnings', ['unexpected'])))
+def test_pending_checkpoint_preserves_exact_source_and_status(tmp_path, field, bad):
+    path = tmp_path / 'checkpoint.sqlite'
+    with closing(sqlite3.connect(path)) as db:
+        asset, raw, jobs = _boundary_checkpoints(db)
+    with closing(sqlite3.connect(path)) as db:
+        db.row_factory = sqlite3.Row
+        pending._source_checkpoints(asset, raw, jobs, db)
+        value = json.loads(db.execute('SELECT payload FROM checkpoint WHERE ordinal=2').fetchone()[0])
+        value[field] = bad
+        db.execute('UPDATE checkpoint SET payload=? WHERE ordinal=2', (json.dumps(value),))
+        db.commit()
+    with closing(sqlite3.connect(path)) as db:
+        db.row_factory = sqlite3.Row
+        with pytest.raises(ValueError, match='exact original bytes'):
+            pending._source_checkpoints(asset, raw, jobs, db)
+
+
+@pytest.mark.parametrize('cancel_at', range(1, 6))
+def test_pending_checkpoint_cancel_at_each_database_validation_boundary(tmp_path, cancel_at):
+    path = tmp_path / 'checkpoint.sqlite'
+    with closing(sqlite3.connect(path)) as db:
+        asset, raw, jobs = _boundary_checkpoints(db)
+    calls = 0
+
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls >= cancel_at
+
+    with closing(sqlite3.connect(path)) as db:
+        db.row_factory = sqlite3.Row
+        with pytest.raises(InterruptedError, match='cancelled'):
+            pending._source_checkpoints(asset, raw, jobs, db, cancelled=cancelled)
+        assert db.execute('SELECT count(*) FROM checkpoint').fetchone()[0] == 2

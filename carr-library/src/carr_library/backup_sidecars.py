@@ -347,8 +347,9 @@ def _collection_budgets(entries):
             raise RestoreError('narration producer snapshot budget exceeded')
 
 
-def normalize_manifest(manifest):
+def normalize_manifest(manifest, *, cancelled=lambda: False):
     """Discriminate exact v3 shapes without changing the signed source manifest."""
+    _check_cancelled(cancelled)
     version = manifest.get('version')
     fields = {'version', 'kind', 'schema_version', 'database', 'assets'}
     if type(version) is not int or version not in (1, 2, 3, 4, 5):
@@ -376,6 +377,7 @@ def normalize_manifest(manifest):
             raise RestoreError('invalid legacy state manifest')
         entries = []
         for value in manifest['state']:
+            _check_cancelled(cancelled)
             if type(value) is not dict or not isinstance(value.get('filename'), str):
                 raise RestoreError('invalid legacy state entry')
             portable_name('state/' + value['filename'])
@@ -405,6 +407,7 @@ def normalize_manifest(manifest):
         raise RestoreError('invalid sidecar manifest')
     names, portable_paths, total, generated_total, input_total, copied = set(), {}, 0, 0, 0, []
     for entry in entries:
+        _check_cancelled(cancelled)
         if (type(entry) is not dict or set(entry) != {'filename', 'size_bytes', 'sha256'}
                 or type(entry['filename']) is not str or type(entry['size_bytes']) is not int
                 or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
@@ -412,6 +415,8 @@ def normalize_manifest(manifest):
         if entry['filename'].startswith(backup_generated.PREFIX) and not generated:
             raise RestoreError('Generated audio requires explicit manifest inclusion.')
         maximum = sidecar_limit(entry['filename'])
+        if backup_transcription.is_cache_file(entry['filename']) and not generated:
+            raise RestoreError('Transcription cache requires explicit manifest inclusion.')
         minimum = 0 if backup_transcription.allows_empty(entry['filename']) else 1
         if not minimum <= entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
             raise RestoreError('invalid sidecar size or duplicate filename')
@@ -434,11 +439,15 @@ def normalize_manifest(manifest):
                 or input_total > backup_transcription.MAX_INPUT_BYTES):
             raise RestoreError('sidecar manifest byte limit')
         copied.append(dict(entry))
+    _check_cancelled(cancelled)
     _collection_budgets((entry['filename'], entry['size_bytes']) for entry in copied)
+    _check_cancelled(cancelled)
     if pending is not None:
         from .pending_backup import validate_pending
-        validate_pending(pending)
-    return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, pending)
+        validate_pending(pending, cancelled=cancelled)
+    result = Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, pending)
+    _check_cancelled(cancelled)
+    return result
 
 
 def _identity(info):
