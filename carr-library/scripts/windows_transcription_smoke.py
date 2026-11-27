@@ -6,6 +6,7 @@ import sys
 from tempfile import TemporaryDirectory
 import time
 import traceback
+from unittest.mock import patch
 
 import wx
 
@@ -31,11 +32,30 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     service.configure(Path(sys.executable).resolve(), worker, models)
     original = root / 'Запис.wav'
     original.write_bytes(b'Synthetic protocol audio placeholder; no acoustic inference.')
+    original_bytes = original.read_bytes()
+    export_parent = root / 'exports'
+    export_parent.mkdir()
+    export_name = 'Експорт перевірених результатів'
+    export_destination = export_parent / export_name
     job_id = service.submit([original], title='Native transcript workflow')
     frame = DesktopFrame(library)
     frame.Show()
     failures, state = [], {'phase': 0, 'finished': False}
     started = time.monotonic()
+    class AcceptedChooser:
+        """Control only picker responses; dispatch and export remain real."""
+        def __init__(self, value):
+            self.value = value
+        def __enter__(self):
+            return self
+        def __exit__(self, *unused):
+            return False
+        def ShowModal(self):
+            return wx.ID_OK
+        def GetPath(self):
+            return self.value
+        def GetValue(self):
+            return self.value
     def click(control):
         event = wx.CommandEvent(wx.EVT_BUTTON.typeId, control.GetId())
         event.SetEventObject(control)
@@ -82,6 +102,68 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 assert original_text.startswith('Synthetic transcript.')
                 assert original.read_bytes().startswith(b'Synthetic protocol')
                 assert not find('Зберегти правки').IsEnabled()
+                job = service.verify(job_id)
+                job_root = service._path(job_id)
+                state['job'], state['edits'] = job, service.edits(job_id)
+                retained_names = ['job.json', 'job_status.json', *job['receipts']]
+                retained_names += ['input/' + row['filename'] for row in job['sources']]
+                retained_names += ['results/' + row['path'] for row in job['artifacts']]
+                retained_names += ['edits/' + row['id'] + '.json' for row in state['edits']]
+                state['retained_bytes'] = {
+                    name: (job_root / name).read_bytes() for name in retained_names}
+                state['export_bytes'] = {
+                    row['path']: (job_root / 'results' / row['path']).read_bytes()
+                    for row in job['artifacts']}
+                state['export_bytes'].update({
+                    'edited/' + row['id'] + '.txt': row['text'].encode('utf-8')
+                    for row in state['edits']})
+                assert not export_destination.exists()
+                export_button = find('Експорт')
+                assert export_button.IsEnabled()
+                export_button.SetFocus()
+                with patch.object(wx, 'DirDialog',
+                        return_value=AcceptedChooser(str(export_parent))) as directory_picker, \
+                     patch.object(wx, 'TextEntryDialog',
+                        return_value=AcceptedChooser(export_name)) as name_picker:
+                    click(export_button)
+                directory_picker.assert_called_once()
+                name_picker.assert_called_once()
+                assert directory_picker.call_args.args[0] is dialog
+                assert name_picker.call_args.args[0] is dialog
+                assert frame.working, 'The real Export handler did not schedule its operation.'
+                state['phase'] = 4
+            elif state['phase'] == 4 and not frame.working:
+                manifest = json.loads(
+                    (export_destination / 'transcription-manifest.json').read_text(encoding='utf-8'))
+                job, edits = state['job'], state['edits']
+                assert manifest['version'] == 1
+                assert manifest['job'] == job_id and manifest['status'] == 'completed'
+                assert manifest['title'] == job['title']
+                assert manifest['sources'] == job['sources'] and manifest['settings'] == job['settings']
+                assert manifest['edits'] == list(edits)
+                assert manifest['artifacts'] == [
+                    {'filename': row['path'], 'size_bytes': row['size_bytes'], 'sha256': row['sha256']}
+                    for row in job['artifacts']]
+                exported_names = {
+                    item.relative_to(export_destination).as_posix()
+                    for item in export_destination.rglob('*') if item.is_file()}
+                assert exported_names == set(state['export_bytes']) | {'transcription-manifest.json'}
+                for name, expected in state['export_bytes'].items():
+                    assert (export_destination / name).read_bytes() == expected, name
+                job_root = service._path(job_id)
+                for name, expected in state['retained_bytes'].items():
+                    assert (job_root / name).read_bytes() == expected, name
+                assert original.read_bytes() == original_bytes
+                assert service.verify(job_id) == job and service.edits(job_id) == edits
+                assert not list(export_parent.glob('.pending-*'))
+                status = find('Стан транскрипції')
+                assert status.GetValue() == 'Експорт завершено: ' + str(export_destination)
+                assert status.IsEnabled() and find('Експорт').IsEnabled()
+                status.SetFocus()
+                state['phase'] = 5
+            elif state['phase'] == 5:
+                assert wx.Window.FindFocus() == find('Стан транскрипції'), \
+                    'The completed export message must remain reachable by native focus.'
                 state['finished'] = True
                 click(find('Закрити'))
                 return
@@ -103,5 +185,6 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         frame.Destroy()
         desktop.Yield()
 print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
-    'actual isolated child protocol','six verified formats','separate edit revision','original unchanged'],
+    'actual isolated child protocol','six verified formats','separate edit revision','original unchanged',
+    'actual export dispatch preserves verified bytes'],
     'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))

@@ -239,7 +239,7 @@ def show_transcription(frame):
                 if chooser.ShowModal() != wx.ID_OK:
                     return
                 name = chooser.GetValue().strip()
-            from ..state_backup import relative_name
+            from ..backup_sidecars import portable_name as relative_name
             if len(relative_name(name).parts) != 1:
                 raise ValueError('Вкажіть лише назву нової папки.')
             begin('Експорт транскрипції', lambda: service.export(identity, parent / name, cancelled=cancelled),
