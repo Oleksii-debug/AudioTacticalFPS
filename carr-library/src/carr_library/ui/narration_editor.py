@@ -314,6 +314,30 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             if not state['closed']:
                 timer.StartOnce(1200)
 
+    def read_aloud(event=None):
+        if state['closed'] or preview.busy:
+            return
+        timer.Stop()
+        try:
+            from .live_reading import show_live_reader, selected_source_offsets, source_offset
+            guard()
+            current = editor.GetValue()
+            selection = selected_source_offsets(editor, current)
+            cursor = source_offset(current, editor.GetRange(0, editor.GetInsertionPoint()))
+            # Unsaved edits are spoken as an independent reading copy. They
+            # never borrow the original source's verified location or digest.
+            location = (controller.project.source_location
+                        if current == controller.project.original_text else None)
+            warning = show_live_reader(dialog, controller.store.root, current,
+                title=controller.project.title, cursor=cursor, selection=selection,
+                location=location, guard=guard)
+            say(warning or 'Live reading closed. Your editor and original source are unchanged.')
+        except Exception as exc:
+            say(str(exc))
+        finally:
+            if not state['closed']:
+                timer.StartOnce(1200)
+
     def preview_transform(title, text, description):
         capture()
         candidate = revise(controller.candidate(), text, label=title)
@@ -578,7 +602,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('&Find and replace', replace_text), ('Compare &original', compare),
         ('&Export UTF-8 text', export), ('Save and open Audio S&tudio', open_audio_studio),
         ('Save all open drafts', save_all_open), ('Import dictionary...', import_dictionary),
-        ('Export dictionary...', export_dictionary), ('Cancel preview', cancel_preview), ('C&lose', close),
+        ('Export dictionary...', export_dictionary), ('Read current copy aloud...', read_aloud),
+        ('Cancel preview', cancel_preview), ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:
@@ -615,6 +640,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                             compare=native_buttons[9], audio_studio=native_buttons[11],
                             save_all=native_buttons[12], cancel_preview=native_buttons[-2],
                             import_dictionary=native_buttons[13], export_dictionary=native_buttons[14],
+                            live_reading=native_buttons[15],
                             close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()

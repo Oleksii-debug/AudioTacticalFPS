@@ -26,7 +26,7 @@ jobs:
     runs-on: windows-2022
     # Keep the original native/offline gates plus the explicit standard
     # installer lane and the added Word/trust/lease/component source suites.
-    timeout-minutes: 330
+    timeout-minutes: 360
     defaults:
       run:
         shell: pwsh
@@ -517,7 +517,38 @@ jobs:
             'tests/e2e/test_large_pdf_original.py',
             'tests/e2e/test_large_pdf_scan_continuation.py',
             'tests/security/test_standard_update.py',
-            'tests/audio/test_production_integrity.py'
+            'tests/audio/test_production_integrity.py',
+            'tests/reader/test_export_change_time.py',
+            'tests/reader/test_live_speech.py',
+            'tests/ui/test_live_reading.py',
+            'tests/storage/test_live_reading_backup.py',
+            'tests/security/test_live_reading_admission.py',
+            'tests/conversion/test_selected_adapters.py',
+            'tests/conversion/test_office_selection.py',
+            'tests/ingest/test_worker_owned_family.py',
+            'tests/citations/test_streamed_text_attestation.py',
+            'tests/e2e/test_streamed_import_cli.py',
+            'tests/e2e/test_streamed_source_import.py',
+            'tests/ingest/test_streamed_ingest.py',
+            'tests/ingest/test_streamed_text.py',
+            'tests/ui/test_streamed_import.py',
+            'tests/e2e/test_pdf_review_cancellation.py',
+            'tests/storage/test_streamed_source_backup.py',
+            'tests/audio/test_input_asset_backup.py',
+            'tests/audio/test_clips.py',
+            'tests/audio/test_clip_render.py',
+            'tests/audio/test_effect_editing.py',
+            'tests/audio/test_master_effects.py',
+            'tests/audio/test_canonical_project_import.py',
+            'tests/audio/test_publication.py',
+            'tests/audio/test_publication_acceptance.py',
+            'tests/audio/test_publication_fsync.py',
+            'tests/ui/test_audio_clips.py',
+            'tests/ui/test_audio_effect_editing.py',
+            'tests/ui/test_audio_publication.py',
+            'tests/ui/test_legacy_studio_import.py',
+            'tests/ui/test_audio_native_probe_policy.py',
+            'tests/audio/test_cleanup_wait.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -800,7 +831,7 @@ jobs:
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
-        timeout-minutes: 60
+        timeout-minutes: 90
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -1066,6 +1097,16 @@ jobs:
           print(json.dumps(report,sort_keys=True))
           '@ | & $installedPython -I -B - ci-results/full-bundle-native-trust.txt ci-results/full-bundle-native-trust-proof.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/r7_native_gate.py live --report ci-results/full-bundle-r7-live-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-live-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/r7_native_gate.py streamed --report ci-results/full-bundle-r7-streamed-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-streamed-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/r7_native_gate.py effects --report ci-results/full-bundle-r7-effects-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-effects-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/r7_native_gate.py clips --report ci-results/full-bundle-r7-clips-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-clips-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/r7_native_gate.py publication --report ci-results/full-bundle-r7-publication-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-publication-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_word_citations_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-word.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           @'
@@ -1198,7 +1239,7 @@ jobs:
           pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED)
           pythoncom.CoUninitialize()
           import importlib
-          for module_name in ["carr_library.security","carr_library.security._files","carr_library.security.anchors","carr_library.security.boundary","carr_library.security.controller","carr_library.security.entitlements","carr_library.security.installation","carr_library.security.polling","carr_library.security.refresh","carr_library.security.updates","carr_library.ui.trust_status","carr_library.installation_lease","carr_library.citations.word_com","carr_library.ui.word_citations_dialog","carr_library.component_notices","carr_library.ui.about_dialog","carr_library.security.admission","carr_library.search.pagination","carr_library.ui.search_paging","carr_library.catalog.streaming_pdf","carr_library.ingest.batch_scan","carr_library.ingest.batches","carr_library.reader.ebook","carr_library.ui.import_center","carr_library.ui.ebook_reader","carr_library.security.standard_state","carr_library.security.standard_windows","carr_library.security.standard_installation","carr_library.security.standard_recovery"]:
+          for module_name in ["carr_library.security","carr_library.security._files","carr_library.security.anchors","carr_library.security.boundary","carr_library.security.controller","carr_library.security.entitlements","carr_library.security.installation","carr_library.security.polling","carr_library.security.refresh","carr_library.security.updates","carr_library.ui.trust_status","carr_library.installation_lease","carr_library.citations.word_com","carr_library.ui.word_citations_dialog","carr_library.component_notices","carr_library.ui.about_dialog","carr_library.security.admission","carr_library.search.pagination","carr_library.ui.search_paging","carr_library.catalog.streaming_pdf","carr_library.ingest.batch_scan","carr_library.ingest.batches","carr_library.reader.ebook","carr_library.ui.import_center","carr_library.ui.ebook_reader","carr_library.security.standard_state","carr_library.security.standard_windows","carr_library.security.standard_installation","carr_library.security.standard_recovery","carr_library.bibliography_cli","carr_library.citations.bibliography_workbench","carr_library.native_file_metadata","carr_library.research.export_file","carr_library.ui.citation_styles_dialog","carr_library.library_backup","carr_library.reader.live_speech","carr_library.ui.builtin_keyboard_commands","carr_library.ui.live_reading","carr_library.ui.narration_editor","carr_library.ui.reading_desk","carr_library.ingest.catalog_asset_copy","carr_library.pending_backup","carr_library.__main__","carr_library.application","carr_library.audio.cleanup","carr_library.audio.jobs","carr_library.citations.streamed_text_attestation","carr_library.conversion.adapters","carr_library.conversion.capabilities","carr_library.conversion.models","carr_library.conversion.office","carr_library.conversion.service","carr_library.conversion.worker","carr_library.extract.document_formats_xml","carr_library.ingest.publication_identity","carr_library.ingest.retained_assets","carr_library.ingest.streamed_ingest","carr_library.ingest.streamed_text","carr_library.ingest.worker","carr_library.reader.source_file","carr_library.streamed_import_cli","carr_library.ui.document_conversion","carr_library.audio.backup","carr_library.audio.clip_audio","carr_library.audio.clips","carr_library.audio.daisy","carr_library.audio.effect_editing","carr_library.audio.ffmpeg","carr_library.audio.legacy_project","carr_library.audio.mastering","carr_library.audio.models","carr_library.audio.production","carr_library.audio.publishing","carr_library.operations.admission","carr_library.ui.audio_clips","carr_library.ui.audio_effects","carr_library.ui.audio_publication","carr_library.ui.audio_studio","carr_library.ui.legacy_studio_import"]:
               module = importlib.import_module(module_name)
               assert pathlib.Path(module.__file__).resolve().is_relative_to(root / '.venv'), module_name
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
@@ -1366,7 +1407,43 @@ jobs:
               'tests/audio/test_audio_publication.py',
               'tests/audio/test_production_integrity.py',
               'tests/ui/test_import_center.py',
-              'tests/ui/test_ebook_reader.py'
+              'tests/ui/test_ebook_reader.py',
+              'tests/reader/test_ebook_reader.py',
+              'tests/reader/test_export_change_time.py',
+              'tests/reader/test_live_speech.py',
+              'tests/ui/test_live_reading.py',
+              'tests/storage/test_live_reading_backup.py',
+              'tests/security/test_live_reading_admission.py',
+              'tests/conversion/test_selected_adapters.py',
+              'tests/conversion/test_office_selection.py',
+              'tests/extract/test_document_formats_xml.py',
+              'tests/ingest/test_worker_owned_family.py',
+              'tests/citations/test_streamed_text_attestation.py',
+              'tests/e2e/test_streamed_import_cli.py',
+              'tests/e2e/test_streamed_source_import.py',
+              'tests/ingest/test_streamed_ingest.py',
+              'tests/ingest/test_streamed_text.py',
+              'tests/ui/test_streamed_import.py',
+              'tests/e2e/test_pdf_review_cancellation.py',
+              'tests/storage/test_streamed_source_backup.py',
+              'tests/audio/test_input_asset_backup.py',
+              'tests/audio/test_clips.py',
+              'tests/audio/test_clip_render.py',
+              'tests/audio/test_effect_editing.py',
+              'tests/audio/test_master_effects.py',
+              'tests/audio/test_canonical_project_import.py',
+              'tests/audio/test_publication.py',
+              'tests/audio/test_publication_acceptance.py',
+              'tests/audio/test_publication_fsync.py',
+              'tests/ui/test_audio_clips.py',
+              'tests/ui/test_audio_effect_editing.py',
+              'tests/ui/test_audio_publication.py',
+              'tests/ui/test_legacy_studio_import.py',
+              'tests/ui/test_audio_native_probe_policy.py',
+              'tests/audio/test_cleanup_wait.py',
+              'tests/e2e/test_import_batches.py',
+              'tests/e2e/test_retained_source_search_integrity.py',
+              'tests/reader/test_reading_desk.py'
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

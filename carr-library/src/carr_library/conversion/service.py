@@ -8,16 +8,16 @@ import re
 import shutil
 from tempfile import TemporaryDirectory
 from time import monotonic
+from uuid import uuid4
 
 from ..audio.jobs import (
     checked_directory, regular_file, file_identity, verified_reader, publish_noreplace, read_json,
 )
 from ..audio.paths import filename_component
 from ..data_paths import guard_data_directory
-from ..extract.document_formats import SUPPORTED_SUFFIXES
 from ..extract.page_ocr import Config
 from ..ingest.worker import _invoke
-from .capabilities import capabilities
+from .capabilities import CONVERSION_SUFFIXES, IMAGES, capabilities
 from .models import ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable, MAX_REPORT_BYTES
 
 
@@ -37,7 +37,8 @@ def _hash(path, cancelled, expected=None):
 
 
 class ConversionService:
-    def __init__(self, root, *, input_roots=(), budget=None, ocr_config=None):
+    def __init__(self, root, *, input_roots=(), budget=None, ocr_config=None,
+                 pandoc=None, image_ocr=False, office=None):
         self.root = checked_directory(guard_data_directory(root, purpose='reading derivative output'))
         info = self.root.stat()
         self._root_identity = (info.st_dev, info.st_ino)
@@ -47,6 +48,26 @@ class ConversionService:
         self.ocr_config = Config() if ocr_config is None else ocr_config
         if not isinstance(self.ocr_config, Config):
             raise TypeError('A typed existing OCR configuration is required.')
+        if type(image_ocr) is not bool or image_ocr and ocr_config is None:
+            raise ValueError('Raster OCR requires an explicit OCR configuration and selection.')
+        self.image_ocr = image_ocr
+        from .office import OfficeSelection
+        self.office = None if office is None else OfficeSelection.capture(office)
+        self.pandoc = None
+        self._pandoc_identity = None
+        self._pandoc_parent_identity = None
+        if pandoc is not None:
+            path = Path(pandoc)
+            if not path.is_absolute():
+                raise ValueError('Choose an absolute local Pandoc executable path.')
+            checked_directory(path.parent)
+            info = regular_file(path)
+            if info.st_nlink != 1 or not 0 < info.st_size <= 256 * 1024 * 1024:
+                raise ValueError('Choose a regular, unlinked, bounded Pandoc executable.')
+            self.pandoc = path.resolve(strict=True)
+            self._pandoc_identity = file_identity(info)
+            parent_info = checked_directory(self.pandoc.parent).stat()
+            self._pandoc_parent_identity = (parent_info.st_dev, parent_info.st_ino)
         if not isinstance(input_roots, (tuple, list)) or len(input_roots) > self.budget.max_files:
             raise ValueError('Choose a bounded set of local input files or directories.')
         selected = []
@@ -63,7 +84,8 @@ class ConversionService:
         self.input_roots = tuple(selected)
 
     def capabilities(self):
-        return capabilities()
+        return capabilities(pandoc_selected=self.pandoc is not None, image_ocr_selected=self.image_ocr,
+                            office_selected=self.office is not None)
 
     def _input(self, value):
         path = Path(value).absolute()
@@ -95,23 +117,54 @@ class ConversionService:
             raise FileExistsError('The reading text or its provenance report already exists. Choose another name.')
         return path, receipt
 
-    def extract(self, source, output, *, cancelled=lambda: False):
+    def extract(self, source, output, *, cancelled=lambda: False, broker=None):
+        """Use the caller's current application broker when supplied.
+
+        The desktop passes its one ResourceBroker; standalone callers keep the
+        existing explicit output-root API. A lease outlives native cleanup and
+        both publications, including failure paths.
+        """
+        if broker is None:
+            return self._extract(source, output, cancelled=cancelled)
+        from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
+        if not isinstance(broker, ResourceBroker):
+            raise TypeError('Use the shared typed local resource coordinator.')
+        request = ResourceRequest(cpu_slots=broker.limits.cpu_slots,
+            memory_bytes=3 * 1024**3, disk_path=self.root,
+            disk_bytes=2 * self.budget.max_source_bytes + self.budget.max_text_bytes
+                       + MAX_REPORT_BYTES + 64 * 1024**2)
+        try:
+            with broker.reserve(request, operation_id='conversion:' + uuid4().hex,
+                                cancelled=cancelled, timeout=60) as lease:
+                return self._extract(source, output, cancelled=lease.cancelled)
+        except ResourceCancelled as error:
+            raise InterruptedError('Document conversion cancelled before resource admission.') from error
+
+    def _extract(self, source, output, *, cancelled):
         if not callable(cancelled):
             raise ValueError('A conversion cancellation callback is required.')
         _check(cancelled)
         source, before = self._input(source)
         target, report_path = self._output(output)
         suffix = source.suffix.casefold()
-        if suffix not in SUPPORTED_SUFFIXES:
+        if suffix not in CONVERSION_SUFFIXES:
             raise ConversionUnavailable('This format is not enabled by the current document reader registry.')
+        if suffix == '.rtf' and self.pandoc is None:
+            raise ConversionUnavailable('Select an installed compatible Pandoc executable for RTF explicitly.')
+        from .office import OFFICE_SUFFIXES
+        if suffix in OFFICE_SUFFIXES and self.office is None:
+            raise ConversionUnavailable('Select the installed LibreOffice program executable for this format explicitly.')
+        if suffix in IMAGES and not self.image_ocr:
+            raise ConversionUnavailable('Select OCR and its language/model configuration for raster images explicitly.')
         if source == target or source == report_path:
             raise ValueError('The original document must remain unchanged.')
-        capability = next(row for row in capabilities() if row['extension'] == suffix)
+        capability = next(row for row in self.capabilities() if row['extension'] == suffix)
         if not capability['available']:
             raise ConversionUnavailable('The existing reader dependencies are unavailable: ' +
                                         ', '.join(capability['missing']))
+        native_bytes = self.budget.max_source_bytes + 64 * 1024**2 if suffix in OFFICE_SUFFIXES else 16 * 1024**2
         if shutil.disk_usage(target.parent).free < (
-                before.st_size + self.budget.max_text_bytes + MAX_REPORT_BYTES + 16 * 1024 * 1024):
+                before.st_size + self.budget.max_text_bytes + MAX_REPORT_BYTES + native_bytes):
             raise ConversionError('Not enough free disk for the bounded source, reading text and provenance.')
         source_identity = file_identity(before)
         started = monotonic()
@@ -133,9 +186,25 @@ class ConversionService:
             if count != before.st_size:
                 raise ConversionError('The selected source was truncated.')
             source_hash = digest.hexdigest()
-            result = _invoke(dict(action='convert', source=str(snapshot), output=str(converted),
+            message = dict(action='convert', source=str(snapshot), output=str(converted),
                 report=str(details_path), sha256=source_hash, source_size=count,
-                budget=asdict(self.budget), ocr_config=asdict(self.ocr_config), timeout=self.budget.timeout),
+                budget=asdict(self.budget), ocr_config=asdict(self.ocr_config), timeout=self.budget.timeout)
+            if suffix == '.rtf':
+                executable_info = regular_file(self.pandoc)
+                parent_info = checked_directory(self.pandoc.parent).stat()
+                if (executable_info.st_nlink != 1
+                        or file_identity(executable_info) != self._pandoc_identity
+                        or (parent_info.st_dev, parent_info.st_ino) != self._pandoc_parent_identity
+                        or not 0 < executable_info.st_size <= 256 * 1024 * 1024):
+                    raise ConversionError('The selected Pandoc executable changed or exceeds its byte budget.')
+                message['adapter'] = dict(kind='pandoc-rtf', executable=dict(path=str(self.pandoc),
+                    bytes=executable_info.st_size,
+                    sha256=_hash(self.pandoc, cancelled, self._pandoc_identity)))
+            elif suffix in IMAGES:
+                message['adapter'] = dict(kind='raster-ocr')
+            elif suffix in OFFICE_SUFFIXES:
+                message['adapter'] = dict(kind='libreoffice', runtime=self.office.snapshot(cancelled=cancelled))
+            result = _invoke(message,
                 timeout=self.budget.timeout, cancelled=cancelled)
             _check(cancelled)
             if not isinstance(result, dict) or result.get('state') != 'complete':
@@ -234,7 +303,7 @@ class ConversionService:
                 raise
         return ConversionResult(target, report, report_path)
 
-    def extract_many(self, sources, *, cancelled=lambda: False, progress=None):
+    def extract_many(self, sources, *, cancelled=lambda: False, progress=None, broker=None):
         results = []
         for index, source in enumerate(sources, 1):
             if index > self.budget.max_files:
@@ -242,7 +311,7 @@ class ConversionService:
             _check(cancelled)
             source, _ = self._input(source)
             name = re.sub(r'[^\w .-]', '_', source.stem, flags=re.UNICODE).strip(' .')[:48] or 'document'
-            result = self.extract(source, f'{index:04d}-{name}-reading.txt', cancelled=cancelled)
+            result = self.extract(source, f'{index:04d}-{name}-reading.txt', cancelled=cancelled, broker=broker)
             results.append(result)
             if progress is not None:
                 progress(index, result)

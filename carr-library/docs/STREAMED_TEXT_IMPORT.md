@@ -1,0 +1,117 @@
+# Explicit streamed UTF-8 source import
+
+This extension uses the existing library catalog, `imports.sqlite` checkpoint
+journal, resource coordinator, owned parser process, immutable V5 publication
+receipt, source reader and complete-backup service. It adds no second import
+queue, catalog, executable profile or evidence authority.
+
+## User action and finite capacity
+
+Import Center exposes **Import large UTF-8 text...** and a named numeric source
+allowance from 1 through 128 MiB. The action captures the chosen library,
+collection and byte allowance before submitting to the existing frame worker.
+On interruption, use **Library → Resume interrupted import**. The saved request
+keeps its chosen allowance, title, source identity and extraction version.
+
+The CLI is explicit too:
+
+```sh
+python -m carr_library import-text --data-dir LIBRARY --workspace ID --file SELECTED.txt --max-mib 96
+python -m carr_library import-text --data-dir LIBRARY --workspace ID --resume-request REQUEST_ID
+```
+
+The library and workspace must already exist. The command prints a bounded JSON
+result and returns nonzero for cancelled, timed-out or failed work. A resumed
+request cannot select a new profile or title. The command uses the same native
+supervisor as the desktop; it does not parse the source in a second CLI engine.
+
+Ordinary non-PDF import remains at its existing 64 MiB byte ceiling; the
+independently bounded PDF profile retains its separate established contract.
+This extension
+accepts UTF-8 `.txt` only, with an optional leading UTF-8 BOM. It rejects binary
+controls, malformed UTF-8, mismatched PDF/RTF/archive/executable headers,
+empty/whitespace-only sources, aliased or reparse-point inputs, changed files
+and sources above the explicit bound. It does not qualify large PDFs, Office
+documents, archives or arbitrary encodings.
+
+The 128 MiB source ceiling is finite and intentional: source text can require
+twice its byte size in escaped checkpoint JSON, which must still fit the
+existing 512 MiB pending-journal budget. The remaining catalog, total-backup,
+disk and operation deadlines continue to apply. Declared resource admission
+reserves at least ten times the selected source allowance plus 128 MiB on the
+library volume, as well as the ordinary parser scratch allowance. This can
+legitimately wait/refuse on a nearly full volume even for a small selected file.
+No disk quota or process limit is silently disabled.
+
+## Exact text and quotation meaning
+
+The new configuration is `strict-utf8-stream-v1`. It retains CRLF, combining
+characters, supplementary Unicode characters and all original bytes. Form
+feeds delimit source fields. Within a field, long text is split at fixed
+65,536-Unicode-character boundaries; at most 8,192 fragments are allowed.
+Checkpoints retain each field number and exact character offset. Published
+locations are **logical segments, unpaginated**. They are not invented physical
+or printed page numbers. Historical `strict-utf8-v1` segmentation and evidence
+verification remain unchanged.
+
+Reading uses 64 KiB byte blocks and at most one unfinished bounded fragment.
+The in-memory index stores only fragment hashes, character counts and offsets.
+Every successful scan exhausts the source and verifies its complete original
+SHA-256 and native file identity. A late edit outside a selected quote still
+invalidates that quote. Checkpoints are durable candidates, not permission to
+publish without rechecking the original.
+
+The independent streamed attestor dispatches only on the exact new extraction
+configuration. Each new read/copy/evidence action rehashes the complete original.
+Within one action, its small hash index can be reused only while native change
+time, file identity and link count remain unchanged. This uses Windows change
+time rather than treating its creation-time stat field as write freshness.
+The cache holds no source text and has finite entry/fragment budgets.
+
+## Resume and backup
+
+The worker request has an explicit version 2 source profile. The frozen launch
+identity and immutable database publication receipt bind that profile; changing
+it while a child runs cannot approve a different publication. Checkpoints use
+the existing schema and are verified one at a time against freshly scanned
+original fragment hashes. Failed publication rolls back the current catalog
+transaction. A crash after catalog commit is reconciled from that exact sealed
+revision, without publishing a second copy.
+
+Complete backups remain the existing library format. Its pending component
+uses version 3 only when streamed profiles are present; earlier pending versions
+1 and 2 retain their exact contracts. The new component records a typed source
+profile inventory, and verification independently derives it from saved jobs
+and requests. Merely increasing a manifest allowance cannot authorize a larger
+source. Prepared-before-launch and partially extracted inputs are included.
+
+Restore rebinds only retained original locations, discards old native launch
+attempt hints and requires a fresh supervised attempt. Imported profiles contain
+numeric text limits only. Saved folder scan cursors remain inactive after
+relocation, including backups that mix scan pages and streamed text requests.
+Read-only verification streams original bytes and creates no authority to scan
+old external roots or execute an archived program.
+
+## Evidence and limits
+
+This R7 composition is **NOT_RUN** until its exact tree completes the portable,
+installed and native Windows gates. Upstream implementations and tests were
+selected from `078d254bd4ab4dbe9de4ea80e1e26731cb8ac9e8`; upstream pass counts do
+not establish acceptance here. The composition retains the frozen R6 bounded
+PDF, cancellation and folder-scan continuation contracts.
+
+Required portable suites cover incremental decoding and bounds, the actual
+existing journal, independent attestation, real owned-child import/cancellation,
+CLI and deferred Import Center handlers, and complete backup/restore. Synthetic
+files really larger than 64 MiB are generated at test time, not checked in. One
+case backs up a prepared large request, deletes its external original, restores
+to another root, performs real extraction and exact quotation, then makes and
+verifies a completed backup. A separate scan measures bounded Python allocations;
+that measurement is not a claim about native-family RSS or a realistic corpus.
+
+`tests/ui/probe_streamed_import_native.py` exercises actual named controls,
+focus/Tab, the existing frame worker, durable completion and native close. It
+supplies a synthetic path to the real handler and explicitly does **not** claim
+OS file-picker or manual NVDA acceptance. Windows execution is a separate gate.
+Realistic corpus throughput, multilingual quality and wider-format capacities
+require their own declared profiles and measured evidence.

@@ -92,3 +92,22 @@ def test_full_legacy_restore_dispatch_rejects_portability_before_missing_payload
     assert manifest_path.read_bytes() == raw
     assert app.database.read_bytes() == database_before
     assert app.search(workspace, 'Unchanged')[0].edition_id == original['edition']
+
+
+def test_historical_depth_preserves_legacy_recovery_without_relaxing_typed_state():
+    from carr_library.backup_files import portable_relative
+    from carr_library.backup_legacy_state import relative_name
+    historical = "/".join(["a"] * 20) + "/empty.txt"
+    assert relative_name(historical).as_posix() == historical
+    validate_state([entry(historical, b"")])
+    with pytest.raises(ValueError, match="Invalid portable relative"):
+        portable_relative(historical)
+    assert portable_relative("/".join(["a"] * 15) + "/x").parts == (*(["a"] * 15), "x")
+
+
+@pytest.mark.parametrize("name", ["/".join(["a"] * 2049), "a" * 4097])
+def test_historical_depth_still_has_a_finite_portable_character_budget(tmp_path, name):
+    target = tmp_path / "uncreated"
+    with pytest.raises(ValueError, match="Invalid portable legacy"):
+        verify_state(tmp_path / "missing", target, [entry(name)])
+    assert not target.exists()

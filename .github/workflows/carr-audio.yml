@@ -81,12 +81,24 @@ jobs:
       - name: Exercise the installed native effect parameter dialogs
         timeout-minutes: 3
         run: |
-          python -I -B scripts/windows_audio_effects_smoke.py --native 2>&1 | Tee-Object audio-ci-results/native-effect-controls.txt
+          python -I -B scripts/r7_native_gate.py effects --report audio-ci-results/native-effects-proof.json 2>&1 | Tee-Object audio-ci-results/native-effect-controls.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the exact installed native clip editing workflow
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/r7_native_gate.py clips --report audio-ci-results/native-clips-proof.json 2>&1 | Tee-Object audio-ci-results/native-clips.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the exact installed native publication metadata workflow
+        timeout-minutes: 3
+        run: |
+          python -I -B scripts/r7_native_gate.py publication --report audio-ci-results/native-publication-proof.json 2>&1 | Tee-Object audio-ci-results/native-publication.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run provider safety, source integrity and audio recovery regressions
         run: |
-          python scripts/ci_audio_check.py -vv -rs --durations=20 --tb=short --junitxml=audio-ci-results/audio-source.xml tests/assistant tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_audio_playback_controls.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_provider_transport_boundaries.py tests/e2e/test_provider_transport_contract.py tests/e2e/test_provider_ledger_lifetime.py tests/e2e/test_audio_cli.py --import-mode=importlib
+          python scripts/ci_audio_check.py -vv -rs --durations=20 --tb=short --junitxml=audio-ci-results/audio-source.xml tests/assistant tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_audio_playback_controls.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_provider_transport_boundaries.py tests/e2e/test_provider_transport_contract.py tests/e2e/test_provider_ledger_lifetime.py tests/e2e/test_audio_cli.py tests/ui/test_audio_clips.py tests/ui/test_audio_effect_editing.py tests/ui/test_audio_publication.py tests/ui/test_legacy_studio_import.py tests/ui/test_audio_native_probe_policy.py --import-mode=importlib
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Verify the installed library still works
         run: |

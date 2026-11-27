@@ -29,6 +29,8 @@ from .ingest.batches import (MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _ROW_KEYS
                              batch_schema, validate_batch_scan)
 from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
+from .ingest.streamed_text import (profile_from_value, profile_from_config,
+                                   inspect_text, MAX_FRAGMENTS)
 from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 
@@ -43,7 +45,8 @@ _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
 _REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
-                     'attempt', 'publication_candidate', 'pdf_max_bytes'}
+                     'attempt', 'publication_candidate', 'publication_watermark',
+                     'pdf_max_bytes', 'source_profile'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -191,10 +194,17 @@ def _entry(path, name, cancelled):
     return {'filename': name, 'size_bytes': size, 'sha256': hashed.hexdigest()}
 
 
-def _manifest(value):
+def _source_size(mime, size, profile=None, *, pdf_max_bytes=MAX_PDF_BYTES):
+    if profile is not None:
+        return (mime == 'text/plain' and type(size) is int
+                and 0 < size <= profile.maximum_bytes)
+    return valid_original_size(mime, size, pdf_max_bytes=pdf_max_bytes)
+
+
+def _manifest(value, profile=None):
     if (not isinstance(value, dict) or set(value) != {'sha256', 'mime', 'size'}
             or not _hash(value['sha256']) or value['mime'] not in SUFFIXES
-            or not valid_original_size(value['mime'], value['size'])):
+            or not _source_size(value['mime'], value['size'], profile)):
         raise ValueError('Invalid pending source manifest.')
     return value
 
@@ -276,7 +286,8 @@ def _result(value, workspace, edition, db, *, complete=False):
 def _request(record, request_id, data_dir, db):
     if (not isinstance(record, dict) or not _REQUEST_REQUIRED <= set(record)
             or set(record) - _REQUEST_REQUIRED - _REQUEST_OPTIONAL
-            or type(record['version']) is not int or record['version'] != 1
+            or type(record['version']) is not int or record['version'] not in (1, 2)
+            or ('source_profile' in record) != (record['version'] == 2)
             or record['request_id'] != request_id or not _id(request_id)
             or record['data_dir'] != data_dir or record['state'] not in _REQUEST_STATES):
         raise ValueError('Invalid pending request schema or data-directory binding.')
@@ -284,10 +295,17 @@ def _request(record, request_id, data_dir, db):
     _workspace(db, record['workspace'])
     _metadata(record['metadata'], db, record['workspace'])
     _config(record['config'])
+    profile = profile_from_value(record['source_profile']) if record['version'] == 2 else None
     if 'pdf_max_bytes' in record:
+        if profile is not None:
+            raise ValueError('A streamed TXT request cannot also carry a PDF allowance.')
         pdf_budget(record['pdf_max_bytes'])
     if 'expected_manifest' in record:
-        _manifest(record['expected_manifest'])
+        _manifest(record['expected_manifest'], profile)
+    # Legacy bounded watermarks are inert compatibility data, never proof.
+    boundary = record.get('publication_watermark')
+    if boundary is not None and (type(boundary) is not int or not 0 <= boundary < 2 ** 63):
+        raise ValueError('Invalid pending request publication boundary.')
     for key in ('asset_sha256', 'job'):
         if key in record and not _hash(record[key]):
             raise ValueError('Invalid pending request journal identity.')
@@ -304,7 +322,7 @@ def _request(record, request_id, data_dir, db):
                 or not _hash(candidate['revision']) or not _hash(candidate['sha256'])
                 or type(candidate['completed']) is not int or candidate['completed'] < 1):
             raise ValueError('Invalid pending import publication candidate.')
-        manifest = _manifest(candidate['manifest'])
+        manifest = _manifest(candidate['manifest'], profile)
         if (manifest['sha256'] != record.get('asset_sha256')
                 or (record.get('expected_manifest') is not None
                     and manifest != record['expected_manifest'])
@@ -409,7 +427,7 @@ def _journal(path, catalog, cancelled):
             row = dict(item)
             if (not _hash(row['id']) or not _hash(row['asset']) or not _text(row['edition'], 200)
                     or not _text(row['config'], 128_000) or type(row['count']) is not int
-                    or not 1 <= row['count'] <= 1000 or row['state'] not in _JOB_STATES
+                    or not 1 <= row['count'] <= MAX_FRAGMENTS or row['state'] not in _JOB_STATES
                     or (row['error'] is not None and not _text(row['error'], 4000, empty=True))):
                 raise ValueError('Invalid pending journal job.')
             _workspace(catalog, row['workspace'])
@@ -417,9 +435,14 @@ def _journal(path, catalog, cancelled):
             if not isinstance(settings, dict) or settings.get('kind') not in ('logical_segment', 'physical_page'):
                 raise ValueError('Invalid pending journal extraction identity.')
             if settings['kind'] == 'logical_segment':
-                if settings != {'adapter': 'strict-utf8-v1', 'kind': 'logical_segment'}:
+                profile = profile_from_config(settings)
+                if profile is None and settings != {'adapter': 'strict-utf8-v1', 'kind': 'logical_segment'}:
                     raise ValueError('Unsupported pending text extraction identity.')
+                if profile is None and row['count'] > 1000:
+                    raise ValueError('Legacy pending text exceeds its segment limit.')
             else:
+                if row['count'] > 1000:
+                    raise ValueError('Pending PDF exceeds its page limit.')
                 required = {'adapter', 'kind', 'config', 'pypdf', 'pdfium'}
                 if (set(settings) not in (required, required | {'runtime_identity'})
                         or settings['adapter'] != 'page_ocr-v1'
@@ -548,6 +571,10 @@ def _relations(requests, batches, reviews, jobs, journal):
             if job is None or (job['workspace'], job['edition'], job['asset']) != (
                     request['workspace'], request['metadata']['edition_id'], request.get('asset_sha256')):
                 raise ValueError('Pending request has a foreign journal job.')
+            profile = profile_from_config(job['config'])
+            expected = profile_from_value(request['source_profile']) if request['version'] == 2 else None
+            if profile != expected:
+                raise ValueError('Pending request source profile differs from its exact journal.')
     for batch in batches.values():
         for row in batch['rows']:
             request = requests.get(row['request_id'])
@@ -591,21 +618,29 @@ def _relations(requests, batches, reviews, jobs, journal):
 
 def _references(requests, batches):
     for identity, request in sorted(requests.items()):
-        yield 'import-requests/' + identity + '.json', None, request['source'], request.get('expected_manifest'), request.get('asset_sha256')
+        yield ('import-requests/' + identity + '.json', None, request['source'], request.get('expected_manifest'),
+               request.get('asset_sha256'), profile_from_value(request['source_profile']) if request['version'] == 2 else None)
     for identity, batch in sorted(batches.items()):
         for row in batch['rows']:
             if row['manifest'] is not None:
-                yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None
+                yield 'import-batches/' + identity + '.json', row['row_id'], row['source'], row['manifest'], None, None
 
 
 def _request_original_budget(request, asset):
-    if not valid_original_size(asset['mime'], asset['size_bytes'],
-                               pdf_max_bytes=request.get('pdf_max_bytes', MAX_PDF_BYTES)):
+    profile = profile_from_value(request['source_profile']) if request['version'] == 2 else None
+    if not _source_size(asset['mime'], asset['size_bytes'], profile,
+                        pdf_max_bytes=request.get('pdf_max_bytes', MAX_PDF_BYTES)):
         raise ValueError('Pending source exceeds its immutable request byte budget.')
 
 
-def _original_payload(path, asset, cancelled):
-    """Verify every byte; only bounded text/office formats return a bytes value."""
+def _original_payload(path, asset, cancelled, profile=None):
+    """Verify originals under their independent typed text or PDF allowance."""
+    if profile is not None:
+        if not _source_size(asset['mime'], asset['size_bytes'], profile):
+            raise ValueError('Pending source exceeds its selected streamed profile.')
+        inspect_text(path, profile, expected_digest=asset['sha256'],
+                     expected_size=asset['size_bytes'], cancelled=cancelled)
+        return None
     if asset['mime'] == 'application/pdf' and asset['size_bytes'] > MAX_BYTES:
         FileAsset.capture(path, cancelled=cancelled,
             expected_manifest=dict(sha256=asset['sha256'], mime=asset['mime'], size=asset['size_bytes']))
@@ -617,7 +652,7 @@ def _original_payload(path, asset, cancelled):
     return raw
 
 
-def _source_checkpoints(asset, raw, jobs, journal):
+def _source_checkpoints(asset, original, jobs, journal, cancelled):
     """A TXT checkpoint is verifiable against original bytes without parsing."""
     for job in jobs.values():
         if job['asset'] != asset['sha256']:
@@ -626,6 +661,21 @@ def _source_checkpoints(asset, raw, jobs, journal):
         if (asset['mime'], kind) not in (('text/plain', 'logical_segment'), ('application/pdf', 'physical_page')):
             raise ValueError('Pending journal MIME differs from the source format.')
         if kind == 'logical_segment':
+            profile = profile_from_config(job['config'])
+            if profile is not None:
+                from .ingest.streamed_ingest import checked_checkpoint, MAX_RECORD_BYTES
+                plan = inspect_text(original, profile, expected_digest=asset['sha256'],
+                                    expected_size=asset['size_bytes'], cancelled=cancelled)
+                if len(plan.fragments) != job['count']:
+                    raise ValueError('Pending streamed source count differs from its journal.')
+                for checkpoint in journal.execute('SELECT ordinal,CASE WHEN length(CAST(payload AS BLOB))<=? '
+                        'THEN payload ELSE NULL END AS payload,digest FROM checkpoint WHERE job=? ORDER BY ordinal',
+                        (MAX_RECORD_BYTES, job['id'])):
+                    _check(cancelled)
+                    checked_checkpoint(checkpoint, job['asset'], plan.fragments[checkpoint['ordinal'] - 1],
+                                       checkpoint['ordinal'])
+                continue
+            raw = _read(original, MAX_BYTES)
             segments = raw.decode('utf-8-sig').split('\f')
             if len(segments) != job['count'] or not any(item.strip() for item in segments):
                 raise ValueError('Pending text source count differs from its journal.')
@@ -692,7 +742,7 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
     if not optional_present(catalog_path):
         catalog_path = app.database
     journal = None
-    files, assets, bindings = [], {}, []
+    files, assets, bindings, profiles = [], {}, [], {}
     try:
         with closing(_catalog(catalog_path)) as catalog:
             jobs = {}
@@ -728,32 +778,41 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
             requests, batches, reviews = _records(target, str(root), catalog, before)
             _relations(requests, batches, reviews, jobs, journal)
 
-            def retain(expected=None, known=None, source=None):
+            def retain(expected=None, known=None, source=None, profile=None):
                 wanted = known or (expected['sha256'] if expected else None)
                 if wanted in assets:
                     entry = assets[wanted]
                     if expected is not None and (entry['sha256'], entry['mime'], entry['size_bytes']) != (
                             expected['sha256'], expected['mime'], expected['size']):
                         raise ValueError('Pending source manifests disagree.')
+                    if profile is not None:
+                        if entry['mime'] != 'text/plain' or entry['size_bytes'] > profile.maximum_bytes:
+                            raise ValueError('Pending streamed source exceeds its selected profile.')
+                        _remember_profile(profiles, wanted, profile)
                     return wanted
                 retained = None
                 if wanted is not None:
                     candidates = [root / 'originals' / (wanted + suffix) for suffix in SUFFIXES.values()]
                     if any(optional_present(path) for path in candidates):
-                        retained = app.assets.resolve(wanted, cancelled=cancelled)
+                        retained = app.assets.resolve(wanted, profile=profile, cancelled=cancelled)
                 try:
-                    incoming = planned_snapshot(local_path(retained or source, exists=True),
-                                                cancelled=cancelled) if retained or source else None
+                    selected = local_path(retained or source, exists=True) if retained or source else None
+                    incoming = (inspect_text(selected, profile, cancelled=cancelled) if profile is not None else
+                                planned_snapshot(selected, cancelled=cancelled)) if selected is not None else None
                 except FileNotFoundError as exc:
                     raise ValueError('Pending import source bytes are missing; restore the selected original before a complete backup.') from exc
                 if incoming is None:
                     raise ValueError('Pending import retained source bytes are missing; a complete backup cannot be created.')
                 if wanted is not None and incoming.digest != wanted or expected is not None and incoming.manifest() != expected:
                     raise ValueError('Pending import source changed after planning; original pinned bytes are required.')
+                name = incoming.digest + SUFFIXES[incoming.mime]
                 if sum(item['size_bytes'] for item in files) + incoming.size > MAX_TOTAL:
                     raise ValueError('Pending import backup exceeds its total byte budget.')
-                name = incoming.digest + SUFFIXES[incoming.mime]
-                if isinstance(incoming, FileAsset):
+                if profile is not None:
+                    entry = dict(filename=name, size_bytes=incoming.size, sha256=incoming.digest)
+                    _copy(selected, target / 'originals' / name, entry, cancelled)
+                    _remember_profile(profiles, incoming.digest, profile)
+                elif isinstance(incoming, FileAsset):
                     destination = target / 'originals' / name
                     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
                     incoming.copy_to(destination, cancelled=cancelled)
@@ -769,24 +828,36 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
                 return incoming.digest
 
             for job in jobs.values():
-                retain(known=job['asset'])
-            for name, row_id, source, expected, known in _references(requests, batches):
+                retain(known=job['asset'], profile=profile_from_config(job['config']))
+            for name, row_id, source, expected, known, profile in _references(requests, batches):
                 _check(cancelled)
-                asset_hash = retain(expected, known, source)
+                asset_hash = retain(expected, known, source, profile)
                 if row_id is None:
                     _request_original_budget(requests[Path(name).stem], assets[asset_hash])
                 bindings.append(dict(filename=name, row_id=row_id, source=source, asset_sha256=asset_hash))
             for asset in assets.values():
                 _check(cancelled)
-                raw = _original_payload(target / 'originals' / asset['filename'], asset, cancelled)
-                _source_checkpoints(asset, raw, jobs, journal)
+                original = target / 'originals' / asset['filename']
+                _original_payload(original, asset, cancelled, profiles.get(asset['sha256']))
+                _source_checkpoints(asset, original, jobs, journal, cancelled)
         if _inventory(root) != before:
             raise ValueError('Pending import state changed during backup; retry after pausing imports.')
+        # Windows creation time does not identify content changes, and a writer
+        # can restore the last-write timestamp after a same-sized edit. Check
+        # actual copied request/batch/review bytes before accepting the snapshot.
+        for entry in files:
+            if entry['filename'] in before and _entry(root / entry['filename'], entry['filename'], cancelled) != entry:
+                raise ValueError('Pending import state changed during backup; retry after pausing imports.')
     finally:
         if journal is not None:
             journal.close()
     result = dict(version=1, data_dir=str(root), files=sorted(files, key=lambda item: item['filename']),
                   assets=sorted(assets.values(), key=lambda item: item['filename']), sources=bindings)
+    scan_pages = _scan_manifest(batches)
+    if scan_pages:
+        result.update(version=2, scan_pages=scan_pages)
+    if profiles:
+        result.update(version=3, scan_pages=scan_pages, source_profiles=_profile_manifest(profiles))
     validate_pending(result)
     sync_directory(target)
     return result
@@ -802,14 +873,78 @@ def _component_name(name):
         r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}(?:' + suffixes + ')', name))
 
 
+def _scan_manifest(batches):
+    """Describe retained pages using the current cursor/chain identities.
+
+    A restored cursor is history. This summary grants no permission to traverse
+    the absolute external roots saved inside its immutable batch record.
+    """
+    return [dict(batch_id=identity, previous_batch_id=batch['scan']['previous_batch_id'],
+                 has_continuation=batch['scan']['cursor'] is not None,
+                 next_batch_id=batch['scan']['next_batch_id'],
+                 unscanned_sources='external_not_copied', restore_traversal='inactive')
+            for identity, batch in sorted(batches.items()) if batch['version'] == 2]
+
+
+def _remember_profile(profiles, asset, profile):
+    previous = profiles.get(asset)
+    if previous is None or profile.maximum_bytes > previous.maximum_bytes:
+        profiles[asset] = profile
+
+
+def _profile_manifest(profiles):
+    return [dict(sha256=asset, profile=profile.to_dict()) for asset, profile in sorted(profiles.items())]
+
+
+def _manifest_profiles(metadata):
+    rows = metadata.get('source_profiles', [])
+    if not isinstance(rows, list) or len(rows) > MAX_FILES:
+        raise ValueError('Invalid streamed pending-source profile inventory.')
+    profiles = {}
+    for row in rows:
+        if (not isinstance(row, dict) or set(row) != {'sha256', 'profile'}
+                or not _hash(row['sha256']) or row['sha256'] in profiles):
+            raise ValueError('Invalid streamed pending-source profile entry.')
+        profiles[row['sha256']] = profile_from_value(row['profile'])
+    if _profile_manifest(profiles) != rows:
+        raise ValueError('Streamed pending-source profiles are not canonical.')
+    return profiles
+
+
 def validate_pending(metadata):
     """Validate enclosing manifest fields before touching component paths."""
-    if (not isinstance(metadata, dict) or set(metadata) != {'version', 'data_dir', 'files', 'assets', 'sources'}
-            or type(metadata['version']) is not int or metadata['version'] != 1
+    base_keys = {'version', 'data_dir', 'files', 'assets', 'sources'}
+    if (not isinstance(metadata, dict)
+            or type(metadata.get('version')) is not int or metadata['version'] not in (1, 2, 3)
+            or set(metadata) != (base_keys if metadata['version'] == 1 else base_keys | {'scan_pages'}
+                                if metadata['version'] == 2 else base_keys | {'scan_pages', 'source_profiles'})
             or any(not isinstance(metadata[key], list) for key in ('files', 'assets', 'sources'))
             or any(len(metadata[key]) > MAX_FILES for key in ('files', 'assets', 'sources'))):
         raise ValueError('Invalid pending import backup manifest.')
     _source(metadata['data_dir'])
+    profiles = _manifest_profiles(metadata)
+    if bool(profiles) != (metadata['version'] == 3):
+        raise ValueError('Streamed pending-source profiles require their versioned manifest.')
+    if metadata['version'] >= 2:
+        summaries = metadata['scan_pages']
+        if (not isinstance(summaries, list) or len(summaries) > MAX_BATCHES
+                or metadata['version'] == 2 and not summaries):
+            raise ValueError('Invalid saved scan-page backup summary.')
+        seen = set()
+        for row in summaries:
+            if (not isinstance(row, dict) or set(row) != {'batch_id', 'previous_batch_id', 'has_continuation',
+                    'next_batch_id', 'unscanned_sources', 'restore_traversal'}
+                    or not _id(row['batch_id']) or row['batch_id'] in seen
+                    or row['previous_batch_id'] is not None and (
+                        not _id(row['previous_batch_id']) or row['previous_batch_id'] == row['batch_id'])
+                    or type(row['has_continuation']) is not bool
+                    or (row['next_batch_id'] is not None) != row['has_continuation']
+                    or row['next_batch_id'] is not None and (
+                        not _id(row['next_batch_id']) or row['next_batch_id'] == row['batch_id'])
+                    or row['unscanned_sources'] != 'external_not_copied'
+                    or row['restore_traversal'] != 'inactive'):
+                raise ValueError('Invalid saved scan-page backup summary.')
+            seen.add(row['batch_id'])
     files, total = {}, 0
     for item in metadata['files']:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
@@ -817,7 +952,9 @@ def validate_pending(metadata):
                 or not _hash(item['sha256']) or type(item['size_bytes']) is not int or item['size_bytes'] <= 0):
             raise ValueError('Invalid pending import file manifest.')
         name = item['filename']
-        original_limit = MAX_PDF_BYTES if name.endswith('.pdf') else MAX_BYTES
+        profile = profiles.get(Path(name).stem) if name.startswith('originals/') else None
+        original_limit = profile.maximum_bytes if profile is not None else (
+            MAX_PDF_BYTES if name.endswith('.pdf') else MAX_BYTES)
         limit = MAX_JOURNAL if name == 'imports.sqlite' else original_limit if name.startswith('originals/') else (
             MAX_BATCH if name.startswith('import-batches/') else MAX_REVIEWS if '/reviews/' in name else MAX_REQUEST)
         if item['size_bytes'] > limit:
@@ -828,15 +965,20 @@ def validate_pending(metadata):
         raise ValueError('Pending import backup exceeds its total byte budget.')
     assets = {}
     for item in metadata['assets']:
+        profile = (profiles.get(item.get('sha256')) if isinstance(item, dict)
+                   and isinstance(item.get('sha256'), str) else None)
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256', 'mime'}
                 or not _hash(item['sha256']) or item['mime'] not in SUFFIXES
                 or item['filename'] != item['sha256'] + SUFFIXES[item['mime']]
-                or item['sha256'] in assets or not valid_original_size(item['mime'], item['size_bytes'])):
+                or item['sha256'] in assets
+                or not _source_size(item['mime'], item['size_bytes'], profile)):
             raise ValueError('Invalid pending original manifest.')
         expected = dict(filename='originals/' + item['filename'], size_bytes=item['size_bytes'], sha256=item['sha256'])
         if files.get(expected['filename']) != expected:
             raise ValueError('Pending original is missing from its component manifest.')
         assets[item['sha256']] = item
+    if not set(profiles) <= set(assets):
+        raise ValueError('Streamed source profile has no retained pending original.')
     if {name for name in files if name.startswith('originals/')} != {'originals/' + item['filename'] for item in assets.values()}:
         raise ValueError('Unlisted pending original bytes.')
     bindings = set()
@@ -888,10 +1030,20 @@ def _validated_contents(source, catalog_path, metadata, *, journal_path, cancell
                 journal, jobs = _journal(journal_path, catalog, cancelled)
             requests, batches, reviews = _records(source, metadata['data_dir'], catalog, names)
             _relations(requests, batches, reviews, jobs, journal)
+            summaries = _scan_manifest(batches)
+            # Released r6/v1 components can already contain current batch-v2
+            # cursors; their absence of a separate summary remains readable.
+            if metadata['version'] >= 2 and metadata['scan_pages'] != summaries:
+                raise ValueError('Scan-page backup summary differs from its saved batches.')
             assets = {entry['sha256']: entry for entry in metadata['assets']}
             bindings = {(entry['filename'], entry['row_id']): entry for entry in metadata['sources']}
             expected_bindings, referenced = set(), {job['asset'] for job in jobs.values()}
-            for name, row_id, old_source, expected, known in _references(requests, batches):
+            required_profiles = {}
+            for job in jobs.values():
+                profile = profile_from_config(job['config'])
+                if profile is not None:
+                    _remember_profile(required_profiles, job['asset'], profile)
+            for name, row_id, old_source, expected, known, profile in _references(requests, batches):
                 _check(cancelled)
                 identity = name, row_id
                 expected_bindings.add(identity)
@@ -901,6 +1053,10 @@ def _validated_contents(source, catalog_path, metadata, *, journal_path, cancell
                 asset = assets[binding['asset_sha256']]
                 if row_id is None:
                     _request_original_budget(requests[Path(name).stem], asset)
+                if profile is not None:
+                    if asset['mime'] != 'text/plain' or asset['size_bytes'] > profile.maximum_bytes:
+                        raise ValueError('Pending source exceeds its archived streamed profile.')
+                    _remember_profile(required_profiles, asset['sha256'], profile)
                 if (known is not None and asset['sha256'] != known or expected is not None and
                         (asset['sha256'], asset['mime'], asset['size_bytes']) !=
                         (expected['sha256'], expected['mime'], expected['size'])):
@@ -908,10 +1064,14 @@ def _validated_contents(source, catalog_path, metadata, *, journal_path, cancell
                 referenced.add(asset['sha256'])
             if set(bindings) != expected_bindings or referenced != set(assets):
                 raise ValueError('Pending backup contains missing or unreferenced original bytes.')
+            if metadata.get('source_profiles', []) != _profile_manifest(required_profiles):
+                raise ValueError('Streamed source profiles differ from their saved job/request authorities.')
             for asset in assets.values():
                 _check(cancelled)
-                raw = _original_payload(source / 'originals' / asset['filename'], asset, cancelled)
-                _source_checkpoints(asset, raw, jobs, journal)
+                path = source / 'originals' / asset['filename']
+                profile = required_profiles.get(asset['sha256'])
+                _original_payload(path, asset, cancelled, profile)
+                _source_checkpoints(asset, path, jobs, journal, cancelled)
             return requests, batches, assets, bindings
     finally:
         if journal is not None:
@@ -924,7 +1084,8 @@ def verify_pending(source, stage, metadata, *, cancelled=lambda: False):
     The caller supplies a private stage containing its verified library.sqlite.
     Only imports.sqlite is copied before SQLite sees it. Even a WAL-mode header
     must never cause SQLite to create journal files beside the source backup.
-    Original bytes remain bounded by the existing 64 MiB source-input contract.
+    Original bytes retain their independently validated PDF or explicitly
+    versioned streamed UTF-8 bounds; ordinary originals keep the 64 MiB limit.
     """
     _check(cancelled)
     validate_pending(metadata)
@@ -990,6 +1151,7 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
         # Explicit resume verifies the retained source and journal again.
         request.pop('attempt', None)
         request.pop('publication_candidate', None)
+        request.pop('publication_watermark', None)
         _write(stage / 'import-requests' / (request_id + '.json'),
                (canonical(request) + '\n').encode('utf-8'))
     for batch_id, batch in batches.items():
@@ -1022,7 +1184,9 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
         _check(cancelled)
         target = stage / 'originals' / asset['filename']
         if optional_present(target):
-            _original_payload(target, asset, cancelled)
+            actual = _entry(target, asset['filename'], cancelled)
+            if (actual['size_bytes'], actual['sha256']) != (asset['size_bytes'], asset['sha256']):
+                raise ValueError('Pending original conflicts with a catalog original.')
         else:
             _copy(verified / 'originals' / asset['filename'], target, asset, cancelled)
             added.append(dict(asset))

@@ -8,12 +8,14 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 import stat
 
 
-def portable_relative(value):
-    """One portable relative-name boundary for typed state and its sidecars."""
+def portable_relative(value, *, max_parts=16):
+    """Shared portable names; typed state keeps its existing 16-part bound."""
+    if type(max_parts) is not int or not 1 <= max_parts <= 2048:
+        raise ValueError('Invalid portable path component budget.')
     if not isinstance(value, str) or not value or len(value) > 4096 or '\\' in value:
         raise ValueError('Invalid portable relative file path.')
     path = PurePosixPath(value)
-    if (path.is_absolute() or len(path.parts) > 16
+    if (path.is_absolute() or len(path.parts) > max_parts
             or any(part in ('', '.', '..') for part in value.split('/'))
             or any(part.rstrip(' .') != part or PureWindowsPath(part).is_reserved()
                    or any(c in '<>:"|?*' or ord(c) < 32 or 127 <= ord(c) < 160 for c in part)

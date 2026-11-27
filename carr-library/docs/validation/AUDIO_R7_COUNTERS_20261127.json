@@ -1,0 +1,1127 @@
+{
+  "schema": 1,
+  "status": "NOT_RUN",
+  "source_commit": "947754a6b1b73baa6e1c8d95cf39fee81c96321a",
+  "source_tree": "f33242a174ef0c88dc820110d917e2131010fcbe",
+  "method": "Static source inventory, not an executed pytest collection or a runtime PASS. Compare the complete source and isolated-installed JUnit Counters after stripping only parameter suffixes from testcase names. Zero missing, unexpected, skipped, failed, or errored cases are permitted.",
+  "expected_test_cases": 341,
+  "tests": {
+    "tests/audio/test_input_asset_backup.py": {
+      "test_saved_and_recovery_input_bytes_survive_new_root_without_unrelated_files": 2,
+      "test_missing_or_damaged_referenced_input_prevents_completed_backup": 8,
+      "test_required_input_is_not_silently_omitted_when_audio_folder_was_not_selected": 1,
+      "test_literal_narration_does_not_treat_bracketed_text_as_an_input_reference": 1,
+      "test_resigned_archives_cannot_publish_damaged_or_unrelated_input_assets": 2,
+      "test_restored_input_runs_through_real_ffmpeg_without_original_assets": 2,
+      "test_resigned_library_cannot_restore_orphan_inputs_without_their_project": 1
+    },
+    "tests/audio/test_extended_effects.py": {
+      "test_existing_effect_graphs_keep_their_cache_compatible_defaults": 1,
+      "test_unsafe_or_out_of_range_controls_are_rejected_even_when_bypassed": 8,
+      "test_effect_descriptions_are_copies_and_typed_plans_round_trip": 1,
+      "test_new_frequency_controls_refuse_nyquist_and_above": 3,
+      "test_each_added_effect_runs_through_actual_ffmpeg": 14,
+      "test_actual_tempo_changes_duration_without_transposing": 1,
+      "test_actual_pitch_uses_input_rate_and_preserves_duration": 2,
+      "test_actual_notch_removes_one_frequency_and_preserves_the_other": 1,
+      "test_actual_width_is_applied_to_stereo_placement": 1,
+      "test_actual_selectable_loudness_and_limiter_are_measured": 1,
+      "test_added_formats_encode_and_decode_real_audio_without_overwriting": 4,
+      "test_editor_appends_after_existing_effects_before_the_role_speaks": 1,
+      "test_editor_materializes_implicit_role_without_changing_its_voice_or_words": 1,
+      "test_editor_handles_quoted_role_and_keeps_order_after_redefinition": 1,
+      "test_editor_refuses_unknown_role_and_chain_overflow": 1,
+      "test_codec_rate_constraint_is_visible_before_rendering": 1,
+      "test_script_bypass_and_order_change_reach_actual_signal_path": 1
+    },
+    "tests/audio/test_clips.py": {
+      "test_version_one_serialization_remains_the_exact_existing_contract": 1,
+      "test_version_two_roundtrip_keeps_clip_identity_and_literal_mode_never_parses_it": 1,
+      "test_invalid_clip_controls_fail_before_processing": 8,
+      "test_clip_count_and_sample_trim_bounds_are_not_silent_clamps": 1,
+      "test_editor_retains_independent_pcm_and_preserves_unrelated_crlf_draft": 1,
+      "test_cancel_and_alias_refusal_leave_source_and_script_unchanged": 1,
+      "test_removing_last_clip_keeps_its_chapter_and_source_asset": 1,
+      "test_controller_refuses_stale_edit_and_output_root_then_uses_existing_undo": 1,
+      "test_retained_input_retries_post_move_directory_durability_before_acknowledging": 1,
+      "test_copy_paste_preserves_retained_bytes_and_saved_controls": 1,
+      "test_cut_paste_keeps_empty_chapter_and_original_asset": 1,
+      "test_split_then_reverse_selected_join_keeps_exact_source_and_timeline_samples": 3,
+      "test_split_refuses_empty_samples_outside_bounds_and_cuts_inside_fades": 9,
+      "test_join_refuses_a_gap_mismatched_processing_or_an_interior_fade": 6,
+      "test_paste_requires_the_unchanged_copied_asset_in_its_original_project": 3,
+      "test_clipboard_and_split_cannot_bypass_the_existing_scene_limit": 1,
+      "test_cancelled_cut_never_changes_the_draft_or_retained_source": 1,
+      "test_controller_accepts_clipboard_only_after_stale_draft_guard_and_reuses_undo": 1,
+      "test_opening_a_saved_project_clears_the_session_clipboard": 1,
+      "test_clip_resource_admission_requires_positive_measured_source_duration": 5,
+      "test_clip_resource_admission_rejects_trim_outside_measured_source": 1,
+      "test_clip_resource_admission_reserves_tail_stems_and_master_intermediates": 1
+    },
+    "tests/audio/test_clip_render.py": {
+      "test_real_trim_pan_gain_and_fades_keep_exact_pcm_samples": 1,
+      "test_real_overlay_position_and_background_ducking_are_measured": 1,
+      "test_real_clip_render_resume_stems_and_publication_sample_graph": 1,
+      "test_clip_only_render_needs_no_speech_and_cancel_reuses_checked_clip": 1,
+      "test_preview_and_full_render_share_verified_clip_cache": 1
+    },
+    "tests/audio/test_effect_editing.py": {
+      "test_no_change_preserves_every_source_character_and_legacy_parameter_spelling": 1,
+      "test_reorder_keeps_effect_spelling_and_non_effect_lines_in_original_order": 1,
+      "test_implicit_unicode_role_is_declared_at_its_first_speech_without_reordering_roles": 1,
+      "test_bypass_edit_remove_and_multi_role_apply_are_one_reversible_draft_change": 1,
+      "test_multiple_role_changes_scan_and_parse_only_once_on_accept": 1,
+      "test_invalid_chain_change_is_atomic": 6,
+      "test_bypassed_directive_still_requires_exact_boolean_and_valid_parameters": 6,
+      "test_bypass_reaches_existing_renderer_without_losing_saved_parameters": 1,
+      "test_exact_numeric_preset_roundtrip_replaces_only_selected_chain": 1,
+      "test_preset_schema_is_inert_strict_and_bounded": 9,
+      "test_actual_preset_file_reader_rejects_ambiguity_and_oversize": 3,
+      "test_preset_publication_keeps_absent_destination_approval": 1,
+      "test_preset_cannot_be_written_to_private_library_or_without_approval": 1,
+      "test_empty_preset_is_an_explicit_clear_not_an_automatic_activation": 1
+    },
+    "tests/audio/test_master_effects.py": {
+      "test_actual_pre_master_v1_v2_plan_fingerprints_are_unchanged": 3,
+      "test_literal_narration_never_parses_the_new_master_directives": 1,
+      "test_v3_master_and_clips_roundtrip_preserves_source_and_explicit_fields": 1,
+      "test_master_directives_fail_closed_before_any_native_work": 11,
+      "test_global_master_directives_cannot_retroactively_change_started_timeline": 5,
+      "test_combined_role_master_edit_retains_exact_non_effect_source_and_reversible_draft": 1,
+      "test_master_reorder_and_bypass_reuse_presets_but_refuse_active_timing_effects": 1,
+      "test_real_pcm_linear_dry_wet_has_exact_ratio_stereo_and_frame_count": 3,
+      "test_real_pcm_master_never_drops_short_programmes": 4,
+      "test_real_master_order_and_bypass_change_only_the_selected_processing": 1,
+      "test_actual_master_child_read_is_protected_against_a_restored_same_size_write": 1,
+      "test_final_master_input_validation_finishes_before_publication": 1,
+      "test_real_master_delay_crosses_chapters_once_and_partitions_are_byte_exact": 1,
+      "test_invalid_chapter_partition_creates_no_partial_chapter": 5,
+      "test_real_render_master_only_edit_reuses_speech_and_keeps_premaster_stems": 1,
+      "test_master_cancel_never_publishes_partial_render_and_resume_reuses_speech": 1,
+      "test_completed_master_survives_full_library_backup_and_exported_publication": 1,
+      "test_clip_preview_explicitly_excludes_programme_master_processing": 1
+    },
+    "tests/audio/test_canonical_project_import.py": {
+      "test_review_captures_controls_without_creating_a_project_or_running_an_engine": 1,
+      "test_import_creates_an_independent_editable_project_with_exact_original_bytes": 1,
+      "test_cue_requires_selected_scope_and_is_copied_with_all_controls": 1,
+      "test_foreign_saved_cue_path_needs_explicit_current_file_selection": 1,
+      "test_conversion_refuses_unknown_or_lossy_features_before_publication": 14,
+      "test_reviewed_source_and_authorities_must_remain_current": 4,
+      "test_failed_import_removes_only_its_own_new_project": 3,
+      "test_uuid_collision_keeps_existing_managed_project_untouched": 1,
+      "test_backup_cannot_accept_forged_canonical_source_provenance": 5,
+      "test_complete_backup_preserves_imported_project_inputs_and_exact_canonical_document": 1,
+      "test_empty_canonical_scene_keeps_the_old_one_second_minimum": 1,
+      "test_schema_two_clip_selection_microphone_fades_and_title_survive": 1,
+      "test_schema_two_unrepresentable_or_unavailable_clip_window_is_rejected": 3,
+      "test_current_studio_reopen_checks_provenance_and_save_as_protects_original": 1
+    },
+    "tests/audio/test_publication.py": {
+      "test_completed_plan_pcm_and_measured_lines_become_a_verified_portable_book": 2,
+      "test_legacy_complete_marker_is_upgraded_only_by_verified_exact_resume": 1,
+      "test_conflicting_complete_plan_binding_is_never_silently_repaired": 1,
+      "test_source_changes_cannot_be_hidden_by_metadata_or_recomputed_artifact_receipts": 4,
+      "test_captured_empty_destination_and_private_library_remain_protected": 1,
+      "test_cancel_after_prepared_receipt_preserves_source_and_does_not_publish": 1,
+      "test_move_then_sync_failure_is_recovered_without_reencoding_or_overwrite": 1,
+      "test_late_cancel_after_new_file_move_does_not_turn_publication_into_a_retry": 1,
+      "test_complete_backup_restores_receipt_and_bound_audio_without_reactivating_external_path": 1,
+      "test_assistant_existing_renderer_bridge_accepts_the_additive_plan_receipt": 1,
+      "test_current_studio_rejects_an_old_render_after_same_source_settings_change": 1,
+      "test_sample_provenance_rejects_forged_clock_authority": 4,
+      "test_literal_page_boundaries_keep_exact_source_in_provenance_without_invalid_xml": 1,
+      "test_cancellation_during_final_book_flush_keeps_prepared_receipt_without_output": 2
+    },
+    "tests/audio/test_publication_acceptance.py": {
+      "test_independent_epub_tool_refuses_an_unpinned_archive_before_extracting": 1,
+      "test_daisy_schema_boundary_refuses_changed_local_bytes_without_loading_lxml": 1,
+      "test_daisy_resolver_only_returns_explicit_local_aliases": 1,
+      "test_windows_schema_filenames_do_not_become_nested_entity_system_ids": 1,
+      "test_local_schema_change_between_pin_validation_and_resolver_is_refused": 1,
+      "test_zero_or_forged_success_cannot_satisfy_checker_gate": 4,
+      "test_acceptance_report_does_not_replace_an_existing_report": 1,
+      "test_checker_owns_and_bounds_the_actual_child": 2,
+      "test_checker_settles_retained_child_before_its_caller_can_remove_files": 1
+    },
+    "tests/audio/test_publication_fsync.py": {
+      "test_cancellation_during_final_flush_does_not_publish": 4,
+      "test_late_cancellation_cannot_reverse_actual_move": 4,
+      "test_directory_flush_cancellation_preserves_unpublished_complete_stage": 1,
+      "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation": 1,
+      "test_flush_failure_still_preserves_stage_and_prevents_publication": 1
+    },
+    "tests/ui/test_audio_clips.py": {
+      "test_parameter_form_keeps_explicit_zero_and_optional_duration": 1,
+      "test_invalid_native_form_values_are_not_silently_clamped": 6,
+      "test_clip_input_references_survive_complete_backup_restore_without_reparsing_narration": 1,
+      "test_late_clip_result_cannot_change_replaced_script_or_project_folder": 1
+    },
+    "tests/ui/test_audio_effect_editing.py": {
+      "test_editing_without_changes_keeps_omitted_legacy_controls_and_bypass": 1,
+      "test_native_fields_reject_untyped_and_out_of_range_parameters": 5,
+      "test_new_effect_fields_keep_displayed_defaults_explicit": 1,
+      "test_native_accept_commits_once_and_cancel_keeps_original_draft": 1,
+      "test_native_accept_refuses_a_stale_project_or_runtime_selection": 7,
+      "test_literal_narration_is_never_interpreted_as_effect_instructions": 1,
+      "test_preset_destination_guards_current_project_recovery_and_original": 1,
+      "test_managed_save_open_and_complete_backup_keep_chain_and_source": 1,
+      "test_master_apply_uses_the_same_single_undoable_native_draft_edit": 1
+    },
+    "tests/ui/test_audio_publication.py": {
+      "test_controller_binds_the_current_plan_and_existing_managed_project": 1,
+      "test_publication_controller_forwards_captured_approval_and_does_not_render": 1,
+      "test_busy_studio_cannot_start_a_second_publication": 1,
+      "test_publication_failure_releases_existing_controller_worker_guard": 1,
+      "test_publication_receipt_discovery_can_stop_before_any_filesystem_work": 1,
+      "test_verify_uses_explicit_existing_output_and_never_reinterprets_current_script": 1
+    },
+    "tests/ui/test_legacy_studio_import.py": {
+      "test_native_choices_require_separate_review_then_import": 2,
+      "test_native_cue_choice_grants_only_the_explicit_current_file": 1,
+      "test_native_context_change_before_acceptance_never_creates_a_project": 1,
+      "test_native_source_change_after_inspection_requires_another_review": 1,
+      "test_native_file_choice_cancellation_does_not_start_a_worker": 1,
+      "test_canonical_import_preserves_the_exact_host_trust_controller": 1
+    },
+    "tests/ui/test_audio_native_probe_policy.py": {
+      "test_clip_probe_waits_for_modal_and_focus_without_reentrant_yield": 6,
+      "test_metadata_probe_waits_for_modal_and_focus_without_reentrant_yield": 3,
+      "test_native_probe_rejects_unhandled_or_refused_action_and_stops_late_callbacks": 4
+    },
+    "tests/audio/test_cleanup_wait.py": {
+      "test_settling_requires_the_current_typed_pending_owner": 1,
+      "test_scopes_wait_for_actual_owner_quiescence_and_callbacks_once": 1,
+      "test_interrupt_is_delivered_only_after_retained_owner_settles": 2
+    },
+    "tests/security/test_audio_admission.py": {
+      "test_real_completed_audio_replay_remains_accessible_and_fresh_work_is_denied": 4,
+      "test_actual_two_scene_render_finishes_when_permission_expires_after_first_chunk": 1,
+      "test_actual_renderer_cannot_replace_the_active_tool_authority": 1,
+      "test_real_clip_preview_retains_authority_and_cached_pcm_after_expiry": 1
+    }
+  },
+  "test_source_blobs": {
+    "tests/audio/test_input_asset_backup.py": "471214d6d70fc28f14db84bdb92fc3c85f081cb2",
+    "tests/audio/test_extended_effects.py": "f476a9865ca0fa0bbc115e4cc54d9e1f251c3c9f",
+    "tests/audio/test_clips.py": "96d98782cf6671d92f4fe83252a587ef98bcaac6",
+    "tests/audio/test_clip_render.py": "9b59aee69df12d18aa80dd48547b982874a48a82",
+    "tests/audio/test_effect_editing.py": "57b80f6862ae78ede27bd8006e0bf9984c040c6a",
+    "tests/audio/test_master_effects.py": "a318d75f62e0ee13333e7f542ecef77406878734",
+    "tests/audio/test_canonical_project_import.py": "349d6464c726dce08862cf9d92b0f37be95d74b6",
+    "tests/audio/test_publication.py": "132b0c08a8ceedd8d435f50d52e518e095abaa0b",
+    "tests/audio/test_publication_acceptance.py": "ad89435a133eb792d599a03d995d92910d35d138",
+    "tests/audio/test_publication_fsync.py": "28703b8bf31ddc787f5d754ff14a57740e8d095b",
+    "tests/ui/test_audio_clips.py": "713d0bc24e7b6dd1a074dca5e14ffcac4e162399",
+    "tests/ui/test_audio_effect_editing.py": "acf21b2a98ed9bfe761435e07c965c522aa9afa8",
+    "tests/ui/test_audio_publication.py": "ae838c6c6cef5df132f274fe4803ee200a717264",
+    "tests/ui/test_legacy_studio_import.py": "d5a368f36197a8092eaf0cacd62223cf7695eff2",
+    "tests/ui/test_audio_native_probe_policy.py": "1abd049ae0dfa1b694b932aeccdda51972324741",
+    "tests/audio/test_cleanup_wait.py": "0cc65bef1af033b81c7881daac67aa4ba89e4973",
+    "tests/security/test_audio_admission.py": "3345ff4f278e9cb336d949895335d40d85967605"
+  },
+  "multiplicity_derivation": {
+    "tests/audio/test_input_asset_backup.py": {
+      "test_saved_and_recovery_input_bytes_survive_new_root_without_unrelated_files": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      },
+      "test_missing_or_damaged_referenced_input_prevents_completed_backup": {
+        "parametrize_product": 8,
+        "fixture_product": 1
+      },
+      "test_required_input_is_not_silently_omitted_when_audio_folder_was_not_selected": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_literal_narration_does_not_treat_bracketed_text_as_an_input_reference": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_resigned_archives_cannot_publish_damaged_or_unrelated_input_assets": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      },
+      "test_restored_input_runs_through_real_ffmpeg_without_original_assets": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      },
+      "test_resigned_library_cannot_restore_orphan_inputs_without_their_project": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_extended_effects.py": {
+      "test_existing_effect_graphs_keep_their_cache_compatible_defaults": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_unsafe_or_out_of_range_controls_are_rejected_even_when_bypassed": {
+        "parametrize_product": 8,
+        "fixture_product": 1
+      },
+      "test_effect_descriptions_are_copies_and_typed_plans_round_trip": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_new_frequency_controls_refuse_nyquist_and_above": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_each_added_effect_runs_through_actual_ffmpeg": {
+        "parametrize_product": 14,
+        "fixture_product": 1
+      },
+      "test_actual_tempo_changes_duration_without_transposing": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_actual_pitch_uses_input_rate_and_preserves_duration": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      },
+      "test_actual_notch_removes_one_frequency_and_preserves_the_other": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_actual_width_is_applied_to_stereo_placement": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_actual_selectable_loudness_and_limiter_are_measured": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_added_formats_encode_and_decode_real_audio_without_overwriting": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_editor_appends_after_existing_effects_before_the_role_speaks": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_editor_materializes_implicit_role_without_changing_its_voice_or_words": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_editor_handles_quoted_role_and_keeps_order_after_redefinition": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_editor_refuses_unknown_role_and_chain_overflow": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_codec_rate_constraint_is_visible_before_rendering": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_script_bypass_and_order_change_reach_actual_signal_path": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_clips.py": {
+      "test_version_one_serialization_remains_the_exact_existing_contract": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_version_two_roundtrip_keeps_clip_identity_and_literal_mode_never_parses_it": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_invalid_clip_controls_fail_before_processing": {
+        "parametrize_product": 8,
+        "fixture_product": 1
+      },
+      "test_clip_count_and_sample_trim_bounds_are_not_silent_clamps": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_editor_retains_independent_pcm_and_preserves_unrelated_crlf_draft": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_cancel_and_alias_refusal_leave_source_and_script_unchanged": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_removing_last_clip_keeps_its_chapter_and_source_asset": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_controller_refuses_stale_edit_and_output_root_then_uses_existing_undo": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_retained_input_retries_post_move_directory_durability_before_acknowledging": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_copy_paste_preserves_retained_bytes_and_saved_controls": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_cut_paste_keeps_empty_chapter_and_original_asset": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_split_then_reverse_selected_join_keeps_exact_source_and_timeline_samples": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_split_refuses_empty_samples_outside_bounds_and_cuts_inside_fades": {
+        "parametrize_product": 9,
+        "fixture_product": 1
+      },
+      "test_join_refuses_a_gap_mismatched_processing_or_an_interior_fade": {
+        "parametrize_product": 6,
+        "fixture_product": 1
+      },
+      "test_paste_requires_the_unchanged_copied_asset_in_its_original_project": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_clipboard_and_split_cannot_bypass_the_existing_scene_limit": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_cancelled_cut_never_changes_the_draft_or_retained_source": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_controller_accepts_clipboard_only_after_stale_draft_guard_and_reuses_undo": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_opening_a_saved_project_clears_the_session_clipboard": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_clip_resource_admission_requires_positive_measured_source_duration": {
+        "parametrize_product": 5,
+        "fixture_product": 1
+      },
+      "test_clip_resource_admission_rejects_trim_outside_measured_source": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_clip_resource_admission_reserves_tail_stems_and_master_intermediates": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_clip_render.py": {
+      "test_real_trim_pan_gain_and_fades_keep_exact_pcm_samples": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_real_overlay_position_and_background_ducking_are_measured": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_real_clip_render_resume_stems_and_publication_sample_graph": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_clip_only_render_needs_no_speech_and_cancel_reuses_checked_clip": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_preview_and_full_render_share_verified_clip_cache": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_effect_editing.py": {
+      "test_no_change_preserves_every_source_character_and_legacy_parameter_spelling": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_reorder_keeps_effect_spelling_and_non_effect_lines_in_original_order": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_implicit_unicode_role_is_declared_at_its_first_speech_without_reordering_roles": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_bypass_edit_remove_and_multi_role_apply_are_one_reversible_draft_change": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_multiple_role_changes_scan_and_parse_only_once_on_accept": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_invalid_chain_change_is_atomic": {
+        "parametrize_product": 6,
+        "fixture_product": 1
+      },
+      "test_bypassed_directive_still_requires_exact_boolean_and_valid_parameters": {
+        "parametrize_product": 6,
+        "fixture_product": 1
+      },
+      "test_bypass_reaches_existing_renderer_without_losing_saved_parameters": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_exact_numeric_preset_roundtrip_replaces_only_selected_chain": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_preset_schema_is_inert_strict_and_bounded": {
+        "parametrize_product": 9,
+        "fixture_product": 1
+      },
+      "test_actual_preset_file_reader_rejects_ambiguity_and_oversize": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_preset_publication_keeps_absent_destination_approval": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_preset_cannot_be_written_to_private_library_or_without_approval": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_empty_preset_is_an_explicit_clear_not_an_automatic_activation": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_master_effects.py": {
+      "test_actual_pre_master_v1_v2_plan_fingerprints_are_unchanged": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_literal_narration_never_parses_the_new_master_directives": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_v3_master_and_clips_roundtrip_preserves_source_and_explicit_fields": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_master_directives_fail_closed_before_any_native_work": {
+        "parametrize_product": 11,
+        "fixture_product": 1
+      },
+      "test_global_master_directives_cannot_retroactively_change_started_timeline": {
+        "parametrize_product": 5,
+        "fixture_product": 1
+      },
+      "test_combined_role_master_edit_retains_exact_non_effect_source_and_reversible_draft": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_master_reorder_and_bypass_reuse_presets_but_refuse_active_timing_effects": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_real_pcm_linear_dry_wet_has_exact_ratio_stereo_and_frame_count": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_real_pcm_master_never_drops_short_programmes": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_real_master_order_and_bypass_change_only_the_selected_processing": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_actual_master_child_read_is_protected_against_a_restored_same_size_write": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_final_master_input_validation_finishes_before_publication": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_real_master_delay_crosses_chapters_once_and_partitions_are_byte_exact": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_invalid_chapter_partition_creates_no_partial_chapter": {
+        "parametrize_product": 5,
+        "fixture_product": 1
+      },
+      "test_real_render_master_only_edit_reuses_speech_and_keeps_premaster_stems": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_master_cancel_never_publishes_partial_render_and_resume_reuses_speech": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_completed_master_survives_full_library_backup_and_exported_publication": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_clip_preview_explicitly_excludes_programme_master_processing": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_canonical_project_import.py": {
+      "test_review_captures_controls_without_creating_a_project_or_running_an_engine": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_import_creates_an_independent_editable_project_with_exact_original_bytes": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_cue_requires_selected_scope_and_is_copied_with_all_controls": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_foreign_saved_cue_path_needs_explicit_current_file_selection": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_conversion_refuses_unknown_or_lossy_features_before_publication": {
+        "parametrize_product": 14,
+        "fixture_product": 1
+      },
+      "test_reviewed_source_and_authorities_must_remain_current": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_failed_import_removes_only_its_own_new_project": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_uuid_collision_keeps_existing_managed_project_untouched": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_backup_cannot_accept_forged_canonical_source_provenance": {
+        "parametrize_product": 5,
+        "fixture_product": 1
+      },
+      "test_complete_backup_preserves_imported_project_inputs_and_exact_canonical_document": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_empty_canonical_scene_keeps_the_old_one_second_minimum": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_schema_two_clip_selection_microphone_fades_and_title_survive": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_schema_two_unrepresentable_or_unavailable_clip_window_is_rejected": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_current_studio_reopen_checks_provenance_and_save_as_protects_original": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_publication.py": {
+      "test_completed_plan_pcm_and_measured_lines_become_a_verified_portable_book": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      },
+      "test_legacy_complete_marker_is_upgraded_only_by_verified_exact_resume": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_conflicting_complete_plan_binding_is_never_silently_repaired": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_source_changes_cannot_be_hidden_by_metadata_or_recomputed_artifact_receipts": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_captured_empty_destination_and_private_library_remain_protected": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_cancel_after_prepared_receipt_preserves_source_and_does_not_publish": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_move_then_sync_failure_is_recovered_without_reencoding_or_overwrite": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_late_cancel_after_new_file_move_does_not_turn_publication_into_a_retry": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_complete_backup_restores_receipt_and_bound_audio_without_reactivating_external_path": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_assistant_existing_renderer_bridge_accepts_the_additive_plan_receipt": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_current_studio_rejects_an_old_render_after_same_source_settings_change": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_sample_provenance_rejects_forged_clock_authority": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_literal_page_boundaries_keep_exact_source_in_provenance_without_invalid_xml": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_cancellation_during_final_book_flush_keeps_prepared_receipt_without_output": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_publication_acceptance.py": {
+      "test_independent_epub_tool_refuses_an_unpinned_archive_before_extracting": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_daisy_schema_boundary_refuses_changed_local_bytes_without_loading_lxml": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_daisy_resolver_only_returns_explicit_local_aliases": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_windows_schema_filenames_do_not_become_nested_entity_system_ids": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_local_schema_change_between_pin_validation_and_resolver_is_refused": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_zero_or_forged_success_cannot_satisfy_checker_gate": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_acceptance_report_does_not_replace_an_existing_report": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_checker_owns_and_bounds_the_actual_child": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      },
+      "test_checker_settles_retained_child_before_its_caller_can_remove_files": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_publication_fsync.py": {
+      "test_cancellation_during_final_flush_does_not_publish": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_late_cancellation_cannot_reverse_actual_move": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_directory_flush_cancellation_preserves_unpublished_complete_stage": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_real_pcm_silence_cannot_publish_after_final_flush_cancellation": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_flush_failure_still_preserves_stage_and_prevents_publication": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/ui/test_audio_clips.py": {
+      "test_parameter_form_keeps_explicit_zero_and_optional_duration": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_invalid_native_form_values_are_not_silently_clamped": {
+        "parametrize_product": 6,
+        "fixture_product": 1
+      },
+      "test_clip_input_references_survive_complete_backup_restore_without_reparsing_narration": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_late_clip_result_cannot_change_replaced_script_or_project_folder": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/ui/test_audio_effect_editing.py": {
+      "test_editing_without_changes_keeps_omitted_legacy_controls_and_bypass": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_native_fields_reject_untyped_and_out_of_range_parameters": {
+        "parametrize_product": 5,
+        "fixture_product": 1
+      },
+      "test_new_effect_fields_keep_displayed_defaults_explicit": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_native_accept_commits_once_and_cancel_keeps_original_draft": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_native_accept_refuses_a_stale_project_or_runtime_selection": {
+        "parametrize_product": 7,
+        "fixture_product": 1
+      },
+      "test_literal_narration_is_never_interpreted_as_effect_instructions": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_preset_destination_guards_current_project_recovery_and_original": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_managed_save_open_and_complete_backup_keep_chain_and_source": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_master_apply_uses_the_same_single_undoable_native_draft_edit": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/ui/test_audio_publication.py": {
+      "test_controller_binds_the_current_plan_and_existing_managed_project": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_publication_controller_forwards_captured_approval_and_does_not_render": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_busy_studio_cannot_start_a_second_publication": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_publication_failure_releases_existing_controller_worker_guard": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_publication_receipt_discovery_can_stop_before_any_filesystem_work": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_verify_uses_explicit_existing_output_and_never_reinterprets_current_script": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/ui/test_legacy_studio_import.py": {
+      "test_native_choices_require_separate_review_then_import": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      },
+      "test_native_cue_choice_grants_only_the_explicit_current_file": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_native_context_change_before_acceptance_never_creates_a_project": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_native_source_change_after_inspection_requires_another_review": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_native_file_choice_cancellation_does_not_start_a_worker": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_canonical_import_preserves_the_exact_host_trust_controller": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    },
+    "tests/ui/test_audio_native_probe_policy.py": {
+      "test_clip_probe_waits_for_modal_and_focus_without_reentrant_yield": {
+        "parametrize_product": 6,
+        "fixture_product": 1
+      },
+      "test_metadata_probe_waits_for_modal_and_focus_without_reentrant_yield": {
+        "parametrize_product": 3,
+        "fixture_product": 1
+      },
+      "test_native_probe_rejects_unhandled_or_refused_action_and_stops_late_callbacks": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      }
+    },
+    "tests/audio/test_cleanup_wait.py": {
+      "test_settling_requires_the_current_typed_pending_owner": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_scopes_wait_for_actual_owner_quiescence_and_callbacks_once": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_interrupt_is_delivered_only_after_retained_owner_settles": {
+        "parametrize_product": 2,
+        "fixture_product": 1
+      }
+    },
+    "tests/security/test_audio_admission.py": {
+      "test_real_completed_audio_replay_remains_accessible_and_fresh_work_is_denied": {
+        "parametrize_product": 4,
+        "fixture_product": 1
+      },
+      "test_actual_two_scene_render_finishes_when_permission_expires_after_first_chunk": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_actual_renderer_cannot_replace_the_active_tool_authority": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      },
+      "test_real_clip_preview_retains_authority_and_cached_pcm_after_expiry": {
+        "parametrize_product": 1,
+        "fixture_product": 1
+      }
+    }
+  },
+  "fixture_audit": {
+    "local_fixtures": {
+      "ffmpeg": 1,
+      "rendered": 1,
+      "dialog": 1
+    },
+    "imported_fixture": {
+      "authority": {
+        "source": "tests/security/test_domain_admission.py",
+        "source_blob": "972fdfab85fddb4251602e315728f07c521b3cba",
+        "multiplier": 1,
+        "dependencies": [
+          "tmp_path",
+          "signer",
+          "policy",
+          "clock",
+          "integration_context"
+        ]
+      }
+    },
+    "applicable_conftest": {
+      "path": "tests/security/conftest.py",
+      "source_blob": "b2e347d78aa09950b9dd32cc84a424e2fa6b382f",
+      "fixture_multipliers": {
+        "signer": 1,
+        "policy": 1,
+        "clock": 1,
+        "integration_context": 1
+      }
+    },
+    "pytest_builtin_fixtures": {
+      "tmp_path": 1,
+      "monkeypatch": 1,
+      "capsys": 1
+    },
+    "notes": "The source tree contains no other conftest.py applying to these modules. All local/imported/dependency fixtures are unparametrized. None of these modules imports another test_* function or declares a test class, pytest_generate_tests, indirect parametrization, or a module/class-level parametrization."
+  },
+  "native": {
+    "effects": {
+      "script": "scripts/windows_audio_effects_smoke.py",
+      "source_blob": "642f07905354104657d6b76ef34711b31b3cd4db",
+      "expected_checks": 151,
+      "pass_line_prefix": "PASS: ",
+      "expected_label_counter": {
+        "actual Windows wx controls": 1,
+        "effect implementation loaded from installed package": 1,
+        "actual enabled native dialog button": 12,
+        "native dialog button dispatch": 12,
+        "one native choice list retains its exact Unicode inventory": 9,
+        "one modal belongs to the synthetic parent": 12,
+        "named role selector": 5,
+        "Unicode role selection is retained": 5,
+        "named effect selector": 4,
+        "selected typed effect kind": 4,
+        "named parameter dialog": 3,
+        "every numeric control has its name, unit and bounds": 3,
+        "numeric control is editable": 21,
+        "native modal sequence completed": 5,
+        "no effect modal remains after return": 5,
+        "confirmed dialog returns the selected role and typed Effect": 1,
+        "typed parameters match the actual edited controls": 1,
+        "Cancel returns no effect from role": 1,
+        "Cancel returns no effect from effect": 1,
+        "Cancel returns no effect from parameters": 1,
+        "invalid numeric entry is rejected after native confirmation": 1,
+        "no native callback failed": 1,
+        "named native chain window": 2,
+        "native role and effect-order controls": 2,
+        "preset actions are named and require explicit apply": 2,
+        "effect role receives actual native keyboard focus": 2,
+        "selected Unicode role has two effects": 2,
+        "first effect cannot move above the chain": 2,
+        "native bypass retains the selected step": 2,
+        "native reorder changes position and retains bypass": 2,
+        "editing shows the previously selected numeric value": 2,
+        "native edit keeps bypass and changes only numeric settings": 2,
+        "native add inserts one selected typed effect": 2,
+        "native removal affects only the selected step": 2,
+        "master has a distinct actual native target": 2,
+        "dry wet control is named and enabled only for master": 2,
+        "invalid master mix keeps the actual modal open": 2,
+        "native master chain has actual bypass and order controls": 2,
+        "native chain confirmation settled": 2,
+        "native cancel discards pending chain result": 1,
+        "native apply returns a validated script": 1,
+        "accepted typed chain keeps order, settings and bypass": 1,
+        "unselected native role remains unchanged": 1,
+        "native master apply retains typed mix, order and bypass": 1,
+        "native chain retains exact spoken source": 1,
+        "actual bounded preset file roundtrip preserves typed chain": 1,
+        "native cancel leaves the source draft without edits": 1
+      },
+      "receipt_check_shape": "integer matching the complete PASS-line Counter",
+      "arguments": [
+        "--native"
+      ]
+    },
+    "clips": {
+      "script": "scripts/windows_clip_editor_smoke.py",
+      "source_blob": "4797ee31e36fba0e926cde7c7e0fc2d06c0b3707",
+      "expected_checks": 24,
+      "pass_line_prefix": "PASS: ",
+      "expected_label_counter": {
+        "edit: named controls in shown owned modal": 1,
+        "native edit": 1,
+        "move: named controls in shown owned modal": 1,
+        "native move": 1,
+        "duration: named controls in shown owned modal": 1,
+        "native duration": 1,
+        "remove: named controls in shown owned modal": 1,
+        "native remove": 1,
+        "preview: named controls in shown owned modal": 1,
+        "native preview": 1,
+        "copy: named controls in shown owned modal": 1,
+        "native copy": 1,
+        "cut: named controls in shown owned modal": 1,
+        "native cut": 1,
+        "paste: named controls in shown owned modal": 1,
+        "native paste": 1,
+        "split: named controls in shown owned modal": 1,
+        "native split": 1,
+        "join: named controls in shown owned modal": 1,
+        "native join": 1,
+        "cancel: named controls in shown owned modal": 1,
+        "native cancel": 1,
+        "invalid duration retains owned modal": 1,
+        "numeric field retains native focus on the next event turn": 1
+      },
+      "receipt_check_shape": "list with exactly the same Counter as PASS lines",
+      "arguments": []
+    },
+    "publication": {
+      "script": "scripts/windows_publication_smoke.py",
+      "source_blob": "74f535ed9a717992a03d833b25b862bb7d01d505",
+      "expected_checks": 11,
+      "pass_line_prefix": "PASS: ",
+      "expected_label_counter": {
+        "epub: named controls in shown owned modal": 2,
+        "daisy-2.02: named controls in shown owned modal": 1,
+        "native cancel": 1,
+        "publisher required": 1,
+        "invalid language retains modal": 2,
+        "creator field retains native focus on the next event turn": 2,
+        "native OK": 2
+      },
+      "receipt_check_shape": "list with exactly the same Counter as PASS lines",
+      "arguments": []
+    }
+  },
+  "native_derivation": {
+    "effects": {
+      "typed_dialog_runs": [
+        {
+          "name": "apply",
+          "phases": 3
+        },
+        {
+          "name": "cancel-role",
+          "phases": 1
+        },
+        {
+          "name": "cancel-effect",
+          "phases": 2
+        },
+        {
+          "name": "cancel-parameters",
+          "phases": 3
+        },
+        {
+          "name": "invalid-numeric",
+          "phases": 3
+        }
+      ],
+      "typed_parameter_fields": 7,
+      "typed_parameter_dialogs": 3,
+      "chain_runs": [
+        "apply",
+        "cancel"
+      ],
+      "chain_common_checks_per_run": 17,
+      "chain_distinct_result_checks": 2,
+      "chain_postconditions": 6,
+      "existing_checks": 109,
+      "added_chain_checks": 42
+    },
+    "clips": {
+      "actions": [
+        "edit",
+        "move",
+        "duration",
+        "remove",
+        "preview",
+        "copy",
+        "cut",
+        "paste",
+        "split",
+        "join",
+        "cancel"
+      ],
+      "checks_per_action": 2,
+      "extra_edit_validation_and_focus_checks": 2
+    },
+    "publication": {
+      "runs": [
+        {
+          "format": "epub",
+          "cancel": false,
+          "checks": 4
+        },
+        {
+          "format": "daisy-2.02",
+          "cancel": false,
+          "checks": 5
+        },
+        {
+          "format": "epub",
+          "cancel": true,
+          "checks": 2
+        }
+      ]
+    }
+  },
+  "unqualified": [
+    "Actual source and installed collection/execution on the composed candidate",
+    "Native Windows execution on the composed candidate",
+    "NVDA and third-party reader interoperability",
+    "Full native file-picker or playback-device acceptance"
+  ]
+}

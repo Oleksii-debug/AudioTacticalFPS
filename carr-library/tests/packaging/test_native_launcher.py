@@ -204,7 +204,8 @@ class NativeLauncherBundleTests(unittest.TestCase):
         for name in capture.SOURCE_SETS["Windows x64 / MSVC"]:
             shutil.copyfile(capture.SOURCE / name, native / name)
         for name in ("native_launcher.py", "install_windows.py", "Install.cmd",
-                     "ResearchLibrary.cmd", "CheckInstallation.cmd"):
+                     "ResearchLibrary.cmd", "CheckInstallation.cmd", "SetupLocalAudio.cmd",
+                     "setup_local_audio.py", "prepare_ffmpeg_runtime.py"):
             shutil.copyfile(ROOT / "packaging" / name, self.packaging / name)
         notices = self.packaging / "wheel-notices"
         notices.mkdir()

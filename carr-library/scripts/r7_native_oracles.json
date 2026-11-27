@@ -1,0 +1,260 @@
+{
+  "live": {
+    "probe": "scripts/windows_live_reading_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.reader.live_speech",
+      "carr_library.ui.live_reading",
+      "carr_library.ui.reading_desk",
+      "carr_library.ui.narration_editor",
+      "carr_library.library_backup",
+      "carr_library.ui.builtin_keyboard_commands",
+      "carr_library.native_runtime"
+    ],
+    "checks": [
+      "named read-only native source control",
+      "all ten live reading actions are native and named",
+      "native emoji and newline selection identifies exact source",
+      "native reading range includes whole book",
+      "actual installed English SAPI voice enumerated",
+      "voice enumeration requires explicit selection",
+      "unsupported SAPI pitch control stays disabled",
+      "actual native keyboard focus reaches selected voice",
+      "actual SAPI utterance became prepared PCM",
+      "measured PCM and exact spoken source digest",
+      "prepared excerpt highlights exact native source range",
+      "preparing does not start a device or advance cursor",
+      "stop retains only the last completed text cursor",
+      "stop releases private utterance PCM",
+      "book resume is exact source-bound",
+      "speech resource reservation is released",
+      "restored cursor uses exact native character position",
+      "where-am-I is exposed through named native status",
+      "native modal exits only after reader owners settle",
+      "immutable source remains byte-identical after the native workflow",
+      "native Unicode cursor roundtrip 0",
+      "native Unicode cursor roundtrip 7",
+      "native Unicode cursor roundtrip 8",
+      "native Unicode cursor roundtrip 11",
+      "native Unicode cursor roundtrip 38",
+      "native Unicode cursor roundtrip 78"
+    ],
+    "fields": {
+      "status": "PASS",
+      "native_controls": "EXECUTED",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "word_alignment": "NOT_CLAIMED",
+      "language_quality": "NOT_CLAIMED"
+    },
+    "positive_metrics": [
+      "actual_sapi_pcm.frames",
+      "actual_sapi_pcm.sample_rate"
+    ],
+    "digest_fields": [
+      "actual_sapi_pcm.pcm_sha256",
+      "actual_sapi_pcm.source_sha256"
+    ]
+  },
+  "streamed": {
+    "probe": "tests/ui/probe_streamed_import_native.py",
+    "modules": [
+      "carr_library.application",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.import_center",
+      "carr_library.ingest.worker",
+      "carr_library.ingest.streamed_text",
+      "carr_library.ingest.streamed_ingest",
+      "carr_library.native_runtime"
+    ],
+    "checks": [
+      "native named numeric profile control",
+      "native focus and Tab to import action",
+      "real existing frame worker and owned import child",
+      "controls disabled until settlement",
+      "captured byte allowance",
+      "canonical request and completed result",
+      "original-byte verified quotation",
+      "unchanged original",
+      "owned native close and destruction"
+    ],
+    "fields": {
+      "status": "PASS",
+      "exact_fragments": 3,
+      "file_picker": "NOT_RUN",
+      "manual_nvda": "NOT_RUN"
+    }
+  },
+  "effects": {
+    "probe": "scripts/windows_audio_effects_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "modules": [
+      "carr_library.audio.models",
+      "carr_library.audio.effect_editing",
+      "carr_library.audio.production",
+      "carr_library.ui.audio_effects",
+      "carr_library.native_runtime"
+    ],
+    "probe_modules": [
+      "carr_library.audio.models",
+      "carr_library.audio.effect_editing",
+      "carr_library.audio.production",
+      "carr_library.ui.audio_effects"
+    ],
+    "checks": {
+      "actual Windows wx controls": 1,
+      "effect implementation loaded from installed package": 1,
+      "actual enabled native dialog button": 12,
+      "native dialog button dispatch": 12,
+      "one native choice list retains its exact Unicode inventory": 9,
+      "one modal belongs to the synthetic parent": 12,
+      "named role selector": 5,
+      "Unicode role selection is retained": 5,
+      "named effect selector": 4,
+      "selected typed effect kind": 4,
+      "named parameter dialog": 3,
+      "every numeric control has its name, unit and bounds": 3,
+      "numeric control is editable": 21,
+      "native modal sequence completed": 5,
+      "no effect modal remains after return": 5,
+      "confirmed dialog returns the selected role and typed Effect": 1,
+      "typed parameters match the actual edited controls": 1,
+      "Cancel returns no effect from role": 1,
+      "Cancel returns no effect from effect": 1,
+      "Cancel returns no effect from parameters": 1,
+      "invalid numeric entry is rejected after native confirmation": 1,
+      "no native callback failed": 1,
+      "named native chain window": 2,
+      "native role and effect-order controls": 2,
+      "preset actions are named and require explicit apply": 2,
+      "effect role receives actual native keyboard focus": 2,
+      "selected Unicode role has two effects": 2,
+      "first effect cannot move above the chain": 2,
+      "native bypass retains the selected step": 2,
+      "native reorder changes position and retains bypass": 2,
+      "editing shows the previously selected numeric value": 2,
+      "native edit keeps bypass and changes only numeric settings": 2,
+      "native add inserts one selected typed effect": 2,
+      "native removal affects only the selected step": 2,
+      "master has a distinct actual native target": 2,
+      "dry wet control is named and enabled only for master": 2,
+      "invalid master mix keeps the actual modal open": 2,
+      "native master chain has actual bypass and order controls": 2,
+      "native chain confirmation settled": 2,
+      "native cancel discards pending chain result": 1,
+      "native apply returns a validated script": 1,
+      "accepted typed chain keeps order, settings and bypass": 1,
+      "unselected native role remains unchanged": 1,
+      "native master apply retains typed mix, order and bypass": 1,
+      "native chain retains exact spoken source": 1,
+      "actual bounded preset file roundtrip preserves typed chain": 1,
+      "native cancel leaves the source draft without edits": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "native_controls": "PASS",
+      "typed_parameters": "PASS",
+      "cancellation": "PASS",
+      "role_chain": "PASS",
+      "master_chain": "PASS",
+      "master_mix": "PASS",
+      "preset_file_roundtrip": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "nvda": "NOT_RUN",
+      "signal_rendering": "NOT_RUN",
+      "preset_native_picker": "NOT_RUN"
+    }
+  },
+  "clips": {
+    "probe": "scripts/windows_clip_editor_smoke.py",
+    "arguments": [],
+    "modules": [
+      "carr_library.audio.clips",
+      "carr_library.audio.clip_audio",
+      "carr_library.audio.models",
+      "carr_library.audio.production",
+      "carr_library.ui.audio_clips",
+      "carr_library.native_runtime"
+    ],
+    "probe_modules": [
+      "carr_library.audio.clips",
+      "carr_library.audio.clip_audio",
+      "carr_library.audio.models",
+      "carr_library.audio.production",
+      "carr_library.ui.audio_clips"
+    ],
+    "checks": {
+      "edit: named controls in shown owned modal": 1,
+      "native edit": 1,
+      "move: named controls in shown owned modal": 1,
+      "native move": 1,
+      "duration: named controls in shown owned modal": 1,
+      "native duration": 1,
+      "remove: named controls in shown owned modal": 1,
+      "native remove": 1,
+      "preview: named controls in shown owned modal": 1,
+      "native preview": 1,
+      "copy: named controls in shown owned modal": 1,
+      "native copy": 1,
+      "cut: named controls in shown owned modal": 1,
+      "native cut": 1,
+      "paste: named controls in shown owned modal": 1,
+      "native paste": 1,
+      "split: named controls in shown owned modal": 1,
+      "native split": 1,
+      "join: named controls in shown owned modal": 1,
+      "native join": 1,
+      "cancel: named controls in shown owned modal": 1,
+      "native cancel": 1,
+      "invalid duration retains owned modal": 1,
+      "numeric field retains native focus on the next event turn": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "actual_pcm_processing": "SEPARATE_STRICT_SUITE",
+      "native_file_picker": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "playback_device_acceptance": "NOT_RUN"
+    }
+  },
+  "publication": {
+    "probe": "scripts/windows_publication_smoke.py",
+    "arguments": [],
+    "modules": [
+      "carr_library.audio.publishing",
+      "carr_library.audio.daisy",
+      "carr_library.ui.audio_publication",
+      "carr_library.native_runtime"
+    ],
+    "probe_modules": [
+      "carr_library.audio.publishing",
+      "carr_library.audio.daisy",
+      "carr_library.ui.audio_publication"
+    ],
+    "checks": {
+      "epub: named controls in shown owned modal": 2,
+      "daisy-2.02: named controls in shown owned modal": 1,
+      "native cancel": 1,
+      "publisher required": 1,
+      "invalid language retains modal": 2,
+      "creator field retains native focus on the next event turn": 2,
+      "native OK": 2
+    },
+    "fields": {
+      "status": "PASS",
+      "native_metadata_controls": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "full_file_picker_flow": "NOT_RUN",
+      "manual_nvda": "NOT_RUN",
+      "third_party_reader_interoperability": "NOT_RUN"
+    }
+  }
+}

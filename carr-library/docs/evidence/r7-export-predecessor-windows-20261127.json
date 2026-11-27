@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "status": "PASS_ON_PREDECESSOR",
+  "source_commit": "b3bbb741d7c73a9b63fa720ad30cd07d3bb4b18b",
+  "run_id": 45988244678,
+  "job_id": 140469227378,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45988244678",
+  "source_cases": 131,
+  "installed_cases": 131,
+  "failed": 0,
+  "skipped": 0,
+  "origin_modules": 5,
+  "artifact": {
+    "id": 15193439051,
+    "size_bytes": 8723,
+    "sha256": "de0efbfa881ea7b2894b3acffb0fdf9e4d67b8d94385676ec60aa55e7c16e1c2"
+  },
+  "successor_fix": {
+    "commit": "9238fdb489b06693043b51b77fffb810c5b55b0f",
+    "reason": "A file absent at capture must use atomic create-only publication even without an explicit approval object.",
+    "source_cases_required": 133,
+    "installed_cases_required": 133,
+    "status": "NOT_RUN"
+  },
+  "limits": {
+    "nvda": "NOT_RUN",
+    "full_platform": "NOT_CLAIMED"
+  }
+}

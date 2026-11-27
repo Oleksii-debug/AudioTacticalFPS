@@ -68,6 +68,7 @@ READER_COMMANDS = (
     CommandSpec('reader.help', 'Reader keyboard guide', 'reader', 'F1'),
     CommandSpec('reader.commands', 'Find a reader command', 'reader', 'Ctrl+Shift+P'),
     CommandSpec('reader.settings', 'Reader keyboard shortcuts', 'reader', 'Ctrl+Alt+K'),
+    CommandSpec('reader.speak', 'Read aloud from this source', 'reader', 'Ctrl+Alt+R'),
 )
 
 

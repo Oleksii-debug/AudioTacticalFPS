@@ -16,12 +16,15 @@ from .backup_files import local_path, portable_relative, regular, sync_directory
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
+# Historical state was not restricted to the typed producers' 16 components.
+# The shared 4096-character bound makes 2048 one-character parts the maximum.
+MAX_STATE_PARTS = 2048
 
 
 def relative_name(value):
-    """Historical state must pass the current portable-name boundary."""
+    """Preserve historical depth while enforcing all current portable names."""
     try:
-        return portable_relative(value)
+        return portable_relative(value, max_parts=MAX_STATE_PARTS)
     except ValueError as exc:
         raise ValueError('Invalid portable legacy state manifest path.') from exc
 

@@ -1,0 +1,171 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "source_commit": "d9db9f676bd7b0d282a2c6e2512b20f02b603b65",
+  "source_tree": "16c96abd94291f5d4e335d4de31985bdab7b38b3",
+  "run_id": 45986888664,
+  "job_id": 140464707614,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45986888664",
+  "strict_source": {
+    "suites": 28,
+    "passed": 1018,
+    "failed": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "path": "tests/research/test_bibtex_import.py",
+        "passed": 68
+      },
+      {
+        "path": "tests/research/test_csl_author_boundaries.py",
+        "passed": 20
+      },
+      {
+        "path": "tests/citations/test_csl.py",
+        "passed": 79
+      },
+      {
+        "path": "tests/citations/test_custom_csl.py",
+        "passed": 132
+      },
+      {
+        "path": "tests/research/test_academic_library.py",
+        "passed": 107
+      },
+      {
+        "path": "tests/citations/test_custom_workbench.py",
+        "passed": 20
+      },
+      {
+        "path": "tests/ui/test_citation_styles_jobs.py",
+        "passed": 25
+      },
+      {
+        "path": "tests/ui/test_academic_library_dialog.py",
+        "passed": 47
+      },
+      {
+        "path": "tests/ui/test_academic_actions.py",
+        "passed": 43
+      },
+      {
+        "path": "tests/ui/test_academic_tools.py",
+        "passed": 22
+      },
+      {
+        "path": "tests/ui/test_academic_export_handler.py",
+        "passed": 35
+      },
+      {
+        "path": "tests/catalog/test_bibliography.py",
+        "passed": 39
+      },
+      {
+        "path": "tests/catalog/test_ris_apply_v4.py",
+        "passed": 4
+      },
+      {
+        "path": "tests/catalog/test_reference_exchange.py",
+        "passed": 64
+      },
+      {
+        "path": "tests/ingest/test_import_replay_identity.py",
+        "passed": 20
+      },
+      {
+        "path": "tests/ingest/test_txt_replay_registration.py",
+        "passed": 5
+      },
+      {
+        "path": "tests/reader/test_export_no_clobber.py",
+        "passed": 31
+      },
+      {
+        "path": "tests/reader/test_file_export.py",
+        "passed": 54
+      },
+      {
+        "path": "tests/reader/test_binary_file_export.py",
+        "passed": 35
+      },
+      {
+        "path": "tests/reader/test_academic_documents.py",
+        "passed": 41
+      },
+      {
+        "path": "tests/reader/test_bibliographic_locators.py",
+        "passed": 6
+      },
+      {
+        "path": "tests/reader/test_evidence_export.py",
+        "passed": 40
+      },
+      {
+        "path": "tests/storage/test_academic_migration.py",
+        "passed": 32
+      },
+      {
+        "path": "tests/e2e/test_academic_workflow.py",
+        "passed": 6
+      },
+      {
+        "path": "tests/e2e/test_academic_workflows.py",
+        "passed": 4
+      },
+      {
+        "path": "tests/citations/test_bibliography_workbench.py",
+        "passed": 22
+      },
+      {
+        "path": "tests/e2e/test_academic_document_export.py",
+        "passed": 10
+      },
+      {
+        "path": "tests/e2e/test_export_destination.py",
+        "passed": 7
+      }
+    ]
+  },
+  "native": {
+    "checks": 108,
+    "custom_style_file_choice": "controlled path only",
+    "export_file_choice": "controlled temporary paths only",
+    "installed_modules": {
+      "carr_library.citations.bibliography_workbench": "17dc684fe0984d3e382dc7eba2e34ad78f734fc611d6abd330f7de21103d9770",
+      "carr_library.citations.csl": "d5a7cff21c9b2cd44628ff2c66b3c2b6c79fba60cd2b4f6f8133a2e3ad604e95",
+      "carr_library.research.bibtex_import": "6f34dce2e1c32dbfb877d0367fc4035b25e2686c2e271c5884301243a051999a",
+      "carr_library.ui.academic_library_dialog": "1ed53cd13105b5eaeefb3a6c22942ec22cbcdf9a85ff572e3d315045167ee95e",
+      "carr_library.ui.citation_styles_dialog": "d86a3645e8d34d985d84b270a03615ab6c5023112fed9cd458971f044271b6d3"
+    },
+    "installer": "NOT_RUN",
+    "manual_keyboard": "NOT_RUN",
+    "native_clipboard": "PASS",
+    "native_custom_style": "PASS",
+    "native_export_format": "PASS",
+    "native_file_pickers": "NOT_RUN",
+    "native_keyboard": "PASS",
+    "native_overwrite_accessible_focus": "NOT_RUN",
+    "native_overwrite_confirmation": "PASS",
+    "nvda": "NOT_RUN",
+    "platform": "Windows-10-10.0.20348-SP0",
+    "python": "3.11.9",
+    "result": "PASS",
+    "service_exports": [
+      "text",
+      "html",
+      "docx"
+    ],
+    "style": "harvard",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  },
+  "artifact": {
+    "id": 15193725420,
+    "size_bytes": 22460,
+    "sha256": "58600f57a15da49271fc91d5300118241c7ff1f3be40c3ebcaed677e094dc68b"
+  },
+  "limits": {
+    "actual_word": "NOT_CLAIMED",
+    "nvda": "NOT_RUN",
+    "later_candidate": "REQUIRES_FRESH_EXECUTION"
+  }
+}

@@ -169,10 +169,13 @@ def test_restored_input_runs_through_real_ffmpeg_without_original_assets(tmp_pat
     backup_project(source, snapshot, project_dir=studio.output_dir, include_cache=False, include_audio=False)
     restored = restore_project(snapshot, tmp_path / 'restored')
     original.unlink()
-    reopened_app = LibraryApp(tmp_path / 'other-private')
-    reopened = StudioController(private_root=reopened_app.root, ffmpeg=ffmpeg)
+    reopened = StudioController(private_root=tmp_path / 'other-private', ffmpeg=ffmpeg)
     reopened.open(restored['project_file'])
+    assert not reopened.private_root.exists()
     result = reopened.render()
+    from carr_library.operations import ResourceBroker
+    assert reopened.private_root.is_dir()
+    assert ResourceBroker.for_app(reopened.private_root).snapshot()['leases'] == []
     output = Path(result['output'])
     assert output.is_relative_to(Path(restored['project_dir']))
     assert result['status'] == 'complete' and result['frames'] == 8000

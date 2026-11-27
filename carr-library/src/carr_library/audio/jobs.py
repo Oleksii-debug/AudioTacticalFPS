@@ -108,14 +108,18 @@ def _open_verified_input(path):
 
 @contextmanager
 def verified_reader(path, *, expected_identity=None):
+    from ..native_file_metadata import stream_change_time
     before = file_identity(regular_file(path))
     if expected_identity is not None and before != expected_identity:
         raise RuntimeError('An audio input changed after it was validated. Restart the production.')
     with _open_verified_input(path) as stream:
         if file_identity(os.fstat(stream.fileno())) != before:
             raise RuntimeError('An audio input changed while it was being opened.')
+        native_before = stream_change_time(stream)
         yield stream
-        if file_identity(os.fstat(stream.fileno())) != before or file_identity(regular_file(path)) != before:
+        if (file_identity(os.fstat(stream.fileno())) != before
+                or file_identity(regular_file(path)) != before
+                or stream_change_time(stream) != native_before):
             raise RuntimeError('An audio input changed while it was being read. Restart the production.')
 
 
