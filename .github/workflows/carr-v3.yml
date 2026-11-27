@@ -186,9 +186,13 @@ jobs:
           installed_origins()
           class RejectExpectedFailures:
               seen = False
+              def pytest_runtest_logstart(self, nodeid, location):
+                  print('RECOVERY START: ' + nodeid[:240], flush=True)
               def pytest_runtest_logreport(self, report):
                   if hasattr(report, 'wasxfail'):
                       self.seen = True
+                  if report.when == 'call':
+                      print(f'RECOVERY {report.outcome}: {report.duration:.3f}s ' + report.nodeid[:240], flush=True)
           policy = RejectExpectedFailures()
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
           suites = ['tests/storage/test_v3_state_backup.py',
@@ -221,7 +225,7 @@ jobs:
                     'tests/speech/test_session.py',
                     'tests/packaging/test_worker_bytecode.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
-                               '-o', 'xfail_strict=true', '--import-mode=importlib',
+                               '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
           cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
