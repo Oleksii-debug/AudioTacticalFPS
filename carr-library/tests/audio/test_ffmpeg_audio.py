@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 from pathlib import Path
+from types import SimpleNamespace
 import struct
 import subprocess
 import sys
@@ -17,6 +18,24 @@ from carr_library.audio.ffmpeg import _local_path, _pcm_header
 
 
 RATE = 24000
+
+
+def test_windows_absolute_binary_lookup_uses_the_exe_suffix_on_python_311(tmp_path, monkeypatch):
+    import carr_library.audio.ffmpeg as module
+    selected = tmp_path / 'approved-runtime'
+    selected.mkdir()
+    paths = []
+    for name in ('ffmpeg', 'ffprobe'):
+        path = selected / (name + '.exe')
+        path.write_bytes(b'explicitly synthetic executable identity; never run')
+        path.chmod(0o700)
+        paths.append(path)
+    monkeypatch.setattr(module, 'sys', SimpleNamespace(platform='win32'))
+    monkeypatch.setattr(module, '_runtime_directories', lambda: (selected,))
+    # The native drive/reparse checks have their own tests. This regression
+    # isolates the real shutil.which behavior with an absolute file name.
+    monkeypatch.setattr(module, '_local_path', Path)
+    assert [Path(module.FFmpegAudio._binary(None, name)) for name in ('ffmpeg', 'ffprobe')] == paths
 
 
 def tone(path, frequency=440, seconds=.4, gain=.3, rate=RATE):

@@ -103,30 +103,14 @@ def test_missing_or_invalid_profile_is_an_ocr_boundary_error(tmp_path, monkeypat
 
 @pytest.fixture
 def real_models(tmp_path, monkeypatch):
-    executable = shutil.which('tesseract')
-    if executable is None:
-        pytest.skip('Actual Tesseract is unavailable; no inference result is claimed.')
-    report = subprocess.run([executable, '--list-langs'], check=True, capture_output=True,
-                            timeout=10).stdout.decode('utf-8')
-    match = re.search(r'^List of available languages in "([^"\r\n]+)"', report, re.MULTILINE)
-    if match is None:
-        pytest.skip('Actual installed Tesseract model directory is unavailable.')
-    source = Path(match[1])
-    table = {model.identifier: model for model in models('fast')}
-    for language in ('eng', 'osd'):
-        path = source / (language + '.traineddata')
-        if not path.is_file():
-            pytest.skip(f'Actual local {language} model is unavailable.')
-        raw = path.read_bytes()
-        blob = sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
-        if len(raw) != table[language].size or blob != table[language].blob_sha1:
-            pytest.skip(f'Installed {language} model is not the pinned official fast revision.')
+    from bootstrap.ocr_acceptance import prepared_ocr
+    prepared, source = prepared_ocr(monkeypatch)
     root = tmp_path / 'managed models Україна'
     monkeypatch.setenv('CARR_OCR_MODELS_DIR', str(root))
     store = OcrModelStore()
     report = store.install('fast', source, ('eng', 'osd'))
     assert report.installed == ('eng', 'osd') and report.bytes > 0
-    base = OcrRuntime(executable, tessdata=tmp_path / 'wrong base models', root=tmp_path)
+    base = OcrRuntime(prepared.executable, tessdata=tmp_path / 'wrong base models', root=tmp_path)
     return bind_model_profile(base, 'fast', 'eng', orientation=True), store
 
 
@@ -162,7 +146,6 @@ def test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance
     from carr_library.extract.page_ocr import Config, extract_page
     from carr_library.extract.runtime_identity import runtime_identity
     runtime, _ = real_models
-    monkeypatch.delenv('CARR_OCR_DIR', raising=False)
     monkeypatch.setenv('TESSDATA_PREFIX', str(tmp_path / 'wrong environment models'))
     image = Image.new('RGB', (1600, 400), 'white')
     ImageDraw.Draw(image).text((40, 100), 'Managed source evidence', fill='black',
@@ -292,7 +275,6 @@ def test_real_unicode_pinned_stage_preserves_review_and_model_provenance(real_mo
     temporary = tmp_path / 'Тимчасові перевірені файли'
     temporary.mkdir()
     monkeypatch.setattr(tempfile, 'tempdir', str(temporary))
-    monkeypatch.delenv('CARR_OCR_DIR', raising=False)
     picture = Image.new('RGB', (1600, 400), 'white')
     ImageDraw.Draw(picture).text((40, 100), 'Pinned Unicode evidence', fill='black',
                                 font=ImageFont.load_default(size=65))

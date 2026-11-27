@@ -258,7 +258,11 @@ class FFmpegAudio:
             for directory in _runtime_directories():
                 # An absolute command with its directory prevents which() from
                 # adding Windows' implicit CWD search or remote PATH entries.
-                candidate = shutil.which(str(directory / name))
+                # CPython 3.11 does not append PATHEXT when which() receives
+                # an explicit directory. Use the actual Windows file name,
+                # while retaining the absolute, local-only PATH boundary.
+                executable = name + '.exe' if sys.platform == 'win32' else name
+                candidate = shutil.which(str(directory / executable))
                 if candidate:
                     break
         if candidate is None:

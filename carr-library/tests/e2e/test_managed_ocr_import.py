@@ -32,15 +32,8 @@ GROUND_TRUTH = 'Managed import evidence'
 
 @pytest.fixture
 def managed_import(tmp_path, monkeypatch):
-    runtime = discover_ocr_runtime('eng')
-    assert runtime is not None, 'Prepare the real OCR engine for managed import acceptance.'
-    listing = subprocess.run(runtime.command([runtime.executable, '--list-langs']),
-        check=True, capture_output=True, timeout=15, cwd=runtime.root,
-        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout.decode('utf-8')
-    match = re.search(r'^List of available languages in "([^"\r\n]+)"', listing, re.MULTILINE)
-    assert match is not None, 'The prepared OCR engine must identify its model directory.'
-    model_source = runtime.tessdata if runtime.tessdata is not None else Path(match[1])
-    runtime.assert_unchanged()
+    from bootstrap.ocr_acceptance import prepared_ocr
+    runtime, model_source = prepared_ocr(monkeypatch)
 
     model_root = tmp_path / 'managed models Україна'
     monkeypatch.setenv('CARR_OCR_MODELS_DIR', str(model_root))

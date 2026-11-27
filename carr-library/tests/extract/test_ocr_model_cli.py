@@ -38,18 +38,12 @@ def test_cli_catalogue_search_is_headless_offline_and_does_not_create_store(
 
 
 def test_cli_actual_official_model_install_verify_and_list(tmp_path, monkeypatch, capsys):
-    executable = shutil.which('tesseract')
-    if executable is None:
-        pytest.skip('Actual local Tesseract models required for CLI integration')
-    report = subprocess.check_output([executable, '--list-langs'], text=True)
-    match = re.search(r'^List of available languages in "([^"\r\n]+)"', report, re.M)
-    assert match is not None
-    source = Path(match[1])
+    from bootstrap.ocr_acceptance import prepared_ocr
+    _, source = prepared_ocr(monkeypatch, ('eng',))
     raw = (source / 'eng.traineddata').read_bytes()
     expected = next(row for row in catalogue.models('fast') if row.identifier == 'eng')
     digest = sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest()
-    if len(raw) != expected.size or digest != expected.blob_sha1:
-        pytest.skip('Actual English model differs from pinned official revision')
+    assert (len(raw), digest) == (expected.size, expected.blob_sha1)
     root = tmp_path / 'CLI models Україна'
     common = ['--ocr-profile', 'fast', '--ocr-model-store', str(root)]
     monkeypatch.setitem(sys.modules, 'wx', None)

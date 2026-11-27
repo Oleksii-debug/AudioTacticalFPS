@@ -3,6 +3,7 @@
 Documents are data. This runner never interprets imported text as instructions,
 executes shell commands, requests credentials, publishes, or contacts a service.
 """
+from contextlib import closing
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
@@ -116,7 +117,7 @@ class LocalAgent:
         self.output_roots = tuple(Path(p).resolve(strict=True) for p in output_roots)
         self.workspaces = set(workspaces)
         self.allow_create = allow_create
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             db.execute('PRAGMA synchronous=FULL')
             db.execute('CREATE TABLE IF NOT EXISTS receipts(plan TEXT NOT NULL,step TEXT NOT NULL,tool TEXT NOT NULL,state TEXT NOT NULL,result TEXT,error TEXT,updated REAL NOT NULL,PRIMARY KEY(plan,step))')
 
@@ -229,7 +230,7 @@ class LocalAgent:
                         for key, value in step.arguments.items()}
                 # Recheck current scope even when reusing a successful receipt.
                 args = self._preflight(step.tool, args)
-                with sqlite3.connect(self.database) as db:
+                with closing(sqlite3.connect(self.database)) as db, db:
                     receipt = db.execute('SELECT state,result FROM receipts WHERE plan=? AND step=?', (digest, step.id)).fetchone()
                 if receipt is not None:
                     if receipt[0] == 'complete':
@@ -245,18 +246,18 @@ class LocalAgent:
                     # Some tools commit outside this journal's transaction. Never
                     # duplicate a possibly committed action after a hard crash.
                     raise AgentError(f'Step {step.id} has an interrupted or failed receipt. Review its actual result before creating a replacement plan.')
-                with sqlite3.connect(self.database) as db:
+                with closing(sqlite3.connect(self.database)) as db, db:
                     db.execute('INSERT INTO receipts VALUES(?,?,?,?,?,?,?)', (digest, step.id, step.tool, 'running', None, None, time.time()))
                 progress({'step': step.id, 'state': 'running', 'tool': step.tool})
                 try:
                     result = self._call(step.tool, args, cancelled, progress)
                     raw = json.dumps(result, ensure_ascii=False, sort_keys=True, default=str, allow_nan=False)
-                    with sqlite3.connect(self.database) as db:
+                    with closing(sqlite3.connect(self.database)) as db, db:
                         db.execute('UPDATE receipts SET state=?,result=?,updated=? WHERE plan=? AND step=?', ('complete', raw, time.time(), digest, step.id))
                     results[step.id] = json.loads(raw)
                     progress({'step': step.id, 'state': 'complete', 'tool': step.tool})
                 except BaseException as exc:
-                    with sqlite3.connect(self.database) as db:
+                    with closing(sqlite3.connect(self.database)) as db, db:
                         db.execute('UPDATE receipts SET state=?,error=?,updated=? WHERE plan=? AND step=?', ('needs_review', str(exc), time.time(), digest, step.id))
                     raise
         return {'plan_sha256': digest, 'state': 'complete', 'results': results}

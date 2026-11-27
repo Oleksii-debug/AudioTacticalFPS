@@ -192,6 +192,7 @@ jobs:
             'tests/e2e/test_data_directory_containment.py',
             'tests/extract/test_clipping_visibility.py',
             'tests/extract/test_ocr_model_catalog.py',
+            'tests/extract/test_ocr_acceptance.py',
             'tests/extract/test_ocr_model_cli.py',
             'tests/extract/test_ocr_model_store.py',
             'tests/extract/test_managed_ocr.py',
@@ -578,6 +579,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
+          $env:CARR_CI_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
           import ctypes, json, os, pathlib, sys
@@ -586,6 +588,11 @@ jobs:
           from carr_library.native_runtime import activate_bundled_runtime
           root = pathlib.Path(sys.argv[1]).resolve()
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          # Explicit trusted test helpers only. The application src directory
+          # remains absent; every loaded application module is checked below.
+          checkout = pathlib.Path.cwd().resolve()
+          assert str(checkout / 'src') not in sys.path
+          sys.path.append(str(checkout))
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']
           # Test-only command discovery is scoped to this installed-package child.
@@ -611,6 +618,7 @@ jobs:
                             'tests/acquisition/test_acquisition_cli.py',
                             'tests/ui/test_native_acquisition.py',
                             'tests/extract/test_ocr_model_catalog.py',
+                            'tests/extract/test_ocr_acceptance.py',
                             'tests/extract/test_ocr_model_cli.py',
                             'tests/extract/test_ocr_model_store.py',
                             'tests/extract/test_managed_ocr.py',
@@ -619,6 +627,10 @@ jobs:
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
+          for name, component in tuple(sys.modules.items()):
+              if name == 'carr_library' or name.startswith('carr_library.'):
+                  location = getattr(component, '__file__', None)
+                  assert location is not None and pathlib.Path(location).resolve().is_relative_to(root / '.venv'), name
           kernel = ctypes.WinDLL('kernel32', use_last_error=True)
           kernel.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
           kernel.GetModuleHandleW.restype = wintypes.HMODULE

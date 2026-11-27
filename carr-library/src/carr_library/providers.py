@@ -4,6 +4,7 @@ The core remains LOCAL_ONLY. Keys are never put in project JSON, SQLite,
 exports, exception messages or source control. Provider-compatible endpoints
 are configured by the owner; creating a profile performs no network operation.
 """
+from contextlib import closing
 from dataclasses import asdict, dataclass, replace
 from hashlib import sha256
 import json
@@ -192,7 +193,7 @@ class ProviderManager:
         if self.database.is_symlink():
             raise ProviderError('Provider database cannot be a symbolic link.')
         self.vault = vault or CredentialVault()
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS policy(id INTEGER PRIMARY KEY CHECK(id=1),mode TEXT NOT NULL);
                 INSERT OR IGNORE INTO policy VALUES(1,'LOCAL_ONLY');
@@ -205,13 +206,13 @@ class ProviderManager:
 
     @property
     def mode(self):
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             return db.execute('SELECT mode FROM policy WHERE id=1').fetchone()[0]
 
     def set_mode(self, mode):
         if mode not in ('LOCAL_ONLY', 'HYBRID'):
             raise ProviderError('Choose LOCAL_ONLY or explicitly enabled HYBRID mode.')
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             db.execute('UPDATE policy SET mode=? WHERE id=1', (mode,))
 
     def save(self, profile, *, key=None):
@@ -230,7 +231,7 @@ class ProviderManager:
                     self.vault.put(new_reference, key)
                 except Exception:
                     raise ProviderError('The OS credential vault could not save the selected key.') from None
-            with sqlite3.connect(self.database) as db:
+            with closing(sqlite3.connect(self.database)) as db, db:
                 db.execute('BEGIN IMMEDIATE')
                 previous = db.execute('SELECT credential_ref FROM profiles WHERE id=?', (profile.id,)).fetchone()
                 previous_reference = self._credential_reference(profile.id, previous[0] if previous else None)
@@ -253,12 +254,12 @@ class ProviderManager:
                 pass
 
     def profiles(self):
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             return tuple(ProviderProfile(**json.loads(row[0])) for row in db.execute('SELECT document FROM profiles ORDER BY id'))
 
     def disable(self, identity):
         """Reversibly disable a profile while retaining its key and audit data."""
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             db.execute('BEGIN IMMEDIATE')
             row = db.execute('SELECT document,credential_ref FROM profiles WHERE id=?', (identity,)).fetchone()
             if row is None:
@@ -279,7 +280,7 @@ class ProviderManager:
         operation cannot leave an enabled profile behind. The result explicitly
         reports a key that still needs removal in the operating-system vault.
         """
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             db.execute('BEGIN IMMEDIATE')
             row = db.execute('SELECT document,credential_ref FROM profiles WHERE id=?', (identity,)).fetchone()
             if row is None:
@@ -307,7 +308,7 @@ class ProviderManager:
         return reference
 
     def _snapshot(self, identity):
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             row = db.execute('SELECT document,credential_ref FROM profiles WHERE id=?', (identity,)).fetchone()
         if row is None:
             raise ProviderError('Unknown provider profile.')
@@ -375,7 +376,7 @@ class ProviderManager:
         review, raw = self._review(profile, reference, payload, maximum_cost_cents)
         if approval_sha256 != review['approval_sha256']:
             raise ProviderError('Approve this exact destination, request and budget before sending.')
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db, db:
             db.execute('BEGIN IMMEDIATE')
             # Recheck the policy and profile within the same reservation lease.
             if db.execute('SELECT mode FROM policy WHERE id=1').fetchone()[0] != 'HYBRID':
@@ -405,7 +406,7 @@ class ProviderManager:
                 headers['Authorization'] = 'Bearer ' + _secret(key)
             # A vault prompt may take time. Honor revocation or edits that
             # completed while it was open before constructing any HTTP opener.
-            with sqlite3.connect(self.database) as db:
+            with closing(sqlite3.connect(self.database)) as db, db:
                 current_mode = db.execute('SELECT mode FROM policy WHERE id=1').fetchone()[0]
                 current = db.execute('SELECT document,credential_ref FROM profiles WHERE id=?', (identity,)).fetchone()
             if (current_mode != 'HYBRID' or current is None
@@ -419,12 +420,12 @@ class ProviderManager:
                     raise ProviderError('Provider output exceeds the approved response budget.')
                 content_type = response.headers.get('Content-Type', 'application/octet-stream')
             digest = sha256(content).hexdigest()
-            with sqlite3.connect(self.database) as db:
+            with closing(sqlite3.connect(self.database)) as db, db:
                 db.execute('UPDATE requests SET state=?,response_sha256=?,updated=? WHERE digest=?',
                            ('complete', digest, time.time(), approval_sha256))
             return {'body': content, 'content_type': content_type, 'sha256': digest, 'request_sha256': approval_sha256}
         except BaseException as exc:
-            with sqlite3.connect(self.database) as db:
+            with closing(sqlite3.connect(self.database)) as db, db:
                 db.execute('UPDATE requests SET state=?,updated=? WHERE digest=?',
                            ('needs_review', time.time(), approval_sha256))
             if isinstance(exc, (KeyboardInterrupt, SystemExit, ProviderError)):
