@@ -43,6 +43,17 @@ limit, filter, path or option requested by the user must be in step arguments,
 not merely the summary. Unspecified optional fields remain omitted. No example
 number, tool choice or expected answer is supplied by that correction.
 
+Actual run 45949212390 at 232f8c4 passed the nine source contracts but failed
+before model readiness. That hosted CPU selected an additional AMX weight
+buffer of 2,043,035,648 bytes. The unchanged 3 GiB address-space ceiling refused
+it; artifact 15176502676 records the allocation error and zero model responses.
+The pinned runtime's supported `--no-repack` option now disables those extra
+weight buffers. Its exact `common/arg.cpp` maps this option to
+`no_extra_bufts`, and `common/common.cpp` passes that to
+`llama_model_params.use_extra_bufts`. CPU, memory, time, source, model and
+semantic acceptance bounds are unchanged. This is a portable memory-layout
+selection, not an increased resource allowance or an inference result.
+
 The selected runtime uses two CPU threads, one slot, a 2,048-token context and a
 256-token prediction cap. Thinking is disabled with the pinned runtime's
 `--reasoning off` option. The exact upstream generic JSON grammar is passed

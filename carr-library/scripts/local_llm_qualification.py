@@ -153,7 +153,7 @@ def main():
         'limitations': ['Linux CPU only', 'Synthetic prompts only', 'No language-quality benchmark',
                         'No native Windows or installed-package qualification', 'No OS network-denial test'],
         'runtime_options': {'cpu_threads': 2, 'context_tokens': 2048, 'prediction_tokens': 256,
-                            'slots': 1, 'offline_option': True, 'thinking': False,
+                            'slots': 1, 'offline_option': True, 'thinking': False, 'weight_repacking': False,
                             'grammar': 'byte-identical upstream generic JSON syntax; USER grammar without chat-prefix prefill; no plan fields or tool choices forced',
                             'wall_watchdog_seconds': 240, 'address_space_limit_bytes': 3 * 1024**3},
     }
@@ -191,7 +191,7 @@ def main():
             port = selected.getsockname()[1]
         command = [str(binary), '--model', str(model), '--alias', ALIAS,
             '--offline', '--host', '127.0.0.1', '--port', str(port), '--device', 'none',
-            '--n-gpu-layers', '0', '--threads', '2', '--threads-batch', '2',
+            '--n-gpu-layers', '0', '--no-repack', '--threads', '2', '--threads-batch', '2',
             '--ctx-size', '2048', '--parallel', '1', '--n-predict', '256',
             '--batch-size', '256', '--ubatch-size', '128', '--threads-http', '2',
             '--no-webui', '--no-ui-mcp-proxy', '--no-context-shift',

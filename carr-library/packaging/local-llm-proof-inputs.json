@@ -94,6 +94,21 @@
       "model_sha256": "061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a",
       "outcome": "Actual English library.list validated. Actual Ukrainian library.catalog omitted the explicitly requested limit; unchanged semantic assertion failed. No proposal was executed.",
       "response_sha256": "b33cd7e7d853642c633ff1ef02715412b3f9236ba0b3076d94d8a8d1d6d48020"
+    },
+    {
+      "commit": "232f8c4f2c86dae1fc00a367ed44110d18e93925",
+      "run": 45949212390,
+      "job": 140340878204,
+      "artifact": 15176502676,
+      "artifact_sha256": "3148551e0138faaf94263df3b42a1eef390ab73a8b89f5b01ac0e27898d25d2e",
+      "outcome": "Nine source contracts passed. This hosted CPU selected an additional 2,043,035,648-byte AMX weight buffer; the unchanged 3 GiB process address-space limit refused allocation before readiness. No model response or proposal execution."
     }
-  ]
+  ],
+  "runtime_configuration": {
+    "weight_repacking": false,
+    "argument": "--no-repack",
+    "source_argument_blob": "c322b5c0fcfc5ce62b9f591685f1b8e17b2a4caa",
+    "source_cpu_blob": "b7e35d176b64e92c2ce833446a48edd99dcb07ba",
+    "reason": "Avoid hardware-dependent duplicate AMX weight buffers within the unchanged 3 GiB address-space ceiling. Model, sampling, product source, semantic assertions and all other bounds remain unchanged."
+  }
 }
