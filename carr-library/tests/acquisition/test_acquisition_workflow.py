@@ -439,3 +439,47 @@ def test_duplicate_membership_rolls_back_on_reference_failure(sample, tmp_path, 
     assert len(app.browse(workspace)) == 1
     assert not app.browse(workspace, collection=collection)
     assert references(app, workspace) == ()
+
+
+@pytest.mark.parametrize('failure', ['reference_update', 'cancel_after_reference_update'])
+def test_new_import_remains_committed_when_reference_linking_stops(sample, tmp_path, monkeypatch, failure):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    collection = app.create_collection(workspace, 'Retain completed import')
+    preview = lookup(app, workspace, oa=True)
+    cancelled = [False]
+    original_update = AcademicLibrary.update
+
+    def stop_link(*args, **kwargs):
+        if failure == 'reference_update':
+            raise ValueError('Synthetic reference update failure')
+        reference = original_update(*args, **kwargs)
+        cancelled[0] = True
+        return reference
+
+    with monkeypatch.context() as patch:
+        patch.setattr(AcademicLibrary, 'update', stop_link)
+        result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'committed-download',
+            online_allowed=True, rights_confirmed=True, collection=collection,
+            cancelled=lambda: cancelled[0])
+    assert result.state == 'imported_reference_pending'
+    assert result.reference_id is None and result.edition_id is not None
+    assert result.path.read_bytes() == transfers.pdf
+    assert json.loads(result.receipt_path.read_text(encoding='utf-8'))['sha256'] == result.sha256
+    edition, = app.browse(workspace)
+    assert edition.edition_id == result.edition_id
+    assert app.browse(workspace, collection=collection)[0].edition_id == result.edition_id
+    assert app.assets.resolve(edition.asset).read_bytes() == transfers.pdf
+    assert references(app, workspace) == ()
+    assert 'do not import or download it again' in result.message
+
+    # Existing local reference workflow can link the committed edition without
+    # starting another import or transfer; the original receipt remains intact.
+    reference = app.save_doi_reference(workspace, preview)
+    with app.write(workspace) as db:
+        linked = AcademicLibrary(db, workspace).update(
+            reference.id, expected=reference, edition_id=result.edition_id)
+    assert linked.edition_id == edition.edition_id
+    assert len(references(app, workspace)) == len(app.browse(workspace)) == 1
+    assert transfers.downloads == [SOURCE]
+    assert result.receipt_path.is_file()

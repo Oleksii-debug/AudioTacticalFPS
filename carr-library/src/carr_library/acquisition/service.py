@@ -400,6 +400,7 @@ class AcquisitionService:
         # Download publication and source import are deliberately separate. A
         # failed/quarantined import retains the verified PDF and its receipt so
         # the existing Import Center can review or retry without downloading.
+        committed_edition = None
         try:
             self._scope(workspace, cancelled, collection)
             with self.app.read(workspace) as db:
@@ -442,7 +443,12 @@ class AcquisitionService:
                     volume=preview.metadata.volume or None, edition_id=edition_id,
                     collections=() if collection is None else (collection,), cancelled=cancelled)
                 state = imported['state']
-                if state != 'complete':
+                if state == 'complete':
+                    # The import service has already committed the original and
+                    # membership. Later cancellation or reference rollback
+                    # must not describe that durable edition as unimported.
+                    committed_edition = edition_id
+                else:
                     edition_id = None
                 message = imported.get('message') or ('Source imported; quotation review remains separate.'
                     if state == 'complete' else 'Source downloaded. Continue its pending review in Import Center.')
@@ -457,6 +463,13 @@ class AcquisitionService:
             return AcquisitionResult(path, receipt_path, reference.id, edition_id,
                                      state, message, info.sha256)
         except (ValueError, OSError, RuntimeError, sqlite3.Error):
+            if committed_edition is not None:
+                return AcquisitionResult(path, receipt_path, None, committed_edition,
+                    'imported_reference_pending',
+                    'The PDF, provenance and library edition were saved. Reference linking '
+                    'did not finish. Reopen the library and review or link the existing '
+                    'edition in the academic library; do not import or download it again.',
+                    info.sha256)
             return AcquisitionResult(path, receipt_path, None, None, 'downloaded',
                 'The PDF and provenance were saved, but import or reference linking did not finish. '
                 'Use Import Center to review or retry this local file; no redownload is needed.', info.sha256)
