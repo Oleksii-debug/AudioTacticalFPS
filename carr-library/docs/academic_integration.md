@@ -276,6 +276,18 @@ license, upstream source identity and user-visible attribution. The full CPAL
 text and the upstream alternative AGPL text are in `vendor/`; do not relabel
 the vendored processor as MIT or as application-owned code.
 
+Every native desktop launch displays the canonical citation credit above the
+library/topic selector. It remains visible while scopes and operation status
+change, has an accessible name beginning **Citation processor attribution**
+followed by the complete credit, and does
+not open a dialog, move keyboard focus or contact a website. Its complete text
+comes from the installed [`UPSTREAM.json`](../src/carr_library/academic_integration/UPSTREAM.json)
+through `citation_attribution()`; reading it does not discover or start Node.
+The processor copyright is **Copyright (c) 2009-2019 Frank Bennett**. Preserve
+the accompanying [upstream notice](../src/carr_library/academic_integration/vendor/NOTICE.txt),
+[CPAL license](../src/carr_library/academic_integration/vendor/LICENSE-CPAL-1.0.txt)
+and [pinned processor source](https://github.com/Juris-M/citeproc-js/blob/56e7ef310154748368665cc8a2be124e3c141832/citeproc.js).
+
 Bundled styles and locales are **CC BY-SA 3.0**. Their upstream author,
 contributor, source and rights XML remains intact. The full license and a notice
 are included. No intentional formatting-rule modifications were made; terminal
@@ -301,3 +313,7 @@ timeout, runtime preload isolation, path safety and corruption handling.
 Online adapter tests exercise the explicit transport boundary without querying
 a user's account or claiming a real external lookup. Native Windows Word/NVDA
 interaction remains a separate platform acceptance check.
+The installed `windows_bibliography_interchange_smoke.py` probe also opens the
+actual desktop frame in a live wx event loop and verifies visible, fully named
+startup credit before opening any academic dialog. Its existing bibliography
+import, keyboard, overwrite and source-preservation checks remain in place.
