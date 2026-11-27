@@ -260,6 +260,12 @@ jobs:
           $checkChildBytecode | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-results/child-bytecode-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check SQLite fixtures and verification-runner regressions
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -B scripts/ci_check.py --jobs 2 tests/research/test_academic_library.py tests/packaging/test_ci_check.py 2>&1 | Tee-Object 'ci-results/verification-runner-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare the verified OCR engine before its required source regression
         timeout-minutes: 10
         run: |
@@ -575,6 +581,15 @@ jobs:
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve the failed source-gate log
+        if: ${{ !cancelled() && steps.required_source.outcome == 'failure' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-source-log-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/integrated-tests.txt
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Prepare the pinned local model through the existing upstream verifier
         id: pinned_model
