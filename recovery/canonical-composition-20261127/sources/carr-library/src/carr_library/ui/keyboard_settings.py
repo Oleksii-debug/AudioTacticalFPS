@@ -369,8 +369,22 @@ class KeyboardSettingsDialog:
         import wx
         self.wx, self.manager = wx, manager
         self.original_store = manager.store
+        self.original_registry = manager.registry
+        self.original_root = (Path(manager.store.path.parent) if manager.store is not None
+                              else Path(manager.private_root))
+        self.closed = self._destroy_requested = False
         self.draft = dict(manager.overrides)
-        self.dialog = wx.Dialog(parent, title='Keyboard shortcuts', size=(760, 670))
+        owner = self
+        class SettingsWindow(wx.Dialog):
+            def Destroy(self):
+                owner.dispose()
+                if owner._destroy_requested or not self:
+                    return False
+                owner._destroy_requested = True
+                return super().Destroy()
+        self.dialog = SettingsWindow(parent, title='Keyboard shortcuts', size=(760, 670))
+        self._native_id = self.dialog.GetId()
+        self.dialog.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
         layout = wx.BoxSizer(wx.VERTICAL)
         explanation = wx.StaticText(self.dialog, label=(
             'Choose a context and command. Type a combination such as Ctrl+Shift+J; leave it empty to remove it. '
@@ -425,11 +439,49 @@ class KeyboardSettingsDialog:
             self.status.ChangeValue(manager.load_notice)
         self.search.SetFocus()
 
+    def dispose(self):
+        # A native parent can delete this window without calling Python Destroy.
+        # Invalidation touches no native control, clipboard, file or keymap.
+        self.closed = True
+
+    def on_destroy(self, event):
+        if event.GetId() == self._native_id:
+            self._destroy_requested = True
+            self.dispose()
+        event.Skip()
+
+    def _active(self):
+        if self.closed:
+            return False
+        frame = self.manager.frame
+        if (not self.dialog or frame is not None
+                and (not frame or getattr(frame, '_closing', False))):
+            self.dispose()
+            return False
+        return True
+
+    def _scope_current(self):
+        if not self._active():
+            return False
+        root = (Path(self.manager.store.path.parent) if self.manager.store is not None
+                else Path(self.manager.private_root))
+        if (self.original_store is not self.manager.store
+                or self.original_registry is not self.manager.registry
+                or root != self.original_root):
+            self._message('The active library folder changed, or its command list was replaced. '
+                          'Close and reopen keyboard settings.')
+            return False
+        return True
+
     def _message(self, message):
+        if not self._active():
+            return
         self.status.ChangeValue(message)
         self.status.SetFocus()
 
     def rebuild(self, event=None, *, selected=None):
+        if not self._scope_current():
+            return
         if selected is None and self.rows and self.commands.GetSelection() >= 0:
             selected = self.rows[self.commands.GetSelection()].command_id
         context = self.contexts[self.context.GetSelection()]
@@ -452,6 +504,8 @@ class KeyboardSettingsDialog:
         return self.rows[index]
 
     def selected(self, event=None):
+        if not self._scope_current():
+            return
         try:
             command = self._selected()
         except ValueError:
@@ -462,6 +516,8 @@ class KeyboardSettingsDialog:
         self.shortcut.ChangeValue(self.manager.registry.shortcut(command.command_id, self.draft))
 
     def assign(self, event=None):
+        if not self._scope_current():
+            return
         try:
             command = self._selected()
             proposed = dict(self.draft)
@@ -473,6 +529,8 @@ class KeyboardSettingsDialog:
             self._message(str(exc))
 
     def reset_selected(self, event=None):
+        if not self._scope_current():
+            return
         try:
             command = self._selected()
             proposed = dict(self.draft)
@@ -484,6 +542,8 @@ class KeyboardSettingsDialog:
             self._message(str(exc))
 
     def reset_all(self, event=None):
+        if not self._scope_current():
+            return
         try:
             self.draft = self.manager.validate({})
             self.rebuild()
@@ -492,17 +552,25 @@ class KeyboardSettingsDialog:
             self._message(str(exc))
 
     def import_map(self, event=None):
+        if not self._scope_current():
+            return
         wx = self.wx
         chooser = wx.FileDialog(self.dialog, 'Import keyboard shortcuts', wildcard='Keymap JSON (*.json)|*.json',
                                 style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         try:
-            if chooser.ShowModal() != wx.ID_OK:
+            answer = chooser.ShowModal()
+            if not self._active() or not chooser or answer != wx.ID_OK:
                 return
             path = Path(chooser.GetPath())
         finally:
-            chooser.Destroy()
+            if chooser:
+                chooser.Destroy()
+        if not self._scope_current():
+            return
         try:
             proposed = self.manager.validate(KeymapStore(path).load())
+            if not self._scope_current():
+                return
             self.draft = proposed
             self.rebuild()
             self._message('Keymap imported into the draft. Review it and choose Save to apply.')
@@ -510,11 +578,12 @@ class KeyboardSettingsDialog:
             self._message('Keymap not imported; the current draft was kept. ' + str(exc))
 
     def import_earlier_map(self, event=None):
-        if self.original_store is not self.manager.store:
-            self._message('The active library folder changed. Close and reopen keyboard settings.')
+        if not self._scope_current():
             return
         try:
             proposed, unassigned = self.manager.earlier_keymap_draft()
+            if not self._scope_current():
+                return
             self.draft = proposed
             self.rebuild()
             message = ('Earlier shortcuts imported into the review draft only. '
@@ -527,23 +596,33 @@ class KeyboardSettingsDialog:
             self._message('Earlier shortcuts were not imported; the current draft and files were kept. ' + str(exc))
 
     def export_map(self, event=None):
+        if not self._scope_current():
+            return
         wx = self.wx
         chooser = wx.FileDialog(self.dialog, 'Export keyboard shortcuts', defaultFile='keyboard-shortcuts.json',
                                 wildcard='Keymap JSON (*.json)|*.json', style=wx.FD_SAVE)
         try:
-            if chooser.ShowModal() != wx.ID_OK:
+            answer = chooser.ShowModal()
+            if not self._active() or not chooser or answer != wx.ID_OK:
                 return
             path = Path(chooser.GetPath())
         finally:
-            chooser.Destroy()
+            if chooser:
+                chooser.Destroy()
+        if not self._scope_current():
+            return
         try:
             root = (self.manager.store.path.parent if self.manager.store is not None
                     else self.manager.private_root)
             approval = confirm_export_destination(self.dialog, path, private_root=root, wx_module=wx)
+            if not self._scope_current():
+                return
             if approval is None:
                 self._message('Keymap export cancelled. No file was written.')
                 return
             normalized = self.manager.validate(self.draft)
+            if not self._scope_current():
+                return
             content = json.dumps({'version': 1, 'bindings': normalized}, ensure_ascii=False, indent=2) + '\n'
             write_export(path, content, private_root=root, approval=approval)
             self._message('The draft keymap was exported. Application shortcuts change only after Save.')
@@ -551,8 +630,7 @@ class KeyboardSettingsDialog:
             self._message('Keymap not exported. ' + str(exc))
 
     def save(self, event=None):
-        if self.original_store is not self.manager.store:
-            self._message('The active library folder changed. Close and reopen keyboard settings.')
+        if not self._scope_current():
             return
         try:
             if self.rows and self.commands.GetSelection() >= 0:
@@ -560,17 +638,25 @@ class KeyboardSettingsDialog:
                 proposed = dict(self.draft)
                 proposed[command.command_id] = self.shortcut.GetValue()
                 self.draft = self.manager.validate(proposed)
+            if not self._scope_current():
+                return
             self.manager.apply_overrides(self.draft)
         except (ValueError, OSError) as exc:
             self._message('Shortcuts were not saved. ' + str(exc))
             return
-        self.dialog.EndModal(self.wx.ID_OK)
+        if self._active():
+            self.dialog.EndModal(self.wx.ID_OK)
 
     def show(self):
         try:
-            return self.dialog.ShowModal() == self.wx.ID_OK
+            if not self._scope_current():
+                return False
+            answer = self.dialog.ShowModal()
+            return self._active() and answer == self.wx.ID_OK
         finally:
-            self.dialog.Destroy()
+            self.dispose()
+            if self.dialog:
+                self.dialog.Destroy()
 
 
 def show_keyboard_settings(parent, manager, *, context='main'):
@@ -619,14 +705,35 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
                for command in manager.registry.commands(context)}
     rows = []
     choice = []
+    alive = True
+    native_id = dialog.GetId()
+    original_store, original_registry = manager.store, manager.registry
+
+    def active():
+        return (alive and bool(dialog) and bool(parent)
+                and not getattr(parent, '_closing', False)
+                and manager.store is original_store and manager.registry is original_registry)
+
+    def destroyed(event):
+        nonlocal alive
+        if event.GetId() == native_id:
+            alive = False
+            choice.clear()
+        event.Skip()
+
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
 
     def selected(event=None):
+        if not active():
+            return
         index = results.GetSelection()
         can_run = 0 <= index < len(rows) and enabled.get(rows[index].command_id, False)
         run.Enable(can_run)
         status.ChangeValue('Ready to run.' if can_run else 'This command is unavailable in the current view.')
 
     def rebuild(event=None):
+        if not active():
+            return
         needle = search.GetValue().strip().casefold()
         rows[:] = [command for command in manager.registry.commands(context)
                    if needle in command.label.casefold()]
@@ -637,6 +744,8 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
         selected()
 
     def accept(event=None):
+        if not active():
+            return
         index = results.GetSelection()
         if 0 <= index < len(rows) and enabled.get(rows[index].command_id, False):
             choice[:] = [rows[index].command_id]
@@ -648,17 +757,23 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
     run.Bind(wx.EVT_BUTTON, accept)
     rebuild()
     search.SetFocus()
+    selected_id = None
     try:
-        accepted = dialog.ShowModal() == wx.ID_OK
+        answer = dialog.ShowModal()
+        if active() and answer == wx.ID_OK and choice:
+            selected_id = choice[0]
     finally:
-        dialog.Destroy()
-        if focus:
+        alive = False
+        if dialog:
+            dialog.Destroy()
+        if parent and not getattr(parent, '_closing', False) and focus:
             try:
                 focus.SetFocus()
             except RuntimeError:
                 pass
-    if accepted and choice:
-        return invoke(choice[0])  # Rechecks the live command state after closing.
+    if (selected_id is not None and parent and not getattr(parent, '_closing', False)
+            and manager.store is original_store and manager.registry is original_registry):
+        return invoke(selected_id)  # Rechecks the live command state after closing.
     return False
 
 

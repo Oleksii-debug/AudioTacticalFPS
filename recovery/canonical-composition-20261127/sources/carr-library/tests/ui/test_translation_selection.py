@@ -1,0 +1,349 @@
+from types import SimpleNamespace
+
+import pytest
+
+from carr_library.ui.translation_dialog import _matches_saved_scope
+
+
+def account(identity='account-a', name='Account A'):
+    return SimpleNamespace(to_dict=lambda: {'id': identity, 'name': name})
+
+
+def job():
+    return {'profile': account().to_dict(), 'source_text': 'Original A',
+            'source_language': 'en', 'target_language': 'uk', 'authorization': {'budget': '1.00'}}
+
+
+@pytest.mark.parametrize('index,changed', [(0, account('account-b')), (0, account(name='Changed')),
+    (0, None), (1, 'Original B'), (2, 'auto'), (3, 'sk'), (4, '0')])
+def test_changed_visible_scope_cannot_resume(index, changed):
+    values = [account(), 'Original A', 'en', 'uk', '1.0']
+    values[index] = changed
+    assert not _matches_saved_scope(job(), *values)
+
+
+def test_unchanged_scope_matches_numeric_budget():
+    assert _matches_saved_scope(job(), account(), 'Original A', 'en', 'uk', '1')
+
+
+def test_offline_export_does_not_need_available_account():
+    assert _matches_saved_scope(job(), None, 'Original A', 'en', 'uk', '1', offline=True)
+    assert not _matches_saved_scope(job(), None, 'Original B', 'en', 'uk', '1', offline=True)
+    assert not _matches_saved_scope(job(), account('account-b'), 'Original A', 'en', 'uk', '1', offline=True)
+
+
+from dataclasses import replace
+from pathlib import Path
+import runpy
+import sys
+import threading
+
+from carr_library.ui import translation_dialog as workspace
+
+
+@pytest.fixture
+def saved_translation(tmp_path, monkeypatch):
+    # Reuse the existing real Gateway/ledger seam, with authored synthetic HTTP.
+    # No live network, credentials or source checkout are added to import paths.
+    authored = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'assistant' / 'test_translation.py'))
+    connection = authored['connection'].__wrapped__(monkeypatch)
+    service, profile, vault = authored['ready'](tmp_path, connection)
+    original = 'Selected source A; preserve the original and its approved scope.'
+    approval, bound = workspace.translation_approval(profile, original, 'en', 'uk', '1')
+    identity = service.submit(profile, original, 'en', 'uk', authorization=approval, per_call_cost=bound)
+    assert service.resume(identity)['status'] == 'complete'
+    return SimpleNamespace(service=service, profile=profile, vault=vault,
+                           connection=connection, identity=identity, original=original)
+
+
+def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
+    """Exercise actual bound UI handlers and stores; this is not native wx evidence."""
+    ui = SimpleNamespace(fields={}, buttons={}, jobs=[], gateways=[], choice_labels=[], controls=[],
+                         choice_result=1, chooser_count=0, focus=None, scenario=None,
+                         choice_hook=lambda: None, directory=tmp_path / 'exports', directory_hook=lambda: None)
+    ui.directory.mkdir()
+
+    class Control:
+        def __init__(self, *args, value='', choices=(), label='', **kwargs):
+            self.value, self.choices, self.label = value, tuple(choices), label
+            self.selection, self.enabled, self.handler = -1, True, None
+            self.parent = args[0] if args else None
+            self.destroyed, self.bindings = False, {}
+            self.native_id = 1000 + len(ui.controls)
+            ui.controls.append(self)
+
+        def __bool__(self):
+            return not self.destroyed
+
+        def GetId(self):
+            assert not self.destroyed, 'A destroyed native wrapper cannot supply an ID.'
+            return self.native_id
+
+        def SetName(self, name):
+            ui.fields[name] = self
+
+        def GetValue(self):
+            return self.value
+
+        def SetEditable(self, editable):
+            self.editable = editable
+
+        def ChangeValue(self, value):
+            assert not self.destroyed, 'Late callback changed a destroyed control.'
+            self.value = value
+
+        def GetSelection(self):
+            return self.selection
+
+        def SetSelection(self, index):
+            self.selection = index
+
+        def Enable(self, enabled=True):
+            assert not self.destroyed, 'Late callback enabled a destroyed control.'
+            self.enabled = enabled
+
+        def Disable(self):
+            self.Enable(False)
+
+        def SetFocus(self):
+            assert not self.destroyed, 'Late callback focused a destroyed control.'
+            ui.focus = self
+
+        def Bind(self, event, handler):
+            self.handler = handler
+            self.bindings[event] = handler
+
+        def SetSizer(self, layout):
+            pass
+
+        def Destroy(self):
+            assert not self.destroyed, 'A dead native wrapper was destroyed again.'
+            identifier = self.native_id
+            self.destroyed = True
+            for child in ui.controls:
+                if child.parent is self:
+                    child.destroyed = True
+            if 'destroy' in self.bindings:
+                self.bindings['destroy'](SimpleNamespace(GetId=lambda: identifier,
+                    GetEventObject=lambda: object(), Skip=lambda: None))
+            return True
+
+    class Dialog(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.modal = False
+            ui.dialog = self
+
+        def IsModal(self):
+            return self.modal and not self.destroyed
+
+        def ShowModal(self):
+            self.modal = True
+            try:
+                ui.scenario(ui)
+                return 2
+            finally:
+                self.modal = False
+
+        def EndModal(self, result):
+            self.modal = False
+
+    class Button(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            ui.buttons[self.label.replace('&', '')] = self
+
+        def click(self):
+            assert self.enabled, 'The test attempted a disabled native action.'
+            self.handler(None)
+
+    class ChoiceDialog(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            ui.choice_labels = list(args[3])
+            self.selection = 0
+
+        def ShowModal(self):
+            ui.choice_hook()
+            return ui.choice_result
+
+    class DirectoryDialog(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            ui.chooser_count += 1
+
+        def ShowModal(self):
+            ui.directory_hook()
+            return 1
+
+        def GetPath(self):
+            return str(ui.directory)
+
+    wx = SimpleNamespace(Dialog=Dialog, TextCtrl=Control, Choice=Control, StaticText=Control,
+        Button=Button, SingleChoiceDialog=ChoiceDialog, DirDialog=DirectoryDialog,
+        BoxSizer=lambda *args: SimpleNamespace(Add=lambda *a, **k: None),
+        CallAfter=lambda callback, *args: callback(*args), MessageBox=lambda *a, **k: 1,
+        ID_OK=1, ID_CLOSE=2, YES=1, YES_NO=4, NO_DEFAULT=8,
+        VERTICAL=1, HORIZONTAL=2, ALL=4, EXPAND=8, TE_MULTILINE=16, TE_READONLY=32,
+        DEFAULT_DIALOG_STYLE=64, RESIZE_BORDER=128, EVT_BUTTON='button', EVT_CLOSE='close',
+        EVT_WINDOW_DESTROY='destroy')
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    monkeypatch.setattr(workspace, 'TranslationService', lambda root, **kwargs: saved.service)
+    # Use the real current-account catalog: visible snapshots cannot stand in
+    # for the profile reread performed by the queued remote operation.
+    from carr_library.assistant.profiles import ProfileStore
+    store = ProfileStore(tmp_path / 'library' / 'state' / 'providers')
+    for profile in profiles:
+        store.save(profile)
+
+    def gateway(root, *, mode):
+        ui.gateways.append((root, mode))
+        saved.service.gateway.mode = mode
+        return saved.service.gateway
+
+    monkeypatch.setattr(workspace, 'Gateway', gateway)
+
+    def run_job(title, operation, *, done, failed):
+        ui.jobs.append(title)
+        try:
+            result = operation()
+        except Exception as exc:
+            failed(str(exc))
+        else:
+            done(result)
+        return True
+
+    ui.native_destroy = lambda control: Control.Destroy(control)
+    ui.frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path / 'library'),
+        working=False, _closing=False, cancel_event=threading.Event(), run_job=run_job)
+    return ui
+
+
+def visible(ui):
+    return {key: ui.fields[name] for key, name in {
+        'account': 'Google API account and edition',
+        'source': 'Source language code; auto detects',
+        'target': 'Target language code',
+        'text': 'Selected text; originals remain unchanged',
+        'budget': 'Maximum approved budget in USD; no default price',
+        'rate': 'Optional price per million characters in USD; your current contract rate',
+        'status': 'Preview, supported languages and job status',
+    }.items()}
+
+
+def test_saved_job_restores_visible_scope_and_resumes_without_rebilling(tmp_path, monkeypatch, saved_translation):
+    saved = saved_translation
+    ui = native_protocol_double(monkeypatch, tmp_path, saved, [saved.profile])
+    before = len(saved.connection['calls'])
+
+    def scenario(ui):
+        fields = visible(ui)
+        fields['text'].ChangeValue('Different previously displayed source.')
+        fields['source'].ChangeValue('auto')
+        fields['target'].ChangeValue('fr')
+        fields['budget'].ChangeValue('99')
+        fields['rate'].ChangeValue('123')
+        ui.buttons['Saved jobs'].click()
+        assert fields['account'].GetSelection() == 0
+        assert fields['text'].GetValue() == saved.original
+        assert fields['source'].GetValue() == 'en' and fields['target'].GetValue() == 'uk'
+        assert fields['budget'].GetValue() == '1' and fields['rate'].GetValue() == ''
+        assert saved.identity in ui.choice_labels[0] and saved.profile.id in ui.choice_labels[0]
+        assert ui.focus is fields['status']
+        ui.buttons['Translate / resume'].click()
+
+    ui.scenario = scenario
+    workspace.show_translation(ui.frame)
+    assert ui.jobs == ['Reading saved translation jobs', 'Translating approved selected text']
+    assert len(saved.connection['calls']) == before
+    assert saved.service.get(saved.identity)['source_text'] == saved.original
+
+
+@pytest.mark.parametrize('action', ['Translate / resume', 'Export'])
+@pytest.mark.parametrize('change', ['account', 'text', 'source', 'target', 'budget'])
+def test_changed_visible_saved_scope_blocks_actual_handlers_before_queue_or_chooser(
+        tmp_path, monkeypatch, saved_translation, action, change):
+    saved = saved_translation
+    other = replace(saved.profile, id='other_account',
+                    credential_ref='carr/provider/other_account/' + 'b' * 32)
+    ui = native_protocol_double(monkeypatch, tmp_path, saved, [saved.profile, other])
+    before = saved.service.jobs.path(saved.identity).read_bytes()
+    calls, credentials = len(saved.connection['calls']), len(saved.vault.calls)
+
+    def scenario(ui):
+        ui.buttons['Saved jobs'].click()
+        fields = visible(ui)
+        if change == 'account':
+            fields['account'].SetSelection(1)
+        else:
+            fields[change].ChangeValue({'text': 'Different source B.', 'source': 'auto',
+                                       'target': 'fr', 'budget': '2'}[change])
+        ui.buttons[action].click()
+        assert 'Visible settings differ from saved job ' + saved.identity in fields['status'].GetValue()
+        assert ui.focus is fields['status']
+
+    ui.scenario = scenario
+    workspace.show_translation(ui.frame)
+    assert ui.jobs == ['Reading saved translation jobs'] and not ui.gateways and ui.chooser_count == 0
+    assert saved.service.jobs.path(saved.identity).read_bytes() == before
+    assert len(saved.connection['calls']) == calls and len(saved.vault.calls) == credentials
+
+
+@pytest.mark.parametrize('account_state', ['missing', 'changed'])
+def test_missing_saved_account_blocks_remote_resume_but_preserves_real_offline_export(
+        tmp_path, monkeypatch, saved_translation, account_state):
+    saved = saved_translation
+    profiles = [] if account_state == 'missing' else [replace(saved.profile, name='Changed account snapshot')]
+    ui = native_protocol_double(monkeypatch, tmp_path, saved, profiles)
+    saved.service.gateway.mode = 'LOCAL_ONLY'
+    before = saved.service.jobs.path(saved.identity).read_bytes()
+    calls, credentials = len(saved.connection['calls']), len(saved.vault.calls)
+
+    def scenario(ui):
+        ui.buttons['Saved jobs'].click()
+        fields = visible(ui)
+        assert fields['account'].GetSelection() == -1
+        assert 'remote resume is blocked' in fields['status'].GetValue()
+        ui.buttons['Translate / resume'].click()
+        assert ui.jobs == ['Reading saved translation jobs'] and not ui.gateways
+        ui.buttons['Export'].click()
+
+    ui.scenario = scenario
+    workspace.show_translation(ui.frame)
+    assert ui.jobs == ['Reading saved translation jobs', 'Exporting translation derivative'] and ui.chooser_count == 1
+    output, = ui.directory.iterdir()
+    assert (output / 'original.txt').read_text(encoding='utf-8') == saved.original
+    assert (output / 'translation.reading.json').is_file()
+    assert saved.service.jobs.path(saved.identity).read_bytes() == before
+    assert len(saved.connection['calls']) == calls and len(saved.vault.calls) == credentials
+    assert not ui.gateways and saved.service.gateway.mode == 'LOCAL_ONLY'
+
+
+@pytest.mark.parametrize('picker', ['saved-job', 'export-folder'])
+def test_owner_destroyed_during_picker_preserves_saved_job_and_never_touches_dead_controls(
+        tmp_path, monkeypatch, saved_translation, picker):
+    saved = saved_translation
+    ui = native_protocol_double(monkeypatch, tmp_path, saved, [saved.profile])
+    before = saved.service.jobs.path(saved.identity).read_bytes()
+    calls, credentials = len(saved.connection['calls']), len(saved.vault.calls)
+
+    def destroy_owner():
+        # Deliver the native self-destroy event without the Python override.
+        ui.native_destroy(ui.dialog)
+
+    def scenario(ui):
+        if picker == 'saved-job':
+            ui.choice_hook = destroy_owner
+            ui.buttons['Saved jobs'].click()
+        else:
+            ui.buttons['Saved jobs'].click()
+            ui.directory_hook = destroy_owner
+            ui.buttons['Export'].click()
+        assert not ui.dialog and not ui.frame.cancel_event.is_set()
+
+    ui.scenario = scenario
+    workspace.show_translation(ui.frame)
+    assert ui.jobs == ['Reading saved translation jobs'] and not ui.gateways
+    assert saved.service.jobs.path(saved.identity).read_bytes() == before
+    assert len(saved.connection['calls']) == calls and len(saved.vault.calls) == credentials
+    assert not list(ui.directory.iterdir())

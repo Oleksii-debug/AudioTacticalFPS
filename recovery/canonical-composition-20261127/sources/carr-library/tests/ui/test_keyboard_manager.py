@@ -313,6 +313,10 @@ def dialog_double(manager):
     dialog = object.__new__(KeyboardSettingsDialog)
     dialog.manager = manager
     dialog.original_store = manager.store
+    dialog.original_registry = manager.registry
+    dialog.original_root = manager.store.path.parent
+    dialog.closed = dialog._destroy_requested = False
+    dialog._native_id = 700
     dialog.draft = dict(manager.overrides)
     dialog.dialog = SimpleNamespace(EndModal=lambda result: None)
     dialog.messages = []
@@ -753,3 +757,198 @@ def test_earlier_help_palette_mapping_follows_its_explicit_canonical_identity(ma
     dialog.import_earlier_map()
     assert dialog.draft == {'commands.find': 'F9'}
     assert snapshot(manager) == before and path.read_bytes() == raw
+
+
+def test_settings_rewrapped_self_destroy_drops_every_queued_action(manager, monkeypatch):
+    dialog = dialog_double(manager)
+    before, draft = snapshot(manager), dict(dialog.draft)
+    skipped = []
+    dialog.on_destroy(SimpleNamespace(GetId=lambda: 701, GetEventObject=lambda: dialog,
+                                      Skip=lambda: skipped.append('child')))
+    assert not dialog.closed
+    dialog.on_destroy(SimpleNamespace(GetId=lambda: 700, GetEventObject=lambda: object(),
+                                      Skip=lambda: skipped.append('owner')))
+    assert dialog.closed and skipped == ['child', 'owner']
+    forbidden = Mock(side_effect=AssertionError('A disposed settings owner touched native controls or storage.'))
+    dialog.status = SimpleNamespace(ChangeValue=forbidden, SetFocus=forbidden)
+    dialog._message = KeyboardSettingsDialog._message.__get__(dialog)
+    dialog.rebuild = KeyboardSettingsDialog.rebuild.__get__(dialog)
+    dialog.wx = SimpleNamespace(FileDialog=forbidden)
+    monkeypatch.setattr(manager, 'validate', forbidden)
+    monkeypatch.setattr(manager, 'apply_overrides', forbidden)
+    monkeypatch.setattr(manager, 'earlier_keymap_draft', forbidden)
+    for action in (dialog.rebuild, dialog.selected, dialog.assign, dialog.reset_selected,
+                   dialog.reset_all, dialog.import_map, dialog.import_earlier_map,
+                   dialog.export_map, dialog.save):
+        action()
+    dialog._message('Late result')
+    assert not dialog.show()
+    forbidden.assert_not_called()
+    assert dialog.draft == draft and snapshot(manager) == before
+
+
+@pytest.mark.parametrize('operation', ['import_map', 'export_map'])
+@pytest.mark.parametrize('boundary', ['modal-return', 'chooser-destroy'])
+@pytest.mark.parametrize('accepted', [False, True], ids=['cancel', 'accept'])
+def test_settings_native_owner_loss_after_picker_cannot_read_write_or_apply(
+        manager, tmp_path, monkeypatch, operation, boundary, accepted):
+    dialog = dialog_double(manager)
+    before, draft = snapshot(manager), dict(dialog.draft)
+    path = tmp_path / 'untouched-keymap.json'
+    path.write_bytes(b'Independent existing file')
+    failures = []
+
+    class Peer:
+        alive = True
+        def __bool__(self):
+            return self.alive
+
+    dialog.dialog = Peer()
+    class Chooser(Peer):
+        def detach(self):
+            dialog.on_destroy(SimpleNamespace(GetId=lambda: dialog._native_id,
+                GetEventObject=lambda: object(), Skip=lambda: None))
+            dialog.dialog.alive = self.alive = False
+
+        def ShowModal(self):
+            if boundary == 'modal-return':
+                self.detach()
+            return 1 if accepted else 0
+
+        def GetPath(self):
+            if not self:
+                failures.append('GetPath')
+            assert self
+            return str(path)
+
+        def Destroy(self):
+            if not self:
+                failures.append('Destroy')
+            assert self
+            if boundary == 'chooser-destroy':
+                self.detach()
+            else:
+                self.alive = False
+
+    chooser = Chooser()
+    dialog.wx = SimpleNamespace(FileDialog=lambda *args, **kwargs: chooser,
+        FD_OPEN=2, FD_FILE_MUST_EXIST=4, FD_SAVE=8, ID_OK=1)
+    forbidden = Mock(side_effect=AssertionError('The picker outlived its owner.'))
+    monkeypatch.setattr(manager, 'validate', forbidden)
+    monkeypatch.setattr(KeymapStore, 'load', forbidden)
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.write_export', forbidden)
+    getattr(dialog, operation)()
+    assert dialog.closed and not dialog.dialog and not chooser and not failures
+    assert dialog.draft == draft and snapshot(manager) == before
+    assert path.read_bytes() == b'Independent existing file'
+    forbidden.assert_not_called()
+
+
+def test_settings_export_confirmation_cannot_outlive_its_native_owner(manager, tmp_path, monkeypatch):
+    dialog, destination = export_form(manager, tmp_path)
+    destination.write_bytes(b'Preserve the approved destination')
+    before, draft = snapshot(manager), dict(dialog.draft)
+    def confirm(*args, **kwargs):
+        dialog.on_destroy(SimpleNamespace(GetId=lambda: dialog._native_id,
+            GetEventObject=lambda: object(), Skip=lambda: None))
+        return dialog.wx.YES
+    dialog.wx.MessageBox.side_effect = confirm
+    forbidden = Mock(side_effect=AssertionError('A destroyed owner cannot publish a keymap.'))
+    monkeypatch.setattr(manager, 'validate', forbidden)
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.write_export', forbidden)
+    dialog.export_map()
+    assert dialog.closed and dialog.draft == draft
+    assert snapshot(manager) == before
+    assert destination.read_bytes() == b'Preserve the approved destination'
+    forbidden.assert_not_called()
+
+
+def test_settings_show_does_not_destroy_an_already_deleted_native_wrapper(manager):
+    dialog = dialog_double(manager)
+    destroyed = []
+    class Peer:
+        alive = True
+        def __bool__(self):
+            return self.alive
+        def ShowModal(self):
+            dialog.on_destroy(SimpleNamespace(GetId=lambda: dialog._native_id,
+                GetEventObject=lambda: object(), Skip=lambda: None))
+            self.alive = False
+            return 1
+        def Destroy(self):
+            destroyed.append(True)
+            raise AssertionError('The native wrapper was already deleted.')
+    dialog.dialog = Peer()
+    dialog.wx = SimpleNamespace(ID_OK=1)
+    assert not dialog.show() and dialog.closed
+    assert not destroyed
+
+
+def test_reader_command_chooser_discards_late_native_events_after_owner_destruction(manager, monkeypatch):
+    from carr_library.ui.keyboard_settings import show_command_launcher
+
+    controls, calls = [], []
+    class Control:
+        def __init__(self, parent=None, *args, **kwargs):
+            self.parent, self.handlers, self.value, self.selection = parent, {}, '', -1
+            controls.append(self)
+        def native(self):
+            assert self.parent is None or not isinstance(self.parent, Window) or self.parent.alive, (
+                'A queued callback touched a deleted chooser control.')
+        def SetName(self, value): self.native()
+        def Add(self, *args): self.native()
+        def Set(self, values): self.native(); self.values = values
+        def GetValue(self): self.native(); return self.value
+        def SetSelection(self, value): self.native(); self.selection = value
+        def GetSelection(self): self.native(); return self.selection
+        def Enable(self, value=True): self.native()
+        def ChangeValue(self, value): self.native(); self.value = value
+        def SetFocus(self): self.native()
+        def Bind(self, event, handler): self.native(); self.handlers[event] = handler
+
+    class Window(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__()
+            self.alive = True
+        def __bool__(self): return self.alive
+        def native(self): assert self.alive, 'The native chooser was already destroyed.'
+        def GetId(self): self.native(); return 902
+        def SetSizer(self, layout): self.native()
+        def SetEscapeId(self, identity): self.native()
+        def EndModal(self, result): self.native(); calls.append('accepted')
+        def ShowModal(self):
+            self.handlers['destroy'](SimpleNamespace(GetId=lambda: 902,
+                GetEventObject=lambda: object(), Skip=lambda: calls.append('destroy-event')))
+            self.alive = False
+            for control in controls:
+                if control is not self:
+                    for handler in control.handlers.values():
+                        handler(None)
+            return 1
+        def Destroy(self):
+            raise AssertionError('Native parent destruction already deleted the chooser.')
+
+    wx = SimpleNamespace(Dialog=Window, BoxSizer=Control, StaticText=Control, TextCtrl=Control,
+        ListBox=Control, Button=Control, Window=SimpleNamespace(FindFocus=lambda: None),
+        EVT_TEXT='text', EVT_LISTBOX='list', EVT_LISTBOX_DCLICK='double',
+        EVT_BUTTON='button', EVT_WINDOW_DESTROY='destroy', ID_OK=1, ID_CANCEL=2,
+        VERTICAL=0, HORIZONTAL=0, ALL=0, EXPAND=0, LEFT=0, ALIGN_RIGHT=0, TE_READONLY=0)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    invoked = Mock(side_effect=AssertionError('A deleted chooser cannot dispatch a selection.'))
+    assert not show_command_launcher(SimpleNamespace(), manager, context='reader',
+                                     available=lambda identity: True, invoke=invoked)
+    invoked.assert_not_called()
+    assert calls == ['destroy-event']
+
+
+def test_settings_changed_scope_before_show_still_disposes_its_live_native_window(manager, tmp_path):
+    dialog = dialog_double(manager)
+    destroyed = []
+    dialog.dialog = SimpleNamespace(
+        ShowModal=lambda: pytest.fail('A stale keymap dialog cannot be shown.'),
+        Destroy=lambda: destroyed.append(True))
+    manager.change_root(tmp_path / 'changed-before-show')
+    before = snapshot(manager)
+    assert not dialog.show() and dialog.closed
+    assert destroyed == [True] and snapshot(manager) == before
+    assert 'folder changed' in dialog.messages[-1]
