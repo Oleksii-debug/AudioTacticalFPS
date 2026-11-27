@@ -36,8 +36,8 @@ def validate(publication, schemas):
                 raise ValueError('The schema validator refused an unapproved resource: ' + url)
             return self.resolve_filename(str(paths[name]), context)
     publication = local_path(publication, exists=True)
-    provenance = daisy.inspect_daisy(publication)
     before = publishing._digest(publication, lambda: None, 32 * 1024**3)
+    provenance = daisy.inspect_daisy(publication)
     results = []
     with ZipFile(publication) as archive:
         for name in ('ncc.html', 'content.html', 'source.html', 'book.smil'):

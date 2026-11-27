@@ -146,10 +146,12 @@ def create_publishing_dialog(frame, *, wx_module=None):
             picker.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
             try:
                 result = picker.ShowModal()
-                if self.alive and picker_alive and result == wx.ID_OK:
+                if (self.alive and picker_alive and self and not self.IsBeingDeleted()
+                        and picker and not picker.IsBeingDeleted() and result == wx.ID_OK):
                     self.output.ChangeValue(picker.GetPath())
             finally:
-                if picker_alive and not self.destroyed:
+                if (picker_alive and not self.destroyed and self and not self.IsBeingDeleted()
+                        and picker and not picker.IsBeingDeleted()):
                     picker.Destroy()
 
         def on_export(self, event=None):
@@ -261,5 +263,5 @@ def show_publishing(frame):
         dialog.ShowModal()
     finally:
         dialog.detach()
-        if not dialog.destroyed:
+        if not dialog.destroyed and dialog and not dialog.IsBeingDeleted():
             dialog.Destroy()

@@ -22,6 +22,8 @@ class Widget:
         self.selection, self.enabled, self.name = -1, True, ''
         self.identity, self.bindings = id(self), {}
     def GetId(self): return self.identity
+    def __bool__(self): return not getattr(self, 'native_deleted', False)
+    def IsBeingDeleted(self): return getattr(self, 'pending_delete', False)
     def SetName(self, name): self.name = name
     def GetName(self): return self.name
     def GetValue(self): return self.value
@@ -299,7 +301,7 @@ def test_queued_daisy_export_retains_the_reviewed_directory_identity(desktop, tm
     assert not target.exists() and not (moved / 'book.zip').exists()
 
 
-@pytest.mark.parametrize('termination', ('native-parent', 'picker-only'))
+@pytest.mark.parametrize('termination', ('native-parent', 'picker-only', 'owner-pending', 'picker-pending'))
 def test_publication_picker_detaches_before_native_modal_return(desktop, monkeypatch, termination):
     frame, dialog, _ = desktop
     forbidden, observed = [], []
@@ -317,16 +319,21 @@ def test_publication_picker_detaches_before_native_modal_return(desktop, monkeyp
             if termination == 'native-parent':
                 dialog.on_destroy(SimpleNamespace(GetId=lambda: dialog.owner_id, Skip=lambda: None))
                 dialog.output.ChangeValue = dead('output.ChangeValue')
-            self.bindings[frame.test_wx.EVT_WINDOW_DESTROY](
-                SimpleNamespace(GetId=self.GetId, Skip=lambda: None))
+            if termination == 'owner-pending':
+                dialog.pending_delete = True  # No destruction event has arrived yet.
+            elif termination == 'picker-pending':
+                self.pending_delete = True
+            else:
+                self.bindings[frame.test_wx.EVT_WINDOW_DESTROY](
+                    SimpleNamespace(GetId=self.GetId, Skip=lambda: None))
             self.GetPath, self.Destroy = dead('picker.GetPath'), dead('picker.Destroy')
             return frame.test_wx.ID_OK
 
     monkeypatch.setattr(frame.test_wx, 'FileDialog', Picker, raising=False)
     dialog.on_choose()
     assert observed == ['modal entered'] and forbidden == [] and not frame.operations
-    assert dialog.output.GetValue() == original
-    assert dialog.alive is (termination == 'picker-only')
+    assert dialog.output.value == original
+    assert dialog.alive is (termination != 'native-parent')
 
 
 @pytest.mark.parametrize('daisy', (False, True))
@@ -354,3 +361,26 @@ def test_live_publication_picker_preserves_chosen_path_and_disposes_once(desktop
     assert dialog.output.GetValue() == str(selected) and dialog.alive
     assert observed[0]['defaultFile'] == ('publication.zip' if daisy else 'publication.epub')
     assert observed[1:] == ['disposed'] and not frame.operations
+
+
+@pytest.mark.parametrize('native_state', ('pending-delete', 'deleted', 'live'))
+def test_modal_return_disposes_only_a_live_publication_wrapper(monkeypatch, native_state):
+    from carr_library.ui import publishing_dialog
+    observed = []
+    class Modal:
+        destroyed = False  # EVT_WINDOW_DESTROY may still be queued.
+        def ShowModal(self):
+            observed.append('returned')
+        def detach(self):
+            observed.append('detached')
+        def __bool__(self):
+            return native_state != 'deleted'
+        def IsBeingDeleted(self):
+            assert native_state != 'deleted', 'A deleted native peer was inspected.'
+            return native_state == 'pending-delete'
+        def Destroy(self):
+            assert native_state == 'live', 'A pending/deleted modal peer was destroyed again.'
+            observed.append('destroyed')
+    monkeypatch.setattr(publishing_dialog, 'create_publishing_dialog', lambda frame: Modal())
+    publishing_dialog.show_publishing(object())
+    assert observed == ['returned', 'detached'] + (['destroyed'] if native_state == 'live' else [])

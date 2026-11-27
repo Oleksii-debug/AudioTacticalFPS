@@ -146,6 +146,44 @@ def main():
                     if not owner._native_destroyed:
                         owner.Destroy()
                     gui.Yield()
+            def modal_destruction_case(parent):
+                owner = DesktopFrame(LibraryApp(root / ('modal-parent-close' if parent else 'modal-dialog-close')))
+                owner.Show()
+                probe = ui.create_publishing_dialog(owner)
+                actual_factory, actual_destroy = ui.create_publishing_dialog, probe.Destroy
+                observed = {'destroy_calls': 0, 'returned': False}
+                snapshot = {}
+                def tracked_destroy():
+                    observed['destroy_calls'] += 1
+                    return actual_destroy()
+                probe.Destroy = tracked_destroy
+                try:
+                    until(lambda: not owner.working)
+                    ui.create_publishing_dialog = lambda selected: probe
+                    wx.CallAfter((owner if parent else probe).Destroy)
+                    ui.show_publishing(owner)
+                    observed['returned'] = True
+                    # Copy evidence before finally performs any remaining cleanup.
+                    snapshot = dict(observed)
+                    check('native modal return disposes no pending/deleted publication twice',
+                          snapshot['returned'] and snapshot['destroy_calls'] == (0 if parent else 1))
+                    until(lambda: probe.destroyed)
+                    check('native modal destruction detaches its plain callback state',
+                          not probe.alive and probe.cancel.is_set())
+                except BaseException:
+                    snapshot = dict(observed)
+                    raise
+                finally:
+                    ui.create_publishing_dialog = actual_factory
+                    owner.cancel_event.set()
+                    owner.executor.shutdown(wait=True, cancel_futures=True)
+                    if not probe.destroyed and probe and not probe.IsBeingDeleted():
+                        actual_destroy()
+                    if not owner._native_destroyed and owner and not owner.IsBeingDeleted():
+                        owner.Destroy()
+                    gui.Yield()
+                    print('MODAL-PUBLICATION-LIFETIME:', json.dumps(snapshot or dict(observed)), flush=True)
+
             def scenario():
                 try:
                     check('real native main loop is active', gui.GetMainLoop() is not None)
@@ -205,6 +243,8 @@ def main():
                     check('native keyboard close completes', not dialog.alive)
                     destruction_case(False)
                     destruction_case(True)
+                    modal_destruction_case(False)
+                    modal_destruction_case(True)
                     check('native destruction preserves completed EPUB and receipt',
                           target.read_bytes() == original and inspect_epub(target) == provenance)
                     check('native destruction preserves completed DAISY and receipt',
