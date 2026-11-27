@@ -445,6 +445,13 @@ jobs:
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
         timeout-minutes: 20
         run: |
+          # Source identity fixtures exercise default CLI discovery and model changes.
+          # Bind the prepared verified bytes without forcing a portable override.
+          $env:PATH = "$env:CARR_CI_OCR_DIR;$env:PATH"
+          $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+          Remove-Item Env:CARR_OCR_DIR -ErrorAction SilentlyContinue
+          & $env:CARR_PYTHON -I -B -c "import json,os,pathlib,shutil; from carr_library.extract.ocr_runtime import verify_ocr_bundle; root=pathlib.Path(os.environ['CARR_CI_OCR_DIR']); runtime=verify_ocr_bundle(root); executable=shutil.which('tesseract'); assert executable and pathlib.Path(executable).samefile(runtime.executable); assert pathlib.Path(os.environ['TESSDATA_PREFIX']).samefile(runtime.tessdata); assert {'eng','ukr','slk','osd'}<=set(runtime.languages); assert runtime.target=='win_amd64' and 'CARR_OCR_DIR' not in os.environ; print(json.dumps(dict(status='PASS',source_ocr_cli='VERIFIED_PREPARED_RUNTIME',manifest_sha256=runtime.manifest_sha256,languages=runtime.languages)))" | Tee-Object 'ci-results/source-ocr-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
