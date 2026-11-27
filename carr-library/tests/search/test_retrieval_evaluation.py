@@ -49,7 +49,10 @@ def test_invalid_gold(mutation):
         load(data)
 
 
-@pytest.mark.parametrize('raw', [b'{"schema":1,"schema":2}', b'x' * (1024 * 1024 + 1)])
+@pytest.mark.parametrize(
+    'raw', [b'{"schema":1,"schema":2}', b'x' * (1024 * 1024 + 1)],
+    ids=['duplicate-keys', 'over-1-mib'],
+)
 def test_fixture_bound_and_duplicate_keys(raw):
     with pytest.raises(ValueError):
         evaluation.load_gold(raw)
