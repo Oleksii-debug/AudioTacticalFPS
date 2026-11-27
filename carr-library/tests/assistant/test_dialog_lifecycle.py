@@ -7,7 +7,8 @@ from unittest.mock import Mock
 
 
 def test_close_signals_worker_without_competing_write_and_ignores_late_callbacks():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/assistant_dialog.py'
+    from carr_library.ui import assistant_dialog
+    source = Path(assistant_dialog.__file__).resolve()
     tree = ast.parse(source.read_text(encoding='utf-8'))
     show = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
                 and node.name == 'show_assistant')
