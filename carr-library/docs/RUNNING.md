@@ -40,18 +40,30 @@ API profiles use the Windows credential vault and explicit per-task data/cost re
 
 The Windows x64 package targets CPython 3.11. The complete package includes its
 own Python runtime. Extract the complete package into a new folder, then open
-`Install.cmd`. Installation creates a local
+`ResearchLibrary.exe`. On first launch it opens the bundled offline installer
+and starts the application only after installation completes successfully.
+Keep the executable together with the complete extracted package.
+`Install.cmd` remains available for a separate installation, including packages
+that omit the optional native launcher. Installation creates a local
 environment inside that folder and uses only included, hash-checked wheels.
 It does not contact a package index and does not require administrator access.
 The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
-After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
+After installation, open `ResearchLibrary.exe`. Use `ResearchLibrary.cmd` when
+you want a visible terminal for startup diagnostics. The terminal stays visible if
 startup fails, so a screen reader can read the error. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can
 load before reporting success, then run the synthetic application self-test.
 When OCR is included, the checks also recognize a generated test image.
 These checks do not change your research data.
+
+The main-window operation panel reports the current phase without taking keyboard
+focus. `Ctrl+Shift+Q` queries it; **Options, Progress feedback settings** controls
+optional local tones or speech, which are off by default. **Use selected voice for
+progress** in Audio Studio connects that local voice for the current session.
+Changing the library folder disconnects it. An indeterminate operation is reported
+as such until its producer supplies measured progress; it does not invent a percent.
 
 The launchers require the installation-complete marker created after all install
 checks succeed. If installation fails or is interrupted, extract the package to
