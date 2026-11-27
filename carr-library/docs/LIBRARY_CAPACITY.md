@@ -42,9 +42,10 @@ The production baseline before the query fix was
 The harness binds every Python file under `src` and `bootstrap`, its reused
 search fixture, the RSS helper and itself by SHA256. Each case checks this
 identity before and after execution. The original manifest remains committed.
-The optimized raw manifests and case files were written locally before the
-transport failure; only their observed completion/checkpoint summaries had
-been retrieved when access was lost.
+The optimized source manifests and completed 1k/10k case files were written
+locally before the transport failure. The 50k case had only progress checkpoints
+at the last observation. Only the completion/checkpoint summaries shown here
+had been retrieved when access was lost.
 
 ## Completed original profiles
 
