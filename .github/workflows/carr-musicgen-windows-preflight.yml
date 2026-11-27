@@ -56,7 +56,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $runtimePython = "$env:RUNNER_TEMP/carr-musicgen-win-install/runtime/python.exe"
+          $runtimePython = (Get-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'carr-musicgen-win-install\runtime\python.exe')).FullName
           $rule = "CARR-MusicGen-Preflight-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           if (@(Get-NetFirewallProfile | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) {
             throw 'Every Windows firewall profile must be enabled for this qualification'
@@ -67,6 +67,8 @@ jobs:
           if ($active.Enabled -ne 'True' -or $active.Action -ne 'Block' -or $active.Direction -ne 'Outbound') {
             throw 'The interpreter outbound block is not active'
           }
+          $application = $active | Get-NetFirewallApplicationFilter
+          if ($application.Program -ne $runtimePython) { throw 'The firewall rule targets a different application' }
           python -B carr-library/scripts/musicgen_windows_preflight.py audit `
             --source-root "$env:GITHUB_WORKSPACE/carr-library" --root "$env:RUNNER_TEMP/carr-musicgen-win-install"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
