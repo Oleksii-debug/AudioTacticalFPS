@@ -232,11 +232,14 @@ class PlaybackQueueDialog:
             self.future = future
             future.add_done_callback(receive)
             admitted[0] = True
-        except BaseException:
+        except BaseException as exc:
             if self.future is future:
                 self.future = None
             if future is not None:
                 future.cancel()
+            if isinstance(exc, Exception):
+                (failed or self._error)(exc)
+                return False
             raise
         finally:
             submitted.set()

@@ -474,11 +474,25 @@ def test_real_first_thread_start_failure_cannot_leave_an_unowned_stale_action(wi
         return original(thread)
     monkeypatch.setattr(Thread, 'start', fail_first)
     stale_output = root / 'unowned-stale-result.txt'
-    with pytest.raises(RuntimeError, match='first thread start refused'):
-        value._work(lambda: stale_output.write_text('This stale action must never run.', encoding='utf-8'),
-                    lambda _: pytest.fail('A failed submission delivered a stale success.'))
+    assert not value._work(
+        lambda: stale_output.write_text('This stale action must never run.', encoding='utf-8'),
+        lambda _: pytest.fail('A failed submission delivered a stale success.'))
     assert value.future is None and not stale_output.exists()
+    assert 'first thread start refused' in value.status.value
     received = []
     assert value._work(lambda: 'later explicitly admitted action', received.append)
     drain(value, callbacks)
     assert received == ['later explicitly admitted action'] and not stale_output.exists()
+
+    # Cleanup submission must also reset its pending UI state, so an explicit
+    # retry can still settle the owned player and close the real window.
+    for operation in ('stop', 'close'):
+        value.executor.shutdown(wait=True, cancel_futures=True)
+        value.executor = ThreadPoolExecutor(max_workers=1)
+        calls = 0
+        getattr(value, operation)()
+        assert value.future is None and not value.closed
+        assert not value.stopping and not value.settling and not value.closing and not value.closing_worker
+        getattr(value, operation)()
+        drain(value, callbacks, lambda current:
+              current.closed if operation == 'close' else current.future is None and not current.stopping)
