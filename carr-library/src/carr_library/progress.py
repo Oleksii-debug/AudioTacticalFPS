@@ -4,6 +4,7 @@ An operation is complete only after its caller accepts the result. Reaching a
 work counter's total alone cannot report 100 percent. No wx dependency here.
 """
 from dataclasses import asdict, dataclass
+import atexit
 from io import BytesIO
 import json
 import math
@@ -174,8 +175,8 @@ class ProgressSettings:
     background: bool = False
 
     def __post_init__(self):
-        if self.mode not in ('off', 'beep'):
-            raise ValueError('Application progress output supports Off or Beep; speech is provided by your screen reader.')
+        if self.mode not in ('off', 'beep', 'speech', 'both'):
+            raise ValueError('Application progress output supports Off, Beep, Speech or Beep + Speech.')
         if type(self.volume) is not int or not 0 <= self.volume <= 100:
             raise ValueError('Progress tone volume must be from 0 to 100.')
         if type(self.interval_seconds) is not int or not 1 <= self.interval_seconds <= 60:
@@ -203,15 +204,18 @@ def validate_progress_settings_payload(raw):
         raise ValueError('Invalid progress preferences JSON.') from exc
     if (type(payload) is not dict or set(payload) != {'kind', 'version', *ProgressSettings.__dataclass_fields__}
             or payload['kind'] != 'carr-progress-settings'
-            or type(payload['version']) is not int or payload['version'] != 1):
+            or type(payload['version']) is not int or payload['version'] not in (1, 2)):
         raise ValueError('Unsupported progress preferences format.')
+    if payload['version'] == 1 and payload['mode'] not in ('off', 'beep'):
+        raise ValueError('Version 1 progress preferences support only Off or Beep.')
     return ProgressSettings(**{key: payload[key] for key in ProgressSettings.__dataclass_fields__})
 
 
 def encode_progress_settings(settings):
     if not isinstance(settings, ProgressSettings):
         raise ValueError('Expected validated progress preferences.')
-    raw = (json.dumps({'kind': 'carr-progress-settings', 'version': 1, **asdict(settings)},
+    version = 2 if settings.mode in ('speech', 'both') else 1
+    raw = (json.dumps({'kind': 'carr-progress-settings', 'version': version, **asdict(settings)},
                       sort_keys=True, indent=2) + '\n').encode('utf-8')
     validate_progress_settings_payload(raw)
     return raw
@@ -372,70 +376,160 @@ class WindowsToneBackend:
         self.directory.cleanup()
 
 
+@dataclass(frozen=True)
+class _SpeechRequest:
+    provider: object
+    text: str
+    volume: int
+    valid: object
+    segments: tuple = ()
+
+
 class ToneDispatcher:
-    """Latest-request mailbox; waveform preparation stays off the UI thread."""
+    """One latest-request worker for tones and selected local progress speech."""
+
     def __init__(self, *, backend_factory=WindowsToneBackend):
         self.backend_factory = backend_factory
         self.mailbox = queue.Queue(maxsize=1)
         self.closed = threading.Event()
         self.backend = None
-        self.thread = threading.Thread(target=self._work, daemon=True, name='progress-tones')
+        self._voice_cancel = threading.Event()
+        self._voice_provider = None
+        self._tone_uncertain = False
+        self.notice = ''
+        self._sequence = 0
+        self.thread = threading.Thread(target=self._work, daemon=True, name='progress-feedback')
         self.thread.start()
 
-    def request(self, segments, volume, valid=lambda: True):
+    def _put(self, request):
         if self.closed.is_set():
             return False
-        request = (segments, volume, valid)
+        with _audio_lock:
+            self._voice_cancel.set()  # A newer state must not leave stale speech audible.
+            self._sequence += 1
+            queued = (self._sequence, request)
         try:
-            self.mailbox.put_nowait(request)
+            self.mailbox.put_nowait(queued)
         except queue.Full:
             try:
                 self.mailbox.get_nowait()
             except queue.Empty:
                 pass
             try:
-                self.mailbox.put_nowait(request)
+                self.mailbox.put_nowait(queued)
             except queue.Full:
                 return False
         return True
+
+    def request(self, segments, volume, valid=lambda: True):
+        return self._put((segments, volume, valid))
+
+    def request_voice(self, provider, text, volume, valid=lambda: True, *, segments=()):
+        from .audio.progress_speech import LocalProgressSpeech
+        if not isinstance(provider, LocalProgressSpeech) or not callable(valid):
+            raise ValueError('Choose a validated, explicit local progress voice.')
+        return self._put(_SpeechRequest(provider, text, volume, valid, segments))
+
+    @property
+    def quiescent(self):
+        with _audio_lock:
+            return not self._tone_uncertain and (
+                self._voice_provider is None or self._voice_provider.quiescent)
+
+    def _tone(self, segments, volume, valid):
+        if not self.quiescent:
+            return False
+        raw = tone_wave(segments, volume)
+        if self.backend is None:
+            self.backend = self.backend_factory()
+        path = self.backend.prepare(raw)
+        # Serialize the final tiny native start with content/recording admission.
+        with _audio_lock:
+            if not _audio_owners and not self.closed.is_set() and valid():
+                self._tone_uncertain = True
+                self.backend.play(path)
+                self._tone_uncertain = False
+                return True
+        return False
+
+    def _speak(self, request, sequence):
+        with _audio_lock:
+            if not self.quiescent:
+                self.notice = 'Progress audio has not confirmed silence; further notices were withheld.'
+                return
+            if _audio_owners or self.closed.is_set() or sequence != self._sequence or not request.valid():
+                return
+            cancel = self._voice_cancel = threading.Event()
+            self._voice_provider = request.provider
+
+        def cancelled():
+            return (cancel.is_set() or self.closed.is_set() or sequence != self._sequence
+                    or not request.valid() or progress_audio_suppressed())
+
+        def admit(start):
+            with _audio_lock:
+                return False if cancelled() else start()
+
+        try:
+            if request.segments:
+                if not self._tone(request.segments, request.volume, lambda: not cancelled()):
+                    return
+                # Wait only on this feedback worker, then explicitly stop the
+                # owned tone before admitting the independently owned voice.
+                cancel.wait(sum(milliseconds for _, milliseconds in request.segments) / 1000)
+                with _audio_lock:
+                    if self.backend is not None:
+                        self._tone_uncertain = True
+                        self.backend.stop()
+                        self._tone_uncertain = False
+            if not cancelled():
+                request.provider.speak_progress(request.text, volume=request.volume / 100,
+                    cancelled=cancelled, admit=admit)
+                self.notice = request.provider.last_notice
+        finally:
+            with _audio_lock:
+                if request.provider.quiescent:
+                    self._voice_provider = None
+                # A failed native close keeps this reference and its PCM alive.
+                # A later content request must continue waiting/refuse safely.
 
     def _work(self):
         try:
             while not self.closed.is_set():
                 try:
-                    segments, volume, valid = self.mailbox.get(timeout=.2)
+                    sequence, request = self.mailbox.get(timeout=.2)
                 except queue.Empty:
                     continue
                 try:
-                    if not valid():
-                        continue
-                    raw = tone_wave(segments, volume)
-                    if self.backend is None:
-                        self.backend = self.backend_factory()
-                    path = self.backend.prepare(raw)
-                    # The same lock serializes preview admission with the tiny
-                    # asynchronous start call. A queued tone cannot replace a
-                    # preview after the preview's admission flag has been set.
-                    with _audio_lock:
-                        if not _audio_owners and not self.closed.is_set() and valid():
-                            self.backend.play(path)
-                except (OSError, RuntimeError, ValueError):
-                    continue  # Notifications never fail the actual operation.
+                    if isinstance(request, _SpeechRequest):
+                        self._speak(request, sequence)
+                    else:
+                        segments, volume, valid = request
+                        if sequence == self._sequence and valid():
+                            self._tone(segments, volume, lambda: sequence == self._sequence and valid())
+                except Exception:
+                    self.notice = 'Progress sound could not be delivered. The operation result is unchanged.'
         finally:
+            self.silence()
             with _audio_lock:
+                if self._voice_provider is not None:
+                    self._voice_provider.close()
                 if self.backend is not None:
                     try:
                         self.backend.close()
+                        self._tone_uncertain = False
                     except (OSError, RuntimeError):
-                        pass
+                        self._tone_uncertain = True
 
     def silence(self):
         with _audio_lock:
+            self._voice_cancel.set()
             if self.backend is not None:
                 try:
                     self.backend.stop()
+                    self._tone_uncertain = False
                 except (OSError, RuntimeError):
-                    pass
+                    self._tone_uncertain = True
 
     def close(self):
         self.closed.set()
@@ -468,3 +562,48 @@ def set_media_active(owner, active):
 def progress_audio_suppressed():
     with _audio_lock:
         return bool(_audio_owners)
+
+
+
+def request_progress_voice(provider, text, volume, valid=lambda: True, *, segments=()):
+    """Queue only the caller's explicitly selected local voice, never discover one."""
+    global _dispatcher
+    with _audio_lock:
+        if _audio_owners:
+            return False
+        if _dispatcher is None:
+            _dispatcher = ToneDispatcher()
+        return _dispatcher.request_voice(provider, text, volume, valid, segments=segments)
+
+
+def cancel_progress_voice(provider):
+    with _audio_lock:
+        if _dispatcher is not None and _dispatcher._voice_provider is provider:
+            _dispatcher._voice_cancel.set()
+
+
+def progress_audio_quiescent():
+    """Native silence observation used after media admission has muted feedback."""
+    with _audio_lock:
+        return _dispatcher is None or _dispatcher.quiescent
+
+
+def progress_sound_notice():
+    with _audio_lock:
+        return '' if _dispatcher is None else _dispatcher.notice
+
+
+
+def shutdown_progress_feedback():
+    """Bounded process-exit cleanup for the one owned notification worker."""
+    with _audio_lock:
+        dispatcher = _dispatcher
+    if dispatcher is None:
+        return True
+    dispatcher.close()
+    if threading.current_thread() is not dispatcher.thread:
+        dispatcher.thread.join(timeout=35)
+    return not dispatcher.thread.is_alive() and dispatcher.quiescent
+
+
+atexit.register(shutdown_progress_feedback)

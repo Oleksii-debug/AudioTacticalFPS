@@ -129,8 +129,8 @@ def main():
                                if isinstance(item, wx.Dialog) and item.GetTitle() == 'Progress sound settings']
                     controls = {item.GetName(): item for item in descendants(dialog)}
                     mode = controls['Application progress output']
-                    volume = controls['Progress tone volume']
-                    interval = controls['Minimum progress tone interval in seconds']
+                    volume = controls['Progress sound volume']
+                    interval = controls['Minimum progress sound interval in seconds']
                     check('saved settings load into the native dialog',
                           mode.GetSelection() == 1 and volume.GetValue() == 37 and interval.GetValue() == 9)
                     mode.SetSelection(0)

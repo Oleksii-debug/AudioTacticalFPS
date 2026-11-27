@@ -116,7 +116,7 @@ def test_preferences_default_off_roundtrip_and_allowlisted_snapshot(tmp_path):
 
 
 @pytest.mark.parametrize('key,value', [
-    ('version', True), ('version', 2), ('mode', 'speech'), ('mode', []),
+    ('version', True), ('version', 3), ('mode', 'speech'), ('mode', []),
     ('volume', True), ('volume', 101), ('interval_seconds', 0),
     ('interval_seconds', 61), ('muted', 1), ('background', 'yes'), ('secret', 'unused'),
 ])
