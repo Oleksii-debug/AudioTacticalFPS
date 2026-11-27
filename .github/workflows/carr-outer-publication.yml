@@ -1,0 +1,69 @@
+name: CARR actual import publication boundary
+
+on:
+  push:
+    branches: [carr/outer-import-closure-411a-20261127]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-worker-boundary:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install pinned application dependencies
+        run: |
+          New-Item -ItemType Directory -Force 'ci-outer-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-outer-results/tested-commit.txt'
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-outer-results/tested-tree.txt'
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Reproduce the old actual post-commit cancellation failure
+        run: |
+          $env:PYTHONPATH = (Resolve-Path 'src').Path
+          python -c "import subprocess,pathlib; p=pathlib.Path('src/carr_library/ingest/worker.py'); p.write_bytes(subprocess.check_output(['git','show','fb06fa9f891a0301dd4b824b79774268f9e78561:carr-library/src/carr_library/ingest/worker.py']))"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          try {
+            python -B -m pytest -q tests/ingest/test_worker_publication_boundary.py -k "durable_publication and cancel and docx" --junitxml=ci-outer-results/baseline.xml 2>&1 | Tee-Object 'ci-outer-results/baseline.txt'
+            $baselineExit = $LASTEXITCODE
+            if ($baselineExit -ne 1) { throw 'The actual predecessor did not reproduce the expected regression.' }
+            python -c "import xml.etree.ElementTree as E; r=E.parse('ci-outer-results/baseline.xml'); c=list(r.iter('testcase')); assert len(c)==1 and c[0].find('failure') is not None and c[0].find('error') is None and c[0].find('skipped') is None; t=c[0].find('failure').text; assert 'cancelled' in t and 'complete' in t; print('Actual predecessor late-cancel regression reproduced.')"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            git checkout -- src/carr_library/ingest/worker.py
+          }
+      - name: Require actual process, committed data, cancellation and replay checks
+        run: |
+          python scripts/ci_check.py tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_isolated_launch.py tests/ingest/test_import_publication_point.py 2>&1 | Tee-Object 'ci-outer-results/required-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: carr-actual-import-publication-boundary
+          path: carr-library/ci-outer-results/
+          retention-days: 7
