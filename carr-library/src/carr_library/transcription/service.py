@@ -23,6 +23,7 @@ from .models import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, encoded_output
                      fingerprint, settings as validate_settings, validated_result,
                      worker_settings)
 from .runtime import file_identity, inspect_runtime, stopped, _stamp
+from . import verified_protocol
 
 SCHEMA = 'resonance-transcription-job/1'
 MAX_SOURCES = 512
@@ -332,7 +333,9 @@ class TranscriptionService:
                 raise PermissionError('Choose an explicitly reviewed local runtime first.')
             previous = self._profile(state['profile_id'])
             if (profile['model_content_fingerprint'] != previous['model_content_fingerprint'] or
-                    profile['worker_identity'] != previous['worker_identity']):
+                    profile['worker_identity'] != previous['worker_identity'] or
+                    profile.get('protocol') != previous.get('protocol') or
+                    profile.get('verified_implementation', [])[:2] != previous.get('verified_implementation', [])[:2]):
                 raise ValueError('Resuming requires the same model content and worker; create a new job for a different engine/model.')
             if profile['fingerprint'] != previous['fingerprint'] or state.get('restored'):
                 worker = job_root / 'worker'
@@ -369,7 +372,7 @@ class TranscriptionService:
             if state.get('recovery_review_required') and not state.get('restored'):
                 raise RuntimeError('Confirm the interrupted worker stopped before resuming.')
             atomic_json(job_root / 'control.json', {'action': 'run'}, replace=True)
-            for name in ('pause.flag', 'stop.flag', 'job_status.json'):
+            for name in ('pause.flag', 'stop.flag', 'cancel.flag', 'job_status.json'):
                 path = job_root / 'worker' / name
                 if path.exists() or path.is_symlink():
                     local_path(path, root=job_root, exists=True).unlink()
@@ -439,12 +442,55 @@ class TranscriptionService:
         state['done'] = len(state['results'])
         self._save(state)
 
+    def _verified_reader(self, state, profile, expected_settings, *, sources=None, status=None):
+        worker_root = self._job_root(state['id']) / 'worker'
+        if status is None:
+            status, _ = verified_protocol.read_json(worker_root / 'job_status.json', maximum=256 * 1024)
+        selected = state['sources'] if sources is None else sources
+        bound = {str(self._source_path(state, source)): source for source in selected}
+        return verified_protocol.ReceiptReader(worker_root,
+            verified_protocol.result_directory(worker_root, status), bound, expected_settings, profile)
+
+    def _admit_verified_results(self, state, profile, expected_settings):
+        worker_root = self._job_root(state['id']) / 'worker'
+        if not (worker_root / 'job_status.json').exists():
+            return  # No guessed result namespace or loose-cache adoption.
+        accepted = {result['source_id'] for result in state['results']}
+        sources = [source for source in state['sources'] if source['id'] not in accepted]
+        if not sources:
+            return
+        reader = self._verified_reader(state, profile, expected_settings, sources=sources)
+        by_id = {source['id']: source for source in sources}
+        for checkpoint in reader.checkpoints():
+            source = by_id[checkpoint.source_id]
+            provenance = {
+                'derived': True, 'citation_authority': False, 'quality': 'unqualified',
+                'source_sha256': source['sha256'], 'source_bytes': source['size'],
+                'profile_id': profile['id'], 'profile_fingerprint': profile['fingerprint'],
+                'model_content_fingerprint': profile['model_content_fingerprint'],
+                'worker_sha256': profile['worker_identity']['sha256'],
+                'python_sha256': profile['python_identity']['sha256'],
+                'runtime_identity_sha256': fingerprint(checkpoint.request['runtime']),
+                'worker_checkpoint_sha256': checkpoint.cache['sha256'],
+                'worker_export_receipt_sha256': checkpoint.receipt['sha256'],
+                'worker_protocol': verified_protocol.PROTOCOL,
+                'settings': state['settings'],
+                'effective_settings': {**expected_settings, **checkpoint.execution},
+                'translation_target': 'en' if expected_settings['task'] == 'translate' else None,
+                'diarization': False,
+            }
+            self._publish_result(state, source, checkpoint.result, provenance)
+
     def _admit_results(self, state, profile, expected_settings):
         """Admit atomic worker recognition checkpoints into app-owned receipts.
 
         Accepted artifacts live outside cache, so ordinary data backup preserves
         them even if the optional worker cache is omitted.
         """
+        if profile.get('protocol') == verified_protocol.PROTOCOL:
+            return self._admit_verified_results(state, profile, expected_settings)
+        if profile.get('protocol') != 'local-file-job/1':
+            raise ValueError('Unsupported reviewed transcription worker protocol.')
         root = self._job_root(state['id'])
         cache_root = root / 'worker' / 'logs' / 'cache'
         if not cache_root.exists():
@@ -518,6 +564,8 @@ class TranscriptionService:
                 raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
             profile = self._profile(state['profile_id'])
             stop_started, last_report, last_admit = None, None, 0.0
+            worker_run_id = None
+            verified = profile.get('protocol') == verified_protocol.PROTOCOL
             expected_settings = worker_settings(state['settings'], profile['model_name'])
             worker_root = job_root / 'worker'
             worker_root.mkdir(exist_ok=True)
@@ -542,7 +590,7 @@ class TranscriptionService:
                 return selected
 
             def poll():
-                nonlocal stop_started, last_admit
+                nonlocal stop_started, last_admit, worker_run_id
                 selected = action()
                 if selected != 'run':
                     state['status'] = 'pausing' if selected == 'pause' else 'cancelling'
@@ -551,6 +599,8 @@ class TranscriptionService:
                         atomic_bytes(worker_root / 'stop.flag', b'1', replace=(worker_root / 'stop.flag').exists())
                         if selected == 'pause':
                             atomic_bytes(worker_root / 'pause.flag', b'1', replace=(worker_root / 'pause.flag').exists())
+                        elif verified:
+                            atomic_bytes(worker_root / 'cancel.flag', b'1', replace=(worker_root / 'cancel.flag').exists())
                         self._save(state)
                     report('Stopping at the next worker checkpoint')
                     return time.monotonic() - stop_started >= self.stop_grace
@@ -564,6 +614,13 @@ class TranscriptionService:
                     for name in ('done', 'failed', 'total'):
                         if type(current.get(name)) is not int or not 0 <= current[name] <= len(state['sources']):
                             raise ValueError('The worker returned invalid progress counts.')
+                    if verified:
+                        run_id = current.get('run_id')
+                        if not isinstance(run_id, str) or not re.fullmatch('[0-9a-f]{32}', run_id):
+                            raise ValueError('The verified worker must identify its current run.')
+                        if worker_run_id is not None and worker_run_id != run_id:
+                            raise ValueError('The worker run identity changed during execution.')
+                        worker_run_id = run_id
                     state['current'] = str(current.get('current', ''))[:2048]
                 if time.monotonic() - last_admit >= .25:
                     self._admit_results(state, profile, expected_settings)
@@ -582,12 +639,32 @@ class TranscriptionService:
                     self._verify_source(state, source, cancel=lambda: action() != 'run')
                 self._admit_results(state, profile, expected_settings)
                 pending = [source for source in state['sources'] if source['id'] not in {x['source_id'] for x in state['results']}]
+                if verified and not pending:
+                    status_path = worker_root / 'job_status.json'
+                    previous_status = read_json(status_path) if status_path.exists() else {}
+                    if previous_status.get('result_state') == 'completed' and previous_status.get('completion') is not None:
+                        planned_ids = state.get('worker_plan_sources', [source['id'] for source in state['sources']])
+                        if (type(planned_ids) is not list or not planned_ids or
+                                len(set(planned_ids)) != len(planned_ids)):
+                            raise ValueError('Invalid previous worker source plan.')
+                        planned = [source for source in state['sources'] if source['id'] in planned_ids]
+                        if len(planned) != len(planned_ids):
+                            raise ValueError('Previous worker plan refers to an unknown retained input.')
+                        reader = self._verified_reader(state, profile, expected_settings,
+                                                       sources=planned, status=previous_status)
+                        _, completion = reader.completion(previous_status, job_name=state['title'])
+                        state['worker_completion'] = {'run_id': previous_status['run_id'], 'receipt': completion,
+                            'source_ids': planned_ids, 'profile_fingerprint': profile['fingerprint']}
+                    else:
+                        # All sealed inputs can survive a failed final write.
+                        # Re-run the cached handoff to produce actual completion.
+                        pending = list(state['sources'])
                 if not pending:
                     state.update(status='complete', done=state['total'], error='')
                     self._save(state)
                     report('All requested transcript exports verified', terminal=True)
                     return state
-                for name in ('pause.flag', 'stop.flag', 'job_status.json'):
+                for name in ('pause.flag', 'stop.flag', 'cancel.flag', 'job_status.json'):
                     path = worker_root / name
                     if path.exists() or path.is_symlink():
                         local_path(path, root=worker_root, exists=True).unlink()
@@ -597,6 +674,8 @@ class TranscriptionService:
                     'results_root': str(worker_root / 'results'), 'settings': expected_settings}
                 atomic_json(worker_root / 'job_config.json', configuration, replace=(worker_root / 'job_config.json').exists())
                 atomic_json(worker_root / 'settings_live.json', {}, replace=(worker_root / 'settings_live.json').exists())
+                if verified:
+                    state['worker_plan_sources'] = [source['id'] for source in pending]
                 state.update(status='running', error='', recovery_review_required=False, restored=False)
                 self._save(state)
                 report('Waiting for local CPU, memory and disk resources')
@@ -625,8 +704,13 @@ class TranscriptionService:
                         return poll()
                     # Isolated mode ignores PYTHON* environment variables.
                     # Set UTF-8 explicitly for protocol paths and worker pipes.
-                    run_process([profile['python_executable'], '-I', '-X', 'utf8', profile['worker_path'],
-                                 '--job-dir', str(worker_root)], budget=self.budget,
+                    if verified:
+                        from .verified_runtime import launch_arguments
+                        arguments = launch_arguments(profile, worker_root, nonce=uuid4().hex)
+                    else:
+                        arguments = [profile['python_executable'], '-I', '-X', 'utf8',
+                                     profile['worker_path'], '--job-dir', str(worker_root)]
+                    run_process(arguments, budget=self.budget,
                                 cancelled=checked_poll, watch=(worker_root / 'logs', worker_root / 'results'),
                                 env=environment, cwd=worker_root)
                 selected = action()
@@ -636,6 +720,13 @@ class TranscriptionService:
                     self._verify_profile(profile)
                     self._admit_results(state, profile, expected_settings)
                     status = read_json(worker_root / 'job_status.json')
+                    if verified:
+                        reader = self._verified_reader(state, profile, expected_settings,
+                                                       sources=pending, status=status)
+                        _, completion = reader.completion(status, run_id=worker_run_id, job_name=state['title'])
+                        state['worker_completion'] = {'run_id': status['run_id'], 'receipt': completion,
+                            'source_ids': [source['id'] for source in pending],
+                            'profile_fingerprint': profile['fingerprint']}
                     if status.get('state') != 'завершено' or status.get('failed') != 0 or state['done'] != state['total']:
                         raise ValueError('The worker exited without a complete set of verified requested results.')
                     state['status'] = 'complete'
@@ -793,7 +884,7 @@ def prepare_restored_state(state_root, destination_root=None):
                 regular(local_path(archived, root=root, exists=True), directory=True)
                 workspaces.append(archived)
         for worker in workspaces:
-            for name in ('job_config.json', 'settings_live.json', 'job_status.json', 'pause.flag', 'stop.flag'):
+            for name in ('job_config.json', 'settings_live.json', 'job_status.json', 'pause.flag', 'stop.flag', 'cancel.flag'):
                 candidate = worker / name
                 if candidate.exists() or candidate.is_symlink():
                     local_path(candidate, root=root, exists=True).unlink()

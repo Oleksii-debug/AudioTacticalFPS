@@ -249,4 +249,9 @@ def inspect_runtime(python_executable, worker_path, model_directory, *, cancel=N
     }
     manifest['model_content_fingerprint'] = fingerprint(manifest['model_files'])
     manifest['fingerprint'] = fingerprint(manifest)
+    # Presence explicitly opts into a separately versioned protocol. A damaged
+    # descriptor is an error; it must never silently fall back to legacy cache.
+    if os.path.lexists(worker.with_suffix('.protocol.json')):
+        from .verified_runtime import extend_profile
+        return extend_profile(manifest, cancel=cancel, progress=progress)
     return manifest
