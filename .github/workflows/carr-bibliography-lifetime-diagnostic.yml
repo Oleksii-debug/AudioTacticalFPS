@@ -1,0 +1,76 @@
+name: Native bibliography lifetime diagnostic
+
+on:
+  push:
+    branches: [carr/native-bibliography-lifetime-fe7760]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bibliography-lifetime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  paired-diagnostic:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: product/carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out exact diagnostic tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: diagnostic
+          persist-credentials: false
+      - name: Check out the pinned production source for both processes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: de4dd799c74d28afd0b13891484c44f3f4f245ac
+          path: product
+          persist-credentials: false
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install one source package and environment for both children
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'bibliography-lifetime-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "DIAGNOSTIC_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force ci-results | Out-Null
+          git rev-parse HEAD | Set-Content ci-results/tested-source-commit.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record both independent native processes without release acceptance
+        run: |
+          $runner = Join-Path $env:GITHUB_WORKSPACE 'diagnostic/carr-library/scripts/windows_bibliography_lifetime_diagnostic.py'
+          & $env:DIAGNOSTIC_PYTHON -I -B $runner --source-project (Get-Location).Path --output-dir ci-results 2>&1 | Tee-Object ci-results/diagnostic-runner.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve diagnostic sources and raw process evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: bibliography-lifetime-diagnostic-${{ github.sha }}-${{ github.run_attempt }}
+          path: product/carr-library/ci-results/
+          if-no-files-found: warn
+          retention-days: 7
