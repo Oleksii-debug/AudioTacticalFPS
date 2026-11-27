@@ -102,8 +102,12 @@ class WindowsHotkeyAPI:
         virtual = 0x70 + int(key[1:]) - 1 if key.startswith('F') else ord(key)
         return bool(self.api.RegisterHotKey(self.handle, identifier, modifiers, virtual))
 
-    def unregister(self, identifier):
-        if self.frame.GetHandle() != self.handle:
+    def unregister(self, identifier, *, owner=None):
+        # A top-level Destroy event may expose a current wx.Window proxy after
+        # the original wx.Frame wrapper has died. Use only that event's verified
+        # native owner, never an unverified saved HWND after destruction.
+        owner = self.frame if owner is None else owner
+        if owner.GetHandle() != self.handle:
             raise ValueError('The native global-shortcut owner changed before release.')
         return bool(self.api.UnregisterHotKey(self.handle, identifier))
 
@@ -119,8 +123,10 @@ class GlobalHotkeys:
         self.native, self._dispatching = native, False
         self._registered, self._bindings = {}, {}
         self._native_event = getattr(self.wx, 'EVT_HOTKEY', None)
+        self._bound, self._cleanup_complete = False, False
         if self._native_event is not None:
             self.frame.Bind(self._native_event, self._event)
+            self._bound = True
 
     def validate(self, bindings):
         values = DesktopPreferences(global_shortcuts=bindings).global_shortcuts
@@ -160,12 +166,14 @@ class GlobalHotkeys:
                 raise RuntimeError(str(exc) + ' Global-key cleanup needs attention: ' + str(cleanup)) from exc
             raise
 
-    def disable(self):
+    def disable(self, *, _native_owner=None):
         self.enabled = False  # Queued events lose authority before cleanup begins.
         failures = []
         for identifier in tuple(self._registered):
             try:
-                if not self.native.unregister(identifier):
+                released = (self.native.unregister(identifier) if _native_owner is None
+                            else self.native.unregister(identifier, owner=_native_owner))
+                if not released:
                     raise RuntimeError('Windows did not confirm shortcut release.')
                 del self._registered[identifier]
             except Exception as exc:
@@ -199,13 +207,27 @@ class GlobalHotkeys:
         finally:
             self._dispatching = False
 
-    def close(self):
+    def close(self, *, _native_owner=None):
+        if self._cleanup_complete:
+            return
         self.closed = True
+        errors = []
         try:
-            self.disable()
-        finally:
-            if self._native_event is not None:
-                self.frame.Unbind(self._native_event, handler=self._event)
+            self.disable(_native_owner=_native_owner)
+        except Exception as exc:
+            errors.append(exc)
+        if self._bound:
+            try:
+                owner = self.frame if _native_owner is None else _native_owner
+                owner.Unbind(self._native_event, handler=self._event)
+            except Exception as exc:
+                errors.append(exc)
+            else:
+                self._bound = False
+        self._cleanup_complete = not errors
+        if errors:
+            raise RuntimeError('Global-key cleanup needs attention: '
+                               + '; '.join(str(exc) for exc in errors)) from errors[0]
 
 
 class DesktopIntegration:
@@ -214,6 +236,9 @@ class DesktopIntegration:
             import wx as wx_module
         self.wx, self.frame = wx_module, frame
         self.closed, self.tray, self.reader = False, None, None
+        self._cleanup_complete = False
+        self._native_id, self._native_handle = frame.GetId(), frame.GetHandle()
+        self._timer_bound = self._destroy_bound = False
         self._assistant_reader = None
         self.items = {}
         self.store = DesktopPreferenceStore(frame.library.root)
@@ -225,7 +250,9 @@ class DesktopIntegration:
         self.watch = ClipboardWatch(self._read, self.scope, frame.report)
         self.timer = self.wx.Timer(frame)
         self.frame.Bind(self.wx.EVT_TIMER, self._tick, self.timer)
+        self._timer_bound = True
         self.frame.Bind(self.wx.EVT_WINDOW_DESTROY, self._destroyed)
+        self._destroy_bound = True
         self.hotkeys = GlobalHotkeys(frame, frame.keyboard_commands, self.invoke, wx_module=self.wx)
 
     def scope(self):
@@ -484,42 +511,84 @@ class DesktopIntegration:
         if self.preferences.tray_icon:
             self.set_tray(True)
 
-    def close(self):
-        if self.closed:
+    def close(self, *, _native_owner=None):
+        if self._cleanup_complete:
             return
+        # Revoke every action before native cleanup. A failed release retains
+        # ownership for a later close / the genuine Destroy event to retry.
         self.closed = True
         self.reader = None
         self._assistant_reader = None
-        self.watch.close()
-        self.timer.Stop()
-        self.frame.Unbind(self.wx.EVT_TIMER, source=self.timer, handler=self._tick)
-        self.frame.Unbind(self.wx.EVT_WINDOW_DESTROY, handler=self._destroyed)
         errors = []
-        try:
-            self.hotkeys.close()
-        except Exception as exc:
-            errors.append(str(exc))
-        if self.tray is not None:
-            old, self.tray = self.tray, None
-            old.active = False
+
+        def attempt(label, action):
             try:
-                if old.IsIconInstalled() and not old.RemoveIcon():
-                    raise RuntimeError('The desktop did not confirm tray-icon removal.')
+                action()
             except Exception as exc:
-                errors.append(str(exc))
-            finally:
-                old.Destroy()
+                errors.append((label, exc))
+                return False
+            return True
+
+        attempt('Clipboard watch', self.watch.close)
+        attempt('Clipboard timer', self.timer.Stop)
+        owner, release_owner = self.frame, None
+        if _native_owner is not None:
+            try:
+                if (_native_owner.GetId() != self._native_id
+                        or _native_owner.GetHandle() != self._native_handle):
+                    raise ValueError('The desktop destruction owner changed.')
+            except Exception as exc:
+                errors.append(('Native owner', exc))
+            else:
+                owner = release_owner = _native_owner
+        if self._timer_bound:
+            if attempt('Timer binding', lambda: owner.Unbind(
+                    self.wx.EVT_TIMER, source=self.timer, handler=self._tick)):
+                self._timer_bound = False
+        attempt('Global shortcuts', lambda: self.hotkeys.close(_native_owner=release_owner))
+        if self.tray is not None:
+            old = self.tray
+
+            def close_tray():
+                old.active = False
+                if old:
+                    if old.IsIconInstalled() and not old.RemoveIcon():
+                        raise RuntimeError('The desktop did not confirm tray-icon removal.')
+                    old.Destroy()
+                self.tray = None
+
+            attempt('Tray icon', close_tray)
+        # Keep the actual Destroy callback bound if any owner still needs
+        # cleanup; normal Close reports the error and may then destroy the frame.
+        if not errors and self._destroy_bound:
+            if attempt('Destruction binding', lambda: owner.Unbind(
+                    self.wx.EVT_WINDOW_DESTROY, handler=self._destroyed)):
+                self._destroy_bound = False
+        self._cleanup_complete = not errors
         if errors:
-            raise RuntimeError('Desktop cleanup needs attention: ' + '; '.join(errors))
+            message = 'Desktop cleanup needs attention: ' + '; '.join(
+                label + ': ' + str(exc) for label, exc in errors)
+            self.cleanup_error = message
+            raise RuntimeError(message) from errors[0][1]
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.frame:
-            try:
-                self.close()
-            except Exception as exc:
-                # Native destruction cannot safely write another UI control.
-                self.cleanup_error = str(exc)
-        event.Skip()
+        try:
+            if event.GetId() == self._native_id:
+                errors = []
+                try:
+                    owner = event.GetEventObject()
+                except Exception as exc:
+                    owner = None
+                    errors.append('Native destruction owner: ' + str(exc))
+                try:
+                    self.close(_native_owner=owner)
+                except Exception as exc:
+                    errors.append(str(exc))
+                if errors:
+                    # Native destruction cannot safely write another UI control.
+                    self.cleanup_error = '; '.join(errors)
+        finally:
+            event.Skip()
 
 
 def install_desktop_integration(frame):
