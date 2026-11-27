@@ -13,8 +13,8 @@ historical v3/v4 state-folder schemas are dispatched explicitly, never guessed. 
 publications share the application writer and state guards; a backup may borrow
 only its own live same-process/thread execution guard.
 Legacy version 1 backups and newer backups are accepted only for an exact
-supported V3 or V4 schema. V3 snapshots are restored unchanged; opening the
-restored library performs the normal checked upgrade to V4.
+supported V3, V4 or V5 database schema. Older snapshots are restored unchanged;
+opening the restored library performs the normal checked upgrade to V5.
 Restoration always creates a new data directory and never merges or overwrites.
 """
 from contextlib import closing, contextmanager, ExitStack, nullcontext
@@ -41,7 +41,12 @@ from .backup_historical import (
     state_paths as _historical_files, validate_state_tree as _validate_historical,
     retain_state as _retain_historical,
 )
-from .storage.revisions import Storage
+from .operations.policy_backup import (
+    MAX_BYTES as MAX_RESOURCE_POLICY,
+    is_state_path as _resource_policy_path, state_paths as _resource_policy_files,
+    validate_state_tree as _validate_resource_policy, snapshot_guard as _resource_policy_guard,
+)
+from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
@@ -261,7 +266,7 @@ def _validate_transcriptions(db, root, *, cancelled=lambda: False):
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
     if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
-            or _translation_path(value) or _transcription_path(value)):
+            or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -342,6 +347,7 @@ def _sidecar_info(root, relative):
              _assistant_limit(relative) if _assistant_path(relative) else
              _translation_adapter().state_limit(relative) if _translation_path(relative) else
              _transcription_adapter().state_limit(relative) if _transcription_path(relative) else
+             MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
     minimum = 0 if (_historical_path(relative) or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))
         or _transcription_path(relative) and _transcription_adapter().allows_empty(relative)) else 1
@@ -395,7 +401,7 @@ def _assistant_documents(root, max_files=MAX_SIDECAR_FILES):
 
 
 @contextmanager
-def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
+def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: False):
     from filelock import FileLock, Timeout
     from .audio.jobs import project_lock
     from .assistant.state import snapshot_job_guard, state_write_guard
@@ -403,6 +409,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
     assistant = _assistant_documents(root, max_files)
     translation = _translation_files(root)
     transcription = ()
+    resource_policy = _resource_policy_files(root, cancelled=cancelled)
     with ExitStack() as stack:
         directory = root / 'state' / 'assistant'
         if os.path.lexists(directory):
@@ -430,6 +437,9 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
             except RuntimeError as exc:
                 raise RestoreError('A supplied transcription worker is active; retry the backup when it is idle.') from exc
             transcription = _transcription_files(root)
+        stack.enter_context(_resource_policy_guard(root, cancelled=cancelled))
+        if _resource_policy_files(root, cancelled=cancelled) != resource_policy:
+            raise RestoreError('Resource allowances changed before backup; retry after the update.')
         keymap_lock = root / 'keyboard-shortcuts.json.lock'
         _regular_if_present(keymap_lock, empty=True)
         try:
@@ -453,7 +463,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES):
         def verify():
             if (_projects(root) != projects or _assistant_documents(root, max_files) != assistant
                     or _translation_files(root) != translation
-                    or _transcription_files(root) != transcription):
+                    or _transcription_files(root) != transcription
+                    or _resource_policy_files(root, cancelled=cancelled) != resource_policy):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
@@ -584,6 +595,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
     for path in _translation_files(root, cancelled=cancelled):
         add(path)
     for path in _transcription_files(root, cancelled=cancelled):
+        add(path)
+    for path in _resource_policy_files(root, cancelled=cancelled):
         add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
@@ -735,7 +748,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
     """
     _sidecar_budget(max_sidecar_files, max_sidecar_bytes, cancelled)
     destination = _destination(destination, app.root)
-    with exclusive_writer(app.root), _locked_sidecars(app.root, max_sidecar_files) as check_projects:
+    with exclusive_writer(app.root), _locked_sidecars(app.root, max_sidecar_files, cancelled=cancelled) as check_projects:
         _plain(app.database)
         if os.path.lexists(app.root / INCOMPLETE):
             raise RestoreError('the source library restore is incomplete')
@@ -743,12 +756,12 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             stage = Path(tmp)
             inventory = _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled)
             snapshot = stage / DATABASE
-            with closing(Storage(app.database, schema_version=4)) as storage:
+            with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
                 storage.backup(snapshot)
             size = _plain(snapshot).st_size
             if not 0 < size <= MAX_DATABASE:
                 raise RestoreError('database exceeds backup size limit')
-            with closing(Storage(snapshot, schema_version=4)) as snapshot_storage:
+            with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                 entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
@@ -757,6 +770,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_assistants(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_historical(app.root, cancelled=cancelled)
                 _validate_translations(snapshot_storage.db, app.root, cancelled=cancelled)
+                _validate_resource_policy(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
@@ -787,7 +801,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 raise RestoreError('Reading/audio state changed during final backup verification.')
             check_projects()
             managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
-            manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=4,
+            manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
@@ -906,7 +920,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             fields.add('pending')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4)
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 2:
@@ -979,6 +993,8 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             total += entry['size_bytes']
             if total > max_sidecar_bytes:
                 raise RestoreError('sidecar manifest byte limit')
+            if _resource_policy_path(entry[field]) and entry['size_bytes'] > MAX_RESOURCE_POLICY:
+                raise RestoreError('resource policy sidecar byte limit')
             if _reader_path(entry[field]):
                 reader_total += entry['size_bytes']
                 reader_count += 1
@@ -1083,6 +1099,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
             _validate_assistants(storage.db, checked_root, cancelled=cancelled)
             _validate_historical(checked_root, cancelled=cancelled)
             _validate_translations(storage.db, checked_root, cancelled=cancelled)
+            _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
             _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,

@@ -258,6 +258,8 @@ def _legacy(tmp_path, version):
 def test_legacy_state_is_inert_hash_bound_and_survives_current_rebackup(tmp_path, version):
     _, workspace, source, batch, folder, manifest, digest, values = _legacy(tmp_path, version)
     before = _bytes(folder)
+    # Archive family versions and the contained catalog version are independent.
+    assert manifest['version'] == version and manifest['schema_version'] == 5
     assert verify_backup(folder, digest) == manifest
     target = restore_backup(folder, tmp_path / 'restored', digest)
     assert _bytes(folder) == before

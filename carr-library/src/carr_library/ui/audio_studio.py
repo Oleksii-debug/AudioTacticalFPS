@@ -206,14 +206,14 @@ class StudioController:
 
     def _registry(self):
         if self.registry is None:
-            from ..audio.engines import default_registry
-            self.registry = default_registry(ffmpeg=resolve_ffmpeg(self.ffmpeg))
+            from ..runtime_settings import configured_voice_registry
+            self.registry = configured_voice_registry(self.private_root, ffmpeg=resolve_ffmpeg(self.ffmpeg))
         return self.registry
 
     def voices(self, *, reload=False, cancelled=None):
         if reload:
-            from ..audio.engines import default_registry
-            self.registry = default_registry(ffmpeg=resolve_ffmpeg(self.ffmpeg))
+            from ..runtime_settings import configured_voice_registry
+            self.registry = configured_voice_registry(self.private_root, ffmpeg=resolve_ffmpeg(self.ffmpeg))
             self._owns_registry = True
         registry = self._registry()
         voices = registry.voices() if cancelled is None else registry.voices(cancelled=cancelled)
@@ -471,12 +471,22 @@ class StudioController:
             ffmpeg = resolve_ffmpeg(self.ffmpeg)
             if ffmpeg is None or not ffmpeg.is_file():
                 raise ValueError('Install a reviewed local FFmpeg build or choose its executable in Production.')
-            renderer = self.renderer
+            renderer, options = self.renderer, {}
             if renderer is None:
                 from ..audio.production import render_project
+                from ..runtime_settings import EngineProfileStore
                 renderer = render_project
+                # Project scripts retain only a stable profile reference. Local
+                # executable installations come from explicit machine settings.
+                def music_profile(reference, engine, *, cancelled):
+                    return EngineProfileStore(self.private_root).music_manifest(
+                        reference, engine, cancelled=cancelled)
+                options['music_manifest_resolver'] = music_profile
+                from ..operations import ResourceBroker
+                options['broker'] = ResourceBroker.for_app(self.private_root, cancelled=cancelled)
+                options['operation_id'] = 'studio:' + self.project_id
             result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
-                              cancelled=cancelled, on_status=on_status)
+                              cancelled=cancelled, on_status=on_status, **options)
             if not isinstance(result, dict) or result.get('status') != 'complete':
                 raise ValueError('The production service did not confirm a complete audio render.')
             output = _local_path(result.get('output', ''), 'rendered audio file')
@@ -515,7 +525,9 @@ SCRIPT_HELP = (
     '[music mood=calm tempo=90 gain=0.12 seed=0].\n\n'
     'Use installed voice identifiers from the voice list. Unknown directions are rejected. '
     'Natural language directions are read as text unless represented by a supported directive. '
-    'Local music capabilities depend on the configured engine. No models download automatically.\n\n'
+    'Local music capabilities depend on the configured engine. No models download automatically.\n'
+    'Register installed manifests in Local engine profiles. For optional music use the saved '
+    'model_manifest=profiles/<profile-id>.json reference shown there. A project cannot select an executable.\n\n'
     'Ctrl+S: Save project. Ctrl+Shift+S: Save project as. Ctrl+O: Open project. '
     'F6: move to Production. Ctrl+Enter: Preview plan. '
     'Ctrl+Alt+P: pause or resume playback. Ctrl+Alt+Left/Right: seek ten seconds. '

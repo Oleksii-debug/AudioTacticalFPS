@@ -98,16 +98,81 @@ def sha256_file(path, *, cancelled=lambda: False, expected_identity=None):
     return result.hexdigest()
 
 
+def _open_json_file(path):
+    """Read one snapshot without blocking another process's atomic replacement."""
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING;
+    # FILE_FLAG_OPEN_REPARSE_POINT. No delete-on-close or write access is given.
+    handle = create(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        os.set_inheritable(descriptor, False)
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 def read_json(path, *, limit=65536):
     """Read at most the declared budget, rejecting ambiguous JSON objects."""
     if type(limit) is not int or limit < 1:
         raise ValueError('Invalid checkpoint size limit.')
-    with verified_reader(path) as stream:
-        if os.fstat(stream.fileno()).st_size > limit:
+    path = Path(path)
+    # Atomic state writers may replace the name while this reader retains a
+    # complete prior snapshot. Audio payload readers keep their stricter
+    # verified_reader path/identity contract.
+    for _ in range(8):
+        before = regular_file(path)
+        if before.st_nlink != 1:
+            raise ValueError('JSON state cannot have hard-link aliases.')
+        if before.st_size > limit:
             raise ValueError('Audio project manifest is too large.')
-        data = stream.read(limit + 1)
-        if len(data) > limit:
-            raise ValueError('Audio project manifest is too large.')
+        with _open_json_file(path) as stream:
+            opened = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink > 1
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400):
+                raise ValueError('JSON state must be a regular local file without links.')
+            if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                continue
+            # Recheck all path components before consuming the bound handle;
+            # a normal atomic replacement may now have a different inode.
+            if regular_file(path).st_nlink != 1:
+                raise ValueError('JSON state cannot have hard-link aliases.')
+            if opened.st_size > limit:
+                raise ValueError('Audio project manifest is too large.')
+            data = stream.read(limit + 1)
+            if len(data) > limit:
+                raise ValueError('Audio project manifest is too large.')
+            after = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(after.st_mode) or after.st_nlink > 1
+                    or getattr(after, 'st_file_attributes', 0) & 0x400):
+                raise ValueError('JSON state must be a regular local file without links.')
+            if (len(data) != opened.st_size
+                    or (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+                    != (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
+                    or (after.st_nlink == opened.st_nlink and after.st_ctime_ns != opened.st_ctime_ns)):
+                raise ValueError('JSON state changed in place while reading; retry the operation.')
+        break
+    else:
+        raise ValueError('JSON state changed repeatedly while opening; retry the operation.')
 
     def unique(pairs):
         result = {}

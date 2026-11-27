@@ -201,6 +201,7 @@ class TranscriptionDialog:
         if Path(self.service.library_root).absolute() != self.root:
             raise ValueError('Transcription must belong to the selected library.')
         self.sources, self.manifest_path, self.current_job = (), '', None
+        self.runtime_profile = None
         self.definition, self.summary, self.rows = None, None, ()
         self.pause_requested = False
         self.dialog = wx.Dialog(frame, title='Local speech transcription', size=(960, 870),
@@ -237,7 +238,8 @@ class TranscriptionDialog:
         self.runtime_identity = text('Prepared runtime identity; exact match required at Start', readonly=True)
         row = wx.WrapSizer(wx.HORIZONTAL)
         for name, label in (('files', 'Add audio/video &files...'), ('folder', 'Add fol&der...'),
-                            ('remove', '&Remove selected input'), ('manifest', 'Choose runtime &manifest...')):
+                            ('remove', '&Remove selected input'), ('manifest', 'Choose runtime &manifest...'),
+                            ('profiles', 'Pic&k saved runtime...'), ('engine_settings', 'Engine settin&gs...')):
             button = wx.Button(body, label=label)
             button.SetName(label.replace('&', '').replace('...', ''))
             self.buttons[name] = button
@@ -304,7 +306,8 @@ class TranscriptionDialog:
 
     def _bind(self):
         handlers = dict(files=self.add_files, folder=self.add_folder, remove=self.remove_source,
-            manifest=self.choose_manifest, new=self.new, refresh=self.refresh, load=self.load,
+            manifest=self.choose_manifest, profiles=self.choose_profile, engine_settings=self.engine_settings,
+            new=self.new, refresh=self.refresh, load=self.load,
             prepare=self.prepare, start=self.start, pause=self.pause, resume=self.resume,
             stop=lambda event: self.session.stop(), verify=self.verify, reading=self.reading, close=self.close)
         for name, handler in handlers.items():
@@ -336,7 +339,8 @@ class TranscriptionDialog:
         for name in ('files', 'folder'):
             self.buttons[name].Enable(editable)
         self.buttons['remove'].Enable(editable and self.source_list.GetSelection() >= 0)
-        self.buttons['manifest'].Enable(idle)
+        for name in ('manifest', 'profiles', 'engine_settings'):
+            self.buttons[name].Enable(idle)
         for name in ('new', 'refresh'):
             self.buttons[name].Enable(idle)
         self.jobs_list.Enable(idle)
@@ -402,6 +406,7 @@ class TranscriptionDialog:
             if picker.ShowModal() == self.wx.ID_OK:
                 self.session.guard()
                 self.manifest_path = picker.GetPath()
+                self.runtime_profile = None
                 self.manifest.ChangeValue(self.manifest_path)
                 self.controls()
                 self.report('Selected a local manifest. Its entire inventory and exact job identity are checked before execution.')
@@ -409,6 +414,73 @@ class TranscriptionDialog:
             self.report(_error_text(exc))
         finally:
             picker.Destroy()
+
+    def _runtime_for(self, manifest_path, profile):
+        if profile is None:
+            return manifest_path
+        from ..runtime_settings import EngineProfileStore
+        identity, expected = profile
+        reviewed = EngineProfileStore(self.root).admit(
+            identity, engine='supplied-whisper', cancelled=self.session.stopped)
+        if (reviewed.manifest.manifest_sha256 != expected
+                or str(reviewed.manifest.path) != manifest_path):
+            raise ValueError('The saved runtime selection changed. Review and select it again.')
+        return str(reviewed.manifest.path)
+
+    def choose_profile(self, event=None):
+        if self.session.busy:
+            return
+        from ..runtime_settings import EngineProfileStore
+        try:
+            store = EngineProfileStore(self.root)
+            profiles = tuple(row for row in store.snapshot().profiles
+                             if row.enabled and row.engine == 'supplied-whisper')
+            if not profiles:
+                self.report('No enabled transcription runtime is registered. Use Engine settings to review an installed manifest.')
+                return
+            picker = self.wx.SingleChoiceDialog(self.dialog, 'Choose a saved local transcription runtime',
+                'Saved transcription runtimes', [row.name for row in profiles])
+            try:
+                if picker.ShowModal() != self.wx.ID_OK:
+                    return
+                index = picker.GetSelection()
+                if not 0 <= index < len(profiles):
+                    raise ValueError('Choose a saved transcription runtime.')
+                profile = profiles[index]
+            finally:
+                picker.Destroy()
+            self.runtime_profile, self.manifest_path = None, ''
+            self.manifest.ChangeValue('')
+            def selected(reviewed):
+                values = None
+                if self.current_job is None:
+                    values = settings_from_controls(self.fields)
+                    values['model'] = reviewed.manifest.settings['model']
+                    values = validate_settings(values)
+                self.runtime_profile = (profile.id, reviewed.manifest.manifest_sha256)
+                self.manifest_path = str(reviewed.manifest.path)
+                self.manifest.ChangeValue(self.manifest_path)
+                if values is not None:
+                    apply_settings(self.fields, values)
+                    self.runtime_identity.ChangeValue(reviewed.manifest.manifest_sha256)
+                self.controls()
+                self.report('Selected ' + profile.name + '. Prepare and Start recheck the local registration and all runtime files.')
+            self.session.submit('Verifying saved transcription runtime',
+                lambda: store.admit(profile.id, engine='supplied-whisper', cancelled=self.session.stopped),
+                selected, kind='review')
+        except Exception as exc:
+            self.report(_error_text(exc))
+
+    def engine_settings(self, event=None):
+        if self.session.busy:
+            return
+        from .engine_settings import show_engine_settings
+        try:
+            self.session.guard()
+            show_engine_settings(self.frame, parent=self.dialog)
+            self.controls()
+        except Exception as exc:
+            self.report(_error_text(exc))
 
     def _selected_definition(self, identity, definition):
         self.session.guard()
@@ -429,6 +501,7 @@ class TranscriptionDialog:
         self.session.guard()
         self.current_job = self.definition = self.summary = None
         self.sources, self.manifest_path, self.pause_requested = (), '', False
+        self.runtime_profile = None
         self.title.ChangeValue('Local transcription')
         self.manifest.ChangeValue('')
         self.runtime_identity.ChangeValue('')
@@ -464,12 +537,14 @@ class TranscriptionDialog:
                 raise ValueError('Choose New job before changing a prepared request.')
             settings = settings_from_controls(self.fields)
             sources, manifest, title = tuple(self.sources), self.manifest_path, self.title.GetValue()
+            profile = self.runtime_profile
             if not title.strip() or len(title) > 200 or any(ord(char) < 32 for char in title):
                 raise ValueError('Enter a nonempty job title of at most 200 characters.')
             if not sources or not manifest:
                 raise ValueError('Choose explicit inputs and a reviewed local runtime first.')
             def work():
-                identity = self.service.prepare(sources, manifest, settings, title=title,
+                selected_manifest = self._runtime_for(manifest, profile)
+                identity = self.service.prepare(sources, selected_manifest, settings, title=title,
                                                 cancelled=self.session.stopped)
                 return identity, self.service.definition(identity, verify_inputs=False,
                                                           cancelled=self.session.stopped)
@@ -495,6 +570,7 @@ class TranscriptionDialog:
             if self.current_job is None or not self.manifest_path:
                 raise ValueError('Review a prepared job and explicitly choose its runtime manifest.')
             identity, manifest = self.current_job, self.manifest_path
+            profile = self.runtime_profile
             self.summary, self.pause_requested = None, False
             self.outputs.SetItems([])
             def run():
@@ -506,7 +582,8 @@ class TranscriptionDialog:
                     if progress is not None:
                         progress.update(done, total, phase, token=token)
                     self.wx.CallAfter(self._progress, generation, done, total, phase)
-                return self.service.run(identity, manifest, cancelled=self.session.stopped, progress=advanced)
+                selected_manifest = self._runtime_for(manifest, profile)
+                return self.service.run(identity, selected_manifest, cancelled=self.session.stopped, progress=advanced)
             self.session.submit('Running reviewed local transcription', run, self._verified,
                 kind='run', total=len(self.definition['inputs']))
         except Exception as exc:

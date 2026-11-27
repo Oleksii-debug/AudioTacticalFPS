@@ -18,7 +18,7 @@ from carr_library.ingest.pipeline import canonical
 from carr_library.ingest.worker import load_request, prepare_request, record_progress
 from carr_library.ingest.writer_guard import exclusive_writer
 from carr_library.pending_backup import snapshot_pending, restore_pending, validate_pending
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def _source(tmp_path, name='original.txt', text='Original first page.\fOriginal 
 def _snapshot(app, tmp_path, name='snapshot'):
     stage = tmp_path / name
     stage.mkdir()
-    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=4)) as storage:
+    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
         storage.backup(stage / 'library.sqlite')
         metadata = snapshot_pending(app, stage / 'pending')
     return stage, metadata

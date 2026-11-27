@@ -92,6 +92,34 @@ jobs:
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 tests/test_transcription_receipt.py tests/test_transcription_service.py tests/storage/test_transcription_backup.py tests/ui/test_transcription_dialog.py 2>&1 | Tee-Object 'ci-results/transcription-contracts.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Require shared tasks, V5 publication, local profiles and scoped reading contracts
+        timeout-minutes: 12
+        run: |
+          $suites = @(
+            'tests/operations/test_resources.py',
+            'tests/operations/test_state.py',
+            'tests/operations/test_transcription_admission.py',
+            'tests/operations/test_heavy_admission.py',
+            'tests/operations/test_facade.py',
+            'tests/operations/test_policy.py',
+            'tests/ui/test_operations_dialog.py',
+            'tests/e2e/test_operations_cli.py',
+            'tests/storage/test_publication_migration.py',
+            'tests/ingest/test_canonical_publication_binding.py',
+            'tests/ingest/test_publication_config_compatibility.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/ingest/test_worker_publication_boundary.py',
+            'tests/audio/test_engine_profiles.py',
+            'tests/audio/test_job_integrity.py',
+            'tests/storage/test_state_json_reader.py',
+            'tests/ui/test_engine_settings.py',
+            'tests/reader/test_scoped_pronunciation.py',
+            'tests/ui/test_pronunciation_preview.py',
+            'tests/ui/test_desktop_handlers.py'
+          )
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/v3-shared-contracts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Check the installed offline OCR catalogue and console entrypoint
         timeout-minutes: 2
         run: |
@@ -883,6 +911,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_progress_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-progress.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed native task resources and completion-aware close
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_operations_smoke.py 2>&1 | Tee-Object 'keyboard-results/native-operations.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed native transcription settings and cancellation

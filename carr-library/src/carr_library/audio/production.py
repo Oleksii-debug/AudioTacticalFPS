@@ -346,12 +346,26 @@ def _public_result(result, directory):
             'stems': [str(directory / name) for name in result['stem_names']]}
 
 
+def _production_music_manifest(root, reference, engine_name, *, resolver, cancelled):
+    from .model_manifest import LocalModelManifest
+    if resolver is None:
+        location = checked_directory(root / 'models').joinpath(*reference.split('/'))
+        model = LocalModelManifest.load(location, engine=engine_name)
+    else:
+        model = resolver(reference, engine_name, cancelled=cancelled)
+        if not isinstance(model, LocalModelManifest) or model.engine != engine_name:
+            raise ValueError('The selected music profile belongs to another engine.')
+    model.verify(cancelled=cancelled, require_complete=True)
+    return model
+
+
 def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False,
-                   on_status=lambda message: None):
+                   on_status=lambda message: None, music_manifest_resolver=None,
+                   broker=None, operation_id=None):
     """Render actual local audio and checkpoints; successful chunks survive errors.
 
-    Engine adapters own local voice setup. This core never downloads a model,
-    invokes an external API, evaluates script code or silently overwrites output.
+    The desktop supplies its shared library broker. Standalone callers can pass
+    their existing broker explicitly. No path is guessed as a library root.
     """
     if not isinstance(plan, ProductionPlan):
         raise ValueError('Expected a validated production plan.')
@@ -360,10 +374,55 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
     root = checked_directory(project_dir, create=True)
     check_cancelled(cancelled)
     with project_lock(root):
-        return _render_locked(plan, root, engine=engine, ffmpeg=ffmpeg, cancelled=cancelled, on_status=on_status)
+        if broker is None:
+            return _render_locked(plan, root, engine=engine, ffmpeg=ffmpeg, cancelled=cancelled,
+                                  on_status=on_status, music_manifest_resolver=music_manifest_resolver)
+        from ..operations import ResourceBroker, ResourceCancelled, ResourceConflict
+        from ..operations.admission import production_request
+        if not isinstance(broker, ResourceBroker):
+            raise TypeError('Use the shared typed local resource coordinator.')
+        models, devices, sounds = {}, [], {}
+        for scene in plan.scenes:
+            cue = scene.music
+            if cue is not None and cue.model_manifest is not None:
+                key = (cue.model_manifest, cue.engine)
+                if key not in models:
+                    model = _production_music_manifest(root, *key,
+                        resolver=music_manifest_resolver, cancelled=cancelled)
+                    models[key] = model.manifest_sha256
+                    if cue.engine in ('musicgen', 'ace-step'):
+                        devices.append(model.settings.get('device', 'cpu'))
+            for event in scene.events:
+                if isinstance(event, Sound) and event.asset not in sounds:
+                    asset = checked_directory(root / 'assets') / event.asset
+                    regular_file(asset)
+                    sounds[event.asset] = audio.wav_info(asset).seconds
+
+        def admitted_music(reference, engine_name, *, cancelled):
+            model = _production_music_manifest(root, reference, engine_name,
+                resolver=music_manifest_resolver, cancelled=cancelled)
+            if model.manifest_sha256 != models.get((reference, engine_name)):
+                raise ResourceConflict('The music profile changed after resource admission. Review and run again.')
+            return model
+
+        request = production_request(plan, root, broker.limits,
+                                     music_devices=devices, sound_seconds=sounds)
+        identity = operation_id or 'studio:' + hashlib.sha256(str(root).encode('utf-8')).hexdigest()[:32]
+        on_status('Waiting for shared local resources.')
+        try:
+            with broker.reserve(request, operation_id=identity, cancelled=cancelled, timeout=60) as lease:
+                # A replacement WAV can change the reservation while waiting.
+                for name, duration in sounds.items():
+                    if audio.wav_info(checked_directory(root / 'assets') / name).seconds != duration:
+                        raise ResourceConflict('A selected sound changed while waiting for resources.')
+                return _render_locked(plan, root, engine=engine, ffmpeg=ffmpeg,
+                    cancelled=lease.cancelled, on_status=on_status,
+                    music_manifest_resolver=admitted_music)
+        except ResourceCancelled as exc:
+            raise InterruptedError('Audio production stopped while waiting for shared resources.') from exc
 
 
-def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
+def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver=None):
     cache = ChunkCache(root / 'cache', cancelled=cancelled, disk_budget_bytes=plan.disk_budget_bytes,
                        budget_root=root)
     cache.reserve(0)
@@ -402,6 +461,11 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
     processor = audio.ffmpeg_identity(ffmpeg, cancelled=cancelled)
     assets, asset_identities = {}, {}
     music_models, music_identities = {}, {}
+
+    def selected_music_model(reference, engine_name):
+        return _production_music_manifest(root, reference, engine_name,
+            resolver=music_manifest_resolver, cancelled=cancelled)
+
     composer_identity = None
     for scene in plan.scenes:
         if scene.music is not None:
@@ -409,10 +473,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
             composer_identity = {'implementation_sha256': sha256_file(local_music.__file__),
                                  'version': local_music.COMPOSER_VERSION}
             if scene.music.model_manifest is not None and scene.music.model_manifest not in music_models:
-                from .model_manifest import LocalModelManifest
-                location = checked_directory(root / 'models').joinpath(*scene.music.model_manifest.split('/'))
-                model = LocalModelManifest.load(location, engine=scene.music.engine)
-                model.verify(cancelled=cancelled, require_complete=True)
+                model = selected_music_model(scene.music.model_manifest, scene.music.engine)
                 music_models[scene.music.model_manifest] = model
                 music_identities[scene.music.model_manifest] = model.cache_identity()
         for event in scene.events:
@@ -615,10 +676,15 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status):
                                     if old.is_symlink():
                                         raise ValueError('Unsafe music checkpoint link.')
                                     old.rename(work / (old.name + '.invalid-' + uuid.uuid4().hex))
+                            selected_model = music_models.get(cue.model_manifest)
+                            if music_manifest_resolver is not None and cue.model_manifest is not None:
+                                selected_model = selected_music_model(cue.model_manifest, cue.engine)
+                                if selected_model.cache_identity() != music_identities[cue.model_manifest]:
+                                    raise ValueError('The local music profile changed before generation.')
                             generate_music(generated, duration=scene_frames/plan.sample_rate, ffmpeg=ffmpeg,
                                 mood=cue.mood, tempo=cue.tempo, seed=cue.seed, engine=cue.engine,
                                 gain=0.35, sample_rate=plan.sample_rate, cancelled=cancelled,
-                                manifest=music_models.get(cue.model_manifest), on_status=on_status,
+                                manifest=selected_model, on_status=on_status,
                                 max_output_bytes=max(1, plan.disk_budget_bytes - cache.used))
                         publish_new(generated, path, cancelled=cancelled)
                         for suffix in companions:

@@ -40,7 +40,8 @@ _ID = re.compile(r'[0-9a-f]{32}\Z')
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
-_REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result'}
+_REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
+                     'attempt', 'publication_candidate', 'publication_watermark'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -186,11 +187,10 @@ def _manifest(value):
 
 
 def _config(value):
-    if not isinstance(value, dict) or set(value) != set(asdict(Config())):
-        raise ValueError('Invalid pending extraction configuration.')
-    if any(type(value[key]) is not int for key in ('dpi', 'timeout', 'max_pixels')):
-        raise ValueError('Invalid pending extraction resource limits.')
-    Config(**value)
+    # Canonical V5 archives predate the two optional verified-pack fields.
+    # Validate their exact old shape while preserving its stored identity.
+    from .ingest.publication_identity import validate_configuration
+    validate_configuration(value)
 
 
 def _catalog(path):
@@ -204,7 +204,7 @@ def _catalog(path):
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
         version = db.execute('PRAGMA user_version').fetchone()[0]
-        if version not in (3, 4) or schema_fingerprint(db) != expected_schema_fingerprint(version):
+        if version not in (3, 4, 5) or schema_fingerprint(db) != expected_schema_fingerprint(version):
             raise ValueError('Pending imports require the canonical catalog schema.')
     except BaseException:
         db.close()
@@ -274,12 +274,32 @@ def _request(record, request_id, data_dir, db):
     _config(record['config'])
     if 'expected_manifest' in record:
         _manifest(record['expected_manifest'])
+    # Legacy bounded watermarks are inert compatibility data, never proof.
+    boundary = record.get('publication_watermark')
+    if boundary is not None and (type(boundary) is not int or not 0 <= boundary < 2 ** 63):
+        raise ValueError('Invalid pending request publication boundary.')
     for key in ('asset_sha256', 'job'):
         if key in record and not _hash(record[key]):
             raise ValueError('Invalid pending request journal identity.')
     if ('asset_sha256' in record and 'expected_manifest' in record
             and record['asset_sha256'] != record['expected_manifest']['sha256']):
         raise ValueError('Pending request source identity changed.')
+    if 'attempt' in record and not _id(record['attempt']):
+        raise ValueError('Invalid pending import attempt identity.')
+    candidate = record.get('publication_candidate')
+    if candidate is not None:
+        if (not isinstance(candidate, dict)
+                or set(candidate) != {'attempt', 'revision', 'sha256', 'completed', 'manifest'}
+                or not _id(candidate['attempt']) or candidate['attempt'] != record.get('attempt')
+                or not _hash(candidate['revision']) or not _hash(candidate['sha256'])
+                or type(candidate['completed']) is not int or candidate['completed'] < 1):
+            raise ValueError('Invalid pending import publication candidate.')
+        manifest = _manifest(candidate['manifest'])
+        if (manifest['sha256'] != record.get('asset_sha256')
+                or (record.get('expected_manifest') is not None
+                    and manifest != record['expected_manifest'])
+                or (record.get('job') is not None and candidate['revision'] != record['job'])):
+            raise ValueError('Pending publication candidate has a foreign source or journal identity.')
     _result(record.get('result'), record['workspace'], record['metadata']['edition_id'], db,
             complete=record['state'] == 'complete')
 
@@ -925,6 +945,11 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
         binding = bindings['import-requests/' + request_id + '.json', None]
         request['data_dir'] = str(new_root)
         request['source'] = str(new_root / 'originals' / assets[binding['asset_sha256']]['filename'])
+        # Process ownership is bound to the original launch and absolute roots.
+        # A restored request must obtain a fresh attempt before it can run.
+        request.pop('attempt', None)
+        request.pop('publication_candidate', None)
+        request.pop('publication_watermark', None)
         _write(stage / 'import-requests' / (request_id + '.json'),
                (canonical(request) + '\n').encode('utf-8'))
     for batch_id, batch in batches.items():

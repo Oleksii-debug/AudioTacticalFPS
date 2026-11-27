@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,12 +71,14 @@ def run_suite(suite: str) -> bool:
     env['HF_HUB_OFFLINE'] = '1'
     env['HF_HUB_DISABLE_TELEMETRY'] = '1'
     env['DO_NOT_TRACK'] = '1'
+    print(f'RUN: required suite: {suite}', flush=True)
+    started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
         report = Path(tmp) / 'junit.xml'
         try:
             proc = subprocess.run([
                 sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
-                '-o', 'xfail_strict=true', '--junitxml', str(report),
+                '-o', 'xfail_strict=true', '-vv', '--durations=5', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
             ], cwd=ROOT, env=env, timeout=600, check=False)
@@ -89,7 +92,7 @@ def run_suite(suite: str) -> bool:
         passed = len(cases) - failed - skipped
         ok = proc.returncode == 0 and passed > 0 and failed == skipped == 0
         print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-              f'skipped={skipped}, pytest_exit={proc.returncode}', flush=True)
+              f'skipped={skipped}, pytest_exit={proc.returncode}, elapsed_seconds={time.monotonic() - started:.2f}', flush=True)
         return ok
 
 

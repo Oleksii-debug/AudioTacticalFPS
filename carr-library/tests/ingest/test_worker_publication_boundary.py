@@ -1,5 +1,4 @@
 """Actual isolated LibraryApp publication races; no synthetic database or result."""
-from copy import deepcopy
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -77,6 +76,18 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
     return processes
+
+
+def capture_attempt(monkeypatch):
+    invoke = worker._invoke
+    launches = []
+    def launch(message, **options):
+        if 'request_id' in message:
+            launches.append((worker.load_request(message['data_dir'], message['request_id']),
+                             message['attempt_id']))
+        return invoke(message, **options)
+    monkeypatch.setattr(worker, '_invoke', launch)
+    return launches
 
 
 @pytest.mark.parametrize('kind', ('docx', 'md', 'txt', 'pdf', 'epub'))
@@ -166,51 +177,92 @@ def test_preexisting_replay_is_not_new_completion_after_cancel(tmp_path, monkeyp
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
 
 
-@pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration'))
-def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, change):
+@pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration', 'language'))
+def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, monkeypatch, change):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Request binding')
     source = source_file(tmp_path, 'docx')
+    launches = capture_attempt(monkeypatch)
     result = app.import_file(workspace, source)
     assert result['state'] == 'complete'
-    initial = worker.load_request(app.root, result['request_id'])
-    changed = deepcopy(initial)
+    initial, attempt = launches[0]
+    assert worker._published_after_stop(app, initial, attempt)['state'] == 'complete'
+    changed = worker.load_request(app.root, result['request_id'])
     if change == 'scope':
         changed['workspace'] = app.create_workspace('Other')
     elif change == 'work':
         changed['metadata']['work_id'] = uuid4().hex
     elif change == 'asset':
         changed['asset_sha256'] = 'f' * 64
-    else:
+    elif change == 'configuration':
         changed['config']['dpi'] += 1
+    else:
+        changed['metadata']['language'] = 'uk'
     worker._store(app.root, result['request_id'], changed)
-    assert worker._published_after_stop(app, initial, 0) is None
+    assert worker._published_after_stop(app, initial, attempt) is None
 
 
-def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
+def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path, monkeypatch):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Original binding')
     source = source_file(tmp_path, 'docx')
+    launches = capture_attempt(monkeypatch)
     result = app.import_file(workspace, source)
-    initial = worker.load_request(app.root, result['request_id'])
-    retained = app.assets.resolve(initial['asset_sha256'])
+    initial, attempt = launches[0]
+    assert worker._published_after_stop(app, initial, attempt)['state'] == 'complete'
+    current = worker.load_request(app.root, result['request_id'])
+    retained = app.assets.resolve(current['asset_sha256'])
     raw = bytearray(retained.read_bytes())
     raw[-1] ^= 1
     retained.write_bytes(raw)
-    assert worker._published_after_stop(app, initial, 0) is None
+    assert worker._published_after_stop(app, initial, attempt) is None
+
+
+def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Concurrent replay boundary')
+    source = source_file(tmp_path, 'docx')
+    work_id, edition_id = uuid4().hex, uuid4().hex
+    marker = tmp_path / 'replay-before-commit'
+    processes = publication_barrier(monkeypatch, marker, before=True)
+    launch = worker.subprocess.Popen
+    published = []
+
+    def intervening_import(command, *args, **kwargs):
+        if not published:
+            # The parent read snapshot is already released, while this worker
+            # has not acquired the shared writer guard. Another real import
+            # completes the same source/edition before our child can replay it.
+            published.append(app._import_file(workspace, source,
+                work_id=work_id, edition_id=edition_id))
+        return launch(command, *args, **kwargs)
+
+    monkeypatch.setattr(worker.subprocess, 'Popen', intervening_import)
+    result = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
+                            cancelled=marker.exists, timeout=30)
+    assert published[0]['state'] == 'complete'
+    assert marker.is_file() and len(processes) == 1
+    assert result['state'] == 'cancelled', result
+    assert 'recovered_publication' not in result
+    assert app.browse(workspace)
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
 
 
 @pytest.mark.parametrize('binding', ('job', 'configuration'))
-def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, binding):
+def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, monkeypatch, binding):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('PDF request binding')
     source = source_file(tmp_path, 'pdf')
+    launches = capture_attempt(monkeypatch)
     result = app.import_file(workspace, source)
     assert result['state'] == 'complete'
+    initial, attempt = launches[0]
+    assert worker._published_after_stop(app, initial, attempt)['state'] == 'complete'
     request = worker.load_request(app.root, result['request_id'])
     if binding == 'job':
         request['job'] = 'f' * 64
     else:
         request['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], request)
-    assert worker._published_after_stop(app, request, 0) is None
+    assert worker._published_after_stop(app, initial, attempt) is None

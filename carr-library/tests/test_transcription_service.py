@@ -467,3 +467,124 @@ def test_restored_completed_transcript_is_readable_without_old_runtime(
     copied = restored.reading_copy(identity, result['outputs'][0]['path'])
     assert copied.original_path.startswith(str(destination))
     assert copied.current_text.startswith('Synthetic protocol text;')
+
+
+def test_progress_observer_failure_does_not_revoke_a_verified_execution(prepared_environment, real_protocol_child):
+    app, manifest, source, settings = prepared_environment('status_race')
+    identity = app.prepare([source], manifest, settings)
+    observed = []
+    def broken_observer(*values):
+        observed.append(values)
+        raise RuntimeError('Synthetic display callback failed.')
+    result = app.run(identity, manifest, progress=broken_observer, timeout=10)
+    assert observed and result['output_count'] == 1
+    assert app.completed(identity)['completion_sha256'] == result['completion_sha256']
+
+
+def test_parallel_preparation_reserves_each_simultaneous_worker_capture(prepared_environment, monkeypatch):
+    from types import SimpleNamespace
+    app, manifest, source, settings = prepared_environment(settings={'parallel_files': 2})
+    other = source.with_name('Second retained source.mp3')
+    other.write_bytes(b'Second synthetic retained input with a different byte size.')
+    sizes = [source.stat().st_size, other.stat().st_size]
+    # The earlier single-largest-input reserve is insufficient for two workers.
+    monkeypatch.setattr(service.shutil, 'disk_usage',
+        lambda path: SimpleNamespace(free=sum(sizes) + max(sizes) + 32 * 1024**2))
+    with pytest.raises(OSError, match='space'):
+        app.prepare([source, other], manifest, settings)
+    assert not tuple(app.root.glob('*/job.json'))
+
+
+def test_stop_during_resource_wait_starts_no_child_and_keeps_owned_inputs(
+        prepared_environment, real_protocol_child, monkeypatch):
+    from contextlib import contextmanager
+    from carr_library.operations import ResourceBroker, ResourceRequest
+    app, manifest, source, settings = prepared_environment()
+    identity = app.prepare([source], manifest, settings)
+    original = (app._job(identity) / 'job.json').read_bytes()
+    broker = ResourceBroker.for_app(app.library_root)
+    app._broker = broker
+    entered = threading.Event()
+    errors = []
+    reserve = broker.reserve
+    @contextmanager
+    def observed(request, **options):
+        if options['operation_id'] == 'asr:' + identity:
+            entered.set()
+        with reserve(request, **options) as lease:
+            yield lease
+    monkeypatch.setattr(broker, 'reserve', observed)
+    monkeypatch.setattr(service.subprocess, 'Popen',
+        lambda *args, **kwargs: pytest.fail('A stopped waiting job launched a child.'))
+    def run():
+        try:
+            app.run(identity, manifest, timeout=10)
+        except BaseException as exc:
+            errors.append(exc)
+    with reserve(ResourceRequest(cpu_slots=broker.limits.cpu_slots), operation_id='other', timeout=0):
+        worker = threading.Thread(target=run)
+        worker.start()
+        assert entered.wait(3)
+        app.control(identity, 'stop')
+        worker.join(3)
+        assert not worker.is_alive()
+        assert len(errors) == 1 and isinstance(errors[0], InterruptedError)
+    assert broker.snapshot()['leases'] == []
+    assert (app._job(identity) / 'job.json').read_bytes() == original
+    assert read_definition(app._job(identity))['inputs'][0]['sha256'] == checksum(source.read_bytes())
+
+
+def test_resources_are_released_after_success_or_worker_failure(prepared_environment, real_protocol_child):
+    from carr_library.operations import ResourceBroker
+    for mode in ('success', 'nonzero'):
+        app, manifest, source, settings = prepared_environment(mode)
+        identity = app.prepare([source], manifest, settings)
+        try:
+            app.run(identity, manifest, timeout=10)
+        except RuntimeError:
+            assert mode == 'nonzero'
+        assert ResourceBroker.for_app(app.library_root).snapshot()['leases'] == []
+
+def test_standalone_worker_lock_preserves_live_controls_and_execution_before_admission(
+        prepared_environment, tmp_path, monkeypatch):
+    import subprocess
+    app, manifest, source, settings = prepared_environment()
+    identity = app.prepare([source], manifest, settings)
+    job = app._job(identity)
+    logs = job / 'logs'
+    logs.mkdir(exist_ok=True)
+    (job / 'pause.flag').write_bytes(b'')
+    (job / 'stop.flag').write_bytes(b'')
+    (job / 'job_config.json').write_bytes(b'{"existing":"live worker"}')
+    (job / 'job_status.json').write_bytes(b'{"existing":"running"}')
+    protected = ('job.json', 'job_config.json', 'job_status.json', 'execution.json', 'pause.flag', 'stop.flag')
+    before = {name: (job / name).read_bytes() for name in protected if (job / name).exists()}
+    child = (
+        "import sys;from pathlib import Path;sys.path.insert(0,sys.argv[1]);"
+        "from carr_library.audio.jobs import project_lock;"
+        "guard=project_lock(Path(sys.argv[2]),lock_name='.worker-v5.lock');"
+        "guard.__enter__();print('READY',flush=True);sys.stdin.buffer.read(1);guard.__exit__(None,None,None)"
+    )
+    holder = subprocess.Popen([sys.executable, '-I', '-B', '-c', child,
+        str(Path(service.__file__).resolve().parents[1]), str(logs)],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        ready, observed = threading.Event(), []
+        def announce():
+            observed.append(holder.stdout.readline())
+            ready.set()
+        threading.Thread(target=announce, daemon=True).start()
+        assert ready.wait(5) and observed == [b'READY\n']
+        monkeypatch.setattr(service.subprocess, 'Popen',
+                            lambda *a, **k: pytest.fail('The live worker lock allowed a second launch.'))
+        with pytest.raises(RuntimeError, match='already using'):
+            app.run(identity, manifest, timeout=10)
+        assert before == {name: (job / name).read_bytes() for name in before}
+        assert not (job / 'history').exists()
+        assert not (app.library_root / 'state' / 'operations').exists()
+    finally:
+        try:
+            holder.communicate(input=b'x', timeout=5)
+        except subprocess.TimeoutExpired:
+            holder.kill()
+            holder.communicate(timeout=5)

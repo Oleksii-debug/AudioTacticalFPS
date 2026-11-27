@@ -226,7 +226,7 @@ def test_riff_size_must_describe_complete_container(tmp_path):
 def test_json_read_stays_bounded_when_file_grows_after_stat(tmp_path, monkeypatch):
     path = tmp_path / 'checkpoint.json'
     path.write_bytes(b'{}')
-    original = jobs.verified_reader
+    original = jobs._open_json_file
     observed = []
 
     @contextmanager
@@ -243,7 +243,7 @@ def test_json_read_stays_bounded_when_file_grows_after_stat(tmp_path, monkeypatc
                     return stream.read(count)
             yield Reader()
 
-    monkeypatch.setattr(jobs, 'verified_reader', growing_reader)
+    monkeypatch.setattr(jobs, '_open_json_file', growing_reader)
     with pytest.raises(ValueError, match='too large'):
         jobs.read_json(path, limit=128)
     assert observed == [129]
