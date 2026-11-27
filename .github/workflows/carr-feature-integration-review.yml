@@ -162,7 +162,7 @@ jobs:
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-feature-review/runtime-firewall.json'
             $probes = @(
-              @{ name='native-trust-status'; script='tests/ui/native_trust_status_smoke.py'; arguments=@() },
+              @{ name='native-trust-status'; script='tests/ui/native_trust_status_smoke.py'; arguments=@('--native') },
               @{ name='native-workflow-templates'; script='scripts/windows_workflow_templates_smoke.py'; arguments=@() },
               @{ name='native-translation-batch'; script='scripts/windows_translation_batch_smoke.py'; arguments=@() },
               @{ name='native-recording'; script='scripts/windows_recording_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') }

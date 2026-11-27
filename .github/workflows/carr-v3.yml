@@ -399,6 +399,28 @@ jobs:
             tests/storage/test_json_snapshot_posix.py \
             tests/conversion/test_document_batches_posix.py \
             tests/transcription/test_runtime_inventory_posix.py \
+            tests/assistant/test_workflow_templates.py \
+            tests/assistant/test_workflow_templates_cli.py \
+            tests/ui/test_workflow_templates.py \
+            tests/storage/test_workflow_templates_backup.py \
+            tests/ui/test_desktop_handlers.py \
+            tests/assistant/test_translation_batch.py \
+            tests/assistant/test_translation_batch_sources.py \
+            tests/assistant/test_translation_batch_ui.py \
+            tests/assistant/test_translation_batch_cli.py \
+            tests/storage/test_translation_batches_backup.py \
+            tests/operations/test_facade.py \
+            tests/audio/test_metadata_stream_hash.py \
+            tests/audio/test_recording_controls.py \
+            tests/audio/test_recording_monitor.py \
+            tests/conversion/test_office_selection.py \
+            tests/conversion/test_archive_reading.py \
+            tests/packaging/test_portable_entry.py \
+            tests/security/test_portable_handoff.py \
+            tests/security/test_https_updates.py \
+            tests/security/test_https_source_policy.py \
+            tests/security/test_standard_update_handoff.py \
+            tests/security/test_update_maintenance.py \
             --junitxml=ci-source-results/source-tests.xml
           python -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-source-results/source-tests.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); assert cases and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=len(cases),failed=failed,skipped=skipped,native_windows='NOT_RUN',real_asr='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source evidence and dependency identity
@@ -521,11 +543,12 @@ jobs:
           names = tuple(dict.fromkeys((*names, 'carr_library.reader.appearance', 'carr_library.ui.reader_appearance', 'carr_library.speech.spellcheck', 'carr_library.speech.spell_worker', 'carr_library.ui.spellcheck_dialog', 'carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings')))
           names = tuple(dict.fromkeys((*names, 'carr_library.audio_runtime', 'carr_library.audio.metadata', 'carr_library.ui.audio_metadata_dialog')))
           names = tuple(dict.fromkeys((*names, 'carr_library.progress', 'carr_library.progress_feedback', 'carr_library.progress_preferences', 'carr_library.keyboard_preferences', 'carr_library.evidence_drafts', 'carr_library.backup_current', 'carr_library.backup_producers', 'carr_library.backup_sidecars', 'carr_library.integrations.supplied_transcription', 'carr_library.integrations.dordiai_speech', 'carr_library.citations.csl', 'carr_library.citations.bibliography_workbench', 'carr_library.ui.progress_panel', 'carr_library.ui.progress_media', 'carr_library.ui.operation_progress', 'carr_library.ui.command_registry', 'carr_library.ui.builtin_keyboard_commands', 'carr_library.ui.reading_shortcuts', 'carr_library.ui.save_all', 'carr_library.ui.citation_styles_dialog', 'carr_library.ui.academic_tools', 'carr_library.speech.voice_preferences', 'carr_library.ui.voice_preferences', 'carr_library.audio.output_devices', 'carr_library.ui.output_devices')))
-          for name in names:
-              importlib.import_module(name)
           from hashlib import sha256
           installed_source_digests = {}
           names = tuple(dict.fromkeys((*names, 'carr_library.transcription', 'carr_library.transcription.models', 'carr_library.transcription.runtime', 'carr_library.transcription.service', 'carr_library.backup_transcription', 'carr_library.backup_document_batches', 'carr_library.backup_compat.state', 'carr_library.conversion.service', 'carr_library.conversion.models', 'carr_library.conversion.formats', 'carr_library.conversion.planning', 'carr_library.conversion.batches', 'carr_library.conversion.cli', 'carr_library.ui.document_batch', 'carr_library.ui.document_conversion', 'carr_library.audio.effect_presets', 'carr_library.ui.effects_dialog', 'carr_library.ui.reader_background', 'carr_library.academic_integration.runtime_adapter', 'carr_library.transcription.reading', 'carr_library.ui.transcription_workstation')))
+          names = tuple(dict.fromkeys((*names, 'carr_library.audio.recording', 'carr_library.audio.recording_monitor', 'carr_library.ui.recording_dialog', 'carr_library.backup_recordings', 'carr_library.backup_current', 'carr_library.conversion.office', 'carr_library.conversion.service', 'carr_library.conversion.worker', 'carr_library.ui.document_conversion', 'carr_library.conversion.formats', 'carr_library.audio.metadata', 'carr_library.assistant.templates', 'carr_library.assistant.service', 'carr_library.assistant.templates_cli', 'carr_library.ui.workflow_templates', 'carr_library.ui.assistant_dialog', 'carr_library.ui.document_batch', 'carr_library.assistant.translation', 'carr_library.assistant.translation_source', 'carr_library.assistant.translation_batch', 'carr_library.ui.translation_batch_dialog', 'carr_library.assistant.translation_batch_cli', 'carr_library.backup_translation_batches', 'carr_library.ui.translation_dialog', 'carr_library.transcription_cli', 'carr_library.transcription.service', 'carr_library.audio.windows_job', 'carr_library.portable_entry', 'carr_library.installation_lease', 'carr_library.portable_bootstrap', 'carr_library.local_audio_setup', 'carr_library.__main__', 'carr_library.native_checks', 'carr_library.bibliography_cli', 'carr_library.operations_cli', 'carr_library.studio.cli', 'carr_library.extract.ocr_model_catalog', 'carr_library.assistant.translation_cli', 'carr_library.security.__main__', 'carr_library.security.installation', 'carr_library.security.handoff', 'carr_library.conversion.cli', 'carr_library.sync.cli', 'carr_library.ui.desktop_app', 'carr_library.security._https_worker', 'carr_library.security.https', 'carr_library.security.maintenance', 'carr_library.security.standard_handoff', 'carr_library.ui.trust_status', 'carr_library.ui.update_maintenance')))
+          for name in names:
+              importlib.import_module(name)
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
@@ -809,6 +832,29 @@ jobs:
               'tests/ui/test_translation_lifetime.py',
               'tests/transcription/test_protocol_fixture_windows.py',
               'tests/e2e/test_export_destination.py',
+              'tests/assistant/test_workflow_templates.py',
+              'tests/assistant/test_workflow_templates_cli.py',
+              'tests/ui/test_workflow_templates.py',
+              'tests/storage/test_workflow_templates_backup.py',
+              'tests/ui/test_desktop_handlers.py',
+              'tests/assistant/test_translation_batch.py',
+              'tests/assistant/test_translation_batch_sources.py',
+              'tests/assistant/test_translation_batch_ui.py',
+              'tests/assistant/test_translation_batch_cli.py',
+              'tests/storage/test_translation_batches_backup.py',
+              'tests/audio/test_supplied_runtime_manifest.py',
+              'tests/operations/test_facade.py',
+              'tests/audio/test_metadata_stream_hash.py',
+              'tests/audio/test_recording_controls.py',
+              'tests/audio/test_recording_monitor.py',
+              'tests/conversion/test_office_selection.py',
+              'tests/conversion/test_archive_reading.py',
+              'tests/packaging/test_portable_entry.py',
+              'tests/security/test_portable_handoff.py',
+              'tests/security/test_https_updates.py',
+              'tests/security/test_https_source_policy.py',
+              'tests/security/test_standard_update_handoff.py',
+              'tests/security/test_update_maintenance.py',
           ]
           status = pytest.main(['-v', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
@@ -963,6 +1009,10 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Installed native reader appearance failed.' }
             & $python -I -B -X utf8 scripts/windows_spellcheck_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-spellcheck.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed native spelling review failed.' }
+            & $python -I -B -X utf8 scripts/windows_workflow_templates_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-workflow-templates.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native workflow templates failed.' }
+            & $python -I -B -X utf8 scripts/windows_translation_batch_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-translation-batch.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed native translation batch failed.' }
             & $python -I -B -X utf8 tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-v3-results/native-trust-status.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed native signed-status controls failed.' }
             & $python -I -B -X utf8 tests/ui/probe_portable_sync_native.py --native --encrypted 2>&1 | Tee-Object 'ci-v3-results/native-portable-sync.txt'
