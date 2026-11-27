@@ -208,7 +208,7 @@ def view_fixture(tmp_path):
     for name in ('title', 'manifest', 'runtime_identity', 'source_list', 'jobs_list', 'outputs', 'status'):
         setattr(view, name, Control('Synthetic job' if name == 'title' else ''))
     view.buttons = {name: Control() for name in ('files', 'folder', 'remove', 'manifest', 'profiles', 'engine_settings', 'new',
-        'refresh', 'load', 'prepare', 'start', 'pause', 'resume', 'stop', 'verify', 'reading', 'close')}
+        'refresh', 'load', 'historical', 'prepare', 'start', 'pause', 'resume', 'stop', 'verify', 'reading', 'close')}
     view.session = ui.TranscriptionSession(frame, dispatch=view.wx.CallAfter,
         changed=view.controls, report=view.report, close=Mock(), request_stop=view._request_stop)
     def finish():

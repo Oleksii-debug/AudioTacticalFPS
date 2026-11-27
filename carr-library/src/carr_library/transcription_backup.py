@@ -116,6 +116,11 @@ def _inventory(root, cancelled):
                 portable_relative(name)
                 is_directory = entry.is_dir(follow_symlinks=False)
                 info = regular(path, directory=is_directory)
+                if directory == folder and entry.name in ('profiles', 'jobs'):
+                    # Earlier canonical ASR is a separate typed producer. The
+                    # unified snapshot archives these siblings as inert history.
+                    regular(path, directory=True)
+                    continue
                 if ignored(name):
                     if name.endswith('.lock') and is_directory:
                         raise ValueError('A transcription lock must be an ordinary file.')

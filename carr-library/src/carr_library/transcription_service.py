@@ -199,8 +199,10 @@ class TranscriptionService:
         value, _ = _read_json_snapshot(job / 'job.json', max_bytes=MAX_JSON_BYTES)
         return validate_definition(value, identity=identity)
 
-    def prepare(self, sources, runtime_manifest, settings, *, title='Local transcription', cancelled=lambda: False):
-        runtime = review_runtime(runtime_manifest, settings, cancelled=cancelled)
+    def prepare(self, sources, runtime_manifest, settings, *, title='Local transcription',
+                expected_manifest_sha256=None, cancelled=lambda: False):
+        runtime = review_runtime(runtime_manifest, settings,
+            expected_sha256=expected_manifest_sha256, cancelled=cancelled)
         selected = selected_inputs(sources, cancelled=cancelled)
         identity = uuid4().hex
         # Match complete-backup lock order. No partially published job is visible.
