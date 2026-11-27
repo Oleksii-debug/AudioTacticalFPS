@@ -314,7 +314,7 @@ def test_linked_ancestor_and_directory_are_rejected(tmp_path):
 
 @pytest.mark.parametrize('path', ['https://host/data', 'file:///tmp/data', '//server/share',
                                   '\\\\server\\share', 'relative', '/tmp/../escape',
-                                  'C:\\remote\\name', '/tmp/bad\x00name'])
+                                  'C:remote\\name', '/tmp/bad\x00name'])
 def test_nonlocal_ambiguous_or_traversal_roots_are_rejected(path):
     with pytest.raises(VaultError):
         Vault(path)

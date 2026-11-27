@@ -294,3 +294,26 @@ def test_actual_sdist_keeps_ci_helpers_and_runtime_without_private_payloads(tmp_
                 name = member.name.partition('/')[2]
                 if name in required:
                     assert archive.extractfile(member).read() == (project / name).read_bytes(), name
+
+
+        # A source archive intentionally contains development helpers. Building
+        # the installed wheel from that same manifest must admit only declared
+        # packages/data, even after egg-info has recorded the wider sdist tree.
+        with (project / 'wheel-build.log').open('wb+') as log:
+            result = subprocess.run(
+                [sys.executable, '-I', '-c',
+                 'from setuptools.build_meta import build_wheel; build_wheel("wheels")'],
+                cwd=project, env=environment, stdout=log, stderr=subprocess.STDOUT,
+                timeout=90, check=False,
+            )
+            log.seek(max(0, log.tell() - 8000))
+            assert result.returncode == 0, log.read().decode('utf-8', errors='replace')
+        wheels = list((project / 'wheels').glob('*.whl'))
+        assert len(wheels) == 1
+        with ZipFile(wheels[0]) as archive:
+            runtime_names = {name for name in archive.namelist()
+                             if '.dist-info/' not in name and not name.endswith('/')}
+            assert runtime_names == set(admitted), sorted(runtime_names.symmetric_difference(admitted))
+            for destination, source_name in admitted.items():
+                assert archive.read(destination) == (project / source_name.removeprefix('carr-library/')).read_bytes()
+            assert not excluded.intersection(archive.namelist())

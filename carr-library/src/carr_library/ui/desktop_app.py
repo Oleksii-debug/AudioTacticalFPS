@@ -42,6 +42,7 @@ from .api_connections import install_api_connection_actions
 from .acquisition_dialog import show_acquisition_dialog
 from .assistant_dialog import install_assistant_actions
 from .portable_sync import install_portable_sync_actions
+from .language_matrix import install_language_actions
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -568,6 +569,7 @@ class DesktopFrame(WorkspaceFrame):
         install_federated_search_actions(self)
         install_query_manager_actions(self)
         install_audio_studio_actions(self)
+        install_language_actions(self)
         install_api_connection_actions(self)
         install_assistant_actions(self)
         install_portable_sync_actions(self)

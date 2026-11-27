@@ -284,6 +284,9 @@ class StudioController:
 
     def save(self, path=None, *, overwrite=False, cancelled=lambda: False):
         selected = _local_path(path or self.project_path or '', 'project file')
+        # Windows device names can appear to exist before any file is created.
+        # Reject unsafe names before asking the filesystem about a destination.
+        _filename(selected.name)
         self._protect_original(selected)
         same = self.project_path is not None and selected == self.project_path
         expected = None

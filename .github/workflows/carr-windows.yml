@@ -343,9 +343,16 @@ jobs:
             'tests/ingest/test_import_metadata_shape.py',
             'tests/packaging/test_delivery_archive.py',
             'tests/audio/test_audio_backup.py',
-            'tests/storage/test_backup_unified_audio.py'
+            'tests/storage/test_backup_unified_audio.py',
+            'tests/language_qualification'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed language evidence and explicit native voice refresh
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_language_matrix_smoke.py 2>&1 | Tee-Object 'ci-results/language-matrix-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native Import Center and durable batch workflow
@@ -556,6 +563,8 @@ jobs:
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/probe_source_open_native.py).Path 2>&1 | Tee-Object 'ci-results/core-bundle-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_language_matrix_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-language-matrix.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/audio/native_playback_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-playback.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
