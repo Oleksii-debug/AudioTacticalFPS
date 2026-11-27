@@ -45,6 +45,23 @@ Subsequent native and composed-tree results are recorded in the current PR and
 the exact CI source-identity records. A correction is not promoted to PASS from
 static review or from a predecessor's run.
 
+## Local model qualification
+
+The actual pinned CPU model has been loaded and queried through the unchanged
+review-only provider gateway. Earlier runs exposed chat-grammar configuration
+failures; [run 45945159039](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45945159039)
+returned valid raw JSON but chose library.create for a request to list libraries.
+The selected Scope refused that proposal. No assistant job or action was
+executed. This is a failed semantic qualification, not a working-agent claim.
+
+The composed source now gives the model a neutral description of all nine
+existing tool contracts and requires only explicitly requested operations. The
+allowlist, argument validator, caller scope, separate review and no-execution
+proposal boundary are unchanged. Its successor qualification retains the same
+fixed synthetic English/Ukrainian requests and permission-denial cases. See
+[Local LLM qualification](LOCAL_LLM_QUALIFICATION.md) for exact pins and results;
+source inclusion alone does not qualify that model.
+
 ## Reconciliation decisions
 
 The reviewed canonical source is 1eff701fe848a3bd9eb088c85e5372a7c0a73861.

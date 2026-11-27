@@ -140,5 +140,6 @@ jobs:
             tests/qualification/test_official_tiny_contract.py \
             tests/audio/test_progress_speech.py \
             tests/ui/test_progress_voice.py \
+            tests/assistant/test_local_llm.py \
             tests/operations/posix_fork_case.py
       # This source-only job supplements the complete native Windows/bundle gate.
