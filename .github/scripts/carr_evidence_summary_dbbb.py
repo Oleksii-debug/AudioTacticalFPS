@@ -9,11 +9,12 @@ import urllib.parse
 import urllib.request
 import zipfile
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-RUN = 46016864492
-HEAD = "4917e707821ed23c236d821905f2bb989ec31d76"
+RUN = 46031920263
+HEAD = "94ecfdd48c65d03f0b29abee9000fd4e2a1610ee"
 ARTIFACTS = (
-    (15208190393, "cf3e54ab2c80ab2813f841ba33c7eb1029c27e441adef3802847b997e38cd2d1"),
-    (15208475262, "87def4ca2c57b7fcf1df2744ccb4e6ff0a115b70e47d4d90ea87674cac491155"),
+    (15219682723, "e62c9c91dc49507b928dd113814b122014602e9f340dd34351075e09306a9c1b"),
+    (15219374659, "73da99c774c97c347c93607a320701f07595512adccc7f00aa19f76ed229ef2d"),
+    (15219017917, "7376120d1d6de7c6e47b94da495d06db622bedfc806f6f795052fc6eacf3f489"),
 )
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -68,8 +69,7 @@ for identity, digest in ARTIFACTS:
                 continue
             content = archive.read(entry).decode("utf-8-sig", errors="replace")
             if path.suffix.lower() == ".json":
-                if re.search(r'"(?:status|outcome|passed)"\s*:\s*(?:"(?:FAIL|failed|error)"|false)', content, re.I) or "reading-tabs" in name:
-                    emit("JSON " + name + "\n" + content[:14000])
+                emit("JSON " + name + "\n" + content[:18000])
                 continue
             lines = content.splitlines()
             summary = [line for line in lines if re.search(
@@ -90,7 +90,7 @@ for identity, digest in ARTIFACTS:
                 chosen.update(range(max(0, index - 12), min(len(lines), index + 7)))
             emit("CONTEXT " + name + "\n" + "\n".join(
                 str(i + 1) + ": " + lines[i][:1000] for i in sorted(chosen))[:5000])
-for job in (140566100641,):
+for job in ():
     endpoint = "https://api.github.com/repos/" + REPOSITORY + "/actions/jobs/" + str(job)
     metadata = json.loads(fetch(endpoint, 512 * 1024))
     if metadata["run_id"] != RUN or metadata["head_sha"] != HEAD:
