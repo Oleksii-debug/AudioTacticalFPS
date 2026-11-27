@@ -106,13 +106,75 @@ def main():
     user32.GetWindowTextW.restype = ctypes.c_int
     user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
     user32.GetWindow.restype = wintypes.HWND
-    user32.GetDlgItem.argtypes = [wintypes.HWND, ctypes.c_int]
-    user32.GetDlgItem.restype = wintypes.HWND
     user32.GetFocus.restype = wintypes.HWND
     user32.SetFocus.argtypes = [wintypes.HWND]
     user32.SetFocus.restype = wintypes.HWND
     user32.GetDlgCtrlID.argtypes = [wintypes.HWND]
     user32.GetDlgCtrlID.restype = ctypes.c_int
+
+    native_child_callback = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    user32.EnumChildWindows.argtypes = [wintypes.HWND, native_child_callback, wintypes.LPARAM]
+    user32.EnumChildWindows.restype = wintypes.BOOL
+    user32.IsChild.argtypes, user32.IsChild.restype = [wintypes.HWND, wintypes.HWND], wintypes.BOOL
+    user32.IsWindowVisible.argtypes, user32.IsWindowVisible.restype = [wintypes.HWND], wintypes.BOOL
+    user32.IsWindowEnabled.argtypes, user32.IsWindowEnabled.restype = [wintypes.HWND], wintypes.BOOL
+    user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user32.GetWindowTextW.restype = ctypes.c_int
+    user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user32.GetClassNameW.restype = ctypes.c_int
+    user32.SetActiveWindow.argtypes, user32.SetActiveWindow.restype = [wintypes.HWND], wintypes.HWND
+
+    def native_question_button(question, label):
+        # wx 4.2.4 uses nested TaskDialog buttons with control ID zero.
+        # The caller first binds the question title, process and owner chain.
+        if label not in ('Yes', 'No'):
+            raise ValueError('Only the explicit native Yes or No control is admitted.')
+        if not question or not user32.IsWindow(question):
+            return None
+        process_id = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(question, ctypes.byref(process_id))
+        if process_id.value != os.getpid():
+            raise AssertionError('Refusing native controls from another process.')
+        matches, failures = [], []
+        visited = 0
+        @native_child_callback
+        def visit(child, unused):
+            nonlocal visited
+            try:
+                visited += 1
+                if visited > 128:
+                    raise AssertionError('The owned native question exceeds the descendant bound.')
+                if (not user32.IsChild(question, child) or not user32.IsWindowVisible(child)
+                        or not user32.IsWindowEnabled(child)):
+                    return True
+                child_process = wintypes.DWORD()
+                user32.GetWindowThreadProcessId(child, ctypes.byref(child_process))
+                if child_process.value != os.getpid():
+                    raise AssertionError('A native question descendant belongs to another process.')
+                class_name = ctypes.create_unicode_buffer(64)
+                if user32.GetClassNameW(child, class_name, len(class_name)) <= 0:
+                    raise OSError(ctypes.get_last_error(), 'Cannot inspect the native button class.')
+                if class_name.value != 'Button':
+                    return True
+                caption = ctypes.create_unicode_buffer(64)
+                length = user32.GetWindowTextW(child, caption, len(caption))
+                if 0 < length < len(caption) - 1 and caption.value in (label, '&' + label):
+                    matches.append(child)
+                return True
+            except BaseException as error:
+                failures.append(error)
+                return False
+        user32.EnumChildWindows(question, visit, 0)
+        if failures:
+            raise failures[0]
+        if len(matches) > 1:
+            raise AssertionError('The owned native question has ambiguous ' + label + ' controls.')
+        if not matches:
+            return None
+        button = matches[0]
+        if not user32.IsWindow(button) or not user32.IsChild(question, button):
+            raise AssertionError('The owned native question button disappeared.')
+        return button
 
     def own_modal(window):
         loop = wx.EventLoopBase.GetActive()
@@ -146,10 +208,11 @@ def main():
             handle = owned_question(title)
             if not handle:
                 continue
-            no_button = user32.GetDlgItem(handle, 7)  # IDNO
+            no_button = native_question_button(handle, 'No')
             if not no_button:
                 raise AssertionError('The owned Book confirmation has no native No button.')
-            if not user32.PostMessageW(handle, 0x0111, 7, no_button):  # WM_COMMAND
+            user32.SetActiveWindow(handle)
+            if not user32.PostMessageW(no_button, 0x00F5, 0, 0):  # BM_CLICK, actual button
                 raise OSError(ctypes.get_last_error(), 'Could not queue owned Book No cleanup.')
             return True
         return False
@@ -266,26 +329,30 @@ def main():
         expected_parent = (dialog if parent is None else parent).GetHandle()
         if user32.GetWindow(handle, 4) != expected_parent:
             raise AssertionError('The actual Book confirmation has a different direct parent.')
-        current_focus = user32.GetDlgCtrlID(user32.GetFocus())
+        current_focus = user32.GetFocus()
+        no_button = native_question_button(handle, 'No')
         key_identity = (stage, title, handle)
         if key_identity not in question_waits:
             question_waits[key_identity] = min(deadline, monotonic() + 5)
             print('DIAG: Book confirmation focus ' + json.dumps({
                 'stage': stage, 'foreground': user32.GetForegroundWindow() == handle,
-                'control_id': current_focus}), flush=True)
+                'focused_hwnd': current_focus, 'no_button_hwnd': no_button,
+                'control_id': user32.GetDlgCtrlID(current_focus)}), flush=True)
         # Appearance precedes focus settlement on some Windows builds. Observe
         # the actual default; never move focus to No to manufacture this proof.
-        if user32.GetForegroundWindow() != handle or current_focus != 7:
+        if not no_button or user32.GetForegroundWindow() != handle or current_focus != no_button:
             if monotonic() >= question_waits[key_identity]:
                 raise AssertionError('Native Book confirmation did not settle on its default No; '
-                                     'observed control ID ' + str(current_focus))
+                                     'observed focus/no HWNDs ' + str((current_focus, no_button)))
             return False
         check('confirmation belongs to the book dialog: ' + title,
               user32.GetWindow(handle, 4) == expected_parent)
-        check('confirmation defaults to No: ' + title, current_focus == 7)
-        key = wx.WXK_ESCAPE
+        check('confirmation defaults to No: ' + title, bool(no_button) and current_focus == no_button)
+        # Space activates the actually observed No button; Escape is not an
+        # alternative proof of the selected default on a native TaskDialog.
+        key = wx.WXK_SPACE
         if accepted:
-            yes = user32.GetDlgItem(handle, 6)
+            yes = native_question_button(handle, 'Yes')
             check('native Yes button exists: ' + title, bool(yes))
             user32.SetFocus(yes)
             check('native explicit Yes focus: ' + title, user32.GetFocus() == yes)

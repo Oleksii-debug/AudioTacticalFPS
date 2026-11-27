@@ -1,0 +1,378 @@
+{
+  "schema": "resonance-selected-format-native-contract/1",
+  "status": "STATIC_NOT_RUN",
+  "source_manifest": "2292ed26768a41665fc23985a0b7fc28cb6d4cc4",
+  "portable_contract": "1f9590baaf0c03742c21be0e3f49dde3ab084f27",
+  "scripts": {
+    "support": {
+      "path": "scripts/selected_conversion_fixture_support.py",
+      "sha": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b"
+    },
+    "acceptance": {
+      "path": "scripts/selected_conversion_acceptance.py",
+      "sha": "574a297765039cd765c1b352a6a9d8f27ca6b3be"
+    },
+    "controls": {
+      "path": "scripts/windows_document_conversion_smoke.py",
+      "sha": "5527d7a7ff2b830e926af8666ff4679e1a5374a3"
+    }
+  },
+  "runtime_lock": {
+    "path": "packaging/windows-document-converters.lock.json",
+    "sha": "c5822c7ff56d5139da911ea153a8fdcd626d70dd"
+  },
+  "companion": {
+    "path": "tests/conversion/fixtures/ordered_slides.pptx",
+    "sha": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44"
+  },
+  "policy_helper": {
+    "path": "scripts/translation_loopback_check.py",
+    "sha": "194df6f0589c077fac26fc38751d79068c7570ea"
+  },
+  "modes": [
+    "source",
+    "installed"
+  ],
+  "native_platform": "Actual Windows x64; fixed selected runtimes and their entire .exe/.com inventories under caller-read-back active external-address blocks; explicit 127.0.0.1 old-suite fixture only.",
+  "qualification": {
+    "formats": "14 named native reading conversions and canonical TXT imports, with exact original+TXT+report triplets",
+    "old_suite": "Existing whole 34 with exact Counter/JUnit and inside-child origins",
+    "controls": "30 named checks /30 exact application origins in each source and installed mode, required by the coherent standalone durable PR gate; actual execution remains NOT_RUN."
+  },
+  "formats": {
+    "expected_suffixes": [
+      ".azw",
+      ".azw3",
+      ".chm",
+      ".djvu",
+      ".doc",
+      ".lit",
+      ".mobi",
+      ".pdb",
+      ".prc",
+      ".ppt",
+      ".tcr",
+      ".wpd",
+      ".xls",
+      ".rtf"
+    ],
+    "count": 14,
+    "origins": [
+      "carr_library.application",
+      "carr_library.catalog.intake",
+      "carr_library.conversion.models",
+      "carr_library.conversion.service",
+      "carr_library.conversion.worker",
+      "carr_library.conversion.formats",
+      "carr_library.conversion._selected_files",
+      "carr_library.conversion.calibre",
+      "carr_library.conversion.office",
+      "carr_library.conversion.selected_adapters",
+      "carr_library.conversion.selected_worker",
+      "carr_library.conversion.selected",
+      "carr_library.extract.document_formats",
+      "carr_library.extract.document_formats_xml",
+      "carr_library.operations.broker",
+      "carr_library.audio.cleanup",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.file_publication",
+      "carr_library.durable_state",
+      "carr_library.backup_sidecars",
+      "carr_library.speech._io"
+    ],
+    "required_pass": [
+      "actual_native_descendant_cancel",
+      "actual_format_conversions",
+      "canonical_reading_copy_import",
+      "source_originals_unchanged",
+      "native_children_and_leases_settled",
+      "all_owned_jobs_closed",
+      "owned_temporary_cleanup"
+    ],
+    "report_not_run": [
+      "actual_format_quality",
+      "native_catalog_fidelity",
+      "drm_bypass",
+      "scanned_djvu_ocr",
+      "nvda"
+    ],
+    "rows": {
+      "required_pass": [
+        "verified_copy_read",
+        "canonical_text_import",
+        "no_clobber"
+      ],
+      "sha256": [
+        "source_sha256",
+        "reading_sha256",
+        "report_sha256"
+      ],
+      "classification": "Required truthful generated-native, synthetic format bytes, AZW/MOBI family alias, or explicitly public upstream CHM/DjVu"
+    }
+  },
+  "old_suite": {
+    "path": "tests/conversion/test_conversion.py",
+    "sha": "db3884363c51654c7d16ef2c5d2e82d0e714b411",
+    "expected": {
+      "count": 34,
+      "functions": [
+        {
+          "name": "test_exact_unicode_txt_and_source_hash",
+          "count": 1
+        },
+        {
+          "name": "test_decode_requires_explicit_legacy_encoding",
+          "count": 1
+        },
+        {
+          "name": "test_html_scripts_frames_styles_entities_and_alt_are_safe",
+          "count": 1
+        },
+        {
+          "name": "test_eml_chooses_body_and_never_reads_attachment",
+          "count": 1
+        },
+        {
+          "name": "test_real_docx_reuses_reviewed_parser",
+          "count": 1
+        },
+        {
+          "name": "test_pdf_physical_page_positions_are_real_and_unverified",
+          "count": 1
+        },
+        {
+          "name": "test_safe_opendocument_text_spreadsheet_and_slides",
+          "count": 3
+        },
+        {
+          "name": "test_actual_xlsx_cached_cells_do_not_evaluate_formulas",
+          "count": 1
+        },
+        {
+          "name": "test_presentation_order_uses_relationship_order",
+          "count": 1
+        },
+        {
+          "name": "test_fictionbook_text_retains_unicode",
+          "count": 2
+        },
+        {
+          "name": "test_existing_epub_spine_reader_is_reused",
+          "count": 1
+        },
+        {
+          "name": "test_archives_reject_traversal_entities_and_active_code",
+          "count": 1
+        },
+        {
+          "name": "test_cancellation_budget_and_no_overwrite_keep_sources",
+          "count": 1
+        },
+        {
+          "name": "test_unverified_legacy_formats_are_not_falsely_supported",
+          "count": 9
+        },
+        {
+          "name": "test_read_and_write_scope_cannot_escape_or_follow_links",
+          "count": 1
+        },
+        {
+          "name": "test_actual_installed_pandoc_rtf_or_explicit_unavailable",
+          "count": 1
+        },
+        {
+          "name": "test_actual_pandoc_does_not_fetch_iframe_or_execute_filters",
+          "count": 1
+        },
+        {
+          "name": "test_actual_local_image_ocr_requires_selected_languages",
+          "count": 1
+        },
+        {
+          "name": "test_image_worker_bounds_all_tiff_frames_before_ocr",
+          "count": 3
+        },
+        {
+          "name": "test_provenance_publication_failure_rolls_back_new_derivative",
+          "count": 1
+        },
+        {
+          "name": "test_source_change_between_snapshot_and_publication_is_rejected",
+          "count": 1
+        }
+      ]
+    },
+    "origins": [
+      "carr_library.application",
+      "carr_library.catalog.intake",
+      "carr_library.conversion.models",
+      "carr_library.conversion.service",
+      "carr_library.conversion.worker",
+      "carr_library.conversion.formats",
+      "carr_library.conversion._selected_files",
+      "carr_library.conversion.calibre",
+      "carr_library.conversion.office",
+      "carr_library.conversion.selected_adapters",
+      "carr_library.conversion.selected_worker",
+      "carr_library.conversion.selected",
+      "carr_library.extract.document_formats",
+      "carr_library.extract.document_formats_xml",
+      "carr_library.operations.broker",
+      "carr_library.audio.cleanup",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.file_publication",
+      "carr_library.durable_state",
+      "carr_library.backup_sidecars",
+      "carr_library.speech._io"
+    ],
+    "inner_seconds": 600,
+    "required_pass": [
+      "old_whole_conversion_suite",
+      "actual_loopback_denial",
+      "all_owned_jobs_closed",
+      "owned_temporary_cleanup"
+    ],
+    "child_origins": "Same22 actual imported modules before/after in child; parent equality, helper/mode/receipt hash required",
+    "allow_skip_xfail_xpass": false
+  },
+  "controls": {
+    "checks": [
+      "native failure answers owned No before closing only the active inner modal",
+      "real existing reader receives the exact verified UTF-8 copy",
+      "verified copy remains unbound and gives no native quotation authority",
+      "real reader Save preserves the verified copy and its original",
+      "native reader closes and returns to the same conversion result window",
+      "import confirmation actually starts with default No",
+      "explicit import still starts with default No",
+      "all selected source or installed module identities are exact",
+      "real native Windows controls",
+      "existing host worker and workspace own the conversion path",
+      "conversion reuses its actual registered command identifier",
+      "cancelling the source picker admits no conversion or output",
+      "cancelling the selected runtime picker admits no conversion or output",
+      "actual existing menu converts RTF with the selected native Pandoc",
+      "native conversion commits exact original reading text and fidelity report",
+      "result names the external original and report without catalog authority",
+      "conversion alone neither imports nor automatically starts reading",
+      "native default No preserves the library and external result",
+      "explicit native Yes runs the canonical TXT importer on the existing worker",
+      "import completion explicitly preserves the external evidence boundary",
+      "actual imported text is searchable and native original is not substituted",
+      "unrelated original and all selected native bytes remain exact",
+      "changed reading bytes cannot reopen the reader or re-run a converter",
+      "native result close revokes its actual queued Read callback",
+      "native host Close drains the shared worker and retained finalizers",
+      "actual reader finalizers release their existing worker owners",
+      "actual converter private Job and child are closed before any fallback",
+      "current conversion resource leases and staging are empty after cleanup",
+      "all source or installed origins remain unchanged after actual cleanup",
+      "native owned temporary files were removed after every worker settled"
+    ],
+    "origins": [
+      "carr_library.application",
+      "carr_library.catalog.intake",
+      "carr_library.conversion.models",
+      "carr_library.conversion.service",
+      "carr_library.conversion.worker",
+      "carr_library.conversion.formats",
+      "carr_library.conversion._selected_files",
+      "carr_library.conversion.calibre",
+      "carr_library.conversion.office",
+      "carr_library.conversion.selected_adapters",
+      "carr_library.conversion.selected_worker",
+      "carr_library.conversion.selected",
+      "carr_library.extract.document_formats",
+      "carr_library.extract.document_formats_xml",
+      "carr_library.operations.broker",
+      "carr_library.audio.cleanup",
+      "carr_library.audio.process",
+      "carr_library.audio.windows_job",
+      "carr_library.file_publication",
+      "carr_library.durable_state",
+      "carr_library.backup_sidecars",
+      "carr_library.speech._io",
+      "carr_library.ui.document_conversion",
+      "carr_library.ui.desktop_app",
+      "carr_library.ui.worker_lifetime",
+      "carr_library.ui.worker_cleanup",
+      "carr_library.ui.speech_dialog",
+      "carr_library.speech.reading",
+      "carr_library.native_runtime",
+      "carr_library.speech.session"
+    ],
+    "required_pass": [
+      "native_conversion",
+      "native_verified_read",
+      "native_canonical_import",
+      "native_source_guards",
+      "native_host_cleanup",
+      "native_failure_cleanup",
+      "source_originals_unchanged"
+    ],
+    "report_not_run": [
+      "actual_format_quality",
+      "native_catalog_fidelity",
+      "physical_audio_device",
+      "nvda"
+    ],
+    "file_picker": "explicit fixture selections; system file/folder picker not automated",
+    "discovery_correction": {
+      "pattern": "02d845a0a047712dae8348582a04de76a0771beb",
+      "actual_inventory": {
+        "head": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+        "run": 46071950490,
+        "job": 140750744213,
+        "artifact": 15234330040,
+        "sha256": "820973340426c401ab44cba5881323af642b50bced4d06ea102f1a6560f70673"
+      },
+      "observed": "TaskDialog #32770 with nested real Button '&Yes'/'&No', both control IDs0; no direct-ID dependency remains.",
+      "product_actions": "Observed No HWND focus; real Tab to current Yes HWND then Space. Failure cleanup SetActiveWindow(owned question), verified No BM_CLICK queue admission, actual wx.NO/parent survival required.",
+      "qualification": "Inventory was diagnostic-only; actual source/installed GUI still NOT_RUN."
+    }
+  },
+  "ownership": {
+    "headless_seconds": 1200,
+    "native_controls_seconds": 180,
+    "whole_old_suite_seconds": 600,
+    "headless_step_minutes": 21,
+    "native_step_minutes": 5
+  },
+  "acquisition": "Read docs/DOCUMENT_CONVERSION_NATIVE.md. Download only exact lock7 files; administrative extract verified MSI / safe bounded Pandoc ZIP; do not change product bundle or run unverified runtime.",
+  "retention": "Bounded JSON/text/JUnit only. No runtime/archive/binary/document/generated-input/converted-TXT/library/model/private assets.",
+  "first_diagnostic": {
+    "workflow": {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "sha": "600b33370927bd77c193aab8ea1bbc4f0abf3de7"
+    },
+    "trigger": "pull_request plus optional diagnostic branch push; exact github.event.pull_request.head.sha || github.sha",
+    "portable_per_platform": {
+      "source": 201,
+      "installed": 201
+    },
+    "native_required_phases": [
+      "formats-source",
+      "old-suite-source",
+      "formats-installed",
+      "old-suite-installed",
+      "gui-source",
+      "gui-installed"
+    ],
+    "gui_per_mode": {
+      "checks": 30,
+      "origins": 30,
+      "seconds": 180
+    },
+    "aggregate": "All six actual phases required; no source-to-installed transfer or phase failure suppression.",
+    "windows_native_step_minutes": 100,
+    "windows_job_minutes": 285,
+    "static_review": {
+      "reviewer": "progress_completion",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "scope": "Exact GUI report/CLI/checks/origins, six-phase failure aggregation, active firewall lifetime, PR-head source binding and finite outer envelope; no parser/runtime claim."
+    }
+  },
+  "supersedes": "a390a30d78ceb882b5cbc5c935f4ba91a61c98d3",
+  "source_manifest_note": "The final complete source manifest is issued after this contract and refers to it; application, native scripts and runtime lock are unchanged from the named source manifest."
+}

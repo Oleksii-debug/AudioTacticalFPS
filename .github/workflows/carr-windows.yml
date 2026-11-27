@@ -277,7 +277,14 @@ jobs:
             'tests/studio/test_measured_pcm.py',
             'tests/studio/test_book_measured_cli.py',
             'tests/ui/test_book_effects.py',
-            'tests/ui/test_book_duration_dialog.py'
+            'tests/ui/test_book_duration_dialog.py',
+            'tests/packaging/test_owner_candidate_archives.py',
+            'tests/conversion/test_selected_conversion.py',
+            'tests/conversion/test_calibre_admission.py',
+            'tests/conversion/test_office_admission.py',
+            'tests/ui/test_document_conversion.py',
+            'tests/extract/test_document_formats_xml.py',
+            'tests/transcription/test_native_profiles_fixture.py'
           )
           & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -387,6 +394,13 @@ jobs:
             'tests/studio/test_book_measured_cli.py' = 9
             'tests/ui/test_book_effects.py' = 5
             'tests/ui/test_book_duration_dialog.py' = 17
+            'tests/packaging/test_owner_candidate_archives.py' = 22
+            'tests/conversion/test_selected_conversion.py' = 26
+            'tests/conversion/test_calibre_admission.py' = 44
+            'tests/conversion/test_office_admission.py' = 19
+            'tests/ui/test_document_conversion.py' = 17
+            'tests/extract/test_document_formats_xml.py' = 95
+            'tests/transcription/test_native_profiles_fixture.py' = 2
           }
           foreach ($entry in $reviewedCompletionExpected.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
@@ -3128,6 +3142,84 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+      - name: Assemble unqualified owner archives and retain only public receipts
+        id: owner_candidate_archives
+        if: ${{ !cancelled() && steps.owner_candidate_inputs.outcome == 'success' && steps.complete_bundle.outcome == 'failure' }}
+        timeout-minutes: 20
+        env:
+          CARR_CANDIDATE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CARR_COMPLETE_BUNDLE_OUTCOME: ${{ steps.complete_bundle.outcome }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $sourceCommit = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceCommit -cne $env:CARR_CANDIDATE_SOURCE_SHA) { throw 'Owner archive assembly source differs from the event head.' }
+          $sourceTree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Owner archive assembly source tree is unavailable.' }
+          $bundle = $env:CARR_CI_TRANSFER_BUNDLE
+          $inputs = Join-Path $env:RUNNER_TEMP 'carr-owner-candidate-inputs'
+          $archives = Join-Path $env:RUNNER_TEMP 'carr-owner-candidate-archives'
+          $evidence = Join-Path (Get-Location) 'ci-results/owner-candidate-assembly'
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          $helper = Join-Path (Get-Location) 'scripts/assemble_owner_candidate_archives.py'
+          $helperHashes = @{}
+          foreach ($relative in @('scripts/assemble_owner_candidate_archives.py', 'scripts/retain_owner_candidate_inputs.py', 'packaging/create_delivery.py', 'packaging/install_windows.py')) {
+            $path = Join-Path (Get-Location) $relative
+            $info = Get-Item -LiteralPath $path -ErrorAction Stop
+            if (-not ($info -is [System.IO.FileInfo]) -or ($info.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { throw 'Owner archive helpers must be ordinary committed files.' }
+            $expected = (& git rev-parse ('HEAD:carr-library/' + $relative)).Trim()
+            if ($LASTEXITCODE -ne 0 -or $expected -cnotmatch '^[a-f0-9]{40}$') { throw 'Owner archive helper identity is unavailable.' }
+            $actual = (& git hash-object --no-filters -- $path).Trim()
+            if ($LASTEXITCODE -ne 0 -or $actual -cne $expected) { throw 'An owner archive helper differs from its exact committed source.' }
+            $helperHashes[$relative] = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+          }
+          $programs = @($python, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'runtime/python.exe'), (Join-Path $bundle 'runtime/pythonw.exe')) | ForEach-Object { [IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          foreach ($program in $programs) {
+            $info = Get-Item -LiteralPath $program -ErrorAction Stop
+            if (-not ($info -is [System.IO.FileInfo]) -or ($info.Attributes -band [System.IO.FileAttributes]::ReparsePoint)) { throw 'Owner archive interpreter is not an ordinary installed file.' }
+          }
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          if ($profilesBefore.Count -ne 3) { throw 'All firewall profile states must be captured before archive assembly.' }
+          $ruleNames = [System.Collections.Generic.List[string]]::new()
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+            if ($profiles.Count -ne 3 -or @($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Owner archive assembly requires active firewall profiles.' }
+            foreach ($program in $programs) {
+              $name = 'CARR-owner-archive-' + [guid]::NewGuid().ToString('N')
+              $ruleNames.Add($name)
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+              $rule = Get-NetFirewallRule -PolicyStore ActiveStore -Name $name -ErrorAction Stop
+              $filter = @($rule | Get-NetFirewallApplicationFilter -ErrorAction Stop)
+              if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block' -or $filter.Count -ne 1 -or [IO.Path]::GetFullPath($filter[0].Program) -ne [IO.Path]::GetFullPath($program)) { throw 'Owner archive outbound rule is inactive or bound to another program.' }
+            }
+            @{ status='ACTIVE'; programs=$programs; profiles=$profiles; archive_upload=$false; scope='Existing no-audio owner archive assembly only' } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-results/owner-candidate-assembly-firewall.json'
+            & $python -I -B -X utf8 $helper --bundle $bundle --inputs $inputs --output $archives --evidence $evidence --source-commit $sourceCommit --source-tree $sourceTree --full-outcome $env:CARR_COMPLETE_BUNDLE_OUTCOME 2>&1 | Tee-Object 'ci-results/owner-candidate-assembly.txt'
+            $assemblyExit = $LASTEXITCODE
+            foreach ($relative in $helperHashes.Keys) {
+              if ((Get-FileHash -LiteralPath (Join-Path (Get-Location) $relative) -Algorithm SHA256).Hash -cne $helperHashes[$relative]) { throw 'An owner archive helper changed during assembly.' }
+            }
+            if ($assemblyExit -ne 0) { throw 'Owner archive assembly or independent source/seal verification failed.' }
+            $reports = @(Get-ChildItem -LiteralPath $evidence -File -Force -ErrorAction Stop)
+            if ($reports.Count -ne 2 -or @($reports | Where-Object { $_.Name -notin @('delivery-verification.json','owner-candidate-assembly.json') -or $_.Length -gt 1MB -or ($_.Attributes -band [IO.FileAttributes]::ReparsePoint) }).Count -ne 0) { throw 'Only two bounded public JSON receipts may be retained.' }
+            if (@(Get-ChildItem -LiteralPath $evidence -Directory -Force -ErrorAction Stop).Count -ne 0) { throw 'Owner archive evidence may not include a binary payload directory.' }
+            Write-Host 'OWNER_CANDIDATE_UNQUALIFIED: both archives verified in ephemeral runner temp; complete binary archives are not uploaded.'
+          } finally {
+            $cleanupFailures = [System.Collections.Generic.List[string]]::new()
+            foreach ($name in $ruleNames) {
+              try { Remove-NetFirewallRule -Name $name -ErrorAction Stop } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            foreach ($profile in $profilesBefore) {
+              try {
+                Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop
+                $restored = Get-NetFirewallProfile -Name $profile.Name -ErrorAction Stop
+                if ($restored.Enabled -ne $profile.Enabled) { throw 'Owner archive firewall profile restoration differs.' }
+              } catch { $cleanupFailures.Add($_.Exception.Message) }
+            }
+            @{ status=$(if ($cleanupFailures.Count -eq 0) { 'PASS' } else { 'FAIL' }); original_profiles=$profilesBefore; removed_rules=$ruleNames.ToArray(); errors=$cleanupFailures.ToArray() } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 'ci-results/owner-candidate-assembly-cleanup.json'
+            if ($cleanupFailures.Count -ne 0) { throw ('Owner archive firewall cleanup failed: ' + ($cleanupFailures -join '; ')) }
+          }
+
       - name: Build pinned standard setup and execute actual install, repair and uninstall
         if: ${{ !cancelled() && steps.complete_bundle.conclusion == 'success' }}
         timeout-minutes: 20
@@ -3666,7 +3758,13 @@ jobs:
             'tests/studio/test_measured_pcm.py',
             'tests/studio/test_book_measured_cli.py',
             'tests/ui/test_book_effects.py',
-            'tests/ui/test_book_duration_dialog.py'
+            'tests/ui/test_book_duration_dialog.py',
+            'tests/packaging/test_owner_candidate_archives.py',
+            'tests/conversion/test_selected_conversion.py',
+            'tests/conversion/test_calibre_admission.py',
+            'tests/conversion/test_office_admission.py',
+            'tests/ui/test_document_conversion.py',
+            'tests/transcription/test_native_profiles_fixture.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
@@ -3855,6 +3953,13 @@ jobs:
               'tests/studio/test_book_measured_cli.py' = 9
               'tests/ui/test_book_effects.py' = 5
               'tests/ui/test_book_duration_dialog.py' = 17
+              'tests/packaging/test_owner_candidate_archives.py' = 22
+              'tests/conversion/test_selected_conversion.py' = 26
+              'tests/conversion/test_calibre_admission.py' = 44
+              'tests/conversion/test_office_admission.py' = 19
+              'tests/ui/test_document_conversion.py' = 17
+              'tests/extract/test_document_formats_xml.py' = 95
+              'tests/transcription/test_native_profiles_fixture.py' = 2
             }
             foreach ($entry in $completedFeatureCounts.GetEnumerator()) {
               $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'

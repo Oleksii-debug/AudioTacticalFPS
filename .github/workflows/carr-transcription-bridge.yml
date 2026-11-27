@@ -55,7 +55,7 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         run: |
-          $suites = @('tests/transcription/test_supplied_worker_bridge.py', 'tests/transcription/test_v5_worker_profile.py', 'tests/transcription/test_runtime_interpreter.py', 'tests/operations/test_transcription_admission.py', 'tests/assistant/test_supplied_transcription.py', 'tests/ui/test_progress_job_review.py', 'tests/transcription/test_protocol_fixture.py', 'tests/transcription/test_service.py', 'tests/transcription/test_admission_boundaries.py', 'tests/transcription/test_runtime_admission.py', 'tests/transcription/test_restore.py', 'tests/storage/test_transcription_backup.py', 'tests/ui/test_transcription_dialog.py', 'tests/e2e/test_transcription_cli.py', 'tests/transcription/test_unified_authority.py', 'tests/transcription/test_export_publication.py')
+          $suites = @('tests/transcription/test_supplied_worker_bridge.py', 'tests/transcription/test_v5_worker_profile.py', 'tests/transcription/test_runtime_interpreter.py', 'tests/operations/test_transcription_admission.py', 'tests/assistant/test_supplied_transcription.py', 'tests/ui/test_progress_job_review.py', 'tests/transcription/test_protocol_fixture.py', 'tests/transcription/test_service.py', 'tests/transcription/test_admission_boundaries.py', 'tests/transcription/test_runtime_admission.py', 'tests/transcription/test_restore.py', 'tests/storage/test_transcription_backup.py', 'tests/ui/test_transcription_dialog.py', 'tests/e2e/test_transcription_cli.py', 'tests/transcription/test_unified_authority.py', 'tests/transcription/test_export_publication.py', 'tests/transcription/test_native_profiles_fixture.py')
           if ($env:RUNNER_OS -eq 'Windows') { $suites += 'tests/transcription/test_protocol_fixture_windows.py' }
           python scripts/ci_check.py --jobs 2 --suite-timeout 'tests/transcription/test_admission_boundaries.py=900' @suites 2>&1 | Tee-Object 'ci-asr-results/source.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -64,6 +64,7 @@ jobs:
             'tests/transcription/test_admission_boundaries.py' = 40
             'tests/transcription/test_protocol_fixture.py' = 9
             'tests/storage/test_transcription_backup.py' = 143
+            'tests/transcription/test_native_profiles_fixture.py' = 2
           }
           if ($env:RUNNER_OS -eq 'Windows') { $reviewedAsrCounts['tests/transcription/test_protocol_fixture_windows.py'] = 2 }
           foreach ($entry in $reviewedAsrCounts.GetEnumerator()) {
@@ -94,6 +95,9 @@ jobs:
                   result[name] = dict(path=str(actual), sha256=digest)
               return result
           before = origins()
+          fixture_paths = ('tests/transcription/fixture_runtime.py',
+                           'tests/transcription/fixtures/protocol_worker.py')
+          fixture_hashes = {name: sha256((checkout / name).read_bytes()).hexdigest() for name in fixture_paths}
           def offline_network(*args, **kwargs):
               raise OSError('Network access is disabled during offline verification')
           socket.socket.connect = socket.socket.connect_ex = offline_network
@@ -104,7 +108,9 @@ jobs:
                   if hasattr(report, 'wasxfail'):
                       self.seen = True
           policy = RejectExpectedFailures()
-          suites = ["tests/transcription/test_supplied_worker_bridge.py","tests/transcription/test_v5_worker_profile.py","tests/transcription/test_runtime_interpreter.py","tests/operations/test_transcription_admission.py","tests/assistant/test_supplied_transcription.py","tests/ui/test_progress_job_review.py","tests/transcription/test_protocol_fixture.py","tests/transcription/test_service.py","tests/transcription/test_admission_boundaries.py","tests/transcription/test_runtime_admission.py","tests/transcription/test_restore.py","tests/storage/test_transcription_backup.py","tests/ui/test_transcription_dialog.py","tests/e2e/test_transcription_cli.py","tests/transcription/test_unified_authority.py","tests/transcription/test_export_publication.py"]
+          suites = ["tests/transcription/test_supplied_worker_bridge.py","tests/transcription/test_v5_worker_profile.py","tests/transcription/test_runtime_interpreter.py","tests/operations/test_transcription_admission.py","tests/assistant/test_supplied_transcription.py","tests/ui/test_progress_job_review.py","tests/transcription/test_protocol_fixture.py","tests/transcription/test_service.py","tests/transcription/test_admission_boundaries.py","tests/transcription/test_runtime_admission.py","tests/transcription/test_restore.py","tests/storage/test_transcription_backup.py","tests/ui/test_transcription_dialog.py","tests/e2e/test_transcription_cli.py","tests/transcription/test_unified_authority.py","tests/transcription/test_export_publication.py",
+              "tests/transcription/test_native_profiles_fixture.py",
+          ]
           if os.name == 'nt':
               suites.append('tests/transcription/test_protocol_fixture_windows.py')
           report = pathlib.Path('ci-asr-results/installed.xml')
@@ -120,14 +126,22 @@ jobs:
               selected = [case for case in cases if case.get('classname', '') == name or case.get('classname', '').startswith(name + '.')]
               counts[suite] = len(selected)
           after = origins()
+          fixtures_after = {name: sha256((checkout / name).read_bytes()).hexdigest() for name in fixture_paths}
           reviewed_counts = {'tests/transcription/test_service.py': 28,
               'tests/transcription/test_admission_boundaries.py': 40,
               'tests/transcription/test_protocol_fixture.py': 9,
-              'tests/storage/test_transcription_backup.py': 143}
+              'tests/storage/test_transcription_backup.py': 143,
+              'tests/transcription/test_native_profiles_fixture.py': 2}
           if os.name == 'nt':
               reviewed_counts['tests/transcription/test_protocol_fixture_windows.py'] = 2
+          barrier_suite = "tests/transcription/test_native_profiles_fixture.py"
+          barrier_module = barrier_suite[:-3].replace('/', '.')
+          barrier_names = {case.get('name', '').split('[', 1)[0] for case in cases
+              if case.get('classname', '') == barrier_module or case.get('classname', '').startswith(barrier_module + '.')}
+          required_barrier_names = set(["test_actual_stop_barrier_waits_past_old_hold_and_resume_starts_only_unfinished_source","test_actual_stop_barrier_expires_without_silent_second_source_or_complete_status"])
           ok = (status == 0 and bool(cases) and failed == skipped == 0 and not policy.seen
-                and all(counts.values()) and before == after
+                and all(counts.values()) and before == after and fixture_hashes == fixtures_after
+                and barrier_names == required_barrier_names
                 and all(counts.get(name) == count for name, count in reviewed_counts.items()))
           evidence = dict(status='PASS' if ok else 'FAIL',
               source_commit=pathlib.Path('ci-asr-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),
@@ -135,6 +149,7 @@ jobs:
               passed=len(cases)-failed-skipped, failed=failed, skipped=skipped,
               pytest_exit=int(status), expected_failures=policy.seen,
               suite_counts=counts, required_suite_counts=reviewed_counts, origins=after,
+              fixture_sha256=fixtures_after,
               acoustic_inference='NOT_RUN', manual_NVDA='NOT_RUN')
           pathlib.Path('ci-asr-results/installed.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
           print(json.dumps(evidence), flush=True)

@@ -158,7 +158,7 @@ report = dict(
     no_audio_probe_sha256=digest(probe_path),
     failed_full_native_receipt_included=full_failure.is_file(),
     files=snapshots,
-    assembly='Existing refresh_private_bundle.py with the independently verified private parent, followed by unchanged create_delivery.py checks.',
+    assembly='Fresh verified CI no-audio sibling: unchanged create_delivery.py directly. Offline refresh route: existing refresh_private_bundle.py requires its independently verified private parent before the same delivery checks.',
     excluded_payloads=['private-parent', 'Python runtime', 'OCR runtime/source', 'models',
                        'drivers', 'audio runtimes', 'Node', 'Setup installer', 'user documents'],
     actual_audio_output='NOT_QUALIFIED', acoustic_listening='NOT_RUN',

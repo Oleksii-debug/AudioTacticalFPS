@@ -39,7 +39,7 @@ PINS = {
     "tests/studio/test_book_measured_cli.py": "07d107d1c10eb341f43cfcd8a0823ba1f93554cb",
     "tests/ui/test_book_effects.py": "12a47c7a05879eeaeab7047dd7eddac17dbf9cdb",
     "tests/ui/test_book_duration_dialog.py": "d9516c2bf87ea38c34149d87185cb201ba3a34f5",
-    "scripts/windows_book_audio_smoke.py": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61",
+    "scripts/windows_book_audio_smoke.py": "fe9bf5de5be698116107f89fd2ea1c872853bcb3",
     "scripts/ci_check.py": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
     "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
     "packaging/prepare_windows_audio.py": "65b172ac432f28e865200aed2f8e610dda1ac7cf",

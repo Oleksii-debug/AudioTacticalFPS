@@ -1,0 +1,612 @@
+name: CARR selected legacy conversion source installed and native diagnostic
+
+on:
+  push:
+    branches: ['carr/ci-next15-conversion-*']
+    paths: ['carr-library/**', '.github/workflows/carr-next15-conversion.yml']
+  pull_request:
+    paths: ['carr-library/**', '.github/workflows/carr-next15-conversion.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conversion-linux:
+    name: Exact portable source and isolated installed conversion contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 135
+    concurrency:
+      group: carr-selected-conversion-${{ github.event.pull_request.head.sha || github.sha }}-ubuntu-24.04
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Bind exact source and prepare existing actual fixture APIs
+        id: dependencies
+        timeout-minutes: 15
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'Exact conversion source changed.' }
+          $verify = @'
+          from hashlib import sha1
+          from pathlib import Path
+          pins = {"scripts/ci_selected_conversion_contracts.py":"7dd79e1b8b390bb14479f9be7d2e7c3792fd4333","scripts/prepare_selected_conversion_runtime.py":"bfe7c95d27e57859aa458a18caaa5d47dba5a7fb","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"574a297765039cd765c1b352a6a9d8f27ca6b3be","scripts/windows_document_conversion_smoke.py":"5527d7a7ff2b830e926af8666ff4679e1a5374a3","scripts/translation_loopback_check.py":"194df6f0589c077fac26fc38751d79068c7570ea","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          for relative, wanted in pins.items():
+              path = Path(relative)
+              assert path.is_file() and not path.is_symlink()
+              raw = path.read_bytes()
+              assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == wanted, relative
+              if path.suffix == '.py':
+                  compile(raw,str(path),'exec')
+          print('Exact201 portable contracts and selected-native script/lock identities admitted.')
+          '@
+          $verify | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Conversion script/lock source or syntax differs.' }
+          if ($env:RUNNER_OS -eq 'Windows') {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          } else {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned application/test dependencies failed.' }
+          # Reuse the main gate's exact actual PDF/XLSX fixture dependencies.
+          & python -B -m pip install --only-binary=:all: reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { throw 'Existing PDF/XLSX fixture dependencies failed.' }
+          & python -I -B -X utf8 -c "import reportlab, openpyxl; from reportlab.pdfgen.canvas import Canvas; from openpyxl import Workbook; assert reportlab.Version == '4.4.9' and openpyxl.__version__ == '3.1.5'; print('Actual PDF/XLSX fixture APIs are available.')"
+          if ($LASTEXITCODE -ne 0) { throw 'Actual fixture APIs or versions differ.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Conversion dependency closure is inconsistent.' }
+      - name: Require201 source and201 isolated installed whole cases
+        id: portable
+        timeout-minutes: 105
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & python -I -B -X utf8 scripts/ci_selected_conversion_contracts.py --evidence ci-conversion-contracts --expected-head $env:EXPECTED_SOURCE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'All201 source and201 isolated installed conversion cases are required.' }
+
+      - name: Retain closed JSON text and JUnit evidence only
+        id: retain
+        if: ${{ always() }}
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $retain = @'
+          from hashlib import sha256
+          import json, os, shutil, stat, subprocess
+          from pathlib import Path
+          root = Path.cwd().resolve(strict=True)
+          destination = root/'ci-conversion-evidence'
+          destination.mkdir(exist_ok=False)
+          head = subprocess.check_output(['git','--no-replace-objects','rev-parse','HEAD'],text=True).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          tree = subprocess.check_output(['git','--no-replace-objects','rev-parse','HEAD^{tree}'],text=True).strip()
+          ordinary = {'identity-before.json','source-contracts.txt','source-summary.json','wheel-build.txt',
+              'source-wheel-proof.json','wheel-install.txt','installed-pip-check.txt','contracts-summary.json'}
+          for number in range(1,6):
+              ordinary.update({f'installed-{number}.xml',f'installed-{number}.txt',f'installed-{number}-origins.json'})
+          native = {'acquisition.json','acquisition.txt','firewall.json','firewall-programs.json',
+              'required-native-phases.json','native-cleanup.json'}
+          for mode in ('source','installed'):
+              native.update({f'gui-{mode}/native.json',f'gui-{mode}/console.txt'})
+              for phase in ('formats','old-suite'):
+                  native.add(f'{phase}-{mode}/selected-conversion-{phase}-{mode}.json')
+                  native.add(f'{phase}-{mode}/console.txt')
+              native.update({f'old-suite-{mode}/old-conversion-{mode}.txt',
+                             f'old-suite-{mode}/old-conversion-{mode}.xml',
+                             f'old-suite-{mode}/old-conversion-child-origins-{mode}.json'})
+          receipts, total = {}, 0
+          for folder_name, allowed in (('ci-conversion-contracts',ordinary),('ci-conversion-native',native)):
+              folder = root/folder_name
+              if not folder.exists():
+                  continue
+              assert folder.is_dir() and not folder.is_symlink()
+              for path in folder.rglob('*'):
+                  info = path.lstat()
+                  assert not path.is_symlink() and not getattr(info,'st_file_attributes',0) & 0x400
+                  if path.is_dir():
+                      continue
+                  relative = path.relative_to(folder).as_posix()
+                  assert relative in allowed and stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+                  assert path.suffix in {'.json','.txt','.xml'} and info.st_size <= 8*1024**2
+                  total += info.st_size
+                  assert total <= 64*1024**2
+                  target = destination/folder_name/relative
+                  target.parent.mkdir(parents=True,exist_ok=True)
+                  shutil.copyfile(path,target)
+                  digest = sha256(target.read_bytes()).hexdigest()
+                  assert digest == sha256(path.read_bytes()).hexdigest()
+                  receipts[str(target.relative_to(destination))] = {'bytes':info.st_size,'sha256':digest}
+          assert receipts, 'No bounded source/installed/native evidence was produced.'
+          report = {'source_commit':head,'source_tree':tree,'files':receipts,'bytes':total,
+              'classification':'Evidence only. Individual required phase verdicts remain authoritative.',
+              'native_gui':(json.loads((root/'ci-conversion-native/required-native-phases.json').read_text(encoding='utf-8-sig')).get('native_gui','NOT_RUN')
+                            if (root/'ci-conversion-native/required-native-phases.json').is_file() else 'NOT_RUN'),
+              'native_format_quality':'NOT_RUN','release_qualification':'NOT_RUN'}
+          (destination/'retention.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps({'retained_reports':len(receipts),'bytes':total,'source_commit':head,'source_tree':tree},sort_keys=True))
+          '@
+          $retain | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Closed bounded converter evidence retention failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() && steps.retain.outcome == 'success' }}
+        with:
+          name: selected-conversion-ubuntu-24.04-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-conversion-evidence/
+          if-no-files-found: error
+
+  conversion-windows:
+    name: Actual portable source/installed and selected Windows converters
+    runs-on: windows-2022
+    # 265 minutes of admitted steps plus checkout/setup/artifact/post cleanup.
+    timeout-minutes: 285
+    concurrency:
+      group: carr-selected-conversion-${{ github.event.pull_request.head.sha || github.sha }}-windows-2022
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Bind exact source and prepare existing actual fixture APIs
+        id: dependencies
+        timeout-minutes: 15
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -cne $env:EXPECTED_SOURCE_SHA) { throw 'Exact conversion source changed.' }
+          $verify = @'
+          from hashlib import sha1
+          from pathlib import Path
+          pins = {"scripts/ci_selected_conversion_contracts.py":"7dd79e1b8b390bb14479f9be7d2e7c3792fd4333","scripts/prepare_selected_conversion_runtime.py":"bfe7c95d27e57859aa458a18caaa5d47dba5a7fb","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"574a297765039cd765c1b352a6a9d8f27ca6b3be","scripts/windows_document_conversion_smoke.py":"5527d7a7ff2b830e926af8666ff4679e1a5374a3","scripts/translation_loopback_check.py":"194df6f0589c077fac26fc38751d79068c7570ea","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          for relative, wanted in pins.items():
+              path = Path(relative)
+              assert path.is_file() and not path.is_symlink()
+              raw = path.read_bytes()
+              assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == wanted, relative
+              if path.suffix == '.py':
+                  compile(raw,str(path),'exec')
+          print('Exact201 portable contracts and selected-native script/lock identities admitted.')
+          '@
+          $verify | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Conversion script/lock source or syntax differs.' }
+          if ($env:RUNNER_OS -eq 'Windows') {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock -r packaging/windows-sync-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          } else {
+            & python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Existing pinned application/test dependencies failed.' }
+          # Reuse the main gate's exact actual PDF/XLSX fixture dependencies.
+          & python -B -m pip install --only-binary=:all: reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { throw 'Existing PDF/XLSX fixture dependencies failed.' }
+          & python -I -B -X utf8 -c "import reportlab, openpyxl; from reportlab.pdfgen.canvas import Canvas; from openpyxl import Workbook; assert reportlab.Version == '4.4.9' and openpyxl.__version__ == '3.1.5'; print('Actual PDF/XLSX fixture APIs are available.')"
+          if ($LASTEXITCODE -ne 0) { throw 'Actual fixture APIs or versions differ.' }
+          & python -I -B -m pip check
+          if ($LASTEXITCODE -ne 0) { throw 'Conversion dependency closure is inconsistent.' }
+      - name: Require201 source and201 isolated installed whole cases
+        id: portable
+        timeout-minutes: 105
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          & python -I -B -X utf8 scripts/ci_selected_conversion_contracts.py --evidence ci-conversion-contracts --expected-head $env:EXPECTED_SOURCE_SHA
+          if ($LASTEXITCODE -ne 0) { throw 'All201 source and201 isolated installed conversion cases are required.' }
+      - name: Acquire only exact public runtime archives and fixture notices
+        id: acquisition
+        if: ${{ !cancelled() && steps.portable.outcome == 'success' }}
+        timeout-minutes: 35
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          New-Item -ItemType Directory -Path ci-conversion-native -ErrorAction Stop | Out-Null
+          $runtimeRoot = Join-Path $env:RUNNER_TEMP ('carr-selected-conversion-' + $env:GITHUB_RUN_ID + '-' + $env:GITHUB_RUN_ATTEMPT)
+          & python -I -B -X utf8 scripts/prepare_selected_conversion_runtime.py --root $runtimeRoot --receipt ci-conversion-native/acquisition.json 2>&1 | Tee-Object ci-conversion-native/acquisition.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned explicit public native converter acquisition failed.' }
+      - name: Require actual14 formats whole34 and GUI30 in both modes
+        if: ${{ !cancelled() && steps.portable.outcome == 'success' && steps.acquisition.outcome == 'success' }}
+        timeout-minutes: 100
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $python = (& python -I -B -X utf8 -c "import sys; print(sys.executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Selected interpreter identity is unavailable.' }
+          $source = Join-Path (Get-Location) 'src'
+          $acquisition = Get-Content -Raw -LiteralPath ci-conversion-native/acquisition.json | ConvertFrom-Json
+          if ($acquisition.status -cne 'PASS') { throw 'A verified explicit runtime acquisition is required.' }
+          $calibre = [string]$acquisition.selected.calibre
+          $office = [string]$acquisition.selected.libreoffice
+          $pandoc = [string]$acquisition.selected.pandoc
+          $downloads = [string]$acquisition.downloads
+          $programInventory = @'
+          import importlib.util,json
+          from pathlib import Path
+          import sys
+          path=Path('scripts/selected_conversion_fixture_support.py').resolve(strict=True)
+          spec=importlib.util.spec_from_file_location('_current_native_program_inventory',path)
+          module=importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          print(json.dumps([str(path) for path in module.native_programs(*map(Path,sys.argv[1:]))]))
+          '@
+          $programJSON = $programInventory | & $python -I -B -X utf8 - $calibre $office $pandoc
+          if ($LASTEXITCODE -ne 0) { throw 'Bounded selected executable inventory failed.' }
+          $programs = @($programJSON | ConvertFrom-Json | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique)
+          if ($programs.Count -lt 5 -or $programs.Count -gt 50000) { throw 'Native executable inventory is missing or excessive.' }
+          $programJSON | Set-Content -Encoding utf8 -LiteralPath ci-conversion-native/firewall-programs.json
+          $remoteRanges = @('0.0.0.1-126.255.255.255', '128.0.0.0-255.255.255.255', '::2-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff')
+          function Normalize-RemoteRanges($Ranges) {
+            @($Ranges | ForEach-Object {
+              $ends = $_ -split '-', 2
+              if ($ends.Count -ne 2) { throw 'Unexpected external-address filter representation.' }
+              ([System.Net.IPAddress]::Parse($ends[0])).ToString() + '-' + ([System.Net.IPAddress]::Parse($ends[1])).ToString()
+            } | Sort-Object)
+          }
+          $expectedRanges = @(Normalize-RemoteRanges $remoteRanges)
+          $rulePrefix = 'CARR-selected-conversion-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          if ($profilesBefore.Count -ne 3) { throw 'All existing firewall profiles must be captured.' }
+          $failures = [System.Collections.Generic.List[object]]::new()
+          $passed = [System.Collections.Generic.List[string]]::new()
+          $verifyNative = @'
+          from collections import Counter
+          from hashlib import sha1, sha256
+          import importlib, importlib.util, json, os, subprocess
+          from pathlib import Path
+          import sys
+          import xml.etree.ElementTree as ET
+          
+          mode, phase, output_name, exit_value = sys.argv[1:]
+          checkout = Path.cwd().resolve(strict=True)
+          source = checkout / 'src'
+          output = Path(output_name).resolve(strict=True)
+          assert mode in ('source','installed') and phase in ('formats','old-suite','gui')
+          assert int(exit_value) == 0, 'Actual selected converter phase failed.'
+          if mode == 'source':
+              sys.path.insert(0, str(source))
+          def read_json(path, maximum=1024*1024):
+              assert path.is_file() and not path.is_symlink() and path.stat().st_nlink == 1
+              with path.open('rb') as stream:
+                  raw = stream.read(maximum + 1)
+              assert len(raw) <= maximum
+              return json.loads(raw.decode('utf-8-sig')), sha256(raw).hexdigest()
+          def module(name, path, expected):
+              raw = path.read_bytes()
+              assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == expected
+              spec = importlib.util.spec_from_file_location(name,path)
+              value = importlib.util.module_from_spec(spec)
+              sys.modules[name] = value
+              spec.loader.exec_module(value)
+              return value, sha256(raw).hexdigest()
+          fixture, fixture_sha = module('_verified_selected_fixture',
+              checkout/'scripts/selected_conversion_fixture_support.py','ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b')
+          runner, runner_sha = module('_verified_selected_acceptance',
+              checkout/'scripts/selected_conversion_acceptance.py','574a297765039cd765c1b352a6a9d8f27ca6b3be')
+          report, report_sha = read_json(output/('native.json' if phase == 'gui' else 'selected-conversion-' + phase + '-' + mode + '.json'))
+          GUI_MODULES = ["carr_library.application","carr_library.catalog.intake","carr_library.conversion.models","carr_library.conversion.service","carr_library.conversion.worker","carr_library.conversion.formats","carr_library.conversion._selected_files","carr_library.conversion.calibre","carr_library.conversion.office","carr_library.conversion.selected_adapters","carr_library.conversion.selected_worker","carr_library.conversion.selected","carr_library.extract.document_formats","carr_library.extract.document_formats_xml","carr_library.operations.broker","carr_library.audio.cleanup","carr_library.audio.process","carr_library.audio.windows_job","carr_library.file_publication","carr_library.durable_state","carr_library.backup_sidecars","carr_library.speech._io","carr_library.ui.document_conversion","carr_library.ui.desktop_app","carr_library.ui.worker_lifetime","carr_library.ui.worker_cleanup","carr_library.ui.speech_dialog","carr_library.speech.reading","carr_library.native_runtime","carr_library.speech.session"]
+          GUI_CHECKS = ["native failure answers owned No before closing only the active inner modal","real existing reader receives the exact verified UTF-8 copy","verified copy remains unbound and gives no native quotation authority","real reader Save preserves the verified copy and its original","native reader closes and returns to the same conversion result window","import confirmation actually starts with default No","explicit import still starts with default No","all selected source or installed module identities are exact","real native Windows controls","existing host worker and workspace own the conversion path","conversion reuses its actual registered command identifier","cancelling the source picker admits no conversion or output","cancelling the selected runtime picker admits no conversion or output","actual existing menu converts RTF with the selected native Pandoc","native conversion commits exact original reading text and fidelity report","result names the external original and report without catalog authority","conversion alone neither imports nor automatically starts reading","native default No preserves the library and external result","explicit native Yes runs the canonical TXT importer on the existing worker","import completion explicitly preserves the external evidence boundary","actual imported text is searchable and native original is not substituted","unrelated original and all selected native bytes remain exact","changed reading bytes cannot reopen the reader or re-run a converter","native result close revokes its actual queued Read callback","native host Close drains the shared worker and retained finalizers","actual reader finalizers release their existing worker owners","actual converter private Job and child are closed before any fallback","current conversion resource leases and staging are empty after cleanup","all source or installed origins remain unchanged after actual cleanup","native owned temporary files were removed after every worker settled"]
+          assert report['status'] == 'PASS' and report['mode'] == mode
+          origins = fixture.origins(source,mode)
+          assert len(origins) == 22 and report['fixture_companion_sha256'] == fixture_sha
+          def git_bound(path):
+              raw = path.read_bytes()
+              relative = path.relative_to(checkout.parent).as_posix()
+              expected = subprocess.check_output(['git','--no-replace-objects','-C',str(checkout.parent),
+                  'rev-parse',os.environ['EXPECTED_SOURCE_SHA'] + ':' + relative],text=True,timeout=30).strip()
+              assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == expected, relative
+          for name in (GUI_MODULES if phase == 'gui' else fixture.MODULES):
+              git_bound(source/Path(*name.split('.')).with_suffix('.py'))
+          for relative in ('scripts/selected_conversion_fixture_support.py',
+                           'scripts/selected_conversion_acceptance.py',
+                           'scripts/translation_loopback_check.py',
+                           'packaging/windows-document-converters.lock.json',
+                           'tests/conversion/test_conversion.py',
+                           'tests/conversion/fixtures/ordered_slides.pptx'):
+              git_bound(checkout/relative)
+          if phase != 'gui':
+              assert report['phase'] == phase
+              assert report['source_origins_before'] == report['source_origins_after'] == origins
+              assert type(report['actual_owned_jobs']) is int and report['actual_owned_jobs'] > 0
+              assert all(report[field] == 'NOT_RUN' for field in (
+                  'actual_format_quality','native_catalog_fidelity','drm_bypass','scanned_djvu_ocr','nvda'))
+              assert report['all_owned_jobs_closed'] == report['owned_temporary_cleanup'] == 'PASS'
+          selected, _ = read_json(checkout/'ci-conversion-native/acquisition.json')
+          paths = selected['selected']
+          _, inputs = fixture.load_lock(checkout/'packaging/windows-document-converters.lock.json',Path(selected['downloads']))
+          assert report['external_inputs'] == inputs
+          boundary = fixture.firewall(checkout/'ci-conversion-native/firewall.json',source,
+              fixture.native_programs(Path(paths['calibre']),Path(paths['libreoffice']),Path(paths['pandoc'])))
+          assert report['firewall'] == boundary
+          if phase == 'formats':
+              fields = ('actual_native_descendant_cancel','actual_format_conversions',
+                  'canonical_reading_copy_import','source_originals_unchanged','native_children_and_leases_settled')
+              assert all(report[field] == 'PASS' for field in fields)
+              rows = report['formats']
+              assert type(rows) is list and len(rows) == 14 and report['required_format_count'] == 14
+              assert {row['format'] for row in rows} == runner.REQUIRED_FORMATS
+              assert len({row['format'] for row in rows}) == len(rows)
+              for row in rows:
+                  assert all(row[field] == 'PASS' for field in ('verified_copy_read','canonical_text_import','no_clobber'))
+                  assert type(row['classification']) is str and row['classification']
+                  assert type(row['source_bytes']) is int and row['source_bytes'] > 0
+                  assert all(type(row[field]) is str and len(row[field]) == 64
+                             and set(row[field]) <= set('0123456789abcdef')
+                             for field in ('source_sha256','reading_sha256','report_sha256'))
+              assert set(report['actual_versions']) == {'calibre','libreoffice','pandoc'}
+          elif phase == 'old-suite':
+              assert report['old_whole_conversion_suite'] == report['actual_loopback_denial'] == 'PASS'
+              assert type(report['old_cases']) is int and report['old_cases'] == 34
+              xml = output/('old-conversion-' + mode + '.xml')
+              assert xml.is_file() and not xml.is_symlink() and xml.stat().st_size <= 4*1024**2
+              cases = list(ET.parse(xml).iter('testcase'))
+              assert len(cases) == 34 and Counter(case.get('name','').split('[',1)[0] for case in cases) == Counter(runner.OLD_COUNTS)
+              assert all(case.get('classname','').rsplit('.',1)[-1] == 'test_conversion'
+                         and not any(case.find(tag) is not None for tag in ('failure','error','skipped')) for case in cases)
+              assert sha256(xml.read_bytes()).hexdigest() == report['old_junit_sha256']
+              child, child_sha = read_json(output/('old-conversion-child-origins-' + mode + '.json'),64*1024)
+              assert child_sha == report['old_child_receipt_sha256']
+              assert child == report['old_child_source_origins']
+              assert child['status'] == 'PASS' and child['mode'] == mode
+              assert child['before'] == child['after'] == origins and child['helper_sha256'] == fixture_sha
+              expected_paths = {'tests/conversion/test_conversion.py','tests/conversion/fixtures/ordered_slides.pptx'}
+              assert set(report['old_test_sha256']) == expected_paths
+              assert all(sha256((checkout/path).read_bytes()).hexdigest() == digest
+                         for path,digest in report['old_test_sha256'].items())
+          else:
+              probe = checkout/'scripts/windows_document_conversion_smoke.py'
+              git_bound(probe)
+              raw = probe.read_bytes()
+              assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == '5527d7a7ff2b830e926af8666ff4679e1a5374a3'
+              assert type(report.get('checks')) is list and all(type(name) is str for name in report['checks'])
+              assert len(GUI_CHECKS) == len(report['checks']) == 30
+              assert Counter(report['checks']) == Counter(GUI_CHECKS)
+              assert type(report.get('origins')) is dict and set(report['origins']) == set(GUI_MODULES) and len(GUI_MODULES) == 30
+              actual = {}
+              for name in GUI_MODULES:
+                  module_path = Path(importlib.import_module(name).__file__).resolve(strict=True)
+                  expected_path = source/Path(*name.split('.')).with_suffix('.py')
+                  if mode == 'source':
+                      assert module_path == expected_path.resolve(strict=True)
+                  else:
+                      assert module_path.is_relative_to(Path(sys.prefix).resolve(strict=True))
+                      assert not module_path.is_relative_to(checkout) and 'site-packages' in module_path.parts
+                  digest = sha256(module_path.read_bytes()).hexdigest()
+                  assert digest == sha256(expected_path.read_bytes()).hexdigest()
+                  actual[name] = digest
+              assert report['origins'] == actual
+              assert all(type(report.get(field)) is str and report[field] == 'PASS' for field in (
+                  'native_conversion','native_verified_read','native_canonical_import','native_source_guards',
+                  'native_host_cleanup','native_failure_cleanup','source_originals_unchanged'))
+              assert all(report[field] == 'NOT_RUN' for field in (
+                  'actual_format_quality','native_catalog_fidelity','physical_audio_device','nvda'))
+              assert report['file_picker'] == 'explicit fixture selections; system file/folder picker not automated'
+          print(json.dumps({'status':'PASS','phase':phase,'mode':mode,'report_sha256':report_sha,
+              'required_formats':14 if phase=='formats' else None,
+              'whole_cases':34 if phase=='old-suite' else None,'origins':30 if phase=='gui' else 22,
+              'required_native_controls':30 if phase=='gui' else None,
+              'runtime_quality':'NOT_RUN','native_gui':'PASS' if phase=='gui' else 'NOT_RUN'},sort_keys=True),flush=True)
+          '@
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -RemoteAddress $remoteRanges -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if ($profiles.Count -ne 3 -or @($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Native qualification requires all active firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Selected external-egress rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'External-egress rules omit a selected executable.' }
+            foreach ($rule in $active) {
+              $addresses = @(($rule | Get-NetFirewallAddressFilter -ErrorAction Stop).RemoteAddress)
+              if (@(Compare-Object $expectedRanges @(Normalize-RemoteRanges $addresses)).Count -ne 0) { throw 'Selected native address coverage differs.' }
+            }
+            @{ status='PASS'; blocked_programs=$filters; blocked_remote_ranges=$expectedRanges; allowed_test_peer='127.0.0.1'; enabled_profiles=@($profiles.Name | Sort-Object); scope='selected executables only; literal loopback fixture permitted; no whole-machine network claim' } | ConvertTo-Json -Depth 5 | Set-Content -Encoding utf8 ci-conversion-native/firewall.json
+            foreach ($mode in @('source','installed')) {
+              foreach ($phase in @('formats','old-suite')) {
+                $name = $phase + '-' + $mode
+                $output = Join-Path (Get-Location) ('ci-conversion-native/' + $name)
+                New-Item -ItemType Directory -Path $output -ErrorAction Stop | Out-Null
+                try {
+                  & $python -I -B -X utf8 scripts/selected_conversion_acceptance.py --phase $phase --mode $mode --source-root $source --calibre $calibre --office $office --pandoc $pandoc --downloads $downloads --runtime-lock packaging/windows-document-converters.lock.json --firewall-receipt ci-conversion-native/firewall.json --output $output 2>&1 | Tee-Object (Join-Path $output 'console.txt')
+                  $code = $LASTEXITCODE
+                  $verifyNative | & $python -I -B -X utf8 - $mode $phase $output $code
+                  if ($LASTEXITCODE -ne 0) { throw ('Actual ' + $name + ' conversion proof failed.') }
+                  $passed.Add($name)
+                } catch {
+                  $failures.Add([pscustomobject]@{ phase=$name; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+                  Write-Host ('REQUIRED SELECTED CONVERSION FAILED [' + $name + ']: ' + $_.Exception.Message)
+                }
+              }
+            }
+            # Keep the same selected runtimes, installed wheel and active rules
+            # through both actual native-control runs and their180s cleanup guards.
+            foreach ($mode in @('source','installed')) {
+              $name = 'gui-' + $mode
+              $output = Join-Path (Get-Location) ('ci-conversion-native/' + $name)
+              New-Item -ItemType Directory -Path $output -ErrorAction Stop | Out-Null
+              try {
+                & $python -I -B -X utf8 scripts/windows_document_conversion_smoke.py --mode $mode --source-root $source --calibre $calibre --office $office --pandoc $pandoc --downloads $downloads --runtime-lock packaging/windows-document-converters.lock.json --firewall-receipt ci-conversion-native/firewall.json --report (Join-Path $output 'native.json') 2>&1 | Tee-Object (Join-Path $output 'console.txt')
+                $code = $LASTEXITCODE
+                $verifyNative | & $python -I -B -X utf8 - $mode gui $output $code
+                if ($LASTEXITCODE -ne 0) { throw ('Actual ' + $name + ' control proof failed.') }
+                $passed.Add($name)
+              } catch {
+                $failures.Add([pscustomobject]@{ phase=$name; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+                Write-Host ('REQUIRED SELECTED CONVERSION FAILED [' + $name + ']: ' + $_.Exception.Message)
+              }
+            }
+          } catch {
+            $failures.Add([pscustomobject]@{ phase='native-boundary'; error=$_.Exception.Message; error_type=$_.Exception.GetType().FullName })
+          } finally {
+            foreach ($ruleName in $ruleNames) {
+              try {
+                Remove-NetFirewallRule -Name $ruleName -ErrorAction Stop
+              } catch {
+                $failures.Add([pscustomobject]@{ phase='firewall-rule-cleanup'; error=$_.Exception.Message })
+              }
+            }
+            foreach ($profile in $profilesBefore) {
+              try {
+                Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop
+                $after = Get-NetFirewallProfile -Name $profile.Name -ErrorAction Stop
+                if ($after.Enabled -ne $profile.Enabled) { throw 'Original firewall profile was not restored.' }
+              } catch {
+                $failures.Add([pscustomobject]@{ phase='firewall-profile-cleanup'; error=$_.Exception.Message })
+              }
+            }
+            @{ status=$(if ($failures.Count -eq 0 -and $passed.Count -eq 6) {'PASS'} else {'FAIL'}); passed=$passed.ToArray(); failures=$failures.ToArray(); expected_phases=6; native_gui=$(if ($passed.Contains('gui-source') -and $passed.Contains('gui-installed')) {'PASS'} else {'FAIL'}); quality='NOT_RUN'; scope='actual selected reading conversion and old whole-suite only' } | ConvertTo-Json -Depth 7 | Set-Content -Encoding utf8 ci-conversion-native/required-native-phases.json
+          }
+          if ($failures.Count -ne 0 -or $passed.Count -ne 6) { throw 'Every source/installed actual-format, whole-old-suite and native-control phase is required.' }
+      - name: Remove only the identity-checked owned external inputs
+        if: ${{ always() }}
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $cleanup = @'
+          from hashlib import sha256
+          import json, os, shutil
+          from pathlib import Path
+          folder = Path('ci-conversion-native')
+          if folder.exists():
+              receipt = folder/'acquisition.json'
+              if receipt.is_file():
+                  raw = receipt.read_bytes()
+                  assert len(raw) <= 1024*1024
+                  value = json.loads(raw)
+                  root = Path(value['root'])
+                  temporary = Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
+                  assert root.parent == temporary and root.name == (
+                      'carr-selected-conversion-' + os.environ['GITHUB_RUN_ID'] + '-' + os.environ['GITHUB_RUN_ATTEMPT'])
+                  assert root.is_dir() and not root.is_symlink()
+                  info = root.stat()
+                  assert not getattr(info,'st_file_attributes',0) & 0x400
+                  assert [info.st_dev,info.st_ino] == value['root_identity']
+                  shutil.rmtree(root)
+                  assert not root.exists()
+                  state = {'status':'PASS','owned_runtime_inputs_removed':True,
+                           'acquisition_receipt_sha256':sha256(raw).hexdigest()}
+              else:
+                  state = {'status':'NO_ACQUISITION_RECEIPT','owned_runtime_inputs_removed':False,
+                           'qualification':'Acquisition did not finish; no native PASS can be inferred.'}
+              (folder/'native-cleanup.json').write_text(json.dumps(state,sort_keys=True)+'\n',encoding='utf-8')
+          '@
+          $cleanup | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Owned external runtime cleanup failed.' }
+
+      - name: Retain closed JSON text and JUnit evidence only
+        id: retain
+        if: ${{ always() }}
+        timeout-minutes: 5
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $retain = @'
+          from hashlib import sha256
+          import json, os, shutil, stat, subprocess
+          from pathlib import Path
+          root = Path.cwd().resolve(strict=True)
+          destination = root/'ci-conversion-evidence'
+          destination.mkdir(exist_ok=False)
+          head = subprocess.check_output(['git','--no-replace-objects','rev-parse','HEAD'],text=True).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          tree = subprocess.check_output(['git','--no-replace-objects','rev-parse','HEAD^{tree}'],text=True).strip()
+          ordinary = {'identity-before.json','source-contracts.txt','source-summary.json','wheel-build.txt',
+              'source-wheel-proof.json','wheel-install.txt','installed-pip-check.txt','contracts-summary.json'}
+          for number in range(1,6):
+              ordinary.update({f'installed-{number}.xml',f'installed-{number}.txt',f'installed-{number}-origins.json'})
+          native = {'acquisition.json','acquisition.txt','firewall.json','firewall-programs.json',
+              'required-native-phases.json','native-cleanup.json'}
+          for mode in ('source','installed'):
+              native.update({f'gui-{mode}/native.json',f'gui-{mode}/console.txt'})
+              for phase in ('formats','old-suite'):
+                  native.add(f'{phase}-{mode}/selected-conversion-{phase}-{mode}.json')
+                  native.add(f'{phase}-{mode}/console.txt')
+              native.update({f'old-suite-{mode}/old-conversion-{mode}.txt',
+                             f'old-suite-{mode}/old-conversion-{mode}.xml',
+                             f'old-suite-{mode}/old-conversion-child-origins-{mode}.json'})
+          receipts, total = {}, 0
+          for folder_name, allowed in (('ci-conversion-contracts',ordinary),('ci-conversion-native',native)):
+              folder = root/folder_name
+              if not folder.exists():
+                  continue
+              assert folder.is_dir() and not folder.is_symlink()
+              for path in folder.rglob('*'):
+                  info = path.lstat()
+                  assert not path.is_symlink() and not getattr(info,'st_file_attributes',0) & 0x400
+                  if path.is_dir():
+                      continue
+                  relative = path.relative_to(folder).as_posix()
+                  assert relative in allowed and stat.S_ISREG(info.st_mode) and info.st_nlink == 1
+                  assert path.suffix in {'.json','.txt','.xml'} and info.st_size <= 8*1024**2
+                  total += info.st_size
+                  assert total <= 64*1024**2
+                  target = destination/folder_name/relative
+                  target.parent.mkdir(parents=True,exist_ok=True)
+                  shutil.copyfile(path,target)
+                  digest = sha256(target.read_bytes()).hexdigest()
+                  assert digest == sha256(path.read_bytes()).hexdigest()
+                  receipts[str(target.relative_to(destination))] = {'bytes':info.st_size,'sha256':digest}
+          assert receipts, 'No bounded source/installed/native evidence was produced.'
+          report = {'source_commit':head,'source_tree':tree,'files':receipts,'bytes':total,
+              'classification':'Evidence only. Individual required phase verdicts remain authoritative.',
+              'native_gui':(json.loads((root/'ci-conversion-native/required-native-phases.json').read_text(encoding='utf-8-sig')).get('native_gui','NOT_RUN')
+                            if (root/'ci-conversion-native/required-native-phases.json').is_file() else 'NOT_RUN'),
+              'native_format_quality':'NOT_RUN','release_qualification':'NOT_RUN'}
+          (destination/'retention.json').write_text(json.dumps(report,indent=2,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps({'retained_reports':len(receipts),'bytes':total,'source_commit':head,'source_tree':tree},sort_keys=True))
+          '@
+          $retain | & python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { throw 'Closed bounded converter evidence retention failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() && steps.retain.outcome == 'success' }}
+        with:
+          name: selected-conversion-windows-2022-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-conversion-evidence/
+          if-no-files-found: error

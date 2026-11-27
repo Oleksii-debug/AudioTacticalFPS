@@ -56,6 +56,13 @@ def main():
     config = json.loads((directory / 'job_config.json').read_text(encoding='utf-8'))
     options_file = Path(__file__).with_name('fixture-options.json')
     options = json.loads(options_file.read_text(encoding='utf-8')) if options_file.exists() else {}
+    wait_after = options.get('wait_for_stop_after')
+    wait_timeout = options.get('checkpoint_wait_timeout', 60.0)
+    if wait_after is not None:
+        if type(wait_after) is not int or not 1 <= wait_after <= 512:
+            raise ValueError('Select a finite synthetic checkpoint stop barrier.')
+        if type(wait_timeout) not in (int, float) or not 0 < wait_timeout <= 60:
+            raise ValueError('The synthetic checkpoint stop barrier must expire within 60 seconds.')
     if options.get('require_utf8') and not sys.flags.utf8_mode:
         raise RuntimeError('The external protocol process requires explicit UTF-8 mode.')
     if options.get('import_probe'):
@@ -126,6 +133,17 @@ def main():
         with Path(__file__).with_name('fixture-sources.log').open('a', encoding='utf-8') as stream:
             stream.write(source.parent.name + '\n')
         status('обробка', number + 1)
+        if wait_after == number + 1:
+            # This explicit fixture control waits for the host's actual stop
+            # signal. Elapsed consumer/hash time cannot release the next source.
+            deadline = time.monotonic() + wait_timeout
+            while True:
+                if (directory / 'stop.flag').exists() and not options.get('ignore_stop'):
+                    status('зупинено', number + 1)
+                    return
+                if time.monotonic() >= deadline:
+                    raise TimeoutError('Synthetic checkpoint stop barrier expired without a host stop signal.')
+                time.sleep(.02)
         deadline = time.monotonic() + options.get('hold_after_checkpoint', 0)
         while time.monotonic() < deadline:
             if (directory / 'stop.flag').exists() and not options.get('ignore_stop'):

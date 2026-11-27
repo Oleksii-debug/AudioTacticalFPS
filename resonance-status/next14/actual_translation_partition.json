@@ -1,0 +1,71 @@
+{
+  "schema": "resonance-actual-translation-partition/1",
+  "status": "PASS_SOURCE_ONLY",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "source_commit": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+  "source_tree": "5e6fc0103905093513421653b3fc388e0c87684c",
+  "workflow": ".github/workflows/carr-next13-partition.yml",
+  "workflow_blob": "038571f82a18114882c58ad3fb6b0fba19346f85",
+  "fixture_blob": "d9204f853fd7fbdab8afbac7e9f148ced9f2264f",
+  "contract_manifest": "44bfa280d4be6700a6d5cde55f2ca6979c13dbd5",
+  "run_id": 46071945609,
+  "run_attempt": 1,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071945609",
+  "actual_workflow_conclusion": "success",
+  "jobs": [
+    {
+      "platform": "ubuntu-24.04",
+      "job_id": 140750728391,
+      "elapsed_pytest_seconds": 26.13,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071945609/job/140750728391",
+      "whole_suites": 1,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "source_before_after": "PASS",
+      "formerly_failing_case": "test_partition_checks_actual_root_again_before_next_transfer",
+      "case_result": "PASSED"
+    },
+    {
+      "platform": "windows-2022",
+      "job_id": 140750728630,
+      "elapsed_pytest_seconds": 62.25,
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071945609/job/140750728630",
+      "whole_suites": 1,
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "source_before_after": "PASS",
+      "formerly_failing_case": "test_partition_checks_actual_root_again_before_next_transfer",
+      "case_result": "PASSED"
+    }
+  ],
+  "total_case_executions": 52,
+  "distinct_suite_cases": 26,
+  "installed": "NOT_RUN by this diagnostic; final full installed26 stays required",
+  "native": "NOT_RUN",
+  "evidence_method": "Complete actual job logs and run/job/artifact metadata read. Reported artifact IDs, byte sizes and SHA256 values reconciled between upload logs and API; archives not downloaded in this audit.",
+  "artifacts": [
+    {
+      "id": 15233995667,
+      "name": "translation-partition-ubuntu-24.04-ddd372d67fd5c06852c0f29f137fbf49ee10e29e-1",
+      "bytes": 62647,
+      "sha256": "56bbc083926b6ffde1c019d26cbbd855ba9b9860ea3789817769da2b1de6d4ba",
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15233995667"
+    },
+    {
+      "id": 15233826212,
+      "name": "translation-partition-windows-2022-ddd372d67fd5c06852c0f29f137fbf49ee10e29e-1",
+      "bytes": 62904,
+      "sha256": "15cb5a1b545b335900d866488fb752363fe1214d982b0b44b2533fc8bf43cf2e",
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15233826212"
+    }
+  ],
+  "limitations": [
+    "Source fixture correction only; no product code change.",
+    "Passing actual platform case does not identify which allowed Windows rename branch executed because the test deliberately has no branch-output marker.",
+    "No Book, native UI, physical device, Windows11/NVDA, provider/model or complete release qualification follows."
+  ]
+}

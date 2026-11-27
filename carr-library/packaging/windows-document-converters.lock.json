@@ -1,0 +1,103 @@
+{
+  "schema": "carr-selected-document-runtime-lock/1",
+  "purpose": "Explicit CI-only native qualification. No runtime, fixture, model, document or installer is bundled into the application.",
+  "platform": "windows-x86_64",
+  "runtimes": [
+    {
+      "name": "calibre",
+      "version": "9.19.0",
+      "upstream_commit": "d69ad111794cf2032264d2b02b3f9b9adfb139a2",
+      "filename": "calibre-64bit-9.19.0.msi",
+      "url": "https://github.com/kovidgoyal/calibre/releases/download/v9.19.0/calibre-64bit-9.19.0.msi",
+      "bytes": 291713024,
+      "maximum_bytes": 314572800,
+      "sha256": "241193d5045bdcbc3e7ec000c22ede0b5da1fd2e91e83fa0b17f0e1f67174480",
+      "hash_authority": "official GitHub release asset digest",
+      "source": {
+        "url": "https://github.com/kovidgoyal/calibre/releases/download/v9.19.0/calibre-9.19.0.tar.xz",
+        "bytes": 50527240,
+        "sha256": "15e4e4e30e16fed0c2aae8a59dd536cb90648b37789f50011bab1d1897796fff"
+      },
+      "license": "GPL-3.0; separate bundled component notices remain authoritative"
+    },
+    {
+      "name": "libreoffice",
+      "version": "26.8.3.1",
+      "upstream_commit": "861effc5289d539f15c4c18d1ba8579ffd78728b",
+      "filename": "LibreOffice_26.8.3_Win_x86-64.msi",
+      "url": "https://download.documentfoundation.org/libreoffice/stable/26.8.3/win/x86_64/LibreOffice_26.8.3_Win_x86-64.msi",
+      "maximum_bytes": 536870912,
+      "sha256": "0e6918c273eabbdbbd800ee0dacbbf130a14c13c2e4cec861b06dd59e015bf94",
+      "hash_authority": "Microsoft winget-pkgs commit eb172399c084b8b1e06a868d026405291a0cfe37; exact official vendor URL",
+      "source": {
+        "git": "https://github.com/LibreOffice/core",
+        "commit": "861effc5289d539f15c4c18d1ba8579ffd78728b",
+        "tag": "libreoffice-26.8.3.1"
+      },
+      "license": "MPL-2.0 / LGPL-3.0-or-later as applicable; installed LICENSE and third-party notices remain authoritative"
+    },
+    {
+      "name": "pandoc",
+      "version": "3.14",
+      "upstream_commit": "3dde36a9ddd68b8677397d9c59c891d9b8763b89",
+      "filename": "pandoc-3.14-windows-x86_64.zip",
+      "url": "https://github.com/jgm/pandoc/releases/download/3.14/pandoc-3.14-windows-x86_64.zip",
+      "bytes": 43614099,
+      "maximum_bytes": 50331648,
+      "sha256": "0144b96e8c7b023fd382ec5ef5bdc475e873f1019d6fa72502492df2c9a94a3b",
+      "hash_authority": "official GitHub release asset digest",
+      "source": {
+        "git": "https://github.com/jgm/pandoc",
+        "commit": "3dde36a9ddd68b8677397d9c59c891d9b8763b89",
+        "tag": "3.14"
+      },
+      "license": "GPL-2.0-or-later; complete package notices remain authoritative"
+    }
+  ],
+  "fixtures": [
+    {
+      "name": "putty.chm",
+      "url": "https://raw.githubusercontent.com/mlocati/chm-lib/9c338155440c40e5830f9ed0d4892d041f22827c/test/samples/putty.chm",
+      "bytes": 271652,
+      "git_blob_sha1": "50f61159d1be597ce07bd4243aaa72210d605677",
+      "contains": [
+        "PuTTY",
+        "SSH"
+      ],
+      "classification": "public upstream compiled-help fixture; not synthetic",
+      "license_file": "putty.chm.LICENCE",
+      "license": "MIT permission for PuTTY software and associated documentation"
+    },
+    {
+      "name": "putty.chm.LICENCE",
+      "url": "https://raw.githubusercontent.com/mlocati/chm-lib/9c338155440c40e5830f9ed0d4892d041f22827c/test/samples/putty.chm.LICENCE",
+      "bytes": 1338,
+      "git_blob_sha1": "4beb2a98bb1c9811dc9383a504a267c4b917bb72"
+    },
+    {
+      "name": "djvulibre-book-en.djvu",
+      "url": "https://raw.githubusercontent.com/DjVuLibre/djvulibre/5fb9bfc934cb153ff9babe34073d0683dcab5d9a/doc/djvulibre-book-en.djvu",
+      "bytes": 428566,
+      "git_blob_sha1": "f54b9b01d4fd6ff9c85b96ded091c9dfd238772c",
+      "contains": [
+        "DjVu"
+      ],
+      "classification": "public upstream real DjVu document with an existing text layer; not OCR/synthetic/quality evidence",
+      "license_file": "djvulibre-COPYING",
+      "license": "Upstream GPL-2.0-or-later distribution; CI input only, no application or report-artifact redistribution"
+    },
+    {
+      "name": "djvulibre-COPYING",
+      "url": "https://raw.githubusercontent.com/DjVuLibre/djvulibre/5fb9bfc934cb153ff9babe34073d0683dcab5d9a/COPYING",
+      "bytes": 18092,
+      "git_blob_sha1": "d159169d1050894d3ea3b98e1c965c4058208fe1"
+    }
+  ],
+  "limits": {
+    "downloaded_file_count": 7,
+    "total_download_bytes": 1073741824,
+    "archive_members": 50000,
+    "extracted_bytes": 4294967296
+  },
+  "qualification": "No result is implied by this lock. Actual source and installed conversions, offline process rules, exact original/reading/report receipts and native controls must pass independently. No DRM bypass, layout fidelity, native citation mapping, OCR, quality or 135-language claim."
+}

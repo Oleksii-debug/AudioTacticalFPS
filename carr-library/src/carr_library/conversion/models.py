@@ -43,3 +43,7 @@ class ConversionResult:
     path: Path
     report: dict
     report_path: Path
+    original_path: Path | None = None
+    bundle_identity: tuple | None = None
+    receipt_sha256: str | None = None
+    notices: tuple[str, ...] = ()

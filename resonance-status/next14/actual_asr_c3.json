@@ -1,0 +1,270 @@
+{
+  "schema": "resonance-c3-asr-source-installed-native-evidence/1",
+  "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+  "run_id": 46065563716,
+  "linux": {
+    "job": 140729990386,
+    "status": "PASS",
+    "source_cases": 512,
+    "installed_cases": 512,
+    "failed": 0,
+    "skipped": 0
+  },
+  "windows": {
+    "job": 140729989982,
+    "status": "FAIL_NATIVE",
+    "source": {
+      "whole_suites": 17,
+      "passed": 510,
+      "failed": 0,
+      "skipped": 0,
+      "suites": [
+        {
+          "suite": "tests/transcription/test_supplied_worker_bridge.py",
+          "passed": 62,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_v5_worker_profile.py",
+          "passed": 39,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_runtime_interpreter.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/operations/test_transcription_admission.py",
+          "passed": 10,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/assistant/test_supplied_transcription.py",
+          "passed": 32,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_progress_job_review.py",
+          "passed": 48,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_protocol_fixture.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_service.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_admission_boundaries.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_runtime_admission.py",
+          "passed": 13,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_restore.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/storage/test_transcription_backup.py",
+          "passed": 143,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/ui/test_transcription_dialog.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_transcription_cli.py",
+          "passed": 4,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_unified_authority.py",
+          "passed": 24,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_export_publication.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        },
+        {
+          "suite": "tests/transcription/test_protocol_fixture_windows.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "pytest_exit": 0
+        }
+      ]
+    },
+    "installed": {
+      "status": "PASS",
+      "source_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+      "source_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+      "passed": 510,
+      "failed": 0,
+      "skipped": 0,
+      "pytest_exit": 0,
+      "expected_failures": false,
+      "suite_counts": {
+        "tests/transcription/test_supplied_worker_bridge.py": 62,
+        "tests/transcription/test_v5_worker_profile.py": 39,
+        "tests/transcription/test_runtime_interpreter.py": 1,
+        "tests/operations/test_transcription_admission.py": 10,
+        "tests/assistant/test_supplied_transcription.py": 32,
+        "tests/ui/test_progress_job_review.py": 48,
+        "tests/transcription/test_protocol_fixture.py": 9,
+        "tests/transcription/test_service.py": 28,
+        "tests/transcription/test_admission_boundaries.py": 40,
+        "tests/transcription/test_runtime_admission.py": 13,
+        "tests/transcription/test_restore.py": 1,
+        "tests/storage/test_transcription_backup.py": 143,
+        "tests/ui/test_transcription_dialog.py": 40,
+        "tests/e2e/test_transcription_cli.py": 4,
+        "tests/transcription/test_unified_authority.py": 24,
+        "tests/transcription/test_export_publication.py": 14,
+        "tests/transcription/test_protocol_fixture_windows.py": 2
+      },
+      "required_suite_counts": {
+        "tests/transcription/test_service.py": 28,
+        "tests/transcription/test_admission_boundaries.py": 40,
+        "tests/transcription/test_protocol_fixture.py": 9,
+        "tests/storage/test_transcription_backup.py": 143,
+        "tests/transcription/test_protocol_fixture_windows.py": 2
+      },
+      "origins": {
+        "carr_library.integrations.transcription_values": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\integrations\\transcription_values.py",
+          "sha256": "8194ef0d852c2e1ab059cba3f9c4a79b30e9f8e27f67c652a0efc0e3f9aeab93"
+        },
+        "carr_library.integrations.transcription_runtime": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\integrations\\transcription_runtime.py",
+          "sha256": "6ed7c95f6b25a3e76a7a14e08f8564850e43ef6091799a38a2a2ba35e0b0bb6e"
+        },
+        "carr_library.integrations.transcription_scope": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\integrations\\transcription_scope.py",
+          "sha256": "d4b262c8f5eb0d9bdf611a3ff01685ef7ad5c6acf9ee13fc7e67b7796ddf697e"
+        },
+        "carr_library.integrations.transcription_backup": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\integrations\\transcription_backup.py",
+          "sha256": "597b136dce426c16b176362fcc1bf1a74096d19386635a9bb865d30a6bcb8f71"
+        },
+        "carr_library.integrations.transcription_protocol": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\integrations\\transcription_protocol.py",
+          "sha256": "42fb1c28bff2dee7df143160b3ffa3d88736a818b3b8868720a29b97d6e6d102"
+        },
+        "carr_library.transcription": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\transcription.py",
+          "sha256": "bacb08d3999bb7268e66209c927a4e950ce2a988cd0086b8f742624a89cd63a5"
+        },
+        "carr_library.backup_transcription": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_transcription.py",
+          "sha256": "ab5ebb982524404c902f1e798050569340bb13400d3f8949810a41ebcc925578"
+        },
+        "carr_library.state_backup": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\state_backup.py",
+          "sha256": "85d23df41fa9ef1526202204ee2602437b7ef0bc29e89c3da48521ffa9f3c868"
+        },
+        "carr_library.backup_sidecars": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\backup_sidecars.py",
+          "sha256": "b7604d449e862d8c779dbfe7d8bc745ca8411f480658a30f77063b43eb2bc66c"
+        },
+        "carr_library.library_backup": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\library_backup.py",
+          "sha256": "711a6078476297c06423ebef5ef253e564f5d8d170448433ff77f693c38a70c7"
+        },
+        "carr_library.ui.transcription_runtime_dialog": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\transcription_runtime_dialog.py",
+          "sha256": "85039cd064e6a16b420cbdbeb276eb3d6a8c4897f0d2f4156cadb563516f9cbc"
+        },
+        "carr_library.ui.transcription_dialog": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\ui\\transcription_dialog.py",
+          "sha256": "9a88ac9bb96891330e88e91c6da4c866637d821fffcd86dd09faad1dc996e848"
+        },
+        "carr_library.transcription_cli": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\transcription_cli.py",
+          "sha256": "3bf641fb564ba667ccbad9c6bb55acdbe46f1403e5dda8b2879514fbca7858c2"
+        },
+        "carr_library.integrations.transcription_exports": {
+          "path": "C:\\hostedtoolcache\\windows\\Python\\3.11.9\\x64\\Lib\\site-packages\\carr_library\\integrations\\transcription_exports.py",
+          "sha256": "771769b569b421e9dce377e48714f1303eb5705e477250c7edd1aeb2c6fc28f8"
+        }
+      },
+      "acoustic_inference": "NOT_RUN",
+      "manual_NVDA": "NOT_RUN"
+    },
+    "native": {
+      "status": "FAIL",
+      "script": "scripts/windows_transcription_profiles_smoke.py",
+      "line": 141,
+      "assertion": "len(runtime.worker.with_name('fixture-starts.log').read_text(encoding='utf-8').splitlines()) == 2",
+      "actual_count": "NOT_PRINTED",
+      "caller": "windows_transcription_smoke.py:186 verify_runtime_profiles",
+      "cause": "UNDETERMINED; inspect exact current child fixture and UI lifecycle before correcting any count.",
+      "no_native_acceptance_inferred": true
+    }
+  },
+  "artifacts": [
+    {
+      "id": 15232119061,
+      "name": "carr-asr-windows-2022-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+      "bytes": 32386,
+      "sha256": "e832d1958eb107b8632b0aef06fbf131126055b941ea9f0fe97d7a5f6b59a6ad"
+    },
+    {
+      "id": 15230469695,
+      "name": "carr-asr-ubuntu-24.04-b524b3ac3453864903ec415ce7a5f048da09d700-1",
+      "bytes": 31296,
+      "sha256": "3522cfa325325f12197433ae9bf18b13455e534bfb7e1c5b0344375b32ef248a"
+    }
+  ],
+  "limits": [
+    "Protocol and installed-origin coverage does not qualify acoustic inference or NVDA.",
+    "No PASS is transferred to a later commit or different dependency package.",
+    "Required native profile behavior remains failed until an actual corrected run succeeds."
+  ]
+}

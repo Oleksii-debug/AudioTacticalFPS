@@ -1,0 +1,52 @@
+{
+  "schema": "resonance-actual-owned-taskdialog-inventory/1",
+  "status": "DIAGNOSTIC_ONLY",
+  "source_commit": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+  "run_id": 46071950490,
+  "job_id": 140750744213,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071950490/job/140750744213",
+  "runtime": {
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8",
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]"
+  },
+  "observed": {
+    "title": "Restore complete",
+    "window_class": "#32770",
+    "question_has_current_pid": true,
+    "question_direct_owner_is_known_inner_fixture": true,
+    "direct_button_handles": {
+      "6": 0,
+      "7": 0,
+      "5103": 0,
+      "5104": 0
+    },
+    "buttons": [
+      {
+        "title": "&Yes",
+        "window_class": "Button",
+        "control_id": 0,
+        "visible": true
+      },
+      {
+        "title": "&No",
+        "window_class": "Button",
+        "control_id": 0,
+        "visible": true
+      }
+    ]
+  },
+  "artifact": {
+    "id": 15234330040,
+    "bytes": 2010,
+    "sha256": "820973340426c401ab44cba5881323af642b50bced4d06ea102f1a6560f70673",
+    "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15234330040"
+  },
+  "limits": {
+    "handles": "Runtime observations only; no HWND is persisted as a future control target.",
+    "actual_focus": "NOT_CAPTURED",
+    "actual_No_button_activation": "NOT_RUN",
+    "keyboard": "NOT_RUN",
+    "product_cleanup": "NOT_RUN",
+    "inventory_disposal": "EndDialog for the synthetic inspection fixture only. No native acceptance follows from its return."
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "schema": "resonance-reviewed-gate-union/1",
+  "status": "ACCEPTED_STATIC_SOURCE_GATES_REVIEW_READY_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "baseline": {
+    "commit": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+    "runtime_c3": "b524b3ac3453864903ec415ce7a5f048da09d700",
+    "main": "6b6882f510fa8db15bfbfe4e44b1839dbdc803f7",
+    "v3": "219b215dcd04737fb126b42725e347c74907e659",
+    "installed": "584ec6b77d5d57f2006298a4b13fbc7cb10e93c9"
+  },
+  "files": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "6b6882f510fa8db15bfbfe4e44b1839dbdc803f7",
+      "sha": "7bf829f6ecced363473a3392bd9090f1e6fc6100",
+      "utf8_bytes": 401159
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "219b215dcd04737fb126b42725e347c74907e659",
+      "sha": "9c592fbc2a7c936838614e5ea11253f918f23d56",
+      "utf8_bytes": 421692
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "584ec6b77d5d57f2006298a4b13fbc7cb10e93c9",
+      "sha": "e241f58f2a69ff9a1c991bbc6523c6aea8dfb6c3",
+      "utf8_bytes": 151323
+    },
+    {
+      "path": "carr-library/scripts/assemble_owner_candidate_archives.py",
+      "preimage": null,
+      "sha": "630b0e4ca1fecaf998dcea5e8b5fe1c2accb50c5",
+      "reviewed_preimage": "8475db2ef8ecd1067e20ba08d04d6a462dbefbb1"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_owner_candidate_archives.py",
+      "preimage": null,
+      "sha": "27ec046c8e536299bbe2a0c42a18b8a29e7c15c1",
+      "reviewed_preimage": "8196a876ec06b520b174eac704b775e24c9a8fce"
+    },
+    {
+      "path": "carr-library/scripts/retain_owner_candidate_inputs.py",
+      "preimage": "81601971fcdf7aa92336899bb98a0754fc760285",
+      "sha": "939d948e506bf851c8a284aad30f7f6e5057ee88"
+    },
+    {
+      "path": "carr-library/tests/transcription/fixtures/protocol_worker.py",
+      "preimage": "f28e80b33bd4856063e306883fd05f7e85cb537a",
+      "sha": "db988156c9c16504a8b82f8b65d4349086fec388"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_profiles_smoke.py",
+      "preimage": "3737286758c88f8a634da2e276cadeccaad4360b",
+      "sha": "1cff7419157f775f6517ff2242f8da994ee19e8f"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_native_profiles_fixture.py",
+      "preimage": null,
+      "sha": "54e16c4b4dedf6f0270db73b877cd771c967e7db"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "preimage": "0a318607b4fe4f96082b51a02a8cfc1c8c8383e4",
+      "sha": "d8aa1b8ba13d2c125ee1f0069bfb81c7874b4ce0"
+    }
+  ],
+  "lineage": {
+    "book_capacity": "7e587dc231014110b37ce4f14662fcf7c6339dc8",
+    "owner_pre_review": "09f8017982c5df9e6c15f3ea8913d11dd572a838",
+    "portable_legacy": "b759180a53b68c93604358cb4519306eaa6ec4a9",
+    "portable_contract": "1f9590baaf0c03742c21be0e3f49dde3ab084f27",
+    "owner_final": "756265eb7f71c57e25123d796164621e9a4c89a3",
+    "asr_final": "84b351f617a23ae9051fe2a1ccd479de547116c6"
+  },
+  "validation": {
+    "main_source_before": 452,
+    "main_source_after": 453,
+    "main_fast_before": 136,
+    "main_fast_after": 137,
+    "installed_before": 296,
+    "installed_after": 297,
+    "new_cases": 2,
+    "owner_cases": 22,
+    "native_names_changed": false,
+    "native_origins_changed": false,
+    "all_limits_preserved": true,
+    "v3_unchanged": "9c592fbc2a7c936838614e5ea11253f918f23d56",
+    "fixture_paths": [
+      "tests/transcription/fixture_runtime.py",
+      "tests/transcription/fixtures/protocol_worker.py"
+    ],
+    "all_old_source_selectors_preserved": true,
+    "all_old_installed_selectors_preserved": true,
+    "all_old_installed_function_contracts_preserved": true,
+    "portable_legacy": {
+      "new_four_cases": 106,
+      "existing_xml": 95
+    },
+    "book_whole": 98,
+    "book_native_required": 77,
+    "book_native_origins": 18,
+    "capacity_measurement": 25,
+    "owner_packaging_source": 22,
+    "asr_fixture_whole": 2,
+    "all_old_native_controls_and_audio_requirements_preserved": true,
+    "all_workflows_below_500000_bytes": true,
+    "installed_helper_extraction_preserved": true,
+    "no_physical_acoustic_nvda_private_claims": true,
+    "no_public_binary_upload": true,
+    "execution": "NOT_RUN",
+    "parser": "NOT_RUN",
+    "asr_slow_consumer_test_preserves_old_three_second_fixture_option": true
+  },
+  "review": {
+    "book_and_capacity": "Root and Canonical accepted STATIC_NOT_RUN",
+    "portable_legacy": "Canonical accepted STATIC_NOT_RUN",
+    "owner_assembly": "Locate accepted630b/27ec plus invocation/public boundary STATIC_NOT_RUN",
+    "asr": "Canonical accepted db988/1cff/final54e16 STATIC_NOT_RUN. Additive two-case gate map separately available for root review; no native name/budget changes."
+  },
+  "refs_changed": false,
+  "supersedes": "0b9ae05317a1b5692175fbeac6ef6c3f41d06f47"
+}

@@ -1,0 +1,458 @@
+{
+  "schema": "resonance-final-integration-candidate/14",
+  "status": "REVIEWED_SOURCE_RUNTIME_PENDING",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "pull_request": 173,
+  "date_utc": "2026-11-27",
+  "composed_from": {
+    "commit": "ddd372d67fd5c06852c0f29f137fbf49ee10e29e",
+    "tree": "5e6fc0103905093513421653b3fc388e0c87684c",
+    "canonical": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f"
+  },
+  "specification": {
+    "finalization": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "audio_agent": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "issue_1_updated_at": "2026-11-27T16:44:15Z"
+  },
+  "intent": "Complete selected legacy document workflows, retain whole Book/PCM/effects requirements, repair observed native probe and ASR fixture mismatches, and assemble no-audio owner candidates using the existing sealed delivery builder.",
+  "implementation": {
+    "selected_conversion": "Existing conversion service, worker, broker and UI. Explicit Calibre/LibreOffice/Pandoc with original + reading copy + fidelity report. Verified Read remains unbound; verified Import reuses canonical TXT import.",
+    "book": "Existing reviewed effect plan and measured PCM publication remain; this candidate repairs native TaskDialog probe discovery without changing Book product/tests.",
+    "native_questions": "Actual title/PID/known owner-bound nested Button HWNDs, observed default-No focus, real keyboard actions, actual verified No BM_CLICK only for failure cleanup.",
+    "asr": "Opt-in bounded actual stop-signal barrier in synthetic fixture. Exact two starts and unfinished-source-only resume stay required. Product protocol unchanged.",
+    "owner_assembly": "Existing delivery builder; exactly sealed no-audio/no-Node accepted runtime and all56 wheels. Independent verification of both complete archives. Public evidence is two JSON receipts; full archives remain ephemeral and unqualified."
+  },
+  "preserved_acceptance": {
+    "book_whole_each_mode": 98,
+    "book_native_required": 77,
+    "book_native_origins": 18,
+    "capacity_whole_each_mode": 178,
+    "capacity_native_required": 44,
+    "capacity_native_origins": 12,
+    "converter_whole_each_mode_each_platform": 201,
+    "converter_actual_formats_each_mode": 14,
+    "existing_conversion_whole_each_native_mode": 34,
+    "converter_native_controls_each_mode": 30,
+    "converter_native_origins": 30,
+    "owner_assembly_whole_cases": 22,
+    "asr_new_actual_child_cases": 2,
+    "all_original_full_gate_selectors_retained": true,
+    "no_whole_suite_guard_relaxation": true,
+    "no_product_deadline_relaxation": true
+  },
+  "actual_previous_evidence": {
+    "book_ddd": "98 source +98 isolated installed PASS; known old native No-button lookup FAILURE. Exact evidence attached.",
+    "partition_ddd": "26 source cases PASS on each Linux and Windows. Installed/native not run by this diagnostic.",
+    "capacity_2f0": "178 source +178 isolated installed PASS on both platforms; old Windows native TaskDialog cleanup fixture FAILURE.",
+    "asr_b524": "Linux512+512 and Windows510+510 source/installed PASS; Windows native two-start fixture FAILURE.",
+    "native_inventory_ddd": "Real nested Button descendants &Yes/&No, both control IDs0; direct6/7/5103/5104 absent. Inspection-only, not keyboard or product qualification."
+  },
+  "review": {
+    "status": "ACCEPTED_STATIC_NOT_RUN",
+    "all43Preimages": true,
+    "owner": {
+      "source": "630b0e4ca1fecaf998dcea5e8b5fe1c2accb50c5",
+      "tests": "27ec046c8e536299bbe2a0c42a18b8a29e7c15c1",
+      "unchangedDeliveryBuilder": true,
+      "actualAcceptedBundleAndAll56WheelsRequired": true,
+      "sixMandatoryPayloadBindingsMustExist": true,
+      "noAudioOrNode": true,
+      "fullFailedGatePreserved": true,
+      "publicEvidenceExactlyTwoJson": true,
+      "archivesRemainEphemeral": true
+    },
+    "asr": {
+      "actualCauseEvidence": "65a9c1ffc95cd2813c8edfded34d5ade5917d649",
+      "optInFiniteCheckpointBarrier": true,
+      "productCodeUnchanged": true,
+      "exactTwoStartsAndSourceReusePreserved": true,
+      "actualChildCases": 2,
+      "finalTestBlob": "54e16c4b4dedf6f0270db73b877cd771c967e7db"
+    },
+    "pins": [
+      {
+        "name": "Book",
+        "count": 43,
+        "mismatches": []
+      },
+      {
+        "name": "Capacity",
+        "count": 22,
+        "mismatches": []
+      },
+      {
+        "name": "Conversion",
+        "count": 24,
+        "mismatches": []
+      }
+    ],
+    "rootExecution": "NOT_RUN",
+    "externalIndependentReviews": "Author manifests retain peer source reviews. Actual run results remain exact-SHA-bound.",
+    "final_asr_gate_peer": {
+      "reviewer": "canonical_regression",
+      "status": "ACCEPTED_STATIC_NOT_RUN",
+      "main": "7bf829f6ecced363473a3392bd9090f1e6fc6100",
+      "installed": "e241f58f2a69ff9a1c991bbc6523c6aea8dfb6c3",
+      "dedicated": "d8aa1b8ba13d2c125ee1f0069bfb81c7874b4ce0",
+      "old_maps_policies_and_guards_retained": true,
+      "final_test_names_match": true,
+      "stale_test_hash_absent": true
+    }
+  },
+  "validation_for_enclosing_candidate": "NOT_RUN at composition. Requires exact-commit CI results, all native requirements and assembled artifact evidence. No previous result transfers to the enclosing commit.",
+  "distribution": {
+    "canonical_merge": false,
+    "public_binary_upload": false,
+    "complete_archives": "Runner-owned temporary assembly only.",
+    "owner_archive_excludes": [
+      "audio binaries",
+      "Node runtime"
+    ],
+    "private_material": "No private engine code, samples, embeddings, models, credentials or private document paths."
+  },
+  "remaining_external_qualification": [
+    "Actual authorized private engine/model execution and voice cloning API integration",
+    "Physical audio/microphone and supported hardware",
+    "Real Word, Windows11 and NVDA/manual accessibility",
+    "Acoustic/listening and per-language reviewer evidence",
+    "Production issuer/signing configuration and approved private artifact delivery"
+  ],
+  "automation_changes": false,
+  "source_changes": [
+    {
+      "path": "carr-library/src/carr_library/conversion/_selected_files.py",
+      "preimage": null,
+      "sha": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/calibre.py",
+      "preimage": null,
+      "sha": "c2626810e0d0131062cbd7c609be7bc8cbc308ed"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/office.py",
+      "preimage": null,
+      "sha": "c5c524215128900f389790917a308e6e149f0fd6"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected_adapters.py",
+      "preimage": null,
+      "sha": "55e8b10b731827ade1c1c3af7790a928c84af11b"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected_worker.py",
+      "preimage": null,
+      "sha": "f1ec36e0c1a3a2e482a85087874b82f28c9b8673"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected.py",
+      "preimage": null,
+      "sha": "cfc956106d320c43a3cd5b78c58eed3e3dc64de6"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/models.py",
+      "preimage": "8b1a6611082e157f8b864ee004310ad89b473e60",
+      "sha": "fc087b6acd2284b08f5384c986a9c1233a5fda5c"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/worker.py",
+      "preimage": "db0ef1a4e617f2001e2f78e0d073bb1b15f1baf1",
+      "sha": "722d3c7b61717890dc242d8113d0617714d53a67"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/service.py",
+      "preimage": "63c754ef00bb1cd5e0dd56077078e5e1408d623c",
+      "sha": "5a50e9e1c28517e7851d0d67a39df4b5bae172ab"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/document_conversion.py",
+      "preimage": "3e6a2feb8ac385ff4cb7ec0ecbbb4e86a71b52ed",
+      "sha": "83a48872bd07a0e4611ee68b1a59155fe4468239"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_selected_conversion.py",
+      "preimage": null,
+      "sha": "8030a214a238d6bad568fc2ded2c61021baaca42"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_calibre_admission.py",
+      "preimage": null,
+      "sha": "5383663ad30f71ea2782c991826afe16d3f92017"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_office_admission.py",
+      "preimage": null,
+      "sha": "b60d2784e25df42d29f486396010393865a2aa1b"
+    },
+    {
+      "path": "carr-library/tests/ui/test_document_conversion.py",
+      "preimage": null,
+      "sha": "a92b5e20180462812634dda50266a61df8b9d4e3"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_conversion.py",
+      "preimage": "e8cae855b1d64bc85fe06b945f840976f07c67a3",
+      "sha": "db3884363c51654c7d16ef2c5d2e82d0e714b411"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_xml.py",
+      "preimage": "2b198b0c24414d483c054f2f21c9dd5ebb81b649",
+      "sha": "a09bc00a438e14ee631978498884961e8e396f00"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_xml.py",
+      "preimage": "667cf97b6dcacc293b7b5145d2cf0a4142e32213",
+      "sha": "c7328eb9c810e179bd6b9fa9759d1a48fd2767ae"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_fixture_support.py",
+      "preimage": null,
+      "sha": "ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b"
+    },
+    {
+      "path": "carr-library/scripts/selected_conversion_acceptance.py",
+      "preimage": null,
+      "sha": "574a297765039cd765c1b352a6a9d8f27ca6b3be"
+    },
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "preimage": null,
+      "sha": "5527d7a7ff2b830e926af8666ff4679e1a5374a3"
+    },
+    {
+      "path": "carr-library/packaging/windows-document-converters.lock.json",
+      "preimage": null,
+      "sha": "c5822c7ff56d5139da911ea153a8fdcd626d70dd"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_CONVERSION.md",
+      "preimage": null,
+      "sha": "edf0dcc530a76555e27fce19e418a3b7be2298d6"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_FORMATS_V3.md",
+      "preimage": "b47293e2926e433ce98dd7998cf5fb7bbd72ab65",
+      "sha": "db3b6e0e543621008f6309764bbccf71c2d95177"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_CONVERSION_NATIVE.md",
+      "preimage": null,
+      "sha": "1650c828cef463e734b0714b96c8e14c4c83992e"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "preimage": "6b6882f510fa8db15bfbfe4e44b1839dbdc803f7",
+      "sha": "7bf829f6ecced363473a3392bd9090f1e6fc6100"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "preimage": "219b215dcd04737fb126b42725e347c74907e659",
+      "sha": "9c592fbc2a7c936838614e5ea11253f918f23d56"
+    },
+    {
+      "path": "carr-library/scripts/check_installed_bundle.py",
+      "preimage": "584ec6b77d5d57f2006298a4b13fbc7cb10e93c9",
+      "sha": "e241f58f2a69ff9a1c991bbc6523c6aea8dfb6c3"
+    },
+    {
+      "path": "carr-library/scripts/assemble_owner_candidate_archives.py",
+      "preimage": null,
+      "sha": "630b0e4ca1fecaf998dcea5e8b5fe1c2accb50c5"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_owner_candidate_archives.py",
+      "preimage": null,
+      "sha": "27ec046c8e536299bbe2a0c42a18b8a29e7c15c1"
+    },
+    {
+      "path": "carr-library/scripts/retain_owner_candidate_inputs.py",
+      "preimage": "81601971fcdf7aa92336899bb98a0754fc760285",
+      "sha": "939d948e506bf851c8a284aad30f7f6e5057ee88"
+    },
+    {
+      "path": "carr-library/tests/transcription/fixtures/protocol_worker.py",
+      "preimage": "f28e80b33bd4856063e306883fd05f7e85cb537a",
+      "sha": "db988156c9c16504a8b82f8b65d4349086fec388"
+    },
+    {
+      "path": "carr-library/scripts/windows_transcription_profiles_smoke.py",
+      "preimage": "3737286758c88f8a634da2e276cadeccaad4360b",
+      "sha": "1cff7419157f775f6517ff2242f8da994ee19e8f"
+    },
+    {
+      "path": "carr-library/tests/transcription/test_native_profiles_fixture.py",
+      "preimage": null,
+      "sha": "54e16c4b4dedf6f0270db73b877cd771c967e7db"
+    },
+    {
+      "path": ".github/workflows/carr-transcription-bridge.yml",
+      "preimage": "0a318607b4fe4f96082b51a02a8cfc1c8c8383e4",
+      "sha": "d8aa1b8ba13d2c125ee1f0069bfb81c7874b4ce0"
+    },
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "preimage": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61",
+      "sha": "fe9bf5de5be698116107f89fd2ea1c872853bcb3"
+    },
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": "f13660682c7174720821e684a5af7e936f79656a",
+      "sha": "21a905ce7877c947a016cbc71dd154d5bc418ffe"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": "3141764b3c0ea1b8c76c4a3d0396c1e12022340d",
+      "sha": "e8463a2a39b2b088fd2a06ab9bf8212b11c60afb"
+    },
+    {
+      "path": "carr-library/scripts/windows_backup_capacity_smoke.py",
+      "preimage": "dffdce9ac49fcb54cd2393f410f0844ad9c52130",
+      "sha": "ac651695779424fcba69696ce05c2d84c807899e"
+    },
+    {
+      "path": ".github/workflows/carr-next9-capacity.yml",
+      "preimage": "d65654a8868e1a324575c92746a513b63b059754",
+      "sha": "8164d479c14eb109a76aba3d779284917e651676"
+    },
+    {
+      "path": ".github/workflows/carr-next11-capacity-repair.yml",
+      "preimage": "a44317b48fa8df607fb924dbd2382b4b88281538",
+      "sha": "7303b9cb868392b26fd4c919beb877aa39936721"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "preimage": null,
+      "sha": "7dd79e1b8b390bb14479f9be7d2e7c3792fd4333"
+    },
+    {
+      "path": "carr-library/scripts/prepare_selected_conversion_runtime.py",
+      "preimage": null,
+      "sha": "bfe7c95d27e57859aa458a18caaa5d47dba5a7fb"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": null,
+      "sha": "600b33370927bd77c193aab8ea1bbc4f0abf3de7"
+    }
+  ],
+  "evidence": [
+    {
+      "path": "resonance-status/next14/selected_conversion_source.json",
+      "sha": "20d6497c04faaa021be70949a2d41a4541efa1f2"
+    },
+    {
+      "path": "resonance-status/next14/selected_conversion_native_contract.json",
+      "sha": "c7cbad14ba624e2e3d7954db81b628dc3fa00c1e"
+    },
+    {
+      "path": "resonance-status/next14/selected_conversion_diagnostic.json",
+      "sha": "ffeab41e27a7770bd7a77c62393c5922f786ab41"
+    },
+    {
+      "path": "resonance-status/next14/source_installed_native_gates.json",
+      "sha": "6e4972b1e7f595a9ddd4e10aaa6ef720fbb887d7"
+    },
+    {
+      "path": "resonance-status/next14/asr_fixture_correction.json",
+      "sha": "84b351f617a23ae9051fe2a1ccd479de547116c6"
+    },
+    {
+      "path": "resonance-status/next14/owner_candidate_assembly.json",
+      "sha": "756265eb7f71c57e25123d796164621e9a4c89a3"
+    },
+    {
+      "path": "resonance-status/next14/book_native_taskdialog.json",
+      "sha": "02573858c642fc1262d673c3b02259eb54af0bcd"
+    },
+    {
+      "path": "resonance-status/next14/backup_native_taskdialog.json",
+      "sha": "3130fef8fc9e9c8f07f7f5feaf3563ae37213595"
+    },
+    {
+      "path": "resonance-status/next14/actual_taskdialog_inventory.json",
+      "sha": "18a6e6ad4c6e0bb006dbc79cf3242c6a6f996639"
+    },
+    {
+      "path": "resonance-status/next14/actual_translation_partition.json",
+      "sha": "64d2a50297a4a0e82c5229285450467b1b721853"
+    },
+    {
+      "path": "resonance-status/next14/partition_source_contract.json",
+      "sha": "44bfa280d4be6700a6d5cde55f2ca6979c13dbd5"
+    },
+    {
+      "path": "resonance-status/next14/actual_asr_c3.json",
+      "sha": "65a9c1ffc95cd2813c8edfded34d5ade5917d649"
+    },
+    {
+      "path": "resonance-status/next14/actual_book_ddd.json",
+      "sha": "fae8e26d99693d9d83800fed2a46169e0a424743"
+    }
+  ],
+  "converter_standalone_gate": {
+    "workflow": "600b33370927bd77c193aab8ea1bbc4f0abf3de7",
+    "peer": "progress_completion ACCEPTED_STATIC_NOT_RUN",
+    "exact_pr_head_checkout": true,
+    "portable": "201 source +201 installed per platform",
+    "windows_phases": [
+      "formats-source",
+      "old-suite-source",
+      "formats-installed",
+      "old-suite-installed",
+      "gui-source",
+      "gui-installed"
+    ],
+    "required_phase_count": 6,
+    "whole_seconds": 600,
+    "headless_seconds": 1200,
+    "gui_seconds": 180,
+    "native_step_minutes": 100,
+    "windows_job_minutes": 285,
+    "reason_for_aggregate_envelope": "Adds two required actual GUI executions and verification, preserving every inner guard.",
+    "publication": "Integration PR only; no duplicate diagnostic-branch run."
+  },
+  "capacity_profiles": {
+    "commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+    "run": 46065560954,
+    "branch": "carr/ci-next9-capacity-c2-20261127-5a9e",
+    "profiles": [
+      {
+        "profile": "1k x20",
+        "status": "PASS",
+        "job": 140730553170
+      },
+      {
+        "profile": "10k x20",
+        "status": "PASS",
+        "job": 140730553169
+      },
+      {
+        "profile": "50k x20",
+        "status": "RUNNING at 22:08 UTC",
+        "job": 140730553147
+      },
+      {
+        "profile": "50k x40",
+        "status": "FAILURE_PARTIAL",
+        "job": 140730553121,
+        "completed_at": "2026-11-27T22:00:21Z",
+        "observed": {
+          "build": "PASS",
+          "measure": "PARTIAL",
+          "reason": "BudgetExceeded",
+          "restart": "NOT_RUN",
+          "operations": "NOT_RUN",
+          "backup": "NOT_RUN"
+        },
+        "artifact": {
+          "id": 15234810136,
+          "bytes": 12570,
+          "sha256": "e5eb6ec3586a85589f28357d58cd1803eb79c737d854ea60af1b2a1a8c6670d6"
+        },
+        "phase_report_sha256": "c4249589a9b5cfe2b1dd9fe9941d4c50fe15dbee1c58b6b3ac1f6f523ce67996",
+        "interpretation": "Actual phase-specific budget cause and metrics await bounded artifact inspection; no limit relaxation or throughput inference."
+      }
+    ],
+    "action": "Retained on original source. Active50kx20 never cancelled or relabelled."
+  }
+}

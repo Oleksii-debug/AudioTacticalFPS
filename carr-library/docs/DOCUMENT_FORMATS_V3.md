@@ -62,19 +62,29 @@ Aliases use one canonical retention suffix: for example, an `.htm` or `.xhtml` s
 retained as a byte-identical `.html` file, and `.markdown` as `.md`. This changes
 the filename extension in the private original store, not the source bytes.
 
-### Formats outside this component
+### Optional selected-runtime reading conversion
 
 V3 also requests AZW/AZW3, CHM, DjVu, legacy DOC/PPT/XLS, LIT, MOBI, PDB/PRC,
-RTF, TCR, WPD, other raster formats and more complex conversion
-features. A suffix in that requirements list is not evidence of implemented
-support. These formats must not be accepted by renaming them to TXT or by
-claiming their output came from a supported parser.
+RTF, TCR and WPD. Those native suffixes remain outside this direct-import
+component. The existing **Convert → Convert documents for reading** workflow
+has explicit selected local Calibre/LibreOffice/Pandoc routes. See
+[Selected local converters: verified reading copies](DOCUMENT_CONVERSION.md)
+for finite families, runtime boundaries, pins and qualification status.
 
-This component does not bundle or automatically invoke calibre, LibreOffice,
-Pandoc, a browser or a mail application. Optional external conversion needs a
-separately verified executable/version contract, constrained local execution,
-original and derivative provenance, explicit fidelity reporting, and tests of
-the actual output. Password or DRM bypass is not provided.
+This is **LIMITED reading-copy conversion**, not native catalog fidelity.
+A completed selected-format folder retains the exact native original, UTF-8
+reading copy and inert fidelity report together. **Read verified copy** opens
+checked text in the existing manual reader. **Import reading copy** asks
+default-No approval and imports only that TXT through the normal catalog
+pipeline. The native original and report remain in the selected external
+folder and do not become native citation or library-backup authority.
+
+The application does not download a runtime, remove DRM, evaluate arbitrary
+CLI expressions, infer printed pages or claim scanned-DjVu OCR.
+Calibre/LibreOffice require the owned Windows Job path and an explicitly
+selected compatible installation. A suffix or static review is not runtime
+qualification; exact source, installed and actual-runtime gates remain
+required for their stated claims.
 
 ## Resource and security boundaries
 

@@ -1,0 +1,82 @@
+{
+  "schema": 1,
+  "kind": "translation-partition-source-diagnostic",
+  "status": "STATIC_REVIEWED_NOT_RUN",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "baseline_commit": "3bcd578c5b468e9748c7eab0398262ae967bddb6",
+  "branch_pattern": "carr/ci-next13-partition-*",
+  "paths": [
+    {
+      "path": ".github/workflows/carr-next13-partition.yml",
+      "before": null,
+      "after": "038571f82a18114882c58ad3fb6b0fba19346f85",
+      "owner": "locate_project"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_partition.py",
+      "before": "8caaeee36ca5a4fcfa05968ea701206396c1f8fa",
+      "after": "d9204f853fd7fbdab8afbac7e9f148ced9f2264f",
+      "owner": "root",
+      "change": "Fixture-only actual Windows rename-refusal accounting; all functions and parametrization unchanged"
+    }
+  ],
+  "contracts": {
+    "platforms": [
+      "ubuntu-24.04",
+      "windows-2022"
+    ],
+    "suite": "tests/assistant/test_translation_partition.py",
+    "whole_suites_per_platform": 1,
+    "expected_cases_per_platform": 26,
+    "failure_skip_xfail_xpass_policy": "unchanged strict ci_check.PYTEST_CHILD",
+    "source_runner_blob": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+    "source_identity": "Exact Git head/tree and every tracked src/bootstrap Python file before and after",
+    "pins": {
+      "scripts/ci_check.py": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+      "tests/assistant/test_translation_layout.py": "4098d53def8821247f3fce2756c7f0da1443d2d3",
+      "tests/assistant/test_translation_local.py": "3db04918a25fa59567e5325be789ee7039b84d59",
+      "src/carr_library/assistant/translation.py": "29324c1891c4e1fc278f410af6221e50ae3f9b04",
+      "src/carr_library/assistant/translation_documents.py": "c4b72384ddede9f7e9f20c1e175bc8c97b602b78",
+      "src/carr_library/assistant/translation_partition.py": "db1fc8bc4c01149059cd8af346f23778fdc18855",
+      "src/carr_library/assistant/translation_layout.py": "f91173da3d90bb6b17be4d184799993ddfa91def",
+      "src/carr_library/assistant/translation_layout_worker.py": "ed5d9734edd89ac3c40ce19ccd6fc866f8c31d0f",
+      "packaging/windows-cp311.lock": "8dad99c0ea80470b7253873aee78e08857affec6",
+      "packaging/windows-sync-cp311.lock": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3",
+      "packaging/linux-sync-core-cp311.lock": "08f945066be748972a10d5b0ce46480fff722959",
+      "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583",
+      "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
+      "tests/assistant/test_translation_partition.py": "d9204f853fd7fbdab8afbac7e9f148ced9f2264f"
+    },
+    "unique_pins": 14,
+    "repeated_pin_occurrences": 28,
+    "limits": {
+      "per_suite_seconds": 600,
+      "test_step_minutes": 12,
+      "job_minutes": 35
+    },
+    "evidence_files": [
+      "ci-partition-source/source-before.json",
+      "ci-partition-source/source-after.json",
+      "ci-partition-source/contracts.txt",
+      "ci-partition-source/summary.json"
+    ],
+    "installed": "NOT_RUN by this source-only fixture diagnostic; full installed26 remains required",
+    "native": "NOT_RUN",
+    "product_changes": false,
+    "external_automation_changes": false,
+    "ref_changes": false
+  },
+  "review": [
+    {
+      "reviewer": "root",
+      "scope": "Exact workflow source/lock pins, strict whole26, source-before/after, both platforms and finite budgets",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "locate_project",
+      "scope": "Only new import and single test body differ; real Windows5/32/33 denial retains original identity, successful swap retains canary checks, both one provider transfer/one receipt",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "runtime": "No parser, Linux, Windows or installed result claimed for this successor."
+}

@@ -45,7 +45,7 @@ def verify_runtime_profiles(frame, temporary, source_root):
     fixture = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fixture)
     runtime = fixture.make_runtime(temporary / 'inventoried-synthetic-runtime',
-                                   options={'hold_after_checkpoint': 3.0})
+                                   options={'wait_for_stop_after': 1})
     sources = [temporary / 'Перший синтетичний.wav', temporary / 'Другий синтетичний.wav']
     for number, source in enumerate(sources):
         source.write_bytes(b'Synthetic retained source, no acoustic inference: ' + str(number).encode())
@@ -76,6 +76,13 @@ def verify_runtime_profiles(frame, temporary, source_root):
 
     class DirectoryAnswer(FilesAnswer):
         def GetPath(self): return str(temporary)
+
+    def fixture_lines(name):
+        path = runtime.worker.with_name(name)
+        with path.open('rb') as stream:
+            raw = stream.read(4097)
+        assert len(raw) <= 4096, ('Synthetic fixture journal exceeded its bound', name)
+        return raw.decode('utf-8').splitlines()
 
     def drive():
         if state['done']:
@@ -131,6 +138,9 @@ def verify_runtime_profiles(frame, temporary, source_root):
                 assert job['status'] == 'paused' and 1 <= job['done'] < job['total'], job
                 assert dialog.current_job['id'] == job['id'] and dialog.start_button.IsEnabled()
                 state['first_receipt'] = dict(job['results'][0])
+                starts, processed = fixture_lines('fixture-starts.log'), fixture_lines('fixture-sources.log')
+                assert starts == ['started'] and len(processed) == 1, (starts, processed, job)
+                state['first_processed'] = processed[0]
                 runtime.options.write_text('{}', encoding='utf-8')
                 click(dialog.start_button)
                 state['phase'] = 'completed'
@@ -138,7 +148,9 @@ def verify_runtime_profiles(frame, temporary, source_root):
                 job = service.verify(state['job'])
                 assert job['status'] == 'complete' and job['done'] == job['total'] == 2, job
                 assert state['first_receipt'] in job['results']
-                assert len(runtime.worker.with_name('fixture-starts.log').read_text(encoding='utf-8').splitlines()) == 2
+                starts, processed = fixture_lines('fixture-starts.log'), fixture_lines('fixture-sources.log')
+                assert starts == ['started', 'started'], (len(starts), starts, processed, job)
+                assert len(processed) == 2 and processed.count(state['first_processed']) == 1, (starts, processed)
                 assert not dialog.start_button.IsEnabled()
                 dialog.pages.SetSelection(2)
                 click(find('Load transcript'))
@@ -191,7 +203,8 @@ def verify_runtime_profiles(frame, temporary, source_root):
             elif phase == 'bound' and idle:
                 assert not service.get_job(state['job']).get('execution_review_required', False)
                 assert service.get_job(state['job'])['status'] == 'complete'
-                assert len(runtime.worker.with_name('fixture-starts.log').read_text(encoding='utf-8').splitlines()) == 2
+                starts = fixture_lines('fixture-starts.log')
+                assert starts == ['started', 'started'], (len(starts), starts)
                 state['done'] = True
                 click(dialog.close_button)
                 return

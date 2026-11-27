@@ -109,6 +109,29 @@ def texts(result):
     return [record['raw_text'] for record in result['records']]
 
 
+def test_inert_office_converter_containers_preserve_all_surrounding_reading_text():
+    body = ('<office:forms/><text:p>Before</text:p><draw:custom-shape>'
+            '<text:p>Shape text</text:p><draw:enhanced-geometry draw:type="rectangle">'
+            '<draw:equation draw:name="f0" draw:formula="0"/>'
+            '</draw:enhanced-geometry></draw:custom-shape><text:p>After</text:p>')
+    result = extract_xml_document(odf('.odt', body), '.odt')
+    assert texts(result) == ['Before', 'Shape text', 'After']
+    assert 'vector_geometry_not_read' in result['warnings']
+
+
+@pytest.mark.parametrize('fragment', [
+    '<office:forms><text:p>Must not disappear</text:p></office:forms>',
+    '<office:forms foreign="true"/>',
+    '<office:forms>Must not disappear</office:forms>',
+    '<draw:enhanced-geometry><text:p>Must not disappear</text:p></draw:enhanced-geometry>',
+    '<draw:enhanced-geometry><draw:equation>Must not disappear</draw:equation></draw:enhanced-geometry>',
+    '<draw:enhanced-geometry><draw:handle><text:p>Must not disappear</text:p></draw:handle></draw:enhanced-geometry>',
+], ids=['populated-form', 'foreign-form-setting', 'form-text', 'geometry-text-node', 'equation-text', 'nested-handle'])
+def test_converter_container_support_never_silently_drops_unknown_text_or_controls(fragment):
+    with pytest.raises(ValueError, match='form|shape'):
+        extract_xml_document(odf('.odt', '<text:p>Before</text:p>' + fragment), '.odt')
+
+
 @pytest.mark.parametrize('suffix,make,expected', [
     ('.odt', lambda: odf('.odt'), ['Title', '  Перший текст   kôň\tlast\nline ']),
     ('.odp', lambda: odf('.odp'), ['First', 'Second']),
