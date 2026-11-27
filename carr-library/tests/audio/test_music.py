@@ -179,3 +179,57 @@ def test_actual_graph_file_handles_unicode_and_spaces_without_leaving_temporary_
     with wave.open(str(output), 'rb') as audio:
         assert audio.getnframes() == 60000 and audio.getframerate() == 48000
     assert not list(folder.rglob('*.filters'))
+
+
+def test_music_stage_budget_refuses_hidden_unreadable_generated_files(tmp_path, monkeypatch):
+    from carr_library.audio import model_manifest, music
+
+    hidden = tmp_path / 'unreadable'
+    hidden.mkdir()
+    (hidden / 'unlisted.bin').write_bytes(b'synthetic output')
+    scan = model_manifest.os.scandir
+    def denied(path):
+        if Path(path) == hidden:
+            raise PermissionError('synthetic-private-stage-detail')
+        return scan(path)
+    monkeypatch.setattr(model_manifest.os, 'scandir', denied)
+    with pytest.raises(model_manifest.ModelManifestError, match='inventory is unreadable or incomplete'):
+        music._stage_budget(tmp_path, lambda: False)
+
+
+def test_music_cache_refuses_unreadable_code_before_starting_worker(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.audio import model_manifest, music
+
+    cache = tmp_path / 'hf-cache'
+    hidden = cache / 'unreadable'
+    hidden.mkdir(parents=True)
+    (hidden / 'unlisted.PY').write_bytes(b'# synthetic code')
+    scan = model_manifest.os.scandir
+    def denied(path):
+        if Path(path) == hidden:
+            raise PermissionError('synthetic-private-cache-detail')
+        return scan(path)
+    monkeypatch.setattr(model_manifest.os, 'scandir', denied)
+    monkeypatch.setattr(music, '_run', lambda *args, **kwargs: pytest.fail('Unverified cache cannot start a worker.'))
+    profile = SimpleNamespace(root=tmp_path, files=(),
+        settings={'source_revision': music.MUSICGEN_SOURCE, 'python': 'selected-python'},
+        asset=lambda name: Path(sys.executable))
+    with pytest.raises(model_manifest.ModelManifestError, match='inventory is unreadable or incomplete'):
+        music._render_musicgen_chunk(tmp_path / 'never.wav', frame_count=8000,
+            sample_rate=8000, mood='calm', tempo=90, seed=1, gain=.5,
+            ffmpeg='never-started', manifest=profile, previous=None, cancelled=lambda: False)
+    assert not (tmp_path / 'never.wav').exists()
+
+
+def test_music_stage_cancellation_remains_boolean_during_inventory(tmp_path):
+    from carr_library.audio import music
+
+    (tmp_path / 'generated.wav').write_bytes(b'synthetic')
+    calls = 0
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls == 2
+    assert music._stage_budget(tmp_path, cancelled) is True
+    assert calls == 2

@@ -62,6 +62,43 @@ def local_path(path: Path | str, *, must_exist: bool = True) -> Path:
     return path.resolve(strict=must_exist)
 
 
+def _local_inventory(root, *, cancelled=lambda: False):
+    """Enumerate every local entry or fail, with the existing traversal bound."""
+    root = local_path(root)
+    pending = [root]
+    count = 0
+    try:
+        while pending:
+            if cancelled():
+                raise InterruptedError('Local asset verification cancelled.')
+            directory = local_path(pending.pop())
+            if not directory.is_dir():
+                raise ModelManifestError('Expected a local engine directory.')
+            # Path.rglob may suppress enumeration failures. A partial inventory
+            # cannot establish that no unreviewed runtime code is present.
+            with os.scandir(directory) as entries:
+                for item in entries:
+                    if cancelled():
+                        raise InterruptedError('Local asset verification cancelled.')
+                    count += 1
+                    if count > MAX_MODEL_DIRECTORY_ENTRIES:
+                        raise ModelManifestError('The model installation exceeds the directory entry budget.')
+                    path = local_path(directory / item.name)
+                    info = path.stat(follow_symlinks=False)
+                    if stat.S_ISDIR(info.st_mode):
+                        pending.append(path)
+                    elif not stat.S_ISREG(info.st_mode):
+                        raise ModelManifestError('Local engine inventory requires regular files and directories.')
+                    yield path, info
+        if cancelled():
+            raise InterruptedError('Local asset verification cancelled.')
+    except InterruptedError:
+        raise
+    except OSError:
+        # Keep machine paths and private exception text out of public errors.
+        raise ModelManifestError('Local engine inventory is unreadable or incomplete.') from None
+
+
 def _identity(info):
     return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
 
@@ -261,13 +298,9 @@ class LocalModelManifest:
             raise ModelManifestError('The model manifest changed after it was loaded.')
         listed = dict(self.files)
         if require_complete:
-            for count, entry in enumerate(self.root.rglob('*'), 1):
-                if cancelled():
-                    raise InterruptedError('Local asset verification cancelled.')
-                if count > MAX_MODEL_DIRECTORY_ENTRIES:
-                    raise ModelManifestError('The model installation exceeds the directory entry budget.')
-                entry = local_path(entry)
-                if entry.is_file() and entry != self.path and entry.relative_to(self.root).as_posix() not in listed:
+            for entry, info in _local_inventory(self.root, cancelled=cancelled):
+                if (stat.S_ISREG(info.st_mode) and entry != self.path
+                        and entry.relative_to(self.root).as_posix() not in listed):
                     raise ModelManifestError('The local runtime contains a file missing from its reviewed manifest.')
         total = 0
         for name, expected in self.files:

@@ -274,3 +274,97 @@ def test_complete_inventory_can_be_cancelled_before_hashing_assets(tmp_path):
     with pytest.raises(InterruptedError, match='verification cancelled'):
         model.verify(require_complete=True, cancelled=cancelled)
     assert calls == 4
+
+
+@pytest.mark.parametrize('phase', ['open', 'iteration'])
+def test_complete_inventory_refuses_unreadable_subtree_without_hashing_assets(tmp_path, monkeypatch, phase):
+    from carr_library.audio import model_manifest as module
+
+    model = LocalModelManifest.load(manifest(tmp_path))
+    hidden = tmp_path / 'private-subtree'
+    hidden.mkdir()
+    (hidden / 'unreviewed.PY').write_bytes(b'# synthetic unlisted code')
+    native_scandir = module.os.scandir
+    closed = []
+    visited = []
+
+    class FailingEntries:
+        def __init__(self, path):
+            self.entries = native_scandir(path)
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            self.entries.close()
+            closed.append(True)
+        def __iter__(self):
+            return self
+        def __next__(self):
+            raise PermissionError('synthetic-private-enumeration-detail')
+
+    def scan(path):
+        visited.append(Path(path))
+        if Path(path) == hidden:
+            if phase == 'open':
+                raise PermissionError('synthetic-private-enumeration-detail')
+            return FailingEntries(path)
+        return native_scandir(path)
+
+    monkeypatch.setattr(module.os, 'scandir', scan)
+    actual_digest = module._digest_snapshot
+    digests = []
+    def digest(path, **kwargs):
+        digests.append(Path(path))
+        return actual_digest(path, **kwargs)
+    monkeypatch.setattr(module, '_digest_snapshot', digest)
+    with pytest.raises(ModelManifestError, match='inventory is unreadable or incomplete') as failed:
+        model.verify(require_complete=True)
+    assert hidden in visited
+    assert digests == [model.path]
+    assert closed == ([True] if phase == 'iteration' else [])
+    assert 'synthetic-private-enumeration-detail' not in str(failed.value)
+    assert (tmp_path / 'voice.onnx').read_bytes() == b'synthetic non-model test fixture'
+
+
+def test_complete_inventory_rejects_nonregular_entry_from_filesystem_metadata(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import stat
+    from carr_library.audio import model_manifest as module
+
+    model = LocalModelManifest.load(manifest(tmp_path))
+    entry = tmp_path / 'special-entry'
+    entry.write_bytes(b'controlled filesystem metadata fixture')
+    original_stat = Path.stat
+
+    def special(path, *args, **kwargs):
+        if path == entry:
+            return SimpleNamespace(st_mode=stat.S_IFIFO, st_size=0)
+        return original_stat(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'stat', special)
+    with pytest.raises(ModelManifestError, match='regular files and directories'):
+        model.verify(require_complete=True)
+
+
+def test_inventory_cancellation_remains_interrupted_and_closes_the_iterator(tmp_path, monkeypatch):
+    from carr_library.audio import model_manifest as module
+
+    for number in range(3):
+        (tmp_path / f'entry-{number}').mkdir()
+    native_scandir = module.os.scandir
+    closed = []
+    class Entries:
+        def __init__(self, path):
+            self.entries = native_scandir(path)
+        def __enter__(self):
+            return self.entries
+        def __exit__(self, *args):
+            self.entries.close()
+            closed.append(True)
+    monkeypatch.setattr(module.os, 'scandir', Entries)
+    iterator = module._local_inventory(tmp_path, cancelled=lambda: bool(closed))
+    first, info = next(iterator)
+    assert first.parent == tmp_path and first.is_dir()
+    iterator.close()
+    assert closed == [True]
+    with pytest.raises(InterruptedError, match='verification cancelled'):
+        list(module._local_inventory(tmp_path, cancelled=lambda: True))
