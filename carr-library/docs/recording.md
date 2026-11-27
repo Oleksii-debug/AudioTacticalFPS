@@ -149,3 +149,21 @@ Primary contracts:
 [FFmpeg DirectShow input](https://ffmpeg.org/ffmpeg-devices.html#dshow),
 [TerminateJobObject](https://learn.microsoft.com/en-us/windows/win32/api/jobapi2/nf-jobapi2-terminatejobobject),
 [Windows job accounting](https://learn.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-jobobject_basic_accounting_information).
+
+## Windows microphone access
+
+If the selected input is listed but Start reports that access was denied, open
+Windows **Settings → Privacy & security → Microphone** and review microphone
+access and the permission for desktop applications. Enable only the access you
+intend to grant. On a managed computer, the administrator's policy can determine
+which applications may use a microphone. After an approved settings change,
+refresh the input list, select the intended device again and start a new take.
+A listed device confirms discovery; saving and verifying a take confirms that
+audio was actually captured.
+
+The settings and their policy behavior are described by Microsoft in
+[Turn on app permissions for your microphone](https://support.microsoft.com/en-us/windows/privacy/turn-on-app-permissions-for-your-microphone-in-windows)
+and, for managed Windows 11 version 24H2 and later,
+[Manage desktop app privacy access](https://learn.microsoft.com/en-us/windows/client-management/manage-desktop-app-privacy-access).
+These instructions do not establish the cause of a particular driver or CI
+failure; the exact selected-device receipt remains the diagnostic evidence.

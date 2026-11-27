@@ -15,6 +15,98 @@ release, manual NVDA acceptance, speech quality, or evidence that every requeste
 language/model/device works. Exact workflow head SHAs and results are authoritative;
 older component runs do not qualify the newly composed code.
 
+## Current failure reconciliation — 2026-11-27, 19:44 UTC
+
+The immediately preceding product is `23d6401341d2d0f9415cef699a687394368f4b7b`;
+its ordinary evaluation composition is `023de4612e3490b5c9dc4f9abb5f9ca3887ca29e`.
+This successor preserves that complete source tree and adds the specific repairs
+below. **The successor source and its installed wheel are NOT_RUN at composition.**
+Earlier passing observations do not qualify this new candidate.
+
+### Actual predecessor evidence
+
+- [Preflight 46054991807](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46054991807)
+  completed its Linux selection with **230 module suites: 223 passed, seven failed**.
+  Failures were confined to complete-state restoration expectations, source-page
+  fixtures, reference-controls fixtures, desktop installation/query fixtures,
+  queued Book closure, and recording cleanup-owner identity. The new streamed
+  source, protected transfer, recording controls, bounded Assistant state I/O,
+  encrypted/incremental recovery and measured-publication modules passed there.
+- The same preflight's early Windows artifact `15227110669`, SHA256
+  `970b203ac7f960ad8444e145d34a813d5aa49bc5ba3df508de0e2c0e31750670`,
+  records actual source and installed passes for DAISY validation, all four
+  modeled Word APA/Chicago review sequences, Assistant domain routes, reference
+  controls, encrypted Sync, large TXT intake, literal and ranked/federated
+  continuation, recording Pause/Resume, conversion, incremental backup and
+  metadata. Reading preparation reached its native choice step, protected
+  transfer failed at simulator text argument admission, and BookBatch exceeded
+  the unchanged 80-second completion predicate. Long source/installed execution
+  was still in progress at this ledger checkpoint.
+- On the exact ordinary evaluation head, compatibility, bibliography and both
+  native launcher compilers passed. Transcription passed on Linux but failed its
+  Windows pause-admission cleanup requirement: 19 of 20 module suites passed,
+  and the failing module passed 13 of 14 cases. The 1.5-second stop requirement
+  remains enforced. Full Windows and V3 evaluation were still running.
+- [Read-only capture diagnosis 46055068085](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46055068085)
+  selected the reviewed active CABLE endpoint. Format/period queries succeeded,
+  but WASAPI shared initialization returned `0x80070005 E_ACCESSDENIED`; there
+  was no successful Start or captured buffer. On that same VM, the current-user
+  microphone consent value was `Deny`, while the current-user NonPackaged and
+  machine microphone values were `Allow`. This is observed access-denial and
+  consent evidence, not a proven undocumented policy chain or device success.
+  No consent, policy, driver, branch identity or device-success guard was changed.
+
+### Repairs and retained boundaries
+
+1. Actual source and installed native Book traces showed repeated retained-byte
+   accounting calling durable batch cancellation reads. External control polling
+   now uses a 50 ms interval measured after I/O completion; local cancellation is
+   always immediate. Every existing source/publication boundary forces fresh
+   token/signal and batch-fingerprint validation. Retained-byte accounting records
+   its completed-scan time; all forced quota checks remain. Eight real source/PCM/
+   FFmpeg regressions extend the old batch tests without replacing them.
+2. Native reading-language selection opens and accepts the actual wx choice;
+   original-byte hashes and native LF reading-copy assertions stay intact.
+   The protected-package probe passes ASCII bytes to the real keyboard simulator;
+   masked password controls, rights review and encryption checks stay intact.
+3. Complete-state tests preserve historical job status and verify passive restore
+   authority for Run, Resume, Pause and Cancel without changing durable bytes.
+   Current reference controls retain generation invalidation and unchecked consent.
+   Desktop fixtures invoke the real installer and typed page API. Source-page
+   cancellation tests follow bounded empty continuation windows and retain exact
+   quotation/source-integrity checks. Queued Book closure requires cancellation
+   before any source access. Recording cleanup tests require the public joined
+   owner, inner monitor owner and original process owner all to acknowledge cleanup
+   before broker/file-lock release; both closure orders are exercised.
+4. The existing Windows ASR stop test adds bounded memory-only phase and stack
+   evidence, emitted only on failure and captured before releasing its synthetic
+   hash barrier. Every wrapper delegates once; the 1.5-second stop requirement,
+   worker budget, grace period and original assertions remain. No unobserved
+   production cause is claimed or patched.
+5. The no-audio application builder now includes the already-linked recording
+   monitoring guide. Actual builder/installer tests require exact guide bytes,
+   manifest hashes, no bundled audio runtime and rejection after guide tampering.
+   Recording help explains explicit Windows microphone permissions with Microsoft
+   references; it never changes them automatically.
+6. The existing semantic-cache benchmark gains an explicit optional
+   `--source-pages` mode. Its original default implementation is byte-preserved.
+   Fresh children reuse the current owned-process mechanism and retained TXT/
+   source-page APIs, with exact source/config/harness identities, raw timing
+   samples, whole-process RSS, bounded timeout/partial evidence and no fabricated
+   performance verdict. Tests cover actual children, retained quotations, source
+   and harness changes, timeouts and create-only output. The new selector is
+   included in source/installed main gates, portable/Windows preflight and V3.
+   No scale measurement has executed on this successor yet.
+
+All reviewed changes have exact cloud readbacks and independent focused reviews.
+They preserve the shared worker, resource broker, registry, typed backup formats
+and passive restored authority. This candidate is not an eligible retained wheel,
+final private ZIP, signed distribution, actual Office qualification, private
+model inference, language-quality result or human Windows 11/NVDA acceptance.
+The complete successful Windows aggregate plus all six ordinary workflows on
+one exact head remain required before selecting a delivery wheel. The final
+private application delivery excludes the separately configured audio runtime.
+
 ## Implemented routes and reuse
 
 | Route | Existing mechanism reused | Checkpoint/provenance |

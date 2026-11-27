@@ -61,25 +61,106 @@ def test_stop_interrupts_admission_hash_and_reaches_child_cleanup(setup, monkeyp
     entered, release, finished = threading.Event(), threading.Event(), threading.Event()
     original = module.file_identity
     callbacks, outcome, progress = [], {}, []
+    # Failure-only, in-memory diagnostics for the existing stop requirement.
+    # Delegates keep their original arguments, results, errors and deadlines.
+    import sys
+    from carr_library.audio import process as process_module
+    from carr_library.operations.broker import ResourceLease
+
+    phase_started, phase_log = time.monotonic(), []
+    diagnostic_active, observed_control = [False], []
+
+    def phase(name, detail=''):
+        if diagnostic_active[0] and len(phase_log) < 96:
+            phase_log.append((round(time.monotonic() - phase_started, 6), name, detail))
+
+    def traced(name, operation, *args, **kwargs):
+        phase(name + ':begin')
+        try:
+            result = operation(*args, **kwargs)
+        except BaseException as error:
+            phase(name + ':raised', type(error).__name__)
+            raise
+        phase(name + ':end')
+        return result
+
+    control, save = service._control, service._save
+    atomic_flags, stop_owned = module.atomic_bytes, process_module._stop_owned
+    release_lease = ResourceLease.release
+
+    def observed_action(*args, **kwargs):
+        selected = control(*args, **kwargs)
+        if selected != 'run' and not observed_control:
+            observed_control.append(selected)
+            phase('control:observed', selected)
+        return selected
+
+    def observed_save(*args, **kwargs):
+        return traced('job-state', save, *args, **kwargs)
+
+    def observed_flag(path, *args, **kwargs):
+        name = Path(path).name
+        label = name if name in ('pause.flag', 'stop.flag') else 'other-flag'
+        return traced(label, atomic_flags, path, *args, **kwargs)
+
+    def observed_stop(*args, **kwargs):
+        return traced('owned-family-close', stop_owned, *args, **kwargs)
+
+    def observed_release(lease, *args, **kwargs):
+        if lease.operation_id == 'asr:' + state['id']:
+            return traced('resource-release', release_lease, lease, *args, **kwargs)
+        return release_lease(lease, *args, **kwargs)
+
+    monkeypatch.setattr(service, '_control', observed_action)
+    monkeypatch.setattr(service, '_save', observed_save)
+    monkeypatch.setattr(module, 'atomic_bytes', observed_flag)
+    monkeypatch.setattr(process_module, '_stop_owned', observed_stop)
+    monkeypatch.setattr(ResourceLease, 'release', observed_release)
+
+    def report(event):
+        progress.append(dict(event))
+        phase('progress', (event.get('phase'), event.get('status')))
+
+    def runner_stack():
+        # Capture the blocked location before finally releases the synthetic
+        # hash barrier. No frame locals, absolute paths or source text are read.
+        frame = sys._current_frames().get(runner.ident)
+        stack = []
+        try:
+            while frame is not None and len(stack) < 32:
+                stack.append((Path(frame.f_code.co_filename).name,
+                              frame.f_code.co_name, frame.f_lineno))
+                frame = frame.f_back
+            return stack
+        finally:
+            del frame
 
     def controlled_hash(path, *, cancel=None, maximum=64 * 1024**3):
         if Path(path) == target and service._load(state['id'])['status'] == 'running':
             assert starts(runtime) == before_starts + 1, 'Admission must follow the new actual child checkpoint.'
             callbacks.append(cancel)
+            diagnostic_active[0] = True
+            phase('admission-hash:entered')
             entered.set()
             # Simulate many read blocks without a multi-GiB fixture. A missing
             # cancellation callback blocks until the test's cleanup releases it.
-            while not release.wait(.01):
-                module.stopped(cancel)
+            try:
+                while not release.wait(.01):
+                    module.stopped(cancel)
+            except BaseException as error:
+                phase('admission-hash:raised', type(error).__name__)
+                raise
+            phase('admission-hash:released')
         return original(path, cancel=cancel, maximum=maximum)
 
     monkeypatch.setattr(module, 'file_identity', controlled_hash)
     def run():
         try:
-            outcome['state'] = service.resume(state['id'], progress=lambda event: progress.append(dict(event)))
+            outcome['state'] = service.resume(state['id'], progress=report)
         except BaseException as error:
             outcome['error'] = error
         finally:
+            phase('runner:finished')
             finished.set()
 
     runner = threading.Thread(target=run)
@@ -101,22 +182,34 @@ def test_stop_interrupts_admission_hash_and_reaches_child_cleanup(setup, monkeyp
     runner.start()
     promptly_stopped = False
     stop_requested = False
+    timed_out_stack = []
     try:
         await_ready(lambda: starts(runtime) > before_starts, 'Waiting for the new actual child start')
         assert starts(runtime) == before_starts + 1
         await_ready(entered.is_set, 'Waiting for checkpoint source verification')
+        phase('stop-request:begin', intent)
         getattr(service, intent)(state['id'])
+        phase('stop-request:return', intent)
         stop_requested = True
         runner.join(1.5)
         promptly_stopped = not runner.is_alive()
+        if not promptly_stopped:
+            timed_out_stack = runner_stack()
+            phase('stop-deadline:runner-live')
     finally:
+        phase('cleanup:release-hash')
         release.set()
         if not stop_requested and runner.is_alive():
             # A readiness failure must also stop preflight hashing/a live child.
             getattr(service, intent)(state['id'])
         runner.join(6)
-    assert not runner.is_alive(), 'The child runner was not cleaned up.'
-    assert promptly_stopped, 'Checkpoint hashing prevented stop/grace handling.'
+    diagnostics = {
+        'phases': phase_log, 'stack_before_hash_release': timed_out_stack,
+        'final_status': outcome.get('state', {}).get('status'),
+        'error_type': type(outcome['error']).__name__ if 'error' in outcome else None,
+    }
+    assert not runner.is_alive(), ('The child runner was not cleaned up.', diagnostics)
+    assert promptly_stopped, ('Checkpoint hashing prevented stop/grace handling.', diagnostics)
     assert callbacks and all(callable(callback) for callback in callbacks)
     assert 'error' not in outcome, outcome
     result = outcome['state']

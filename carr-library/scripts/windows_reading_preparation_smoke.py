@@ -239,9 +239,16 @@ def _run_probe(args, report, checkpoint):
 
         def choose(view, language_index, *flags):
             focus(view.language)
+            # Open the native list and accept it. wxMSW GetSelection retains
+            # the last accepted value while the dropdown is still open.
+            key(wx.WXK_F4)
             key(wx.WXK_HOME)
             for _ in range(language_index):
                 key(wx.WXK_DOWN)
+            key(wx.WXK_RETURN)
+            report['language_choice'] = {'expected': language_index,
+                'selected': view.language.GetSelection(),
+                'label': view.language.GetStringSelection()}
             check('native language choice is explicit', view.language.GetSelection() == language_index)
             for name in flags:
                 click(view.options[name])

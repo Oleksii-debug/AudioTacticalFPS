@@ -62,10 +62,19 @@ def test_portable_complete_state_retains_source_and_requires_job_reapproval(tmp_
     assert replace(recovered_hit, ref=original_hit.ref) == original_hit
     assert recovered.copy(workspace, recovered_hit.ref, recovered_hit.revision, 'quote') == original_quote
     jobs = AssistantService(recovered)
-    assert jobs.get(identity).status == 'attention'
-    assert jobs.store.load(identity)['restore_requires_review'] is True
-    with pytest.raises(PermissionError, match='review'):
-        jobs.resume(identity)
+    # The current assistant preserves historical status/receipts; restoration
+    # revokes authority through the exact marker, without rewriting history.
+    restored_record = jobs.store.load(identity)
+    assert restored_record == {**record, 'restore_requires_review': True}
+    restored_bytes = {path.name: path.read_bytes()
+                      for path in jobs.store.directory.glob('*.json')}
+    report = jobs.get(identity)
+    assert report.status == 'running' and report.completed == report.total == 1
+    assert jobs.jobs() == (report,)
+    for action in (jobs.run, jobs.resume, jobs.pause, jobs.cancel):
+        with pytest.raises(PermissionError, match='Restored assistant jobs.*review'):
+            action(identity)
+    assert {path.name: path.read_bytes() for path in jobs.store.directory.glob('*.json')} == restored_bytes
     assert {name: (app.root / name).read_bytes() for name in retained_jobs} == retained_jobs
     assert ReaderDraftStore(app.root).load().document.to_dict() == reading.to_dict()
     assert preference_path.read_bytes() == preferences

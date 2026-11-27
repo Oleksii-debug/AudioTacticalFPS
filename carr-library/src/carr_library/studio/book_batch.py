@@ -9,6 +9,7 @@ from hashlib import sha256
 import os
 from pathlib import Path
 import re
+from time import monotonic
 from uuid import uuid4
 
 from ..durable_state import atomic_json, encode, local_path, read_json, regular, state_lock, sync_directory
@@ -19,6 +20,7 @@ from .book_audio import (BookAudioService, BookPlan, BookReview, MAX_REVIEW_BYTE
 MAX_BOOKS = 32
 MAX_TOTAL_PARTS = 256
 MAX_TOTAL_CHARACTERS = 8_000_000
+CONTROL_POLL_SECONDS = .05
 
 
 @dataclass(frozen=True)
@@ -296,6 +298,7 @@ class BookBatchService:
             signal = root / (batch.id + '.' + token + '.control.json')
             atomic_json(path, active, replace=True)
             reason, rows, observer = None, [], progress
+            next_control_check = 0.0
 
             def notify(message):
                 nonlocal observer
@@ -305,17 +308,26 @@ class BookBatchService:
                     except Exception:
                         observer = None
 
-            def stopped():
-                nonlocal reason
+            def stopped(*, force=False):
+                nonlocal reason, next_control_check
                 if reason is not None:
                     return True
-                self._control(read_json(path), batch, token)
-                action = (self._control(read_json(signal), batch, token)['action']
-                          if os.path.lexists(signal) else 'run')
+                # In-memory withdrawal is immediate on every nested audio/SQL
+                # check. Only the durable cross-process signal read is polled.
                 if self.books._closed.is_set() or cancelled():
                     action = cancel_action()
                     if action not in ('pause', 'cancel'):
                         raise ValueError('Invalid book batch cancellation action.')
+                else:
+                    if not force and monotonic() < next_control_check:
+                        return False
+                    self._control(read_json(path), batch, token)
+                    action = (self._control(read_json(signal), batch, token)['action']
+                              if os.path.lexists(signal) else 'run')
+                    # Start the short interval after the actual read finishes:
+                    # slow filesystem checks must not make every nested poll
+                    # repeat the same complete JSON/ancestor validation.
+                    next_control_check = monotonic() + CONTROL_POLL_SECONDS
                 if action != 'run':
                     reason = action
                     self._signal_jobs(plans, action)
@@ -324,6 +336,10 @@ class BookBatchService:
 
             def current_scope():
                 guard()
+                # Every Book/source/publication boundary keeps a fresh exact
+                # invocation-token check even inside the short polling window.
+                if stopped(force=True):
+                    raise InterruptedError('Book audio stopped; existing Studio jobs are retained.')
                 if self.load(batch.id).fingerprint != batch.fingerprint:
                     raise ValueError('The saved batch selection changed during rendering.')
 

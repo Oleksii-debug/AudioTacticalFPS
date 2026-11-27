@@ -272,12 +272,19 @@ def test_run_gets_only_the_explicit_frozen_review(handlers, monkeypatch):
     assert 'Verified saved items' in e.find('Book split preview and saved job status').value
 
 
-def test_closing_before_queued_source_work_retains_borrowed_service_and_no_plan(handlers):
+def test_closing_before_queued_source_work_retains_borrowed_service_and_no_plan(handlers, monkeypatch):
     e = handlers
     e.press('Load selected book')
+    assert e.state['queue']
+    reads = []
+    def forbidden_source(*args, **kwargs):
+        reads.append(True)
+        raise AssertionError('A closed owner must cancel before source access.')
+    monkeypatch.setattr(ui, 'source_options', forbidden_source)
     e.close()
     result = e.complete()
-    assert isinstance(result, ValueError) and 'window is closed' in str(result)
+    assert isinstance(result, InterruptedError) and 'cancelled before starting' in str(result)
+    assert reads == []
     assert not e.service.saved() and not e.production.jobs()
     assert not e.service._closed.is_set()
     assert e.state['end'] == [e.wx.ID_CANCEL]

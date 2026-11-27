@@ -152,6 +152,17 @@ def test_cancelled_page_preserves_previous_selection_and_cursor_retry(app):
     assert app._selections == before
     assert app.copy(workspace, first.results[0].ref, first.results[0].revision, 'quote') == 'Railway'
     resumed = app.search_page(workspace, 'Railway', limit=1, page_budget=1, cursor=first.next_cursor)
+    # Each source has a second, nonmatching fragment. A bounded empty source
+    # window must retain its continuation instead of pretending exhaustion.
+    for _ in range(8):
+        assert resumed.scanned_segments <= 1
+        if resumed.results:
+            break
+        assert not resumed.complete and resumed.next_cursor
+        resumed = app.search_page(workspace, 'Railway', limit=1, page_budget=1,
+                                  cursor=resumed.next_cursor)
+    else:
+        pytest.fail('The original continuation did not reach the next matching source.')
     assert resumed.results[0].edition_id != first.results[0].edition_id
 
 
@@ -229,7 +240,9 @@ def test_mismatched_active_asset_is_not_silently_filtered_from_complete_search(a
         assert db.execute('PRAGMA foreign_key_check').fetchall()
     with pytest.raises(ValueError):
         app.search(workspace, 'Railway')
-    with pytest.raises(ValueError, match='catalog identity'):
+    # The canonical retained-source authorization rejects this mismatch before
+    # the later window scanner can inspect the inconsistent catalog identity.
+    with pytest.raises(ValueError, match='outside the selected library'):
         app.search_page(workspace, 'Railway')
     assert app._selections == before
     assert app.copy(workspace, previous.ref, previous.revision, 'quote') == 'Railway'
