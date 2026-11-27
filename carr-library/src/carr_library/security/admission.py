@@ -59,7 +59,10 @@ def admit_new_operation(controller, action):
     action = _action(action)
     if action in USER_DATA_ACTIONS:
         return OperationLease(action, 0)
-    controller = checked_controller(controller) or _controller.get()
+    selected, current = checked_controller(controller), _controller.get()
+    if selected is not None and current is not None and selected is not current:
+        raise ValueError('Nested operations cannot change their configured authority.')
+    controller = selected if selected is not None else current
     if controller is None:
         return OperationLease(action, 0)  # Existing owner-private behavior.
     for owner, admitted_action, lease in reversed(_active.get()):

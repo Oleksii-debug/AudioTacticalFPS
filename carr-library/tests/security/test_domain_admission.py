@@ -251,3 +251,13 @@ def test_actual_v43_completed_receipt_and_reading_copy_stay_available(
     output = next(row['path'] for row in completed['outputs'] if row['format'] == 'txt')
     reading = service.reading_copy(identity, output)
     assert reading.current_text.startswith('Synthetic protocol text')
+
+
+def test_direct_admission_cannot_override_the_active_tool_authority(authority):
+    other = TrustController()
+    with operation_context(authority.controller):
+        with pytest.raises(ValueError, match='authority'):
+            admit_new_operation(other, 'audio.render')
+        # This identity rule never locks out the tool's protected data.
+        assert admit_new_operation(other, 'data.save').sequence == 0
+    assert admit_new_operation(other, 'audio.render').sequence == 0

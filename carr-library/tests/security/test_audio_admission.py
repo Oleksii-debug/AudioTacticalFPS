@@ -134,3 +134,19 @@ def test_actual_two_scene_render_finishes_when_permission_expires_after_first_ch
         render_project(plan, tmp_path / 'fresh', engine=engine, ffmpeg=binary,
                        trust_controller=authority.controller)
     assert sha256(master.read_bytes()).hexdigest() == digest and len(engine.calls) == 2
+
+
+def test_actual_renderer_cannot_replace_the_active_tool_authority(authority, tmp_path):
+    from carr_library.security.admission import operation_context
+    from carr_library.security.controller import TrustController
+    binary, plan, engine = local_ffmpeg(), production(), ToneEngine()
+    other = TrustController()
+    expire(authority)
+    with operation_context(authority.controller):
+        with pytest.raises(ValueError, match='authority'):
+            render_project(plan, tmp_path / 'refused', engine=engine, ffmpeg=binary,
+                           trust_controller=other)
+    assert engine.calls == []
+    private = render_project(plan, tmp_path / 'private', engine=engine, ffmpeg=binary,
+                             trust_controller=other)
+    assert private['status'] == 'complete' and len(engine.calls) == 2
