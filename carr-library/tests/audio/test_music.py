@@ -236,3 +236,106 @@ def test_failed_reprobe_invalidates_previous_music_inference_evidence(tmp_path):
     with pytest.raises(ValueError, match='SHA256'):
         probe_model(runtime, 'musicgen')
     assert not any(status.values())
+
+
+@pytest.mark.parametrize('python_only', [False, True])
+def test_music_inventory_rejects_unreadable_subtree(tmp_path, monkeypatch, python_only):
+    from carr_library.audio import music
+
+    hidden = tmp_path / 'unreadable'
+    hidden.mkdir()
+    (hidden / 'unlisted.py').write_text('pass', encoding='utf-8')
+    original = music.os.scandir
+
+    def denied(path):
+        if Path(path) == hidden:
+            raise PermissionError('synthetic enumeration failure')
+        return original(path)
+
+    monkeypatch.setattr(music.os, 'scandir', denied)
+    with pytest.raises(ValueError, match='inventory is unreadable'):
+        music._inventory(tmp_path, cancelled=lambda: False, python_only=python_only)
+
+
+@pytest.mark.parametrize('python_only', [False, True])
+def test_music_inventory_bounds_all_entries_and_checks_cancellation(tmp_path, monkeypatch, python_only):
+    from carr_library.audio import music
+
+    for index in range(4):
+        (tmp_path / f'empty-{index}').mkdir()
+    monkeypatch.setattr(music, '_MAX_INVENTORY_ENTRIES', 3)
+    with pytest.raises(ValueError, match='entry limit'):
+        music._inventory(tmp_path, cancelled=lambda: False, python_only=python_only)
+    monkeypatch.setattr(music, '_MAX_INVENTORY_ENTRIES', 100)
+    calls = 0
+
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls == 3
+
+    with pytest.raises(AudioCancelled):
+        music._inventory(tmp_path, cancelled=cancelled, python_only=python_only)
+    assert calls == 3
+
+
+def test_unreadable_model_subtree_invalidates_configured_music_evidence(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.audio import music
+
+    config, _ = model_fixture(tmp_path)
+    runtime = SimpleNamespace(music_models={}, music_model_status={})
+    music.configure_model(runtime, config)
+    status = runtime.music_model_status['musicgen']
+    status.update(runtime_probed=True, runtime_code_verified=True, inference_tested=True)
+    hidden = config.directory / 'unreadable'
+    hidden.mkdir()
+    (hidden / 'unlisted.bin').write_bytes(b'synthetic')
+    original = music.os.scandir
+
+    def denied(path):
+        if Path(path) == hidden:
+            raise PermissionError('synthetic enumeration failure')
+        return original(path)
+
+    monkeypatch.setattr(music.os, 'scandir', denied)
+    with pytest.raises(ValueError, match='inventory is unreadable'):
+        music.probe_model(runtime, 'musicgen')
+    assert not any(status.values())
+
+
+def test_unreadable_runtime_subtree_invalidates_music_inference(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.audio import music
+
+    config, data = model_fixture(tmp_path)
+    package = tmp_path / 'audiocraft'
+    package.mkdir()
+    source = package / '__init__.py'
+    source.write_bytes(b'# synthetic source')
+    records = {source.name: hashlib.sha256(source.read_bytes()).hexdigest()}
+    data['runtime_code_files'] = records
+    config.manifest.write_text(json.dumps(data), encoding='utf-8')
+    monkeypatch.setitem(music._REVIEWED_ENTRYPOINTS, 'musicgen', records)
+    monkeypatch.setattr(music, 'run_process', lambda *args, **kwargs:
+                        SimpleNamespace(stdout=json.dumps({'origin': str(source)})))
+    runtime = SimpleNamespace(music_models={}, music_model_status={}, budget=None)
+    music.configure_model(runtime, config)
+    assert music.probe_model(runtime, 'musicgen')['runtime_code_verified']
+    status = runtime.music_model_status['musicgen']
+    status['inference_tested'] = True  # synthetic evidence only
+    hidden = package / 'unreadable'
+    hidden.mkdir()
+    (hidden / 'unlisted.py').write_bytes(b'# synthetic')
+    original = music.os.scandir
+
+    def denied(path):
+        if Path(path) == hidden:
+            raise PermissionError('synthetic enumeration failure')
+        return original(path)
+
+    monkeypatch.setattr(music.os, 'scandir', denied)
+    with pytest.raises(ValueError, match='inventory is unreadable'):
+        music.probe_model(runtime, 'musicgen')
+    assert status['assets_verified']
+    assert not any(status[key] for key in ('runtime_probed', 'runtime_code_verified', 'inference_tested'))
