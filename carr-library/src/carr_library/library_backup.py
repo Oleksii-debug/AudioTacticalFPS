@@ -58,6 +58,10 @@ from .reader.live_speech import (
     FILENAME as LIVE_READING_STATE, MAX_STATE_BYTES as MAX_LIVE_READING_STATE,
     decode_positions as decode_speech_positions, saved_locations as saved_speech_locations,
 )
+from .reader.publication_state import (
+    FILENAME as PUBLICATION_READING_STATE, MAX_BYTES as MAX_PUBLICATION_READING_STATE,
+    decode_positions as decode_publication_positions,
+)
 from .reader.narration import (
     DIRECTORY as NARRATION_DIRECTORY, MAX_PROJECT_BYTES, MAX_PROJECTS,
     MAX_SNAPSHOT_BYTES as MAX_NARRATION_BYTES,
@@ -102,6 +106,7 @@ MAX_SIDECAR_JSON_BYTES = 64 * 1024**2
 MAX_AUDIO_PROJECTS = 1000
 _PROJECT_ID = re.compile(r'[0-9a-f]{32}')
 _SIMPLE_SIDECARS = {
+    PUBLICATION_READING_STATE: (MAX_PUBLICATION_READING_STATE, decode_publication_positions),
     LIVE_READING_STATE: (MAX_LIVE_READING_STATE, decode_speech_positions),
     KEYBINDINGS: (MAX_KEYBINDINGS, decode_preferences),
     'keyboard-shortcuts.json': (MAX_KEYMAP_BYTES, validate_keymap),
