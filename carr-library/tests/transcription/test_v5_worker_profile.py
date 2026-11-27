@@ -5,8 +5,6 @@ is used here. The fixture implements only the documented file protocol.
 """
 from pathlib import Path
 from hashlib import sha256
-import builtins
-import io
 import json
 import os
 import runpy
@@ -19,7 +17,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import restore_backup
-from carr_library import transcription
+from carr_library import durable_state, transcription
 
 
 PROTOCOL = 'whisper-v5-manifest-v1'
@@ -516,24 +514,25 @@ def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_pa
             observed['old_snapshot'] = json.loads(raw)
             return raw
 
-    def hold_first_status_reader(original):
-        def opened(file, *arguments, **keywords):
-            status_read = (isinstance(file, (str, bytes, os.PathLike))
-                           and Path(os.fsdecode(file)).absolute() == status_path)
-            if status_read and not live_snapshots:
-                assert not observed['process_active'], 'Windows must not open mutable live status.'
-                observed['terminal_reads'] += 1
-            stream = original(file, *arguments, **keywords)
-            if live_snapshots and not observed['claimed'] and status_read:
-                observed['claimed'] = True
-                return HeldSnapshot(stream)
-            return stream
-        return opened
+    actual_open_json = durable_state._open_json_file
 
-    # Neither the actual child nor os.replace is mocked. The Windows strategy
-    # is also exercised on POSIX; only POSIX supports held destination snapshots.
-    monkeypatch.setattr(builtins, 'open', hold_first_status_reader(builtins.open))
-    monkeypatch.setattr(io, 'open', hold_first_status_reader(io.open))
+    def hold_first_status_reader(file):
+        status_read = Path(file).absolute() == status_path
+        if status_read and not live_snapshots:
+            assert not observed['process_active'], 'Windows must not open mutable live status.'
+        stream = actual_open_json(file)
+        if status_read and not live_snapshots:
+            observed['terminal_reads'] += 1
+        if live_snapshots and not observed['claimed'] and status_read:
+            observed['claimed'] = True
+            return HeldSnapshot(stream)
+        return stream
+
+    # Observe the canonical reader boundary, including its actual native
+    # Windows handle, rather than a builtins/io hook bypassed by that reader.
+    # Neither the child, read bytes nor os.replace is mocked. The Windows
+    # strategy is also exercised on POSIX with actual held destination streams.
+    monkeypatch.setattr(durable_state, '_open_json_file', hold_first_status_reader)
     notices = []
 
     def advanced(done, total, phase):
@@ -546,12 +545,13 @@ def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_pa
 
     result = service.run(identity, timeout=20, progress=advanced)
     assert release.is_file()
+    assert notices[0] == (None, None, 'Waiting for shared local transcription resources.')
     if live_snapshots:
         assert observed['claimed'] and observed['replacement_while_open'], result['last_error']
         assert observed['old_snapshot']['done'] == 0
     else:
         assert observed['terminal_reads'] > 0
-        assert notices[0] == (None, None, 'running')
+        assert notices[1] == (None, None, 'running')
         assert all(done is None and total is None for done, total, _ in notices[:-1])
     assert result['status'] == 'completed' and result['done'] == 1, result['last_error']
     assert {'txt', 'srt', 'vtt', 'json'} <= {item['format'] for item in result['artifacts']}
