@@ -271,7 +271,13 @@ jobs:
             'tests/storage/test_backup_capacity.py',
             'tests/storage/test_backup_capacity_cli.py',
             'tests/ui/test_backup_capacity.py',
-            'tests/storage/test_crash_backup.py'
+            'tests/storage/test_crash_backup.py',
+            'tests/studio/test_book_effects.py',
+            'tests/studio/test_measured_audio.py',
+            'tests/studio/test_measured_pcm.py',
+            'tests/studio/test_book_measured_cli.py',
+            'tests/ui/test_book_effects.py',
+            'tests/ui/test_book_duration_dialog.py'
           )
           & $env:CARR_COMPLETION_PYTHON scripts/ci_check.py --jobs 3 @completionSuites 2>&1 | Tee-Object 'ci-completion-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -370,11 +376,17 @@ jobs:
             'tests/ingest/test_checked_catalog_commit.py' = 10
             'tests/search/test_search_query_work.py' = 17
             'tests/operations/test_broker_scope.py' = 20
-            'tests/packaging/test_library_capacity_measurement.py' = 24
+            'tests/packaging/test_library_capacity_measurement.py' = 25
             'tests/storage/test_backup_capacity.py' = 28
             'tests/storage/test_backup_capacity_cli.py' = 3
             'tests/ui/test_backup_capacity.py' = 17
             'tests/storage/test_crash_backup.py' = 5
+            'tests/studio/test_book_effects.py' = 14
+            'tests/studio/test_measured_audio.py' = 34
+            'tests/studio/test_measured_pcm.py' = 19
+            'tests/studio/test_book_measured_cli.py' = 9
+            'tests/ui/test_book_effects.py' = 5
+            'tests/ui/test_book_duration_dialog.py' = 17
           }
           foreach ($entry in $reviewedCompletionExpected.GetEnumerator()) {
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
@@ -1603,8 +1615,8 @@ jobs:
                   reports.append(item)
           assert len(reports) == 1, 'Native book narration report is missing or ambiguous.'
           report = reports[0]
-          assert report['status'] == report['native_keyboard'] == report['native_sapi_render'] == report['native_failure_cleanup'] == 'PASS'
-          required = set(["real native Windows controls","actual retained EPUB import completes","existing shared worker owns finalizers","Book audio command is registered in the existing keyboard registry","current Books and Collections exposes the selected retained edition","installed native SAPI voice is actually enumerated","native preview names both real EPUB chapters and original revision","preview and voice discovery do not synthesize","default-No cancellation prepares no jobs or output","Prepare stores one immutable plan and two ordinary schema2 jobs","Prepare still starts no speech or output","native explicit Run completes both source-bound Studio jobs","actual selected SAPI renders the literal source without cues","measured complete chapter PCM: 1","measured complete chapter PCM: 2","published exact non-authorizing source receipt: 1","published exact non-authorizing source receipt: 2","archived source blocks completed-job reuse visibly","source denial preserves every previously committed artifact","original EPUB and retained asset remain byte-identical","book narration never creates quotation approval","native Escape closes the book dialog","native host shutdown has no retained cleanup failure","exact installed source: carr_library.studio.book_audio","exact installed source: carr_library.ui.book_audio_dialog","exact installed source: carr_library.ui.worker_lifetime","exact installed source: carr_library.studio.render","exact installed source: carr_library.studio.project","exact installed source: carr_library.reader.reading_desk","exact installed source: carr_library.speech.source","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.operations.broker","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.ui.desktop_app","native failure answers only owned question No before unwinding active modal"])
+          assert report['status'] == report['native_keyboard'] == report['native_sapi_render'] == report['native_failure_cleanup'] == report['native_role_effects'] == report['native_measured_duration'] == 'PASS'
+          required = set(["real native Windows controls","actual retained EPUB import completes","existing shared worker owns finalizers","Book audio command is registered in the existing keyboard registry","current Books and Collections exposes the selected retained edition","installed native SAPI voice is actually enumerated","native preview names both real EPUB chapters and original revision","preview and voice discovery do not synthesize","default-No cancellation prepares no jobs or output","Prepare stores one immutable plan and two ordinary schema2 jobs","Prepare still starts no speech or output","native explicit Run completes both source-bound Studio jobs","actual selected SAPI renders the literal source without cues","measured complete chapter PCM: 1","measured complete chapter PCM: 2","published exact non-authorizing source receipt: 1","published exact non-authorizing source receipt: 2","archived source blocks completed-job reuse visibly","source denial preserves every previously committed artifact","original EPUB and retained asset remain byte-identical","book narration never creates quotation approval","native Escape closes the book dialog","native host shutdown has no retained cleanup failure","exact installed source: carr_library.studio.book_audio","exact installed source: carr_library.ui.book_audio_dialog","exact installed source: carr_library.ui.worker_lifetime","exact installed source: carr_library.studio.render","exact installed source: carr_library.studio.project","exact installed source: carr_library.reader.reading_desk","exact installed source: carr_library.speech.source","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.operations.broker","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.ui.desktop_app","native failure answers only owned question No before unwinding active modal","Book role editor offers existing typed gain and omits timeline-changing tempo","Book effect numeric editor has one actual gain control","Book ordered effect review retains explicit numeric value","applying Book role effects invalidates the previous preparation review","native Book preview displays the exact ordered role effects","explicit Book effects create Plan2 and existing Project3 without changing old Plan1","real SAPI Book jobs render their reviewed current Studio role effects","effect-bearing Book master contains actual PCM","native role gain measurably changes completed masters while reusing SAPI","native measured preview displays actual frames and honest whole-line scope","measured preview starts no additional speech and publishes no file","measured default-No confirmation preserves absent output","native measured part has exact current PCM geometry","actual native measured parts concatenate to every original master frame","measured publication retains the exact effect-bearing Book source receipt","measured publication finishes on shared worker without another speech call","closing measured child keeps the original Book service and resumed modal alive","exact installed source: carr_library.studio.measured_audio","exact installed source: carr_library.studio.publishing","exact installed source: carr_library.ui.book_duration_dialog","exact installed source: carr_library.ui.effects_dialog","exact installed source: carr_library.audio.effect_presets","exact installed source: carr_library.audio.envelopes","unchanged installed source after Book work: carr_library.studio.book_audio","unchanged installed source after Book work: carr_library.ui.book_audio_dialog","unchanged installed source after Book work: carr_library.ui.worker_lifetime","unchanged installed source after Book work: carr_library.studio.render","unchanged installed source after Book work: carr_library.studio.project","unchanged installed source after Book work: carr_library.reader.reading_desk","unchanged installed source after Book work: carr_library.speech.source","unchanged installed source after Book work: carr_library.runtime_settings","unchanged installed source after Book work: carr_library.operations.broker","unchanged installed source after Book work: carr_library.audio.dsp","unchanged installed source after Book work: carr_library.audio.process","unchanged installed source after Book work: carr_library.ui.desktop_app","unchanged installed source after Book work: carr_library.studio.measured_audio","unchanged installed source after Book work: carr_library.studio.publishing","unchanged installed source after Book work: carr_library.ui.book_duration_dialog","unchanged installed source after Book work: carr_library.ui.effects_dialog","unchanged installed source after Book work: carr_library.audio.effect_presets","unchanged installed source after Book work: carr_library.audio.envelopes"])
           assert required <= set(report['checks']), sorted(required - set(report['checks']))
           assert all(report[key] == 'NOT_RUN' for key in ('manual_keyboard', 'nvda', 'listening_quality', 'private_model_inference'))
           selected = pathlib.Path(sys.argv[1]).resolve(strict=True)
@@ -3648,7 +3660,13 @@ jobs:
             'tests/packaging/test_library_capacity_measurement.py',
             'tests/storage/test_backup_capacity.py',
             'tests/storage/test_backup_capacity_cli.py',
-            'tests/ui/test_backup_capacity.py'
+            'tests/ui/test_backup_capacity.py',
+            'tests/studio/test_book_effects.py',
+            'tests/studio/test_measured_audio.py',
+            'tests/studio/test_measured_pcm.py',
+            'tests/studio/test_book_measured_cli.py',
+            'tests/ui/test_book_effects.py',
+            'tests/ui/test_book_duration_dialog.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
@@ -3826,11 +3844,17 @@ jobs:
               'tests/ingest/test_checked_catalog_commit.py' = 10
               'tests/search/test_search_query_work.py' = 17
               'tests/operations/test_broker_scope.py' = 20
-              'tests/packaging/test_library_capacity_measurement.py' = 24
+              'tests/packaging/test_library_capacity_measurement.py' = 25
               'tests/storage/test_backup_capacity.py' = 28
               'tests/storage/test_backup_capacity_cli.py' = 3
               'tests/ui/test_backup_capacity.py' = 17
               'tests/storage/test_crash_backup.py' = 5
+              'tests/studio/test_book_effects.py' = 14
+              'tests/studio/test_measured_audio.py' = 34
+              'tests/studio/test_measured_pcm.py' = 19
+              'tests/studio/test_book_measured_cli.py' = 9
+              'tests/ui/test_book_effects.py' = 5
+              'tests/ui/test_book_duration_dialog.py' = 17
             }
             foreach ($entry in $completedFeatureCounts.GetEnumerator()) {
               $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'

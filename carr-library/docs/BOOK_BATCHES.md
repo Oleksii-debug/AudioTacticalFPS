@@ -1,10 +1,10 @@
 # Reviewed multiple-book audio
 
-This adds an explicit ordered review of existing library books. Each book keeps its own source range, split, installed voice, supported rate and volume, output format and chosen output parent. The existing BookAudioService and Studio jobs perform all rendering; the batch is immutable selection metadata.
+This adds an explicit ordered review of existing library books. Each book keeps its own source range, split, installed voice, supported rate and volume, explicitly reviewed ordered role effects, output format and chosen output parent. The existing BookAudioService and Studio jobs perform all rendering; the batch is immutable selection metadata.
 
 ## Desktop workflow
 
-Open **Audio Studio → Book audio: split and render…**, then **Multiple books…**. Choose up to 32 existing books from the active library. For each entry, choose **Review selected book**. The existing Book audio window shows its retained source revision and lets you choose the exact installed local voice, supported rate/volume, split and output folder.
+Open **Audio Studio → Book audio: split and render…**, then **Multiple books…**. Choose up to 32 existing books from the active library. For each entry, choose **Review selected book**. The existing Book audio window shows its retained source revision and lets you choose the exact installed local voice, supported rate/volume, ordered effects through **Role effects and presets…**, split and output folder.
 
 Choose **Preview split and names**, then **Use reviewed book**. This captures review metadata and starts no speech. Return to the ordered list and use **Move selected book up/down** if needed. **Preview entire batch** rechecks every source and destination.
 
@@ -51,6 +51,13 @@ A request has the exact schema below. Replace identities and paths with the chos
 }
 ```
 
+An optional `voice.effects` list uses the existing typed Studio effect shape,
+for example `[{"kind":"gain","parameters":{"gain_db":-6},"enabled":true}]`.
+It is captured in the immutable per-book review. Empty/absent chains keep old
+Plan1 and Project2 identities; explicit chains use Plan2 and Project3. Timing
+and channel-scope rules remain the current Studio rules, including refusal of
+tempo inside a timeline chain. Changing a saved chain requires a new review.
+
 Each book may additionally specify the existing exact revision, reading position range, EPUB chapter, supported SplitOptions fields, and sample rate. Unknown fields fail visibly. `list`, `status`, `review`, `pause` and `cancel` use saved batch identities. An active stop signal is bound to its invocation token and the actual currently owned Studio part; it cannot cancel another batch merely because both reference a plan.
 
 Review files use the existing source-aware, no-clobber exporter outside private library data. An existing review file is preserved. The source is re-attested through every publication checkpoint. JSON stdout is ASCII-escaped so redirected Windows code pages preserve Unicode values.
@@ -69,6 +76,8 @@ Runtime stop controls are outside state and are not transferred. Studio's local 
 
 A batch contains at most 32 plans, 256 total parts and eight million selected Unicode characters. Each saved selection is limited to 128 KiB; a workspace holds at most 4096 such records, with a 64 MiB total selection-inventory limit. Per-book source and Studio runtime limits remain unchanged. Immutable plan metadata and actual returned publication receipts are distinct.
 
-This slice supports the current source split modes only. It does not add duration estimation, automatic chapter inference, saved voice profiles, cross-book loudness normalization, unattended scheduling, a second renderer, or automatic output adoption from matching filenames.
+Source splitting remains deterministic. After a part is completed, the same
+Book workspace offers separately reviewed measured-duration PCM publication;
+see [Book audio](BOOK_AUDIO.md). It never estimates duration from text. This does not add automatic chapter inference, saved voice profiles, cross-book loudness normalization, unattended scheduling, a second renderer, or automatic output adoption from matching filenames.
 
 The new source regressions and installed native probe are **NOT_RUN** until the exact integrated head executes its required gates. Synthetic tones exercise process, receipt and ordering behavior without qualifying speech quality. The Windows probe requires the actual existing DesktopFrame, real wx controls and keyboard confirmations, a genuinely installed native SAPI voice, and the selected hash-pinned FFmpeg/FFprobe. It verifies file synthesis, source receipts, explicit resume and unchanged originals. Audible listening, manual keyboard testing, NVDA, physical devices and private-model inference remain separate unqualified checks.

@@ -1,0 +1,174 @@
+{
+  "schema": "resonance-book-effects-measured-diagnostic/1",
+  "status": "STATIC_NOT_RUN",
+  "base_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "required_product_handoff": "9bfc2216ec758a15fdfb9cad486b96f7bf60b2be",
+  "files": [
+    {
+      "path": "carr-library/scripts/ci_book_measured_contracts.py",
+      "preimage": null,
+      "sha": "c703f6820091cda802fa77dd88fef9b5118064ec"
+    },
+    {
+      "path": ".github/workflows/carr-next12-book.yml",
+      "preimage": null,
+      "sha": "a1b4b0e65ea15a3810287ba3ee76a81a52c7f8bf"
+    }
+  ],
+  "trigger": {
+    "branch": "carr/ci-next12-book-*",
+    "manual": true,
+    "runner": "windows-2022",
+    "ref_changes": "NONE"
+  },
+  "source_pins": {
+    "src/carr_library/studio/book_audio.py": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb",
+    "src/carr_library/studio/measured_audio.py": "3e4227b536a5a40edde371c829f44bd20f28685f",
+    "src/carr_library/studio/publishing.py": "fb44f78ddc87d6c220d82f14784711c91ba76472",
+    "src/carr_library/ui/book_audio_dialog.py": "0d89734850a1a1954ff0ca8312e4f6575b6c3b30",
+    "src/carr_library/ui/book_duration_dialog.py": "0f9daced19fca2bf4fd60cf91f96a493d07cdb75",
+    "src/carr_library/studio/book_cli.py": "38a26a21e314a8872b01393edd1801fb5e3ea273",
+    "tests/studio/test_book_effects.py": "76453a8a97571696f494258425191236e76205b0",
+    "tests/studio/test_measured_audio.py": "cf6d9eb7e9344836285e4575edcc4095c10767fa",
+    "tests/studio/test_measured_pcm.py": "a7de7443e179fc378a4137427056ec22ce17317f",
+    "tests/studio/test_book_measured_cli.py": "2d703df23fe6591cc48cf80152b465070cb365fc",
+    "tests/ui/test_book_effects.py": "12a47c7a05879eeaeab7047dd7eddac17dbf9cdb",
+    "tests/ui/test_book_duration_dialog.py": "c1c1baa6a4b63e52732fd46e176da52725c43b7c",
+    "scripts/windows_book_audio_smoke.py": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61",
+    "scripts/ci_check.py": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+    "packaging/source_wheel.py": "478de248451d59a44b35784eb808fb2974f0af67",
+    "packaging/prepare_windows_audio.py": "65b172ac432f28e865200aed2f8e610dda1ac7cf",
+    "packaging/windows-audio.lock.json": "2bc706ffc6208f5596a10abee61d3da33f20e6c6",
+    "packaging/windows-cp311.lock": "8dad99c0ea80470b7253873aee78e08857affec6",
+    "packaging/windows-sync-cp311.lock": "cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3",
+    "packaging/trusted-client.lock": "6c4b48ac09572dc259d62d0d801057ab47c04583",
+    "packaging/windows-sync-test-cp311.lock": "e3f6eda5976e867abe7267c04e0b867b1fd16f7a",
+    "src/carr_library/native_runtime.py": "50ca93914325753f7d9cb91f1bc4f48fc9ae230f",
+    "src/carr_library/application.py": "4544453f62a96993a2f05ed1522a563649289715",
+    "src/carr_library/backup_book_audio.py": "4fd92f122d2907c0530fee912c18b45457748682",
+    "src/carr_library/library_backup.py": "d36d2ab93043bff46048bb6146769a1a19f29db8",
+    "src/carr_library/backup_producers.py": "90b0f4c9165225a0f1cf2e293ae6743de2a5fb1d",
+    "src/carr_library/backup_sidecars.py": "5c2ec87913e8ad252dce9aa8cff7ccc22dca3525",
+    "src/carr_library/ui/worker_lifetime.py": "ed62603159bc095724c3b240d4754f989141a2c9",
+    "src/carr_library/studio/render.py": "11925e2f60742a3193d2ae50238ab56ae8889534",
+    "src/carr_library/studio/project.py": "72b3260421afbfcfa912481798967e59ce9d13de",
+    "src/carr_library/reader/reading_desk.py": "0acd7f25fb17de24b434741ff3b7cf2c634a4c8a",
+    "src/carr_library/speech/source.py": "cef32840ecbb5b07c0313e206d9bf622ee20db87",
+    "src/carr_library/runtime_settings.py": "269814e94549fdff700027afa450686a4a15f81b",
+    "src/carr_library/operations/broker.py": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36",
+    "src/carr_library/audio/dsp.py": "f7833b5f600e3a822a3fa2f2068661c922576230",
+    "src/carr_library/audio/process.py": "71ee75c41ce4b57ace15fbb735e507bd2592409b",
+    "src/carr_library/ui/desktop_app.py": "85c0991f744bd521ca247a0e15da93aa585ea30d",
+    "src/carr_library/ui/effects_dialog.py": "d48b985ccb38b5a48123bc2a2c39afb2b2f452e4",
+    "src/carr_library/audio/effect_presets.py": "8ad8b5730b60fa6531904f83360232e7a697e834",
+    "src/carr_library/audio/envelopes.py": "52bbc4b960784ac774c77071ba8682b2be5ca60c",
+    "tests/studio/test_book_audio.py": "f98140e413d0fb32784493045c0882011f6a081c",
+    "tests/ui/test_book_audio_dialog.py": "180dda968201569a11711f44e406b82443c9945c",
+    "tests/reader/test_ebook_reader.py": "39f3837d66bac1dc69ab9b2b05f9e31e6e1be849"
+  },
+  "requirements": {
+    "source_whole_suites": 6,
+    "source_cases": 98,
+    "installed_whole_suites": 6,
+    "installed_cases": 98,
+    "cases_basis": "Static expected finite parametrization; no execution inherited.",
+    "suites": [
+      {
+        "path": "tests/studio/test_book_effects.py",
+        "cases": 14,
+        "sha": "76453a8a97571696f494258425191236e76205b0"
+      },
+      {
+        "path": "tests/studio/test_measured_audio.py",
+        "cases": 34,
+        "sha": "cf6d9eb7e9344836285e4575edcc4095c10767fa"
+      },
+      {
+        "path": "tests/studio/test_measured_pcm.py",
+        "cases": 19,
+        "sha": "a7de7443e179fc378a4137427056ec22ce17317f"
+      },
+      {
+        "path": "tests/studio/test_book_measured_cli.py",
+        "cases": 9,
+        "sha": "2d703df23fe6591cc48cf80152b465070cb365fc"
+      },
+      {
+        "path": "tests/ui/test_book_effects.py",
+        "cases": 5,
+        "sha": "12a47c7a05879eeaeab7047dd7eddac17dbf9cdb"
+      },
+      {
+        "path": "tests/ui/test_book_duration_dialog.py",
+        "cases": 17,
+        "sha": "c1c1baa6a4b63e52732fd46e176da52725c43b7c"
+      }
+    ],
+    "companions": [
+      {
+        "path": "tests/studio/test_book_audio.py",
+        "sha": "f98140e413d0fb32784493045c0882011f6a081c",
+        "purpose": "Existing real LibraryApp/current renderer fixture and deterministic tone; imported by three new suites."
+      },
+      {
+        "path": "tests/ui/test_book_audio_dialog.py",
+        "sha": "180dda968201569a11711f44e406b82443c9945c",
+        "purpose": "Current actual dialog closures and worker fixture; imported by both new UI suites."
+      },
+      {
+        "path": "tests/reader/test_ebook_reader.py",
+        "sha": "39f3837d66bac1dc69ab9b2b05f9e31e6e1be849",
+        "purpose": "Existing companion if the old complete Book module is also collected; not a substitute for any new module."
+      }
+    ],
+    "native_probe": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61",
+    "native_required_checks": 77,
+    "native_source_origins": 18,
+    "full_wheel_inventory_origins": 20,
+    "native_report_contract": "Exact names, six PASS/four NOT_RUN fields and actual locked audio receipts from product handoff.",
+    "failure_policy": "Every suite and native outcome is required; no skip, XFAIL, XPASS, count relaxation or native substitute."
+  },
+  "reuse": {
+    "helper_preimage": "52964b9bd59f59694642ec13d6d23660b9ea5d69",
+    "workflow_setup_preimage": "3cda0948e0827a1af4323c6faa5445d624fed371",
+    "ci_check": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+    "source_wheel_proof": "478de248451d59a44b35784eb808fb2974f0af67",
+    "native_verifier": "99965d617ff15a81a51cc51500090df9f4699d94",
+    "native_verifier_changes": "Only report input/output argv paths and explicit len(required)==77; inverse replacement equals original bytes.",
+    "installed_child": "Byte-identical existing capacity INSTALLED_CHILD; existing PYTEST_CHILD is used unchanged."
+  },
+  "boundaries": {
+    "source_suite_seconds": 600,
+    "installed_suite_seconds": 600,
+    "source_aggregate_seconds": 2000,
+    "source_parallel_jobs": 2,
+    "native_probe_watchdog_seconds": 300,
+    "native_parent_seconds": 330,
+    "preparation_minutes": 20,
+    "helper_step_minutes": 115,
+    "job_minutes": 145,
+    "retained_file_maximum_bytes": 8388608,
+    "setup": "Existing four hash-required Windows dependency locks and locked Gyan audio acquired before outbound rules.",
+    "offline": "Exact current/base Python and pythonw plus selected ffmpeg/ffprobe blocked outbound on all profiles; installed pip runs no-index/no-deps.",
+    "cleanup": "Only owned rules removed with native acknowledgment; original three firewall profile states restored in finally and failures remain failures.",
+    "wheel": "Current source-built wheel checked against exact Git head; whole payload and 20 origins checked before/after each installed suite and around actual native execution.",
+    "audio": "Discovered FFmpeg/ffprobe paths must equal explicit selected bins and locked size/SHA; before/after readback retained.",
+    "artifacts": "Closed finite regular text/JSON/XML inventory only. No wheel, codec, audio corpus, model, recording, archive or installed runtime is uploaded."
+  },
+  "qualification": {
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_RUN",
+    "windows11": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "listening_quality": "NOT_RUN",
+    "private_model": "NOT_RUN",
+    "release": "NOT_QUALIFIED",
+    "note": "Partial source/installed/native evidence remains separate; aggregate PASS requires all actual gates."
+  },
+  "reviews": {
+    "root": "ACCEPTED_STATIC_NOT_RUN for exact c703 helper and a1b workflow successor.",
+    "progress_completion": "ACCEPTED_STATIC_NOT_RUN for exact c703 helper and a1b workflow, including pins, argv, guards, budgets and bounded artifacts."
+  },
+  "parse_execution": "NOT_RUN; workflow will compile the exact helper, source-preparation helper and three embedded Python bodies before acquisition."
+}

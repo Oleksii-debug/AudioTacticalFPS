@@ -15,7 +15,9 @@ keyboard command registry.
    remain visible.
 2. **Discover local voices** uses the configured VoiceRegistry on the desktop's
    existing worker. Only actually enumerated voices appear. Select a voice and
-   output format; discovery and preview start no speech.
+   output format; discovery and preview start no speech. **Role effects and presets…**
+   opens the existing ordered Studio effect editor. It supports numeric controls,
+   bypass, presets and undo/redo of the editable chain; nothing is rendered here.
 3. Select the whole source or both first/last reading positions. Choose a split
    and a local output parent outside private library data.
 4. **Preview split and names** shows exact Unicode character ranges and
@@ -46,7 +48,8 @@ exactly once.
 EPUB chapters use the imported spine inventory. PDF page mode requires
 physical pages and refuses logical TXT segments. Custom expressions use the
 existing isolated one-second reading worker with bounded matches/output.
-Duration-based splitting is unavailable.
+Measured duration is a separate post-render action described below. Text splits
+never estimate how long a voice will speak.
 
 Names permit only `{index}`, `{book}` and `{part}`. Include the index; only a
 one-to-four-digit decimal format is allowed, for example
@@ -60,12 +63,65 @@ WMA, subject to the actual configured runtime's codec support. M4B and
 line-alignment sidecars keep Studio's measured semantics. No word timing or
 human listening-quality claim is added.
 
+## Split a completed part by measured duration
+
+1. Finish **Run** for the exact saved Book plan, then select **Measured duration
+   parts…**. Choose one completed source part, a maximum in milliseconds, a
+   name template, and a new ZIP outside the library and the original job folder.
+2. **Preview measured parts** verifies the completed job, original source,
+   timeline and actual PCM bytes. It displays sample frames, rate/channels,
+   ranges, filenames and a review checksum. It creates no job or speech.
+3. **Publish reviewed parts** requires its own default-No confirmation. Any
+   changed source, options, names or output invalidates the old review.
+4. The ZIP contains named WAV parts, exact original Project/timeline/Book
+   provenance and a bounded manifest. Concatenating the part PCM yields every
+   original master frame once, with no gap, overlap, resampling or re-encoding.
+   RIFF and RF64 integer PCM masters are supported; long individual parts use
+   RF64 sizes when RIFF cannot represent them.
+
+Duration boundaries are actual sample frames. A split through a measured line
+keeps that whole line's source reference and is explicitly marked approximate;
+there is no word or character timing claim. The maximum applies to each part,
+rounded down to an exact frame. A publication has at most 256 parts, so choose a
+longer interval for a long source. A maximum from 1 millisecond through 24 hours
+is accepted; the source itself has no new one-day ceiling. Explicit time and
+byte/resource allowances can still refuse a large operation.
+
+The existing shared broker admits CPU/memory/disk before source hashing or
+copying. Cancellation keeps the original completed job and removes pending
+staging. A file is never overwritten, and an identical competing file is not
+adopted as this invocation's success. A crash after publication leaves the
+prepared receipt for explicit verification. If receipt finalization or cleanup
+fails after a file was actually published, the result retains its receipt and
+asks for verification; do not repeat Publish.
+
+The same route is available through the current Book CLI:
+
+```text
+python -m carr_library studio book --data-dir LIBRARY --workspace WORKSPACE duration-review PLAN_ID --part 1 --output NEW_PARTS.zip --maximum-ms 600000
+python -m carr_library studio book --data-dir LIBRARY --workspace WORKSPACE duration-publish PLAN_ID --part 1 --output NEW_PARTS.zip --maximum-ms 600000 --approval EXACT_REVIEW_SHA256
+```
+
+If the plan was captured under a topic, provide that same `--topic`.
+Both commands accept explicit `--timeout`, `--max-output-bytes` and
+`--reserve-disk-bytes` allowances; these never override source or integrity checks.
+A batch preview request may include a `voice.effects` list of the existing typed
+`{kind, parameters, enabled}` values. The returned review includes that exact
+chain and needs the same Prepare/Run approvals as every other Book setting.
+
 ## Source authority and completed results
 
 A plan retains the non-authorizing ReadingDocument anchor, exact source text,
 capture-time metadata/warnings, selected range, split options and current Role
-fields. New jobs use current Project schema 2; no effects/schema 3 migration
-occurs.
+fields. An unchanged plan retains its exact schema 1 serialization and Project
+schema 2 identities. Explicit role effects create a new Book plan schema 2 and
+use existing Project schema 3; no old plan is rewritten. Ordered effects and
+bypass values are part of the immutable review fingerprint. They use the same
+Studio rendering, source validation, cache keys and copied-state validation.
+Role chains preserve timing: tempo is refused, pan envelopes need fixed pan
+zero, and stereo-width envelopes belong to stereo scene/master buses. A role
+envelope restarts for each measured speech line. Reopen a new plan to change
+an already saved chain.
 
 Fresh source checks run before queued work, after resource waiting, around
 progress callbacks, during rendering and immediately before publication.
@@ -94,7 +150,7 @@ original-asset, source-anchor and Studio-job checks. The backup contains
 declarations and retained library bytes. Local engines, credentials, trusted
 code, external output directories and execution authority are not transferred.
 
-Schema 2 origin rules also apply to book jobs without audio clips. The local
+The same schema 2/3 origin rules apply to book jobs without audio clips. The local
 origin nonce is excluded from backups. After restoring to a different path
 **or the same path**, open the saved plan, choose a new output parent, Preview,
 Prepare, then review the newly assigned names before Run. Old output paths
@@ -104,7 +160,11 @@ Missing jobs in an interrupted Prepare stay unprepared.
 The passive validator checks each present deterministic job/project against its
 exact BookPlan and a persisted source receipt against
 `plan.provenance(index)`. Copied database anchors are validated without old
-path access or treating historical receipts as current authority.
+path access or treating historical receipts as current authority. Measured
+publication receipts use the same typed publication producer; the external ZIP
+is not silently copied into the backup. After restore, existing ZIP verification
+requires explicit selection of the file. Restored Book jobs still require fresh
+output selection and a new Run review before another measured publication.
 
 ## Desktop lifetime and accessibility
 
@@ -132,5 +192,8 @@ and field review, actual FFmpeg output/reuse, cancellation, no-clobber
 publication, new/same-path restore, owner cleanup and real thread-start
 failure. The Windows probe requires actual wx controls, an enumerated SAPI
 voice, pinned external FFmpeg/ffprobe, measured chapter PCM and exact source
-receipts. Success does not establish manual NVDA use, listening quality,
+receipts. The extension also drives the actual effect editor, renders its
+role chain through Studio, then previews and publishes exact PCM parts through
+the shared worker. Its small native RIFF fixture does not by itself qualify a
+multi-hour RF64 throughput target; bounded RIFF/RF64 cases are tested separately. Success does not establish manual NVDA use, listening quality,
 third-party voice rights or private neural-model inference.

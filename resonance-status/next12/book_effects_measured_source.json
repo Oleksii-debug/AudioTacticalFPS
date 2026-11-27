@@ -1,0 +1,495 @@
+{
+  "schema": "resonance-book-effects-measured-handoff/1",
+  "base_commit": "b524b3ac3453864903ec415ce7a5f048da09d700",
+  "base_tree": "209daa1ab7b68192b5956ac2849ae183dc83ede1",
+  "status": "STATIC_NOT_RUN",
+  "supersedes_draft": "3277a61914fab94b61c15e4fbcc7b007f8adca10",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/studio/book_audio.py",
+      "preimage": "1b41db402b78523af4f19405245eedf3f2f9a4fd",
+      "sha": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/measured_audio.py",
+      "preimage": null,
+      "sha": "3e4227b536a5a40edde371c829f44bd20f28685f",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/publishing.py",
+      "preimage": "b336218623e8b925028247257d888bb99eb649a9",
+      "sha": "fb44f78ddc87d6c220d82f14784711c91ba76472",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+      "preimage": "8a6fa07bb4241c2265c0b2ac5a7e4c501ba860bf",
+      "sha": "0d89734850a1a1954ff0ca8312e4f6575b6c3b30",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/book_duration_dialog.py",
+      "preimage": null,
+      "sha": "0f9daced19fca2bf4fd60cf91f96a493d07cdb75",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/src/carr_library/studio/book_cli.py",
+      "preimage": "335d74a0a3c139cbc45a192a9eed4ffb652c37e7",
+      "sha": "38a26a21e314a8872b01393edd1801fb5e3ea273",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_effects.py",
+      "preimage": null,
+      "sha": "76453a8a97571696f494258425191236e76205b0",
+      "status": "STATIC_NOT_RUN",
+      "static_expected_cases": 14,
+      "required_test_functions": [
+        "test_original_plan_one_and_project_two_wire_and_job_id_remain_exact",
+        "test_explicit_effect_plan_two_roundtrip_keeps_order_bypass_and_immutable_source",
+        "test_saved_schema_or_effect_alias_cannot_reinterpret_existing_plan",
+        "test_role_effects_retain_current_timeline_and_channel_scope_guards",
+        "test_real_role_gain_uses_current_renderer_receipt_and_cache",
+        "test_real_role_hold_envelope_changes_only_measured_samples_and_keeps_source_literal",
+        "test_saved_effect_plan_remains_immutable_before_any_additional_job",
+        "test_effect_plan_real_full_backup_restore_requires_fresh_output_review"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_measured_audio.py",
+      "preimage": null,
+      "sha": "cf6d9eb7e9344836285e4575edcc4095c10767fa",
+      "status": "STATIC_NOT_RUN",
+      "static_expected_cases": 34,
+      "required_test_functions": [
+        "test_actual_pcm_parts_rejoin_exact_master_and_keep_approximate_whole_line_scope",
+        "test_whole_measured_line_is_not_labelled_as_a_character_alignment",
+        "test_changed_review_cannot_publish_or_resynthesize",
+        "test_source_change_at_actual_publication_boundary_keeps_original_job_complete",
+        "test_changed_master_after_prepare_notice_refuses_final_publication",
+        "test_actual_cancellation_during_pcm_partition_cleans_stage_and_retains_completed_job",
+        "test_resource_wait_cancellation_does_not_publish_or_reopen_speech",
+        "test_generic_publication_cannot_bypass_book_source_guard",
+        "test_invalid_measured_limit_never_guesses_duration_or_starts_another_job",
+        "test_original_source_budget_and_total_staging_budget_remain_bounded",
+        "test_archive_verifier_rejects_changed_ranges_source_pcm_and_unreviewed_files",
+        "test_existing_receipt_finalization_recovery_does_not_partition_again",
+        "test_measured_receipt_typed_backup_delete_restore_has_no_output_or_render_authority",
+        "test_measured_member_names_reject_windows_device_aliases_on_every_host",
+        "test_same_byte_competitor_is_never_adopted_as_this_publication",
+        "test_late_cancel_keeps_actual_completed_receipt_and_reuses_no_speech",
+        "test_staging_cleanup_failure_preserves_actual_completed_receipt",
+        "test_committed_root_change_keeps_receipt_through_real_lease_unwind",
+        "test_root_change_refuses_before_first_plan_lock_or_directory_creation",
+        "test_initial_cancellation_has_no_new_lock_plan_or_publication"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_measured_pcm.py",
+      "preimage": null,
+      "sha": "a7de7443e179fc378a4137427056ec22ce17317f",
+      "status": "STATIC_NOT_RUN",
+      "static_expected_cases": 19,
+      "required_test_functions": [
+        "test_actual_small_pcm_containers_preserve_every_frame",
+        "test_malformed_rf64_metadata_is_refused_before_pcm_acceptance",
+        "test_rf64_output_header_uses_exact_long_frame_count_without_allocating_payload",
+        "test_real_raw_frame_iteration_checks_cancellation_before_following_block",
+        "test_same_path_pcm_replacement_after_read_is_not_a_verified_snapshot",
+        "test_archive_directory_is_bounded_before_zipfile_allocates_members"
+      ]
+    },
+    {
+      "path": "carr-library/tests/studio/test_book_measured_cli.py",
+      "preimage": null,
+      "sha": "2d703df23fe6591cc48cf80152b465070cb365fc",
+      "status": "STATIC_NOT_RUN",
+      "static_expected_cases": 9,
+      "required_test_functions": [
+        "test_actual_request_captures_typed_ordered_effects_without_mutable_aliases",
+        "test_invalid_request_effects_keep_jobs_and_sources_untouched",
+        "test_real_cli_review_publish_and_no_clobber_need_no_additional_speech",
+        "test_real_cli_rejects_unreviewed_approval_or_changed_source",
+        "test_actual_child_death_after_publish_keeps_prepared_receipt_and_never_repeats"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_effects.py",
+      "preimage": null,
+      "sha": "12a47c7a05879eeaeab7047dd7eddac17dbf9cdb",
+      "status": "STATIC_NOT_RUN",
+      "static_expected_cases": 5,
+      "required_test_functions": [
+        "test_explicit_role_editor_invalidates_old_review_then_saves_actual_schema_three_jobs",
+        "test_cancelled_role_editor_preserves_exact_existing_preview",
+        "test_saved_effect_plan_has_no_implicit_edit_path",
+        "test_nested_role_editor_scope_change_cannot_update_host_or_accept_chain",
+        "test_measured_route_reuses_parent_service_and_exact_scope_guard"
+      ]
+    },
+    {
+      "path": "carr-library/tests/ui/test_book_duration_dialog.py",
+      "preimage": null,
+      "sha": "c1c1baa6a4b63e52732fd46e176da52725c43b7c",
+      "status": "STATIC_NOT_RUN",
+      "static_expected_cases": 17,
+      "required_test_functions": [
+        "test_actual_worker_preview_publish_and_borrowed_owner_survive_child_close",
+        "test_changed_fields_cannot_publish_a_previous_measured_review",
+        "test_queue_uses_frozen_controls_and_refuses_late_widget_change",
+        "test_declining_publication_confirmation_starts_no_worker",
+        "test_active_scope_change_refuses_publication_before_confirmation",
+        "test_child_close_stops_actual_partition_and_never_closes_parent_service",
+        "test_exact_host_lifetime_suppresses_stale_worker_callbacks",
+        "test_forced_destroy_cancels_queued_work_without_releasing_parent_service",
+        "test_confirmation_rechecks_exact_reviewed_controls_before_worker",
+        "test_actual_committed_receipt_warning_disables_repeat_publication"
+      ]
+    },
+    {
+      "path": "carr-library/scripts/windows_book_audio_smoke.py",
+      "preimage": "4f0d1a8e006bf43963f00d3dcd6f284a2c8f5f67",
+      "sha": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/docs/BOOK_AUDIO.md",
+      "preimage": "77d210ebc14121f82e647bcc4855ed66266c0878",
+      "sha": "bcc78b120503e76848fd7d890b84562c36a75abd",
+      "status": "STATIC_NOT_RUN"
+    },
+    {
+      "path": "carr-library/docs/BOOK_BATCHES.md",
+      "preimage": "8ca7505177859fb6235df914e2959513a2abed8a",
+      "sha": "270edf1edd504f889f734cf412be3b7e8cb3960e",
+      "status": "STATIC_NOT_RUN"
+    }
+  ],
+  "test_contract": {
+    "new_whole_suites": 6,
+    "static_expected_source_cases": 98,
+    "static_expected_installed_cases": 98,
+    "count_basis": "Static finite parametrization only; actual collection and execution required.",
+    "selection": "All six complete new modules; retain every existing Book, batch, Studio, publication and backup suite in current full gates.",
+    "companions": [
+      {
+        "path": "tests/studio/test_book_audio.py",
+        "sha": "f98140e413d0fb32784493045c0882011f6a081c",
+        "purpose": "Existing real LibraryApp/current renderer fixture and deterministic tone; imported by three new suites."
+      },
+      {
+        "path": "tests/ui/test_book_audio_dialog.py",
+        "sha": "180dda968201569a11711f44e406b82443c9945c",
+        "purpose": "Current actual dialog closures and worker fixture; imported by both new UI suites."
+      },
+      {
+        "path": "tests/reader/test_ebook_reader.py",
+        "sha": "39f3837d66bac1dc69ab9b2b05f9e31e6e1be849",
+        "purpose": "Existing companion if the old complete Book module is also collected; not a substitute for any new module."
+      }
+    ],
+    "new_suite_cross_imports": {
+      "tests/studio/test_book_measured_cli.py": [
+        "tests/studio/test_measured_audio.py"
+      ],
+      "tests/ui/test_book_duration_dialog.py": [
+        "tests/studio/test_book_audio.py",
+        "tests/ui/test_book_audio_dialog.py"
+      ]
+    },
+    "runtime_requirements": [
+      "Existing qualified FFmpeg and FFprobe; strict missing-runtime refusal, no optional skip.",
+      "Existing application/core/test dependency closure. New slice adds no dependency.",
+      "Real CLI/crash subprocess asserts imported book_cli origin equals its source/installed parent origin; descendants preserve -B.",
+      "Current exact wheel module origin checks before and after installed execution."
+    ],
+    "expected_zero": [
+      "failed",
+      "error",
+      "skipped",
+      "xfail",
+      "xpass"
+    ],
+    "important_cases": [
+      "Byte-exact Plan1 and Project2 serialization, fingerprints and deterministic job identity.",
+      "Plan2 effects use existing Project3, real current gain/hold-envelope PCM, accepted speech-node reuse and unchanged literal source.",
+      "Full backup after effect render, actual deletion/restore, fresh-origin/output review and real rerender.",
+      "Actual measured partition concatenation, immutable source/artifact review, cancellation/resource wait, no same-byte competitor adoption.",
+      "Actual os._exit after no-replace publication retains prepared receipt; explicit verify recovers it without partitioning or overwriting.",
+      "Real Windows rename denial is admitted only for observed 5/32/33, retaining identity/committed bytes/closed leases; successful replacement requires typed committed outcome and untouched replacement root.",
+      "Bounded RIFF/RF64 valid and hostile container cases, actual cancellation after first raw block, and directory preflight before ZipFile allocation.",
+      "Actual published ZIP plus final receipt failure clears the reviewed UI token, retains committed receipt and disables repeated Publish."
+    ]
+  },
+  "native": {
+    "path": "scripts/windows_book_audio_smoke.py",
+    "sha": "f7a04213a4afdf30b5ef19e9acd4a7e53ca80c61",
+    "preimage": "4f0d1a8e006bf43963f00d3dcd6f284a2c8f5f67",
+    "status": "NOT_RUN",
+    "required_check_count": 77,
+    "required_checks": [
+      "real native Windows controls",
+      "actual retained EPUB import completes",
+      "existing shared worker owns finalizers",
+      "Book audio command is registered in the existing keyboard registry",
+      "current Books and Collections exposes the selected retained edition",
+      "installed native SAPI voice is actually enumerated",
+      "native preview names both real EPUB chapters and original revision",
+      "preview and voice discovery do not synthesize",
+      "default-No cancellation prepares no jobs or output",
+      "Prepare stores one immutable plan and two ordinary schema2 jobs",
+      "Prepare still starts no speech or output",
+      "native explicit Run completes both source-bound Studio jobs",
+      "actual selected SAPI renders the literal source without cues",
+      "measured complete chapter PCM: 1",
+      "measured complete chapter PCM: 2",
+      "published exact non-authorizing source receipt: 1",
+      "published exact non-authorizing source receipt: 2",
+      "archived source blocks completed-job reuse visibly",
+      "source denial preserves every previously committed artifact",
+      "original EPUB and retained asset remain byte-identical",
+      "book narration never creates quotation approval",
+      "native Escape closes the book dialog",
+      "native host shutdown has no retained cleanup failure",
+      "exact installed source: carr_library.studio.book_audio",
+      "exact installed source: carr_library.ui.book_audio_dialog",
+      "exact installed source: carr_library.ui.worker_lifetime",
+      "exact installed source: carr_library.studio.render",
+      "exact installed source: carr_library.studio.project",
+      "exact installed source: carr_library.reader.reading_desk",
+      "exact installed source: carr_library.speech.source",
+      "exact installed source: carr_library.runtime_settings",
+      "exact installed source: carr_library.operations.broker",
+      "exact installed source: carr_library.audio.dsp",
+      "exact installed source: carr_library.audio.process",
+      "exact installed source: carr_library.ui.desktop_app",
+      "native failure answers only owned question No before unwinding active modal",
+      "Book role editor offers existing typed gain and omits timeline-changing tempo",
+      "Book effect numeric editor has one actual gain control",
+      "Book ordered effect review retains explicit numeric value",
+      "applying Book role effects invalidates the previous preparation review",
+      "native Book preview displays the exact ordered role effects",
+      "explicit Book effects create Plan2 and existing Project3 without changing old Plan1",
+      "real SAPI Book jobs render their reviewed current Studio role effects",
+      "effect-bearing Book master contains actual PCM",
+      "native role gain measurably changes completed masters while reusing SAPI",
+      "native measured preview displays actual frames and honest whole-line scope",
+      "measured preview starts no additional speech and publishes no file",
+      "measured default-No confirmation preserves absent output",
+      "native measured part has exact current PCM geometry",
+      "actual native measured parts concatenate to every original master frame",
+      "measured publication retains the exact effect-bearing Book source receipt",
+      "measured publication finishes on shared worker without another speech call",
+      "closing measured child keeps the original Book service and resumed modal alive",
+      "exact installed source: carr_library.studio.measured_audio",
+      "exact installed source: carr_library.studio.publishing",
+      "exact installed source: carr_library.ui.book_duration_dialog",
+      "exact installed source: carr_library.ui.effects_dialog",
+      "exact installed source: carr_library.audio.effect_presets",
+      "exact installed source: carr_library.audio.envelopes",
+      "unchanged installed source after Book work: carr_library.studio.book_audio",
+      "unchanged installed source after Book work: carr_library.ui.book_audio_dialog",
+      "unchanged installed source after Book work: carr_library.ui.worker_lifetime",
+      "unchanged installed source after Book work: carr_library.studio.render",
+      "unchanged installed source after Book work: carr_library.studio.project",
+      "unchanged installed source after Book work: carr_library.reader.reading_desk",
+      "unchanged installed source after Book work: carr_library.speech.source",
+      "unchanged installed source after Book work: carr_library.runtime_settings",
+      "unchanged installed source after Book work: carr_library.operations.broker",
+      "unchanged installed source after Book work: carr_library.audio.dsp",
+      "unchanged installed source after Book work: carr_library.audio.process",
+      "unchanged installed source after Book work: carr_library.ui.desktop_app",
+      "unchanged installed source after Book work: carr_library.studio.measured_audio",
+      "unchanged installed source after Book work: carr_library.studio.publishing",
+      "unchanged installed source after Book work: carr_library.ui.book_duration_dialog",
+      "unchanged installed source after Book work: carr_library.ui.effects_dialog",
+      "unchanged installed source after Book work: carr_library.audio.effect_presets",
+      "unchanged installed source after Book work: carr_library.audio.envelopes"
+    ],
+    "new_behavior_checks": [
+      "Book role editor offers existing typed gain and omits timeline-changing tempo",
+      "Book effect numeric editor has one actual gain control",
+      "Book ordered effect review retains explicit numeric value",
+      "applying Book role effects invalidates the previous preparation review",
+      "native Book preview displays the exact ordered role effects",
+      "explicit Book effects create Plan2 and existing Project3 without changing old Plan1",
+      "real SAPI Book jobs render their reviewed current Studio role effects",
+      "effect-bearing Book master contains actual PCM",
+      "native role gain measurably changes completed masters while reusing SAPI",
+      "native measured preview displays actual frames and honest whole-line scope",
+      "measured preview starts no additional speech and publishes no file",
+      "measured default-No confirmation preserves absent output",
+      "native measured part has exact current PCM geometry",
+      "actual native measured parts concatenate to every original master frame",
+      "measured publication retains the exact effect-bearing Book source receipt",
+      "measured publication finishes on shared worker without another speech call",
+      "closing measured child keeps the original Book service and resumed modal alive"
+    ],
+    "origin_count": 18,
+    "origins": [
+      {
+        "module": "carr_library.studio.book_audio",
+        "path": "carr-library/src/carr_library/studio/book_audio.py",
+        "sha": "d1e54a397ea5ad22737f34aa1c7160e56759f2bb"
+      },
+      {
+        "module": "carr_library.ui.book_audio_dialog",
+        "path": "carr-library/src/carr_library/ui/book_audio_dialog.py",
+        "sha": "0d89734850a1a1954ff0ca8312e4f6575b6c3b30"
+      },
+      {
+        "module": "carr_library.ui.worker_lifetime",
+        "path": "carr-library/src/carr_library/ui/worker_lifetime.py",
+        "sha": "ed62603159bc095724c3b240d4754f989141a2c9"
+      },
+      {
+        "module": "carr_library.studio.render",
+        "path": "carr-library/src/carr_library/studio/render.py",
+        "sha": "11925e2f60742a3193d2ae50238ab56ae8889534"
+      },
+      {
+        "module": "carr_library.studio.project",
+        "path": "carr-library/src/carr_library/studio/project.py",
+        "sha": "72b3260421afbfcfa912481798967e59ce9d13de"
+      },
+      {
+        "module": "carr_library.reader.reading_desk",
+        "path": "carr-library/src/carr_library/reader/reading_desk.py",
+        "sha": "0acd7f25fb17de24b434741ff3b7cf2c634a4c8a"
+      },
+      {
+        "module": "carr_library.speech.source",
+        "path": "carr-library/src/carr_library/speech/source.py",
+        "sha": "cef32840ecbb5b07c0313e206d9bf622ee20db87"
+      },
+      {
+        "module": "carr_library.runtime_settings",
+        "path": "carr-library/src/carr_library/runtime_settings.py",
+        "sha": "269814e94549fdff700027afa450686a4a15f81b"
+      },
+      {
+        "module": "carr_library.operations.broker",
+        "path": "carr-library/src/carr_library/operations/broker.py",
+        "sha": "107e1a600bb4bdf0f3edb7735ee5fcdb68d9fb36"
+      },
+      {
+        "module": "carr_library.audio.dsp",
+        "path": "carr-library/src/carr_library/audio/dsp.py",
+        "sha": "f7833b5f600e3a822a3fa2f2068661c922576230"
+      },
+      {
+        "module": "carr_library.audio.process",
+        "path": "carr-library/src/carr_library/audio/process.py",
+        "sha": "71ee75c41ce4b57ace15fbb735e507bd2592409b"
+      },
+      {
+        "module": "carr_library.ui.desktop_app",
+        "path": "carr-library/src/carr_library/ui/desktop_app.py",
+        "sha": "85c0991f744bd521ca247a0e15da93aa585ea30d"
+      },
+      {
+        "module": "carr_library.studio.measured_audio",
+        "path": "carr-library/src/carr_library/studio/measured_audio.py",
+        "sha": "3e4227b536a5a40edde371c829f44bd20f28685f"
+      },
+      {
+        "module": "carr_library.studio.publishing",
+        "path": "carr-library/src/carr_library/studio/publishing.py",
+        "sha": "fb44f78ddc87d6c220d82f14784711c91ba76472"
+      },
+      {
+        "module": "carr_library.ui.book_duration_dialog",
+        "path": "carr-library/src/carr_library/ui/book_duration_dialog.py",
+        "sha": "0f9daced19fca2bf4fd60cf91f96a493d07cdb75"
+      },
+      {
+        "module": "carr_library.ui.effects_dialog",
+        "path": "carr-library/src/carr_library/ui/effects_dialog.py",
+        "sha": "d48b985ccb38b5a48123bc2a2c39afb2b2f452e4"
+      },
+      {
+        "module": "carr_library.audio.effect_presets",
+        "path": "carr-library/src/carr_library/audio/effect_presets.py",
+        "sha": "8ad8b5730b60fa6531904f83360232e7a697e834"
+      },
+      {
+        "module": "carr_library.audio.envelopes",
+        "path": "carr-library/src/carr_library/audio/envelopes.py",
+        "sha": "52bbc4b960784ac774c77071ba8682b2be5ca60c"
+      }
+    ],
+    "report_pass_fields": [
+      "status",
+      "native_keyboard",
+      "native_sapi_render",
+      "native_failure_cleanup",
+      "native_role_effects",
+      "native_measured_duration"
+    ],
+    "report_not_run_fields": [
+      "manual_keyboard",
+      "nvda",
+      "listening_quality",
+      "private_model_inference"
+    ],
+    "existing_invocation": "installed Python -I -B -X utf8 scripts/windows_book_audio_smoke.py --audio-directory <explicit current pinned FFmpeg directory> --audio-lock <existing selected lock>",
+    "outer_worker_seconds": 240,
+    "cleanup_watchdog_seconds": 300,
+    "retain": [
+      "Every original literal check site and all 36 previously required labels.",
+      "Exact external FFmpeg/FFprobe path and pinned-byte report verification.",
+      "Actual selected SAPI, actual wx controls, explicit default-No/Yes, exact source and archived-source refusal.",
+      "Actual frame.Close, held executor/finalizer drain, native owned-modal failure control and cleanup-inclusive watchdog."
+    ],
+    "added": [
+      "Actual ordered effect editor; Preview/Prepare create effect-bearing immutable Plan2 and ordinary Project3 through same service.",
+      "Existing verified SAPI speech nodes are reused; current placement DSP yields measured -12 dB RMS ratio, with receipt binding.",
+      "Actual nested measured-part UI preview/default-No/Yes; ZIP PCM pieces exactly reassemble the verified effect-bearing master.",
+      "Borrowed child closes without closing Book service; 18 installed module hashes rechecked after actual owner/temp cleanup."
+    ],
+    "limits": [
+      "Small native RIFF fixture does not qualify multi-hour RF64 throughput.",
+      "No manual NVDA, acoustic quality or private model inference is claimed.",
+      "Measured whole-line references are explicitly approximate for a cut inside a line; no word or character timestamps inferred."
+    ]
+  },
+  "compatibility": {
+    "old_plan_schema": 1,
+    "old_project_schema": 2,
+    "new_effect_plan_schema": 2,
+    "new_effect_project_schema": 3,
+    "old_wire": "Absence of role effects preserves original Plan1/Project2 serialization and deterministic job/fingerprint identities.",
+    "book_run_method": "Existing BookAudioService.run body unchanged.",
+    "backup": "No new namespace or shared backup edit. Existing pure validate_saved_plan and full canonical encoded plan.project/provenance equality remain authoritative; publication producer delegates current strict receipt validator.",
+    "publication": "Same canonical source review, saved job, resource broker, owned cleanup, destination/no-replace and explicit receipt verifier. PCM parts are one additional strict receipt format.",
+    "desktop": "Existing Book route delegates to new borrowed modal; no new executor, queue, desktop entrypoint, provider or engine.",
+    "publication_outcome": "Only actual successful no-replace return may attach committed receipt; conflict never becomes success. Typed postcommit uncertainty spans receipt, temporary cleanup and reservation unwind."
+  },
+  "reuse": {
+    "pr152_commit": "64aadb94c1d01929c949763fb0d0ed04d372c5d5",
+    "pr152_measured_audio": "624e1daef35f0cfc2cc846b5c4923666612acf5e",
+    "pr99_commit": "bf0de464e24e9cab05cd55d2b1d128792bf726b3",
+    "scope": "Narrow measured-part/pure container and directory validation reuse adapted to current Book/Project/publisher; no competing donor runtime, player, queue or backup architecture."
+  },
+  "peer_reviews": [
+    {
+      "reviewer": "root",
+      "scope": "d1e54/3e422/fb44 admission, full committed receipt wrapper, RIFF/RF64 and ZIP64 boundaries",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "canonical_regression",
+      "scope": "d1e54 Plan1/Project2 compatibility and passive equality; 3e422 bounded RIFF/RF64/ZIP and exact PCM metadata",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "progress_completion",
+      "scope": "Core admission/publication corrections; cf6 Windows branch; final f7a native, 76453 cache test, 0f9 UI and c1c1 committed test",
+      "verdict": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "publication": "Unattached exact-readback blobs only; no commit, branch/ref, workflow or automation changes by this handoff."
+}

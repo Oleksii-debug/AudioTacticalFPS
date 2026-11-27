@@ -19,8 +19,10 @@ HELP = (
     'Run is a separate explicit action. Resume verifies every completed artifact and reuses existing accepted nodes. '
     'The source and active scope are rechecked before work and publication. '
     'After restoring a backup, choose a new output folder, Prepare, and review the new names before Run.\n\n'
-    'Limits: two million source characters and 256 parts. Duration-based splitting and linguistic sentence detection '
-    'are unavailable. Unverified extraction remains unverified; narration creates no quotation approval. '
+    'Role effects use the existing ordered Studio chain and named presets. Preview includes the exact chain; '
+    'saved plans remain immutable. Use a new plan to change effects. After Run, Measured duration parts '
+    'previews actual completed PCM frame ranges and separately publishes a new ZIP without another speech call. '
+    'Limits: two million source characters and 256 parts. Linguistic sentence detection is unavailable. Unverified extraction remains unverified; narration creates no quotation approval. '
     'Pause or closing this window requests cancellation and keeps saved Studio work. '
     'Tab/Shift+Tab move through named controls; Escape closes the dialog.'
 )
@@ -43,6 +45,10 @@ def review_text(plan, review):
         'Review SHA-256: ' + review.fingerprint,
         'Extraction approval is unchanged. Source offsets below are zero-based Unicode characters.',
     ]
+    if plan.role.effects:
+        from .effects_dialog import effect_label
+        rows.append('Reviewed role effects, in order:\n' + '\n'.join(
+            str(index) + '. ' + effect_label(effect) for index, effect in enumerate(plan.role.effects, 1)))
     rows.extend(source['warnings'])
     for index, (part, output) in enumerate(zip(plan.parts, review.destinations), 1):
         rows.append(f'{index}. {part.label}; characters {part.start}–{part.end}; {part.end - part.start} characters\n{output}')
@@ -87,6 +93,7 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
     layout.Add(form, 0, wx.ALL | wx.EXPAND, 6)
     alive, busy, selected_source, plan, review, reviewed_fields = True, False, None, None, None, None
     locked_plan, voices = False, ()
+    role_effects = ()
     cleanup_complete = False
     cleanup_lock = threading.Lock()
     unregister_cleanup = lambda: None
@@ -128,7 +135,9 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
          ('folder', 'Choose &output folder'), ('preview', '&Preview split and names')],
         [('prepare', '&Prepare saved items'), ('run', '&Run or resume saved items'),
          ('pause', 'Pa&use'), ('saved', 'Saved &book plans'), ('help', '&Help'), ('close', '&Close')],
-        *([[('batch', '&Multiple books...')]] if on_reviewed is None else []),
+        [('effects', 'Role &effects and presets...')]
+            + ([('duration', '&Measured duration parts...'), ('batch', '&Multiple books...')]
+               if on_reviewed is None else []),
     ]:
         row = wx.BoxSizer(wx.HORIZONTAL)
         for key, label in row_items:
@@ -175,7 +184,7 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         return (first.GetValue(), last.GetValue(), modes.GetSelection(), characters.GetValue(),
                 pattern.GetValue(), ignore_case.GetSelection(), names.GetValue(),
                 voice.GetSelection(), formats.GetSelection(), output.GetValue(), selected_source,
-                rate.GetValue(), volume.GetValue())
+                rate.GetValue(), volume.GetValue(), role_effects)
 
     def controls():
         if not can_present():
@@ -189,6 +198,9 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         buttons['prepare'].Enable(not busy and review is not None)
         buttons['run'].Enable(not busy and review is not None and review.prepared)
         buttons['voices'].Enable(not busy and not locked_plan)
+        buttons['effects'].Enable(not busy and not locked_plan)
+        if 'duration' in buttons:
+            buttons['duration'].Enable(not busy and plan is not None)
         if on_reviewed is not None:
             buttons['run'].Enable(False)
             buttons['saved'].Enable(False)
@@ -377,7 +389,7 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
                         or selected_volume != 100 and 'volume' not in capabilities):
                     raise ValueError('This installed voice does not support the selected rate or volume.')
                 role = Role('narrator', 'Narrator', chosen.id, language,
-                            rate=selected_rate, volume=selected_volume)
+                            rate=selected_rate, volume=selected_volume, effects=snapshot[13])
                 start = int(snapshot[0]) if snapshot[0].strip() else None
                 end = int(snapshot[1]) if snapshot[1].strip() else None
                 edition, revision = selected_source
@@ -479,13 +491,14 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
                                   cancelled=stopped, guard=guard, progress=progress), complete)
 
     def display_saved(selected_plan):
-        nonlocal plan, review, reviewed_fields, locked_plan, selected_source
+        nonlocal plan, review, reviewed_fields, locked_plan, selected_source, role_effects
         guard()
         if (not isinstance(selected_plan, BookPlan)
                 or (selected_plan.source['source_anchor']['workspace'],
                     selected_plan.source['source_topic']) != scope):
             raise ValueError('This saved plan belongs to another library/topic scope.')
         plan, locked_plan = selected_plan, True
+        role_effects = plan.role.effects
         review, reviewed_fields = None, None
         source = plan.source
         selected_source = (source['source_anchor']['edition'], source['source_anchor']['revision'])
@@ -530,6 +543,41 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
             display_saved(values[index])
         begin('Opening saved book reviews', lambda: service.saved(cancelled=stopped), choose)
 
+    def edit_effects(event=None):
+        nonlocal role_effects
+        try:
+            guard()
+            if busy or locked_plan or getattr(frame, 'working', False):
+                raise ValueError('Use a new editable plan after the current operation finishes.')
+            from ..audio.dsp import effect_controls
+            from .effects_dialog import show_effect_chain, effect_label
+            chain = show_effect_chain(dialog, root, role_effects, sample_rate=24000,
+                available=set(effect_controls()) - {'tempo', 'width_envelope'}, guard=guard)
+            guard()
+            if chain is not None:
+                role_effects = tuple(chain)
+                invalidate()
+                report('Role effects selected. Preview the exact book again before Prepare.\n'
+                       + '\n'.join(effect_label(effect) for effect in role_effects))
+            if can_present():
+                status.SetFocus()
+        except Exception as exc:
+            report(exc)
+
+    def measured_duration(event=None):
+        try:
+            guard()
+            if busy or getattr(frame, 'working', False) or plan is None:
+                raise ValueError('Choose a saved completed Book plan after the current operation finishes.')
+            from .book_duration_dialog import show_book_duration
+            show_book_duration(frame, service=service, plan=plan, owner_guard=guard,
+                               owner_cancelled=lambda: not can_present())
+            guard()
+            if can_present():
+                status.SetFocus()
+        except Exception as exc:
+            report(exc)
+
     def multiple(event=None):
         try:
             guard()
@@ -560,11 +608,13 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
 
     for key, callback in [('source', load_source), ('voices', discover), ('folder', choose_output),
                           ('preview', preview), ('prepare', prepare), ('run', run), ('saved', saved),
+                          ('effects', edit_effects),
                           ('pause', lambda event: cancel.set()),
                           ('help', lambda event: (report(HELP), status.SetFocus())), ('close', close)]:
         buttons[key].Bind(wx.EVT_BUTTON, callback)
     if 'batch' in buttons:
         buttons['batch'].Bind(wx.EVT_BUTTON, multiple)
+        buttons['duration'].Bind(wx.EVT_BUTTON, measured_duration)
     for widget in plan_controls + (output,):
         widget.Bind(wx.EVT_CHOICE if widget in (modes, ignore_case, voice, formats) else wx.EVT_TEXT, invalidate)
     def destroyed(event):

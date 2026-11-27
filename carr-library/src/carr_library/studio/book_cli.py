@@ -15,6 +15,7 @@ from .book_audio import BookAudioService, BookPlan, SplitOptions, capture_plan
 from .book_batch import (BookBatch, BookBatchService, BookBatchSelectionCommitted,
                          MAX_BOOKS, select_books, validate_plans)
 from .project import Role
+from .publishing import MeasuredPublicationCommitted
 
 # A failed provider close must not lose its last owner when this entry point is
 # called from another Python host. No worker, retry thread or second queue exists.
@@ -51,14 +52,19 @@ def capture_request(books, request, *, topic=None, cancelled=lambda: False):
             raise ValueError('Each book needs its library edition, explicit voice choice and output parent.')
         choice = item['voice']
         if (type(choice) is not dict or not {'language', 'voice_id'} <= set(choice)
-                or not set(choice) <= {'language', 'voice_id', 'rate', 'volume'}
+                or not set(choice) <= {'language', 'voice_id', 'rate', 'volume', 'effects'}
                 or type(choice['voice_id']) is not str or not choice['voice_id']):
             raise ValueError('Choose an exact installed voice ID, language and supported controls.')
         language = canonical_language_tag(choice['language'])
         if language != choice['language']:
             raise ValueError('Use the exact canonical language tag of the selected installed voice.')
+        from ..audio.effect_presets import read_effect
+        effects = choice.get('effects', [])
+        if type(effects) is not list or len(effects) > 32:
+            raise ValueError('Choose an ordered list of at most 32 typed role effects.')
         role = Role('narrator', 'Narrator', choice['voice_id'], language,
-                    rate=choice.get('rate', 0), volume=choice.get('volume', 100))
+                    rate=choice.get('rate', 0), volume=choice.get('volume', 100),
+                    effects=tuple(read_effect(effect) for effect in effects))
         if type(item['output_parent']) is not str or not item['output_parent']:
             raise ValueError('Choose an explicit output parent for every book.')
         options = item.get('options', {})
@@ -188,6 +194,18 @@ def main(argv=None):
             command.add_argument('--output', action='append', required=True, metavar='PLAN_ID=DIRECTORY')
         if operation == 'run':
             command.add_argument('--approval', required=True, help='Exact current prepared review SHA-256')
+    for operation in ('duration-review', 'duration-publish'):
+        command = operations.add_parser(operation, help='Review or publish measured frames from a completed Book part')
+        command.add_argument('plan_id')
+        command.add_argument('--part', required=True, type=int)
+        command.add_argument('--output', required=True, type=Path, help='New ZIP outside library and completed job')
+        command.add_argument('--maximum-ms', required=True, type=int, help='Maximum actual PCM duration per part')
+        command.add_argument('--name-template', default='{index:04d} - {book} - {part}')
+        command.add_argument('--timeout', type=float, default=3600)
+        command.add_argument('--max-output-bytes', type=int, default=32 * 1024**3)
+        command.add_argument('--reserve-disk-bytes', type=int, default=32 * 1024**2)
+        if operation == 'duration-publish':
+            command.add_argument('--approval', required=True, help='Exact SHA-256 from duration-review')
     args = parser.parse_args(argv)
     books, result, code = None, None, 0
     cancelled = threading.Event()
@@ -228,6 +246,21 @@ def main(argv=None):
             review = groups.prepare(batch, outputs, plans=plans, approval=args.approval,
                                     cancelled=cancelled.is_set)
             result = review_summary(batch, plans, review)
+        elif args.operation in ('duration-review', 'duration-publish'):
+            from ..audio.models import AudioBudget
+            plan = books.load(args.plan_id)
+            if plan.source['source_topic'] != args.topic:
+                raise ValueError('Choose the saved Book plan in its exact library/topic scope.')
+            options = dict(maximum_ms=args.maximum_ms, name_template=args.name_template,
+                budget=AudioBudget(timeout=args.timeout, max_output_bytes=args.max_output_bytes,
+                                   reserve_disk_bytes=args.reserve_disk_bytes),
+                cancelled=cancelled.is_set, guard=books._check_scope,
+                progress=lambda message: print(message, file=sys.stderr, flush=True))
+            if args.operation == 'duration-review':
+                result = books.review_duration(plan.id, args.part, args.output, **options)
+            else:
+                result = books.publish_duration(plan.id, args.part, args.output,
+                                                approval=args.approval, **options)
         elif args.operation == 'list':
             result = [{'batch': batch.id, 'title': batch.title, 'books': len(batch.items)}
                       for batch in groups.saved(cancelled=cancelled.is_set) if batch.topic == args.topic]
@@ -251,12 +284,17 @@ def main(argv=None):
                         code = 3
     except KeyboardInterrupt as exc:
         cancelled.set()
-        result = getattr(exc, 'book_batch_result', None)
+        result = getattr(exc, 'publication_receipt', getattr(exc, 'book_batch_result', None))
         print('Book audio interrupted. Existing Studio items remain saved; review before explicitly resuming.', file=sys.stderr)
         code = 130
     except BookBatchSelectionCommitted as exc:
         result = {'batch': exc.batch, 'selection_saved': True, 'durable': False,
                   'notice': 'Selection is visible but storage confirmation needs review. No new speech was started.'}
+        code = 3
+    except MeasuredPublicationCommitted as exc:
+        result = {'published': True, 'receipt': exc.receipt,
+                  'notice': str(exc), 'requires_explicit_verification': True}
+        print(str(exc), file=sys.stderr)
         code = 3
     except (ValueError, OSError, RuntimeError) as exc:
         result = getattr(exc, 'book_batch_result', None)

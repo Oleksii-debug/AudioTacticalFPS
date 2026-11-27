@@ -202,6 +202,7 @@ class BookPlan:
     parts: tuple[BookPart, ...]
     format: str = 'wav'
     sample_rate: int = 24000
+    schema: int = 1
 
     def __post_init__(self):
         _identity(self.id)
@@ -209,9 +210,10 @@ class BookPlan:
                 or not self.role.voice_id or self.format not in FORMATS
                 or self.sample_rate not in (16000, 22050, 24000, 44100, 48000)):
             raise ValueError('Choose a typed local voice, supported format and sample rate.')
-        if self.role.effects:
-            raise ValueError('Book plans require a separate reviewed effect contract; '
-                             'saved Studio effect chains cannot be attached implicitly.')
+        if (type(self.schema) is not int or self.schema not in (1, 2)
+                or bool(self.role.effects) != (self.schema == 2)):
+            raise ValueError('Reviewed role effects require Book plan schema 2; '
+                             'unchanged narration retains schema 1.')
         if type(self.source_json) is not str or len(self.source_json) > 12_000_000:
             raise ValueError('Invalid bounded source snapshot.')
         try:
@@ -252,7 +254,7 @@ class BookPlan:
         return sha256(encode(self.to_dict())).hexdigest()
 
     def to_dict(self):
-        return {'schema': 1, 'id': self.id, 'source': self.source,
+        return {'schema': self.schema, 'id': self.id, 'source': self.source,
                 'options': asdict(self.options), 'role': self.role.to_dict(),
                 'parts': [asdict(part) for part in self.parts], 'format': self.format,
                 'sample_rate': self.sample_rate}
@@ -264,13 +266,13 @@ class BookPlan:
             raise ValueError('Invalid saved book-audio plan fields.')
         if len(encode(value)) > MAX_PLAN_BYTES:
             raise ValueError('The book plan exceeds its saved metadata budget.')
-        if type(value['schema']) is not int or value['schema'] != 1 or type(value['parts']) is not list:
+        if type(value['schema']) is not int or value['schema'] not in (1, 2) or type(value['parts']) is not list:
             raise ValueError('Unsupported book-audio plan.')
         try:
             return cls(value['id'], encode(value['source']).decode('utf-8'),
                        SplitOptions(**value['options']), Role.from_dict(value['role']),
                        tuple(BookPart(**part) for part in value['parts']),
-                       value['format'], value['sample_rate'])
+                       value['format'], value['sample_rate'], value['schema'])
         except (TypeError, KeyError) as exc:
             raise ValueError('Invalid saved book-audio plan.') from exc
 
@@ -298,7 +300,7 @@ class BookPlan:
         return Project(job_id, self.options.title(index, source['title'], part.label),
                        (self.role,), (Scene('part', part.label, tuple(lines)),),
                        original_script=selected, mode='faithful', sample_rate=self.sample_rate,
-                       schema=2)
+                       schema=3 if self.schema == 2 else 2)
 
     def provenance(self, index):
         part = self.parts[index - 1]
@@ -405,7 +407,8 @@ def capture_plan(library, workspace, edition, *, options, role, format='wav', sa
         labels = {row['ordinal']: row['title'] for row in contents['chapters']}
     parts = split_parts(source, options, chapter_labels=labels, cancelled=cancelled)
     _check(cancelled, guard)
-    plan = BookPlan(uuid4().hex, encode(source).decode('utf-8'), options, role, parts, format, sample_rate)
+    plan = BookPlan(uuid4().hex, encode(source).decode('utf-8'), options, role, parts, format,
+                    sample_rate, schema=2 if role.effects else 1)
     # Bound and validate every literal Project before presenting an executable plan.
     for index in range(1, len(parts) + 1):
         plan.project(index)
@@ -418,8 +421,10 @@ def validate_provenance(project, value):
             'schema', 'plan', 'plan_sha256', 'source_anchor', 'source_metadata',
             'source_topic', 'warnings', 'source_sha256', 'part', 'notice'}
             or value['schema'] != 'carr-book-audio-source/1'
-            or project.schema != 2 or project.mode != 'faithful'
-            or len(project.scenes) != 1 or len(project.roles) != 1):
+            or project.schema not in (2, 3) or project.mode != 'faithful'
+            or len(project.scenes) != 1 or len(project.roles) != 1
+            or bool(project.roles[0].effects) != (project.schema == 3)
+            or project.effects or project.scenes[0].effects):
         raise ValueError('The guarded book source provenance is invalid.')
     _identity(value['plan'])
     for name in ('plan_sha256', 'source_sha256'):
@@ -711,3 +716,65 @@ class BookAudioService:
                 exc.book_audio_result = {'plan': plan.id, 'items': tuple(results)}
                 raise
             return tuple(results)
+
+    def _measured_publication(self, plan_id, index, output, *, maximum_ms, name_template,
+                              publish, approval, budget, cancelled, guard, progress):
+        from time import monotonic
+        from ..audio import AudioBudget, AudioCancelled
+        from .publishing import PublicationService
+        selected_budget = budget or AudioBudget()
+        if not isinstance(selected_budget, AudioBudget):
+            raise TypeError('Use the existing AudioBudget for measured publication.')
+        deadline = monotonic() + selected_budget.timeout
+        def stopped():
+            return (self._closed.is_set() or self.production._closed
+                    or bool(cancelled()) or monotonic() >= deadline)
+        def current_scope():
+            self._check_scope()
+            guard()
+            self._check_scope()
+        try:
+            _identity(plan_id)
+            _check(stopped, current_scope)
+            self.production._check_open()
+            with state_lock(self.plans, 'book-' + plan_id):
+                _check(stopped, current_scope)
+                plan = self.load(plan_id)
+                def original_source():
+                    self._validate(plan, stopped, guard)
+                    if self.load(plan.id).fingerprint != plan.fingerprint:
+                        raise ValueError('The saved Book plan changed during measured publication.')
+                    state = self._job(plan, index)
+                    if (state is None or state['status'] != 'complete'
+                            or state.get('recovery', {}).get('requires_output_directory') is True):
+                        raise ValueError('Run and verify this exact Book part before measured audio splitting.')
+                    return plan.provenance(index)
+                original_source()
+                publisher = PublicationService(self.production, budget=selected_budget,
+                                               private_root=self.library_root)
+                options = dict(maximum_ms=maximum_ms, name_template=name_template,
+                    source_guard=original_source, cancelled=stopped, progress=progress)
+                if publish:
+                    return publisher.export_pcm_parts(plan.job_id(index), output,
+                                                      review_sha256=approval, **options)
+                return publisher.review_pcm_parts(plan.job_id(index), output, **options)
+        except (InterruptedError, AudioCancelled) as exc:
+            if monotonic() >= deadline and not cancelled():
+                raise TimeoutError('Measured audio publication exceeded its selected time budget.') from exc
+            raise
+
+    def review_duration(self, plan_id, index, output, *, maximum_ms,
+                        name_template='{index:04d} - {book} - {part}', budget=None,
+                        cancelled=lambda: False, guard=lambda: None, progress=None):
+        """Review a post-render PCM split without another speech call."""
+        return self._measured_publication(plan_id, index, output, maximum_ms=maximum_ms,
+            name_template=name_template, publish=False, approval=None, budget=budget,
+            cancelled=cancelled, guard=guard, progress=progress)
+
+    def publish_duration(self, plan_id, index, output, *, maximum_ms, approval,
+                         name_template='{index:04d} - {book} - {part}', budget=None,
+                         cancelled=lambda: False, guard=lambda: None, progress=None):
+        """Publish only the exact separately approved completed PCM ranges."""
+        return self._measured_publication(plan_id, index, output, maximum_ms=maximum_ms,
+            name_template=name_template, publish=True, approval=approval, budget=budget,
+            cancelled=cancelled, guard=guard, progress=progress)

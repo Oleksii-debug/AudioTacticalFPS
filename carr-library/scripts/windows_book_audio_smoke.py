@@ -4,7 +4,9 @@ Actual Windows controls, selected SAPI, pinned FFmpeg and source receipts are
 required. This is not an NVDA, listening-quality or private-model evaluation.
 """
 import argparse
+from array import array
 from hashlib import file_digest, sha256
+from io import BytesIO
 import json
 import os
 from pathlib import Path
@@ -38,13 +40,14 @@ def main():
     import wx
     from carr_library.application import LibraryApp
     from carr_library import runtime_settings
-    from carr_library.audio import dsp, process
+    from carr_library.audio import dsp, process, effect_presets, envelopes
     from carr_library.operations import broker
     from carr_library.speech import NativeSapiProvider
     from carr_library.speech import source as source_module
     from carr_library.reader import reading_desk
-    from carr_library.studio import book_audio, project, render
-    from carr_library.ui import book_audio_dialog, worker_lifetime, desktop_app
+    from carr_library.studio import book_audio, project, render, measured_audio, publishing
+    from carr_library.ui import (book_audio_dialog, book_duration_dialog, effects_dialog,
+                                 worker_lifetime, desktop_app)
 
     checks, errors, pressed, audio_proof, spoken = [], [], set(), {}, []
     frame = dialog = service = production = registry = None
@@ -52,7 +55,8 @@ def main():
     close_dialog = None
     modal_loops, question_waits, failure_control = [], {}, {}
     unwind_pending = False
-    question_titles = ('Prepare reviewed book items', 'Run reviewed book audio')
+    question_titles = ('Prepare reviewed book items', 'Run reviewed book audio',
+                       'Publish reviewed measured audio')
     ui_thread = threading.get_ident()
     stage, key_pending, finished = -1, False, False
     deadline = monotonic() + 240
@@ -232,23 +236,34 @@ def main():
             wx.CallLater(40, guarded(lambda: release(key, name)))
         wx.CallAfter(guarded(dispatch))
 
-    def named(name):
+    def named(name, owner=None):
         def descendants(window):
             for child in window.GetChildren():
                 yield child
                 yield from descendants(child)
-        values = [control for control in descendants(dialog) if control.GetName() == name]
+        values = [control for control in descendants(dialog if owner is None else owner) if control.GetName() == name]
         if len(values) != 1:
             raise AssertionError('Unique accessible control missing: ' + name)
         return values[0]
 
-    def confirm(title, *, accepted):
+    def current_modal(title):
+        values = [window for window in wx.GetTopLevelWindows()
+                  if isinstance(window, wx.Dialog) and window.GetTitle() == title
+                  and window.IsModal() and user32.IsWindow(window.GetHandle())]
+        if not values:
+            return None
+        if len(values) != 1:
+            raise AssertionError('Ambiguous owned modal: ' + title)
+        own_modal(values[0])
+        return values[0]
+
+    def confirm(title, *, accepted, parent=None):
         """Drive the product's actual default-No Windows MessageBox."""
         nonlocal key_pending
         handle = owned_question(title)
         if not handle:
             return False
-        expected_parent = dialog.GetHandle()
+        expected_parent = (dialog if parent is None else parent).GetHandle()
         if user32.GetWindow(handle, 4) != expected_parent:
             raise AssertionError('The actual Book confirmation has a different direct parent.')
         current_focus = user32.GetDlgCtrlID(user32.GetFocus())
@@ -266,7 +281,7 @@ def main():
                                      'observed control ID ' + str(current_focus))
             return False
         check('confirmation belongs to the book dialog: ' + title,
-              user32.GetWindow(handle, 4) == dialog.GetHandle())
+              user32.GetWindow(handle, 4) == expected_parent)
         check('confirmation defaults to No: ' + title, current_focus == 7)
         key = wx.WXK_ESCAPE
         if accepted:
@@ -357,7 +372,8 @@ def main():
         try:
             checkout = Path(__file__).resolve().parents[1]
             modules = (book_audio, book_audio_dialog, worker_lifetime, render, project,
-                       reading_desk, source_module, runtime_settings, broker, dsp, process, desktop_app)
+                       reading_desk, source_module, runtime_settings, broker, dsp, process, desktop_app,
+                       measured_audio, publishing, book_duration_dialog, effects_dialog, effect_presets, envelopes)
             for module in modules:
                 actual = Path(module.__file__).resolve()
                 original = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
@@ -502,13 +518,181 @@ def main():
                         accepted['artifacts'] = {item['path']: sha256(Path(item['path']).read_bytes()).hexdigest()
                                                  for state in states for item in state['artifacts']}
                         check('completed book rendering returns native status focus', wx.Window.FindFocus() == status)
+                        accepted['original_spoken'] = tuple(spoken)
+                        accepted['original_plan_bytes'] = (service.plans / (plan.id + '.json')).read_bytes()
+                        stage = 20
+                        press(named('Role effects and presets...'))
+                    elif stage == 20:
+                        child = current_modal('Ordered audio effects')
+                        if child is not None:
+                            kinds = named('Effect type to add', child)
+                            selected = kinds.FindString('gain')
+                            check('Book role editor offers existing typed gain and omits timeline-changing tempo',
+                                  selected != wx.NOT_FOUND and kinds.FindString('tempo') == wx.NOT_FOUND
+                                  and kinds.FindString('width_envelope') == wx.NOT_FOUND)
+                            kinds.SetSelection(selected)
+                            stage = 21
+                            press(named('Add effect', child))
+                    elif stage == 21:
+                        child = current_modal('Ordered audio effects')
+                        if child is not None and named('Ordered audio effects', child).GetCount() == 1:
+                            stage = 22
+                            press(named('Edit selected effect', child))
+                    elif stage == 22:
+                        child = current_modal('Edit gain effect')
+                        if child is not None:
+                            def descendants(window):
+                                for item in window.GetChildren():
+                                    yield item
+                                    yield from descendants(item)
+                            values = [item for item in descendants(child)
+                                      if isinstance(item, wx.TextCtrl) and item.GetName().startswith('gain db (')]
+                            check('Book effect numeric editor has one actual gain control', len(values) == 1)
+                            values[0].ChangeValue('-12')
+                            stage = 23
+                            press(named('Apply effect', child))
+                    elif stage == 23:
+                        child = current_modal('Ordered audio effects')
+                        if child is not None and current_modal('Edit gain effect') is None:
+                            check('Book ordered effect review retains explicit numeric value',
+                                  'gain_db=-12' in named('Ordered audio effects', child).GetString(0))
+                            stage = 24
+                            press(named('Apply effect chain', child))
+                    elif stage == 24 and current_modal('Ordered audio effects') is None:
+                        check('applying Book role effects invalidates the previous preparation review',
+                              not named('Prepare saved items').IsEnabled()
+                              and 'Role effects selected' in status.GetValue())
+                        stage = 25
+                        press(named('Preview split and names'))
+                    elif stage == 25 and not frame.working and status.GetValue().startswith('PREVIEW ONLY'):
+                        check('native Book preview displays the exact ordered role effects',
+                              'Reviewed role effects, in order' in status.GetValue()
+                              and 'gain_db=-12' in status.GetValue())
+                        stage = 26
+                        press(named('Prepare saved items'))
+                    elif stage == 26 and confirm('Prepare reviewed book items', accepted=True):
+                        stage = 27
+                    elif stage == 27 and not frame.working and status.GetValue().startswith('PREPARED'):
+                        candidates = [value for value in service.saved() if value.schema == 2]
+                        check('explicit Book effects create Plan2 and existing Project3 without changing old Plan1',
+                              len(candidates) == 1 and len(production.jobs()) == 4
+                              and (service.plans / (accepted['plan'].id + '.json')).read_bytes()
+                                  == accepted['original_plan_bytes']
+                              and all(candidates[0].project(index).schema == 3 for index in (1, 2)))
+                        accepted['effect_plan'] = candidates[0]
+                        stage = 28
+                        press(named('Run or resume saved items'))
+                    elif stage == 28 and confirm('Run reviewed book audio', accepted=True):
+                        stage = 29
+                    elif stage == 29 and not frame.working and status.GetValue().startswith('Verified saved items'):
+                        effect_plan = accepted['effect_plan']
+                        states = [production.get(effect_plan.job_id(index)) for index in (1, 2)]
+                        check('real SAPI Book jobs render their reviewed current Studio role effects',
+                              tuple(spoken) == accepted['original_spoken'] and len(spoken) == 2
+                              and all(any(node['kind'] == 'speech' for node in state['nodes'].values())
+                                  and all(node['reused'] for node in state['nodes'].values() if node['kind'] == 'speech')
+                                  for state in states)
+                              and all(state['status'] == 'complete'
+                                  and state['result']['effects']['roles']['narrator']
+                                      == [effect.to_dict() for effect in effect_plan.role.effects]
+                                  and state['result']['book_source_sha256']
+                                      == sha256(book_audio.encode(effect_plan.provenance(index))).hexdigest()
+                                  for index, state in enumerate(states, 1)))
+                        for state in states:
+                            with wave.open(str(Path(state['destination']) / 'master.wav'), 'rb') as audio:
+                                check('effect-bearing Book master contains actual PCM',
+                                      audio.getsampwidth() == 2 and audio.getnframes() > 0
+                                      and any(audio.readframes(min(24000, audio.getnframes()))))
+                        ratios = []
+                        for index, state in enumerate(states, 1):
+                            powers = []
+                            for selected_state in (production.get(accepted['plan'].job_id(index)), state):
+                                with wave.open(str(Path(selected_state['destination']) / 'master.wav'), 'rb') as audio:
+                                    values = array('h', audio.readframes(audio.getnframes()))
+                                powers.append(sum(sample * sample for sample in values) / len(values))
+                            ratios.append((powers[1] / powers[0]) ** .5)
+                        check('native role gain measurably changes completed masters while reusing SAPI',
+                              len(ratios) == 2 and all(.24 < ratio < .27 for ratio in ratios))
+                        accepted['effect_states'] = states
+                        accepted['all_spoken'] = tuple(spoken)
+                        accepted['artifacts'].update({item['path']: sha256(Path(item['path']).read_bytes()).hexdigest()
+                                                     for state in states for item in state['artifacts']})
+                        stage = 30
+                        press(named('Measured duration parts...'))
+                    elif stage == 30:
+                        child = current_modal('Measured duration audio parts')
+                        if child is not None:
+                            accepted['duration_dialog'] = child
+                            accepted['parts_zip'] = root / 'native-measured-parts.zip'
+                            named('Completed Book part', child).SetSelection(0)
+                            named('Maximum measured part milliseconds', child).ChangeValue('100')
+                            named('Reviewed measured-parts ZIP', child).ChangeValue(str(accepted['parts_zip']))
+                            stage = 31
+                            press(named('Preview measured parts', child))
+                    elif stage == 31 and not frame.working:
+                        child = accepted.get('duration_dialog')
+                        text = named('Measured audio preview and publication status', child)
+                        if text.GetValue().startswith('MEASURED PREVIEW'):
+                            check('native measured preview displays actual frames and honest whole-line scope',
+                                  'Verified PCM:' in text.GetValue() and 'whole-line' in text.GetValue()
+                                  and 'Review SHA-256:' in text.GetValue()
+                                  and wx.Window.FindFocus() == text)
+                            check('measured preview starts no additional speech and publishes no file',
+                                  tuple(spoken) == accepted['all_spoken'] and not accepted['parts_zip'].exists())
+                            stage = 32
+                            press(named('Publish reviewed parts', child))
+                    elif stage == 32 and confirm('Publish reviewed measured audio', accepted=False,
+                                                  parent=accepted['duration_dialog']):
+                        stage = 33
+                    elif stage == 33 and not frame.working:
+                        check('measured default-No confirmation preserves absent output',
+                              not accepted['parts_zip'].exists() and tuple(spoken) == accepted['all_spoken'])
+                        stage = 34
+                        press(named('Publish reviewed parts', accepted['duration_dialog']))
+                    elif stage == 34 and confirm('Publish reviewed measured audio', accepted=True,
+                                                  parent=accepted['duration_dialog']):
+                        stage = 35
+                    elif stage == 35 and not frame.working:
+                        child = accepted['duration_dialog']
+                        text = named('Measured audio preview and publication status', child)
+                        if text.GetValue().startswith('Published and verified:'):
+                            manifest = measured_audio.inspect(accepted['parts_zip'])
+                            source_state = accepted['effect_states'][0]
+                            with wave.open(str(Path(source_state['destination']) / 'master.wav'), 'rb') as audio:
+                                original_pcm, original_frames = audio.readframes(audio.getnframes()), audio.getnframes()
+                            actual_pcm, frames = [], 0
+                            with ZipFile(accepted['parts_zip']) as archive:
+                                for part in manifest['content']['parts']:
+                                    with wave.open(BytesIO(archive.read(part['name'])), 'rb') as audio:
+                                        check('native measured part has exact current PCM geometry',
+                                              audio.getframerate() == 24000 and audio.getnchannels() == 2
+                                              and audio.getsampwidth() == 2 and audio.getnframes() == part['frames'])
+                                        actual_pcm.append(audio.readframes(audio.getnframes()))
+                                        frames += audio.getnframes()
+                                source_receipt = json.loads(archive.read('source/book-source.json'))
+                            check('actual native measured parts concatenate to every original master frame',
+                                  len(manifest['parts']) > 1 and frames == original_frames
+                                  and b''.join(actual_pcm) == original_pcm)
+                            check('measured publication retains the exact effect-bearing Book source receipt',
+                                  source_receipt == accepted['effect_plan'].provenance(1)
+                                  and manifest['source']['project_sha256']
+                                      == accepted['effect_plan'].project(1).fingerprint)
+                            check('measured publication finishes on shared worker without another speech call',
+                                  tuple(spoken) == accepted['all_spoken'] and wx.Window.FindFocus() == text
+                                  and 'Publication receipt:' in text.GetValue())
+                            stage = 36
+                            press(named('Close', child), wx.WXK_ESCAPE)
+                    elif stage == 36 and current_modal('Measured duration audio parts') is None:
+                        check('closing measured child keeps the original Book service and resumed modal alive',
+                              dialog.IsModal() and not service._closed.is_set() and not production._closed)
                         library.archive_workspace(workspace)
                         stage = 10
                         press(named('Run or resume saved items'))
                     elif stage == 10 and confirm('Run reviewed book audio', accepted=True):
                         stage = 11
                     elif stage == 11 and not frame.working and 'archived' in status.GetValue():
-                        check('archived source blocks completed-job reuse visibly', len(spoken) == 2
+                        check('archived source blocks completed-job reuse visibly', len(accepted['original_spoken']) == 2
+                              and tuple(spoken) == accepted['all_spoken']
                               and wx.Window.FindFocus() == status)
                         check('source denial preserves every previously committed artifact',
                               accepted['artifacts'] == {path: sha256(Path(path).read_bytes()).hexdigest()
@@ -574,11 +758,19 @@ def main():
             raise RuntimeError('\n'.join(errors))
     if not owners_released:
         raise RuntimeError('Native Book cleanup did not confirm release of its owners.')
+    for module in modules:
+        actual = Path(module.__file__).resolve()
+        original_source = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
+        check('unchanged installed source after Book work: ' + module.__name__,
+              actual.is_relative_to(Path(sys.prefix).resolve()) and not actual.is_relative_to(checkout)
+              and sha256(actual.read_bytes()).digest() == sha256(original_source.read_bytes()).digest())
+
     # TemporaryDirectory disposal is part of cleanup too; disarm only after
     # leaving that context, never before its final filesystem operations.
     _cleanup_complete.set()
     print(json.dumps({'status': 'PASS', 'checks': checks, 'audio_runtime': audio_proof,
         'native_keyboard': 'PASS', 'native_sapi_render': 'PASS',
+        'native_role_effects': 'PASS', 'native_measured_duration': 'PASS',
         'native_failure_cleanup': 'PASS' if failure_control.get('passed') else 'FAIL',
         'manual_keyboard': 'NOT_RUN', 'nvda': 'NOT_RUN', 'listening_quality': 'NOT_RUN',
         'private_model_inference': 'NOT_RUN'}, ensure_ascii=True, indent=2))
