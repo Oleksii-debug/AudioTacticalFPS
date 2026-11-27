@@ -228,7 +228,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                   lambda rows: report('Provider-declared NMT languages; no quality or 135-language qualification claim:\n' +
                                       '\n'.join(row['language'] + ' — ' + row['name'] +
                                           ('; source: ' + str(row['source']) + '; target: ' + str(row['target']) if 'source' in row else '')
-                                          for row in rows)))
+                                          for row in rows), True))
         except Exception as exc:
             report(str(exc), True)
 

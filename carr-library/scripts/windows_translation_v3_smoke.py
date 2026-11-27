@@ -185,7 +185,18 @@ def main():
                     check('verified glossary provenance', report['chunks'][0]['glossary_config']['glossary'] == glossary)
                     check('original selected text unchanged', selected.GetValue() == original)
                     before = len(calls)
+                    check('completed job retains its approved scope',
+                          not glossary_input.IsEnabled() and not find('Preview').IsEnabled())
+                    press(find('New translation'))
+                    selected.ChangeValue(original)
+                    find('Source language code; auto detects').ChangeValue('en')
+                    find('Target language code').ChangeValue('uk')
+                    glossary_input.ChangeValue(glossary)
+                    find('Maximum approved budget in USD; no default price').ChangeValue('1')
                     press(find('Preview'))
+                    check('new translation preview restores the exact reviewed scope',
+                          address in status.GetValue() and glossary in status.GetValue()
+                          and selected.GetValue() == original and len(calls) == before)
                     glossary_input.ChangeValue(glossary + '-changed-after-review')
                     press(find('Translate / resume'))
                     check('changed glossary requires fresh review without transfer', 'Preview this exact' in status.GetValue() and len(calls) == before)

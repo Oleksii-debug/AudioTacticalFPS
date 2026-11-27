@@ -14,14 +14,16 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
 | Research search | Explicit Boolean/NEAR query mode, keyboard query builder, scoped multi-library search and retained reading positions | Bounded source-authenticated queries and backup round trips; results preserve exact source passages |
 | Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
-| Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
+| Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats; portable retained clips with trim, placement, gain, pan, fades, preview and direct saved-project rendering | Real FFmpeg production and PCM/source tests; clip restore requires a fresh output selection even at the same library path; latest installed Windows clip checks remain pending; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
+| Microphone recording | Explicit DirectShow device selection, bounded capture, Stop/save, cancellation, verified originals, WAV export and backup/restore through the shared library | Actual FFmpeg with synthetic capture, owned-process and source/controller tests; physical devices, driver permissions, listening and the latest native Windows recording checks remain unqualified |
+| Synchronized publishing | EPUB3 media overlays from verified completed Studio output, measured speech-line SMIL timing, provenance, no-clobber export and receipt recovery | Actual synthetic-audio source/export tests and EPUBCheck conformance fixtures; latest installed native publishing checks remain pending; external-reader, DAISY and Braille qualification is separate |
 | Documents and citations | Isolated bounded conversion, reviewed BibTeX/RIS/CSL import, local citeproc-js styles/locales, editable DOCX with citation provenance, destination approval and opt-in DOI previews | Actual local processor, generated documents, parser limits and integrity tests; no live Word add-in |
 | Recovery | Manifest-bound backup v5 includes pending import bytes, identities, settings, project state and reading positions; older supported backups remain readable | Real backup/restore and resumed import tests; exact publication reconciliation preserves completed imports after late cancellation; externally exported audio and OS credential secrets are separate |
 | Transcription | One existing job service for supplied-worker profiles, retained audio/video files or folders, cancellation/resume, verified results, editable derivatives and text/subtitle export | Synthetic child-process and native control checks; private V5 wrapper interoperability uses a controlled backend and does not qualify neural inference or recording quality |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
+| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions for previously executed controls; new candidate controls need their exact installed run; human NVDA and listening review remain required |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
-| Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
-| Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
+| Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references, per-request consent/budget and explicit local-server plan proposals through the existing validated executor | Actual loopback HTTP/CLI and synthetic native-control evidence; no local model weights or planning quality were qualified and no paid provider call was made during implementation |
+| Translation | Optional Google Basic v2 and Advanced v3 plain-text derivatives from pasted text or retained source ranges; account-bound language discovery, expiring OAuth credentials, existing glossaries, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; latest native Advanced completion checks remain pending; live API, linguistic quality, local inference, formatted-document fidelity and canonical-135 mapping are not qualified |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
 
@@ -29,6 +31,12 @@ The native V3 acceptance script performs installed SAPI synthesis, scene
 production, output verification, restart, CSL/DOCX, isolated text conversion and
 named native dialogs while the selected runtime executables have outbound
 firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
+
+Recording, portable clip editing, synchronized publishing, local-server planning
+and Advanced translation are implemented candidate paths, with source and
+synthetic-input verification. Their presence does not transfer a previous
+Windows run to the final composition. The exact final installed source/wheel,
+native workflows and retained-wheel checks must pass before delivery acceptance.
 
 ## Requirements still open
 
@@ -41,16 +49,20 @@ The following cannot be labelled DONE by passing the current core tests:
   interruption/recovery and key-rotation acceptance.
 - Actual owner-supplied cloning runtime, authorized reference recordings,
   protected voice profiles and independent multilingual inference/listening.
-- Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
-  the remaining approved Balabolka-equivalent workflow checklist and synchronized
-  publishing/Braille workflows.
-- Professional microphone capture, real-time monitoring and complete accessible
-  multitrack/clip editing. The existing offline scene renderer, microphone track
-  role and recording-quiet policy do not implement these device workflows.
-- Actual local-model planning through the existing validated plan adapter, and
-  the qualified local/Google Advanced translation paths. Guided commands,
-  synthetic transports and a configured local server are separate evidence from
-  executed model inference and language quality.
+- Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference
+  and the remaining approved Balabolka-equivalent workflow checklist.
+- Physical microphone/driver acceptance, live monitoring, capture pause/resume
+  and the remaining professional studio/device workflows. Basic recording,
+  portable clip editing and offline rendering are implemented; they do not prove
+  complete real-time multitrack operation or human accessibility/listening.
+- External-reader and listening acceptance for synchronized EPUB, plus DAISY
+  interchange and BRF/Braille translation/layout. EPUB media-overlay creation
+  and conformance fixtures do not implement or qualify those separate formats.
+- Actual local-model planning through the existing validated plan adapter, live
+  Google Basic/Advanced qualification and a local translation engine. The local
+  server and Advanced protocol paths are implemented; synthetic responses do
+  not establish executed model inference or linguistic quality. Automatic ADC
+  discovery/refresh, formatted-document and batch translation remain separate.
 - Independent qualification of every required capability for the canonical 135
   entries; registry/resource counts never establish language quality.
 - Human Windows 11/NVDA and listening review. Automated Windows Server native

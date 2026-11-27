@@ -105,12 +105,15 @@ def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
         # subprocess.run also calls this shared Popen on Windows for taskkill.
         # Replace only the isolated renderer, so its real process-tree cleanup
         # remains exercised and is not replaced by a second sleeping child.
-        if not (isinstance(command, (list, tuple)) and command[0] == sys.executable
+        interpreters = {sys.executable, getattr(sys, '_base_executable', sys.executable)}
+        if not (isinstance(command, (list, tuple)) and command and command[0] in interpreters
+                and '-I' in command and '-B' in command
                 and '-c' in command
                 and "runpy.run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1]):
             return original(command, *args, **kwargs)
-        child = original([sys.executable, '-I', '-B', '-c', 'import time; time.sleep(30)'],
-                         *args, **kwargs)
+        delayed = list(command)
+        delayed[delayed.index('-c') + 1] = 'import time; time.sleep(30)'
+        child = original(delayed, *args, **kwargs)
         children.append(child)
         return child
 

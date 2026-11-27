@@ -59,6 +59,7 @@ def make(progress, executor, wx, report, service):
     current_job = 'saved-production'
     cancel = threading.Event()
     controls = lambda: None
+    scope_current = lambda: alive
     def close():
         nonlocal alive
         alive = False

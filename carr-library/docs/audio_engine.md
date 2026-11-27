@@ -51,6 +51,106 @@ result = runtime.mix(
 measurement = runtime.measure(result.path)
 ```
 
+## Portable scene clips and restored production
+
+Choose **Audio Studio → Scene audio clips...**, then **New project** or **Reload
+projects**. Select a project and scene explicitly. **Add audio file** copies only
+the selected original into that library. **Add saved recording** verifies the
+selected completed recording before adding its bytes. Neither action discovers
+a microphone or begins recording.
+
+The fields control the clip's start in the scene, start within the original,
+selected duration, gain, pan, fades and track role. Choose **Save clip settings**
+before **Preview saved clip**; the preview uses saved settings and omits the
+leading scene silence. **Stop playback** must confirm that the device stopped
+before another operation begins. Removing or moving a clip changes project
+instructions and preserves its retained original. Projects keep revisions, so a
+stale editor must reload before saving.
+
+Choose **Render saved project** in the clip dialog and select the parent folder
+for new audio outputs. The background operation checks the saved revision again,
+then renders through the existing production service. Completion focuses a
+readable status containing the full output destination; it does not start
+playback. The command-line operations use the same editor and production service:
+
+```text
+python -m carr_library studio --data-dir LIBRARY clip-create --title "Scene clips"
+python -m carr_library studio --data-dir LIBRARY clip-add PROJECT_ID SCENE_ID --file INPUT.wav --trim-start 0.25 --duration 1 --pan -1
+python -m carr_library studio --data-dir LIBRARY clip-edit PROJECT_ID SCENE_ID CLIP_ID --revision REVIEWED_REVISION --gain-db -9 --fade-in 0.05
+python -m carr_library studio --data-dir LIBRARY render --project-id PROJECT_ID --output NEW_PARENT
+```
+
+Use the returned IDs and current revision. The CLI's `clip-preview` writes a
+preview and reports its path; it does not start playback. `clip-remove`,
+`clip-move` and `clip-duration` expose the same numeric project edits.
+
+Portable projects retain content-addressed audio under the library's Studio
+inputs. Existing library backup and restore validate every referenced current,
+historical-revision and job input. An external render destination is not part of
+that retained-input authority. After restoring to either a different path or the
+same path after deleting the old library, **Saved jobs** remains a metadata view.
+**Listen to output** refuses a job that needs a new output directory, before
+opening its old destination. Choose **Render / resume**, then select a new output
+parent. The background operation resets derived render state, preserves the old
+job details as inert provenance and renders into a newly allocated directory.
+The CLI equivalent is:
+
+```text
+python -m carr_library studio --data-dir RESTORED_LIBRARY resume JOB_ID --output NEW_PARENT
+```
+
+Legacy schema1 projects with absolute audio paths are not migrated implicitly.
+Metadata edits such as removing or moving existing cues remain available.
+For portable adding, clip-setting edits or previews, create a new clip project
+and explicitly select the originals or verified saved recordings again.
+
+These controls share the existing local audio runtime and its explicit setup.
+A closed dialog or a replacement library cannot start a queued edit or delayed
+playback. Automated source tests and synthetic audio do not establish physical
+microphone, manual keyboard, NVDA or listening-quality acceptance.
+
+## Synchronized EPUB publication
+
+After a Studio production completes, choose **Audio Studio → Publish synchronized
+EPUB3...**, load the saved jobs, explicitly select one completed job, and choose a
+new `.epub` filename outside the private library. Select a language tag such as
+`uk`, `en`, or `und` (undetermined); the creator field is optional. Export runs
+through the shared background operation with cancellation and a selected time
+and disk budget. It never overwrites an existing file. The configured local audio
+runtime must supply MP3 encoding, unless the completed job already contains a
+verified MP3 master.
+
+The EPUB contains navigation, the exact production script, measured speech-line
+SMIL intervals, MP3 audio and a provenance record bound to the completed job,
+project revision and artifact checksums. Unscripted audio intervals are labeled
+explicitly. Line timing is measured from Studio audio; it is not word alignment.
+The production script and its source-reference declarations remain distinct from
+verified library originals. Publication or re-importing an EPUB does not approve
+its text as a quotation or change original source files.
+
+The same service is available from the existing CLI:
+
+```text
+python -m carr_library studio --data-dir LIBRARY publications
+python -m carr_library studio --data-dir LIBRARY publish-epub JOB_ID --output NEW_FILE.epub --language uk
+python -m carr_library studio --data-dir LIBRARY verify-publication RECEIPT_ID
+```
+
+Keep the publication receipt in the library and retain the exported EPUB as a
+separate file. A receipt does not mean the external EPUB is inside a library
+backup. After moving or restoring the library, explicitly select the existing
+EPUB through **Verify receipt**, or pass `--file EXISTING_FILE.epub` to
+`verify-publication`. Verification checks its exact bytes and media-overlay
+graph; it does not re-encode audio. A prepared receipt can recover an EPUB that
+finished publishing just before receipt finalization was interrupted.
+
+The optional development acceptance script `scripts/epubcheck_acceptance.py`
+uses the exact EPUBCheck 5.3.0 archive pinned in `packaging/epubcheck.json`. It
+checks three synthetic EPUB 3.3 variants and rejects a deliberately invalid
+mimetype. The checker is not an application dependency and is not included in
+delivery. Package conformance and source/import tests do not qualify a particular
+external reader, NVDA, listening quality, WCAG conformance, DAISY or Braille.
+
 ## Effects and precise limitations
 
 `effect_controls()` returns parameter defaults, numeric ranges and units for

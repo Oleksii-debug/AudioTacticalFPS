@@ -13,6 +13,7 @@ import time
 from uuid import uuid4
 
 from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, state_lock
+from .managed_inputs import project_managed_inputs, resolve_managed_input
 from .project import Project, ProjectStore, parse_script, _id
 
 ENGINE_SCHEMA = 'studio-local-dag-v1'
@@ -79,6 +80,8 @@ class ProductionService:
         self.jobs_root.mkdir(exist_ok=True)
         self.cache = self.root / 'cache'
         self.cache.mkdir(exist_ok=True)
+        self.inputs = self.root / 'inputs'
+        self.inputs.mkdir(exist_ok=True)
         self._voices = voices
         self.runtime_factory = runtime_factory
         self.input_roots = tuple(local_path(x, exists=True) for x in input_roots)
@@ -100,23 +103,29 @@ class ProductionService:
             raise ValueError('Choose a supported local audio output format.')
         if type(stems) is not bool or not isinstance(project, Project):
             raise ValueError('Invalid production options.')
+        job_id = _id(operation_id) if operation_id else uuid4().hex
+        existing_path = self.jobs_root / job_id / 'job.json'
+        previous = self.get(job_id) if existing_path.exists() else None
+        # An old absolute destination is inert after restore, even when this is
+        # an otherwise idempotent submission of a completed job.
+        if previous is not None:
+            self._require_origin(previous)
         if any(not role.voice_id for role in project.roles if any(
                 line.role == role.id and line.text for scene in project.scenes for line in scene.lines)):
             raise ValueError('Assign an installed voice to every speaking role before rendering.')
-        available = {voice.id for voice in self.voices.voices()}
-        if any(role.voice_id not in available for role in project.roles if role.voice_id):
-            raise ValueError('A selected local voice is no longer available. Reassign the role.')
+        speaking = {line.role for scene in project.scenes for line in scene.lines if line.text}
+        if speaking:
+            available = {voice.id for voice in self.voices.voices()}
+            if any(role.voice_id not in available for role in project.roles if role.id in speaking):
+                raise ValueError('A selected local voice is no longer available. Reassign the role.')
         destination = local_path(destination, exists=True)
         if not destination.is_dir():
             raise ValueError('Choose an existing local output directory.')
         # Projects and queues remain private; output never replaces their state.
         if destination.is_relative_to(self.root):
             raise ValueError('Choose an output directory outside the private production state.')
-        job_id = _id(operation_id) if operation_id else uuid4().hex
         output = destination / f'{_output_name(project.title)}-{job_id[:12]}'
-        existing_path = self.jobs_root / job_id / 'job.json'
-        if existing_path.exists():
-            previous = self.get(job_id)
+        if previous is not None:
             if (previous['fingerprint'] != project.fingerprint or previous['destination'] != str(output)
                     or previous['format'] != format or previous['stems'] != stems):
                 raise ValueError('This operation ID is already bound to a different production plan.')
@@ -126,6 +135,8 @@ class ProductionService:
                  'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
                  'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
                  'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
+        if project.schema == 2:
+            state['origin'] = self._local_origin()
         directory = self.jobs_root / job_id
         directory.mkdir()
         atomic_json(directory / 'job.json', state)
@@ -138,7 +149,57 @@ class ProductionService:
         project = Project.from_dict(state['project'])
         if state.get('fingerprint') != project.fingerprint:
             raise ValueError('The saved production plan changed.')
+        if project.schema == 2:
+            recovery = dict(state.get('recovery', {}))
+            recovery['requires_output_directory'] = state.get('origin') != self._local_origin()
+            state['recovery'] = recovery
         return state
+
+    def _local_origin(self):
+        """A fresh local admission identity, deliberately excluded from backup."""
+        path = self.root / '.local-origin.json'
+        with state_lock(self.root, 'origin'):
+            if not path.exists():
+                atomic_json(path, {'schema': 'carr-studio-origin/1',
+                                   'nonce': uuid4().hex + uuid4().hex})
+            value = read_json(path)
+        if (not isinstance(value, dict) or set(value) != {'schema', 'nonce'}
+                or value.get('schema') != 'carr-studio-origin/1'
+                or not isinstance(value.get('nonce'), str)
+                or re.fullmatch(r'[0-9a-f]{64}', value['nonce']) is None):
+            raise ValueError('The local Studio origin identity is invalid.')
+        return {'studio_root': str(self.root), 'nonce': value['nonce']}
+
+    def _require_origin(self, state):
+        if state['project'].get('schema') == 2 and state.get('origin') != self._local_origin():
+            raise ValueError('This restored production needs a newly selected output directory. '
+                             'Approve it before running or inspecting old output files.')
+
+    def relocate_restored_job(self, job_id, destination):
+        """Approve a fresh output for portable input bytes; never open old paths."""
+        job_root = self.jobs_root / _id(job_id)
+        with state_lock(job_root, 'render'):
+            state = self.get(job_id)
+            project = Project.from_dict(state['project'])
+            if project.schema != 2 or not state.get('recovery', {}).get('requires_output_directory'):
+                raise ValueError('Only a restored portable production needs output relocation.')
+            parent = local_path(destination, exists=True)
+            if not parent.is_dir() or parent.is_relative_to(self.root):
+                raise ValueError('Choose an existing output directory outside the private production state.')
+            output = parent / f'{_output_name(project.title)}-{job_id[:12]}-restored-{uuid4().hex[:12]}'
+            if output.exists():
+                raise FileExistsError('Choose a fresh output directory for the restored production.')
+            recovery = dict(state.get('recovery', {}))
+            previous = list(recovery.get('previous', []))
+            previous.append({name: state.get(name) for name in (
+                'origin', 'destination', 'status', 'nodes', 'artifacts', 'runtime', 'result')})
+            state.update(origin=self._local_origin(), destination=str(output), status='pending',
+                         nodes={}, artifacts=[], runtime=None, progress='', error='')
+            state.pop('result', None)
+            state['recovery'] = {'requires_output_directory': False, 'previous': previous,
+                                 'output_approved': time.time()}
+            self._save(state)
+            return state
 
     def jobs(self):
         return tuple(self.get(path.parent.name) for path in sorted(self.jobs_root.glob('*/job.json')))
@@ -159,10 +220,18 @@ class ProductionService:
 
     def _runtime(self):
         if self.runtime_factory is not None:
-            return self.runtime_factory(self.cache, input_roots=(self.cache, *self.input_roots))
+            return self.runtime_factory(self.cache, input_roots=(self.cache, self.inputs, *self.input_roots))
         from ..runtime_settings import audio_runtime
         return audio_runtime(self.cache, state_root=self.root.parent,
-                             input_roots=(self.cache, *self.input_roots))
+                             input_roots=(self.cache, self.inputs, *self.input_roots))
+
+    def _cue_source(self, cue, *, cancelled=lambda: False, schema=2):
+        if schema == 2:
+            return resolve_managed_input(self.root, cue.path, cancelled=cancelled)
+        source = local_path(cue.path, exists=True)
+        if not any(source.is_relative_to(root) for root in self.input_roots):
+            raise ValueError('A cue is outside the explicitly selected input directories.')
+        return source
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
         from ..audio import AudioCancelled, Track, MusicSpec
@@ -170,6 +239,7 @@ class ProductionService:
         job_root = self.jobs_root / _id(job_id)
         with state_lock(job_root, 'render'):
             state = self.get(job_id)
+            self._require_origin(state)
             if state['status'] == 'complete':
                 self._verify_artifacts(state)
                 return state
@@ -243,8 +313,10 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))
 
             roles = {role.id: role for role in project.roles}
-            voices = {voice.id: voice for voice in self.voices.voices()}
+            speaking = any(line.text for scene in project.scenes for line in scene.lines)
+            voices = {voice.id: voice for voice in self.voices.voices()} if speaking else {}
             timeline, scene_results, stem_scenes, chapter_data = [], [], {}, []
+            clip_timeline, clip_stems = [], {}
             offset = 0.0
             try:
                 for scene_index, scene in enumerate(project.scenes, 1):
@@ -280,15 +352,38 @@ class ProductionService:
                         clips.append(clip)
                         clip_roles.append((role.id, clip_info.duration))
                         cursor += clip_info.duration
-                    if not clips:
-                        clip, info = silence(max(scene.minimum_duration, 1))
-                        clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     required_duration = scene.minimum_duration
+                    cue_tracks = []
                     for cue in scene.cues:
-                        source = local_path(cue.path, exists=True)
-                        if not any(source.is_relative_to(root) for root in self.input_roots):
-                            raise ValueError('A cue is outside the explicitly selected input directories.')
-                        required_duration = max(required_duration, cue.start + runtime.inspect(source).duration)
+                        source = self._cue_source(cue, cancelled=stopping, schema=project.schema)
+                        info = runtime.inspect(source, cancelled=stopping)
+                        available = info.duration - cue.trim_start
+                        selected = available if cue.duration is None else cue.duration
+                        if available <= 0 or selected > available + 1 / info.sample_rate:
+                            raise ValueError('An edited clip selection is outside its original audio.')
+                        if max(cue.fade_in, cue.fade_out) > selected:
+                            raise ValueError('An edited clip fade exceeds its selected audio.')
+                        if project.schema == 2:
+                            selected = round(selected * project.sample_rate) / project.sample_rate
+                        if selected <= 0:
+                            raise ValueError('An edited clip must retain at least one output sample.')
+                        placed = (round(cue.start * project.sample_rate) / project.sample_rate
+                                  if project.schema == 2 else cue.start)
+                        required_duration = max(required_duration, placed + selected)
+                        cue_tracks.append(Track(source, cue.start, cue.gain_db, cue.pan, cue.role,
+                                                cue.trim_start, cue.duration, cue.fade_in, cue.fade_out))
+                        if project.schema == 2:
+                            clip_timeline.append({'scene': scene.id, 'id': cue.id, 'role': cue.role,
+                                'title': cue.title, 'source_sha256': digest_file(source),
+                                'source_duration': info.duration, 'trim_start': cue.trim_start,
+                                'duration': selected, 'start': offset + placed,
+                                'end': offset + placed + selected, 'gain_db': cue.gain_db,
+                                'pan': cue.pan, 'fade_in': cue.fade_in, 'fade_out': cue.fade_out})
+                    if not clips:
+                        duration = (max(required_duration, 1 / project.sample_rate)
+                                    if project.schema == 2 and cue_tracks else max(scene.minimum_duration, 1))
+                        clip, info = silence(duration)
+                        clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     if required_duration > cursor + .5 / project.sample_rate:
                         clip, info = silence(required_duration - cursor)
                         clips.append(clip)
@@ -319,11 +414,7 @@ class ProductionService:
                             lambda target: runtime.concatenate(score_parts, target,
                                 sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
-                    for cue in scene.cues:
-                        source = local_path(cue.path, exists=True)
-                        if not any(source.is_relative_to(root) for root in self.input_roots):
-                            raise ValueError('A cue is outside the explicitly selected input directories.')
-                        tracks.append(Track(source, cue.start, cue.gain_db, cue.pan, cue.role))
+                    tracks.extend(cue_tracks)
                     final_scene, final_info = node('scene mix',
                         {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate},
                         lambda target: runtime.mix(tracks, target, sample_rate=project.sample_rate,
@@ -341,6 +432,16 @@ class ProductionService:
                         if scene.music is not None:
                             # This is the actual pre-duck score; final scene contains measured sidechain ducking.
                             stem_scenes.setdefault('music', []).append((scene.id, music, final_info.duration))
+                        if project.schema == 2:
+                            for role in sorted({track.role for track in cue_tracks}):
+                                selected_tracks = tuple(track for track in cue_tracks if track.role == role)
+                                stem, _ = node('scene clip stem',
+                                    {'tracks': [track_identity(track) for track in selected_tracks],
+                                     'duration': final_info.duration, 'sample_rate': project.sample_rate},
+                                    lambda target, selected_tracks=selected_tracks: runtime.mix(
+                                        selected_tracks, target, duration=final_info.duration,
+                                        sample_rate=project.sample_rate, cancelled=stopping))
+                                clip_stems.setdefault(role, {})[scene.id] = stem
                     timeline.extend(scene_lines)
                     chapter_data.append({'id': scene.id, 'title': scene.title, 'start': offset,
                                          'end': offset + final_info.duration})
@@ -348,6 +449,11 @@ class ProductionService:
                 master, master_info = node('master assembly', [digest_file(row[1]) for row in scene_results],
                     lambda target: runtime.concatenate([row[1] for row in scene_results], target,
                         sample_rate=project.sample_rate, cancelled=stopping))
+                # Revalidate local admission and retained originals before any
+                # external output path is resolved or created.
+                self._require_origin(state)
+                for relative in project_managed_inputs(project):
+                    resolve_managed_input(self.root, relative, cancelled=stopping)
                 output = local_path(state['destination'])
                 marker = output / 'production-owner.json'
                 if output.exists():
@@ -419,6 +525,13 @@ class ProductionService:
                         lambda target, paths=paths: runtime.concatenate(paths, target,
                             sample_rate=project.sample_rate, cancelled=stopping))
                     publish(stem, 'stems/' + role_id + '.wav')
+                for role, mapping in clip_stems.items():
+                    paths = [mapping.get(scene.id) or silence(info.duration)[0]
+                             for scene, _, info in scene_results]
+                    stem, _ = node('complete clip stem', [digest_file(path) for path in paths],
+                        lambda target, paths=paths: runtime.concatenate(paths, target,
+                            sample_rate=project.sample_rate, cancelled=stopping))
+                    publish(stem, 'stems/clips/' + role + '.wav')
                 subtitles = ['WEBVTT\n']
                 srt = []
                 for index, line in enumerate(timeline, 1):
@@ -436,6 +549,10 @@ class ProductionService:
                             'music_continuity': 'Neural segments are separate seeded variations with boundary fades; '
                                                 'continuous neural composition and perceptually seamless joins are not assumed.',
                             'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.'}
+                if project.schema == 2:
+                    metadata['clips'] = clip_timeline
+                    metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
+                        'Music stems are before ducking; recorded clips have no inferred transcript.')
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
                                   ('timeline.json', encode(metadata)),

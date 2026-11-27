@@ -88,6 +88,7 @@ jobs:
           import carr_library.assistant.profiles, carr_library.assistant.state
           import carr_library.assistant.translation_cli, carr_library.assistant.llm, carr_library.assistant.service
           import carr_library.studio.cli, carr_library.ui.assistant_dialog
+          import carr_library.studio.project, carr_library.studio.managed_inputs
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
@@ -101,7 +102,8 @@ jobs:
                    'carr_library.ui.translation_dialog',
                    'carr_library.assistant.profiles', 'carr_library.assistant.state',
                    'carr_library.assistant.translation_cli', 'carr_library.assistant.llm', 'carr_library.assistant.service',
-                   'carr_library.studio.cli', 'carr_library.ui.assistant_dialog')
+                   'carr_library.studio.cli', 'carr_library.ui.assistant_dialog',
+                   'carr_library.studio.project', 'carr_library.studio.managed_inputs')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
@@ -114,7 +116,8 @@ jobs:
                       self.seen = True
           policy = RejectExpectedFailures()
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
-          suites = ['tests/storage/test_v3_state_backup.py',
+          suites = ['tests/storage/test_state_clip_inputs.py',
+                    'tests/storage/test_v3_state_backup.py',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
@@ -155,11 +158,14 @@ jobs:
           ocr_exact = len(ocr_cases) == len(required_ocr) and set(ocr_cases) == required_ocr
           required_state = {'test_state_inventory_rejects_unreadable_subtree[snapshot]', 'test_state_inventory_rejects_unreadable_subtree[restore]', 'test_state_restore_rejects_unlisted_file_before_scanning_later_subtree'}
           state_inventory_exact = required_state <= {c.get('name') for c in cases}
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and ocr_exact and state_inventory_exact
+          clip_backup_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_state_clip_inputs']
+          clip_backup_exact = len(clip_backup_cases) == len(set(clip_backup_cases)) == 17
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and ocr_exact and state_inventory_exact and clip_backup_exact
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), ocr_inventory_cases=sorted(ocr_cases),
                         ocr_inventory_exact=ocr_exact, state_inventory_exact=state_inventory_exact,
+                        clip_backup_exact=clip_backup_exact, clip_backup_cases=clip_backup_cases,
                         manual_nvda='NOT_RUN')
           pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
           print(json.dumps(result), flush=True)
@@ -184,6 +190,30 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare the pinned EPUB3.3 conformance checker
+        id: epubcheck-runtime
+        timeout-minutes: 10
+        run: |
+          $epubcheckWork = Join-Path $env:RUNNER_TEMP 'carr-epubcheck'
+          New-Item -ItemType Directory -Force $epubcheckWork | Out-Null
+          $pin = Get-Content -LiteralPath 'packaging/epubcheck.json' -Raw | ConvertFrom-Json
+          if ($pin.version -ne '5.3.0' -or $pin.size -ne 33071108 -or $pin.sha256 -ne '6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5' -or $pin.url -ne 'https://github.com/w3c/epubcheck/releases/download/v5.3.0/epubcheck-5.3.0.zip') { throw 'Unexpected EPUBCheck3.3 acceptance pin.' }
+          $epubcheckArchive = Join-Path $epubcheckWork 'epubcheck-5.3.0.zip'
+          Invoke-WebRequest -Uri $pin.url -OutFile $epubcheckArchive
+          if ((Get-Item -LiteralPath $epubcheckArchive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $epubcheckArchive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'Pinned EPUBCheck archive size/checksum mismatch.' }
+          # Bind the actual Java runtime, rather than trusting a possible PATH launcher.
+          $epubJavaCommand = (Get-Command java.exe -ErrorAction Stop).Source
+          $epubJavaProperties = @(& $epubJavaCommand -XshowSettings:properties -version 2>&1)
+          if ($LASTEXITCODE -ne 0) { throw 'The selected Java launcher could not identify its runtime.' }
+          $epubJavaHomes = @($epubJavaProperties | ForEach-Object { if ($_.ToString() -match '^\s*java\.home = (.+)$') { $Matches[1].Trim() } })
+          if ($epubJavaHomes.Count -ne 1) { throw 'Java did not report exactly one runtime home.' }
+          $epubJava = [System.IO.Path]::GetFullPath((Join-Path $epubJavaHomes[0] 'bin/java.exe'))
+          if (!(Test-Path -LiteralPath $epubJava -PathType Leaf)) { throw 'The direct Java runtime executable is missing.' }
+          $epubJavaVersion = @(& $epubJava -version 2>&1 | ForEach-Object { $_.ToString() })
+          if ($LASTEXITCODE -ne 0) { throw 'The direct Java runtime could not start.' }
+          "CARR_EPUBCHECK_ARCHIVE=$epubcheckArchive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_EPUBCHECK_JAVA=$epubJava" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          @{ status='PASS'; validator='EPUBCheck5.3.0'; epub_specification='3.3'; archive_sha256=$pin.sha256; java=$epubJava; java_version=$epubJavaVersion; java_sha256=(Get-FileHash -LiteralPath $epubJava -Algorithm SHA256).Hash.ToLowerInvariant(); acquisition='explicit before offline firewall'; bundled=$false } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/epubcheck-test-runtime.json'
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
           $python = (Get-Command python.exe).Source
@@ -217,6 +247,126 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Native Advanced translation controls, vault and derivative workflow failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Require publication, recording and portable clip source contracts
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
+        run: |
+          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify installed publication, recording, clips and EPUB3.3 without egress
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.epubcheck-runtime.outcome == 'success' }}
+        timeout-minutes: 10
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+          PYTEST_ADDOPTS: ''
+        run: |
+          $python = (Get-Command python.exe -ErrorAction Stop).Source
+          $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $publicationPrograms = @($python, $basePython, $env:CARR_EPUBCHECK_JAVA,
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_V3_AUDIO 'bin/ffprobe.exe')) | ForEach-Object {
+            if (!(Test-Path -LiteralPath $_ -PathType Leaf)) { throw 'A required publication runtime executable is missing.' }
+            [System.IO.Path]::GetFullPath($_)
+          } | Sort-Object -Unique
+          $publicationRulePrefix = 'CARR-publication-offline-' + [guid]::NewGuid().ToString('N')
+          $publicationRules = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $publicationPrograms) {
+              $ruleName = $publicationRulePrefix + '-' + $publicationRules.Count
+              $publicationRules += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Offline publication requires enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $publicationRules -ErrorAction Stop)
+            if ($active.Count -ne $publicationPrograms.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Offline publication rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($publicationPrograms | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline publication rules do not cover the selected Python, audio and Java executables.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='selected Python, audio and Java executables; not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/publication-firewall.json'
+            $installedPublication = @'
+          import importlib, json, pathlib, sys, xml.etree.ElementTree as ET
+          import pytest
+          checkout = pathlib.Path.cwd().resolve()
+          names = ('carr_library.studio.publishing', 'carr_library.ui.publishing_dialog',
+                   'carr_library.studio.cli', 'carr_library.ui.studio_dialog',
+                   'carr_library.audio.models', 'carr_library.audio.process', 'carr_library.audio.windows_job', 'carr_library.audio.cleanup', 'carr_library.audio.recording', 'carr_library.speech.runtime', 'carr_library.ui.recording_dialog', 'carr_library.ui.desktop_app',
+                   'carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup')
+          for name in names:
+              importlib.import_module(name)
+          def installed_origins():
+              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
+              assert all(not pathlib.Path(path).is_relative_to(checkout)
+                         and 'site-packages' in {part.casefold() for part in pathlib.Path(path).parts}
+                         for path in origins.values()), origins
+              return origins
+          installed_origins()
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          policy = RejectExpectedFailures()
+          report = pathlib.Path('ci-v3-results/installed-publication.xml')
+          suites = ['tests/studio/test_publishing.py', 'tests/studio/test_publishing_cli.py',
+                    'tests/studio/test_publishing_handlers.py',
+                    'tests/audio/test_recording.py', 'tests/audio/test_recording_cleanup.py', 'tests/audio/test_recording_compatibility.py', 'tests/audio/test_recording_export.py', 'tests/ui/test_recording_dialog.py', 'tests/audio/test_audio_process.py', 'tests/audio/test_publication_fsync.py', 'tests/audio/test_dsp.py', 'tests/studio/test_production_cancellation_outcomes.py', 'tests/speech/test_runtime.py', 'tests/speech/test_python_helper.py', 'tests/audio/test_windows_audio_ownership.py',
+                    'tests/studio/test_clip_editing.py', 'tests/studio/test_clip_restoration.py', 'tests/studio/test_clip_dialog.py', 'tests/studio/test_clip_cli.py', 'tests/storage/test_state_clip_inputs.py', 'tests/studio/test_studio_controller.py']
+          status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+                               '--import-mode=importlib', '--junitxml=' + str(report), *suites],
+                              plugins=[policy])
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          expected = {'test_publishing': 48, 'test_publishing_cli': 5, 'test_publishing_handlers': 7}
+          counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in expected}
+          required = {'test_actual_ffmpeg_completed_job_to_verified_epub',
+                      'test_published_epub_import_and_read_keep_derivative_bytes_unverified',
+                      'test_actual_library_backup_restores_receipt_without_external_epub_authority',
+                      'test_selected_library_root_is_protected_before_audio_encoding',
+                      'test_actual_cli_rejects_new_epub_inside_selected_library',
+                      'test_native_handler_rejects_new_epub_inside_selected_library',
+                      'test_queued_publication_cancelled_when_library_object_changes_at_same_path',
+                      'test_prepared_receipt_recovers_completed_bytes_after_finalization_failure'}
+          recording_modules = ["test_recording","test_recording_cleanup","test_recording_compatibility","test_recording_export","test_recording_dialog","test_audio_process","test_publication_fsync","test_dsp","test_production_cancellation_outcomes","test_runtime","test_python_helper","test_windows_audio_ownership"]
+          recording_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in recording_modules}
+          recording_required = {'test_actual_graceful_stop_finalizes_short_pcm', 'test_actual_cancel_discards_incomplete_capture', 'test_actual_capture_backup_delete_original_root_restore_and_verify', 'test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks', 'test_streamed_export_verifies_original_and_needs_no_microphone_or_engine', 'test_competing_destination_create_at_publication_is_never_overwritten', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[same-path-new-library]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[root-changed]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[frame-closing]', 'test_owned_descendant_cannot_outlive_parent_or_failure[cancel]', 'test_owned_descendant_cannot_outlive_parent_or_failure[timeout]', 'test_owned_descendant_cannot_outlive_parent_or_failure[overflow]', 'test_owned_descendant_cannot_outlive_parent_or_failure[orphan]', 'test_owned_process_preserves_exact_diagnostic_bytes_and_environment', 'test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned', 'test_cancellation_during_flush_does_not_publish'}
+          clip_expected = {"test_clip_editing":20,"test_clip_restoration":16,"test_clip_dialog":32,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
+          clip_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in clip_expected}
+          clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work'}
+          ok = (status == 0 and failed == skipped == 0 and not policy.seen
+                and counts == expected and all(recording_counts.values())
+                and recording_counts['test_windows_audio_ownership'] == 5
+                and clip_counts == clip_expected
+                and clip_required <= {case.get('name') for case in cases}
+                and len(cases) == sum(expected.values()) + sum(recording_counts.values()) + sum(clip_expected.values())
+                and recording_required <= {case.get('name') for case in cases}
+                and required <= {case.get('name') for case in cases})
+          result = dict(status='PASS' if ok else 'FAIL', passed=len(cases)-failed-skipped,
+                        failed=failed, skipped=skipped, expected_failures=policy.seen,
+                        suite_counts=counts, recording_suite_counts=recording_counts,
+                        clip_suite_counts=clip_counts,
+                        origins=installed_origins(), microphone='NOT_RUN', nvda='NOT_RUN')
+          pathlib.Path('ci-v3-results/installed-publication.json').write_text(
+              json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result), flush=True)
+          raise SystemExit(0 if ok else 1)
+          '@
+            $installedPublication | & $python -I -B -X utf8 - 2>&1 | Tee-Object 'ci-v3-results/installed-publication.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed publication source, recovery or export guards failed.' }
+            & $python -I -B scripts/windows_recording_smoke.py --audio-directory $env:CARR_V3_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual installed native synthetic recording failed.' }
+            & $python -I -B scripts/windows_clip_editor_smoke.py --audio-directory $env:CARR_V3_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-clips.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual installed native portable clip editing failed.' }
+            & $python -I -B scripts/windows_publishing_smoke.py --audio-directory $env:CARR_V3_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual installed native EPUB publication failed.' }
+            & $python -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-directory $env:CARR_V3_AUDIO --audio-lock packaging/windows-audio.lock.json --report ci-v3-results/epubcheck-installed.json --require-installed 2>&1 | Tee-Object 'ci-v3-results/epubcheck-installed.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed EPUB3.3 conformance or invalid-mimetype control failed.' }
+          } finally {
+            foreach ($ruleName in $publicationRules) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
       - name: Require progress isolation and actual selected-voice rendering regressions
