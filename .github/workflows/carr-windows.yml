@@ -214,9 +214,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check observed Windows format and OCR regressions before long suites
-        timeout-minutes: 3
+        timeout-minutes: 5
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_document_formats_text.py tests/extract/test_ocr_languages.py 2>&1 | Tee-Object 'ci-results/platform-regressions.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_document_formats_text.py tests/extract/test_ocr_languages.py tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py 2>&1 | Tee-Object 'ci-results/platform-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run required integrated source workflows
