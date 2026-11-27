@@ -237,3 +237,79 @@ def test_real_isbn_cli_lookup_and_save_dispatch_without_wx(monkeypatch, capsys, 
     second = json.loads(capsys.readouterr().out)
     assert second['reference']['id'] == first['reference']['id']
     assert len(requests) == 1 and requests[0].provider == 'openlibrary'
+
+
+
+def _cli_download_fixture(sources, state):
+    from dataclasses import dataclass
+    from pathlib import Path
+
+    @dataclass
+    class Metadata:
+        provider: str = 'openalex'
+        raw_json: bytes = b'{"private":"raw-only"}'
+
+    @dataclass
+    class Source:
+        url: str
+        reported_open_access: bool
+        format: str
+
+    @dataclass
+    class Result:
+        state: str
+        path: Path = Path('synthetic.pdf')
+        receipt_path: Path = Path('receipt.json')
+
+    record = Metadata()
+    preview = SimpleNamespace(doi='10.5555/example', workspace='one',
+        fetched_utc='2026-11-27T00:00:00Z', cached=False, metadata=record,
+        provider_records=(record,), sources=tuple(Source(*source) for source in sources),
+        warnings=(), identifier_kind='doi', identifier='10.5555/example')
+    calls = []
+
+    class App:
+        def lookup_doi(self, workspace, doi, **options):
+            assert (workspace, doi) == ('one', preview.doi)
+            assert options['online_allowed'] is True
+            assert options['providers'] == ('openalex',)
+            return preview
+
+        def acquire_doi_source(self, workspace, candidate, index, folder, **options):
+            assert candidate is preview
+            calls.append((workspace, index, folder, options))
+            return Result(state)
+
+    args = SimpleNamespace(workspaces=['one'], lookup_doi=preview.doi,
+        allow_online_doi=True, doi_provider=['openalex'], unpaywall_email_env=None,
+        download_source_url='https://example.org/paper.pdf', acquisition_folder=Path('new'),
+        confirm_source_rights=True, save_doi_reference=False)
+    return App(), args, calls
+
+
+@pytest.mark.parametrize('state,expected', (
+    ('complete', 0), ('duplicate', 0), ('quarantined', 2), ('failed', 2),
+    ('imported_reference_pending', 2),
+))
+def test_cli_download_status_reports_partial_results(state, expected, capsys):
+    from pathlib import Path
+    app, args, calls = _cli_download_fixture((('https://example.org/paper.pdf', True, 'pdf'),), state)
+    assert run(app, args) == expected
+    assert calls == [('one', 0, Path('new'), {'online_allowed': True, 'rights_confirmed': True})]
+    output = capsys.readouterr().out
+    assert json.loads(output)['acquisition']['state'] == state
+    assert 'raw_json' not in output and 'raw-only' not in output
+
+
+@pytest.mark.parametrize('sources', (
+    (),
+    (('https://example.org/paper.pdf', False, 'pdf'),),
+    (('https://example.org/paper.pdf', True, 'html'),),
+    (('https://example.org/other.pdf', True, 'pdf'),),
+    (('https://example.org/paper.pdf', True, 'pdf'), ('https://example.org/paper.pdf', True, 'pdf')),
+))
+def test_cli_wrong_or_ambiguous_source_never_downloads(sources):
+    app, args, calls = _cli_download_fixture(sources, 'complete')
+    with pytest.raises(ValueError, match='missing or ambiguous'):
+        run(app, args)
+    assert not calls
