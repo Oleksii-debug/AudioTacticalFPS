@@ -395,6 +395,7 @@ def show_assistant(frame):
 def show_provider_settings(frame):
     import wx
     from ..assistant import ProfileStore, ProviderProfile, WindowsCredentialVault
+    from ..assistant.profiles import ADAPTERS, google_oauth_token, save_google_token
     store = ProfileStore(frame.library.root / 'state' / 'providers')
     vault = WindowsCredentialVault()
     dialog = wx.Dialog(frame, title='AI and API connections — optional', size=(760, 650),
@@ -419,7 +420,8 @@ def show_provider_settings(frame):
     def edit(event=None, *, new=False):
         index = listing.GetSelection()
         current = rows[index] if not new and 0 <= index < len(rows) else None
-        form = wx.Dialog(dialog, title='Add connection' if current is None else 'Edit connection', size=(650, 700))
+        form = wx.Dialog(dialog, title='Add connection' if current is None else 'Edit connection', size=(760, 860),
+                         style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         box = wx.BoxSizer(wx.VERTICAL)
         def field(label, value='', password=False):
             box.Add(wx.StaticText(form, label=label), 0, wx.ALL, 4)
@@ -429,7 +431,7 @@ def show_provider_settings(frame):
             return control
         name = field('Account name', current.name if current else '')
         box.Add(wx.StaticText(form, label='Adapter'), 0, wx.ALL, 4)
-        adapter = wx.Choice(form, choices=['openai-compatible', 'elevenlabs', 'google-translation-v2'])
+        adapter = wx.Choice(form, choices=list(ADAPTERS))
         adapter.SetStringSelection(current.adapter if current else 'openai-compatible')
         box.Add(adapter, 0, wx.EXPAND | wx.ALL, 4)
         endpoint = field('Official endpoint or explicitly chosen loopback service', current.endpoint if current else 'http://127.0.0.1:8080/v1')
@@ -437,7 +439,8 @@ def show_provider_settings(frame):
         voice = field('Voice ID; blank for language models', current.voice or '' if current else '')
         capability = field('Capabilities: llm.chat, speech.synthesize, music.compose, sfx.generate, translation.text, translation.languages',
                            ','.join(current.capabilities) if current else 'llm.chat')
-        secret = field('New API key; leave empty to keep existing key', password=True)
+        secret = field('New credential; API key for Basic v2, OAuth access token for Advanced v3; blank keeps it', password=True)
+        token_expiry = field('Advanced v3 token expiry with UTC offset; for example 2026-11-27T15:30:00Z')
         local = wx.CheckBox(form, label='This is a local loopback service')
         local.SetValue(current.local if current else True)
         enabled = wx.CheckBox(form, label='Enable this profile for explicitly authorized jobs')
@@ -449,8 +452,16 @@ def show_provider_settings(frame):
                 capability.ChangeValue('translation.text,translation.languages')
                 voice.ChangeValue('')
                 local.SetValue(False)
+            elif adapter.GetStringSelection() == 'google-translation-v3':
+                endpoint.ChangeValue('https://translation.googleapis.com/v3/projects/PROJECT_NUMBER/locations/global')
+                model.ChangeValue('general/nmt')
+                capability.ChangeValue('translation.text,translation.languages')
+                voice.ChangeValue('')
+                local.SetValue(False)
+            token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
             event.Skip()
         adapter.Bind(wx.EVT_CHOICE, adapter_defaults)
+        token_expiry.Enable(adapter.GetStringSelection() == 'google-translation-v3')
         box.Add(local, 0, wx.ALL, 4)
         box.Add(enabled, 0, wx.ALL, 4)
         box.Add(form.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 5)
@@ -461,16 +472,21 @@ def show_provider_settings(frame):
             identity = current.id if current else uuid4().hex
             profile = ProviderProfile(identity, name.GetValue(), adapter.GetStringSelection(), endpoint.GetValue(),
                 model.GetValue(), tuple(x.strip() for x in capability.GetValue().split(',') if x.strip()),
-                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None)
+                current.credential_ref if current else None, local.GetValue(), enabled.GetValue(), voice.GetValue() or None,
+                rights_note=current.rights_note if current else '')
             authority_changed = current and (current.endpoint, current.adapter, current.local) != (profile.endpoint, profile.adapter, profile.local)
             if authority_changed:
                 profile = replace(profile, credential_ref=None, enabled=False)
             new_reference = None
-            if secret.GetValue():
+            oauth_saved = bool(secret.GetValue()) and profile.adapter == 'google-translation-v3'
+            if oauth_saved:
+                profile = save_google_token(store, vault, profile, secret.GetValue(), token_expiry.GetValue(), current=current)
+            elif secret.GetValue():
                 new_reference = vault.put(profile.id, secret.GetValue())
                 profile = replace(profile, credential_ref=new_reference)
             try:
-                store.save(profile)
+                if not oauth_saved:
+                    store.save(profile)
             except Exception:
                 if new_reference:
                     vault.delete(profile.id, new_reference)
@@ -479,7 +495,8 @@ def show_provider_settings(frame):
                 vault.delete(current.id, current.credential_ref)
             secret.ChangeValue('')
             refresh()
-            status.ChangeValue('Saved. Credentials are held by Windows Credential Manager. No provider was contacted.')
+            status.ChangeValue('Saved. Credentials are held by Windows Credential Manager. No provider was contacted.' +
+                (' OAuth token expiry: ' + token_expiry.GetValue() + '. Re-enter explicitly before expiry; no automatic refresh.' if oauth_saved else ''))
         except Exception as exc:
             status.ChangeValue(str(exc))
         finally:
@@ -508,9 +525,15 @@ def show_provider_settings(frame):
             return
         try:
             profile = store.get(rows[index].id)
+            expiry_notice = ''
             if profile.credential_ref:
-                vault.get(profile.id, profile.credential_ref)
-            status.ChangeValue('Local profile and credential configuration is valid. API connectivity, pricing and access were not tested.')
+                record = vault.get(profile.id, profile.credential_ref)
+                if profile.adapter == 'google-translation-v3':
+                    from datetime import datetime, timezone
+                    _, expiry = google_oauth_token(record, profile.endpoint)
+                    expiry_notice = ' OAuth expiry: ' + datetime.fromtimestamp(expiry, timezone.utc).isoformat() + '. No automatic refresh.'
+                del record
+            status.ChangeValue('Local profile and credential configuration is valid. API connectivity, pricing and access were not tested.' + expiry_notice)
         except Exception as exc:
             status.ChangeValue(str(exc))
         status.SetFocus()

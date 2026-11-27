@@ -1295,7 +1295,7 @@ def test_native_saved_resume_requires_the_exact_visible_account_before_gateway(
     def scenario():
         window.find('Optional price').ChangeValue('99')
         window.click('Saved jobs')
-        account = window.find('Google Basic v2')
+        account = window.find('Google API account')
         assert account.GetSelection() == -1
         assert window.find('Optional price').GetValue() == ''
         status = window.find('Preview, supported')
@@ -1326,7 +1326,7 @@ def test_native_saved_resume_rereads_catalog_after_dialog_and_worker_queue(
     calls = len(connection['calls'])
     def scenario():
         window.click('Saved jobs')
-        account = window.find('Google Basic v2')
+        account = window.find('Google API account')
         assert account.GetSelection() == 0
         window.state['deferred'] = True
         account.SetFocus()
@@ -1361,7 +1361,7 @@ def test_native_saved_resume_matches_visible_account_and_numeric_budget(
     calls = len(connection['calls'])
     def scenario():
         window.click('Saved jobs')
-        account = window.find('Google Basic v2')
+        account = window.find('Google API account')
         assert account.GetSelection() == 0
         account.SetSelection(1 if wrong_account else 0)
         window.find('Maximum approved').ChangeValue('2.00')
@@ -1395,7 +1395,7 @@ def test_native_completed_export_keeps_original_lineage_without_current_account(
     calls, secrets = len(connection['calls']), len(case.vault.calls)
     def scenario():
         window.click('Saved jobs')
-        assert window.find('Google Basic v2').GetSelection() == -1
+        assert window.find('Google API account').GetSelection() == -1
         window.click('Export')
         target, = tmp_path.glob('Translation-*')
         reading = ReadingDocument.load(target / 'translation.reading.json')
