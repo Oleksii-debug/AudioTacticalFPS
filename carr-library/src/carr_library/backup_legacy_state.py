@@ -18,6 +18,9 @@ MAX_STATE_FILES = 100_000
 # The common canonical v4 format separates 32 GiB generated media from a
 # 512 MiB metadata budget. Both remain bounded when retained as inert history.
 MAX_STATE_BYTES = 32 * 1024**3 + 512 * 1024**2
+# Only the exact typed canonical ASR envelope requests this larger aggregate.
+# Default callers retain the historical budget above.
+MAX_TYPED_ARCHIVE_BYTES = MAX_STATE_BYTES + 64 * 1024**3
 
 
 def relative_name(value):
@@ -67,7 +70,7 @@ def validate_state(entries, *, max_files=MAX_STATE_FILES, max_bytes=MAX_STATE_BY
         total += item['size_bytes']
     if names & directories:
         raise ValueError('Conflicting legacy application state file and directory paths.')
-    if total > min(max_bytes, MAX_STATE_BYTES):
+    if total > min(max_bytes, MAX_TYPED_ARCHIVE_BYTES):
         raise ValueError('Legacy application state exceeds its byte budget.')
 
 
@@ -116,9 +119,9 @@ def _inventory(source, entries, cancelled, *, ignored=()):
 
 
 def verify_state(source, target, entries, *, cancelled=lambda: False, destination_name=None,
-                 ignored=()):
+                 ignored=(), max_bytes=MAX_STATE_BYTES):
     """Stream verified bytes, optionally into a fresh private staging tree."""
-    validate_state(entries)
+    validate_state(entries, max_bytes=max_bytes)
     source = local_path(source, exists=True)
     regular(source, directory=True)
     if target is not None:

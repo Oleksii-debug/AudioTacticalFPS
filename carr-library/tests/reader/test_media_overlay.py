@@ -4,6 +4,8 @@ from io import BytesIO
 from threading import Event
 from zipfile import ZipFile
 import os
+from pathlib import Path
+import runpy
 import wave
 
 import pytest
@@ -47,12 +49,13 @@ def publications(tmp_path_factory):
     studio.configure(voice='fixture:pcm', language='en')
     studio.save_in_library()
     result = render_project(studio.plan(), studio.output_dir, engine=Synthetic(), ffmpeg=ffmpeg)
-    service = PublicationService(studio.output_dir, private_root=app.root, ffmpeg=ffmpeg,
-                                 max_bytes=512 * 1024**2)
+    # Exercise the exact native-probe producer, not a more permissive parallel
+    # fixture. Both EPUB and DAISY must be admitted before any wx/device proof.
+    probe = runpy.run_path(str(Path(__file__).resolve().parents[2]
+                              / 'scripts' / 'windows_media_overlay_smoke.py'))
     paths = {'epub': root / 'Recorded book.epub', 'daisy': root / 'Recorded book.zip'}
-    service.export_epub(result['run_key'], paths['epub'], language='en', creator='Synthetic author')
-    service.export_daisy(result['run_key'], paths['daisy'], language='en', creator='Synthetic author',
-                         publisher='Synthetic publisher')
+    probe['export_fixture_publications'](studio.output_dir, app.root, result['run_key'],
+                                         paths, ffmpeg=ffmpeg)
     return paths, ffmpeg
 
 

@@ -6,8 +6,24 @@ import os
 from pathlib import Path
 import tempfile
 from time import monotonic
+from types import SimpleNamespace
 import traceback
 import wave
+
+
+def export_fixture_publications(project_dir, library_root, run_key, paths, *, ffmpeg):
+    """Build the actual probe books with the producer's full staging allowance.
+
+    Publication reserves up to 128 MiB for validated XML in addition to its PCM,
+    MP3 and independent verification files. A 128 MiB total cannot admit even
+    this small fixture. The reader still uses its separate 16 MiB input budget.
+    """
+    from carr_library.audio.publishing import PublicationService
+    service = PublicationService(project_dir, private_root=library_root, ffmpeg=ffmpeg,
+                                 max_bytes=512 * 1024**2)
+    service.export_epub(run_key, paths['epub'], language='en', creator='Synthetic author')
+    service.export_daisy(run_key, paths['daisy'], language='en', creator='Synthetic author',
+                         publisher='Synthetic publisher')
 
 
 def main():
@@ -22,7 +38,6 @@ def main():
     from carr_library.audio.ffmpeg import wav_info
     from carr_library.audio.jobs import sha256_file
     from carr_library.audio.production import render_project
-    from carr_library.audio.publishing import PublicationService
     from carr_library.audio.runtime import resolve_ffmpeg
     from carr_library.operations import ResourceBroker
     from carr_library.reader.publication_state import PublicationPositions
@@ -31,7 +46,7 @@ def main():
 
     checks, failures, metrics, timers = [], [], {}, []
     state = {'active': True, 'phase': 'prepare-epub', 'window': None, 'done': False}
-    deadline = monotonic() + 90
+    deadline = monotonic() + 120
     gui = wx.App(False)
     frame = wx.Frame(None, title='Installed synchronized publication acceptance')
     frame.Show()
@@ -74,12 +89,9 @@ def main():
         studio.configure(voice='fixture:pcm', language='en')
         studio.save_in_library()
         result = render_project(studio.plan(), studio.output_dir, engine=Synthetic(), ffmpeg=ffmpeg)
-        service = PublicationService(studio.output_dir, private_root=app.root, ffmpeg=ffmpeg,
-                                     max_bytes=128 * 1024**2)
         paths = {'epub': root / 'Українська.epub', 'daisy': root / 'Українська.zip'}
-        service.export_epub(result['run_key'], paths['epub'], language='en', creator='Synthetic author')
-        service.export_daisy(result['run_key'], paths['daisy'], language='en', creator='Synthetic author',
-                             publisher='Synthetic publisher')
+        export_fixture_publications(studio.output_dir, app.root, result['run_key'], paths,
+                                    ffmpeg=ffmpeg)
         original = {kind: sha256_file(path) for kind, path in paths.items()}
         saved = {}
 
@@ -129,6 +141,36 @@ def main():
                           window.player.path is None and not window.session._transport_active)
                     check('resource reservations released ' + kind,
                           ResourceBroker.for_app(app.root).snapshot()['leases'] == [])
+                    window.playback_speed.ChangeValue('2')
+                    window.playback_pitch.ChangeValue('4')
+                    window.playback_volume.ChangeValue('.5')
+                    window.playback_pan.ChangeValue('-.25')
+                    deferred = []
+                    def defer(begin, **kwargs):
+                        deferred.append(begin)
+                        return SimpleNamespace(close=lambda: deferred.clear())
+                    # Drive the actual Play event and worker, but hold the
+                    # existing media-approval callback before any device opens.
+                    window.progress = SimpleNamespace(media_action=defer)
+                    state['deferred'] = deferred
+                    press(window.controls['play'])
+                    state['phase'] = 'controlled-' + kind
+                elif phase in ('controlled-epub', 'controlled-daisy'):
+                    if window.future is not None:
+                        schedule()
+                        return
+                    kind = phase.split('-', 1)[1]
+                    controlled = window.session._prepared_playback
+                    document = window.session.document
+                    check('actual independent recorded-reader controls ' + kind,
+                          controlled is not None and controlled.audio_frames == round(document.frames / 2)
+                          and controlled.source_sha256 == document.audio_sha256)
+                    check('deferred native playback keeps both PCM owners ' + kind,
+                          len(state['deferred']) == 1 and window.player.path is None
+                          and controlled._reader is not None and window.session._reader is not None)
+                    check('recorded-reader source mapping is labelled estimated ' + kind,
+                          window.session.source_time_accuracy == 'estimated_after_time_stretch')
+                    state['controlled_pcm'] = controlled.audio
                     window.chapter.SetFocus()
                     state['phase'] = 'focus-' + kind
                 elif phase in ('focus-epub', 'focus-daisy'):
@@ -156,8 +198,11 @@ def main():
                     check('exact-source position saved ' + kind,
                           PublicationPositions(app.root).load(window.session.document) == saved[kind])
                     check('stop preserves prepared PCM for replay ' + kind, state['old_pcm'].is_file())
+                    check('stop releases both playback verification readers ' + kind,
+                          window.session._reader is None and window.session._prepared_playback._reader is None)
                     if kind == 'epub':
                         state['epub_pcm'] = state['old_pcm']
+                        state['epub_controlled_pcm'] = state['controlled_pcm']
                         state['phase'] = 'prepare-daisy'
                     else:
                         state['phase'] = 'reload-epub'
@@ -168,6 +213,8 @@ def main():
                         schedule()
                         return
                     check('new load released old owned PCM', not state['epub_pcm'].exists())
+                    check('new load released old independent playback PCM',
+                          not state['epub_controlled_pcm'].exists())
                     check('exact publication cursor restored after another book',
                           window.session.document.kind == 'epub' and window.session.cursor == saved['epub'])
                     check('restored native text is exact', window.text.GetValue() == 'Last line.')

@@ -42,7 +42,13 @@ from .backup_historical import (
     state_paths as _historical_files, validate_state_tree as _validate_historical,
     retain_state as _retain_historical, manifest_layout as _historical_layout,
     validate_manifest as _validate_historical_manifest, root_entries as _historical_entries,
-    source_inventory as _historical_inventory,
+    source_inventory as _historical_inventory, verify_source as _verify_historical_source,
+)
+from .legacy_transcription import (
+    is_state_path as _legacy_asr_path, state_limit as _legacy_asr_limit,
+    state_paths as _legacy_asr_files, validate_state_tree as _validate_legacy_asr,
+    snapshot_guard as _legacy_asr_guard, capture_live as _capture_legacy_asr,
+    check_live as _check_legacy_asr, snapshot_entries as _legacy_asr_entries,
 )
 from .operations.policy_backup import (
     MAX_BYTES as MAX_RESOURCE_POLICY,
@@ -328,7 +334,7 @@ def _validate_transcriptions(db, root, *, cancelled=lambda: False):
 
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
-    if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
+    if (_reader_path(value) or _assistant_path(value) or _historical_path(value) or _legacy_asr_path(value)
             or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)
             or _recording_path(value) or _media_path(value)):
         return True
@@ -412,10 +418,11 @@ def _sidecar_info(root, relative):
              _translation_adapter().state_limit(relative) if _translation_path(relative) else
              _transcription_adapter().state_limit(relative) if _transcription_path(relative) else
              _recording_limit(relative) if _recording_path(relative) else
+             _legacy_asr_limit(relative) if _legacy_asr_path(relative) else
              _media_limit(relative) if _media_path(relative) else
              MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
-    minimum = 0 if (_historical_path(relative) or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))
+    minimum = 0 if (_historical_path(relative) or _legacy_asr_path(relative) or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))
         or _transcription_path(relative) and _transcription_adapter().allows_empty(relative)
         or _recording_empty(relative)) else 1
     if not minimum <= info.st_size <= limit:
@@ -481,6 +488,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
     media = _media_files(root, cancelled=cancelled)
     sessions = session_paths(root, cancelled=cancelled)
     with ExitStack() as stack:
+        stack.enter_context(_legacy_asr_guard(root))
         stack.enter_context(session_snapshot_guard(root, cancelled=cancelled))
         if session_paths(root, cancelled=cancelled) != sessions:
             raise RestoreError('Canonical reading drafts changed before backup. Retry when idle.')
@@ -689,6 +697,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         add(path)
     for path in _historical_files(root, cancelled=cancelled):
         add(path)
+    for path in _legacy_asr_files(root, cancelled=cancelled):
+        add(path)
     for path in _translation_files(root, cancelled=cancelled):
         add(path)
     for path in _transcription_files(root, cancelled=cancelled):
@@ -873,6 +883,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_studios(snapshot_storage.db, app.root)
                 _validate_assistants(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_historical(app.root, cancelled=cancelled)
+                _validate_legacy_asr(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_translations(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_resource_policy(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
@@ -880,6 +891,17 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_media(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
+            legacy_asr = _capture_legacy_asr(app.root, stage / SIDECARS, cancelled=cancelled)
+            retained = {row['path']: row for row in sidecars}
+            for row in _legacy_asr_entries(stage / SIDECARS, legacy_asr):
+                previous = retained.setdefault(row['path'], row)
+                if previous != row:
+                    raise RestoreError('Conflicting historical transcription archive.')
+            sidecars = list(retained.values())
+            if (len(sidecars) > max_sidecar_files
+                    or sum(row['size_bytes'] for row in sidecars) > max_sidecar_bytes):
+                raise RestoreError('Historical transcription exceeds the complete-backup budget.')
+
             # Refuse a newly introduced project before interpreting its files.
             # The final check also covers inventory changes during the rescan.
             check_projects()
@@ -896,6 +918,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             # Reuse the bounded streaming reader after all other components
             # have been captured, before publishing any completed backup.
             for entry in sidecars:
+                if entry['path'] not in inventory:
+                    continue  # New inert archive is checked against its frozen live source below.
                 if cancelled():
                     raise InterruptedError('Library backup cancelled during final source verification.')
                 current = _copy_sidecar(app.root, entry['path'], None,
@@ -906,6 +930,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             if inventory != _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled):
                 raise RestoreError('Reading/audio state changed during final backup verification.')
             check_projects()
+            _check_legacy_asr(app.root, legacy_asr, cancelled=cancelled)
             managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
             manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
@@ -1138,7 +1163,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     or not _backup_sidecar_allowed(entry[field])
                     or (not subdirectory and not _reader_path(entry[field]))
                     or type(entry['size_bytes']) is not int or not 0 <= entry['size_bytes'] <= MAX_SIDECAR_FILE_BYTES
-                    or (entry['size_bytes'] == 0 and not _historical_path(entry[field])
+                    or (entry['size_bytes'] == 0 and not _historical_path(entry[field]) and not _legacy_asr_path(entry[field])
                         and not entry[field].lower().endswith(('.srt', '.vtt', '.ffmeta'))
                         and not (_transcription_path(entry[field])
                                  and _transcription_adapter().allows_empty(entry[field]))
@@ -1167,6 +1192,8 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                         or recording_total > MAX_RECORDING_BYTES
                         or recording_files > MAX_RECORDING_FILES or len(recording_ids) > MAX_RECORDINGS):
                     raise RestoreError('Recording sidecar count or byte limit')
+            if _legacy_asr_path(entry[field]) and entry['size_bytes'] > _legacy_asr_limit(entry[field]):
+                raise RestoreError('Historical transcription sidecar byte limit')
             if _resource_policy_path(entry[field]) and entry['size_bytes'] > MAX_RESOURCE_POLICY:
                 raise RestoreError('resource policy sidecar byte limit')
             if _reader_path(entry[field]):
@@ -1287,6 +1314,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
                 _validate_studios(storage.db, checked_root, strict_assets=True)
                 _validate_assistants(storage.db, checked_root, cancelled=cancelled)
                 _validate_historical(checked_root, cancelled=cancelled)
+                _validate_legacy_asr(storage.db, checked_root, cancelled=cancelled)
                 _validate_translations(storage.db, checked_root, cancelled=cancelled)
                 _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
                 _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
@@ -1311,9 +1339,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
                                               expected_manifest_sha256, cancelled=cancelled))
             _validate_historical(stage / SIDECARS, cancelled=cancelled)
         else:
-            from .backup_legacy_state import verify_state
-            subdirectory, historical, ignored = _historical_inventory(manifest)
-            verify_state(source / subdirectory, None, historical, cancelled=cancelled, ignored=ignored)
+            _verify_historical_source(source, manifest, cancelled=cancelled)
     if manifest.get('pending') is not None and not copy_files:
         from .pending_backup import verify_pending
         verify_pending(source / PENDING, stage, manifest['pending'], cancelled=cancelled)

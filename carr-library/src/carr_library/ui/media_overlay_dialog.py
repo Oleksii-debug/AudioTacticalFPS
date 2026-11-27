@@ -5,6 +5,7 @@ from threading import Event
 
 from ..audio.jobs import checked_directory
 from ..audio.player import WavePlayer
+from ..audio.playback_processing import PlaybackControls
 from ..audio.playback import output_devices
 from ..reader.media_overlay import OverlaySession, ReadingBudget, prepare_overlay
 from ..reader.publication_state import PublicationPositions
@@ -95,7 +96,11 @@ class MediaOverlayDialog:
         self.minutes = field('Preparation time allowance, minutes', value='60')
         self.chapter = field('Chapter in the current navigation window', wx.Choice, choices=[])
         self.interval = field('Measured text interval in the current window', wx.Choice, choices=[])
-        self.seek_seconds = field('Go to measured audio time, seconds', value='0')
+        self.seek_seconds = field('Go to original recorded time, seconds', value='0')
+        self.playback_speed = field('Playback speed, 0.25 to 4', value='1')
+        self.playback_pitch = field('Playback pitch, -12 to 12 semitones', value='0')
+        self.playback_volume = field('Playback volume, 0 to 1', value='1')
+        self.playback_pan = field('Playback balance, -1 left to 1 right', value='0')
         self.device = field('Audio output device', wx.Choice, choices=['System default output'])
         self.device.SetSelection(0)
         panel.SetSizer(grid)
@@ -170,7 +175,8 @@ class MediaOverlayDialog:
         active = self.session is not None and self.session._transport_active
         for control in (self.path, self.max_mib, self.minutes):
             control.Enable(idle)
-        for control in (self.chapter, self.interval, self.seek_seconds, self.device):
+        for control in (self.chapter, self.interval, self.seek_seconds, self.device,
+                        self.playback_speed, self.playback_pitch, self.playback_volume, self.playback_pan):
             control.Enable(ready and not active)
         for key in ('choose', 'load'):
             self.controls[key].Enable(idle)
@@ -280,7 +286,7 @@ class MediaOverlayDialog:
                 if position is not None:
                     new_session.seek(position)
                 if previous is not None:
-                    previous.document.close()
+                    previous.dispose_document()
                 self.session = new_session
                 self.warning = ''
                 self.device_ids = [None] + [device.id for device in devices]
@@ -368,10 +374,23 @@ class MediaOverlayDialog:
         except Exception as exc:
             self._error(exc)
 
+    def _playback_settings(self):
+        return (PlaybackControls(float(self.playback_speed.GetValue()),
+            float(self.playback_pitch.GetValue()), float(self.playback_volume.GetValue()),
+            float(self.playback_pan.GetValue())),
+            ReadingBudget(max_bytes=int(self.max_mib.GetValue()) * 1024**2,
+                timeout=float(self.minutes.GetValue()) * 60))
+
     def play(self, event=None):
         if self.future is not None or self.session is None or self.close_pending or self.stop_pending:
             return
         session = self.session
+        try:
+            self.guard()
+            controls, budget = self._playback_settings()
+        except Exception as exc:
+            self._error(exc)
+            return
         self.cancelled.clear()
         self._cancel_media()
         serial = self.serial
@@ -387,7 +406,8 @@ class MediaOverlayDialog:
                 if not 0 <= index < len(self.device_ids):
                     raise ValueError('Choose an available output device.')
                 session.play(device_id=self.device_ids[index])
-                self._say('Recorded audio started. ' + ('Text follows observed audio intervals.'
+                self._say('Recorded audio started. Source-time mapping: ' + session.source_time_accuracy + '. '
+                    + ('Text follows observed audio intervals.'
                     if self.player.native is not None else
                     'This external player does not report a playhead; text remains at your selected interval.'))
                 self._enable()
@@ -398,8 +418,9 @@ class MediaOverlayDialog:
                 begin()
             else:
                 self.media_request = self.progress.media_action(begin, alive=alive, failed=self._error)
-        self._say('Verifying prepared audio before playback...')
-        self._work(lambda: session.verify_audio(cancelled=self._stopped), pinned)
+        self._say('Verifying audio and preparing the selected playback controls...')
+        self._work(lambda: session.prepare_controls(controls, library_root=self.root, budget=budget,
+            cancelled=self._stopped, progress=self._report), pinned)
 
     def pause(self, event=None):
         if self.session is not None and self.future is None:
@@ -425,6 +446,7 @@ class MediaOverlayDialog:
                 str(len(self.session.document.intervals)) + '. Selected/observed time ' +
                 format(position, '.3f') + ' of ' + format(self.session.document.duration, '.3f') +
                 ' seconds. Playback ' + status.state + '; position: ' + status.position_accuracy +
+                '; source-time mapping: ' + self.session.source_time_accuracy +
                 '. Word timing is unavailable.')
         except Exception as exc:
             self._error(exc)

@@ -33,7 +33,7 @@ def main():
 
     checks, failures, timers, metrics = [], [], [], {}
     state = {'active': True, 'window': None, 'phase': 'ready', 'done': False}
-    deadline = monotonic() + 60
+    deadline = monotonic() + 90
     gui = wx.App(False)
     frame = wx.Frame(None, title='Live source reading acceptance')
     frame.Show()
@@ -121,6 +121,12 @@ def main():
                     event.SetEventObject(window.voice)
                     window.voice.GetEventHandler().ProcessEvent(event)
                     check('unsupported SAPI pitch control stays disabled', not window.pitch.IsEnabled())
+                    check('independent playback pitch remains available for SAPI',
+                          isinstance(window.playback_pitch, wx.TextCtrl) and window.playback_pitch.IsEnabled())
+                    window.playback_speed.ChangeValue('1.5')
+                    window.playback_pitch.ChangeValue('3')
+                    window.playback_volume.ChangeValue('0.6')
+                    window.playback_pan.ChangeValue('-0.25')
                     window.mode.SetSelection(window.modes.index('selection'))
                     window.voice.SetFocus()
                     state['phase'] = 'focus'
@@ -147,6 +153,20 @@ def main():
                           selected_source_offsets(window.text, source) == (first, last))
                     check('preparing does not start a device or advance cursor',
                           not window.playing and window.player.path is None and window.session.cursor == first)
+                    controlled = window.session._prepared_playback
+                    check('actual SAPI PCM receives independent FFmpeg playback controls',
+                          controlled is not None and controlled.audio != excerpt.path
+                          and wav_info(controlled.audio).frames == round(info.frames / 1.5)
+                          and controlled.source_sha256 == metrics['pcm_sha256'])
+                    check('stretched reader labels original-time mapping as estimated',
+                          window.session.source_time_accuracy == 'estimated_after_time_stretch'
+                          and window.session.source_to_audio(controlled.source_duration) == controlled.audio_duration)
+                    check('preparation retains controlled PCM and keeps exact original source',
+                          controlled._reader is not None and sha256_file(excerpt.path) == metrics['pcm_sha256']
+                          and window.session.text == source)
+                    state['controlled_pcm'] = controlled.audio
+                    metrics['controlled_pcm_sha256'] = sha256_file(controlled.audio)
+                    metrics['controlled_frames'] = controlled.audio_frames
                     state['temporary_pcm'] = excerpt.path
                     press(window.controls['stop'])
                     state['phase'] = 'stopped'
@@ -158,6 +178,7 @@ def main():
                     check('stop retains only the last completed text cursor',
                           row is not None and row['cursor'] == first)
                     check('stop releases private utterance PCM', not state['temporary_pcm'].exists())
+                    check('stop releases independent playback PCM', not state['controlled_pcm'].exists())
                     check('book resume is exact source-bound',
                           ReadingState(app.root).resume(workspace, book['edition']) == page.location)
                     check('speech resource reservation is released', ResourceBroker.for_app(app.root).snapshot()['leases'] == [])

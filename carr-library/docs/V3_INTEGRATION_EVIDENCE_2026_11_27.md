@@ -3,6 +3,34 @@
 This is a source/evidence checkpoint, not a declaration of full-platform completion.
 The technical scope remains [V3 finalization](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Independent playback and canonical transcription recovery
+
+This continuation composes reviewed playback `af97650` → `0779541` →
+`d75329a` and typed canonical transcription recovery `81e3301` onto
+`5eabbe66456bb6314251a29316cab20b1e85f14b`. Reader-specific integration
+adds the shared independent controls to live speech and recorded EPUB/DAISY.
+Original inputs and source authority stay unchanged. Stop/Close must settle the
+current native owner before releasing verified readers or deleting private PCM.
+Source-time mapping after speed/pitch processing is explicitly estimated.
+
+The source retains all 359 previous distinct main-workflow test paths and requires
+367. New reader tests use actual FFmpeg plus controllable output ownership;
+native probes use actual wx/SAPI/FFmpeg with physical playback and NVDA explicitly
+unclaimed. All exact new tests are **NOT_RUN** during the executor outage, pending
+their GitHub Actions executions. Independent source review is not execution.
+
+Historical ASR archives remain inert and typed. An explicit selected import uses
+the current TranscriptionService, current reviewed runtime and resource admission;
+old completion/results never become new authoritative results. Complete backup
+keeps the exact historical bytes and current restore protections.
+
+The prior `e4aa3ab8` audio run `45990117474` stopped before opening its
+recorded-reader modal: the synthetic publisher fixture selected 128 MiB total,
+equal to the publisher's XML reservation before PCM/MP3. The narrow correction
+`b781e04` selects 512 MiB for that producer fixture and routes the source reader
+test through its exact helper. Reader input limits and production limits are
+unchanged. Earlier steps in that run passed; later unexecuted steps are not PASS.
+
 ## Reader appearance, paced reading and incremental snapshots
 
 This source continues exact `e4aa3ab89a9a600bfecf8c64ae9c4d6f232abdd8`.

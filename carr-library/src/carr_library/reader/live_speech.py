@@ -16,6 +16,8 @@ from uuid import uuid4
 
 from ..audio.engines import Voice, _request
 from ..audio.ffmpeg import wav_info
+from ..audio.capture_types import AudioBudget
+from ..audio.playback_processing import PlaybackControls, prepare_playback
 from ..audio.jobs import (atomic_json, checked_directory, file_identity, read_json,
                           regular_file, sha256_file, verified_reader)
 from ..audio.production import plan_narration
@@ -245,7 +247,8 @@ class SpeechSession:
     Temporary PCM is retained until the caller stops playback and releases it.
     """
     def __init__(self, root, text, settings, selection, *, registry=None, guard=lambda: None,
-                 location=None, broker=None, temporary_parent=None, validate_source=lambda: None):
+                 location=None, broker=None, temporary_parent=None, validate_source=lambda: None,
+                 playback_controls=None, playback_budget=None, ffmpeg=None):
         self.root, self.text = checked_directory(root), _text(text)
         if type(settings) is not SpeechSettings or type(selection) is not SpeechSelection:
             raise ValueError('A selected source range and speech settings are required.')
@@ -255,6 +258,11 @@ class SpeechSession:
         self.validate_source = validate_source
         if location is not None and (type(location) is not ReadingLocation or location.text_sha256 != text_hash(text)):
             raise ValueError('The selected speech text does not match its immutable source location.')
+        self.playback_controls = PlaybackControls() if playback_controls is None else playback_controls
+        self.playback_budget = AudioBudget() if playback_budget is None else playback_budget
+        if type(self.playback_controls) is not PlaybackControls or type(self.playback_budget) is not AudioBudget:
+            raise TypeError('Choose typed independent playback controls and a bounded audio allowance.')
+        self.ffmpeg = ffmpeg
         self.registry = registry
         self.broker = broker
         self.cancel = threading.Event()
@@ -265,6 +273,8 @@ class SpeechSession:
         self.identity = uuid4().hex
         self._voice_identity = None
         self._playback_reader = None
+        self._prepared_playback = None
+        self.invalid_audio = False
 
     def _check(self):
         self.guard()
@@ -278,8 +288,9 @@ class SpeechSession:
         try:
             self._check()
             self.validate_source()
-            if self.current is not None:
+            if self.current is not None or self._prepared_playback is not None:
                 raise RuntimeError('Stop and release the previous utterance before preparing the next one.')
+            self.invalid_audio = False
             selected = next_utterance(self.text, self.cursor, self.selection.end)
             if selected is None:
                 self.cursor = self.selection.end
@@ -316,10 +327,21 @@ class SpeechSession:
                         raise ValueError('The selected voice/runtime changed while rendering.')
                     self.validate_source()
                     stopped()
-                    self.current = RenderedUtterance(selected, path, digest, info.frames, info.rate,
-                                                     text_hash(value), payload_identity)
-                    return self.current
+                # Speech and processing acquire the same coordinator separately:
+                # never wait for another CPU/memory lease while holding synthesis.
+                if not self.playback_controls.original:
+                    self._prepared_playback = prepare_playback(path, self.playback_controls,
+                        library_root=self.root, budget=self.playback_budget, ffmpeg=self.ffmpeg,
+                        broker=self.broker, cancelled=self._check, temporary_parent=self.directory)
+                self.validate_source()
+                self._check()
+                self.current = RenderedUtterance(selected, path, digest, info.frames, info.rate,
+                                                 text_hash(value), payload_identity)
+                return self.current
             except BaseException:
+                # This worker never opened a device; all processor children have
+                # settled. Keep the cleanup owner if deleting private PCM fails.
+                self._discard_prepared(validate=False)
                 path.unlink(missing_ok=True)
                 raise
         finally:
@@ -339,9 +361,12 @@ class SpeechSession:
             self._check()
             self.validate_source()
             excerpt = self.current
+            if self.invalid_audio:
+                raise ValueError('Prepared utterance validation failed. Stop and prepare it again.')
             if excerpt is None:
                 raise ValueError('Prepare an utterance before playing it.')
             if self._playback_reader is not None:
+                self._pin_prepared()
                 return excerpt
             owner = verified_reader(excerpt.path, expected_identity=excerpt.identity)
             stream = owner.__enter__()
@@ -363,33 +388,105 @@ class SpeechSession:
                 owner.__exit__(None, None, None)
                 raise
             self._playback_reader = owner
+            try:
+                self._pin_prepared()
+            except BaseException:
+                self._unpin_playback()
+                raise
             return excerpt
         finally:
             self._lock.release()
 
+    def _pin_prepared(self):
+        if self._prepared_playback is not None:
+            self._prepared_playback.pin(cancelled=self._check)
+            self._prepared_playback.ready()
+
+    @property
+    def playback_path(self):
+        if self.current is None:
+            raise ValueError('Prepare an utterance before playing it.')
+        return (self.current.path if self._prepared_playback is None
+                else self._prepared_playback.audio)
+
+    @property
+    def playback_duration(self):
+        if self.current is None:
+            raise ValueError('Prepare an utterance before inspecting playback.')
+        return (self.current.frames / self.current.sample_rate if self._prepared_playback is None
+                else self._prepared_playback.audio_duration)
+
+    @property
+    def source_time_accuracy(self):
+        return ('sample_frames' if self._prepared_playback is None
+                else self._prepared_playback.source_time_accuracy)
+
+    def source_to_audio(self, seconds):
+        if self.current is None:
+            raise ValueError('Prepare an utterance before seeking.')
+        if self._prepared_playback is not None:
+            return self._prepared_playback.source_to_audio(seconds)
+        from ..audio.models import number
+        return number(seconds, 0, self.playback_duration, 'Original utterance position')
+
+    def audio_to_source(self, seconds):
+        if self.current is None:
+            raise ValueError('Prepare an utterance before inspecting its position.')
+        if self._prepared_playback is not None:
+            return self._prepared_playback.audio_to_source(seconds)
+        from ..audio.models import number
+        return number(seconds, 0, self.playback_duration, 'Utterance playback position')
+
+    def _discard_prepared(self, *, validate=True):
+        prepared = self._prepared_playback
+        if prepared is None:
+            return
+        error = None
+        try:
+            prepared.release()
+        except (OSError, RuntimeError, ValueError) as exc:
+            self.invalid_audio = True
+            error = exc
+        # A failed filesystem cleanup leaves this exact owner reachable for a
+        # later Stop/Close retry. Cursor acknowledgement happens only after it.
+        prepared.close()
+        self._prepared_playback = None
+        if error is not None and validate:
+            raise error
+
     def _unpin_playback(self):
         owner, self._playback_reader = self._playback_reader, None
         if owner is not None:
-            owner.__exit__(None, None, None)
+            try:
+                owner.__exit__(None, None, None)
+            except BaseException:
+                self.invalid_audio = True
+                raise
 
     def check_playback(self):
         """Cheap UI handoff check while the already verified reader stays open."""
         self._check()
-        if self.current is None or self._playback_reader is None:
+        if self.invalid_audio or self.current is None or self._playback_reader is None:
             raise ValueError('The prepared utterance has no verified playback owner.')
         if file_identity(regular_file(self.current.path)) != self.current.identity:
             raise ValueError('The prepared utterance changed while waiting for playback.')
+        if self._prepared_playback is not None:
+            self._prepared_playback.ready()
 
     def release(self, *, completed=False):
         """Call only after the existing player has released its audio handle."""
         if type(completed) is not bool:
             raise ValueError('Playback completion must be explicit.')
+        if completed and self.invalid_audio:
+            raise ValueError('A changed utterance cannot advance the saved text cursor.')
         self._unpin_playback()
+        self._discard_prepared()
         if self.current is not None:
-            if completed:
-                self.cursor = self.current.selection.end
+            completed_cursor = self.current.selection.end
             self.current.path.unlink(missing_ok=True)
             self.current = None
+            if completed:
+                self.cursor = completed_cursor
 
     def checkpoint(self):
         row = SpeechPositionStore(self.root).remember(self.text, self.cursor, self.settings,
@@ -413,6 +510,7 @@ class SpeechSession:
                 # validation failed. Completed-playback release stays strict
                 # and never advances a cursor after such a failure.
                 pass
+            self._discard_prepared(validate=False)
             self.release()
             self._temporary.cleanup()
             self.closed = True

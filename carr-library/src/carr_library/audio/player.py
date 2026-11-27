@@ -34,6 +34,30 @@ def _queue_item(path):
     return _QueueItem(target, duration, (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns))
 
 
+@dataclass(frozen=True)
+class PlaybackConfiguration:
+    """In-memory settings for borrowing this exact player; never an audio start."""
+    owner: object
+    queue: tuple
+    current: object
+    index: int | None
+    loop: object
+    segments: tuple
+    device: object
+    sleep_deadline: object
+
+
+def _snapshot_item(path, *, cancelled=lambda: False):
+    from .jobs import file_identity, regular_file, sha256_file, verified_reader
+    from ..native_file_metadata import stream_change_time
+    with verified_reader(path) as stream:
+        item = _queue_item(path)
+        identity = file_identity(regular_file(path))
+        change = stream_change_time(stream)
+        digest = sha256_file(path, expected_identity=identity, cancelled=cancelled)
+    return item, identity, change, digest
+
+
 class WavePlayer:
     MAX_PLAYLIST = 256
     MAX_SEGMENTS = 10000
@@ -207,6 +231,81 @@ class WavePlayer:
         self._queue, self.playlist_index = items, None
         self._path, self._duration, self._selection_cleared = None, 0, True
         self._ab, self.segments = None, ()
+
+    def capture_configuration(self, *, cancelled=lambda: False):
+        """Stop and capture existing queue/selection settings without a resume.
+
+        Byte readers for a new derivative are separate caller-owned resources.
+        Run on an operation worker: every saved recording is byte-hashed under
+        its native reader. Cancellation stays active during each bounded read.
+        """
+        queue, path, index = self._queue, self.path, self.playlist_index
+        loop, segments = self._ab, tuple(self.segments)
+        device, sleep_deadline = self._device_id, self._sleep_deadline
+        self.stop()
+        states = tuple(_snapshot_item(item.path, cancelled=cancelled) for item in queue)
+        if any(state[0] != item for state, item in zip(states, queue)):
+            raise ValueError('A queued recording changed. Review the playlist before opening playback controls.')
+        current = _snapshot_item(path, cancelled=cancelled) if path is not None else None
+        if index is not None and (not 0 <= index < len(states)
+                or current is None or states[index][0] != current[0]):
+            raise ValueError('The current playback selection changed.')
+        return PlaybackConfiguration(self, states, current, index, loop, segments, device, sleep_deadline)
+
+    def restore_configuration(self, saved, *, cancelled=lambda: False):
+        """Restore checked settings in a stopped state, never open an output.
+
+        The original sleep deadline continues to elapse while another playback
+        view borrows the player. An expired timer is not renewed on return.
+        """
+        if type(saved) is not PlaybackConfiguration or saved.owner is not self:
+            raise ValueError('Playback settings belong to another player.')
+        if (type(saved.queue) is not tuple or len(saved.queue) > self.MAX_PLAYLIST
+                or any(type(row) is not tuple or len(row) != 4
+                       or type(row[0]) is not _QueueItem for row in saved.queue)):
+            raise ValueError('Invalid captured playback queue.')
+        checked = tuple(_snapshot_item(row[0].path, cancelled=cancelled) for row in saved.queue)
+        if checked != saved.queue:
+            raise ValueError('A saved playlist recording changed while playback controls were open.')
+        if saved.current is not None and (type(saved.current) is not tuple or len(saved.current) != 4
+                or type(saved.current[0]) is not _QueueItem):
+            raise ValueError('Invalid saved current recording.')
+        current = None if saved.current is None else _snapshot_item(saved.current[0].path, cancelled=cancelled)
+        if current != saved.current:
+            raise ValueError('The saved current recording changed while playback controls were open.')
+        if saved.index is not None and (type(saved.index) is not int
+                or not 0 <= saved.index < len(checked) or current is None
+                or checked[saved.index][0] != current[0]):
+            raise ValueError('Invalid saved playback selection.')
+        duration = current[0].duration if current is not None else 0
+        if saved.loop is not None and (not isinstance(saved.loop, tuple) or len(saved.loop) != 2
+                or any(type(v) not in (int, float) or not math.isfinite(v) for v in saved.loop)
+                or not 0 <= saved.loop[0] < saved.loop[1] <= duration
+                or saved.loop[1] - saved.loop[0] < .05):
+            raise ValueError('Invalid saved A–B range.')
+        if (type(saved.segments) is not tuple or len(saved.segments) > self.MAX_SEGMENTS
+                or saved.sleep_deadline is not None and (
+                    type(saved.sleep_deadline) not in (int, float)
+                    or not math.isfinite(saved.sleep_deadline))):
+            raise ValueError('Invalid saved playback navigation.')
+        previous = -1
+        for row in saved.segments:
+            if (type(row) is not tuple or len(row) != 2
+                    or type(row[0]) not in (int, float) or not math.isfinite(row[0])
+                    or not previous < row[0] < duration or row[0] < 0
+                    or type(row[1]) is not str or not row[1].strip()
+                    or len(row[1]) > 500 or '\0' in row[1]):
+                raise ValueError('Invalid saved playback segment.')
+            previous = row[0]
+        if saved.device is not None and (type(saved.device) is not int or not 0 <= saved.device <= 4095):
+            raise ValueError('Invalid saved playback output.')
+        self.stop()
+        self._queue, self.playlist_index = tuple(row[0] for row in checked), saved.index
+        self._path, self._duration = (None, 0) if current is None else (current[0].path, duration)
+        self._ab, self.segments, self._device_id = saved.loop, saved.segments, saved.device
+        self._sleep_deadline = (saved.sleep_deadline if saved.sleep_deadline is not None
+                               and saved.sleep_deadline > self._clock() else None)
+        self._auto_advance, self._ended, self._selection_cleared = False, False, True
 
     def enqueue(self, paths):
         self._queue = self._checked_queue(paths, self._queue)

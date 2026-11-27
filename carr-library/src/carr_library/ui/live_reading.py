@@ -4,6 +4,8 @@ from pathlib import Path
 import threading
 
 from ..audio.player import WavePlayer
+from ..audio.capture_types import AudioBudget
+from ..audio.playback_processing import PlaybackControls
 from ..audio.playback import output_devices
 from ..audio.jobs import checked_directory
 from ..reader.live_speech import (MODES, SpeechPositionStore, SpeechSelection, SpeechSession,
@@ -151,6 +153,12 @@ class LiveReadingDialog:
         self.rate = setting('Synthesis &rate, -10 to 10', value='0')
         self.pitch = setting('Voice-native &pitch, -12 to 12; when supported', value='0')
         self.volume = setting('Synthesis &volume, 0 to 1', value='0.8')
+        self.playback_speed = setting('Playback speed, 0.25 to 4', value='1')
+        self.playback_pitch = setting('Playback pitch, -12 to 12 semitones', value='0')
+        self.playback_volume = setting('Playback volume, 0 to 1', value='1')
+        self.playback_pan = setting('Playback balance, -1 left to 1 right', value='0')
+        self.playback_mib = setting('Temporary playback PCM allowance, MiB', value='256')
+        self.playback_timeout = setting('Playback preparation time allowance, seconds', value='120')
         self.modes = list(MODES) + (['book'] if source_loader is not None else [])
         labels = ['Selected text', 'From cursor', 'Current word', 'Current line',
                   'Current sentence (punctuation boundaries)', 'Current paragraph',
@@ -161,7 +169,7 @@ class LiveReadingDialog:
         self.mode.SetSelection(0 if selection is not None and selection[0] != selection[1] else 1)
         self.device = setting('Audio output &device', wx.Choice, choices=['System default output'])
         self.device.SetSelection(0)
-        self.seek_seconds = setting('Seek within the current utterance, seconds', value='0')
+        self.seek_seconds = setting('Seek in the original utterance, seconds', value='0')
         settings_panel.SetSizer(settings_grid)
         layout.Add(settings_panel, 1, wx.EXPAND | wx.ALL, 4)
         self.status = field('Reading status; sentence-level highlight, no synthesized word timing',
@@ -294,7 +302,9 @@ class LiveReadingDialog:
         if self.closed:
             return
         idle = self.future is None and self.session is None and not self.close_pending
-        for control in (self.voice, self.language, self.rate, self.pitch, self.volume, self.mode):
+        for control in (self.voice, self.language, self.rate, self.pitch, self.volume, self.mode,
+                        self.playback_speed, self.playback_pitch, self.playback_volume,
+                        self.playback_pan, self.playback_mib, self.playback_timeout):
             control.Enable(idle)
         for key in ('voices', 'read', 'prepare', 'resume'):
             self.controls[key].Enable(idle)
@@ -373,12 +383,21 @@ class LiveReadingDialog:
         result.check_voice(self.voice_rows[index])
         return result
 
+    def _playback_settings(self):
+        controls = PlaybackControls(float(self.playback_speed.GetValue()),
+            float(self.playback_pitch.GetValue()), float(self.playback_volume.GetValue()),
+            float(self.playback_pan.GetValue()))
+        budget = AudioBudget(max_output_bytes=int(self.playback_mib.GetValue()) * 1024**2,
+            timeout=float(self.playback_timeout.GetValue()))
+        return controls, budget
+
     def read(self, event=None, *, play=True):
         if self.future is not None or self.session is not None or self.close_pending:
             return
         try:
             self.guard()
             settings = self._settings()
+            self._playback_settings()  # Reject invalid controls before book navigation or synthesis.
             index = self.mode.GetSelection()
             if not 0 <= index < len(self.modes):
                 raise ValueError('Choose a reading range.')
@@ -396,9 +415,11 @@ class LiveReadingDialog:
             self._error(exc)
 
     def _new_session(self, settings, selected, play):
+        controls, budget = self._playback_settings()
         self.session = SpeechSession(self.root, self.source, settings, selected,
                                      registry=self.registry, guard=self.guard, location=self.location,
-                                     validate_source=self._source_guard)
+                                     validate_source=self._source_guard,
+                                     playback_controls=controls, playback_budget=budget)
         self.auto_advance = play
         self._prepare(play)
 
@@ -461,7 +482,7 @@ class LiveReadingDialog:
                 index = self.device.GetSelection()
                 if not 0 <= index < len(self.device_ids):
                     raise ValueError('Choose an available audio output device.')
-                self.player.play(excerpt.path, device_id=self.device_ids[index])
+                self.player.play(session.playback_path, device_id=self.device_ids[index])
                 self.playing = True
                 self.pause_requested = False
                 self._enable()
@@ -497,7 +518,9 @@ class LiveReadingDialog:
 
     def seek(self, event=None):
         try:
-            self.player.seek(float(self.seek_seconds.GetValue()))
+            if self.session is None:
+                raise ValueError('Prepare an utterance before seeking.')
+            self.player.seek(self.session.source_to_audio(float(self.seek_seconds.GetValue())))
             self.where()
         except Exception as exc:
             self._error(exc)
@@ -506,11 +529,17 @@ class LiveReadingDialog:
         try:
             status = self.player.status()
             span = None if self.session is None or self.session.current is None else self.session.current.selection
+            mapped = ''
+            if span is not None:
+                observed = min(self.session.playback_duration, max(0.0, status.position_seconds))
+                original = self.session.audio_to_source(observed)
+                mapped = (f'Original utterance position {original:.2f} seconds; '
+                          f'mapping: {self.session.source_time_accuracy}. ')
             self._say(f'Source location {self.ordinal} of {self.total}. '
                       + (f'Utterance characters {span.start}–{span.end}. ' if span is not None else '')
                       + f'Playback {status.state}; {status.position_seconds:.2f} of '
                         f'{status.duration_seconds:.2f} seconds; position: {status.position_accuracy}. '
-                        'This is an utterance highlight, not word-level alignment.')
+                      + mapped + 'This is an utterance highlight, not word-level alignment.')
         except Exception as exc:
             self._error(exc)
 

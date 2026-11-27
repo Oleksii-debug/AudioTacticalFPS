@@ -13,7 +13,8 @@ import re
 
 from .backup_files import local_path, regular, sync_directory, optional_present
 from .backup_legacy_state import (
-    MAX_STATE_FILES, MAX_STATE_BYTES, validate_state, verify_state, _inventory, _stamp,
+    MAX_STATE_FILES, MAX_STATE_BYTES, MAX_TYPED_ARCHIVE_BYTES,
+    validate_state, verify_state, _inventory, _stamp,
 )
 from .ingest.bundle import _unique_object
 
@@ -71,7 +72,7 @@ def source_inventory(manifest):
     return '', root_entries(manifest), _CORE
 
 
-def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_STATE_BYTES):
+def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_TYPED_ARCHIVE_BYTES):
     layout = manifest_layout(manifest)
     if (layout is None or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
@@ -87,20 +88,31 @@ def validate_manifest(manifest, *, max_files=MAX_STATE_FILES, max_bytes=MAX_STAT
     entries = root_entries(manifest)
     validate_state(entries, max_files=max_files, max_bytes=max_bytes)
     if layout == 'root':
-        metadata_bytes = media_bytes = 0
+        from . import legacy_transcription_schema as transcription
+        metadata_bytes = media_bytes = input_bytes = 0
         for item in entries:
             name = item['filename']
             parts = name.split('/')
-            if (len(name) > 1024 or len(parts) > 8 or item['size_bytes'] == 0
+            asr = name.startswith(transcription.PREFIX)
+            if asr:
+                maximum = transcription.limit(name)
+                if (not maximum or not (0 if transcription.allows_empty(name) else 1)
+                        <= item['size_bytes'] <= maximum):
+                    raise ValueError('Unsupported historical transcription file.')
+            if (len(name) > 1024 or len(parts) > (12 if asr else 8)
+                    or item['size_bytes'] == 0 and not (asr and transcription.allows_empty(name))
                     or not (name in _ROOT_FILES or len(parts) > 1 and parts[0] in _ROOT_DIRECTORIES)):
                 raise ValueError('Unsupported historical root-sidecar namespace.')
             if name.startswith('state/studio/cache/') and not manifest['generated_audio_included']:
                 raise ValueError('Historical generated audio requires explicit manifest inclusion.')
-            if _GENERATED_MEDIA.fullmatch(name):
+            if asr and transcription.is_input(name):
+                input_bytes += item['size_bytes']
+            elif _GENERATED_MEDIA.fullmatch(name):
                 media_bytes += item['size_bytes']
             else:
                 metadata_bytes += item['size_bytes']
-        if metadata_bytes > 512 * 1024**2 or media_bytes > 32 * 1024**3:
+        if (metadata_bytes > 512 * 1024**2 or media_bytes > 32 * 1024**3
+                or input_bytes > transcription.MAX_INPUT_BYTES):
             raise ValueError('Historical common-format sidecars exceed their byte budgets.')
     # None was a documented empty pending component only in legacy v5.
     if 'pending' in manifest and manifest['pending'] is None and layout != 'state-reading':
@@ -188,7 +200,9 @@ def validate_state_tree(root, *, cancelled=lambda: False):
     for path in paths:
         if path.name == 'manifest.json':
             _, manifest = _manifest(path, path.parent.name)
-            verify_state(path.parent / 'files', None, _payload_entries(manifest), cancelled=cancelled)
+            verify_state(path.parent / 'files', None, _payload_entries(manifest), cancelled=cancelled,
+                         max_bytes=MAX_TYPED_ARCHIVE_BYTES)
+            _validate_transcription(path.parent / 'files', manifest, stored=True, cancelled=cancelled)
 
 
 def retain_state(source, stage, manifest, expected_manifest_sha256, *, cancelled=lambda: False):
@@ -205,10 +219,32 @@ def retain_state(source, stage, manifest, expected_manifest_sha256, *, cancelled
         os.fsync(stream.fileno())
     subdirectory, entries, ignored = source_inventory(manifest)
     verify_state(source / subdirectory, archive / 'files', entries,
-                 cancelled=cancelled, destination_name=_file_key, ignored=ignored)
+                 cancelled=cancelled, destination_name=_file_key, ignored=ignored,
+                 max_bytes=MAX_TYPED_ARCHIVE_BYTES)
+    _validate_transcription(archive / 'files', manifest, stored=True, cancelled=cancelled)
     sync_directory(archive)
     prefix = (Path(DIRECTORY) / expected_manifest_sha256).as_posix()
     return [dict(path=prefix + '/manifest.json', size_bytes=len(raw), sha256=expected_manifest_sha256),
             *[dict(path=prefix + '/files/' + entry['filename'],
                    size_bytes=entry['size_bytes'], sha256=entry['sha256'])
               for entry in _payload_entries(manifest)]]
+
+
+def _validate_transcription(source, manifest, *, stored, cancelled):
+    from .legacy_transcription import validate_historical
+    subdirectory, entries, _ = source_inventory(manifest)
+    normalized = [dict(row, filename=('state/' if subdirectory else '') + row['filename'])
+                  for row in entries]
+    def resolve(name):
+        original = name.removeprefix('state/') if subdirectory else name
+        return Path(source) / (_file_key(original) if stored else original)
+    validate_historical(normalized, resolve, cancelled=cancelled)
+
+
+def verify_source(source, manifest, *, cancelled=lambda: False):
+    """Read-only exact historical content and typed ASR cross-reference checks."""
+    subdirectory, entries, ignored = source_inventory(manifest)
+    source = Path(source) / subdirectory
+    verify_state(source, None, entries, cancelled=cancelled, ignored=ignored,
+                 max_bytes=MAX_TYPED_ARCHIVE_BYTES)
+    _validate_transcription(source, manifest, stored=False, cancelled=cancelled)

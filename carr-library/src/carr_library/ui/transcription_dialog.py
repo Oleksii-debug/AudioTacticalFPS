@@ -292,6 +292,7 @@ class TranscriptionDialog:
         buttons = wx.WrapSizer(wx.HORIZONTAL)
         for name, label in (
                 ('new', '&New job'), ('refresh', 'Refresh saved &jobs'), ('load', 'Re&view selected job'),
+                ('historical', 'Earlier transcription &history...'),
                 ('prepare', '&Prepare retained inputs'), ('start', '&Start prepared job'),
                 ('pause', 'Pa&use'), ('resume', 'R&esume'), ('stop', 'S&top'),
                 ('verify', 'Verify &outputs'), ('reading', 'Edit reading &copy'), ('close', 'C&lose')):
@@ -307,7 +308,7 @@ class TranscriptionDialog:
     def _bind(self):
         handlers = dict(files=self.add_files, folder=self.add_folder, remove=self.remove_source,
             manifest=self.choose_manifest, profiles=self.choose_profile, engine_settings=self.engine_settings,
-            new=self.new, refresh=self.refresh, load=self.load,
+            new=self.new, refresh=self.refresh, load=self.load, historical=self.historical,
             prepare=self.prepare, start=self.start, pause=self.pause, resume=self.resume,
             stop=lambda event: self.session.stop(), verify=self.verify, reading=self.reading, close=self.close)
         for name, handler in handlers.items():
@@ -341,7 +342,7 @@ class TranscriptionDialog:
         self.buttons['remove'].Enable(editable and self.source_list.GetSelection() >= 0)
         for name in ('manifest', 'profiles', 'engine_settings'):
             self.buttons[name].Enable(idle)
-        for name in ('new', 'refresh'):
+        for name in ('new', 'refresh', 'historical'):
             self.buttons[name].Enable(idle)
         self.jobs_list.Enable(idle)
         self.buttons['load'].Enable(idle and self.jobs_list.GetSelection() >= 0)
@@ -510,6 +511,10 @@ class TranscriptionDialog:
         apply_settings(self.fields, dict(DEFAULT_SETTINGS))
         self.controls()
         self.report('Choose inputs, a reviewed local runtime and settings, then Prepare. No worker has started.')
+
+    def historical(self, event=None):
+        from .legacy_transcription import open_recovery
+        open_recovery(self)
 
     def refresh(self, event=None):
         def loaded(rows):

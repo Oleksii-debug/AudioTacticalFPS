@@ -21,6 +21,8 @@ from defusedxml import ElementTree as SafeET
 
 from ..audio.daisy import HTML_DTD, inspect_daisy
 from ..audio.ffmpeg import run_ffmpeg, wav_info
+from ..audio.capture_types import AudioBudget
+from ..audio.playback_processing import PlaybackControls, prepare_playback
 from ..audio.jobs import checked_directory, file_identity, regular_file, verified_reader
 from ..audio.models import number
 from ..audio.publishing import (DC, OPF, XHTML, MAX_XML_BYTES, PublicationCancelled,
@@ -308,6 +310,7 @@ class OverlaySession:
         self.document, self.player = document, player
         self.cursor, self.index = 0.0, 0
         self._transport_active, self._reader = False, None
+        self._prepared_playback = None
         self.invalid_audio = False
         self._starts = tuple(row['start'] for row in document.intervals)
 
@@ -316,9 +319,79 @@ class OverlaySession:
         snapshot = self.player.status()
         if (self._transport_active and snapshot.position_accuracy in ('sample_frames', 'driver_reported', 'completed_buffers')
                 and snapshot.state in ('starting', 'playing', 'paused', 'stopped', 'completed', 'error')):
-            self.cursor = min(self.document.duration, max(0.0, snapshot.position_seconds))
+            observed = max(0.0, snapshot.position_seconds)
+            if self._prepared_playback is not None:
+                observed = self._prepared_playback.audio_to_source(
+                    min(self._prepared_playback.audio_duration, observed))
+            self.cursor = min(self.document.duration, observed)
         self.index = min(len(self._starts) - 1, max(0, bisect_right(self._starts, self.cursor) - 1))
         return self.cursor
+
+    @property
+    def source_time_accuracy(self):
+        return ('measured_intervals' if self._prepared_playback is None
+                else self._prepared_playback.source_time_accuracy)
+
+    def _release_prepared(self):
+        if self._prepared_playback is not None:
+            try:
+                self._prepared_playback.release()
+            except BaseException:
+                self.invalid_audio = True
+                raise
+
+    def _discard_prepared(self):
+        prepared = self._prepared_playback
+        if prepared is not None:
+            try:
+                self._release_prepared()
+            finally:
+                # Keep the owner for a retry if private-directory removal fails.
+                prepared.close()
+                self._prepared_playback = None
+
+    def prepare_controls(self, controls, *, library_root, budget=None, ffmpeg=None,
+                         broker=None, cancelled=lambda: False, progress=lambda message: None):
+        """Verify and prepare on the current worker; never open a device.
+
+        The existing reader's selected byte allowance covers both its decoded
+        original and the controlled derivative. Changing controls requires an
+        acknowledged Stop. Paused playback can only resume the same controls.
+        """
+        if type(controls) is not PlaybackControls:
+            raise TypeError('Choose typed independent playback controls.')
+        budget = ReadingBudget() if budget is None else budget
+        if type(budget) is not ReadingBudget:
+            raise TypeError('Choose the existing bounded publication reading allowance.')
+        prepared = self._prepared_playback
+        previous = PlaybackControls() if prepared is None else prepared.controls
+        if self._transport_active and controls != previous:
+            raise ValueError('Stop recorded playback before changing its controls.')
+        self.verify_audio(cancelled=cancelled)
+        original_bytes = regular_file(self.document.audio).st_size
+        if original_bytes > budget.max_bytes:
+            raise ValueError('The original decoded audio exceeds the selected preparation allowance.')
+        if controls == previous and prepared is not None:
+            if original_bytes + regular_file(prepared.audio).st_size > budget.max_bytes:
+                raise ValueError('Original and controlled audio exceed the selected preparation allowance.')
+            prepared.pin(cancelled=cancelled)
+            prepared.ready()
+            return
+        if controls.original:
+            if prepared is not None:
+                self._discard_prepared()
+            return
+        if prepared is not None:
+            self._discard_prepared()
+        remaining = budget.max_bytes - original_bytes
+        if remaining < 4096:
+            raise ValueError('The selected allowance has no room for controlled playback PCM.')
+        self._prepared_playback = prepare_playback(self.document.audio, controls,
+            library_root=library_root, ffmpeg=ffmpeg, broker=broker,
+            budget=AudioBudget(timeout=budget.timeout, max_output_bytes=remaining,
+                reserve_disk_bytes=budget.reserve_bytes, threads=1),
+            cancelled=cancelled, progress=progress)
+        self.check_playback()
 
     def _release(self):
         reader, self._reader = self._reader, None
@@ -337,7 +410,10 @@ class OverlaySession:
         # Call after the verifier settles. A failed close cannot authorize saving.
         position = self.halt()
         try:
-            self._release()
+            try:
+                self._release()
+            finally:
+                self._release_prepared()
         except Exception:
             self.invalid_audio = True
             raise
@@ -359,8 +435,11 @@ class OverlaySession:
 
     def verify_audio(self, *, cancelled=lambda: False):
         """Run off the UI thread; keep the Windows no-write lease until Stop."""
+        if self.invalid_audio:
+            raise ValueError('Prepared playback validation failed; reopen the publication.')
         if self._reader is not None:
-            self.check_playback()
+            if file_identity(regular_file(self.document.audio)) != self.document.audio_identity:
+                raise ValueError('Prepared playback audio changed; reopen the publication.')
             return
         document = self.document
         owner = verified_reader(document.audio, expected_identity=document.audio_identity)
@@ -384,13 +463,19 @@ class OverlaySession:
         if (self.invalid_audio or self._reader is None
                 or file_identity(regular_file(self.document.audio)) != self.document.audio_identity):
             raise ValueError('Verify the unchanged prepared audio before playback.')
+        if self._prepared_playback is not None:
+            self._prepared_playback.ready()
 
     def play(self, *, device_id=None):
         self.check_playback()
         if self.player.status().state == 'paused':
             self.player.resume()
         else:
-            self.player.play(self.document.audio, start_seconds=self.cursor, device_id=device_id)
+            path, position = self.document.audio, self.cursor
+            if self._prepared_playback is not None:
+                path = self._prepared_playback.audio
+                position = self._prepared_playback.source_to_audio(position)
+            self.player.play(path, start_seconds=position, device_id=device_id)
         self._transport_active = True
 
     def pause(self):
@@ -402,11 +487,19 @@ class OverlaySession:
             raise ValueError('Stop verified playback before saving the publication cursor.')
         return store.remember(self.document, self.cursor, guard=guard)
 
-    def close(self):
-        self.player.close()
-        self._transport_active = False
+    def dispose_document(self):
+        """Release a stopped publication without closing the shared WavePlayer."""
+        if self._transport_active:
+            raise RuntimeError('Stop the publication before replacing its owned files.')
         try:
             self._release()
         finally:
-            # Native ownership is quiescent even if payload validation failed.
+            # The output owner is quiescent. A failed private cleanup retains its
+            # exact object; a later Close can retry without losing ownership.
+            self._discard_prepared()
             self.document.close()
+
+    def close(self):
+        self.player.close()
+        self._transport_active = False
+        self.dispose_document()

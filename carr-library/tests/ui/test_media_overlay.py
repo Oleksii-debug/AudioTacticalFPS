@@ -125,6 +125,9 @@ def window(tmp_path):
                  'device', 'text', 'mapping', 'status'):
         setattr(value, name, Control())
     value.max_mib.value, value.minutes.value = '16', '2'
+    for name, default in (('playback_speed', '1'), ('playback_pitch', '0'),
+                          ('playback_volume', '1'), ('playback_pan', '0')):
+        setattr(value, name, Control(default))
     value.controls = {name: Control() for name in ('choose', 'load', 'previous_chapter',
         'next_chapter', 'previous_interval', 'next_interval', 'play', 'pause',
         'stop', 'seek', 'where', 'cancel', 'close')}

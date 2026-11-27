@@ -773,6 +773,8 @@ class AudioStudioDialog:
                      lambda event: self.export_book('daisy-2.02'))
         self._button(production_page, production_buttons, 'Verify saved audiobook', self.verify_book)
         self._button(production_page, production_buttons, 'Play rendered master', self.play)
+        self._button(production_page, production_buttons, 'Playback controls for rendered master',
+            lambda event: self.independent_playback(event, rendered=True))
         self.windows_playback_controls.append(self._button(production_page, production_buttons,
             'Pause / resume playback', self.pause_resume))
         self._button(production_page, production_buttons, 'Stop playback', self.stop_playback, busy_safe=True)
@@ -822,6 +824,8 @@ class AudioStudioDialog:
                                ('Next recording', self.next_recording)):
             self._button(playback_page, queue_buttons, label, handler)
         playback_layout.Add(queue_buttons, 0, wx.ALL, 5)
+        self._button(playback_page, playback_layout, 'Independent playback controls for selected recording...',
+                     self.independent_playback)
         self.loop_start = self._text(playback_page, playback_layout, 'A–B repeat start, seconds', '0')
         self.loop_end = self._text(playback_page, playback_layout, 'A–B repeat end, seconds', '1')
         loop_buttons = wx.WrapSizer(wx.HORIZONTAL)
@@ -1690,6 +1694,89 @@ class AudioStudioDialog:
             self._message('Starting the rendered master. Use Pause / resume, timeline controls or Stop playback.', focus=True)
         except Exception as exc:
             self._error(exc)
+
+    def independent_playback(self, event=None, *, rendered=False):
+        """Borrow this exact player; preserve the existing Studio queue on return."""
+        if self.busy or self.closed:
+            return
+        from .playback_controls import PlaybackWorkspace, show_playback_controls
+        from ..audio.capture_types import AudioCleanupPending
+        controller, frame = self.controller, self.parent
+        library = getattr(frame, 'library', None)
+        result = controller.result
+        original_choices = tuple(self.playback.playlist)
+        original_selection = self.playlist_choice.GetSelection()
+        timers, settled = [], [False]
+        pending_owner = None
+
+        def settle():
+            if settled[0] or pending_owner is not None and not pending_owner.quiescent_event.is_set():
+                return
+            settled[0] = True
+            self._playback_cleanup_owner = None
+            self.busy = False
+            if not self.closed:
+                for timer, interval in timers:
+                    timer.Start(interval)
+                self._refresh_playback_choices()
+                if (tuple(self.playback.playlist) == original_choices
+                        and 0 <= original_selection < len(original_choices)):
+                    self.playlist_choice.SetSelection(original_selection)
+                self.refresh_playback()
+                if self.close_pending:
+                    self.close_pending = False
+                    self.close()
+
+        try:
+            if rendered:
+                if result is None or self.editing_dirty:
+                    raise ValueError('Render the current saved script before preparing its playback controls.')
+                output = Path(result['output'])
+                source = output if output.suffix.lower() == '.wav' else output.parent / 'master.wav'
+            else:
+                if not 0 <= original_selection < len(original_choices):
+                    raise ValueError('Choose an explicit local playlist recording first.')
+                source = original_choices[original_selection]
+            selected = self.playback_device.GetSelection()
+            device = self.playback_device_ids[selected] if 0 <= selected < len(self.playback_device_ids) else None
+            self.cancelled.clear()
+            def current():
+                return (not self.closed and self.controller is controller
+                        and not getattr(frame, '_closing', False)
+                        and (library is None or getattr(frame, 'library', None) is library)
+                        and not self.cancelled.is_set()
+                        and (not rendered or controller.result is result and not self.editing_dirty))
+            workspace = PlaybackWorkspace(self.playback, source, library_root=controller.private_root,
+                                          current=current, ffmpeg=controller.ffmpeg, device_id=device)
+            self._cancel_content_request()
+            for timer in (self.timer, self.playback_timer):
+                if timer.IsRunning():
+                    timers.append((timer, timer.GetInterval()))
+                    timer.Stop()
+            self.busy = True
+            show_playback_controls(self.dialog, workspace, executor=self.executor,
+                progress=getattr(self, 'operation_progress', None), alive=current)
+        except AudioCleanupPending as exc:
+            pending_owner = self._playback_cleanup_owner = exc.cleanup_owner
+            def ready():
+                try:
+                    self.wx.CallAfter(settle)
+                except RuntimeError:
+                    # A destroyed Studio cannot reuse the player. The actual
+                    # native owner has already completed before this callback.
+                    if self.closed:
+                        self._playback_cleanup_owner = None
+                        self.busy = False
+            pending_owner.add_quiescent_callback(ready)
+            try:
+                self._error(exc)
+            except RuntimeError:
+                pass  # A destroyed observer cannot undo the retained handoff.
+        except Exception as exc:
+            self._error(exc)
+        finally:
+            if pending_owner is None or pending_owner.quiescent_event.is_set():
+                settle()
 
     def stop_playback(self, event=None):
         self._cancel_content_request()
