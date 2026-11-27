@@ -40,7 +40,7 @@ and PATH never select a converter. The worker verifies fixed IMPORT/EXPORT
 filter declarations, creates ODT/ODP/ODS in a private stage, then passes the
 result through the current guarded ODF reader. Other PDB families are refused.
 This implemented path does not qualify every selected LibreOffice build: the
-per-filter host evidence, including the outstanding XLS failure, is below.
+version-specific results and the remaining qualification work are recorded below.
 
 AZW/AZW3, LIT, MOBI, PRC and TCR have explicitly selected calibre adapters;
 ordinary admission is qualified for the recorded unprotected synthetic
@@ -262,6 +262,27 @@ opens an explicit local-executable picker; the five selected legacy suffixes
 use a separate LibreOffice picker. Cancelling a required selection starts no
 worker and creates no derivative.
 
+## Temporary Office stage checks
+
+The selected Office child receives a fixed `PYTHONDONTWRITEBYTECODE=1` setting,
+after unselected Python environment configuration has been removed. Synthetic
+fixture creation uses the same setting. The complete runtime file inventory
+still rejects added, removed or changed files, including bytecode caches.
+
+The private stage census uses direct unfollowed metadata reads for transient
+entries. Missing descendants preserve their actual `FileNotFoundError`; root
+or ancestor disappearance, changed root identity, links, reparse points and
+wrong file types remain failures. File link count, total bytes, entry/depth
+limits, deadlines and the final root check remain enforced. No automatic
+retry or acceptance of a rejected live entry is added.
+
+The standalone Office gate separately requires all 28 selection/environment
+cases and all 12 stage-race cases from source and the isolated installed
+package, followed by the unchanged seven native cases in each mode. The
+[retained event evidence](evidence/office-stage-events-independent-read-20261127.json)
+and [source repair](evidence/office-transient-lstat-repair-20261127.json) distinguish
+observed temporary-file cleanup from the original unrecorded failing path.
+
 ## Recorded Windows execution and current qualification
 
 Each result below belongs to its exact frozen source and selected runtime.
@@ -273,7 +294,7 @@ the final composed application as tested.
 | Selected RTF and English raster OCR | `955165132fd530d6c3deb0e5b4b48f66dde77963`, run `45992503530`: all six source and six isolated installed cases passed | [Recorded optional-tool results](evidence/optional-converter-observed-results-20261127.json) |
 | Ordinary DjVu embedded-text admission | `684cc8ddac569fdcf5d685b33302f570481ea6f8`, run `46024229261`: 163 portable and four native cases passed in each mode; exact raw artifact independently read | [DjVu qualification](evidence/djvu-native-qualification-20261127.json) |
 | Ordinary calibre admission for six tested suffixes | `08fb93a68ebbdb0c564a1e09b9960d2d718d020e`, run `46039340019`: 187 portable and nine native cases passed in each mode; exact raw artifact independently read | [Calibre ordinary-admission evidence](evidence/calibre-ordinary-admission-independent-read-20261127.json) |
-| LibreOffice, including XLS | The full seven-case source/installed gate remains required. The recorded `65ae1e9` Windows source run passed six and refused XLS at hidden ODF print-region review; installed cases did not run | Fresh repaired native execution is required; no all-five-format qualification is claimed |
+| LibreOffice, including XLS | `7166d0c8d488cfcd42118fc4dcfd22eba6401f2b` passed all seven functional cases per mode, then failed the complete runtime inventory because Python caches were added. The subsequent ordinary `d7295d13` source run passed six and failed one during transient stage admission | [Independent layout/inventory result](evidence/converters-print-layout-independent-read-20261127.json), [ordinary failure and diagnostic result](evidence/office-stage-diagnostic-independent-read-20261127.json). The reviewed repair still requires fresh ordinary seven/seven qualification |
 | Ordinary CHM admission | `e5453076c9593219e2d851d8f96a7fa62680d219`, run `46058236666`: 236 portable and four native cases passed per mode, including complete 70-member census assertions | [Ordinary proof](evidence/chm-ordinary-admission-independent-read-20261127.json), independently read from the exact artifact; separate earlier [preview proof](evidence/chm-native-preview-independent-read-20261127.json) retained |
 
 These finite cases do not qualify arbitrary user documents, every OCR language,

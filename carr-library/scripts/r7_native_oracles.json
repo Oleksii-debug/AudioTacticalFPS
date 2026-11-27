@@ -1510,5 +1510,100 @@
     "source_digest_fields": {
       "fixture_sha256": "tests/assistant/transcription_fixture.py"
     }
+  },
+  "studio-controls": {
+    "probe": "tests/ui/native_studio_controls_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-studio-controls-work"
+    ],
+    "subprocess_timeout_seconds": 240,
+    "modules": [
+      "carr_library.audio.studio_controls",
+      "carr_library.ui.studio_controls",
+      "carr_library.ui.audio_studio",
+      "carr_library.audio.models",
+      "carr_library.audio.production",
+      "carr_library.audio.effect_editing",
+      "carr_library.audio.managed",
+      "carr_library.reader.narration_text",
+      "carr_library.ui.save_all"
+    ],
+    "probe_modules": [
+      "carr_library.audio.studio_controls",
+      "carr_library.ui.studio_controls",
+      "carr_library.ui.audio_studio",
+      "carr_library.audio.models",
+      "carr_library.audio.production",
+      "carr_library.audio.effect_editing",
+      "carr_library.audio.managed",
+      "carr_library.reader.narration_text",
+      "carr_library.ui.save_all"
+    ],
+    "checks": {
+      "actual installed Windows Studio owner": 1,
+      "role and output actions are named native buttons": 1,
+      "unlisted saved default ID remains visible without automatic substitution": 1,
+      "default voice changes only after explicit native selection": 1,
+      "role form has exact current modal owner": 1,
+      "all role and output controls have native accessible names": 1,
+      "pending native fields do not mutate the current draft": 1,
+      "native Cancel preserves source draft undo history and saved bytes": 1,
+      "cancelled native form returns focus to its current opening button": 1,
+      "actual role Choice receives keyboard focus": 1,
+      "role form loads exact saved pan voice and language": 1,
+      "new voice does not silently choose an advertised language": 1,
+      "unsupported saved controls remain visible for explicit reset": 1,
+      "native Apply refuses unsupported nondefault voice controls": 1,
+      "native Apply commits exactly one undoable draft edit": 1,
+      "native role controls use existing exact units": 1,
+      "final gain retains the earlier effect chain": 1,
+      "native output controls retain sample rate and disk budget": 1,
+      "accepted controls invalidate old result and displayed preview": 1,
+      "accepted form preserves immutable source and waits for explicit save": 1,
+      "accepted native form returns focus to its opening button": 1,
+      "existing native Undo restores exact original script": 1,
+      "existing native Redo restores accepted controls": 1,
+      "explicit native Preview describes the current edited plan": 1,
+      "current native Save All durably saves the accepted script": 1,
+      "output route initially focuses the actual final-format Choice": 1,
+      "unlisted saved role ID stays visibly selected without replacement": 1,
+      "unavailable role keeps exact language and disabled unsupported defaults": 1,
+      "output-only acceptance preserves the unlisted role and original source": 1,
+      "native Apply refuses a changed current draft and leaves the form open": 1,
+      "stale form cannot replace the later draft or its output settings": 1,
+      "Save All retains the newer edit after stale form refusal": 1,
+      "native window Close cancels only the owned form and preserves the draft": 1,
+      "form controls never create a second Studio save participant": 1,
+      "native Studio close settles the owned executor and unregisters its draft": 1,
+      "no Studio worker thread remains after native close": 1,
+      "native initial-load failure destroys its allocated form": 1,
+      "native flow preserves the exact immutable Unicode source": 1,
+      "exact installed form implementation remains unchanged": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "native_controls": true,
+      "native_events": "PASS",
+      "draft_lifecycle": "PASS",
+      "source_preserved": true,
+      "cleanup_complete": true,
+      "voice_metadata": "SYNTHETIC_PROTOCOL_ONLY",
+      "speech_quality": "NOT_QUALIFIED",
+      "physical_audio": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "total_checks": 39
+    },
+    "exact_metrics": {
+      "metrics.forms_applied": 2,
+      "metrics.forms_cancelled": 3,
+      "metrics.capability_refusals": 1,
+      "metrics.stale_refusals": 1,
+      "metrics.accepted_draft_edits": 2,
+      "metrics.save_all_commits": 2,
+      "metrics.initial_load_cleanup": 1
+    }
   }
 }

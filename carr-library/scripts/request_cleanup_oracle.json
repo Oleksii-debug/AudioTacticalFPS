@@ -374,7 +374,8 @@
       "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
       "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
       "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
-      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
+      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3,
+      "test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2
     },
     "tests/storage/test_backup_recovery_and_verify.py": {
       "test_recovery_notes_and_keymap_keep_exact_bindings": 3,
@@ -473,7 +474,7 @@
       "test_actual_io_thread_settlement_retains_the_same_cleanup_owner": 2
     }
   },
-  "total_cases": 909,
+  "total_cases": 911,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
   "canonical_progress_cases": 59,
@@ -497,7 +498,7 @@
   "standard_system_helper_cases": 16,
   "music_control_cases": 23,
   "current_native_sapi_portable_cases": 53,
-  "office_transient_stage_cases": 10,
+  "office_transient_stage_cases": 12,
   "current_public_backup_verification_cases": 20,
   "retained_v3_reading_backup_cases": 9,
   "canonical_worker_metadata_backup_cases": 13,

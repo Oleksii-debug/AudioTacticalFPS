@@ -3126,7 +3126,8 @@
       "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
       "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
       "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
-      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
+      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3,
+      "test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2
     },
     "tests.storage.test_backup_recovery_and_verify": {
       "test_recovery_notes_and_keymap_keep_exact_bindings": 3,
@@ -3228,6 +3229,41 @@
       "test_standard_health_stops_at_each_failed_health_command": 3,
       "test_standard_health_keeps_rejected_generation_unlaunchable": 1,
       "test_standard_health_cancellation_never_reports_success": 2
+    },
+    "tests.audio.test_studio_controls": {
+      "test_no_op_keeps_exact_script_spelling_and_line_endings": 3,
+      "test_role_and_output_edit_preserves_complete_master_timeline_and_original_words": 1,
+      "test_multiple_role_and_output_declarations_keep_prior_order_and_budget": 1,
+      "test_implicit_role_edits_keep_role_order_and_exact_scene_events": 3,
+      "test_final_gain_changes_only_the_owned_tail_and_preserves_earlier_steps": 4,
+      "test_unchanged_gain_keeps_omitted_parameters_and_never_inserts_neutral_step": 1,
+      "test_voice_capabilities_refuse_unsupported_nondefault_controls": 3,
+      "test_full_language_code_never_selects_an_unadvertised_regional_route": 3,
+      "test_unavailable_saved_voice_remains_visible_and_output_only_edit_is_passive": 2,
+      "test_explicit_voice_change_keeps_nondefault_controls_until_user_resets_them": 1,
+      "test_native_numeric_and_identity_fields_are_strict_and_atomic": 17,
+      "test_role_form_cannot_create_or_rebind_an_existing_role_identity": 2,
+      "test_invalid_output_selection_preserves_current_plan": 3,
+      "test_gain_obeys_existing_chain_bound_without_deleting_any_prior_effect": 2,
+      "test_ambiguous_or_malformed_installed_catalogue_is_refused": 5,
+      "test_each_existing_format_roundtrips_without_changing_rate_or_source": 10,
+      "test_quoted_voice_and_role_names_cannot_turn_into_script_directions": 1
+    },
+    "tests.ui.test_studio_controls": {
+      "test_cancelled_form_never_changes_saved_source_draft_preview_or_undo": 1,
+      "test_accepted_form_is_one_undoable_edit_and_invalidates_previous_render_and_preview": 1,
+      "test_unchanged_acceptance_preserves_existing_render_and_draft_history": 1,
+      "test_form_acceptance_rechecks_exact_current_owner_source_and_selection": 20,
+      "test_inflight_registry_replacement_cannot_pair_old_rows_with_new_authority": 1,
+      "test_discovery_result_after_root_change_never_opens_a_native_form": 1,
+      "test_literal_source_is_never_parsed_or_rewritten_by_the_role_form": 1,
+      "test_busy_studio_never_discovers_or_opens_parallel_settings": 2,
+      "test_forged_modal_return_cannot_bypass_the_typed_working_copy": 1,
+      "test_default_voice_inventory_retains_saved_unavailable_id_without_implicit_selection": 1,
+      "test_non_dataclass_voice_keeps_its_actual_advertised_controls": 1,
+      "test_focus_return_never_targets_foreign_or_unusable_windows": 3,
+      "test_initial_native_construction_failure_still_destroys_exact_owned_dialog": 1,
+      "test_managed_save_restore_rebackup_keeps_source_and_controls_without_voice_activation": 1
     }
   },
   "installed": {
@@ -6131,7 +6167,8 @@
       "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
       "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
       "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
-      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
+      "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3,
+      "test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2
     },
     "tests.storage.test_backup_recovery_and_verify": {
       "test_recovery_notes_and_keymap_keep_exact_bindings": 3,
@@ -6233,6 +6270,41 @@
       "test_standard_health_stops_at_each_failed_health_command": 3,
       "test_standard_health_keeps_rejected_generation_unlaunchable": 1,
       "test_standard_health_cancellation_never_reports_success": 2
+    },
+    "tests.audio.test_studio_controls": {
+      "test_no_op_keeps_exact_script_spelling_and_line_endings": 3,
+      "test_role_and_output_edit_preserves_complete_master_timeline_and_original_words": 1,
+      "test_multiple_role_and_output_declarations_keep_prior_order_and_budget": 1,
+      "test_implicit_role_edits_keep_role_order_and_exact_scene_events": 3,
+      "test_final_gain_changes_only_the_owned_tail_and_preserves_earlier_steps": 4,
+      "test_unchanged_gain_keeps_omitted_parameters_and_never_inserts_neutral_step": 1,
+      "test_voice_capabilities_refuse_unsupported_nondefault_controls": 3,
+      "test_full_language_code_never_selects_an_unadvertised_regional_route": 3,
+      "test_unavailable_saved_voice_remains_visible_and_output_only_edit_is_passive": 2,
+      "test_explicit_voice_change_keeps_nondefault_controls_until_user_resets_them": 1,
+      "test_native_numeric_and_identity_fields_are_strict_and_atomic": 17,
+      "test_role_form_cannot_create_or_rebind_an_existing_role_identity": 2,
+      "test_invalid_output_selection_preserves_current_plan": 3,
+      "test_gain_obeys_existing_chain_bound_without_deleting_any_prior_effect": 2,
+      "test_ambiguous_or_malformed_installed_catalogue_is_refused": 5,
+      "test_each_existing_format_roundtrips_without_changing_rate_or_source": 10,
+      "test_quoted_voice_and_role_names_cannot_turn_into_script_directions": 1
+    },
+    "tests.ui.test_studio_controls": {
+      "test_cancelled_form_never_changes_saved_source_draft_preview_or_undo": 1,
+      "test_accepted_form_is_one_undoable_edit_and_invalidates_previous_render_and_preview": 1,
+      "test_unchanged_acceptance_preserves_existing_render_and_draft_history": 1,
+      "test_form_acceptance_rechecks_exact_current_owner_source_and_selection": 20,
+      "test_inflight_registry_replacement_cannot_pair_old_rows_with_new_authority": 1,
+      "test_discovery_result_after_root_change_never_opens_a_native_form": 1,
+      "test_literal_source_is_never_parsed_or_rewritten_by_the_role_form": 1,
+      "test_busy_studio_never_discovers_or_opens_parallel_settings": 2,
+      "test_forged_modal_return_cannot_bypass_the_typed_working_copy": 1,
+      "test_default_voice_inventory_retains_saved_unavailable_id_without_implicit_selection": 1,
+      "test_non_dataclass_voice_keeps_its_actual_advertised_controls": 1,
+      "test_focus_return_never_targets_foreign_or_unusable_windows": 3,
+      "test_initial_native_construction_failure_still_destroys_exact_owned_dialog": 1,
+      "test_managed_save_restore_rebackup_keeps_source_and_controls_without_voice_activation": 1
     }
   },
   "native_trust": [

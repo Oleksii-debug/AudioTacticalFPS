@@ -683,7 +683,9 @@ jobs:
             'tests/extract/test_odf_print_layout.py',
             'tests/audio/test_dordiai_discovery.py',
             'tests/audio/test_dordiai_preservation.py',
-            'tests/security/test_standard_health.py'
+            'tests/security/test_standard_health.py',
+            'tests/audio/test_studio_controls.py',
+            'tests/ui/test_studio_controls.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1242,6 +1244,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/r7_native_gate.py clips --report ci-results/full-bundle-r7-clips-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-clips-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py studio-controls --report ci-results/full-bundle-studio-controls-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-studio-controls-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item -LiteralPath 'ci-results/full-bundle-studio-controls-work' -Recurse -Force -ErrorAction Stop
           & $installedPython -I -B scripts/r7_native_gate.py publication --report ci-results/full-bundle-r7-publication-native.json 2>&1 | Tee-Object 'ci-results/full-bundle-r7-publication-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_word_citations_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-word.txt'
@@ -1733,6 +1738,8 @@ jobs:
               'tests/audio/test_dordiai_discovery.py',
               'tests/audio/test_dordiai_preservation.py',
               'tests/security/test_standard_health.py',
+              'tests/audio/test_studio_controls.py',
+              'tests/ui/test_studio_controls.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

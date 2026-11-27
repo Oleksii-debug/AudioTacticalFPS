@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED_EXECUTION_PENDING",
+  "component": "current structured Studio role and output forms",
+  "base_commit": "2d1a4bd89b3c8d63d55848f129e38489e2ea4157",
+  "product_test_commit": "f506ee3f4e69082f0ec656312920114085f6b646",
+  "canonical_source": {
+    "commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "path": "carr-library/src/carr_library/ui/studio_dialog.py",
+    "blob": "418da4c9bf29098ebfc7fae933c43582beb7b953"
+  },
+  "preserved_contracts": [
+    "One existing StudioController and NarrationDraft; existing project version 2 and typed backup representation are unchanged.",
+    "Native Edit roles and voices plus Final format and stems actions require explicit current Structured production script mode.",
+    "Exact installed voice identifier and advertised full language; no implicit default/region/runtime fallback.",
+    "Advertised unavailable and retained unlisted IDs remain visible; unlisted runtime aliases are not falsely asserted unusable.",
+    "Pan -1..1; existing native speech rate/pitch -10..10 and volume 0..100 percent; unsupported nondefault controls require explicit reset.",
+    "Final gain uses only a final existing Gain step or appends that current effect; earlier effects and master chain remain ordered and unchanged.",
+    "Existing ten output formats and typed stems setting; exact sample rate/disk budget remain unchanged.",
+    "Exact complete ProductionPlan equality after targeted directive edits; Unicode text/scene events/role order remain.",
+    "Current controller/draft/project/source/UI/defaults/runtime/registry/trust binding rechecked after held-registry enumeration and modal Apply.",
+    "Cancel/no-op never publishes an edit; Apply makes one normal undoable edit and invalidates old result and displayed preview.",
+    "Existing Save All, explicit preview/render, cancellation, playback/process ownership, retained original and managed backup remain sole owners."
+  ],
+  "peer_review": {
+    "reviewer": "independent capacity agent",
+    "core": "SOURCE_GO",
+    "accepted_findings": [
+      "Capture and call the actual registry held for enumeration; reject replacement.",
+      "Destroy the native dialog on every post-allocation setup/loading failure.",
+      "Distinguish a retained unlisted engine alias from an advertised unavailable voice."
+    ]
+  },
+  "declarations": {
+    "source_cases": 211,
+    "installed_cases": 211,
+    "retained_cases": 113,
+    "new_cases": 98,
+    "native_checks": 39,
+    "old_selectors": [
+      "tests/ui/test_audio_studio.py",
+      "tests/ui/test_audio_effect_editing.py",
+      "tests/audio/test_effect_editing.py"
+    ],
+    "new_selectors": [
+      "tests/audio/test_studio_controls.py",
+      "tests/ui/test_studio_controls.py"
+    ],
+    "oracle": "scripts/studio_controls_oracle.json"
+  },
+  "qualification": "NOT_RUN on this source checkpoint. Native probe drives the actual installed wx modal, named controls, real event payloads, focus, Cancel/Apply, capability refusal, current-draft refusal, Undo/Redo/Preview, managed Save All, close and initial-load cleanup. PASS may be emitted only after GUI, executor, playback and optional bundled-DLL handle cleanup.",
+  "limits": {
+    "literal_narration": "Remains literal; this form does not insert or reinterpret directives in literal mode.",
+    "schema": "No new project/backup schema.",
+    "speech_or_model_quality": "NOT_QUALIFIED",
+    "private_models": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "codec_quality": "Not claimed by form interaction. Existing production/native format qualification remains separate."
+  }
+}
