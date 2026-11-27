@@ -7,7 +7,7 @@
     "pull_request": 152,
     "prior_candidate": "64aadb94c1d01929c949763fb0d0ed04d372c5d5"
   },
-  "observed_at_utc": "2026-11-27T22:34:33Z",
+  "observed_at_utc": "2026-11-27T22:38:30Z",
   "conclusion": "INCOMPLETE_WITH_CONFIRMED_FAILURES",
   "interpretation": {
     "overlapping_selections_are_not_unique_tests": true,
@@ -242,9 +242,10 @@
       "last_root_read": "2026-11-27T22:21:59Z",
       "passed": null,
       "failed": null,
-      "last_independent_read": "2026-11-27T22:34:00Z",
+      "last_independent_read": "2026-11-27T22:34:41Z",
       "configured_step_minutes": 35,
-      "interpretation": "API still reports IN_PROGRESS beyond the configured step deadline. No source-suite completion reports are available; neither coverage nor a responsible suite/teardown cause is inferred."
+      "interpretation": "API still reports IN_PROGRESS beyond the configured step deadline. No source-suite completion reports are available; neither coverage nor a responsible suite/teardown cause is inferred.",
+      "independent_observer": "spec_audit"
     },
     "native_import_center": {
       "status": "PASS",
@@ -568,7 +569,8 @@
       "root_and_independent_review": "SOURCE_APPROVE",
       "changes": "Only two approved cadence source/test blobs and diagnostic workflow sampling/selector changes.",
       "strict_runner_and_deadlines": "UNCHANGED",
-      "ordinary_head_unchanged": true
+      "ordinary_head_unchanged": true,
+      "status_observed_at": "2026-11-27T22:38:30Z"
     }
   },
   "prepared_source_union": {
