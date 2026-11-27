@@ -19,14 +19,14 @@ def write(path, data=b'An original text.\n'):
 def test_sorted_folder_plan_uses_existing_intake_without_writing(tmp_path):
     write(tmp_path / 'z.txt', 'Український текст.\n'.encode())
     write(tmp_path / 'nested' / 'a.pdf', b'%PDF-1.7\n')
-    write(tmp_path / 'unsupported.html', b'<p>Not imported.</p>')
+    write(tmp_path / 'unsupported.rtf', b'{\\rtf1 Not imported.}')
     # Structural DOCX intake fixture; preflight does not extract document text.
     with ZipFile(tmp_path / 'b.docx', 'w') as archive:
         for name in ('[Content_Types].xml', '_rels/.rels', 'word/document.xml'):
             archive.writestr(name, b'synthetic')
     before = {str(p): p.read_bytes() for p in tmp_path.rglob('*') if p.is_file()}
     rows = batch_scan.scan_paths([tmp_path])
-    assert [r['file'] for r in rows] == ['b.docx', 'nested/a.pdf', 'unsupported.html', 'z.txt']
+    assert [r['file'] for r in rows] == ['b.docx', 'nested/a.pdf', 'unsupported.rtf', 'z.txt']
     assert [r['state'] for r in rows] == ['queued', 'queued', 'rejected', 'queued']
     for row in rows:
         assert set(row) == {'source', 'file', 'title', 'state', 'message', 'manifest', 'duplicate_of'}

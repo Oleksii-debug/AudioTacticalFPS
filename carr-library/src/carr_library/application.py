@@ -538,8 +538,9 @@ class LibraryApp:
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
                     edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
-        """Isolate PDF/DOCX/EPUB parsing; retain the exact TXT path inline."""
+        """Isolate supported document parsing; retain the exact TXT path inline."""
         from .extract.page_ocr import Config
+        from .extract.document_formats import ISOLATED_SUFFIXES
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
             raise ValueError('invalid authors')
         if not isinstance(collections, (tuple, list)) or len(collections) > 100:
@@ -548,7 +549,7 @@ class LibraryApp:
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ('.pdf', '.docx', '.epub'):
+        if path.suffix.casefold() in ISOLATED_SUFFIXES:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
@@ -634,6 +635,7 @@ class LibraryApp:
         OCR is reported explicitly and never silently exposed as verified text.
         """
         from .extract.page_ocr import Config
+        from .extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME
         path = Path(path).absolute()
         collections = tuple(collections)
         with self.read(workspace) as db:
@@ -663,7 +665,7 @@ class LibraryApp:
                 publisher = _CatalogPublisher(storage, record)
                 publisher.before_commit = lambda scope, revision: record_publication_candidate(
                     self.root, _request_id, storage.db, scope, revision)
-                if asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                if asset.mime in EXTENDED_MIMES or asset.mime in ('application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                                   'application/epub+zip'):
                     if asset.mime == 'application/epub+zip':
                         from .extract.epub_ordered import extract_epub
@@ -671,19 +673,29 @@ class LibraryApp:
                         extracted = extract_epub(asset.data)
                         source_format = 'EPUB'
                         settings = extraction_settings(extracted)
-                    else:
+                    elif asset.mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
                         from .extract.docx_ordered import extract_docx
                         extracted = extract_docx(asset.data)
                         source_format = 'DOCX'
                         # Preserve the original configuration and revision identities.
                         settings = canonical({'adapter': 'python-docx-ordered-v1', 'kind': 'logical_segment',
                                               'provenance': extracted['provenance']})
+                    else:
+                        from .extract.document_formats import extract_document, extraction_settings
+                        extracted = extract_document(asset.data, SUFFIXES[asset.mime], cancelled=cancelled)
+                        source_format = FORMAT_BY_MIME[asset.mime].name
+                        settings = canonical(extraction_settings(extracted, asset.mime))
+                    # Use the same receipt-verifier bound before publishing,
+                    # including direct service calls without a supervising attempt.
+                    if len(settings.encode('utf-8')) > 4 * 1024 * 1024:
+                        raise ValueError('Import publication configuration exceeds its limit.')
                     if cancelled():
                         raise InterruptedError('Import cancelled.')
                     revision = sha256(canonical([workspace, record.edition_id, asset.digest, settings])
                                       .encode('utf-8')).hexdigest()
                     prior = storage.db.execute('SELECT workspace,edition,asset,config FROM revision WHERE id=?',
                                                (revision,)).fetchone()
+                    completion_state = 'complete'
                     if prior is None:
                         publisher.publish_revision(workspace, record.edition_id, revision, asset.digest, settings,
                             tuple(Page(r['raw_text']) for r in extracted['records']))
@@ -701,9 +713,20 @@ class LibraryApp:
                             register_batch(Catalog(storage.db, workspace), (record,))
                             # Replays may add memberships; validate before exposing them.
                             storage._check()
+                            active = storage.db.execute('SELECT revision FROM active '
+                                'WHERE workspace=? AND edition=?', (workspace, record.edition_id)).fetchone()
+                            if active is None:
+                                raise ValueError('Completed import is missing its active source revision.')
+                            # A metadata edit can supersede this exact extracted
+                            # revision. Replay must not claim or reactivate it.
+                            completion_state = 'complete' if active[0] == revision else 'superseded'
+                            if cancelled():
+                                raise InterruptedError('Import registration cancelled before commit.')
                     publisher.check()
-                    return {'state': 'complete', 'edition': record.edition_id, 'id': revision,
+                    return {'state': completion_state, 'edition': record.edition_id, 'id': revision,
                             'completed': len(extracted['records']), 'verified': False,
+                            **({'format': source_format, 'warnings': extracted['warnings']}
+                               if asset.mime in EXTENDED_MIMES else {}),
                             'message': f'{source_format} imported as unverified logical segments; '
                                        'printed pages are unknown.'}
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest

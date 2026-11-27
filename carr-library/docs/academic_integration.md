@@ -116,6 +116,25 @@ remains correct.
 
 `render_citations(..., style_path=selected_local_csl_path)` explicitly loads an
 independent local style containing both `<citation>` and `<bibliography>`.
+
+The native **Format bibliography and citations** dialog exposes this same API.
+On **References and style**, choose **Choose local CSL file...**, select an
+independent UTF-8 `.csl` file, then press **Format locally**. File loading and
+bounded XML checks run in the existing cancellable worker. The installed-style
+choice is disabled while the explicit local choice is active. **Use installed
+style** returns to the bundled selection. Changing either choice invalidates
+the previous preview and requires formatting again before **Save DOCX**.
+
+The preview and DOCX retain the exact hash of the style bytes actually rendered;
+subsequent changes to the selected file do not rewrite an existing result.
+Formatting again reads and validates the selected file again. The current Node
+processor, locale pins, source bindings, locator checks and DOCX regeneration
+contracts remain unchanged. No alternate CSL runtime or style download is added.
+The source tests run actual Node formatting and DOCX round trips; the separate
+`scripts/windows_custom_csl_smoke.py` checks installed native controls and worker
+completion. Its file-picker selection is synthetic, and it does not qualify
+manual keyboard use, NVDA or arbitrary institutional style correctness.
+
 The installed styles remain unchanged. The result identifies the local file by
 basename and SHA256; private parent-directory paths are not exported. Its rights
 metadata and correctness remain the style supplier's concern;

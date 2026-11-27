@@ -11,6 +11,7 @@ import threading
 import wx
 
 from ..application import LibraryApp
+from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
 from ..research.export_file import write_export, write_binary_export
@@ -563,7 +564,9 @@ class DesktopFrame(WorkspaceFrame):
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
                 ('Add selected book to academic library', self.add_selected_book_reference),
                 ('DOI and ISBN lookup and open-access sources...', lambda event: show_acquisition_dialog(self))]),
-            ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
+            ('&Help', [('Keyboard guide\tF1', self.help),
+                ('Document formats', lambda event: show_text(self, 'Document formats', supported_formats_text())),
+                ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
             for title, handler in actions:
@@ -579,6 +582,8 @@ class DesktopFrame(WorkspaceFrame):
         install_research_actions(self)
         install_source_review_actions(self)
         install_academic_actions(self)
+        from .academic_tools import install_academic_comparison_actions
+        install_academic_comparison_actions(self)
         install_reading_desk_actions(self)
         from .ebook_reader import install_ebook_reader
         install_ebook_reader(self)
@@ -945,7 +950,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
             return
         dialog = wx.FileDialog(self, 'Import locally owned books',
-            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
+            wildcard=file_dialog_wildcard(),
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() != wx.ID_OK:

@@ -20,7 +20,7 @@ recording, credential, runtime or commercial policy was copied into public Git.
 
 ## Compatibility decisions
 
-The canonical transcription service keeps its original workspace ownership,
+The selected transcription service keeps its original workspace ownership,
 job schema and limits: 1–64 selected files, at most 8 GiB per file and 32 GiB per
 batch. Folder selection is explicitly flat. It creates a normal retained-input
 job; recognition is a separate existing action. The donor's alternative ASR
@@ -32,13 +32,13 @@ same typed plan validator and scope checks as the deterministic parser. The
 selected local profile receives the instruction text, with no automatic file
 contents. A proposal does not create or execute a job.
 
-Studio keeps the canonical voice-registry API and owned/borrowed lifecycle.
+Studio keeps the selected voice-registry API and owned/borrowed lifecycle.
 Clip-only work does not discover voices. Project schema 1 serialization and
 fingerprints stay stable; edited clip metadata explicitly uses schema 2.
 The bounded cancellable hash helper extends the existing API without changing
 its existing callers. Cached production nodes bind executable and module bytes.
 
-State backups retain the canonical reading-state and pending-import contracts.
+State backups retain the selected reading-state and pending-import contracts.
 The donor's incompatible `backup_extensions` format is not adopted. Existing
 state entries carry verified retained Studio inputs and typed media receipts.
 All sealed bytes pass validation before a restore staging projection rebinds
@@ -84,3 +84,44 @@ settings when the owner supplies an independently reviewed installation. The
 full CI audio profile is a test environment, not permission to include those
 binaries in a transfer ZIP. Windows SAPI reading remains independent of FFmpeg.
 EPUBCheck is a pinned validation tool, not a bundled application dependency.
+
+## Academic comparison and formatting extension
+
+The bounded topic comparison and catalog-quality components from canonical
+`966e5ccf892243ead6942c635af5fbab47e72551` were adapted at
+`5ce6446a19929cc8a14834a348f404409e1bc214` and selected as `b51cb5e`.
+They use existing evidence, revision, note, tag and metadata-editor contracts.
+Only two new menu actions are installed; the existing registry makes both
+available to command search and shortcut configuration without assigning a
+new conflicting default key.
+
+The existing Node/citeproc-js formatting controller now accepts an explicitly
+chosen local CSL file through its existing bounded style loader. DOCX export
+and regeneration retain style-byte provenance. No alternate citation backend,
+new dependency, schema or second outline exporter is introduced.
+
+The component passed 396 strict source cases and 163 installed Linux cases;
+these overlapping sets are not cumulative platform acceptance. Six portable
+suites, explicit installed-module origins and two native probes are required
+in the final Windows workflow. See [academic workflows](ACADEMIC_WORKFLOWS.md)
+and the [requirement evidence](RESONANCE_REQUIREMENT_STATUS_20261127.md).
+
+## Retained document formats
+
+Three bounded extractors from canonical `966e5cc` are unchanged at component
+`7141297a20c00daa407f5a80d1fa7c9944a8657a`, selected as `2dbcffc`. Existing
+intake, retained originals, import requests/attempts, source review, search,
+Reading Desk and pending backup now recognize ten additional families. The
+publication verifier keeps its exact receipt, configuration-size, page/index
+and source identity checks. Metadata-superseded replay does not reactivate an
+older source. No schema or dependency lock is changed.
+
+The component passed 707 distinct source cases and 326 installed Linux cases,
+with no skips or expected failures; these sets overlap. The Windows composition
+uses one lowercase [format guide](document_formats.md), preserving the separate
+conversion inventory, because two tracked names differing only by case cannot
+be retained on the target filesystem. The existing native Import Center probe
+keeps its source invocation and has an explicit installed mode that refuses
+checkout modules; full Windows acceptance includes this mode and all four new
+strict suites. The synthetic XLSX interoperability fixture is original test
+data, not a user document or executable dependency.

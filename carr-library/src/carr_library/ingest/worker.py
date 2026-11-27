@@ -22,6 +22,7 @@ from uuid import uuid4
 
 from .pipeline import Ingest, canonical
 from .retained_assets import SUFFIXES as MIME_SUFFIXES
+from ..extract.document_formats import EXTENDED_MIMES, FORMAT_BY_MIME, _valid_locator
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -158,12 +159,27 @@ def _publication_state(db, record, revision, *, budget=None):
     else:
         adapter = ('strict-utf8-v1' if manifest['mime'] == 'text/plain' else
                    'python-docx-ordered-v1' if manifest['mime'].endswith('wordprocessingml.document')
+                   else 'ordered-document-v1' if manifest['mime'] in EXTENDED_MIMES
                    else 'epub-spine-v1')
         if (settings.get('adapter') != adapter or settings.get('kind') != 'logical_segment'
                 or (manifest['mime'] != 'text/plain' and (
                     not isinstance(settings.get('provenance'), dict)
                     or settings['provenance'].get('asset_sha256') != row[2]))):
             raise ValueError('Import publication source configuration changed.')
+        if manifest['mime'] in EXTENDED_MIMES:
+            if (set(settings) != {'adapter', 'kind', 'format', 'provenance', 'logical_locators', 'warnings'}
+                    or settings['format'] != FORMAT_BY_MIME[manifest['mime']].name
+                    or not isinstance(settings['logical_locators'], list)
+                    or not 1 <= len(settings['logical_locators']) <= 10000
+                    or not isinstance(settings['warnings'], list) or len(settings['warnings']) > 100
+                    or any(not isinstance(warning, str) or len(warning) > 256
+                           for warning in settings['warnings'])):
+                raise ValueError('Import publication document configuration changed.')
+            for locator in settings['logical_locators']:
+                if budget is not None:
+                    budget.check()
+                if not _valid_locator(locator):
+                    raise ValueError('Import publication document location changed.')
     authors = tuple(r[0] for r in db.execute(
         'SELECT name FROM catalog_author WHERE workspace=? AND work=? ORDER BY position',
         (workspace, metadata['work_id'])))
@@ -185,11 +201,14 @@ def _publication_state(db, record, revision, *, budget=None):
         raise ValueError('Import publication source metadata changed.')
     digest = sha256(canonical([_request_identity(record), list(row), list(catalog),
                                list(source), authors]).encode('utf-8'))
-    limit = 10000 if manifest['mime'].endswith('wordprocessingml.document') else 1000
+    limit = (10000 if manifest['mime'] in EXTENDED_MIMES
+             or manifest['mime'].endswith('wordprocessingml.document') else 1000)
     shape = db.execute('SELECT count(*),coalesce(sum(length(CAST(raw AS BLOB))),0) '
                        'FROM page WHERE revision=?', (revision,)).fetchone()
     if not 1 <= shape[0] <= limit or not 0 < shape[1] <= 64 * 1024 * 1024:
         raise ValueError('Import publication exceeds its source capacity.')
+    if manifest['mime'] in EXTENDED_MIMES and len(settings['logical_locators']) != shape[0]:
+        raise ValueError('Import publication document segment count changed.')
     completed = 0
     for page in db.execute('SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw '
                            'FROM page p LEFT JOIN indexed i ON i.id=p.id '
@@ -304,12 +323,20 @@ def _reconcile_publication(root, request_id, attempt, *, library=None,
         budget.check()
         if not os.path.samestat(current_identity, app.database.stat()):
             raise ValueError('Import publication database identity changed.')
+        document_notes = {}
+        if state['manifest']['mime'] in EXTENDED_MIMES:
+            # Preserve the same fidelity warnings after a late worker stop.
+            # This configuration was size/shape/hash-checked in this snapshot.
+            config = json.loads(db.execute('SELECT config FROM revision WHERE id=?',
+                                           (candidate['revision'],)).fetchone()[0])
+            document_notes = dict(format=config['format'], warnings=config['warnings'])
     return dict(state='complete', id=candidate['revision'], workspace=record['workspace'],
                 edition=record['metadata']['edition_id'], asset=state['manifest']['sha256'],
                 completed=state['completed'], total=state['completed'], error=None,
                 verified=state['manifest']['mime'] == 'text/plain',
                 publication_recovered=True, recovered_publication=True,
-                message='Import completed before the worker stopped; the committed source was verified.')
+                message='Import completed before the worker stopped; the committed source was verified.',
+                **document_notes)
 
 
 class RuntimeBoundIngest(Ingest):
@@ -543,9 +570,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
-                or expected_manifest['mime'] not in (
-                    'text/plain', 'application/pdf', 'application/epub+zip',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
                 or not 0 < expected_manifest['size'] <= MAX_BYTES):
             raise ValueError('Invalid planned source manifest.')

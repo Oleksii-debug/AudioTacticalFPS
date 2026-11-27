@@ -159,6 +159,22 @@ def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(c
     assert kwargs['recursive'] is True and kwargs['cancelled']()
 
 
+def test_file_chooser_includes_extended_formats_and_preserves_chosen_paths(center):
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_OPEN, wx.FD_FILE_MUST_EXIST, wx.FD_MULTIPLE = 1, 2, 4, 8
+    selected = ['/sources/Academic.HTML', '/sources/notes.ods']
+    chooser = SimpleNamespace(ShowModal=lambda: wx.ID_OK, GetPaths=lambda: selected, Destroy=Mock())
+    wx.FileDialog = Mock(return_value=chooser)
+    center.plan = Mock()
+    center.add_files()
+    pattern = wx.FileDialog.call_args.kwargs['wildcard'].split('|')[1]
+    assert set(pattern.split(';')) == {
+        '*.txt', '*.pdf', '*.docx', '*.epub', '*.html', '*.htm', '*.xhtml', '*.md',
+        '*.markdown', '*.eml', '*.fb2', '*.fb3', '*.odt', '*.odp', '*.ods', '*.pptx', '*.xlsx'}
+    center.plan.assert_called_once_with(tuple(selected))
+    chooser.Destroy.assert_called_once()
+
+
 @pytest.mark.parametrize('control,selection', [('collection', -1), ('collection', 2),
                                              ('languages', -1), ('languages', 4)])
 def test_invalid_plan_choices_never_start_a_job(center, control, selection):

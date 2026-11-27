@@ -10,9 +10,10 @@ import re
 import stat
 
 from ..catalog.intake import snapshot
+from ..extract.document_formats import SUPPORTED_SUFFIXES
 
 
-SUPPORTED = frozenset(('.txt', '.pdf', '.docx', '.epub'))
+SUPPORTED = SUPPORTED_SUFFIXES
 MAX_FILES = 5000
 MAX_SCAN_ENTRIES = 20000
 MAX_ROOTS = 256

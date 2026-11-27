@@ -19,6 +19,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -57,6 +58,7 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
@@ -142,6 +144,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                         SimpleNamespace(install_ebook_reader=ebook))
     new_installers = []
     for module, installer in [('speech_dialog', 'install_speech_actions'),
+                              ('academic_tools', 'install_academic_comparison_actions'),
                               ('language_matrix', 'install_language_actions'),
                               ('translation_dialog', 'install_translation_actions'),
                               ('transcription_dialog', 'install_transcription_actions'),
@@ -464,6 +467,8 @@ def test_scanned_pdf_import_reuses_canonical_recognition_config(classes,monkeypa
     file_dialog.GetPaths.return_value = ['/sources/Scanned.PDF','/sources/notes.txt']
     wx.FileDialog = Mock(return_value=file_dialog)
     f.import_books(None)
+    assert '*.html' in wx.FileDialog.call_args.kwargs['wildcard']
+    assert '*.xlsx' in wx.FileDialog.call_args.kwargs['wildcard']
     chooser.assert_called_once_with(f,['/sources/Scanned.PDF','/sources/notes.txt'])
     f.library.import_files.assert_not_called()
     _,import_files,complete = f.run_job.call_args.args

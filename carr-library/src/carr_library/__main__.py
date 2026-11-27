@@ -64,6 +64,14 @@ def self_test():
 
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
+    if '--document-formats' in arguments:
+        # This read-only capability listing must not initialize a native
+        # runtime, private data directory or another command as a side effect.
+        if arguments != ['--document-formats']:
+            argparse.ArgumentParser().error('--document-formats must be used alone.')
+        from .extract.document_formats import supported_formats_text
+        print(supported_formats_text())
+        return 0
     if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
         from .academic_integration.doi import _worker_main
         return _worker_main(arguments[1:])
@@ -84,6 +92,8 @@ def main(argv=None):
     parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('--data-dir', type=Path, help='Private persistent data directory')
     parser.add_argument('--self-test', action='store_true', help='Check an isolated synthetic library and exit')
+    parser.add_argument('--document-formats', action='store_true',
+                        help='List supported local document formats and limits, without opening a library')
     parser.add_argument('--model-dir', type=Path, help='Verified local MiniLM model directory')
     parser.add_argument('--model-manifest', type=Path, help='Pinned model manifest outside the model directory')
     parser.add_argument('--backup', type=Path, help='Back up all local libraries to a new directory')

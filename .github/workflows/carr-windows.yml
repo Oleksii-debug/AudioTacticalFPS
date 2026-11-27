@@ -607,6 +607,12 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_playback_navigation_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-playback-navigation-native.txt'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $runInstalledNative | & $python -I -B - $bundle (Resolve-Path tests/ui/native_academic_comparison_smoke.py).Path --require-windows 2>&1 | Tee-Object 'ci-results/full-bundle-academic-comparison-native.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_custom_csl_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-custom-csl-native.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $runInstalledNative | & $python -I -B - $bundle (Resolve-Path tests/ui/native_import_center_smoke.py).Path --require-installed 2>&1 | Tee-Object 'ci-results/full-bundle-import-center-native.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_translation_v3_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-translation-native.txt'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $runInstalledNative | & $python -I -B - $bundle (Resolve-Path scripts/windows_recording_smoke.py).Path --ffmpeg (Join-Path $bundle 'audio/bin/ffmpeg.exe') --ffprobe (Join-Path $bundle 'audio/bin/ffprobe.exe') 2>&1 | Tee-Object 'ci-results/full-bundle-recording-native.txt'
@@ -663,6 +669,11 @@ jobs:
               'carr_library.acquisition.providers', 'carr_library.acquisition.service',
               'carr_library.acquisition.transport', 'carr_library.acquisition.cli',
               'carr_library.ui.acquisition_dialog',
+              'carr_library.catalog.quality', 'carr_library.research.topic_literature_matrix',
+              'carr_library.ui.academic_tools', 'carr_library.ui.catalog_quality',
+              'carr_library.ui.literature_matrix', 'carr_library.ui.citation_formatting',
+              'carr_library.extract.document_formats', 'carr_library.extract.document_formats_text',
+              'carr_library.extract.document_formats_xml',
           )
           def installed_origins():
               result = {name: str(pathlib.Path(importlib.import_module(name).__file__).resolve())
@@ -742,6 +753,16 @@ jobs:
               'tests/acquisition/test_acquisition_cli.py',
               'tests/ui/test_native_acquisition.py',
               'tests/ui/native_acquisition_windows.py',
+              'tests/reader/test_topic_literature_matrix.py',
+              'tests/catalog/test_quality.py',
+              'tests/ui/test_literature_matrix.py',
+              'tests/ui/test_academic_tools.py',
+              'tests/ui/test_catalog_quality.py',
+              'tests/academic_integration/test_custom_style_ui.py',
+              'tests/extract/test_document_formats_text.py',
+              'tests/extract/test_document_formats_xml.py',
+              'tests/e2e/test_extended_document_workflows.py',
+              'tests/ingest/test_extended_document_publication.py',
               'tests/speech/test_find_replace.py',
               'tests/speech/test_find_replace_handlers.py',
               'tests/speech/test_find_replace_reader_hook.py',
@@ -1176,6 +1197,16 @@ jobs:
             'tests/acquisition/test_acquisition_cli.py',
             'tests/ui/test_native_acquisition.py',
             'tests/ui/native_acquisition_windows.py',
+            'tests/reader/test_topic_literature_matrix.py',
+            'tests/catalog/test_quality.py',
+            'tests/ui/test_literature_matrix.py',
+            'tests/ui/test_academic_tools.py',
+            'tests/ui/test_catalog_quality.py',
+            'tests/academic_integration/test_custom_style_ui.py',
+            'tests/extract/test_document_formats_text.py',
+            'tests/extract/test_document_formats_xml.py',
+            'tests/e2e/test_extended_document_workflows.py',
+            'tests/ingest/test_extended_document_publication.py',
             'tests/speech/test_find_replace.py',
             'tests/speech/test_find_replace_handlers.py',
             'tests/speech/test_find_replace_reader_hook.py',

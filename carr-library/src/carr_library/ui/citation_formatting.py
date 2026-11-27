@@ -101,7 +101,7 @@ class CitationFormattingController:
             raise ValueError("Academic references changed. Reload them and format the bibliography again.")
 
     def render(self, snapshot, *, reference_ids=None, style="apa", locale="en-US", citations=(),
-               node_path=None, cancelled=lambda: False):
+               style_path=None, node_path=None, cancelled=lambda: False):
         self._check(snapshot, cancelled)
         references = snapshot.references
         if reference_ids is not None:
@@ -113,7 +113,7 @@ class CitationFormattingController:
                 raise ValueError("A selected reference is unavailable in this library.")
             references = tuple(row for row in references if row["id"] in wanted)
         result = render_citations(references, style=style, locale=locale, citations=citations,
-                                  node_path=node_path, cancelled=cancelled)
+                                  style_path=style_path, node_path=node_path, cancelled=cancelled)
         self._check(snapshot, cancelled)
         self._result, self._result_snapshot = result, snapshot.sha256
         return result
@@ -368,6 +368,7 @@ def _native_types():
             self.clusters = []
             self.result = None
             self.styles = available_styles()
+            self.style_path = None
             layout = wx.BoxSizer(wx.VERTICAL)
             self.tabs = wx.Notebook(self)
             reference_page = wx.Panel(self.tabs)
@@ -404,6 +405,18 @@ def _native_types():
             self.locale.SetSelection(0)
             style_row.Add(self.locale, 0, wx.ALL, 5)
             first.Add(style_row, 0, wx.EXPAND)
+            self.local_style = labelled(reference_page, first, "Selected local CSL style; optional",
+                wx.TextCtrl(reference_page, value="Using the installed style selection", style=wx.TE_READONLY))
+            custom_row = wx.BoxSizer(wx.HORIZONTAL)
+            self.choose_style = wx.Button(reference_page, label="Choose local CSL file...")
+            self.choose_style.SetName("Choose a local CSL style file")
+            self.installed_style = wx.Button(reference_page, label="Use installed style")
+            self.installed_style.SetName("Use the installed citation style selection")
+            self.choose_style.Bind(wx.EVT_BUTTON, self.choose_local_style)
+            self.installed_style.Bind(wx.EVT_BUTTON, self.use_installed_style)
+            for button in (self.choose_style, self.installed_style):
+                custom_row.Add(button, 0, wx.ALL, 5)
+            first.Add(custom_row, 0, wx.EXPAND)
             runtime_row = wx.BoxSizer(wx.HORIZONTAL)
             runtime_row.Add(wx.StaticText(reference_page, label="Local &Node.js executable; blank uses installed runtime"), 0,
                             wx.ALL | wx.ALIGN_CENTER_VERTICAL, 7)
@@ -478,6 +491,7 @@ def _native_types():
             self.export_button.Bind(wx.EVT_BUTTON, self.export)
             self.add_footer(layout, (self.format_button, self.export_button))
             self.controls.extend((self.references_box, self.all_button, self.none_button, self.reload_button, self.style,
+                self.choose_style, self.installed_style,
                 self.locale, self.node, self.browse_node, self.citation_reference, self.locator_kind, self.locator,
                 self.verified, self.add_citation, self.citation_list, self.remove_citation, self.move_up, self.move_down,
                 self.document_title, self.format_button, self.export_button))
@@ -491,6 +505,8 @@ def _native_types():
 
         def update_controls(self):
             super().update_controls()
+            self.style.Enable(self.style_path is None and not self.pending)
+            self.installed_style.Enable(self.style_path is not None and not self.pending)
             self.format_button.Enable(bool(self.references) and not self.pending)
             self.export_button.Enable(self.result is not None and not self.pending)
             for control in (self.add_citation, self.all_button, self.none_button):
@@ -545,6 +561,26 @@ def _native_types():
             with wx.FileDialog(self, "Choose the installed local Node.js executable", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
                 if dialog.ShowModal() == wx.ID_OK:
                     self.node.SetValue(dialog.GetPath())
+
+        def choose_local_style(self, event=None):
+            if self.pending:
+                return
+            with wx.FileDialog(self, "Choose an independent local CSL style", wildcard="CSL styles (*.csl)|*.csl",
+                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
+                if dialog.ShowModal() != wx.ID_OK:
+                    return
+                self.style_path = Path(dialog.GetPath())
+            # Loading and bounded XML validation belong to the existing worker.
+            self.local_style.ChangeValue(str(self.style_path))
+            self.invalidate()
+            self.report("Local style selected. Format locally to validate it and preview the result.", focus=False)
+
+        def use_installed_style(self, event=None):
+            if self.pending:
+                return
+            self.style_path = None
+            self.local_style.ChangeValue("Using the installed style selection")
+            self.invalidate()
 
         def reset_verification(self, event=None):
             self.verified.SetValue(False)
@@ -616,6 +652,7 @@ def _native_types():
                 self.report("A retained locator needs a new source check. Remove that citation and add it again after reviewing its source.")
                 return
             style = self.styles[self.style.GetSelection()].id
+            style_path = self.style_path
             locale = LOCALES[self.locale.GetSelection()][0]
             node = self.node.GetValue().strip() or None
             clusters = tuple(replace(cluster, note_index=index) for index, cluster in enumerate(self.clusters, 1))
@@ -634,7 +671,8 @@ def _native_types():
                 self.preview.SetFocus()
 
             self.run("Formatting citations locally", lambda: self.controller.render(snapshot, reference_ids=selected,
-                style=style, locale=locale, citations=clusters, node_path=node, cancelled=self.cancel_event.is_set), ready)
+                style=style, style_path=style_path, locale=locale, citations=clusters, node_path=node,
+                cancelled=self.cancel_event.is_set), ready)
 
         def export(self, event=None):
             if self.pending or self.result is None:

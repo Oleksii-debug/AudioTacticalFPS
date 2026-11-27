@@ -4,6 +4,69 @@ The catalog exchange and research-outline commands operate on the currently open
 library. They use local files and existing source verification; they require no
 account or online API.
 
+## Compare saved sources in a topic
+
+Open the intended library and research topic, then choose **Academic → Compare
+sources in active topic**. The comparison contains the topic's
+already saved evidence. **Include subtopics** and the exact tag filter control
+the visible scope. Select a source version and an evidence item to read its exact
+quotation slices, source citations, locations, researcher notes and tags.
+
+Edition and historical revision identify each source row. Equal titles do not
+merge editions or revisions. A theme count describes researcher-supplied tags;
+it does not establish agreement, reliability or an AI-generated conclusion.
+The service rechecks retained originals, historical metadata and source-review
+authority for every scoped evidence item, including evidence hidden by a tag
+filter. Damaged sources or revoked review prevent a successful report.
+
+**Open selected evidence and notes** returns to the existing evidence editor.
+Its unsaved-note confirmation and Save All behavior remain in force. **Refresh
+comparison** reloads current saved notes and tags. CSV and Markdown export also
+obtain a new verified snapshot; they never publish a stale displayed cache.
+Replacing an existing export needs the normal destination confirmation, and a
+changed destination is rejected before publication. CSV cells carry reversible
+JSON strings/arrays so quotations remain exact and cannot become formulas.
+
+This view uses the existing library database and backup format. Its explicit
+bounds are 10,000 workspace topics, 1,000 selected topics, depth 32, 5,000 evidence
+items, 1,000 source revisions, 500 themes and 16 MiB of stored text. Exceeding a
+bound fails the operation rather than silently omitting results. Reads and
+exports use the desktop job runner and its **Cancel current operation** control.
+The existing **Research → Export topic and subtopics** command remains available.
+
+## Review catalog quality and correct a selected book
+
+Choose **Academic → Check catalog quality**. The view reports missing titles,
+author names or languages; editions outside active collections; shared registered
+asset digests; and possible duplicate metadata. Choose a collection, an issue
+filter and a page of results to inspect the exact affected edition IDs.
+
+**Edit selected book metadata** opens the existing guarded metadata editor for
+that edition. Title and authors apply to its work; language, edition and volume
+apply to the selected edition. A concurrent metadata change requires a fresh
+review. Original assets and previously saved quotation metadata remain unchanged.
+After saving, run the check again to inspect the current catalog.
+
+Similarity is a review hint: no records are merged or deleted automatically.
+The catalog check does not reverify source-file bytes or disambiguate real people.
+It reads one authorized database snapshot, retains edition/volume distinctions,
+and uses the existing catalog limits, including the 10,000-source preflight.
+Cancel, closing the window or changing the active scope suppresses stale results.
+
+### Integration provenance and acceptance boundary
+
+The topic comparison and catalog-quality views adapt the bounded implementations
+from [canonical source 966e5cc](https://github.com/Oleksii-debug/AudioTacticalFPS/tree/966e5ccf892243ead6942c635af5fbab47e72551/carr-library/src/carr_library).
+Only the new views and two menu actions are composed here. Existing acquisition,
+bibliography import, outline export, author representation, source authority and
+database/backup schemas remain the selected application's implementations.
+Both new commands are available to the existing command palette and shortcut
+settings. They introduce no default shortcut that could replace a saved binding.
+`tests/ui/native_academic_comparison_smoke.py --require-windows` exercises the
+installed native views, note preservation and exact metadata correction. Final
+composed Windows and NVDA acceptance are separate from portable source tests;
+they are not implied by the donor's qualification.
+
 ## Review metadata from a reference manager
 
 1. In **Books and Collections**, select the existing book to update.
