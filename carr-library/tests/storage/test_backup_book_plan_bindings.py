@@ -11,7 +11,7 @@ from carr_library.durable_state import atomic_json, read_json, state_lock
 from carr_library.library_backup import restore_backup
 from carr_library.studio.book_audio import BookAudioService, SplitOptions, capture_plan
 from carr_library.studio.project import Project, Role
-from carr_library.studio.render import ProductionService
+from carr_library.studio.render import ProductionService, _operation_sha256
 
 
 class SelectedVoice:
@@ -67,7 +67,11 @@ def test_individually_valid_job_cannot_break_its_saved_book_plan(book, tmp_path,
         value['format'] = 'flac'
     else:
         value['stems'] = True
-    # Each journal is valid in isolation; the retained immutable Book relation
+    # The original seal must still reject these changed operation options.
+    with pytest.raises(ValueError, match=r'^Production operation options changed\.$'):
+        backup_producers._studio_job(value, identity)
+    value['operation_sha256'] = _operation_sha256(value)
+    # Each journal is now valid in isolation; the retained immutable Book relation
     # is the additional fact that must refuse the inconsistent backup.
     backup_producers._studio_job(value, identity)
     atomic_json(path, value, replace=True)

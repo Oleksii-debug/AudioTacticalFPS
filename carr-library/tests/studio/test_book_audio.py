@@ -201,11 +201,38 @@ def test_review_prepare_and_saved_plan_never_start_speech_and_names_are_exact(bo
     assert [e.production.get(candidate.job_id(i))['destination'] for i in (1, 2)] == list(ready.destinations)
     assert all(Path(name).parent == e.output for name in ready.destinations)
     assert [Path(name).name for name in ready.destinations] == [
-        f'{index:04d}---Original-source-title---Part-{index}-{candidate.job_id(index)[:12]}'
+        f'{index:04d}---Original-source-title---Part-{index}'[:18]
+        + '-' + sha256(candidate.job_id(index).encode('ascii')).hexdigest()
         for index in (1, 2)]
     assert not list(e.output.iterdir()) and e.voices.received == []
     again = e.service.prepare(candidate, e.output, approval=ready.fingerprint)
     assert again == ready and len(e.production.jobs()) == 2
+
+
+@pytest.mark.parametrize('legacy', [False, True])
+def test_review_and_reprepare_retain_existing_exact_destination_and_job_bytes(book, monkeypatch, legacy):
+    e = book
+    candidate, ready = prepared(e)
+    paths = [e.production.jobs_root / candidate.job_id(index) / 'job.json' for index in (1, 2)]
+    if legacy:
+        # A real historical pending journal used the old title/short-ID name
+        # and did not claim an operation-options seal.
+        for index, path in enumerate(paths, 1):
+            state = e.production.get(candidate.job_id(index))
+            state.pop('operation_sha256')
+            state['destination'] = str(e.output /
+                f'{index:04d}---Original-source-title---Part-{index}-{candidate.job_id(index)[:12]}')
+            atomic_json(path, state, replace=True)
+    before = [path.read_bytes() for path in paths]
+    destinations = tuple(e.production.get(candidate.job_id(index))['destination'] for index in (1, 2))
+    def no_submission(*args, **kwargs):
+        raise AssertionError('A retained Book item must not be resubmitted or renamed.')
+    monkeypatch.setattr(e.production, 'submit', no_submission)
+    reviewed = e.service.review(candidate, e.output)
+    assert reviewed.prepared and reviewed.destinations == destinations
+    assert e.service.prepare(candidate, e.output, approval=reviewed.fingerprint) == reviewed
+    assert [path.read_bytes() for path in paths] == before
+    assert not list(e.output.iterdir()) and e.voices.received == []
 
 
 @pytest.mark.parametrize('change', ['revision', 'workspace', 'topic', 'original'])
@@ -318,15 +345,19 @@ def test_complete_item_still_rechecks_source_and_artifact_bytes(book):
     assert e.voices.received == calls
 
 
-def test_manifest_and_job_tamper_cannot_relabel_existing_review(book):
+@pytest.mark.parametrize('legacy', [False, True])
+def test_manifest_and_job_tamper_cannot_relabel_existing_review(book, legacy):
     e = book
     candidate, ready = prepared(e)
     path = e.production.jobs_root / candidate.job_id(1) / 'job.json'
     state = e.production.get(candidate.job_id(1))
     changed = replace(candidate.project(1), title='Another project')
     state.update(project=changed.to_dict(), fingerprint=changed.fingerprint)
+    if legacy:
+        state.pop('operation_sha256')
     atomic_json(path, state, replace=True)
-    with pytest.raises(ValueError, match='immutable'):
+    expected = 'immutable' if legacy else r'^The saved production operation options changed\.$'
+    with pytest.raises(ValueError, match=expected):
         e.service.run(candidate.id, e.output, approval=ready.fingerprint)
     assert not e.voices.received and not list(e.output.iterdir())
 
