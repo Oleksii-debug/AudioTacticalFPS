@@ -113,6 +113,256 @@ jobs:
           "CARR_AUDIO_RUNTIME=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           (Join-Path $audioRuntime 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Prepare exact native read-only format inspection
+        run: |
+          $nativeProbe = @'
+          """Disposable CI diagnosis of one exact already-reviewed DirectShow input.
+          
+          Read the selected moniker's documented WaveInID rather than parsing an opaque
+          endpoint ID or guessing from a shortened WinMM display name. No capture buffers,
+          recording start, default-device changes, policy changes or fallback are used.
+          """
+          import ctypes as C
+          from ctypes import wintypes as W
+          import json
+          import os
+          import sys
+          from comtypes import GUID
+          from comtypes.automation import VARIANT
+          
+          if os.name != 'nt' or os.environ.get('GITHUB_REF') != 'refs/heads/carr/ci-endpoint-evaluation-20261127':
+              raise RuntimeError('Exact disposable endpoint evaluation only.')
+          selected, friendly = sys.argv[1:]
+          if friendly != 'CABLE Output (VB-Audio Virtual Cable)' or not selected.startswith('@device_cm_'):
+              raise ValueError('The exact selected reviewed input is required.')
+          
+          P, HR = C.c_void_p, C.c_long
+          ole = C.OleDLL('ole32')
+          ole.CoInitializeEx.argtypes = [P, W.DWORD]
+          ole.CoInitializeEx.restype = HR
+          ole.CoUninitialize.argtypes = []
+          ole.CoUninitialize.restype = None
+          ole.CoCreateInstance.argtypes = [C.POINTER(GUID), P, W.DWORD, C.POINTER(GUID), C.POINTER(P)]
+          ole.CoCreateInstance.restype = HR
+          ole.CreateBindCtx.argtypes = [W.DWORD, C.POINTER(P)]
+          ole.CreateBindCtx.restype = HR
+          ole.CoTaskMemFree.argtypes = [P]
+          ole.CoTaskMemFree.restype = None
+          oleaut = C.OleDLL('oleaut32')
+          oleaut.VariantClear.argtypes = [C.POINTER(VARIANT)]
+          oleaut.VariantClear.restype = HR
+          
+          def method(pointer, offset, args=(), result=HR):
+              table = C.cast(pointer, C.POINTER(C.POINTER(P))).contents
+              return C.WINFUNCTYPE(result, P, *args)(table[offset])
+          
+          def release(pointer):
+              if pointer:
+                  method(pointer, 2, result=W.ULONG)(pointer)
+          
+          def ok(code, label):
+              if code < 0:
+                  raise OSError(f'{label}: HRESULT 0x{code & 0xffffffff:08x}')
+              return code
+          
+          def query(pointer, identity):
+              result = P()
+              guid = GUID(identity)
+              ok(method(pointer, 0, (C.POINTER(GUID), C.POINTER(P)))(pointer, C.byref(guid), C.byref(result)), 'QueryInterface')
+              return result
+          
+          def property_value(bag, name):
+              value = VARIANT()
+              try:
+                  ok(method(bag, 3, (W.LPCWSTR, C.POINTER(VARIANT), P))(bag, name, C.byref(value), None), 'IPropertyBag.Read ' + name)
+                  return value.value
+              finally:
+                  oleaut.VariantClear(C.byref(value))
+          
+          class WaveFormat(C.Structure):
+              _pack_ = 1
+              _fields_ = [('tag', W.WORD), ('channels', W.WORD), ('rate', W.DWORD),
+                          ('average', W.DWORD), ('alignment', W.WORD),
+                          ('bits', W.WORD), ('extra', W.WORD)]
+          
+          class MediaType(C.Structure):
+              _fields_ = [('major', GUID), ('subtype', GUID), ('fixed', W.BOOL),
+                          ('temporal', W.BOOL), ('sample_size', W.ULONG), ('format_type', GUID),
+                          ('unknown', P), ('format_size', W.ULONG), ('format', P)]
+          
+          def free_type(pointer):
+              if pointer:
+                  value = C.cast(pointer, C.POINTER(MediaType)).contents
+                  release(value.unknown)
+                  if value.format:
+                      ole.CoTaskMemFree(value.format)
+                  ole.CoTaskMemFree(pointer)
+          
+          def describe_type(pointer):
+              value = C.cast(pointer, C.POINTER(MediaType)).contents
+              result = {'format_type': str(value.format_type), 'format_size': int(value.format_size)}
+              if str(value.format_type).lower() == '{05589f81-c356-11ce-bf01-00aa0055595a}' and 16 <= value.format_size <= 65536 and value.format:
+                  raw = C.string_at(value.format, min(value.format_size, C.sizeof(WaveFormat)))
+                  raw = raw + b'\x00' * (C.sizeof(WaveFormat) - len(raw))
+                  wave = WaveFormat.from_buffer_copy(raw)
+                  result.update(tag=int(wave.tag), channels=int(wave.channels),
+                                bits=int(wave.bits), rate=int(wave.rate), extra=int(wave.extra))
+              return result
+          
+          report = {'status': 'DIAGNOSED', 'scope': 'selected moniker only; no recording started',
+                    'physical_microphone': 'NOT_RUN', 'policy_changes': False, 'fallback': False}
+          enumerator = monikers = context = chosen = capture_filter = pins = P()
+          initialized = False
+          try:
+              # comtypes initialized this thread already; an additional balanced STA entry.
+              ok(ole.CoInitializeEx(None, 2), 'CoInitializeEx')
+              initialized = True
+              enumerator, monikers, context, chosen, capture_filter, pins = (P() for _ in range(6))
+              clsid = GUID('{62BE5D10-60EB-11D0-BD3B-00A0C911CE86}')
+              enum_iid = GUID('{29840822-5B84-11D0-BD3B-00A0C911CE86}')
+              category = GUID('{33D9A762-90C8-11D0-BD43-00A0C911CE86}')
+              ok(ole.CoCreateInstance(C.byref(clsid), None, 1, C.byref(enum_iid), C.byref(enumerator)), 'Create system enumerator')
+              ok(ole.CreateBindCtx(0, C.byref(context)), 'CreateBindCtx')
+              code = method(enumerator, 3, (C.POINTER(GUID), C.POINTER(P), W.DWORD))(enumerator, C.byref(category), C.byref(monikers), 0)
+              if code != 0 or not monikers:
+                  raise RuntimeError('Audio moniker inventory is absent.')
+              matches = 0
+              for _ in range(64):
+                  moniker, name_pointer = P(), P()
+                  fetched = W.ULONG()
+                  code = method(monikers, 3, (W.ULONG, C.POINTER(P), C.POINTER(W.ULONG)))(monikers, 1, C.byref(moniker), C.byref(fetched))
+                  if code == 1:
+                      break
+                  ok(code, 'IEnumMoniker.Next')
+                  if fetched.value != 1 or not moniker:
+                      raise RuntimeError('Invalid moniker enumeration.')
+                  try:
+                      ok(method(moniker, 20, (P, P, C.POINTER(P)))(moniker, context, None, C.byref(name_pointer)), 'GetDisplayName')
+                      display = C.wstring_at(name_pointer)
+                      if display.replace(':', '_') == selected:
+                          matches += 1
+                          if chosen:
+                              raise RuntimeError('Selected moniker is ambiguous.')
+                          chosen, moniker = moniker, P()
+                  finally:
+                      if name_pointer:
+                          ole.CoTaskMemFree(name_pointer)
+                      release(moniker)
+              else:
+                  raise RuntimeError('Audio moniker inventory exceeds its bound.')
+              if matches != 1:
+                  raise RuntimeError('Selected moniker changed before native inspection.')
+              bag = P()
+              bag_iid = GUID('{55272A00-42CB-11CE-8135-00AA004BB851}')
+              ok(method(chosen, 9, (P, P, C.POINTER(GUID), C.POINTER(P)))(chosen, context, None, C.byref(bag_iid), C.byref(bag)), 'BindToStorage')
+              try:
+                  if property_value(bag, 'FriendlyName') != friendly:
+                      raise RuntimeError('Selected moniker display identity changed.')
+                  wave_id = property_value(bag, 'WaveInID')
+                  if type(wave_id) is not int or not 0 <= wave_id < 64:
+                      raise RuntimeError('Moniker does not supply a bounded native WaveInID.')
+                  report['wave_in_id'] = wave_id
+              finally:
+                  release(bag)
+              winmm = C.WinDLL('winmm')
+              winmm.waveInGetNumDevs.argtypes = []
+              winmm.waveInGetNumDevs.restype = W.UINT
+              if not wave_id < winmm.waveInGetNumDevs() <= 64:
+                  raise RuntimeError('Native input inventory changed.')
+              winmm.waveInOpen.argtypes = [C.POINTER(P), W.UINT, C.POINTER(WaveFormat), C.c_size_t, C.c_size_t, W.DWORD]
+              winmm.waveInOpen.restype = W.UINT
+              winmm.waveInClose.argtypes = [P]
+              winmm.waveInClose.restype = W.UINT
+              winmm.waveInGetErrorTextW.argtypes = [W.UINT, W.LPWSTR, W.UINT]
+              winmm.waveInGetErrorTextW.restype = W.UINT
+              def explanation(code):
+                  text = C.create_unicode_buffer(512)
+                  result = winmm.waveInGetErrorTextW(code, text, len(text))
+                  return text.value if result == 0 else 'No driver error text.'
+              report['wave_in_trials'] = []
+              for rate in (44100, 48000):
+                  for channels in (1, 2):
+                      wave = WaveFormat(1, channels, rate, rate * channels * 2, channels * 2, 16, 0)
+                      for flags in (1, 9, 0):
+                          handle = P()
+                          result = int(winmm.waveInOpen(C.byref(handle), wave_id, C.byref(wave), 0, 0, flags))
+                          row = {'rate': rate, 'channels': channels, 'bits': 16,
+                                 'operation': 'open-without-buffers' if flags == 0 else 'query',
+                                 'direct': bool(flags & 8), 'result': result, 'error': explanation(result)}
+                          report['wave_in_trials'].append(row)
+                          if handle:
+                              closed = int(winmm.waveInClose(handle))
+                              row['close_result'] = closed
+                              if closed:
+                                  raise RuntimeError('Exact native input handle did not close.')
+              filter_iid = GUID('{56A86895-0AD4-11CE-B03A-0020AF0BA770}')
+              ok(method(chosen, 8, (P, P, C.POINTER(GUID), C.POINTER(P)))(chosen, context, None, C.byref(filter_iid), C.byref(capture_filter)), 'BindToObject capture filter')
+              ok(method(capture_filter, 10, (C.POINTER(P),))(capture_filter, C.byref(pins)), 'IBaseFilter.EnumPins')
+              report['directshow_formats'] = []
+              for _ in range(32):
+                  pin = P()
+                  fetched = W.ULONG()
+                  code = method(pins, 3, (W.ULONG, C.POINTER(P), C.POINTER(W.ULONG)))(pins, 1, C.byref(pin), C.byref(fetched))
+                  if code == 1:
+                      break
+                  ok(code, 'IEnumPins.Next')
+                  if fetched.value != 1 or not pin:
+                      raise RuntimeError('Invalid native pin enumeration.')
+                  config = P()
+                  try:
+                      direction = C.c_int()
+                      ok(method(pin, 9, (C.POINTER(C.c_int),))(pin, C.byref(direction)), 'QueryDirection')
+                      if direction.value != 1:
+                          continue
+                      config = query(pin, '{C6E13340-30AC-11D0-A18C-00A0C9118956}')
+                      count, size = C.c_int(), C.c_int()
+                      ok(method(config, 5, (C.POINTER(C.c_int), C.POINTER(C.c_int)))(config, C.byref(count), C.byref(size)), 'GetNumberOfCapabilities')
+                      if not 0 < count.value <= 256 or not 0 < size.value <= 65536:
+                          raise RuntimeError('Capture format inventory exceeds its bound.')
+                      buffer = C.create_string_buffer(size.value)
+                      default = P()
+                      code = method(config, 4, (C.POINTER(P),))(config, C.byref(default))
+                      row = {'kind': 'current', 'get_result': f'0x{code & 0xffffffff:08x}'}
+                      try:
+                          if code == 0 and default:
+                              row.update(describe_type(default))
+                              set_code = method(config, 3, (P,))(config, default)
+                              row['set_result'] = f'0x{set_code & 0xffffffff:08x}'
+                      finally:
+                          free_type(default)
+                      report['directshow_formats'].append(row)
+                      for index in range(count.value):
+                          media = P()
+                          code = method(config, 6, (C.c_int, C.POINTER(P), P))(config, index, C.byref(media), buffer)
+                          try:
+                              if code != 0 or not media:
+                                  continue
+                              fields = describe_type(media)
+                              if fields.get('rate') in (44100, 48000) and fields.get('bits') == 16 and fields.get('channels') in (1, 2):
+                                  set_code = method(config, 3, (P,))(config, media)
+                                  report['directshow_formats'].append(dict(fields, kind='advertised',
+                                      index=index, set_result=f'0x{set_code & 0xffffffff:08x}'))
+                          finally:
+                              free_type(media)
+                  finally:
+                      release(config)
+                      release(pin)
+              else:
+                  raise RuntimeError('Capture pin inventory exceeds its bound.')
+          except BaseException as exc:
+              report['status'] = 'FAILED'
+              report['error'] = type(exc).__name__ + ': ' + str(exc)
+              raise
+          finally:
+              for pointer in (pins, capture_filter, chosen, context, monikers, enumerator):
+                  release(pointer)
+              if initialized:
+                  ole.CoUninitialize()
+              print(json.dumps(report, ensure_ascii=False), flush=True)
+          '@
+          $nativePath = Join-Path $env:RUNNER_TEMP 'carr-native-input-diagnostic.py'
+          $nativeProbe | Set-Content -LiteralPath $nativePath -Encoding utf8
+          "CARR_INPUT_DIAGNOSTIC=$nativePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Inspect only the exact reviewed capture device and its advertised formats
         timeout-minutes: 3
         run: |
@@ -164,6 +414,12 @@ jobs:
                       report['native_outputs'].append({'index': item.index, 'name': item.name,
                                                       'interface_sha256': item.identity})
                   report['selected_device'] = {'id': device.id, 'name': device.name, 'alternative': device.alternative}
+                  native_result = run_process([sys.executable, '-I', '-B',
+                      str(Path(os.environ['CARR_INPUT_DIAGNOSTIC']).resolve(strict=True)),
+                      device.alternative, device.name], budget=budget, owned_tree=True, allow_failure=True)
+                  report['native_format_diagnosis'] = {'exit_code': native_result.returncode,
+                      'stdout': native_result.stdout.decode('utf-8', errors='replace'),
+                      'stderr': native_result.stderr.decode('utf-8', errors='replace')}
                   def invoke(name, options, *, listing=False):
                       args = [str(ffmpeg), '-hide_banner', '-nostdin', '-loglevel', 'debug',
                               '-max_alloc', str(budget.max_alloc_bytes), '-threads', '1']
