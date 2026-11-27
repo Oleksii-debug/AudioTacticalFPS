@@ -60,6 +60,23 @@ location and verify the copy before deleting that program folder. Never delete
 a folder containing your only research copy. The application does not silently
 move existing data. The installer refuses to replace an existing environment.
 
+## Optional local audio setup
+
+The transferable library archive excludes the reviewed FFmpeg binary runtime.
+Windows voice reading and WAV synthesis remain available. Audio Studio needs
+local FFmpeg and ffprobe. After installing the library, open `SetupLocalAudio.cmd`
+to review and explicitly confirm acquisition of the three pinned public inputs.
+Without confirmation the helper only displays its plan. It prepares a fresh
+folder outside the program installation; it does not modify the bundle seal,
+select engines, download voices or download models.
+
+In **Local audio, voice and music engines**, use **Choose FFmpeg executable**
+and **Choose FFprobe executable** to select the two paths printed by setup.
+Reopen the studio after saving those choices. Existing intentionally installed
+tools may be selected through the same controls. The preparation helper checks
+integrity, not audio quality or a redistribution grant. New delivery archives
+must continue to exclude these locally prepared audio payloads.
+
 ## Installation from a source checkout
 
 Use Python 3.11 or later. From the `carr-library` directory:
@@ -200,9 +217,12 @@ be restored into a new folder and upgraded on opening.
 
 Choose **Library, Back up all libraries** to save all libraries, including archived ones,
 their registered originals, immutable source revisions, research evidence,
-notes, topics, tags, saved queries and academic references. Backup format 3 also
-includes the existing page bookmarks and resume positions in `reading-state.json`.
-If no reading state has been saved, the manifest records its absence explicitly.
+notes, topics, tags, saved queries and academic references. The current common
+backup format is 4; it also includes the supported typed application state and
+pending-import recovery records. Catalog schema 5 retains the transaction-owned
+import publication receipts. Reading state, introduced in backup format 3,
+includes page bookmarks and resume positions in `reading-state.json`. If no
+reading state has been saved, the manifest records its absence explicitly.
 
 The database and reading state are captured under the same library writer lock.
 Each included file is bound by size and SHA256, and saved reading places are
@@ -219,10 +239,14 @@ does not overwrite or merge an existing library. Formats 1 and 2 remain
 compatible but do not contain reading state. Their separately exported reading
 bookmarks can be imported after restoring the matching library.
 
-This format includes only its documented database, original files and reading
-sidecar. It does not collect arbitrary settings, API credentials, audio projects,
-generated audio, model files or pending import journals. Those V3 recovery
-components require their own implemented and validated formats.
+Format 4 additionally preserves its supported application settings, reading
+copies, audio projects, assistant job state and pending-import journals under
+explicit typed sidecar rules. Restored work is not started automatically;
+process-specific worker attempt hints are discarded before an explicit resume.
+Audio exported outside the library data directory needs its own copy. Model
+installations outside that directory and Windows Credential Manager secrets
+are not transferred as ordinary application state. Historical backup formats
+remain readable only with the data that their own manifests declared.
 
 ## Review the source catalog
 

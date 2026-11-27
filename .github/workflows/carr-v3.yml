@@ -99,6 +99,11 @@ jobs:
           policy = RejectExpectedFailures()
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
           suites = ['tests/storage/test_v3_state_backup.py',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_keeps_ordinary_unicode_names',
+                    'tests/storage/test_state_backup_portability.py::test_portable_snapshot_roundtrip_unicode',
                     'tests/storage/test_pending_backup.py',
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
@@ -116,7 +121,9 @@ jobs:
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
           passed = len(cases) - failed - skipped
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen
+          portable = [case for case in cases if 'test_state_backup_portability' in case.get('classname', '').split('.')]
+          portable_complete = len(portable) == 21 and len({case.get('name') for case in portable}) == 21
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), manual_nvda='NOT_RUN')
