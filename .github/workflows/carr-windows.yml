@@ -94,7 +94,7 @@ jobs:
       - name: Verify bibliography import and publication boundaries
         timeout-minutes: 5
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py tests/ui/test_profile_project_exports.py tests/ui/test_academic_actions.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed BibTeX import and real overwrite confirmation
@@ -418,7 +418,8 @@ jobs:
                             'tests/reader/test_export_no_clobber.py',
                             'tests/ui/test_export_destination.py',
                             'tests/storage/test_durable_state_publication.py',
-                            'tests/ui/test_profile_project_exports.py']
+                            'tests/ui/test_profile_project_exports.py',
+                            'tests/ui/test_academic_actions.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
