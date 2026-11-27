@@ -1,8 +1,11 @@
 """Real threaded task-view initialization plus queued callback lifecycle checks."""
 from concurrent.futures import ThreadPoolExecutor
+import ast
+from pathlib import Path
 from queue import Queue
 import threading
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -150,6 +153,46 @@ def test_late_initialization_completion_cannot_touch_disposed_view(tmp_path):
     failed(RuntimeError('late failure'))
     assert changes == before
     assert frame.cancel_event.is_set() is False and controller._token is None
+
+
+def test_native_destruction_with_a_recreated_wrapper_detaches_pending_initialization(tmp_path):
+    from carr_library.ui import operations_dialog
+
+    source = Path(operations_dialog.__file__)
+    module = ast.parse(source.read_text(encoding='utf-8'))
+    factory = next(node for node in module.body
+                   if isinstance(node, ast.FunctionDef) and node.name == 'create_operations_dialog')
+    view = next(node for node in factory.body if isinstance(node, ast.ClassDef))
+    handler = next(node for node in view.body
+                   if isinstance(node, ast.FunctionDef) and node.name == 'destroyed')
+    namespace = {}
+    exec(compile(ast.Module(body=[handler], type_ignores=[]), str(source), 'exec'), namespace)
+
+    frame = QueuedFrame(LibraryApp(tmp_path / 'data'))
+    changes, skipped = [], []
+    controller = OperationsController(frame, changed=lambda focus=False: changes.append(focus))
+    assert controller.refresh()
+    operation, done, failed = frame.pending[0]
+    before_status, before_changes = controller.status, list(changes)
+
+    def invalid_native_call():
+        raise AssertionError('Destruction must not call through an invalid native wrapper.')
+
+    window = SimpleNamespace(controller=controller, _native_id=4201, GetId=invalid_native_call)
+    for identity in (4202, 4201):
+        event = SimpleNamespace(GetId=lambda: identity, GetEventObject=lambda: object(),
+                                Skip=lambda: skipped.append(identity))
+        namespace['destroyed'](window, event)
+        assert controller.closed is (identity == 4201)
+    assert skipped == [4202, 4201]
+    assert controller.cancelled() and controller._token is None
+    with pytest.raises(ValueError, match='closed'):
+        operation()
+    done({'never': 'render a destroyed native view'})
+    failed(RuntimeError('late failure'))
+    controller.report('Late report after native parent destruction.')
+    assert controller.status == before_status and changes == before_changes
+    assert not frame.cancel_event.is_set()
 
 
 def test_replaced_library_rejects_pending_initializer_without_io(tmp_path):

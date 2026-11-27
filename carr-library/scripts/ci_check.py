@@ -10,15 +10,117 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITE_TIMEOUT_SECONDS = 600
 
 
+class _WindowsDescendants:
+    """Retain waitable identities from a snapshot taken while the parent lives.
+
+    taskkill /T requests tree termination but does not give us descendant
+    handles to wait on. This snapshot covers the observed descendants; it is
+    not containment for a process that deliberately spawns after the snapshot.
+    """
+
+    def __init__(self, parent_pid: int):
+        import ctypes
+        from ctypes import wintypes
+
+        class ProcessEntry(ctypes.Structure):
+            _fields_ = [
+                ('dwSize', wintypes.DWORD), ('cntUsage', wintypes.DWORD),
+                ('th32ProcessID', wintypes.DWORD), ('th32DefaultHeapID', ctypes.c_size_t),
+                ('th32ModuleID', wintypes.DWORD), ('cntThreads', wintypes.DWORD),
+                ('th32ParentProcessID', wintypes.DWORD), ('pcPriClassBase', wintypes.LONG),
+                ('dwFlags', wintypes.DWORD), ('szExeFile', wintypes.WCHAR * 260),
+            ]
+
+        self._ctypes = ctypes
+        self._kernel = kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        self._handles = []
+        kernel.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
+        kernel.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+        for name in ('Process32FirstW', 'Process32NextW'):
+            function = getattr(kernel, name)
+            function.argtypes = [wintypes.HANDLE, ctypes.POINTER(ProcessEntry)]
+            function.restype = wintypes.BOOL
+        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        kernel.WaitForSingleObject.restype = wintypes.DWORD
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel.CloseHandle.restype = wintypes.BOOL
+
+        snapshot = kernel.CreateToolhelp32Snapshot(2, 0)  # TH32CS_SNAPPROCESS
+        if snapshot == ctypes.c_void_p(-1).value:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            try:
+                entry = ProcessEntry()
+                entry.dwSize = ctypes.sizeof(entry)
+                parents = {}
+                found = kernel.Process32FirstW(snapshot, ctypes.byref(entry))
+                while found:
+                    parents[int(entry.th32ProcessID)] = int(entry.th32ParentProcessID)
+                    found = kernel.Process32NextW(snapshot, ctypes.byref(entry))
+                if ctypes.get_last_error() != 18:  # ERROR_NO_MORE_FILES
+                    raise ctypes.WinError(ctypes.get_last_error())
+                descendants = {parent_pid}
+                while True:
+                    children = {pid for pid, parent in parents.items() if parent in descendants}
+                    expanded = descendants | children
+                    if expanded == descendants:
+                        break
+                    descendants = expanded
+                for pid in sorted(descendants - {parent_pid}):
+                    handle = kernel.OpenProcess(0x100000, False, pid)  # SYNCHRONIZE
+                    if not handle:
+                        error = ctypes.get_last_error()
+                        if error == 87:  # The process disappeared before OpenProcess.
+                            continue
+                        raise ctypes.WinError(error)
+                    self._handles.append(handle)
+            finally:
+                if not kernel.CloseHandle(snapshot):
+                    raise ctypes.WinError(ctypes.get_last_error())
+        except BaseException:
+            self.close()
+            raise
+
+    def wait(self, timeout: float) -> None:
+        deadline = time.monotonic() + timeout
+        for handle in self._handles:
+            remaining = max(0, int((deadline - time.monotonic()) * 1000))
+            result = self._kernel.WaitForSingleObject(handle, remaining)
+            if result == 258:  # WAIT_TIMEOUT; one budget for the entire snapshot.
+                raise TimeoutError('A suite descendant did not terminate before cleanup.')
+            if result != 0:  # WAIT_OBJECT_0
+                raise self._ctypes.WinError(self._ctypes.get_last_error())
+
+    def close(self) -> None:
+        handles, self._handles = self._handles, []
+        error = None
+        for handle in handles:
+            if not self._kernel.CloseHandle(handle) and error is None:
+                error = self._ctypes.WinError(self._ctypes.get_last_error())
+        if error is not None:
+            raise error
+
+
 def _terminate_process_tree(process: subprocess.Popen) -> None:
     """Stop the owned suite tree before removing its temporary library files."""
     cleanup_error = None
+    descendants = None
+    if os.name == 'nt':
+        try:
+            descendants = _WindowsDescendants(process.pid)
+        except OSError as exc:
+            # Still terminate/reap the parent if native enumeration failed;
+            # the missing proof of descendant cleanup remains a hard failure.
+            cleanup_error = exc
     try:
         if os.name == 'nt':
             # Keep the parent alive until taskkill has enumerated descendants.
@@ -37,15 +139,31 @@ def _terminate_process_tree(process: subprocess.Popen) -> None:
         pass
     except (OSError, subprocess.TimeoutExpired) as exc:
         cleanup_error = exc
-    if cleanup_error is not None:
-        # Reap our direct child even when tree termination failed; still fail
-        # closed and never report that the complete tree was cleaned up.
-        process.kill()
     try:
-        process.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.wait(timeout=5)
+        try:
+            if cleanup_error is not None:
+                # Reap our direct child even when tree termination failed.
+                process.kill()
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=5)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            cleanup_error = cleanup_error or exc
+        if descendants is not None:
+            try:
+                # Windows termination is asynchronous. Reaping pytest alone
+                # does not prove its children have released library handles.
+                descendants.wait(timeout=10)
+            except OSError as exc:
+                cleanup_error = cleanup_error or exc
+    finally:
+        if descendants is not None:
+            try:
+                descendants.close()
+            except OSError as exc:
+                cleanup_error = cleanup_error or exc
     if cleanup_error is not None:
         raise OSError('Required-suite process-tree cleanup failed.') from cleanup_error
 
@@ -121,7 +239,7 @@ def run_suite(suite: str) -> bool:
         with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
             report = Path(tmp) / 'junit.xml'
             returncode = _run_test_process([
-                sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
+                sys.executable, '-B', '-c', PYTEST_CHILD, '-o', 'addopts=',
                 '-o', 'xfail_strict=true', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),

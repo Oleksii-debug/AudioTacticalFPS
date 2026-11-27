@@ -157,11 +157,15 @@ def run_native_operations(frame, directory):
     wx.YieldIfNeeded()
     assert not controller.closed, 'A child destruction detached the whole task view.'
     before_status = controller.status
+    detached_id = detached.GetId()
     destroyed, late_reports = [], []
     deletion_loop = wx.GUIEventLoop()
 
     def observed_destruction(event):
-        if event.GetEventObject() is detached:
+        # SIP may invalidate the original Python wrapper before the native
+        # base destructor sends this event. The live window's captured ID
+        # identifies its actual notification without depending on that wrapper.
+        if event.GetId() == detached_id:
             destroyed.append(True)
             wx.CallAfter(deletion_loop.Exit)
         event.Skip()
@@ -182,11 +186,48 @@ def run_native_operations(frame, directory):
     finally:
         watchdog.Stop()
     assert destroyed == [True], 'The native task-view destruction event was not observed.'
+    assert not detached, 'The destroyed task view still has a live native window.'
     assert late_reports == [True] and controller.status == before_status
     assert controller.closed and controller._token is None
+
+    native_parent = wx.Dialog(frame, title='Native task-view parent deletion')
+    try:
+        native_child = create_operations_dialog(native_parent, controller_factory=lambda _parent, **kwargs:
+            OperationsController(frame, **kwargs))
+        native_controller = native_child.controller
+        native_controller._token = object()
+        child_id, child_events = native_child.GetId(), []
+        child_status = native_controller.status
+
+        def child_destroyed(event):
+            if event.GetId() == child_id:
+                child_events.append(True)
+            event.Skip()
+
+        def forbidden_python_destroy():
+            raise AssertionError('Native parent deletion must bypass the Python Destroy override.')
+
+        native_child.Bind(wx.EVT_WINDOW_DESTROY, child_destroyed)
+        native_child.Destroy = forbidden_python_destroy
+        # wxWindowBase::DestroyChildren calls the native base Destroy directly.
+        assert native_parent.DestroyChildren()
+        assert child_events == [True] and not native_child
+        assert native_controller.closed and native_controller._token is None
+        assert native_controller.cancelled()
+        parent_late_reports = []
+        def late_parent_report():
+            parent_late_reports.append(True)
+            native_controller.report('Late task-view report after native parent deletion.', focus=True)
+        wx.CallAfter(late_parent_report)
+        wx.GetApp().ProcessPendingEvents()
+        assert parent_late_reports == [True] and native_controller.status == child_status
+    finally:
+        native_parent.Destroy()
+        wx.YieldIfNeeded()
     return {'status': 'PASS', 'host_executor_initialization': 'PASS',
             'native_close_during_initialization': 'PASS',
             'named_controls_and_policy_save': 'PASS', 'native_destruction': 'PASS',
+            'native_parent_destruction': 'PASS',
             'manual_nvda': 'NOT_RUN', 'measured_hardware_capacity': 'NOT_RUN'}
 
 

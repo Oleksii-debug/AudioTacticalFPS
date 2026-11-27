@@ -208,6 +208,7 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
         def __init__(self):
             super().__init__(frame, title='Tasks and resources', size=(900, 740),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self._native_id = self.GetId()
             self.controller = controller_factory(frame, changed=self.render)
             self.handoff = None
             self._shown_policy = None
@@ -357,7 +358,9 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
             self.EndModal(wx.ID_CLOSE)
 
         def destroyed(self, event):
-            if event.GetEventObject() is self:
+            # SIP can replace the Python wrapper during native destruction.
+            # Read only the ID captured while this window was still alive.
+            if event.GetId() == self._native_id:
                 self.controller.dispose()
             event.Skip()
 

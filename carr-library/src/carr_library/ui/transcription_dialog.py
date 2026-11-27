@@ -344,6 +344,7 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
         def __init__(self):
             super().__init__(frame, title='Local transcription', size=(920, 820),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            self._native_id = self.GetId()
             self.controller = controller_factory(frame, changed=self.render,
                                                  dispatch=lambda callback: wx.CallAfter(callback))
             self._shown_record = None
@@ -565,7 +566,8 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             return super().Destroy()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            # The original Python wrapper can already be invalid here.
+            if event.GetId() == self._native_id:
                 self.controller.dispose()
             event.Skip()
 

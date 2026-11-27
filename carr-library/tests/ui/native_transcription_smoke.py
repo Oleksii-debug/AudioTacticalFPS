@@ -182,6 +182,7 @@ def run_native_transcription(frame, directory):
         wx.YieldIfNeeded()
         assert not detached_controller.closed, 'A child-control destruction detached the whole dialog.'
         before_status = detached_controller.status
+        detached_id = detached.GetId()
         detached_controller._token = object()
         late_reports = []
         def late_report():
@@ -194,7 +195,9 @@ def run_native_transcription(frame, directory):
         destroyed = []
         deletion_loop = wx.GUIEventLoop()
         def observed_destruction(event):
-            if event.GetEventObject() is detached:
+            # SIP may invalidate the original Python wrapper before the native
+            # base destructor sends this event. Match its captured native ID.
+            if event.GetId() == detached_id:
                 destroyed.append(True)
                 wx.CallAfter(deletion_loop.Exit)
             event.Skip()
@@ -209,15 +212,50 @@ def run_native_transcription(frame, directory):
         finally:
             watchdog.Stop()
         assert destroyed == [True], 'The native dialog destruction event was not observed.'
+        assert not detached, 'The destroyed dialog still has a live native window.'
         assert detached_controller.closed and detached_controller._token is None
         # Pending Python callbacks must be harmless before/after the later
         # native destruction event. Do not inspect deleted wx child controls.
         wx.GetApp().ProcessPendingEvents()
         wx.YieldIfNeeded()
         assert late_reports == [True] and detached_controller.status == before_status
+
+        native_parent = wx.Dialog(frame, title='Native transcription parent deletion')
+        try:
+            native_child = create_transcription_dialog(native_parent,
+                controller_factory=lambda _parent, **kwargs: factory(frame, **kwargs))
+            native_controller = native_child.controller
+            native_controller._token = object()
+            child_id, child_events = native_child.GetId(), []
+            child_status = native_controller.status
+
+            def child_destroyed(event):
+                if event.GetId() == child_id:
+                    child_events.append(True)
+                event.Skip()
+
+            def forbidden_python_destroy():
+                raise AssertionError('Native parent deletion must bypass the Python Destroy override.')
+
+            native_child.Bind(wx.EVT_WINDOW_DESTROY, child_destroyed)
+            native_child.Destroy = forbidden_python_destroy
+            assert native_parent.DestroyChildren()
+            assert child_events == [True] and not native_child
+            assert native_controller.closed and native_controller._token is None
+            assert native_controller._cancelled()
+            parent_late_reports = []
+            def late_parent_report():
+                parent_late_reports.append(True)
+                native_controller.report('Late transcription report after native parent deletion.', focus=True)
+            wx.CallAfter(late_parent_report)
+            wx.GetApp().ProcessPendingEvents()
+            assert parent_late_reports == [True] and native_controller.status == child_status
+        finally:
+            native_parent.Destroy()
+            wx.YieldIfNeeded()
     return {'status': 'PASS', 'native_controls_and_async_completion': 'PASS',
             'synthetic_worker_all_formats': 'PASS', 'pause_cancel_resume': 'PASS',
-            'derived_reader_handoff_and_reopen': 'PASS', 'nvda': 'NOT_RUN',
+            'derived_reader_handoff_and_reopen': 'PASS', 'native_parent_destruction': 'PASS', 'nvda': 'NOT_RUN',
             'real_model_quality': 'NOT_RUN'}
 
 

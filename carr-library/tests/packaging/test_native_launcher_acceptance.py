@@ -5,12 +5,14 @@ Fixtures here are explicitly synthetic; only Windows CI executes the native app.
 """
 import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import runpy
 import shutil
 import subprocess
 import sys
+import tarfile
 from types import SimpleNamespace
 
 import pytest
@@ -198,7 +200,34 @@ def test_dirty_or_git_replaced_source_cannot_claim_the_original_commit(
 
 def installed_fixture(bundle_inputs, native_inputs, monkeypatch):
     synthetic_application_identity(monkeypatch)
-    build(bundle_inputs, **launcher_arguments(native_inputs))
+    # The installed probe admits complete delivery bundles, including the OCR
+    # inventory and its pinned corresponding sources. These are inert fixture
+    # bytes; the genuine builder/verifiers run, but no OCR engine is executed.
+    ocr = bundle_inputs.output.parent / "synthetic OCR"
+    (ocr / "tessdata").mkdir(parents=True)
+    for name, data in {
+            "tesseract.exe": b"MZ synthetic non-executable OCR fixture",
+            "helper.dll": b"MZ synthetic dependency fixture",
+            "tessdata/eng.traineddata": b"synthetic language fixture",
+            "LICENSE.txt": b"Synthetic test fixture only\n"}.items():
+        (ocr / name).write_bytes(data)
+    source = bundle_inputs.output.parent / "synthetic-ocr-source.tar"
+    payload = b"Synthetic corresponding sources only.\n"
+    with tarfile.open(source, "w") as archive:
+        member = tarfile.TarInfo("source/README.txt")
+        member.size = len(payload)
+        archive.addfile(member, io.BytesIO(payload))
+    manifest = {
+        "schema": 1, "target": "win_amd64", "executable": "tesseract.exe", "tessdata": "tessdata",
+        "files": {path.relative_to(ocr).as_posix(): {
+            "size": path.stat().st_size, "sha256": builder.sha256(path)}
+            for path in ocr.rglob("*") if path.is_file()},
+        "provenance": {"corresponding_source": {
+            "filename": "ocr-corresponding-source.tar", "size": source.stat().st_size,
+            "sha256": builder.sha256(source)}},
+    }
+    (ocr / "ocr-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    build(bundle_inputs, **launcher_arguments(native_inputs), ocr_dir=ocr, ocr_source_archive=source)
     environment = bundle_inputs.output / ".venv"
     (environment / "Scripts").mkdir(parents=True)
     (environment / ".installation-complete").touch()
@@ -247,7 +276,7 @@ def test_installed_probe_records_exact_identity_and_requires_expected_source(
     with pytest.raises(ValueError, match="source commit"):
         installed_probe.inspect_installed(bundle_inputs.output, "0" * 40)
     report = installed_probe.inspect_installed(bundle_inputs.output, native_inputs.source_commit)
-    manifest = json.loads((bundle_inputs.output / "bundle-manifest.json").read_text())
+    manifest = json.loads((bundle_inputs.output / "bundle-manifest.json").read_text(encoding="utf-8"))
     assert report["source_commit"] == native_inputs.source_commit
     assert report["launcher_sha256"] == manifest["files"]["ResearchLibrary.exe"]
     assert report["application_wheel_sha256"] == manifest["files"][report["application_wheel"]]

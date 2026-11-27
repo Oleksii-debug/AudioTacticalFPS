@@ -510,6 +510,10 @@ def _deferred_native_dialog(controller):
         def __init__(self, controller):
             self.controller = controller
             self.destroy_requests = 0
+            self._native_id = 4101
+
+        def GetId(self):
+            raise AssertionError('Destruction must not call through an invalid native wrapper.')
 
         def Destroy(self):
             self.destroy_requests += 1
@@ -522,7 +526,7 @@ def _deferred_native_dialog(controller):
     return namespace[definition.name](controller)
 
 
-@pytest.mark.parametrize('termination', ['destroy-request', 'destroy-event'])
+@pytest.mark.parametrize('termination', ['destroy-request', 'destroy-event', 'rewrapped-destroy-event'])
 def test_view_destruction_detaches_active_worker_before_late_callbacks(setup, termination):
     ready(setup)
     setup.service.wait_for_stop = True
@@ -532,8 +536,10 @@ def test_view_destruction_detaches_active_worker_before_late_callbacks(setup, te
     window = _deferred_native_dialog(setup.controller)
     skipped = []
 
-    def event(target):
-        return SimpleNamespace(GetEventObject=lambda: target, Skip=lambda: skipped.append(target))
+    def event(target, native_id=None):
+        identity = native_id if native_id is not None else (window._native_id if target is window else 4102)
+        return SimpleNamespace(GetEventObject=lambda: target, GetId=lambda: identity,
+                               Skip=lambda: skipped.append(target))
 
     try:
         child = object()
@@ -542,9 +548,13 @@ def test_view_destruction_detaches_active_worker_before_late_callbacks(setup, te
         if termination == 'destroy-request':
             assert window.Destroy() is True
             assert window.destroy_requests == 1
-        else:
+        elif termination == 'destroy-event':
             # Parent-driven native deletion retains the event fallback.
             window.on_destroy(event(window))
+        else:
+            # SIP can invalidate and recreate the Python wrapper before the
+            # base native destructor delivers the same window's real ID.
+            window.on_destroy(event(object(), native_id=window._native_id))
         assert setup.controller.closed and setup.controller._token is None
         status, changes = setup.controller.status, list(setup.changes)
         setup.controller.dispose()  # Repeated disposal has no host or view side effects.
