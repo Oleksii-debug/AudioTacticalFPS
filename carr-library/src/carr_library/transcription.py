@@ -925,8 +925,11 @@ class TranscriptionService:
             raise ValueError('Worker completion counters do not match verified receipts.')
         return accepted, artifacts
 
-    def run(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400):
+    def run(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400,
+            expected_configuration=None, expected_model_identity=None):
         finite(timeout, 'Transcription time allowance', .05, 365 * 86400)
+        if expected_model_identity is not None and expected_configuration is None:
+            raise ValueError('An approved model identity requires its approved runtime configuration.')
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with retained_state_lock(path, 'transcribe'), ExitStack() as reservations:
@@ -935,10 +938,14 @@ class TranscriptionService:
                 self._verify_result(identity, cancelled=cancelled)
                 return job
             config = self.configuration(verify=True)
+            if expected_configuration is not None and config != expected_configuration:
+                raise ValueError('The transcription runtime differs from the approved configuration.')
             if config['protocol'] != job['protocol']:
                 raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
             self._sources(path, job, cancelled)
             reviewed_model = self._admission_model(config, job, cancelled)
+            if expected_configuration is not None and reviewed_model != expected_model_identity:
+                raise ValueError('The transcription model differs from the approved identity.')
             from .operations import ResourceCancelled, ResourceError
             try:
                 broker = self._admission_broker(cancelled)
@@ -1192,7 +1199,13 @@ class TranscriptionService:
             result.append(value)
         return tuple(sorted(result, key=lambda x: (x['created'], x['id'])))
 
-    def export(self, identity, destination, *, cancelled=lambda: False):
+    def export(self, identity, destination, *, cancelled=lambda: False,
+               max_bytes=None, max_files=None, before_publish=None):
+        for value, name in ((max_bytes, 'byte'), (max_files, 'file')):
+            if value is not None and (type(value) is not int or value < 1):
+                raise ValueError('The transcription export ' + name + ' budget must be positive.')
+        if before_publish is not None and not callable(before_publish):
+            raise ValueError('The transcription publication checkpoint must be callable.')
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
@@ -1200,35 +1213,74 @@ class TranscriptionService:
             destination = local_path(destination)
             if os.path.lexists(destination) or destination.is_relative_to(self.app.root):
                 raise ValueError('Choose a new export folder outside the library data directory.')
-            regular(local_path(destination.parent, exists=True), directory=True)
-            temporary = destination.parent / ('.pending-' + uuid4().hex)
+            parent = local_path(destination.parent, exists=True)
+            info = regular(parent, directory=True)
+            parent_identity = (info.st_dev, info.st_ino)
+            temporary = parent / ('.pending-' + uuid4().hex)
             temporary.mkdir(mode=0o700)
+            info = regular(temporary, directory=True)
+            temporary_identity = (info.st_dev, info.st_ino)
+            def same_directory(path, identity):
+                try:
+                    current = regular(local_path(path, exists=True), directory=True)
+                    return (current.st_dev, current.st_ino) == identity
+                except (OSError, ValueError):
+                    return False
             try:
-                exported = []
+                exported, inventory, used = [], [], 0
                 edits = self.edits(identity)
+                if max_files is not None and len(job['artifacts']) + len(edits) + 1 > max_files:
+                    raise ValueError('The transcription export exceeds its approved file budget.')
+                def account(name, item):
+                    nonlocal used
+                    used += item['size_bytes']
+                    if max_bytes is not None and used > max_bytes:
+                        raise ValueError('The transcription export exceeds its approved byte budget.')
+                    inventory.append({'path': name, **item})
                 for artifact in job['artifacts']:
                     relative = relative_name(artifact['path'])
+                    remaining = (512 * 1024**2 if max_bytes is None
+                                 else min(512 * 1024**2, max_bytes - used))
                     record = _copy(path / 'results' / relative, temporary / relative,
-                                   maximum=512 * 1024**2, cancelled=cancelled)
+                                   maximum=remaining, cancelled=cancelled)
                     if record['sha256'] != artifact['sha256'] or record['size_bytes'] != artifact['size_bytes']:
                         raise ValueError('A transcription export changed while copying.')
                     exported.append({'filename': str(relative), **record})
+                    account(relative.as_posix(), record)
                 for edit in edits:
                     name = 'edited/' + edit['id'] + '.txt'
-                    atomic_bytes(temporary / name, edit['text'].encode('utf-8'))
-                atomic_json(temporary / 'transcription-manifest.json', {
+                    raw = edit['text'].encode('utf-8')
+                    account(name, {'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()})
+                    atomic_bytes(temporary / name, raw)
+                manifest = {
                     'version': 1, 'job': identity, 'title': job['title'],
                     'status': job['status'], 'protocol': job['protocol'], 'sources': job['sources'],
                     'settings': job['settings'], 'artifacts': exported,
                     'effective_runs': job.get('effective_runs', []),
                     'edits': edits,
-                    'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'})
+                    'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'}
+                from .durable_state import encode
+                raw = encode(manifest)
+                account('transcription-manifest.json',
+                        {'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()})
+                atomic_bytes(temporary / 'transcription-manifest.json', raw)
+                if before_publish is not None:
+                    before_publish(tuple(dict(row) for row in inventory))
                 self._authorize()
                 if cancelled():
                     raise AudioCancelled('Transcription export was cancelled.')
+                if (not same_directory(parent, parent_identity)
+                        or not same_directory(temporary, temporary_identity)
+                        or local_path(destination) != destination):
+                    raise ValueError('The selected transcription export directory changed; its original staging is retained.')
+                if os.path.lexists(destination):
+                    raise FileExistsError('The transcription export destination appeared before publication.')
                 os.rename(temporary, destination)
                 sync_directory(destination.parent)
             finally:
-                if temporary.exists():
+                # Never clean an unrelated replacement directory after a
+                # callback or another actor moved the selected parent route.
+                if (same_directory(parent, parent_identity)
+                        and same_directory(temporary, temporary_identity)):
                     shutil.rmtree(temporary)
             return destination

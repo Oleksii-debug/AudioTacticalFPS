@@ -14,7 +14,7 @@ concurrency:
 jobs:
   reconciled-source:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: carr-library
@@ -41,12 +41,12 @@ jobs:
           python -m pip install '.[test]'
           python -m pip check
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng ffmpeg
       - name: Verify every reconciled path with strict isolated suites
-        timeout-minutes: 8
+        timeout-minutes: 14
         run: |
           set -euo pipefail
-          python -m compileall -q src bootstrap
+          python -m compileall -q src bootstrap tests scripts packaging
           python scripts/ci_check.py --jobs 3 \
             tests/research/test_academic_library.py \
             tests/e2e/test_search_operation_budget.py \
@@ -76,5 +76,14 @@ jobs:
             tests/storage/test_pending_backup.py \
             tests/storage/test_complete_pending_backup.py \
             tests/storage/test_backup_v4_review.py \
+            tests/ui/test_progress_voice_actions.py \
+            tests/storage/test_backup_transcription.py \
+            tests/storage/test_backup_translation.py \
+            tests/storage/test_backup_legacy_preferences.py \
+            tests/storage/test_backup_studio_media_v6.py \
+            tests/storage/test_studio_input_backup.py \
+            tests/storage/test_backup_primary_producers.py \
+            tests/assistant/test_library_transcription.py \
+            tests/extract/test_special_ocr_models.py \
             tests/packaging/test_ci_check.py
       # This source-only job supplements the complete native Windows/bundle gate.

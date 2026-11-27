@@ -140,6 +140,50 @@ def test_parallel_barrier():
                                           '--jobs', workers, 'test_sample.py')
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
 
+    def test_cleanup_failure_is_named_and_cannot_publish_pass_or_hide_timeout(self):
+        spec = importlib.util.spec_from_file_location('diagnostic_ci_check', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        original_temp = tempfile.TemporaryDirectory
+        with original_temp(prefix='CARR cleanup diagnosis ') as temporary:
+            # The runner compares canonical paths. Windows temporary paths can
+            # use an 8.3 alias, so bind the fixture to the same resolved root.
+            root = Path(temporary).resolve(strict=True)
+            (root / 'test_ok.py').write_text('def test_ok(): assert True\n', encoding='utf-8')
+
+            @contextlib.contextmanager
+            def failing_cleanup(_suite):
+                # Exercise a real temporary directory and a real passing child.
+                # Inject only the Windows-style cleanup fault, independently of
+                # whether the underlying platform permits unlinking open files.
+                with original_temp(prefix='carr-ci-', dir=root) as directory:
+                    try:
+                        yield directory
+                    finally:
+                        raise PermissionError('Synthetic held-library.lock cleanup failure')
+
+            for timed_out in (False, True):
+                with self.subTest(timed_out=timed_out):
+                    output, errors = io.StringIO(), io.StringIO()
+                    process = (mock.patch.object(runner, '_run_test_process',
+                        side_effect=subprocess.TimeoutExpired(['synthetic pytest'], 600))
+                        if timed_out else contextlib.nullcontext())
+                    with (mock.patch.object(runner, 'ROOT', root),
+                          mock.patch.object(runner, '_report_directory', failing_cleanup), process,
+                          contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors)):
+                        result = runner.run_suite('test_ok.py')
+                    self.assertFalse(result)
+                    self.assertNotIn('PASS: test_ok.py:', output.getvalue())
+                    self.assertIn('FAIL: test_ok.py:', output.getvalue())
+                    self.assertIn('held-library.lock', output.getvalue())
+                    self.assertIn('PermissionError', errors.getvalue())
+                    if timed_out:
+                        self.assertIn('last phase=pytest process', output.getvalue())
+                        self.assertIn('TimeoutExpired', errors.getvalue())
+                        self.assertIn('600', errors.getvalue())
+                    else:
+                        self.assertIn('last phase=temporary directory cleanup', output.getvalue())
+
     def _run_report_cleanup_fixture(self, failures, *, timed_out=False):
         spec = importlib.util.spec_from_file_location('cleanup_ci_check', SCRIPT)
         runner = importlib.util.module_from_spec(spec)
@@ -237,14 +281,15 @@ def test_parallel_barrier():
             previous_subreaper = ctypes.c_int()
             self.assertEqual(libc.prctl(37, ctypes.byref(previous_subreaper), 0, 0, 0), 0)
         with original_temp(prefix='CARR timeout Ž ') as temporary:
-            # Windows TEMP may use an 8.3 alias; the runner resolves candidates
-            # before checking that they remain inside its canonical root.
-            root = Path(temporary).resolve()
+            root = Path(temporary).resolve(strict=True)
             marker = root / 'descendant.pid'
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "pending = marker.with_suffix('.pending')\n"
+                "pending.write_text(str(os.getpid()), encoding='ascii')\n"
+                "pending.replace(marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_timeout.py').write_text(
                 "from pathlib import Path\nimport subprocess,sys,time\n"
@@ -346,7 +391,9 @@ def test_parallel_barrier():
                         pass
                 for process in processes:
                     if process.poll() is None:
-                        process.kill()
+                        # Startup itself may fail before the PID is observed.
+                        # Reap the owned process tree even on that error path.
+                        runner._terminate_process_tree(process)
                     process.wait(timeout=5)
                 if previous_subreaper is not None:
                     if observed.get('pid') and not observed.get('reaped'):

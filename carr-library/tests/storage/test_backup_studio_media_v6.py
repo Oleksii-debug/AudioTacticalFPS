@@ -1,6 +1,7 @@
 """Explicit V6 Studio media with canonical reading and import-publication recovery."""
 from hashlib import sha256
 import json
+import runpy
 from pathlib import Path
 import wave
 
@@ -13,6 +14,9 @@ from carr_library.audio.recording import (
 from carr_library.durable_state import atomic_json, encode, read_json
 from carr_library.library_backup import create_backup, restore_backup
 from carr_library.studio.publishing import NOTICE, validate_publication_receipt
+
+as_legacy_media_v6 = runpy.run_path(str(Path(__file__).with_name(
+    'legacy_backup_fixture.py')))['as_legacy_media_v6']
 
 
 def media_library(tmp_path):
@@ -79,22 +83,26 @@ def reseal(backup, manifest):
 def rewrite_state(backup, manifest, name, record):
     raw = encode(record)
     (backup / 'state' / name).write_bytes(raw)
-    entry = next(row for row in manifest['state'] if row['filename'] == name)
+    entry = next(row for row in manifest.get('state', manifest.get('sidecars', []))
+                 if row['filename'] == (name if 'state' in manifest else 'state/' + name))
     entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
 
 
+@pytest.mark.parametrize('archive_format', ['typed4', 'legacy6'])
 @pytest.mark.parametrize('include_generated', [False, True])
 def test_full_media_round_trip_keeps_exact_originals_and_inert_publication(
-        tmp_path, monkeypatch, include_generated):
+        tmp_path, monkeypatch, include_generated, archive_format):
     app, workspace, audio, orphan, publication, forbidden = media_library(tmp_path)
     original = {path.relative_to(app.root): path.read_bytes()
                 for path in (audio, audio.with_suffix('.json'), orphan, publication)}
     forbid_external_paths(monkeypatch, forbidden)
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup, include_generated=include_generated)
+    if archive_format == 'legacy6':
+        digest = as_legacy_media_v6(backup)
     manifest = read_json(backup / 'manifest.json')
     extension = manifest['studio_media']
-    assert manifest['version'] == 6 and extension['schema'] == 1
+    assert manifest['version'] == (6 if archive_format == 'legacy6' else 4) and extension['schema'] == 1
     assert extension['studio_input_receipt'] is False
     assert extension['studio_recordings'] == [audio.with_suffix('.json').relative_to(app.root / 'state').as_posix()]
     assert extension['studio_unverified_recordings'] == [orphan.relative_to(app.root / 'state').as_posix()]
@@ -118,7 +126,7 @@ def test_full_backup_excludes_pending_capture_and_lock_but_keeps_final_orphan(tm
     backup = tmp_path / 'backup'
     create_backup(app, backup)
     manifest = read_json(backup / 'manifest.json')
-    names = {row['filename'] for row in manifest['state']}
+    names = {row['filename'].removeprefix('state/') for row in manifest['sidecars']}
     assert orphan.relative_to(app.root / 'state').as_posix() in names
     assert not any('.pending-' in name or name.endswith('.lock') for name in names)
 
@@ -144,7 +152,7 @@ def test_resealed_media_semantic_corruption_fails_before_any_destination(tmp_pat
     elif damage == 'missing-wav':
         name = audio.relative_to(app.root / 'state').as_posix()
         (backup / 'state' / name).unlink()
-        manifest['state'] = [row for row in manifest['state'] if row['filename'] != name]
+        manifest['sidecars'] = [row for row in manifest['sidecars'] if row['filename'] != 'state/' + name]
     elif damage == 'publication-id':
         name = publication.relative_to(app.root / 'state').as_posix()
         value = read_json(backup / 'state' / name)
@@ -198,8 +206,8 @@ def test_v6_keeps_exact_reading_and_immutable_import_receipts_with_retained_medi
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
     manifest = read_json(backup / 'manifest.json')
-    assert manifest['version'] == 6 and manifest['schema_version'] == 5
-    assert manifest['reading_state']['sha256'] == sha256(reading_bytes).hexdigest()
+    assert manifest['version'] == 4 and manifest['schema_version'] == 5
+    assert next(row for row in manifest['sidecars'] if row['filename'] == 'reading-state.json')['sha256'] == sha256(reading_bytes).hexdigest()
     assert manifest['studio_media']['studio_input_receipt'] is True
     archive_before = {path.relative_to(backup): path.read_bytes()
                       for path in backup.rglob('*') if path.is_file()}
@@ -237,6 +245,7 @@ def test_resealed_v6_shape_or_media_identity_fails_before_publication(tmp_path, 
     app, _, _, _, _, _ = media_library(tmp_path)
     backup = tmp_path / 'backup'
     create_backup(app, backup)
+    as_legacy_media_v6(backup)
     manifest = read_json(backup / 'manifest.json')
     media = manifest['studio_media']
     if damage == 'missing-reading-field':
@@ -256,3 +265,27 @@ def test_resealed_v6_shape_or_media_identity_fails_before_publication(tmp_path, 
     with pytest.raises(ValueError):
         restore_backup(backup, target, digest)
     assert not target.exists()
+
+
+def test_typed_media_pools_do_not_inherit_the_legacy_aggregate_cap(tmp_path, monkeypatch):
+    import shutil
+    from carr_library import state_backup
+
+    app, _, audio, orphan, publication, _ = media_library(tmp_path)
+    folder = tmp_path / 'typed'
+    digest = create_backup(app, folder)
+    legacy = tmp_path / 'historical'
+    shutil.copytree(folder, legacy)
+    legacy_digest = as_legacy_media_v6(legacy)
+    manifest = read_json(folder / 'manifest.json')
+    state_bytes = sum(row['size_bytes'] for row in manifest['sidecars']
+                      if row['filename'].startswith('state/'))
+    # Scale only the historical envelope cap. Current typed retained/metadata
+    # budgets stay unchanged; every file is real and its PCM/hash is verified.
+    monkeypatch.setattr(state_backup, 'MAX_STATE_BYTES', state_bytes - 1)
+    target = restore_backup(folder, tmp_path / 'restored-typed', digest)
+    assert (target / audio.relative_to(app.root)).read_bytes() == audio.read_bytes()
+    assert (target / orphan.relative_to(app.root)).read_bytes() == orphan.read_bytes()
+    with pytest.raises(ValueError, match='legacy state|byte budget'):
+        restore_backup(legacy, tmp_path / 'rejected-historical', legacy_digest)
+    assert not (tmp_path / 'rejected-historical').exists()

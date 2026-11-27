@@ -78,7 +78,7 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
     checksum = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_bytes())
     names = {entry['filename'] for entry in manifest['sidecars']}
-    assert len(names) == 8
+    assert len(names) == 9 and 'state/studio/backup-inputs.json' in names
     assert 'state/providers/envelope.usage.json' not in names
     assert 'state/providers/usage/envelope.usage.json' in names
     assert not any(name.endswith('.lock') for name in names)
@@ -92,6 +92,7 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
             assert pending['sources'] == []
             assert all(asset in manifest['assets'] for asset in pending['assets'])
             shutil.rmtree(folder / 'pending')
+        manifest.pop('studio_media')
         manifest['version'] = 3
         manifest['state'] = [{**entry, 'filename': entry['filename'].removeprefix('state/')}
                              for entry in manifest.pop('sidecars')]
@@ -99,7 +100,18 @@ def test_all_primary_producers_roundtrip_without_activation(produced, tmp_path, 
     before = {p.relative_to(folder): p.read_bytes() for p in folder.rglob('*') if p.is_file()}
     target = restore_backup(folder, tmp_path / 'restored', checksum)
     for name in names:
-        assert (target / name).read_bytes() == (app.root / name).read_bytes()
+        if name == 'state/studio/backup-inputs.json':
+            assert not (target / name).exists()
+        elif name == f'state/studio/jobs/{job}/job.json':
+            original = json.loads((app.root / name).read_bytes())
+            recovered = json.loads((target / name).read_bytes())
+            assert recovered['project'] == original['project']
+            assert recovered['status'] == 'waiting-input' and recovered['destination'] == ''
+            assert recovered['recovery']['requires_output_directory'] is True
+            assert recovered['recovery']['previous']['destination'] == original['destination']
+            assert recovered['recovery']['previous']['artifacts'] == original['artifacts']
+        else:
+            assert (target / name).read_bytes() == (app.root / name).read_bytes()
     assert {p.relative_to(folder): p.read_bytes() for p in folder.rglob('*') if p.is_file()} == before
     restored = ReaderDraftStore(target).load()
     assert restored.document.text == 'Reading exact words.'

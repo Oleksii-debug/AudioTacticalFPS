@@ -1,65 +1,91 @@
 # Primary desktop state in complete backups
 
-The common version-4 backup preserves the primary reader recovery documents,
-provider profiles, provider usage reservations, Studio projects and revisions,
-Studio job and control checkpoints, assistant plans and checkpoints, local
-engine declarations, and progress notification preferences. Each registered
-format has a bounded validator. Unknown state fails with its filename; it is
-not silently dropped or treated as arbitrary JSON.
+## One current writer, explicit historical readers
 
-Reader recovery includes its edit history and original-source digest. This is
-an editable reading copy and does not grant verified quotation status. Provider
-profiles contain only opaque Credential Manager references; credential values
-remain in the Windows vault. Backup does not open the vault, activate local
-engines, contact remote services, or resolve stored external paths.
+The current complete-library writer emits the typed version-4 manifest. Each
+sidecar has an explicit producer, bounded schema, relative filename, byte count
+and SHA-256. Unknown state fails visibly with its filename; it is not silently
+dropped or accepted as arbitrary JSON.
 
-Studio job metadata and generated UTF-8 transcripts are preserved. The default
-backup omits reproducible audio caches and sets `generated_audio_included` to
-false. Explicit `include_generated=True` also retains completed primary-Studio
-cache media and their exact producer receipts. Only registered cache filenames,
-receipt schemas, media-container signatures and matching SHA-256 values are
-accepted. Unreceipted or damaged files fail visibly. Transient locks and pending
-writes are excluded. No decoder or voice engine runs during this operation.
+The version number alone does not identify every historical envelope. The common
+reader distinguishes exact, complete manifest shapes before any restore. It
+retains database/original archives 1–2, historical reading-only and sidecar
+archives, and the exact former state envelopes 3–6. An invalid typed version-4
+archive cannot fall back to the older opaque-state validator. See
+[the historical media format](BACKUP_FORMAT_V6.md) for the version-6 compatibility
+boundary.
 
-Generated media use a separate 32 GiB budget and stream in 1 MiB blocks; metadata
-retain their 512 MiB aggregate budget and format-specific limits. An explicit
-whole-backup byte budget includes both. All source bytes are rechecked after
-copying, including same-size changes concealed by coarse filesystem timestamps.
-Container-signature validation is not full codec decoding or audio-quality
-qualification. External published output folders remain outside the private
-library backup. Keep them with project files; explicit Studio resume verifies
-their actual bytes and recomputes missing cache nodes through installed engines.
+## Preserved producers
 
-Assistant checkpoints retain their exact original data directory and approved
-paths. Restoring to another location does not rewrite those permissions or
-authorize execution. Review and resubmit a plan when its original scope is no
-longer available. Uncertain provider charge reservations remain recorded and
-are not turned into permission for automatic retry.
+| Producer | Retained data and limits on its meaning |
+| --- | --- |
+| Reader and Reading Desk | Bookmarks and positions bound to exact sealed source identities; reading copies, recovery documents and edit history retain original text. They do not acquire quotation authority. |
+| Current preferences | Root keyboard, keybinding, progress, OCR preset and evidence-draft files retain their own validators. |
+| Historical preferences | Exact schema-1 state/ui/shortcuts.json and state/ui/progress.json remain at their original paths. Old menu paths are passive review data and are never retargeted to current command IDs. Dialog-local progress keeps its separate existing producer; backup activates no sound policy. |
+| Studio | Projects, revisions, unfinished autosave, job/control/timeline records, retained selected cue inputs, PCM recordings and publication receipts. Restored jobs require a newly selected output directory. |
+| Supplied-worker transcription | The accepted workspace-hashed TranscriptionService job directories, retained originals, settings, protocol/runtime declarations, accepted receipts, timed/text output and user edits. No separate ASR store is created. |
+| Shared resources | The operator's typed resource policy. Runtime coordination, leases and native lock ownership are not copied. |
+| Assistant | Exact approved plans, source scopes and checkpoints. Saved paths do not become new execution permissions. |
+| Translation | Pasted translation/1 and source-bound translation/2 jobs, Basic v2 and Advanced v3 profile declarations, approved request scope, language inventory, accepted chunks, usage reservations and decoded-text evidence. |
+| Local engines and profiles | Passive declarations and opaque credential references. External engine/model files and vault secret values are not included. |
 
-Known transient producer locks and incomplete temporary writes are not backup
-records. Unknown private state, damaged digests, changed project identity,
-unrecognized tools, invalid control actions and mismatched library identities
-are rejected before a completed restore destination is published.
+Every source-bound translation keeps its original root identity, canonical source
+anchor and job UUID. A moved or restored pending job requires a fresh preview and
+approval before further external requests, including restoration into the old
+now-empty path. Completed evidence can be exported offline after the existing
+source checks. Accepted text must still match its usage-ledger decoded-output
+hash; changing text and its own self-hash cannot replace that evidence. Historical
+Basic receipts that lack such proof remain explicitly unrecorded legacy evidence.
 
-The primary-producer tests use real saved model objects and actual SQLite
-backup/restore, with engine and credential access forbidden during validation.
-The additional local acceptance rendered installed FFmpeg Flite speech,
-backed up the completed Studio checkpoint and all six metadata sidecars,
-restored unchanged bytes, and verified all six original output artifacts on
-reopen. This is Linux execution, not native Windows or manual NVDA acceptance.
+## Snapshot and restore boundaries
 
-The generated-cache acceptance also preserved the completed Flite fixture's
-five PCM files and five receipts alongside its six metadata sidecars (16 entries,
-1,474,004 bytes), verified the backup and restored every digest unchanged with
-process launch forbidden. Four strict suites passed 104 tests without skips.
-Native Windows and manual NVDA acceptance remain separate gates.
+The library writer guard covers the snapshot. The existing ASR and Studio job
+locks are acquired before reading their mutable checkpoint files and held until
+backup publication. A running child or pending native cleanup owner therefore
+requires the user to pause or wait and retry; backup does not force cancellation
+or read a live Windows status file.
 
-Translation checkpoints are also registered: exact original text and chunk
-boundaries, accepted translation receipts, their approved request scope and
-cost limits, provider-declared language inventories and provider usage records.
-The validators preserve paused work, old approvals and recorded charge states
-without opening a gateway, credential store or connection. They do not renew
-expired approvals or grant execution permission after restore. Current provider
-profile fingerprints and Studio music-continuity notices are retained alongside
-compatible older checkpoint formats. Ten translation-backup regressions and the
-35 canonical synthetic transport/authorization tests passed without skips.
+Default backup excludes reproducible generated-audio cache files.
+include_generated=True adds only completed registered cache files with their
+producer receipts, signatures and matching hashes. Selected media inputs and
+completed recording originals remain retained with either setting.
+
+Metadata have a 512 MiB aggregate budget plus their individual format limits.
+Retained media and generated cache media each have a separate 32 GiB aggregate
+budget. The snapshot shares a 100,000-entry bound and the whole-backup byte budget
+includes database, originals, pending sources, metadata and media. Binary copies
+stream in bounded blocks. Historical opaque-state envelopes retain their original
+32 GiB state limit; the compatibility reader does not enlarge it.
+
+After copying, original file bytes are hashed again. This detects equal-size
+changes even when modification times are restored or Windows creation time does
+not change. Denied root lookup, disappearance after discovery, unlisted files,
+links, hardlinks, portable-name collisions and changed inventories fail before a
+completed archive is published. Pending-import byte budgets include pinned
+unpublished assets; immutable publication receipts remain database-bound.
+
+Restore verifies the archive before publishing a destination. Studio input
+rebinding changes only the private restored projection; archive bytes and its
+manifest digest remain unchanged. Old external cue paths need fresh review,
+previous output destinations authorize no new writes, and external publication
+receipts need verification against user-selected actual files. Runtime/model
+declarations remain declarations until the normal service checks them.
+
+Cancellation before publication creates no completed destination. An interruption
+during destination publication retains the incomplete-restore marker, and the
+application refuses to open that destination as a complete library.
+
+## Acceptance evidence
+
+The focused storage suites exercise actual SQLite backup/restore and saved
+producer objects. Their synthetic provider transport never contacts Google;
+the existing supplied-worker fixture uses actual child processes without a
+recognition-quality claim. Media tests use the selected actual FFmpeg runtime
+and distinguish retained inputs from generated caches.
+
+The reconciliation adds typed and historical media round trips, old/current
+preference coexistence, same-path source-approval revocation, decoded-output
+receipt tampering and busy-ASR-lock regressions. These cases require execution
+against the exact composed source and installed wheel. Earlier donor passes do
+not qualify this new composition. Native Windows, manual NVDA, physical recording
+devices, codec quality and human listening remain separately identified gates.

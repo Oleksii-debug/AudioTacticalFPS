@@ -1,95 +1,97 @@
-# Complete backup format 6: retained Studio media
+# Historical backup format 6 and the current typed media inventory
 
-Version 6 extends the existing complete local-library backup with an explicit
-typed Studio media envelope. It keeps the established database, original-source,
-pending-import and personal-reading producers. A backup without typed Studio
-media still uses the applicable earlier canonical format.
+The current writer emits one typed version-4 archive. It preserves the media
+behavior introduced by the former version-6 writer through registered sidecars
+and the same explicit studio_media envelope. Version 6 remains an exact
+historical read format; it is not a second current writer.
 
-## Supported archive versions
+## Supported manifest families
 
-| Archive | Additional component |
+| Archive family | Complete shape selected by the reader |
 | --- | --- |
-| 1 | Exact supported library database and registered originals |
-| 2 | Exact database schema fingerprint |
-| 3 | Private application state; the distinct historical reading-only shape remains accepted |
-| 4 | Pending import journals and pinned unpublished sources |
-| 5 | Exact personal bookmarks and reading positions, with nullable pending imports |
-| 6 | Retained Studio input bindings, recording originals and publication receipts; reading and pending components may be absent |
+| 1–2 | Historical database and registered-original envelopes; version 2 also pins the database schema fingerprint. |
+| Historical 3 | Explicit reading-only, sidecar, or opaque-state envelope, each distinguished by its complete field set. |
+| Historical 4 | Opaque state plus pending imports and pinned unpublished sources. |
+| Historical 5 | Opaque state plus exact personal reading positions/bookmarks, with nullable pending imports. |
+| Historical 6 | The historical state envelope plus typed retained Studio media, recording originals and publication receipts. |
+| Current typed 4 | Common typed sidecars, with optional pending-import and Studio-media components. Current reader/settings/draft producers use this inventory. |
 
-The archive version and SQLite schema version are separate. The current SQLite
-schema remains version 5. Its immutable import_publication rows are copied with
-the database, alongside their sealed revisions. Restore neither fabricates new
-publication receipts nor moves saved reading locations to another revision.
+A malformed typed archive never becomes a legacy archive just because a validator
+failed. Missing, extra or mixed discriminator fields are rejected. The archive
+version and SQLite schema version are separate; database schema fingerprints and
+immutable import_publication receipts keep their existing validation.
 
-## Exact envelope
+## Typed media envelope
 
-Version 6 retains the canonical top-level keys version, kind, schema_version,
-schema_fingerprint, database, assets, state, generated_audio_included, pending
-and reading_state, and adds studio_media. The two nullable component fields
-remain present even when their value is null.
+Historical version 6 has the exact top-level keys version, kind, schema_version,
+schema_fingerprint, database, assets, state, generated_audio_included, pending,
+reading_state and studio_media. Its nullable component keys remain present.
+Current typed version 4 lists the same owned media bytes in sidecars instead of
+state; personal reading data also use the common typed inventory.
 
-studio_media has exactly these fields:
+In either family, studio_media has exactly these fields:
 
 | Field | Meaning |
 | --- | --- |
-| schema | Integer 1 |
-| studio_input_receipt | Whether the state contains the authenticated Studio input receipt |
-| studio_publications | Sorted relative paths of validated publication receipts |
-| studio_recordings | Sorted relative paths of recording receipts bound to actual PCM originals |
-| studio_unverified_recordings | Sorted relative paths of final WAV files without capture receipts |
-| required_inputs | Sorted unique declarations of local voices, music engines and external publication outputs, each with included=false |
+| schema | Integer 1. |
+| studio_input_receipt | Whether the authenticated retained-input receipt exists. |
+| studio_publications | Sorted relative paths of validated publication receipts. |
+| studio_recordings | Sorted recording receipts bound to the actual PCM originals. |
+| studio_unverified_recordings | Sorted final WAV files without capture receipts; they remain unverified originals. |
+| required_inputs | Sorted unique declarations of voices, music engines and external publication outputs, each with included=false. |
 
-Unknown, missing, duplicate, mismatched or downgraded metadata is rejected.
-Every listed path is also present in the independently hashed state inventory.
-The full manifest remains bounded by the existing 8 MiB limit; state and retained
-inputs share the existing 100,000-file and 32 GiB limits.
+The envelope must equal inspection of the independently hashed staged inventory.
+Unknown, missing, duplicate or mismatched declarations are rejected. No external
+path in a declaration is opened or executed by validation.
+
+The manifest remains bounded by the existing 8 MiB limit. Current typed metadata,
+retained media and optional generated media retain their distinct aggregate
+budgets and the 100,000-entry bound described in
+[Primary desktop state](PRIMARY_STATE_BACKUP.md). Exact historical opaque state
+keeps its original 32 GiB total limit.
 
 ## Creation and recovery
 
-Creation first takes the ordinary verified private-state snapshot. It then
-copies each required, explicitly selected Studio cue input under its SHA-256
-identity and binds that copy to the exact project, historical revision and job
-bytes. Fresh content checks catch equal-size changes even if file metadata was
-preserved. Pending legacy input declarations require explicit local review
-before they can be read by a new backup.
+Creation snapshots verified private state under the existing library and producer
+locks. It copies explicitly selected Studio cue inputs under their SHA-256
+identity and binds each copy to exact project, historical revision and job bytes.
+Fresh content checks catch equal-size changes with preserved metadata. Pending
+legacy input declarations require explicit local review before a new backup may
+open those external paths.
 
-Recording receipts are checked against retained byte size, SHA-256 and the actual
-PCM header and frame count. A completed WAV without its capture receipt remains
-an inert unverified original. Generated-audio exclusion omits rebuildable caches;
-it keeps selected media and completed recording originals.
+Recording receipts are checked against retained size, SHA-256, PCM header and
+frame count. Excluding generated audio removes rebuildable caches; it retains
+selected cue media and completed recording originals. Container checks do not
+claim recording or acoustic quality.
 
-Restore verifies the database, registered originals and entire state inventory
-before interpreting typed media. It repeats the exact media checks and compares
-the observed result with studio_media. It reads only verified staged media;
-recorded external output or engine paths are never probed or executed.
+Restore verifies the database, originals and complete inventory before interpreting
+media. It repeats the exact media checks and compares the envelope. Only the
+private restored projection changes: project cue paths point to retained inputs
+at the new root, revision filenames follow rebound fingerprints, and jobs wait
+for a newly chosen output directory. Previous status, source provenance and
+artifact identities remain recorded. Repeating backup and restore preserves that
+provenance while the original archive and its digest stay unchanged.
 
-Only the private restored projection is changed. Project cue paths point to
-retained inputs in the new state root, and historical project filenames follow
-their rebound fingerprints. Jobs wait for an explicitly selected new output
-directory. Their previous status and source provenance remain recorded. The
-original backup, its project bytes and its independent manifest digest remain
-unchanged. Repeating backup and restore retains that previous provenance.
+Historical archives without an input receipt remain readable. Their external
+cue paths stay as declarations requiring fresh review; inherited input approvals
+are cleared, and old destinations grant no write permission.
 
-Legacy archives without an input receipt remain readable. Their external cue
-paths stay as declarations requiring fresh review; inherited approvals are
-cleared, and old output destinations do not authorize new writes.
+Publication receipts retain original artifact and source hashes. External EPUB
+outputs are declared, not copied into the private library archive. After
+relocation, a user selects an existing EPUB and verifies its actual bytes and
+graph before its receipt becomes current at the new root.
 
-Publication receipts keep the exact original artifact and source hashes. The
-external EPUB is declared rather than copied into this backup. After relocation,
-the user selects an existing EPUB and verifies its actual bytes and graph before
-its receipt can become current at the new root.
+## Cancellation and qualification
 
-## Cancellation and evidence
+Restore keeps its positional API and optional cancelled callback. Cancellation
+before publication leaves no completed destination. An interruption after
+publication begins retains the incomplete-restore marker.
 
-Restore accepts the existing positional arguments and an optional cancelled
-callback. Cancellation before publication leaves no destination. Once publication
-has started, an interrupted destination retains the ordinary incomplete-restore
-marker and cannot be opened as a complete library.
-
-The focused tests retain the donor real-PCM round trip that deletes the original
-library, selected external inputs and old outputs before rendering again. Added
-cases restore media, exact bookmarks and immutable import receipts together and
-reject resealed semantic corruption before creating a destination. These cases
-must run on the exact composed source and installed wheel; their presence alone
-is not a runtime pass. Physical microphones, human listening, external EPUB
-readers and manual NVDA acceptance remain separate checks.
+Focused tests retain the real-PCM round trip that removes the source library,
+selected external media and old outputs before restoring and rendering again.
+They exercise both the current typed writer and explicit historical version-6
+fixtures, combine media with exact bookmarks and immutable import receipts, and
+reject resealed semantic corruption before publication. Test source alone is not
+a runtime pass: the exact composed source and installed wheel need their own
+recorded results. Physical microphones, human listening, external EPUB readers
+and manual NVDA acceptance remain separate checks.

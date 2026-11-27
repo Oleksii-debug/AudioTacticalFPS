@@ -83,7 +83,7 @@ def load_lock(path):
         raise ValueError('Audio runtime lock is too large.')
     raw = path.read_bytes()
     lock = json.loads(raw, object_pairs_hook=_unique)
-    if (not isinstance(lock, dict) or lock.get('schema') != 1 or lock.get('target') != 'win_amd64'
+    if (not isinstance(lock, dict) or type(lock.get('schema')) is not int or lock['schema'] != 1 or lock.get('target') != 'win_amd64'
             or lock.get('engine') != 'FFmpeg' or set(lock.get('output_files', ())) != REQUIRED_FILES):
         raise ValueError('Unsupported audio runtime lock.')
     artifact = lock.get('artifact', {})
@@ -108,8 +108,10 @@ def load_lock(path):
     if total > MAX_UNPACKED:
         raise ValueError('Audio payload exceeds unpacked budget.')
     deployment = lock.get('deployment', {})
-    if (deployment.get('download_default') is not False
-            or deployment.get('public_binary_distribution') is not False):
+    if (not isinstance(deployment, dict)
+            or deployment.get('download_default') is not False
+            or deployment.get('public_binary_distribution') is not False
+            or deployment.get('application_runtime_network') is not False):
         raise ValueError('This helper only prepares an explicitly enabled private local runtime.')
     return lock, hashlib.sha256(raw).hexdigest()
 
@@ -229,14 +231,13 @@ def prepare(lock_path, cache, output, *, download=False):
             seen, selected = set(), {}
             total = 0
             for member in members:
-                # ZipInfo normalizes backslashes on Windows and truncates NUL.
-                # Validate the original archive spelling before either can hide
-                # a rejected member from the complete-inventory check.
+                # ZipInfo.filename is normalized by the host and truncated at NUL.
+                # Validate the original central-directory name before trusting it.
                 raw_name = member.orig_filename
-                if raw_name != member.filename:
-                    raise ValueError('Unsafe relative path in audio ZIP.')
-                name = raw_name.rstrip('/') if member.is_dir() else raw_name
+                name = raw_name.removesuffix('/') if raw_name.endswith('/') else raw_name
                 relative(name)
+                if member.filename != raw_name:
+                    raise ValueError('Audio ZIP member path was normalized by the host.')
                 if name.casefold() in seen:
                     raise ValueError('Audio ZIP has duplicate or case-colliding paths.')
                 seen.add(name.casefold())
@@ -286,7 +287,10 @@ def prepare(lock_path, cache, output, *, download=False):
         _publish_directory(staged, output)
     return {'status': 'VERIFIED_AND_PREPARED', 'output': str(output), 'bin_dir': str(output / 'bin'),
             'lock_sha256': lock_hash, 'files': len(lock['output_files']),
-            'execution_test': 'NOT_RUN', 'public_binary_distribution': False}
+            'execution_test': 'NOT_RUN',
+            'public_binary_distribution': lock['deployment']['public_binary_distribution'],
+            'application_runtime_network': lock['deployment']['application_runtime_network'],
+            'download_default': lock['deployment']['download_default']}
 
 
 def main(argv=None):

@@ -3,6 +3,7 @@ from dataclasses import asdict
 from pathlib import Path
 import json
 import os
+import runpy
 import sys
 import struct
 import wave
@@ -20,6 +21,7 @@ def main():
     from carr_library.ui.studio_dialog import show_studio
     from carr_library.ui.assistant_dialog import show_assistant, show_provider_settings
     from carr_library.ui.engine_settings import show_engine_settings
+    from carr_library.ui.translation_dialog import show_translation
     app = wx.App(False)
     result = {'status': 'RUNNING', 'platform': sys.platform, 'manual_nvda': 'NOT_RUN', 'checks': []}
     with TemporaryDirectory(prefix='carr-native-v3-') as temporary:
@@ -103,7 +105,11 @@ def main():
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
+        inspect_dialog(show_translation, ('Google API account and edition', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
+        operations_probe = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tests' / 'ui' / 'native_operations_smoke.py'))
+        result['operations'] = operations_probe['run_native_operations'](frame, root / 'native-operations')
+        result['checks'].append('native Tasks policy save, responsive close and safe destruction')
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'

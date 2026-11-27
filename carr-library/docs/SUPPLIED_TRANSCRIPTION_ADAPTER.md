@@ -1,4 +1,12 @@
-# Supplied transcription: opt-in protocol adapter
+# Supplied transcription: explicit V4.3 compatibility adapter
+
+The default product assistant now routes `audio.transcribe` through the existing
+library-scoped `TranscriptionService`, as described in
+[assistant_runtime.md](assistant_runtime.md). This document describes only an
+explicitly injected, separately pinned V4.3 compatibility installation. Its
+source transform, manifest and saved intent are not interchangeable with the
+receipt/V5 worker profiles. Old outputs remain verifiable; no automatic runtime
+or job-format migration is implied.
 
 This is a backend adapter to the owner's existing V4.3 headless worker, using
 the primary assistant's typed plans and JobStore. It is not a second ASR engine,
@@ -75,10 +83,10 @@ logs, staging bytes, file count, timeout and free disk reserve are bounded.
 These checks are defense in depth, not an OS sandbox for native extensions.
 Cold offline Windows execution with the real pinned SDK/model remains required.
 
-## Primary assistant integration and recovery
+## Explicit compatibility integration and recovery
 
 Pass `SuppliedTranscriptionAdapter(installation)` as the optional `transcription`
-argument to `AssistantService`. The new allowlisted `audio.transcribe` step has
+argument to `AssistantService` only for this compatibility protocol. The allowlisted `audio.transcribe` step has
 required `path` and `name` arguments and optional `language`, `vad_filter`,
 `beam_size`, `condition_on_previous_text` arguments. `path` must be inside the
 approved input scope; `name` selects a new directory inside the approved output
@@ -86,7 +94,9 @@ scope. It creates `transcript.txt`, `transcript.srt`, `transcript.vtt` and
 `transcript.json`. A caller may submit several separately authorized steps for
 a batch. No arbitrary worker path, model name, command or remote endpoint can
 come from a plan. Existing GUI constructors do not configure this optional
-adapter, so merely adding an ASR JSON step does not enable an engine.
+adapter: their default ASR path uses the separately configured library service.
+A saved intent must resume under its original authority; passing this adapter
+cannot reinterpret a new library-scoped transcription job.
 
 The existing assistant intent stores input bytes SHA256, settings, adapter and
 installation identities before launch. Before publishing it stores the exact

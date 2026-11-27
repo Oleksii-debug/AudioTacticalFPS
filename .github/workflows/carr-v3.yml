@@ -19,7 +19,7 @@ concurrency:
 jobs:
   native-studio:
     runs-on: windows-2022
-    timeout-minutes: 25
+    timeout-minutes: 45
     defaults:
       run:
         shell: pwsh
@@ -39,6 +39,12 @@ jobs:
         with:
           python-version: '3.11'
           architecture: x64
+      - name: Verify native Windows state replacement semantics
+        timeout-minutes: 3
+        run: |
+          New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
+          python -I -B scripts/windows_json_replace_diagnostic.py 2>&1 | Tee-Object 'ci-v3-results/native-json-replacement.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Native state replacement diagnostic failed.' }
       - name: Install exact application and native desktop dependencies
         id: install-runtime
         run: |
@@ -52,6 +58,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify canonical citation and DOCX regeneration boundaries
+        timeout-minutes: 5
+        run: |
+          python scripts/ci_check.py tests/academic_integration/test_formatting.py tests/academic_integration/test_documents.py tests/academic_integration/test_regeneration.py tests/academic_integration/test_end_to_end.py tests/academic_integration/test_citation_ui.py tests/storage/test_durable_state_publication.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-v3-results/citation-regeneration.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare the verified OCR engine before installed recovery acceptance
         timeout-minutes: 10
         run: |
@@ -64,8 +75,8 @@ jobs:
           python packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-v3-results/ocr-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Verify installed backup and import publication integrity
-        timeout-minutes: 10
+      - name: Verify installed source translation, backup and import publication integrity
+        timeout-minutes: 20
         env:
           PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
           PYTEST_ADDOPTS: ''
@@ -78,7 +89,11 @@ jobs:
           import carr_library.speech.runtime, carr_library.acquisition.providers
           import carr_library.speech.session
           import carr_library.extract.ocr_runtime
+          import carr_library.durable_state, carr_library.ui.save_actions
           import carr_library.storage.revisions, carr_library.storage.schema_identity
+          import carr_library.assistant.translation, carr_library.assistant.providers
+          import carr_library.ui.translation_dialog
+          import carr_library.assistant.profiles, carr_library.ui.assistant_dialog
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
@@ -87,7 +102,11 @@ jobs:
                    'carr_library.speech.runtime', 'carr_library.acquisition.providers',
                    'carr_library.speech.session',
                    'carr_library.extract.ocr_runtime',
-                   'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
+                   'carr_library.durable_state', 'carr_library.ui.save_actions',
+                   'carr_library.storage.revisions', 'carr_library.storage.schema_identity',
+                   'carr_library.assistant.translation', 'carr_library.assistant.providers',
+                   'carr_library.ui.translation_dialog',
+                   'carr_library.assistant.profiles', 'carr_library.ui.assistant_dialog')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
@@ -109,6 +128,12 @@ jobs:
                     'tests/extract/test_ocr_runtime.py::test_unreadable_directory_rejects_entire_inventory',
                     'tests/extract/test_ocr_runtime.py::test_empty_directory_inventory_has_a_bound',
                     'tests/extract/test_ocr_runtime.py::test_directory_inventory_checks_budget_between_entries',
+
+                    'tests/storage/test_state_backup_portability.py::test_state_inventory_rejects_unreadable_subtree',
+                    'tests/storage/test_state_backup_portability.py::test_state_restore_rejects_unlisted_file_before_scanning_later_subtree',
+                    'tests/storage/test_state_backup_portability.py::test_state_root_lookup_error_is_not_absence',
+                    'tests/storage/test_state_backup_portability.py::test_state_root_missing_is_optional_only_when_requested',
+                    'tests/storage/test_v3_state_backup.py::test_backup_state_lookup_failure_never_publishes',
                     'tests/storage/test_pending_backup.py',
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
@@ -118,7 +143,13 @@ jobs:
                     'tests/speech/test_reading.py',
                     'tests/speech/test_source.py',
                     'tests/speech/test_session.py',
-                    'tests/packaging/test_worker_bytecode.py']
+                    'tests/packaging/test_worker_bytecode.py',
+                    'tests/storage/test_state_json_reader.py',
+                    'tests/ui/test_save_actions.py',
+                    'tests/assistant/test_translation.py',
+                    'tests/assistant/test_providers.py',
+                    'tests/assistant/test_translation_v3.py',
+                    'tests/ui/test_profile_project_exports.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
@@ -197,8 +228,24 @@ jobs:
             $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
+            & $python -I -B scripts/verify_operations_acceptance.py --audio-root $env:CARR_V3_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-operations.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed shared-resource and canonical operation acceptance failed.' }
+            & $python -I -B scripts/verify_media_acceptance.py --audio-root $env:CARR_V3_AUDIO --results 'ci-v3-results' 2>&1 | Tee-Object 'ci-v3-results/installed-media.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed recording, clip, EPUB and media recovery acceptance failed.' }
+            & $python -I -B scripts/windows_recording_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-recording.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native recording lifetime acceptance failed.' }
+            & $python -I -B scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-clip-editor.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native clip editor lifetime acceptance failed.' }
+            & $python -I -B scripts/windows_publishing_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native EPUB publishing lifetime acceptance failed.' }
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
+            & $python -I -B scripts/windows_speech_lifetime_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-reader-lifetime.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native Reader owner and parent destruction acceptance failed.' }
+            & $python -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-translation-v3.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native Advanced translation controls and synthetic protocol acceptance failed.' }
+            & $python -I -B scripts/windows_save_timer_smoke.py --output 'ci-v3-results/native-save-timer.json' 2>&1 | Tee-Object 'ci-v3-results/native-save-timer.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native draft timer lifetime acceptance failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -208,9 +255,123 @@ jobs:
         run: |
           python scripts/ci_check.py tests/progress/test_progress_contract.py tests/progress/test_progress_feedback.py tests/progress/test_progress_preferences.py tests/ui/test_progress_job_results.py tests/ui/test_progress_panel_state.py tests/e2e/test_import_progress.py tests/speech/test_progress_speech.py tests/studio/test_production_cancellation_outcomes.py tests/ui/test_progress_numeric_limits.py tests/ui/test_studio_progress_isolation.py tests/ui/test_progress_media_quiet.py tests/ui/test_progress_voice_actions.py tests/storage/test_progress_preferences_backup.py tests/progress/test_progress_media_integration.py 2>&1 | Tee-Object 'ci-v3-results/strict-operation-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Native local proposal and actual loopback HTTP with external egress blocked
+        if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $python = (Get-Command python.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+          $basePython = (& $python -I -B -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $programs = @($python, $basePython,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Select-Object -Unique
+          $remoteRanges = @('0.0.0.1-126.255.255.255', '128.0.0.0-255.255.255.255',
+            '::2-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff')
+          function Normalize-RemoteRanges($Ranges) {
+            @($Ranges | ForEach-Object {
+              $ends = $_ -split '-', 2
+              if ($ends.Count -ne 2) { throw 'Unexpected firewall remote-address filter representation.' }
+              ([System.Net.IPAddress]::Parse($ends[0])).ToString() + '-' + ([System.Net.IPAddress]::Parse($ends[1])).ToString()
+            } | Sort-Object)
+          }
+          $expectedRanges = @(Normalize-RemoteRanges $remoteRanges)
+          $rulePrefix = 'CARR-local-planning-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          $planningBefore = @'
+          import json, pathlib, runpy
+          contract = runpy.run_path('scripts/verify_operations_acceptance.py')
+          result = {'source': contract['source_identity'](),
+                    'origins': contract['installed_origins'](),
+                    'actual_llm_model': 'NOT_RUN', 'manual_nvda': 'NOT_RUN'}
+          pathlib.Path('ci-v3-results/local-planning-source-before.json').write_text(
+              json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result), flush=True)
+          '@
+          $planningLoopback = @'
+          import json, os, pathlib, runpy, xml.etree.ElementTree as ET
+          contract = runpy.run_path('scripts/verify_operations_acceptance.py')
+          before = json.loads(pathlib.Path('ci-v3-results/local-planning-source-before.json').read_text(encoding='utf-8'))
+          if contract['source_identity']() != before['source'] or contract['installed_origins']() != before['origins']:
+              raise RuntimeError('Native planning changed the exact source or installed module identity.')
+          for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH'):
+              os.environ.pop(key, None)
+          os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+          import pytest
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          policy = RejectExpectedFailures()
+          report = pathlib.Path('ci-v3-results/local-planning-loopback.xml')
+          status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
+              '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',
+              '--import-mode=importlib', '--junitxml=' + str(report),
+              'tests/assistant/test_local_planning_loopback.py'], plugins=[policy])
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          required = {
+              'test_service_proposal_is_validated_scoped_and_never_submitted',
+              'test_tool_path_validation_runs_before_proposal_is_exposed',
+              'test_profile_change_during_response_discards_proposal',
+              'test_cancellation_never_creates_an_approved_job[before]',
+              'test_cancellation_never_creates_an_approved_job[during]',
+              'test_actual_cli_proposal_then_separate_reviewed_json_run',
+              'test_actual_cli_provider_failure_returns_no_executable_plan',
+              *('test_model_output_cannot_expand_exact_permissions[malicious' + str(i) + ']' for i in range(5))}
+          names = [case.get('name') for case in cases]
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          passed = len(cases) - failed - skipped
+          origins = contract['installed_origins']()
+          source = contract['source_identity']()
+          identity_ok = source == before['source'] and origins == before['origins']
+          cases_exact = len(names) == len(required) and set(names) == required
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and cases_exact and identity_ok
+          result = {'status': 'PASS' if ok else 'FAIL', 'passed': passed, 'failed': failed,
+                    'skipped': skipped, 'pytest_exit': int(status), 'expected_failures': policy.seen,
+                    'cases': sorted(names), 'cases_exact': cases_exact, 'source': source,
+                    'origins': origins, 'source_and_origins_unchanged': identity_ok,
+                    'actual_llm_model': 'NOT_RUN', 'manual_nvda': 'NOT_RUN'}
+          pathlib.Path('ci-v3-results/local-planning-loopback.json').write_text(
+              json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result), flush=True)
+          raise SystemExit(0 if ok else 1)
+          '@
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -RemoteAddress $remoteRanges -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Local planning checks require enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Local planning egress rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Local planning rules do not cover the intended runtime programs.' }
+            foreach ($rule in $active) {
+              $addresses = @(($rule | Get-NetFirewallAddressFilter -ErrorAction Stop).RemoteAddress)
+              $actualRanges = @(Normalize-RemoteRanges $addresses)
+              if (@(Compare-Object $expectedRanges $actualRanges).Count -ne 0) { throw 'Local planning rule has unexpected remote-address coverage.' }
+            }
+            @{ status='PASS'; blocked_programs=$filters; blocked_remote_ranges=$expectedRanges; allowed_test_peer='127.0.0.1'; scope='selected executables with external egress blocked; loopback synthetic peer allowed' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/local-planning-firewall.json'
+            $planningBefore | & $python -I -B - 2>&1 | Tee-Object 'ci-v3-results/local-planning-source-before.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed planning source identity is invalid.' }
+            & $python -I -B scripts/windows_local_planning_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-local-planning.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native local proposal review and execution acceptance failed.' }
+            $planningLoopback | & $python -I -B - 2>&1 | Tee-Object 'ci-v3-results/local-planning-loopback.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual local planning HTTP/CLI or source-identity acceptance failed.' }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
       - name: Validate local services, DSP, integrity and provider permission boundaries
         run: |
-          python -m pytest -q tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/storage/test_v3_state_backup.py tests/storage/test_state_snapshot_identity.py tests/language_qualification tests/conversion tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/academic_integration tests/ui/test_operation_progress.py tests/ui/test_save_actions.py tests/storage/test_state_json_reader.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py tests/ui/test_profile_project_exports.py tests/ui/test_keyboard_manager.py tests/ui/test_command_registry.py tests/extract/test_special_ocr_models.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()
