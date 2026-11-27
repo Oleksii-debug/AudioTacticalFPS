@@ -13,7 +13,7 @@ from .models import JobReport, Plan, Scope, canonical, local_path, text
 from .planner import preview
 from .state import JobStore, now, regular
 from .backup_receipt import capture_backup_receipt, verify_backup_receipt
-from . import local_tools
+from . import local_tools, player_tools
 
 
 _KEYS = {
@@ -22,7 +22,8 @@ _KEYS = {
     'library.catalog': (set(), {'after', 'limit', 'title', 'author', 'language'}),
     'library.import': ({'path'}, set()),
     'library.import_folder': ({'path'}, set()),
-    'library.search': ({'query'}, {'mode', 'limit', 'title', 'author', 'language'}),
+    'library.search': ({'query'}, {'mode', 'limit', 'title', 'author', 'language', 'edition',
+                                   'collection', 'authorized_topic', 'result_mode', 'cursor', 'offset'}),
     'library.extract': ({'edition', 'name'}, set()),
     'library.backup': ({'name'}, set()),
     'audio.produce': (set(), {'text', 'script', 'voice_ids', 'title', 'format', 'stems'}),
@@ -34,11 +35,23 @@ _KEYS = {
 def _check_arguments(step):
     if step.tool in local_tools.RULES:
         return local_tools.check_arguments(step)
+    if step.tool in player_tools.RULES:
+        return player_tools.check_arguments(step)
     required, optional = _KEYS['audio.produce' if step.tool == 'audio.render' else step.tool]
     if set(step.arguments) - required - optional or not required <= set(step.arguments):
         raise ValueError(f'Invalid arguments for {step.tool}.')
     for key, value in step.arguments.items():
-        if key in ('script',):
+        if key == 'cursor':
+            if value is not None:
+                from ..search.paging import _cursor
+                if (type(value) is not dict or type(value.get('scope')) is not str
+                        or not re.fullmatch('[0-9a-f]{64}', value['scope'])):
+                    raise ValueError('Use an exact opaque source-search cursor from the previous result.')
+                _cursor(value, value['scope'])  # Pure shape check; LibraryApp reauthorizes its scope.
+        elif key == 'offset':
+            if type(value) is not int or not 0 <= value <= 2**31 - 1:
+                raise ValueError('Invalid result-page offset.')
+        elif key in ('script',):
             if type(value) is not dict:
                 raise ValueError('A structured audio script must be an object.')
         elif key == 'voice_ids':
@@ -59,8 +72,10 @@ def _check_arguments(step):
             text(value, key, maximum=4 * 1024 * 1024 if key == 'text' else 32768)
     if step.tool in ('audio.produce', 'audio.render') and (('text' in step.arguments) == ('script' in step.arguments)):
         raise ValueError('Provide either script text or a structured audio script.')
-    if 'mode' in step.arguments and step.arguments['mode'] not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
+    if 'mode' in step.arguments and step.arguments['mode'] not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
         raise ValueError('Unsupported search mode.')
+    if 'result_mode' in step.arguments and step.arguments['result_mode'] not in ('short', 'thematic'):
+        raise ValueError('Choose Short quotations or Thematic excerpts.')
     if step.tool == 'audio.transcribe':
         from ..integrations.supplied_transcription import recognition_settings
         recognition_settings({key: value for key, value in step.arguments.items()
@@ -98,13 +113,16 @@ def _observe(callback, *values):
 
 
 class AssistantService:
-    def __init__(self, app, *, state_dir=None, production=None, transcription=None):
+    def __init__(self, app, *, state_dir=None, production=None, transcription=None, player=None):
         self.app = app
         self.store = JobStore(state_dir or (app.root / 'state' / 'assistant'))
         if not self.store.directory.is_relative_to(app.root):
             raise ValueError('Assistant state must remain inside this application data directory.')
         self.production = production
         self.transcription = transcription
+        if player is not None and (not isinstance(player, player_tools.LivePlayerBridge) or player.app is not app):
+            raise TypeError('Player commands need this application’s current qualified native reader bridge.')
+        self.player = player
 
     def preview(self, instruction, scope):
         plan = preview(instruction, scope)
@@ -159,6 +177,8 @@ class AssistantService:
                 raise PermissionError('Choose a library before this operation.')
             if step.tool in local_tools.RULES:
                 local_tools.validate_scope(step, plan.scope, self.app)
+            if step.tool in player_tools.RULES and self.player is None:
+                raise RuntimeError('Open the assistant from the current reading window to review its player.')
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
                 if step.tool.endswith('_folder') != path.is_dir():
@@ -302,6 +322,10 @@ class AssistantService:
                         with self.app.read(record['workspace']):
                             pass
                     if checkpoint['status'] == 'complete':
+                        if step.tool in player_tools.RULES:
+                            if self.player is None:
+                                raise PermissionError('The prior native reader owner is unavailable; its action was not replayed.')
+                            self.player.verify_completed(plan.scope, step, checkpoint['result'], stopped)
                         if step.tool in local_tools.RULES:
                             local_tools.verify_result(self.app, record['workspace'], plan.scope, step,
                                                       checkpoint['result'], stopped)
@@ -317,9 +341,11 @@ class AssistantService:
                         raise RuntimeError('Tool returned an invalid result.')
                     # Cancellation after a locally committed publication cannot
                     # erase its receipt or cause the same output to run again.
-                    committed = (step.tool in local_tools.PUBLICATION_TOOLS
-                                 and checkpoint['intent'].get('publication_committed') is True)
-                    if step.tool in local_tools.RULES and not committed and stopped():
+                    committed = ((step.tool in local_tools.PUBLICATION_TOOLS
+                                  and checkpoint['intent'].get('publication_committed') is True)
+                                 or (step.tool == 'player.control'
+                                     and checkpoint['intent'].get('player_dispatch_complete') is True))
+                    if step.tool in (local_tools.RULES | player_tools.RULES) and not committed and stopped():
                         raise InterruptedError('Local assistant operation stopped before result acceptance.')
                     result['artifacts'] = self._artifacts(result, plan.scope, (lambda: False) if committed else stopped)
                     checkpoint['result'] = result
@@ -377,6 +403,10 @@ class AssistantService:
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        if step.tool in player_tools.RULES:
+            if self.player is None:
+                raise PermissionError('The current native reader owner is unavailable.')
+            return self.player.execute(scope, step, intent, persist, cancelled)
         if step.tool in local_tools.RULES:
             return local_tools.execute(self.app, workspace, scope, step, intent, persist, cancelled,
                 lambda done, total, phase: _observe(progress, index, len(record['steps']), phase),
@@ -438,9 +468,11 @@ class AssistantService:
             return {'batch_id': intent['batch'], 'counts': batch['counts'],
                     'editions': [r['edition_id'] for r in batch['rows'] if r['state'] == 'complete']}
         if step.tool == 'library.search':
-            return {'results': _plain(self.app.search(workspace, cancelled=cancelled,
-                                                      timeout=min(60.0, scope.max_seconds), **args)),
-                    'notice': 'Search excerpts retain source verification status; assistant output does not approve quotations.'}
+            page = self.app.search_page(workspace, cancelled=cancelled,
+                                        timeout=min(86400.0, scope.max_seconds), **args)
+            return {**_plain(page),
+                    'notice': 'Ranked within this bounded source window. The returned cursor is passive navigation; '
+                              'search excerpts retain source verification status and do not approve quotations.'}
         if step.tool == 'library.extract':
             from ..reader.reading_desk import ReadingDesk
             desk = ReadingDesk(self.app, workspace, args['edition'], cancelled=cancelled)

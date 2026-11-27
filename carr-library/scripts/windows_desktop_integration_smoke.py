@@ -15,6 +15,7 @@ import sysconfig
 from tempfile import TemporaryDirectory
 import time
 import traceback
+import wave
 
 
 def main():
@@ -28,6 +29,8 @@ def main():
     from carr_library.application import LibraryApp
     from carr_library import desktop_preferences
     from carr_library.speech import ReadingDocument
+    from carr_library.assistant import player_tools, service as assistant_service, local_tools
+    from carr_library.ui import assistant_dialog
     from carr_library.speech.session import ReaderDraftStore, ReaderResume
     from carr_library.ui import desktop_app, desktop_integration, desktop_settings, speech_dialog, worker_cleanup
 
@@ -41,7 +44,8 @@ def main():
         checkout = Path(__file__).resolve().parents[1]
         installed = (Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR')
                      else Path(sysconfig.get_path('purelib')).resolve())
-        for module in (desktop_preferences, desktop_app, desktop_integration, desktop_settings, speech_dialog):
+        for module in (desktop_preferences, desktop_app, desktop_integration, desktop_settings, speech_dialog,
+                       assistant_dialog, player_tools, assistant_service, local_tools):
             actual = Path(module.__file__).resolve()
             expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
             check('sealed installed origin: ' + module.__name__,
@@ -143,6 +147,7 @@ def main():
         manual.save(ReaderResume(ReadingDocument('Unrelated manual recovery draft.')))
         original_manual = manual.path.read_bytes()
         frame = desktop_app.DesktopFrame(library)
+        frame.active = (workspace, None)  # Explicit synthetic owner scope for this acceptance.
         outside = OutsideWindow()
         controller = frame.desktop_integration
         frame.Bind(wx.EVT_WINDOW_DESTROY,
@@ -169,6 +174,56 @@ def main():
                     if isinstance(window, wx.Dialog) and window.IsModal():
                         window.EndModal(wx.ID_CANCEL)
 
+        def player_assistant_driver(player, commands):
+            """Real native assistant controls; actual worker marshals to the same MCI owner."""
+            try:
+                dialogs = [window for window in wx.GetTopLevelWindows()
+                    if isinstance(window, wx.Dialog) and window.IsModal()
+                    and window.GetTitle().startswith('Local assistant')]
+                check('reader opens existing native assistant dialog', len(dialogs) == 1)
+                dialog = dialogs[0]
+                controls = dialog.assistant_controls
+                service = dialog.assistant_service
+                check('native current-reader bridge is qualified', isinstance(service.player, player_tools.LivePlayerBridge))
+                def execute(goal):
+                    controls['instruction'].SetValue(goal)
+                    previous = {job.id for job in service.jobs()}
+                    press(controls['buttons']['preview'])
+                    check('player plan remains non-executing before Run',
+                          controls['buttons']['run'].IsEnabled()
+                          and {job.id for job in service.jobs()} == previous)
+                    press(controls['buttons']['run'])
+                    pump(lambda: controls['buttons']['run'].IsEnabled()
+                         and controls['review'].GetValue().startswith('complete:'),
+                         'Native assistant player completion', timeout=30)
+                    added = [job for job in service.jobs() if job.id not in previous]
+                    check('current-player result has one durable accepted job', len(added) == 1
+                          and added[0].status == 'complete' and added[0].completed == 1)
+                    return added[0].results[0]
+                receipt = execute('Player status')
+                check('native status reflects already-playing owned PCM', receipt['state'] == 'playing'
+                      and receipt['workspace'] == workspace and receipt['position_approximate'] is False)
+                audible = lambda: sum(command.startswith(('play ', 'resume ')) for command in commands)
+                before = audible()
+                def command(action):
+                    args = {'action': action, **{key: receipt[key] for key in ('session', 'source_sha256')}}
+                    return json.dumps({'schema': 'carr-assistant-plan/1',
+                        'steps': [{'tool': 'player.control', 'arguments': args}]})
+                paused = execute(command('pause'))
+                check('native assistant pauses existing MCI recording', paused['state'] == player.state == 'paused')
+                again = execute(command('pause'))
+                check('second approved Pause is idempotent and never resumes',
+                      again['state'] == 'paused' and audible() == before)
+                stopped = execute(command('stop'))
+                check('native assistant Stop is confirmed on same player', stopped['state'] == player.state == 'stopped'
+                      and controller._assistant_reader['player'] is player and audible() == before)
+                press(controls['buttons']['close'])
+            except Exception:
+                errors.append(traceback.format_exc())
+                for window in wx.GetTopLevelWindows():
+                    if isinstance(window, wx.Dialog) and window.IsModal() and window.GetTitle().startswith('Local assistant'):
+                        window.EndModal(wx.ID_CANCEL)
+
         def reader_driver(expected):
             try:
                 pump(lambda: controller.reader is not None, 'Canonical reader controls were not attached.')
@@ -177,6 +232,30 @@ def main():
                 check('native reader contains the exact admitted copy', editor.GetValue() == expected)
                 check('global controls bind actual canonical reader buttons',
                       buttons['voice.pause'].GetParent() is dialog and buttons['voice.stop'].GetParent() is dialog)
+                assistant_button = named(dialog, 'Review assistant commands for this player')
+                pump(assistant_button.IsEnabled, 'Reader discovery did not release its existing worker.', timeout=30)
+                player = controller._assistant_reader['player']
+                pcm = Path(temporary) / 'synthetic-owned-player.wav'
+                with wave.open(str(pcm), 'wb') as stream:
+                    stream.setparams((1, 2, 24000, 0, 'NONE', 'PCM'))
+                    stream.writeframes(b'\0\0' * 24000 * 60)
+                commands, original_mci = [], player._mci
+                def measured(command):
+                    commands.append(command)
+                    return original_mci(command)
+                player._mci = measured  # Observation preserves the actual Win32 operation.
+                try:
+                    player.play(pcm)  # Explicit fixture playback, never initiated by the assistant.
+                    check('synthetic fixture uses the existing real MCI player', player.state == 'playing')
+                    wx.CallLater(100, lambda: player_assistant_driver(player, commands))
+                    press(assistant_button)
+                    if errors:
+                        raise RuntimeError('\n'.join(errors))
+                    check('reader retains ownership after assistant closes', controller._assistant_reader['player'] is player
+                          and player.state == 'stopped')
+                finally:
+                    player._mci = original_mci
+                    player.stop()
                 stop_events = []
                 def observe_stop(event):
                     stop_events.append(True)
@@ -286,7 +365,8 @@ def main():
             pump(lambda: all(future.done() for future in futures), 'Failure-path reader cleanup did not finish.',
                  timeout=30, allow_errors=True)
     print(json.dumps({'status': 'PASS', 'checks': checks, 'nvda': 'NOT_RUN',
-                      'speech_audio': 'NOT_RUN', 'native_windows': 'EXECUTED'}, ensure_ascii=False))
+                      'speech_audio': 'NOT_RUN', 'synthetic_owned_player': 'EXECUTED',
+                      'native_windows': 'EXECUTED'}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

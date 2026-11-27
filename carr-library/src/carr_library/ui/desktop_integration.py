@@ -4,7 +4,10 @@ All native operations run on the existing UI thread. There is no key hook,
 clipboard history, background speech, command registry or playback backend here.
 """
 from hashlib import sha256
+import math
+import re
 import sys
+from uuid import uuid4
 
 from ..desktop_preferences import DesktopPreferences, DesktopPreferenceStore, global_shortcut
 from .command_registry import CommandSpec
@@ -211,6 +214,7 @@ class DesktopIntegration:
             import wx as wx_module
         self.wx, self.frame = wx_module, frame
         self.closed, self.tray, self.reader = False, None, None
+        self._assistant_reader = None
         self.items = {}
         self.store = DesktopPreferenceStore(frame.library.root)
         self.preferences = DesktopPreferences()
@@ -272,15 +276,72 @@ class DesktopIntegration:
             return bool(self.frame.GetEventHandler().ProcessEvent(event))
         return manager.invoke(identity)
 
-    def attach_reader(self, dialog, pause, stop, alive):
+    def attach_reader(self, dialog, pause, stop, alive, *, player=None,
+                      source_snapshot=None, player_guard=None, pause_action=None, stop_action=None):
         if not self._live() or self.reader is not None:
             raise ValueError('Another reading window already owns the desktop playback controls.')
+        values = (player, source_snapshot, player_guard, pause_action, stop_action)
+        qualified = any(value is not None for value in values)
+        if qualified:
+            from ..speech.player import WavePlayer
+            if not isinstance(player, WavePlayer) or not all(callable(value) for value in values[1:]):
+                raise TypeError('Current-player commands require the exact existing WavePlayer and reader guards.')
         token = object()
         self.reader = token, dialog, {'voice.pause': pause, 'voice.stop': stop}, alive, self.scope()
+        self._assistant_reader = ({'token': token, 'session': uuid4().hex, 'player': player,
+            'snapshot': source_snapshot, 'guard': player_guard,
+            'pause': pause_action, 'stop': stop_action} if qualified else None)
         def detach():
             if self.reader is not None and self.reader[0] is token:
                 self.reader = None
+                self._assistant_reader = None
         return detach
+
+    def assistant_player(self, reader_window, token, workspace, action, *, expected=None,
+                         cancelled=lambda: False):
+        """UI-only status or idempotent safe control of this exact reader owner."""
+        if not self.wx.IsMainThread():
+            raise RuntimeError('Current-player controls must run on the native UI thread.')
+        if action not in ('status', 'pause', 'stop'):
+            raise ValueError('This bridge permits Status, Pause and Stop only.')
+        current, owned = self.reader, self._assistant_reader
+        if (not self._live() or current is None or owned is None or current[0] is not token
+                or owned['token'] is not token or current[1] is not reader_window
+                or not current[3]() or current[4] != self.scope()
+                or not self.frame.active or self.frame.active[0] != workspace):
+            raise PermissionError('The exact reader session or selected library changed.')
+        owned['guard']()
+        signature = owned['snapshot']()
+        if type(signature) is not str or not re.fullmatch('[0-9a-f]{64}', signature):
+            raise ValueError('The reader did not return an exact source signature.')
+        if expected is not None and (
+                expected.get('session') != owned['session'] or expected.get('source_sha256') != signature
+                or expected.get('action') != action):
+            raise PermissionError('The reviewed player session or source changed before the action.')
+        if cancelled():
+            raise InterruptedError('The player action was cancelled before native dispatch.')
+        player = owned['player']
+        before = player.state
+        if action == 'pause' and before == 'playing':
+            owned['pause']()  # The existing handler; never toggle an already-paused player.
+        elif action == 'stop':
+            owned['stop']()
+        after = player.state
+        if ((action == 'pause' and after not in ('paused', 'stopped'))
+                or (action == 'stop' and after != 'stopped')):
+            raise RuntimeError('The native player did not confirm the requested safe state.')
+        owned['guard']()
+        if owned['snapshot']() != signature:
+            raise PermissionError('The reading source changed during the player action.')
+        position, duration = player.position_seconds, player.duration_seconds
+        if any(type(value) not in (int, float) or not math.isfinite(value) or value < 0
+               for value in (position, duration)):
+            raise ValueError('The native player returned invalid measured status.')
+        return {'schema': 'carr-current-player-receipt/1', 'session': owned['session'],
+            'source_sha256': signature, 'workspace': workspace, 'action': action,
+            'state': after, 'position_seconds': position, 'duration_seconds': duration,
+            'position_approximate': bool(player.position_is_approximate),
+            'notice': 'Captured current-reader status. No player was created and no audio was started.'}
 
     def show_window(self, event=None):
         if not self._live():
@@ -428,6 +489,7 @@ class DesktopIntegration:
             return
         self.closed = True
         self.reader = None
+        self._assistant_reader = None
         self.watch.close()
         self.timer.Stop()
         self.frame.Unbind(self.wx.EVT_TIMER, source=self.timer, handler=self._tick)
