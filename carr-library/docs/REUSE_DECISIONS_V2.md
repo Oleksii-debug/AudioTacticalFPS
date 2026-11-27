@@ -51,8 +51,12 @@ Reuse canonical implementation → reconcile an existing reviewed PR → adopt a
 - Shared runtime admission reuses `filelock`/native OS lock release and
   `durable_state`, while the operation view reads existing typed checkpoints.
   No alternate database, queue, inference engine or model downloader is added.
-- Progress speech reuses the canonical isolated SAPI adapter and WAV player;
+- Progress speech reuses the canonical selected local-voice provider and WAV player;
   it does not implement another synthesizer or write into rendered audio.
+- Integration of canonical `962297eef228870b6eaab3f46163124db8f5045c` retains
+  its explicitly selected voice, quiet/media isolation and accessible busy-time
+  commands, replacing the earlier duplicate UI-local speech worker. Portable
+  backup-name checks and canonical copied-content revalidation both remain.
 - Private ZIP refresh reuses the existing exact-source wheel, dependency lock,
   sealed inventory and strict archive verifier. Directory and direct-ZIP
   assembly share one validation/selection path, and the existing OCR source

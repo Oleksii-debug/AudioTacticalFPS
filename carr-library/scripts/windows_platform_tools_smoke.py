@@ -125,7 +125,10 @@ def main():
     from carr_library.operations import ResourceBroker
     from carr_library.ui.desktop_app import DesktopFrame
     from carr_library.ui.transcription_dialog import build_transcription_dialog, TranscriptionController
-    from carr_library.ui.progress_speech import LocalProgressSpeech
+    from carr_library.speech import VoiceRegistry
+    from carr_library.speech.progress_speech import LocalProgressSpeech
+    from carr_library.speech.runtime import NativeSapiProvider
+    from carr_library.ui.operation_progress import WindowsProgressSound
     import carr_library.ui.transcription_dialog as transcription_module
     import carr_library.ui.operations_dialog as operations_module
 
@@ -338,6 +341,7 @@ def main():
 
         measured, played, pcm_paths = {}, threading.Event(), []
         class CapturePlayback:
+            available = True
             state = 'stopped'
             def play(self, path):
                 pcm_paths.append(Path(path))
@@ -348,7 +352,16 @@ def main():
                 measured['thread'] = threading.get_ident()
                 played.set()
             def close(self): pass
-        speech = LocalProgressSpeech(player_factory=CapturePlayback)
+        registry = VoiceRegistry((NativeSapiProvider(),))
+        progress_voices = tuple(voice for voice in registry.voices()
+            if voice.language.replace('_', '-').split('-')[0].lower() == 'en'
+            and 'volume' in voice.capabilities)
+        check('native progress fixture explicitly selects an installed English SAPI voice', bool(progress_voices))
+        selected_voice = progress_voices[0]
+        provider = LocalProgressSpeech(registry, selected_voice.id,
+            library_root=library.root, _player_factory=CapturePlayback)
+        speech = WindowsProgressSound()
+        speech.set_speech_provider(provider)
         try:
             check('native progress speech queues without blocking the GUI',
                   speech.speak('In progress. Fifty percent. Verifying local transcript files.', volume=.35))
@@ -366,6 +379,7 @@ def main():
               speech._thread is not None and not speech._thread.is_alive()
               and all(not path.exists() for path in pcm_paths))
         result['native_sapi_progress_pcm'] = {key: value for key, value in measured.items() if key != 'thread'}
+        result['native_sapi_progress_voice'] = {'id': selected_voice.id, 'language': selected_voice.language}
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'
