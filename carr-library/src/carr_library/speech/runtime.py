@@ -234,7 +234,7 @@ class VoiceRegistry:
             identity['helper_contract'] = 'carr.local-voice.v1'
             if provider.script is not None:
                 identity['helper_script_sha256'] = provider.expected_script_hash
-                identity['helper_launch'] = 'isolated-python-script.v1'
+                identity['helper_launch'] = 'isolated-python-snapshot.v1'
         elif isinstance(provider, SapiProvider):
             identity.update(token=provider._tokens[voice_id], architecture=provider.architecture,
                             model_identity='opaque-installed-SAPI-token')
@@ -550,6 +550,66 @@ class PiperProvider:
                     max_output=settings.max_output_bytes)
 
 
+# The reviewed script is data until these exact bytes pass the child-side hash.
+# -I -B -S isolates this fixed stdlib bootstrap from site and environment hooks.
+_PYTHON_HELPER_SOURCE_BYTES = 8 * 1024 * 1024
+_PYTHON_HELPER_BOOTSTRAP = r'''
+import hashlib as _hashlib
+import os as _os
+import stat as _stat
+import sys as _sys
+import types as _types
+
+_script, _expected = _sys.argv[1:]
+_maximum = %d
+
+def _stamp(_value):
+    return (_value.st_dev, _value.st_ino, _value.st_size,
+            _value.st_mtime_ns, _value.st_ctime_ns)
+
+def _regular(_value):
+    if (not _stat.S_ISREG(_value.st_mode) or _value.st_nlink != 1
+            or getattr(_value, 'st_file_attributes', 0)
+               & getattr(_stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)):
+        raise ValueError('The reviewed helper script must remain a regular local file.')
+    if _value.st_size > _maximum:
+        raise ValueError('The reviewed helper script exceeds its source-byte budget.')
+
+_before = _os.lstat(_script)
+_regular(_before)
+_flags = (_os.O_RDONLY | getattr(_os, 'O_BINARY', 0)
+          | getattr(_os, 'O_NOFOLLOW', 0) | getattr(_os, 'O_NONBLOCK', 0))
+_descriptor = _os.open(_script, _flags)
+try:
+    _opened = _os.fstat(_descriptor)
+    _regular(_opened)
+    if _stamp(_opened) != _stamp(_before):
+        raise ValueError('The reviewed helper script changed while opening.')
+    with _os.fdopen(_descriptor, 'rb') as _source:
+        _descriptor = None
+        _raw = _source.read(_maximum + 1)
+        _after = _os.fstat(_source.fileno())
+    if (len(_raw) > _maximum or len(_raw) != _before.st_size
+            or _stamp(_after) != _stamp(_before)
+            or _stamp(_os.lstat(_script)) != _stamp(_before)
+            or _hashlib.sha256(_raw).hexdigest() != _expected):
+        raise ValueError('The reviewed helper script identity changed.')
+finally:
+    if _descriptor is not None:
+        _os.close(_descriptor)
+
+# Compile the verified private bytes, never reopen the script for execution.
+_code = compile(_raw, _script, 'exec')
+_module = _types.ModuleType('__main__')
+_module.__file__ = _script
+_module.__package__ = None
+_module.__spec__ = None
+_module.__cached__ = None
+_sys.argv = [_script]
+_sys.modules['__main__'] = _module
+exec(_code, _module.__dict__)
+''' % _PYTHON_HELPER_SOURCE_BYTES
+
 class LocalHelperProvider:
     """Explicitly trusted local adapter contract, including future dordiai-voices.
 
@@ -580,21 +640,30 @@ class LocalHelperProvider:
         if (not isinstance(self.expected_hash, str) or not re.fullmatch('[0-9a-f]{64}', self.expected_hash)
                 or digest(local_file(self.executable)) != self.expected_hash):
             raise ValueError('Local voice helper hash verification failed.')
-        if self.script is not None and (
-                not isinstance(self.expected_script_hash, str)
-                or not re.fullmatch('[0-9a-f]{64}', self.expected_script_hash)
-                or digest(local_file(self.script)) != self.expected_script_hash):
-            raise ValueError('Local voice helper script hash verification failed.')
+        if self.script is not None:
+            if (not isinstance(self.expected_script_hash, str)
+                    or not re.fullmatch('[0-9a-f]{64}', self.expected_script_hash)):
+                raise ValueError('Local voice helper script hash verification failed.')
+            script = local_file(self.script)
+            if script.stat().st_size > _PYTHON_HELPER_SOURCE_BYTES:
+                raise ValueError('Local voice helper script exceeds its source-byte budget.')
+            with script.open('rb') as source:
+                raw = source.read(_PYTHON_HELPER_SOURCE_BYTES + 1)
+            if len(raw) > _PYTHON_HELPER_SOURCE_BYTES:
+                raise ValueError('Local voice helper script exceeds its source-byte budget.')
+            if sha256(raw).hexdigest() != self.expected_script_hash:
+                raise ValueError('Local voice helper script hash verification failed.')
 
     def _request(self, payload, *, cancelled=lambda: False, timeout=30, output=None, budget=512*1024*1024):
         self._verify()
         raw = json.dumps({'schema': 'carr.local-voice.v1', **payload}, ensure_ascii=False).encode('utf-8')
         command = [self.executable]
         if self.script is not None:
-            # A reviewed, self-contained stdlib bridge uses a fixed interpreter
-            # invocation. Source text stays in JSON; no caller-supplied argv,
-            # shell, user site, startup hooks or bytecode writes are introduced.
-            command.extend(('-I', '-B', '-S', str(self.script)))
+            # The child compiles only its bounded, hash-verified source snapshot.
+            # Source text stays in JSON; no caller-supplied argv, shell, user
+            # site, startup hooks or bytecode writes are introduced.
+            command.extend(('-I', '-B', '-S', '-c', _PYTHON_HELPER_BOOTSTRAP,
+                            str(self.script), self.expected_script_hash))
         reply, _, _ = run_process(command, input_bytes=raw, cancelled=cancelled,
                                  timeout=timeout, output_file=output, max_output=budget)
         data = json.loads(reply.decode('utf-8'))

@@ -517,3 +517,112 @@ def test_disabled_missing_script_remains_passive_and_editable(helper, tmp_path, 
     runtime_settings.save_settings(root, proposal)
     assert runtime_settings.load_settings(root) == proposal
     assert not missing.exists()
+
+
+@pytest.mark.parametrize('operation', ('voices', 'render'))
+@pytest.mark.parametrize('mutation', ('replace', 'in_place', 'grow'))
+def test_actual_python_helper_refuses_script_changed_after_host_verification(
+        helper, tmp_path, monkeypatch, operation, mutation):
+    script = helper[1]
+    # Keep the replacement exactly the same length, including the executable
+    # marker: neither a size check nor the host's earlier hash is sufficient.
+    padding = b'# reviewed admission barrier'.ljust(256, b' ') + b'\n'
+    original = padding + script.read_bytes()
+    script.write_bytes(original)
+    provider = _provider(helper)
+    registry = VoiceRegistry([provider])
+    assert len(registry.voices()) == 1, registry.notices
+    voice = registry.voices()[0]
+    approved = provider.expected_script_hash
+    marker = script.with_name('unreviewed-executed')
+    injected = (b"__import__('pathlib').Path(__file__).with_name("
+                b"'unreviewed-executed').write_bytes(b'unapproved')")
+    altered = injected.ljust(256, b' ') + b'\n' + original[len(padding):]
+    assert len(altered) == len(original)
+    if mutation == 'grow':
+        # Valid Python if an unsafe launcher reads it all: the marker would
+        # execute before the original helper responds, despite the huge comment.
+        altered += b'\n#' + b'x' * (runtime._PYTHON_HELPER_SOURCE_BYTES + 1 - len(altered))
+        assert len(altered) > runtime._PYTHON_HELPER_SOURCE_BYTES
+    assert sha256(altered).hexdigest() != approved
+    real_run = runtime.run_process
+    launched = []
+
+    def changed_after_verify(args, **kwargs):
+        assert str(script) in [os.fspath(value) for value in args]
+        assert provider.expected_script_hash == approved
+        before = script.stat()
+        if mutation == 'replace':
+            replacement = script.with_name('replacement.py')
+            replacement.write_bytes(altered)
+            os.replace(replacement, script)
+        else:
+            with script.open('r+b') as stream:
+                stream.write(altered)
+                stream.flush()
+                os.fsync(stream.fileno())
+            assert (script.stat().st_dev, script.stat().st_ino) == (before.st_dev, before.st_ino)
+        if mutation != 'grow':
+            assert script.stat().st_size == before.st_size
+        launched.append(tuple(args))
+        return real_run(args, **kwargs)
+
+    monkeypatch.setattr(runtime, 'run_process', changed_after_verify)
+    target = tmp_path.resolve(strict=True) / 'must-not-admit-changed-helper.wav'
+    try:
+        with pytest.raises(RuntimeError, match='local speech engine failed'):
+            if operation == 'voices':
+                provider.voices()
+            else:
+                registry.synthesize('Do not execute unreviewed source.', voice.id, target)
+        assert len(launched) == 1
+        assert not marker.exists(), 'A child executed bytes outside the approved script hash.'
+        assert not target.exists()
+        assert not list(tmp_path.glob('.speech-*'))
+        assert script.read_bytes() == altered
+    finally:
+        registry.close()
+
+
+def test_oversized_python_helper_script_is_refused_before_source_read_or_launch(
+        helper, monkeypatch):
+    script = helper[1]
+    with script.open('wb') as stream:
+        stream.truncate(runtime._PYTHON_HELPER_SOURCE_BYTES + 1)
+    opened = Path.open
+
+    def no_script_read(path, *args, **kwargs):
+        if path == script:
+            pytest.fail('An over-budget script reached the source reader.')
+        return opened(path, *args, **kwargs)
+
+    def no_launch(*args, **kwargs):
+        pytest.fail('An over-budget script reached process admission.')
+
+    monkeypatch.setattr(Path, 'open', no_script_read)
+    monkeypatch.setattr(runtime, 'run_process', no_launch)
+    with pytest.raises(ValueError, match='script exceeds its source-byte budget'):
+        LocalHelperProvider(helper[0],
+            sha256=sha256(helper[0].read_bytes()).hexdigest(),
+            engine_name='Bounded synthetic helper', enabled=True,
+            script=script, script_sha256='0' * 64)
+
+
+def test_actual_python_helper_retains_main_module_and_script_argv(helper, tmp_path):
+    script = helper[1]
+    body = script.read_text(encoding='utf-8')
+    body = body.replace('root = Path(__file__).parent',
+        'assert sys.modules[__name__].__dict__ is globals()\n'
+        'assert __name__ == "__main__" and __package__ is None and __spec__ is None\n'
+        'assert sys.argv == [__file__]\n'
+        'root = Path(__file__).parent', 1)
+    script.write_text(body, encoding='utf-8')
+    registry = VoiceRegistry([_provider(helper)])
+    try:
+        assert len(registry.voices()) == 1, registry.notices
+        result = registry.synthesize('Preserve the real script module contract.',
+            registry.voices()[0].id, tmp_path.resolve(strict=True) / 'main-contract.wav')
+        assert result.frames == 320
+        assert result.sha256 == sha256(result.path.read_bytes()).hexdigest()
+    finally:
+        registry.close()

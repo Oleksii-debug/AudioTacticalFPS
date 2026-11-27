@@ -213,8 +213,12 @@ All paths and digests below must be replaced with the actual reviewed files:
 ```
 
 The host verifies both files before catalog enumeration, rendering and cache
-fingerprinting. It launches exactly `python -I -B -S configured_bridge.py`.
-It accepts no additional interpreter arguments or shell command. JSON input
+fingerprinting. It launches a fixed `python -I -B -S -c` bootstrap with the
+reviewed script path and SHA256. The child reads at most 8 MiB plus one growth
+sentinel, verifies the exact source bytes, then compiles and executes that
+retained snapshot. It never reopens the path to execute unchecked source.
+The bridge retains its own `__file__`, `__main__` module and single script
+`sys.argv` entry. It accepts no additional interpreter arguments or shell command. JSON input
 continues to carry speech text, settings and the private output path. The fixed
 flags isolate user-site/startup paths and prevent changes to sealed Python
 bytecode; the bridge must use the standard library or explicitly launch its
