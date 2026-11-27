@@ -2,7 +2,27 @@
   "schema": 1,
   "kind": "canonical-export-and-native-lock-boundaries",
   "execution_status": "NOT_RUN",
-  "suites": {
+  "total_cases": 52,
+  "added_cases": 16,
+  "helpers": [],
+  "modules": {
+    "carr_library.operations._locks": "src/carr_library/operations/_locks.py",
+    "carr_library.operations._state": "src/carr_library/operations/_state.py",
+    "carr_library.operations.broker": "src/carr_library/operations/broker.py",
+    "carr_library.research.export_file": "src/carr_library/research/export_file.py",
+    "carr_library.native_file_metadata": "src/carr_library/native_file_metadata.py"
+  },
+  "source_commits": {
+    "native_lock": "b83c134032ccf12de4d2304e22f3336a86796141",
+    "export": "c3db8a858430506d97c30ebe94f512e1863982a9"
+  },
+  "constraints": [
+    "All existing resource process-entrypoint and export regression cases remain required.",
+    "The six canonical lock cases use this composition's actual local asset path adapter.",
+    "Only disappearance of an unheld lock leaf is tolerated; parent/type/link/inspection errors remain visible.",
+    "Existing approved export metadata is checked before native metadata queries or byte hashing; matching metadata still needs the existing full digest."
+  ],
+  "tests": {
     "tests/operations/test_resources.py": {
       "test_unheld_lock_disappearance_during_preflight_can_be_acquired": 2,
       "test_unheld_lock_does_not_hide_missing_parent_or_validation_error": 1,
@@ -38,25 +58,5 @@
       "test_mismatched_existing_approval_rejected_before_open": 4,
       "test_replaced_existing_destination_not_opened": 4
     }
-  },
-  "total_cases": 52,
-  "added_cases": 16,
-  "helpers": [],
-  "modules": {
-    "carr_library.operations._locks": "src/carr_library/operations/_locks.py",
-    "carr_library.operations._state": "src/carr_library/operations/_state.py",
-    "carr_library.operations.broker": "src/carr_library/operations/broker.py",
-    "carr_library.research.export_file": "src/carr_library/research/export_file.py",
-    "carr_library.native_file_metadata": "src/carr_library/native_file_metadata.py"
-  },
-  "source_commits": {
-    "native_lock": "b83c134032ccf12de4d2304e22f3336a86796141",
-    "export": "c3db8a858430506d97c30ebe94f512e1863982a9"
-  },
-  "constraints": [
-    "All existing resource process-entrypoint and export regression cases remain required.",
-    "The six canonical lock cases use this composition's actual local asset path adapter.",
-    "Only disappearance of an unheld lock leaf is tolerated; parent/type/link/inspection errors remain visible.",
-    "Existing approved export metadata is checked before native metadata queries or byte hashing; matching metadata still needs the existing full digest."
-  ]
+  }
 }
