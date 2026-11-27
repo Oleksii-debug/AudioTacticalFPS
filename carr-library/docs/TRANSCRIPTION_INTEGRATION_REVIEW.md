@@ -1,10 +1,16 @@
 # Supplied Whisper Transcribe — integration review
 
-Review date: 2026-11-27. Status: SOURCE_RECEIVED_AND_STATICALLY_REVIEWED; runtime/integration/Windows/NVDA/model-quality acceptance NOT_RUN in this audit. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
+Review date: 2026-11-27. Updated status: SOURCE_REVIEWED, ADAPTER_PRESENT,
+INTEGRATED, EXECUTED_WITH_SYNTHETIC_RECOGNITION. Actual model inference, runtime
+distribution clearance and human NVDA/model-quality acceptance remain NOT_RUN.
+Windows acceptance is recorded by the exact-head checks in
+[PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143), separately from
+the source review below. This is a work package under the
+[current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
 ## Source and boundary
 
-The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. File bytes/immutable source hash and dependency lock must be recorded before code adoption; this review has not created a redistributed source snapshot.
+The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. Its original worker SHA256 is `1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`; the strict-3 prepared worker SHA256 is `597ad8182adc99a826798aa530fa792784679a5c2755c62a27c9bf0cf55dc2a6`. The preparation script accepts only that reviewed original and verifies its result. No redistributed private source snapshot or approved dependency/model pack was created.
 
 The source location is retained in the authorized private worker input, not in public Git. Its personal jobs, recordings/transcripts, virtual environment, historical backups/patch clutter and machine-specific paths must not be imported. No root LICENSE, dependency lock or pyproject.toml was observed; establish provenance/rights for the supplied wrapper and every runtime/model before redistribution. Do not invent a license for the owner's code.
 
@@ -22,7 +28,7 @@ The supplied environment metadata records Python3.14.5, faster-whisper1.2.1, CTr
 
 No models directory was observed at the supplied project root. The downloader names tiny/base/small/medium/large-v3-turbo/large-v3 without immutable revisions and hashes. Actual model availability, complete dependencies and cold offline operation remain unverified. Do not copy the virtual environment as a portable runtime or automatically download all models.
 
-## Findings to resolve before qualification
+## Original findings and current disposition
 
 Line references identify the inspected worker.py snapshot and may move after changes.
 
@@ -38,6 +44,28 @@ Line references identify the inspected worker.py snapshot and may move after cha
 | ASR-08 / acceptance | No speaker-diarization implementation observed; word_timestamps not enabled in transcription call | Do not advertise diarization or word alignment as implemented. Qualify them as separate requested extensions using existing compatible components. |
 
 Whisper task=translate in this implementation targets English. It is separate from the platform's general Google/local any-supported-pair translation workstation.
+
+The adapter now addresses ASR-01/02 with retained content identities and verified
+per-file receipts; it never adopts the supplied worker's basename/mtime cache.
+ASR-03 is corrected by the reused strict preparation, with no forced Russian or
+English fallback. ASR-04 is handled by validating every requested output and
+publishing its complete directory plus receipt atomically. ASR-05 is bounded by
+one file per worker and a state-root runtime lock; a persistent shared engine
+session and global resource broker are still open. ASR-06 has bounded process
+termination and file-level restart; segment-level resume is not implemented.
+ASR-07 has strict local inventories and explicit setup, but a real, rights-cleared
+engine/model pack still needs qualification. ASR-08 remains unsupported.
+
+Earlier Linux source execution passed 42 standalone adapter cases, independently
+reviewed. The new UI/cancellation and final composed tree require fresh CI. The suite covers actual child processes, changed same-size inputs, poisoned
+bytecode, altered outputs, atomic multi-format publication, crash/cancel/resume,
+observer failures, receipt checks and state backups. A separate real subprocess
+executed the actual prepared private worker with an authored synthetic
+WhisperModel and verified all four formats, Unicode paths and minute-boundary
+timestamps. Neither test establishes real recognition quality. The strict-3
+preparation also uses explicit LF output to make the exact text contract
+independent of Windows newline translation. See
+[the adapter contract and limits](TRANSCRIPTION_SUPPLIED_WORKER.md).
 
 ## Incremental adoption
 

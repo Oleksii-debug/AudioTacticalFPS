@@ -3,6 +3,62 @@ from dataclasses import dataclass
 from hashlib import sha256
 
 from ._io import check_cancelled
+from ..reader.reading_state import ReadingLocation
+
+
+def validate_source_origin(value, source_text):
+    """Validate portable lineage, never quotation authority or current access.
+
+    Identity comes from the already authorized ReadingDesk. On reopening, these
+    fields remain historical observations; only the existing library resolver
+    can authorize a live source or an exact quotation. No file path is trusted.
+    """
+    if value is None:
+        return None
+    fields = {'schema', 'workspace', 'edition', 'revision', 'asset_sha256',
+              'positions', 'derived_separators', 'quotation_authority'}
+    if (type(value) is not dict or set(value) != fields
+            or value['schema'] != 'carr.narration-source.v1'
+            or value['quotation_authority'] is not False):
+        raise ValueError('Invalid narration-source identity fields.')
+    positions = value['positions']
+    if type(positions) is not list or not 1 <= len(positions) <= 10000:
+        raise ValueError('Invalid narration-source position count.')
+    keys = {'ordinal', 'kind', 'index', 'start', 'end', 'text_sha256', 'text_verified'}
+    copied, separators, previous = [], [], None
+    for row in positions:
+        if type(row) is not dict or set(row) != keys:
+            raise ValueError('Invalid narration-source position fields.')
+        ReadingLocation(value['workspace'], value['edition'], value['revision'],
+                        row['kind'], row['index'], row['text_sha256'], value['asset_sha256'])
+        if (type(row['ordinal']) is not int or not 1 <= row['ordinal'] <= 10000
+                or type(row['start']) is not int or type(row['end']) is not int
+                or not 0 <= row['start'] <= row['end'] <= len(source_text)
+                or type(row['text_verified']) is not bool):
+            raise ValueError('Invalid narration-source position or offsets.')
+        expected_start = previous['end'] + 2 if previous is not None else 0
+        if row['start'] != expected_start:
+            raise ValueError('Narration-source positions do not cover the source.')
+        if previous is not None:
+            if (row['ordinal'] != previous['ordinal'] + 1 or row['kind'] != previous['kind']
+                    or row['index'] <= previous['index']
+                    or source_text[previous['end']:row['start']] != '\n\n'):
+                raise ValueError('Invalid narration-source sequence or derived separator.')
+            separators.append({'start': previous['end'], 'end': row['start']})
+        if sha256(source_text[row['start']:row['end']].encode('utf-8')).hexdigest() != row['text_sha256']:
+            raise ValueError('Narration-source position checksum mismatch.')
+        copied.append(dict(row))
+        previous = row
+    if previous['end'] != len(source_text):
+        raise ValueError('Narration-source positions do not cover the source.')
+    if (type(value['derived_separators']) is not list
+            or len(value['derived_separators']) != len(separators)
+            or any(type(row) is not dict or set(row) != {'start', 'end'}
+                   or type(row['start']) is not int or type(row['end']) is not int
+                   for row in value['derived_separators'])
+            or value['derived_separators'] != separators):
+        raise ValueError('Invalid narration-source derived separators.')
+    return {**value, 'positions': copied, 'derived_separators': separators}
 
 
 @dataclass(frozen=True)
@@ -12,8 +68,37 @@ class NarrationSource:
     workspace: str
     edition: str
     revision: str
+    asset_sha256: str
     positions: tuple[dict, ...]
     warnings: tuple[str, ...]
+
+    @property
+    def origin(self):
+        return validate_source_origin({
+            'schema': 'carr.narration-source.v1', 'workspace': self.workspace,
+            'edition': self.edition, 'revision': self.revision,
+            'asset_sha256': self.asset_sha256,
+            'positions': [dict(row) for row in self.positions],
+            'derived_separators': [{'start': first['end'], 'end': second['start']}
+                                   for first, second in zip(self.positions, self.positions[1:])],
+            'quotation_authority': False,
+        }, self.text)
+
+    def reading_document(self, recovered=None):
+        """Construct the GUI/recovery copy without guessing identity from text.
+
+        A mismatched or legacy unbound draft is kept intact for explicit recovery;
+        it must not silently acquire the current edition or lose its user edits.
+        """
+        from .reading import ReadingDocument
+        origin = self.origin
+        if recovered is not None:
+            if (not isinstance(recovered, ReadingDocument) or recovered.source_text != self.text
+                    or recovered.source_origin != origin):
+                raise ValueError('Saved narration draft has a different or unbound source identity. '
+                                 'Its edits were preserved; it was not attached to this source.')
+            return recovered
+        return ReadingDocument(self.text, title=self.title, source_origin=origin)
 
 
 def read_source_range(desk, first, last, *, guard=lambda: None,
@@ -43,10 +128,12 @@ def read_source_range(desk, first, last, *, guard=lambda: None,
         offset += len(page.raw_text)
         positions.append({'ordinal': page.ordinal, 'kind': page.location.kind,
                           'index': page.location.index, 'start': start, 'end': offset,
-                          'text_sha256': sha256(page.raw_text.encode('utf-8')).hexdigest()})
+                          'text_sha256': sha256(page.raw_text.encode('utf-8')).hexdigest(),
+                          'text_verified': page.verified})
         if not page.verified:
             warnings.append(f'Reading position {ordinal}: extracted text has not been independently approved.')
     guard()
     check_cancelled(cancelled)
     return NarrationSource(''.join(pieces), desk.title, desk.workspace, desk.edition,
-                           desk.revision, tuple(positions), tuple(warnings))
+                           desk.revision, desk.identity.asset_sha256,
+                           tuple(positions), tuple(warnings))

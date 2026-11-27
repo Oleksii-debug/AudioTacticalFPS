@@ -12,7 +12,8 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.research.topic_tree import TopicTree
-from carr_library.speech import ReadingDocument, Voice, VoiceRegistry
+from carr_library.speech import ReadingDocument, SourceSpan, Voice, VoiceRegistry
+from carr_library.speech.session import ReaderDraftStore, ReaderResume, open_source_draft
 from carr_library.ui import speech_dialog as ui
 from carr_library.speech.source import read_source_range
 
@@ -32,7 +33,7 @@ def test_reading_copy_keeps_library_original_and_saved_evidence(tmp_path):
     assert source.workspace == workspace and source.edition == imported['edition']
     assert source.revision == desk.revision
     assert source.positions[0]['text_sha256'] == sha256(text.encode('utf-8')).hexdigest()
-    copy = ReadingDocument(source.text, title=source.title)
+    copy = source.reading_document()
     copy.set_text('An independently authored reading copy.')
     assert app.assets.resolve(imported['asset']).read_bytes() == text.encode('utf-8')
     assert app.evidence(workspace, topic) == original_evidence
@@ -190,3 +191,330 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
                                      'was archived in Save As: ' + repr(statuses))
     else:
         assert ReadingDocument.load(output).source_text == original
+
+
+
+def _two_equal_sources(tmp_path):
+    """Actual retained originals with equal extraction, different bytes/IDs."""
+    app = LibraryApp(tmp_path / 'library')
+    text = 'Перший розділ e\u0301.\r\nOriginal line.\fDruhý oddiel.'
+    sources = []
+    for index, prefix in enumerate((b'', b'\xef\xbb\xbf')):
+        path = tmp_path / f'source-{index}.txt'
+        path.write_bytes(prefix + text.encode('utf-8'))
+        workspace = app.create_workspace(f'Library {index}')
+        imported = app.import_file(workspace, path, title='Same source title')
+        desk = ReadingDesk(app, workspace, imported['edition'])
+        source = read_source_range(desk, 1, len(desk.pages))
+        sources.append((source, imported, desk))
+    assert sources[0][0].text == sources[1][0].text
+    assert sources[0][0].asset_sha256 != sources[1][0].asset_sha256
+    return app, sources
+
+
+def test_distinct_editions_keep_portable_identity_after_edit_save_and_reopen(tmp_path):
+    app, sources = _two_equal_sources(tmp_path)
+    saved = []
+    for index, (source, imported, desk) in enumerate(sources):
+        original = app.assets.resolve(imported['asset']).read_bytes()
+        document = source.reading_document()
+        document.replace(0, 6, 'Читання')
+        path = tmp_path / f'narration-{index}.reading.json'
+        document.save(path)
+        reopened = ReadingDocument.load(path)
+        origin = reopened.source_origin
+        assert reopened.source_bound
+        assert reopened.to_dict()['schema'] == 'carr.reading-copy.v2'
+        assert origin == source.origin
+        assert (origin['workspace'], origin['edition'], origin['revision'], origin['asset_sha256']) == (
+            desk.workspace, desk.edition, desk.revision, imported['asset'])
+        assert origin['quotation_authority'] is False
+        assert reopened.source_text == source.text
+        assert reopened.text == document.text
+        assert reopened.undo() and reopened.text == source.text
+        assert reopened.redo() and reopened.text == document.text
+        assert app.assets.resolve(imported['asset']).read_bytes() == original
+        saved.append(origin)
+    assert saved[0] != saved[1]
+
+
+def test_derived_page_separators_are_not_exact_source_spans(tmp_path):
+    _, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    document = source.reading_document()
+    first, second = source.origin['positions']
+    assert source.origin['derived_separators'] == [{'start': first['end'], 'end': second['start']}]
+    assert document.source_span(first['end'], second['start']) == SourceSpan(None, None, False)
+    assert document.source_span(first['start'], first['end']).exact
+    assert not document.source_span(first['start'], second['end']).exact
+    reopened = ReadingDocument.from_dict(document.to_dict())
+    assert reopened.source_span(first['end'], second['start']) == SourceSpan(None, None, False)
+
+
+def test_same_text_does_not_rebind_a_different_or_legacy_source(tmp_path):
+    _, sources = _two_equal_sources(tmp_path)
+    first, second = sources[0][0], sources[1][0]
+    recovered = first.reading_document()
+    recovered.set_text('Saved independently authored narration.')
+    before = recovered.to_dict()
+    with pytest.raises(ValueError, match='source identity'):
+        second.reading_document(recovered)
+    assert recovered.to_dict() == before
+    legacy = ReadingDocument(first.text)
+    legacy.set_text('Legacy edits preserved.')
+    legacy_record = legacy.to_dict()
+    assert legacy_record['schema'] == 'carr.reading-copy.v1'
+    with pytest.raises(ValueError, match='source identity'):
+        first.reading_document(legacy)
+    assert legacy.to_dict() == legacy_record
+    assert not ReadingDocument.from_dict(legacy_record).source_bound
+
+
+def test_observed_verification_change_does_not_reuse_a_draft(tmp_path):
+    from dataclasses import replace
+    _, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    positions = tuple({**row, 'text_verified': not row['text_verified']} for row in source.positions)
+    changed = replace(source, positions=positions)
+    document = source.reading_document()
+    with pytest.raises(ValueError, match='source identity'):
+        changed.reading_document(document)
+    changed_document = changed.reading_document()
+    assert changed_document.source_origin['quotation_authority'] is False
+    assert changed_document.source_origin['positions'] == list(positions)
+
+
+def test_source_origin_is_defensively_copied(tmp_path):
+    _, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    document = source.reading_document()
+    expected = document.source_origin
+    exposed = document.source_origin
+    exposed['edition'] = 'other-edition'
+    exposed['positions'][0]['text_verified'] = not exposed['positions'][0]['text_verified']
+    exposed['derived_separators'][0]['end'] += 1
+    exported = document.to_dict()
+    exported['source_origin']['workspace'] = 'different-workspace'
+    assert document.source_origin == expected == source.origin
+
+
+@pytest.mark.parametrize('damage', ['unknown', 'authority', 'asset', 'offset', 'ordinal',
+    'verified', 'separator', 'positions', 'missing_origin'])
+def test_imported_source_identity_is_bounded_and_untrusted(tmp_path, damage):
+    _, sources = _two_equal_sources(tmp_path)
+    record = sources[0][0].reading_document().to_dict()
+    origin = record['source_origin']
+    if damage == 'unknown':
+        origin['path'] = '/not-an-authorized-source'
+    elif damage == 'authority':
+        origin['quotation_authority'] = True
+    elif damage == 'asset':
+        origin['asset_sha256'] = 'invalid'
+    elif damage == 'offset':
+        origin['positions'][0]['start'] = 1
+    elif damage == 'ordinal':
+        origin['positions'][0]['ordinal'] = True
+    elif damage == 'verified':
+        origin['positions'][0]['text_verified'] = 1
+    elif damage == 'separator':
+        origin['derived_separators'][0]['end'] += 1
+    elif damage == 'positions':
+        origin['positions'] = origin['positions'] * 5001
+    else:
+        record['source_origin'] = None
+    with pytest.raises(ValueError):
+        ReadingDocument.from_dict(record)
+
+
+def _legacy_draft(app, source):
+    legacy = ReaderDraftStore(app.root, slot='old-book-reader')
+    document = ReadingDocument(source.text, title='Saved older narration')
+    document.set_text(source.text + '\nOriginal saved author edits.')
+    legacy.save(ReaderResume(document, 'flite:slt', rate=1, volume=65, cursor=3, audio_seconds=2))
+    return legacy, legacy.path.read_bytes()
+
+
+@pytest.mark.parametrize('selection', [0, 1, None])
+def test_legacy_recovery_requires_explicit_choice_and_preserves_old_file(tmp_path, selection):
+    app, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    legacy, before = _legacy_draft(app, source)
+    if selection is None:
+        with pytest.raises(InterruptedError, match='kept unchanged'):
+            open_source_draft(source, legacy, choose=lambda: None)
+    else:
+        resumed, selected, detached = open_source_draft(source, legacy, choose=lambda: selection)
+        assert detached is (selection == 0)
+        if detached:
+            assert resumed.document.text.endswith('Original saved author edits.')
+            assert not resumed.document.source_bound
+            assert selected.path != legacy.path
+            assert selected.load().document.text == resumed.document.text
+        else:
+            assert resumed.document.source_origin == source.origin
+            assert resumed.document.text == source.text
+    assert legacy.path.read_bytes() == before
+
+
+def test_current_source_choice_reauthorizes_after_modal(tmp_path):
+    app, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    legacy, before = _legacy_draft(app, source)
+    permitted = True
+    def guard():
+        if not permitted:
+            raise ValueError('Source authorization revoked.')
+    def choose():
+        nonlocal permitted
+        permitted = False
+        return 1
+    with pytest.raises(ValueError, match='revoked'):
+        open_source_draft(source, legacy, choose=choose, guard=guard)
+    assert legacy.path.read_bytes() == before
+    assert len(tuple(legacy.root.glob('*.reader.json'))) == 1
+
+
+@pytest.mark.parametrize('change', ['selected_snapshot', 'latest_link'])
+@pytest.mark.parametrize('selection', [0, 1, None])
+def test_source_recovery_choice_preserves_newer_saved_work_from_another_session(
+        tmp_path, change, selection):
+    app, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    legacy, _ = _legacy_draft(app, source)
+    current = legacy.for_source(source)
+    concurrent = {}
+
+    def saved_files():
+        return {path.name: path.read_bytes() for path in legacy.root.glob('*.json')}
+
+    def choose():
+        # A separate reader saves while the native recovery choice is open.
+        second_session = ReaderDraftStore(app.root, slot='old-book-reader')
+        newer = second_session.load()
+        newer.document.set_text('LATEST edits saved by another reader')
+        if change == 'selected_snapshot':
+            second_session.save(newer)
+        else:
+            current.separate_copy(newer)
+        concurrent.update(saved_files())
+        return selection
+
+    if selection == 0:
+        with pytest.raises(ValueError, match='draft changed'):
+            open_source_draft(source, legacy, choose=choose)
+    elif selection is None:
+        with pytest.raises(InterruptedError, match='kept unchanged'):
+            open_source_draft(source, legacy, choose=choose)
+    else:
+        resumed, _, detached = open_source_draft(source, legacy, choose=choose)
+        assert not detached and resumed.document.source_origin == source.origin
+        assert resumed.document.text == source.text
+    assert saved_files() == concurrent
+    fresh = ReaderDraftStore(app.root, slot='old-book-reader')
+    resumed, _, detached = open_source_draft(source, fresh, choose=lambda: 0)
+    assert detached and resumed.document.text == 'LATEST edits saved by another reader'
+
+
+def test_source_recovery_rejects_a_snapshot_changed_while_it_was_loaded(tmp_path, monkeypatch):
+    app, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    legacy, _ = _legacy_draft(app, source)
+    load = ReaderDraftStore.load
+    changed = False
+
+    def load_then_save_newer(store):
+        nonlocal changed
+        resumed = load(store)
+        if store.key == legacy.key and not changed:
+            changed = True
+            newer = ReaderResume(ReadingDocument.from_dict(resumed.document.to_dict()))
+            newer.document.set_text('LATEST concurrent save during initial load')
+            store.save(newer)
+        return resumed
+
+    monkeypatch.setattr(ReaderDraftStore, 'load', load_then_save_newer)
+    with pytest.raises(ValueError, match='draft changed'):
+        open_source_draft(source, legacy,
+            choose=lambda: pytest.fail('A changed snapshot must not reach the choice.'))
+    assert legacy.load().document.text == 'LATEST concurrent save during initial load'
+    assert len(tuple(legacy.root.glob('*.reader.json'))) == 1
+
+
+def test_fresh_reader_discovers_latest_edited_standalone_recovery(tmp_path):
+    app, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    legacy, before = _legacy_draft(app, source)
+    resumed, separate, detached = open_source_draft(source, legacy, choose=lambda: 0)
+    assert detached and not resumed.document.source_bound
+    resumed.document.set_text('Latest separately recovered reading edits.')
+    separate.save(resumed)
+    fresh = ReaderDraftStore(app.root, slot='old-book-reader')
+    reopened, newest, detached = open_source_draft(source, fresh, choose=lambda: 0)
+    assert detached and reopened.document.text == resumed.document.text
+    assert not reopened.document.source_bound and newest.path != separate.path
+    assert legacy.path.read_bytes() == before
+    assert separate.load().document.text == resumed.document.text
+
+
+def test_fresh_reader_discovers_bound_draft_after_source_revision_change(tmp_path):
+    app, sources = _two_equal_sources(tmp_path)
+    source, imported, desk = sources[0]
+    old = ReaderDraftStore(app.root, slot='previous-revision-slot')
+    resumed, saved, detached = open_source_draft(source, old,
+        choose=lambda: pytest.fail('A new source has no recovery conflict.'))
+    resumed.document.set_text('Bound draft edits before metadata revision.')
+    saved.save(resumed)
+    before = saved.path.read_bytes()
+    app.update_metadata(desk.workspace, imported['edition'], title='New revision')
+    updated = ReadingDesk(app, desk.workspace, imported['edition'])
+    current = read_source_range(updated, 1, len(updated.pages))
+    assert current.origin != source.origin
+    fresh = ReaderDraftStore(app.root, slot='new-revision-slot')
+    reopened, _, detached = open_source_draft(current, fresh, choose=lambda: 0)
+    assert detached and reopened.document.text == resumed.document.text
+    assert reopened.document.source_origin == source.origin
+    assert saved.path.read_bytes() == before
+
+
+def test_bound_draft_and_recovery_links_survive_complete_library_backup(tmp_path):
+    from carr_library.library_backup import restore_backup
+    app, sources = _two_equal_sources(tmp_path)
+    source, imported, desk = sources[0]
+    legacy = ReaderDraftStore(app.root, slot='source-session')
+    resumed, current, _ = open_source_draft(source, legacy,
+        choose=lambda: pytest.fail('A new source has no recovery conflict.'))
+    resumed.document.set_text('Saved source-bound narration edits.')
+    current.save(resumed)
+    backup = tmp_path / 'backup'
+    checksum = app.backup(backup)
+    restored_root = tmp_path / 'restored'
+    restore_backup(backup, restored_root, expected_manifest_sha256=checksum)
+    restored = LibraryApp(restored_root)
+    restored_desk = ReadingDesk(restored, desk.workspace, imported['edition'])
+    restored_source = read_source_range(restored_desk, 1, len(restored_desk.pages))
+    reopened, _, detached = open_source_draft(restored_source,
+        ReaderDraftStore(restored_root, slot='a-fresh-session'),
+        choose=lambda: pytest.fail('Exact source identity must reuse the bound draft.'))
+    assert not detached
+    assert reopened.document.text == resumed.document.text
+    assert reopened.document.source_origin == source.origin
+    assert restored.assets.resolve(imported['asset']).read_bytes() == app.assets.resolve(imported['asset']).read_bytes()
+
+
+def test_generic_recovery_of_bound_snapshot_keeps_history_without_rebinding(tmp_path):
+    app, sources = _two_equal_sources(tmp_path)
+    source = sources[0][0]
+    document = source.reading_document()
+    document.set_text('Saved source-bound edit.')
+    original = ReaderDraftStore(app.root, slot='unidentified-old-revision-slot')
+    original.save(ReaderResume(document, 'flite:slt', volume=65, cursor=3))
+    before = original.path.read_bytes()
+    finder = ReaderDraftStore(app.root)
+    summary, = finder.list_saved().copies
+    assert summary.source_recorded and 'source identity recorded' in summary.label
+    recovered, separate = finder.open_saved(summary)
+    assert recovered.document.source_origin == source.origin
+    assert recovered.document.text == document.text
+    assert recovered.document.undo() and recovered.document.text == source.text
+    assert original.path.read_bytes() == before
+    assert separate.path != original.path

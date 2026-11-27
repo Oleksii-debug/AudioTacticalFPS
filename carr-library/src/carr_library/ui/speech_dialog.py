@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
-from ..speech.session import ReaderDraftStore, ReaderResume
+from ..speech.session import ReaderDraftStore, ReaderResume, open_source_draft
 
 
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
@@ -86,12 +86,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
     open_button = wx.Button(dialog, label='&Open text / project')
+    recover_button = wx.Button(dialog, label='Saved dra&fts')
+    recover_button.SetName('Recover saved reading draft')
     save_button = wx.Button(dialog, label='&Save reading copy')
     save_as = wx.Button(dialog, label='Save &as')
     undo = wx.Button(dialog, label='&Undo reading edit')
     redo = wx.Button(dialog, label='R&edo reading edit')
     original = wx.Button(dialog, label='Original and &diff')
-    for control in (open_button, save_button, save_as, undo, redo, original):
+    for control in (open_button, recover_button, save_button, save_as, undo, redo, original):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -157,20 +159,44 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return VoiceRegistry.discover()
 
         def loaded(value):
-            nonlocal registry, voices, document, source_loaded
+            nonlocal registry, voices, document, source_loaded, draft_store, recovered
+            nonlocal source_guard, source_loader, recovery_notice
             registry, source = value
             voices = registry.voices()
             if source is not None:
                 source_guard()
-                if recovered is not None and recovered.document.source_text == source.text:
+                detached = False
+                if draft_store is not None:
+                    from .research_actions import NativeDialogs
+                    recovered, draft_store, detached = open_source_draft(source, draft_store,
+                        guard=source_guard, choose=lambda: NativeDialogs().choose(dialog,
+                            'Recover saved reading draft',
+                            'The saved draft has a different or unrecorded source identity. '
+                            'Choose how to continue. The saved draft stays unchanged; '
+                            'recovering it never attaches it to the current source.',
+                            ('Open saved draft as a separate reading copy',
+                             'Read the current source and keep the saved draft')))
                     document = recovered.document
                 else:
-                    document = ReadingDocument(source.text, title=source.title)
+                    document = source.reading_document()
+                if detached:
+                    # The user explicitly chose their saved work, not a new
+                    # attachment to the currently selected library/edition.
+                    source_guard = lambda: None
+                    source_loader = None
+                    recovery_notice = ('Recovered the saved draft separately. Its original recovery file '
+                                       'is unchanged. Use Save As to keep a portable reading project. ')
                 editor.ChangeValue(document.text)
                 source_loaded = True
-                source_status.ChangeValue(f'{source.title}; {len(source.positions)} source reading positions. '
-                    + (' '.join(source.warnings[:3]) if source.warnings else 'Source positions authenticated.')
-                    + ' This is a separate narration copy; it does not approve quotations.')
+                if detached:
+                    sync_document()
+                else:
+                    source_status.ChangeValue(f'{source.title}; {len(source.positions)} source reading positions. '
+                        + (' '.join(source.warnings[:3]) if source.warnings else 'Source positions authenticated.')
+                        + ' This is a separate narration copy; it does not approve quotations.')
+                if recovered is not None:
+                    rate.SetValue(recovered.rate)
+                    volume.SetValue(recovered.volume)
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
             if voices:
                 selected = next((i for i, voice in enumerate(voices)
@@ -181,16 +207,18 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
-                report('No local voice is available. Install a SAPI 5 voice on Windows or an optional '
+                report(recovery_notice + 'No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
         run(lambda: (discover_configured(),
                      source_loader(cancel.is_set) if not source_loaded else None), loaded)
 
     def sync_document():
         document.set_text(editor.GetValue())
+        lineage = ('Library source identity retained; reopening does not reapprove it.' if document.source_bound
+                   else 'Unbound reading copy; no library source identity was recorded.')
         source_status.ChangeValue(f'Original text preserved; reading revision {document.revision}; '
             f'{"unsaved changes" if document.dirty else "saved"}. '
-            'The reading copy is not quotation evidence.')
+            + lineage + ' The reading copy is not quotation evidence.')
 
     def save_recovery(event=None, *, force=False):
         nonlocal last_recovery_signature
@@ -364,6 +392,69 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(str(exc), focus=True)
 
+    def recover_saved_draft(event=None):
+        """Discover old unidentified drafts through the existing worker/UI."""
+        if busy:
+            report('Stop the current operation before opening a saved draft.', focus=True)
+            return
+        try:
+            sync_document()
+            if document.dirty and document.text and document.revision > 0 and not save_project():
+                return
+            root = getattr(getattr(parent, 'library', None), 'root', None)
+            if root is None:
+                raise ValueError('Open a library before browsing its saved reading drafts.')
+            recovery_store = ReaderDraftStore(root)
+        except Exception as exc:
+            report(f'Saved drafts were not opened. {exc}', focus=True)
+            return
+
+        def opened(result):
+            nonlocal document, draft_store, recovered, save_path, last_audio
+            nonlocal source_guard, source_loader, source_loaded, last_recovery_signature
+            resumed, separate_store = result
+            player.stop()
+            if progress is not None:
+                progress.refresh_audio_state()
+            document, draft_store, recovered = resumed.document, separate_store, resumed
+            # Explicitly opening one's saved text does not attach it to the
+            # selected library source or inherit that source's authorization.
+            source_guard, source_loader, source_loaded = lambda: None, None, True
+            save_path, last_audio, last_recovery_signature = None, None, None
+            rate.SetValue(resumed.rate)
+            volume.SetValue(resumed.volume)
+            if voices:
+                voice_choice.SetSelection(next((i for i, voice in enumerate(voices)
+                                                if voice.id == resumed.voice_id), 0))
+            editor.ChangeValue(document.text)
+            editor.SetInsertionPoint(min(resumed.cursor, len(document.text)))
+            sync_document()
+            editor.SetFocus()
+            report('Saved draft recovered as a separate editable copy. The previous draft is unchanged. '
+                   'No source identity was inferred or approved. Use Save As for a portable reading project.')
+
+        def choose_saved(listing):
+            if not listing.copies:
+                report(f'No readable saved drafts were found. {listing.skipped} entries could not be listed; '
+                       'their files were kept unchanged.', focus=True)
+                return
+            from .research_actions import NativeDialogs
+            notice = ('Saved draft files are listed by most recent modification. Every selection opens a separate copy. '
+                      'Unbound older drafts have no recorded library identity.')
+            if listing.truncated or listing.skipped:
+                notice += f' This list is bounded; {listing.skipped} entries are not shown. All saved files are retained.'
+            selected = NativeDialogs().choose(dialog, 'Recover saved reading draft', notice,
+                                              [item.label for item in listing.copies])
+            if selected is None:
+                report('Recovery cancelled. The current copy and all saved drafts are unchanged.')
+                return
+            if type(selected) is not int or not 0 <= selected < len(listing.copies):
+                raise ValueError('Choose a saved draft from the list.')
+            summary = listing.copies[selected]
+            run(lambda: recovery_store.open_saved(summary, cancelled=cancel.is_set), opened)
+
+        run(lambda: recovery_store.list_saved(cancelled=cancel.is_set), choose_saved)
+
     def history(event=None, *, forward=False):
         try:
             sync_document()
@@ -421,6 +512,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (cursor, lambda event: speak(from_cursor=True)), (pause, pause_audio), (stop, stop_audio),
         (export_audio, save_audio), (save_button, save_project),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
+        (recover_button, recover_saved_draft),
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (cleanup, clean), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)

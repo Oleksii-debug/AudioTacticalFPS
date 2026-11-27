@@ -7,6 +7,55 @@ audio job store or model registry. `audio/transcription.py` uses the existing
 The supplied source, recordings, model files and private installation paths are
 not part of this repository.
 
+## Native desktop workflow
+
+Open **Audio Studio → Local transcription**. This is a view over the same
+supplied-worker service and state used by the CLI.
+
+The first native notebook page selects a reviewed local runtime manifest,
+checks its complete installation inventory, selects files or adds the **direct
+contents of a folder**, and selects the recognition language, transcription or
+English translation task, explicit device/compute type and TXT/SRT/VTT/JSON.
+Folder scanning never recurses. It admits at most 1000 selected files, inspects
+at most 20000 directory entries, supports cancellation and applies the existing
+job input byte allowance. Selection does not start inference. No runtime or
+model is downloaded or installed by this window.
+
+The second page lists saved jobs and completed results. Refresh, dependency
+checks, input retention, inference and receipt checks all use the existing
+desktop background executor. **F6** starts or resumes; **F8** requests pause;
+**Ctrl+Alt+G** focuses the readable status. Cancel stops an active operation.
+Closing while busy asks the user to wait for the saved terminal status.
+Progress is indeterminate during an active file; no percentage or ETA is
+invented. Resuming retains the job's original settings and verified runtime
+identity. An interrupted active file is restarted; completed verified files are
+reused.
+
+**Edit TXT reading copy** opens the existing reader, with a distinct recovery
+slot for the job and audio input. The first opening seeds an independent draft;
+later openings recover the user's text, undo history, voice settings and cursor.
+The draft has no library-source or quotation binding. Deleting or modifying a
+generated transcript does not make a saved user draft inaccessible. Initial
+draft publication uses the reader store's locked save-if-absent operation, so a
+concurrent saved edit wins. Generated transcripts are never edited in place by
+this action.
+
+Damaged generated outputs are shown as **invalid / needs review**, preserved,
+and cannot be presented as verified results or reused for recognition. The
+native result-folder action checks a local directory and invokes the established
+wx system launcher. Existing user drafts remain independently recoverable;
+creating a new draft requires a verified TXT output. Opening a local edited
+text file for a separate reading copy remains available in the existing reader.
+
+The new controller regression file is
+`tests/ui/test_transcription_dialog.py`; the real wx probe is
+`tests/ui/native_transcription_smoke.py`. The latter runs the authored synthetic
+supplied-worker fixture and checks native event handlers, shared-executor
+completion, pause/cancel/resume, and reader handoff/reopening. It explicitly
+reports real-model quality and NVDA as NOT_RUN. Source/controller tests, native
+Windows execution, real inference, human NVDA and distribution rights remain
+separate evidence; the presence of this probe is not a PASS result.
+
 ## Implemented boundary
 
 - The original worker must match SHA256
@@ -20,7 +69,7 @@ not part of this repository.
 - A reviewed local manifest identifies the Python executable, supplied source,
   complete runtime and model inventories, model directory and separate rights
   review. The desktop process never imports faster-whisper or downloads models.
-- The selected interpreter runs with `-I -S -B`, a fresh private bytecode prefix,
+- The selected interpreter runs with `-I -S -B -X utf8`, a fresh private bytecode prefix,
   and only the explicit verified runtime package directory added to its path.
   Executable `.pth` and site customization are not loaded. Standalone unreviewed
   bytecode is rejected; cached bytecode beside source cannot substitute for the

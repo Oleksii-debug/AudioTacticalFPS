@@ -330,6 +330,37 @@ class TranscriptionService:
             raise ValueError('Invalid transcription job identity.')
         return local_path(self.root / job_id, root=self.root, exists=True)
 
+    def folder_inputs(self, folder, *, existing=(), cancelled=lambda: False, max_files=1000):
+        """Select bounded direct folder contents; never recurse into subfolders."""
+        integer(max_files, 'Audio file selection limit', 1, 1000)
+        if not isinstance(existing, (tuple, list)) or len(existing) > max_files:
+            raise ValueError('Select at most 1000 local audio files.')
+        folder = local_path(folder, exists=True)
+        regular(folder, directory=True)
+        selected = dict.fromkeys(str(local_path(path, exists=True)) for path in existing)
+        with os.scandir(folder) as entries:
+            for count, entry in enumerate(entries, 1):
+                _cancel(cancelled)
+                if count > 20000:
+                    raise ValueError('The selected folder exceeds the bounded directory scan; choose a smaller folder.')
+                path = Path(entry.path)
+                if entry.is_dir(follow_symlinks=False) or path.suffix.lower() not in AUDIO_EXTENSIONS:
+                    continue
+                selected[str(local_path(path, root=folder, exists=True))] = None
+                if len(selected) > max_files:
+                    raise ValueError('The selected audio exceeds the file-count limit; choose fewer files.')
+        total = 0
+        for name in selected:
+            _cancel(cancelled)
+            path = local_path(name, exists=True)
+            size = regular(path).st_size
+            if path.suffix.lower() not in AUDIO_EXTENSIONS or not 0 < size <= MAX_SOURCE_BYTES:
+                raise ValueError('Choose nonempty supported local audio files within the input allowance.')
+            total += size
+            if total > self.budget.max_output_bytes:
+                raise AudioError('The selected audio exceeds the configured job disk allowance.')
+        return sorted(selected, key=lambda value: (value.casefold(), value))
+
     def create(self, sources, *, settings=None, formats=FORMATS, cancelled=lambda: False):
         if self.runtime is None:
             raise ValueError('Select a reviewed local transcription runtime before creating a job.')
@@ -348,7 +379,7 @@ class TranscriptionService:
             try:
                 inputs = temporary / 'inputs'
                 inputs.mkdir()
-                records, total = [], 0
+                records, labels, total = [], {}, 0
                 for index, source in enumerate(sources):
                     _cancel(cancelled)
                     source = local_path(source, exists=True)
@@ -371,6 +402,7 @@ class TranscriptionService:
                     else:
                         staged.rename(target)
                         records.append({'sha256': checksum, 'bytes': size, 'file': name})
+                        labels[name] = source.name
                 identity = {'schema': 1, 'runtime': runtime_id, 'settings': asdict(settings),
                             'formats': list(formats), 'inputs': records}
                 job_id = _digest(identity)
@@ -382,6 +414,7 @@ class TranscriptionService:
                     return job_id
                 record = {'schema': 'resonance-transcription-job/1', 'id': job_id,
                           'request': identity, 'status': 'queued', 'completed': [], 'error': None,
+                          'source_labels': labels,
                           'external_dependencies': {'runtime_identity': runtime_id,
                               'runtime_and_model_included': False,
                               'resume_requires_reviewed_local_installation': True}}
@@ -396,7 +429,7 @@ class TranscriptionService:
                 if temporary.exists():
                     shutil.rmtree(temporary)
 
-    def load(self, job_id):
+    def _record(self, job_id):
         value = read_json(self._directory(job_id) / 'job.json')
         if (not isinstance(value, dict) or value.get('schema') != 'resonance-transcription-job/1'
                 or value.get('id') != job_id or _digest(value.get('request')) != job_id
@@ -408,21 +441,110 @@ class TranscriptionService:
         if (any(not isinstance(identity, str) or identity not in ids for identity in value['completed'])
                 or len(set(value['completed'])) != len(value['completed'])):
             raise ValueError('Invalid transcription completion inventory.')
+        return value
+
+    def load(self, job_id, *, cancelled=lambda: False):
+        value = self._record(job_id)
+        ids = {item['file'] for item in value['request']['inputs']}
         if value['status'] == 'complete':
             if set(value['completed']) != ids:
                 raise ValueError('A completed transcription job has missing completion records.')
             directory = self._directory(job_id)
             for item in value['request']['inputs']:
-                if self._receipt(directory, item, value['request']) is None:
+                if self._receipt(directory, item, value['request'], cancelled=cancelled) is None:
                     raise ValueError('A completed transcription job has a missing artifact receipt.')
         return value
+
+    def jobs(self, *, cancelled=lambda: False, limit=1000):
+        """Bounded summaries; damaged jobs stay visible instead of claiming success."""
+        integer(limit, 'Saved transcription job limit', 1, 1000)
+        rows = []
+        for path in self.root.iterdir():
+            _cancel(cancelled)
+            if not re.fullmatch('[0-9a-f]{64}', path.name):
+                continue
+            if len(rows) >= limit:
+                raise ValueError('More than the selected saved-job limit; use the CLI to inspect a job by identity.')
+            try:
+                value = self.load(path.name, cancelled=cancelled)
+                rows.append({'id': path.name, 'status': value['status'],
+                             'completed': len(value['completed']),
+                             'total': len(value['request']['inputs']), 'error': value.get('error')})
+            except (OSError, ValueError) as exc:
+                rows.append({'id': path.name, 'status': 'invalid', 'completed': 0,
+                             'total': None, 'error': str(exc)})
+        return sorted(rows, key=lambda row: row['id'])
+
+    def details(self, job_id, *, cancelled=lambda: False):
+        """Inspect valid request metadata, clearly marking damaged results for review.
+
+        Unlike load(), this view keeps user reading drafts reachable when an
+        original generated output was changed or removed. It never reports a
+        damaged result as complete and does not modify the durable job.
+        """
+        _cancel(cancelled)
+        record = self._record(job_id)
+        directory = self._directory(job_id)
+        outputs, errors = [], []
+        labels = record.get('source_labels', {})
+        if (record['status'] == 'complete' and set(record['completed']) !=
+                {item['file'] for item in record['request']['inputs']}):
+            errors.append('A completed job has missing completion records.')
+        for index, item in enumerate(record['request']['inputs'], 1):
+            _cancel(cancelled)
+            if item['file'] not in record['completed']:
+                continue
+            try:
+                receipt = self._receipt(directory, item, record['request'], cancelled=cancelled)
+                if receipt is None:
+                    raise ValueError('The completed output is missing its receipt.')
+            except (OSError, ValueError) as exc:
+                receipt = None
+                errors.append(f'Audio {index}: {exc}')
+            label = labels.get(item['file']) if isinstance(labels, dict) else None
+            outputs.append({'file': item['file'],
+                            'label': label if isinstance(label, str) else f'Audio {index}',
+                            'directory': str(directory / 'outputs' / item['file']),
+                            'formats': list(receipt['outputs']) if receipt else record['request']['formats'],
+                            'checksums': receipt['outputs'] if receipt else {},
+                            'verified': receipt is not None})
+        if errors:
+            record = {**record, 'status': 'invalid',
+                      'error': (' '.join(errors[:5]) +
+                                (f' {len(errors) - 5} more damaged outputs.' if len(errors) > 5 else ''))}
+        return {'record': record, 'outputs': outputs}
+
+    def interrupted_details(self, job_id):
+        """Bounded request metadata after stop; do not restart a receipt scan."""
+        record = self._record(job_id)
+        if record['status'] == 'complete':
+            record = {**record, 'status': 'unverified',
+                      'error': 'Result validation stopped; recorded completion has not been rechecked.'}
+        return {'record': record, 'outputs': [], 'validation_cancelled': True}
+
+    def transcript_text(self, job_id, source_file, *, cancelled=lambda: False):
+        """Read verified TXT as a derivative, bounded to the existing reader budget."""
+        detail = self.details(job_id, cancelled=cancelled)
+        output = next((row for row in detail['outputs'] if row['file'] == source_file), None)
+        if output is None or not output['verified'] or 'txt' not in output['formats']:
+            raise ValueError('Select a completed TXT transcript to edit its reading copy.')
+        path = local_path(Path(output['directory']) / 'transcript.txt', exists=True)
+        _cancel(cancelled)
+        raw = _bounded_bytes(path, maximum=8_000_000)
+        expected = output['checksums']['txt']
+        if len(raw) != expected['bytes'] or sha256(raw).hexdigest() != expected['sha256']:
+            raise ValueError('The transcript changed while opening; it is preserved for review.')
+        text = raw.decode('utf-8')
+        if len(text) > 2_000_000:
+            raise ValueError('This transcript exceeds the reading-copy character budget.')
+        return text, output['label']
 
     def control(self, job_id, command):
         if command not in ('run', 'pause', 'cancel'):
             raise ValueError('Select run, pause or cancel.')
         atomic_json(self._directory(job_id) / 'control.json', {'command': command}, replace=True)
 
-    def _receipt(self, directory, item, request):
+    def _receipt(self, directory, item, request, *, cancelled=lambda: False):
         receipt_path = directory / 'outputs' / item['file'] / 'receipt.json'
         if not receipt_path.exists():
             return None
@@ -442,7 +564,7 @@ class TranscriptionService:
             _sha(entry['sha256'])
             integer(entry['bytes'], 'Transcript bytes', 0, MAX_RESULT_BYTES)
             path = receipt_path.parent / ('transcript.' + format)
-            if regular(local_path(path, exists=True)).st_size != entry['bytes'] or digest_file(path) != entry['sha256']:
+            if regular(local_path(path, exists=True)).st_size != entry['bytes'] or _file_digest(path, cancelled) != entry['sha256']:
                 raise ValueError('An existing transcript was changed; it is preserved for review.')
         return receipt
 
@@ -451,16 +573,19 @@ class TranscriptionService:
             raise ValueError('Select a reviewed local transcription runtime before resuming a job.')
         directory = self._directory(job_id)
         with state_lock(directory, 'job'):
-            record = self.load(job_id)
+            record = self._record(job_id)
             request = record['request']
             command = 'run'
             def stopped():
                 nonlocal command
+                # Flush GUI pause/cancel requests on this worker thread before
+                # reading the durable command; no control fsync on the wx thread.
+                external_cancelled = cancelled()
                 control = read_json(directory / 'control.json')
                 command = control.get('command') if isinstance(control, dict) else None
                 if command not in ('run', 'pause', 'cancel'):
                     raise ValueError('Invalid transcription control record.')
-                return cancelled() or command != 'run'
+                return external_cancelled or command != 'run'
             def save(status, error=None):
                 record.update(status=status, error=error)
                 atomic_json(directory / 'job.json', record, replace=True)
@@ -471,6 +596,7 @@ class TranscriptionService:
                     record.setdefault('notices', []).append('Progress observer failed: ' + type(exc).__name__)
             try:
                 _cancel(stopped)
+                record = self.load(job_id, cancelled=stopped)
                 runtime_id, prepared, python, runtime_root, model_root = self.runtime.verify(stopped)
                 if runtime_id != request['runtime']:
                     raise ValueError('The selected runtime or model changed; create a new reviewed job.')
@@ -483,14 +609,14 @@ class TranscriptionService:
                         source = local_path(directory / 'inputs' / item['file'], root=directory / 'inputs', exists=True)
                         if regular(source).st_size != item['bytes'] or _file_digest(source, stopped) != item['sha256']:
                             raise ValueError('The retained audio snapshot failed its identity check.')
-                        receipt = self._receipt(directory, item, request)
+                        receipt = self._receipt(directory, item, request, cancelled=stopped)
                         if receipt is None:
                             notify(f'Transcribing file {index} of {len(request["inputs"])} locally.')
                             notice = self._run_one(directory, item, request, source, settings,
                                                    prepared, python, runtime_root, model_root, stopped)
                             if notice is not None:
                                 record.setdefault('cleanup_pending', []).append(notice)
-                            receipt = self._receipt(directory, item, request)
+                            receipt = self._receipt(directory, item, request, cancelled=stopped)
                             if receipt is None:
                                 raise AudioError('The completed worker output has no durable receipt.')
                         completed.append(item['file'])
