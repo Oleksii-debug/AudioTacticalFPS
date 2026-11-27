@@ -1,17 +1,34 @@
 # Selected legacy document reading
 
 DjVu embedded-text reading is **qualified on Windows** for the pinned DjVuLibre
-3.5.30-2 MSYS2 UCRT64 build. Actual run 46018252073 at source
-00ed188039d045232f72f7a34472c5c22ef8aad8 passed all 162 then-declared portable
-boundaries and all four real DjVu fixtures in both source and installed mode.
-Only `.djvu` is in QUALIFIED_SUFFIXES. The installed tool must still be selected
-explicitly and its complete current component identity must pass inspection.
+3.5.30-2 MSYS2 UCRT64 build. Its ordinary-admission source and installed gate at
+684cc8ddac569fdcf5d685b33302f570481ea6f8 passed 163 portable cases and four real
+native cases per mode (run 46024229261). The exact raw artifact was independently
+read without executing its contents.
 
-calibre and CHM remain unqualified while their observed native failures are
-being diagnosed. The explicit legacy_preview=True API is restricted to that
-controlled fixture evaluation; selecting a binary alone cannot promote an
-untested format. Missing DjVu text layers, indirect/shared references, OCR,
-printed pagination and quotation verification are outside this qualification.
+The pinned calibre 9.19.0 fixture-preview gate at
+779967bdc700175f770a6f554b6b57292da9e280 passed 179 portable cases and nine real
+native cases per mode (run 46026674640). An independent bounded ZIP reader
+verified all four exact JUnit function Counters, zero failure/error/skip, source
+identities, isolated installed origins, wheel binding and publisher inventory.
+The six positive suffixes were AZW, AZW3, LIT, MOBI, PRC and TCR. AZW and PRC used
+unprotected MOBI containers; AZW3 used KF8, LIT was freely generated, and TCR was
+actual compressed input. The remaining three cases verify protected-input
+refusal, output bounds and cancellation after native output. They are not three
+additional supported formats.
+
+This successor enables ordinary admission only for those six suffixes with an
+explicitly selected installation. The fixed wrapper still rejects every calibre
+version except 9.19.0. Its fresh ordinary-admission native gate is **NOT_RUN** at
+authoring; the earlier preview PASS does not qualify this changed head. The
+required gate retains all nine real cases from source and installed wheel, and
+adds eight portable selection/version cases (187 per mode). CHM remains
+unqualified while its publisher HTML recovery is being diagnosed.
+
+Selection never follows PATH or enables a runtime silently. Missing DjVu text
+layers, indirect/shared references, OCR, arbitrary real books, other Palm
+subtypes, printed pagination and quotation verification remain outside the
+recorded qualification.
 
 ## Implemented scope
 
@@ -85,12 +102,12 @@ https://djvu.sourceforge.net/doc/man/djvutxt.html
 
 .github/workflows/carr-legacy-converters.yml has independent Windows jobs for
 calibre, DjVuLibre and CHM. Each builds an exact source-bound wheel, verifies all
-installed Python bytes and runs under -I. The current oracle requires 179
-portable boundary cases from both source and installed wheel: the 162 exercised
-by the recorded DjVu run, one explicit qualified-selection regression, ten
-CHM paragraph-normalization cases, and six additional private cleanup boundary cases.
-The current DjVu native fixtures use the ordinary service admission path, with
-legacy_preview=False; that successor gate must still pass on its own exact head.
+installed Python bytes and runs under -I. The current oracle requires 187
+portable boundary cases from both source and installed wheel: all 179 exercised
+by the recorded calibre run plus six explicit-selection regressions and two
+strict-version rejection cases. Both DjVu and calibre native fixtures use the
+ordinary service admission path with legacy_preview=False. CHM fixtures retain
+explicit preview admission until their separate qualification succeeds.
 
 The separate real-tool populations also run from source and installed wheel:
 
@@ -169,4 +186,7 @@ The pinned publisher source used for this narrow adaptation is:
 https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/utils/safe_atexit.py
 https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/ptempfile.py
 The six actual unprotected formats and the three native refusal/budget/cancel
-cases must still pass from source and installed wheel before calibre is enabled.
+cases passed at779967 in both source and installed fixture-preview mode. The
+ordinary-admission successor must also pass all nine at its own frozen head.
+See evidence/calibre-native-preview-independent-read-20261127.json for exact
+artifact, raw JUnit, installed-origin and publisher identities.

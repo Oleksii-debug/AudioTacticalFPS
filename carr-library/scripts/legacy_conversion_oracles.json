@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "NOT_RUN",
-  "portable_cases": 179,
+  "portable_cases": 187,
   "portable": {
     "tests.conversion.test_conversion": {
       "test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
@@ -79,7 +79,7 @@
       "test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
       "test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
       "test_chm_truncated_member_publishes_no_complete_worker_report": 1,
-      "test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 11,
+      "test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 13,
       "test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
       "test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
       "test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
@@ -95,7 +95,8 @@
       "test_chm_paragraph_normalization_keeps_active_hidden_and_literal_tokens_inert": 1,
       "test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
       "test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
-      "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2
+      "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
+      "test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified": 6
     }
   },
   "native_cases": 17,
@@ -126,6 +127,12 @@
   },
   "source_and_installed_required": true,
   "qualifications_advertised": [
-    ".djvu"
+    ".azw",
+    ".azw3",
+    ".djvu",
+    ".lit",
+    ".mobi",
+    ".prc",
+    ".tcr"
   ]
 }

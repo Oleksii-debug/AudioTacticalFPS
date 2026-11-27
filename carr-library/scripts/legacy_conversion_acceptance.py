@@ -66,7 +66,7 @@ def main():
         actual.mkdir()
         for mode in ('source', 'installed'):
             report[mode] = base.run_population(mode, checkout, boundaries, plan['portable'])
-            if report[mode]['cases'] != 179:
+            if report[mode]['cases'] != 187:
                 raise ValueError('Legacy conversion boundary population is incomplete.')
         report['native_fixtures'] = {}
         for mode in ('source', 'installed'):
@@ -79,7 +79,7 @@ def main():
             raise ValueError('Selected native runtime changed during legacy qualification.')
         if {str(path.relative_to(checkout)): base.digest(path) for path in (*helpers, *sorted(tests))} != report['source_files']:
             raise ValueError('A qualification helper or fixture changed during execution.')
-        report.update(status='PASS', portable_source_cases=179, portable_installed_cases=179,
+        report.update(status='PASS', portable_source_cases=187, portable_installed_cases=187,
                       native_source_cases=count, native_installed_cases=count,
                       required_functions=native)
     except BaseException as error:

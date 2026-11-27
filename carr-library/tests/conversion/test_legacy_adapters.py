@@ -55,13 +55,14 @@ def test_qualified_djvu_requires_explicit_selection_and_does_not_enable_other_fa
     absent = {row['extension']: row for row in capabilities()}
     assert absent['.djvu']['available'] is False
     assert absent['.djvu']['qualification'] == 'explicit_selection_required'
-    selected = {row['extension']: row for row in capabilities(
-        calibre_selected=True, djvu_selected=True, chm_selected=True)}
+    selected = {row['extension']: row for row in capabilities(djvu_selected=True)}
     assert selected['.djvu']['available'] is True
     assert selected['.djvu']['qualification'] == 'selected_runtime_requires_check'
     for suffix in legacy.LEGACY_SUFFIXES - {'.djvu'}:
         assert selected[suffix]['available'] is False
-        assert selected[suffix]['qualification'] == 'native_fixture_not_qualified'
+        assert selected[suffix]['qualification'] == (
+            'explicit_selection_required' if suffix in legacy.CALIBRE_SUFFIXES
+            else 'native_fixture_not_qualified')
 
 
 @pytest.mark.parametrize('kind,path', [('calibre', 'ebook-convert.exe'), ('djvu', 'djvutxt.exe'), ('chm', '7z.exe')])
@@ -280,7 +281,7 @@ def test_chm_truncated_member_publishes_no_complete_worker_report(tmp_path, monk
 @pytest.mark.parametrize('operation', [
     'outside_read', 'outside_write', 'socket', 'process', 'allowed_output',
     'cleanup_file', 'cleanup_directory', 'cleanup_outside_file', 'cleanup_outside_directory',
-    'cleanup_program', 'cleanup_unknown',
+    'cleanup_program', 'cleanup_unknown', 'version_previous', 'version_newer',
 ])
 def test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs(tmp_path, operation):
     stage, root = tmp_path / 'stage', tmp_path / 'runtime'
@@ -309,6 +310,9 @@ def unexpected_cleanup_worker(*args):
     raise AssertionError('The generic vendor cleanup worker must not start.')
 cleanup._send_command = unexpected_cleanup_worker
 operation, private = sys.argv[1:3]
+if operation in ('version_previous', 'version_newer'):
+    sys.modules['calibre.constants'].__version__ = (
+        '9.18.0' if operation == 'version_previous' else '9.19.1')
 def convert(args):
     if operation == 'outside_read':
         pathlib.Path(private).read_text()
@@ -354,6 +358,8 @@ runpy.run_path(sys.argv[0], run_name='__main__')
     else:
         assert result.returncode != 0
         assert target.read_bytes() == b''
+    if operation in ('version_previous', 'version_newer'):
+        assert 'not been qualified for the selected calibre version' in result.stderr.decode('utf-8', 'replace')
     assert sentinel.read_text() == 'PRIVATE_MARKER'
 
 
@@ -552,3 +558,17 @@ def test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets
     expected = ValueError if limit == 'text' else TimeoutError
     with pytest.raises(expected):
         legacy._chm_html(raw, **options)
+
+
+@pytest.mark.parametrize('suffix', ['.azw', '.azw3', '.lit', '.mobi', '.prc', '.tcr'])
+def test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified(suffix):
+    absent = {row['extension']: row for row in capabilities()}
+    assert absent[suffix]['available'] is False
+    assert absent[suffix]['qualification'] == 'explicit_selection_required'
+    selected = {row['extension']: row for row in capabilities(calibre_selected=True, chm_selected=True)}
+    assert selected[suffix]['available'] is True
+    assert selected[suffix]['qualification'] == 'selected_runtime_requires_check'
+    assert '9.19.0' in selected[suffix]['limitation']
+    assert selected['.djvu']['available'] is False
+    assert selected['.chm']['available'] is False
+    assert selected['.chm']['qualification'] == 'native_fixture_not_qualified'
