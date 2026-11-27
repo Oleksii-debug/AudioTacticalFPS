@@ -12,7 +12,7 @@ CASES = [
 ]
 
 
-@pytest.mark.parametrize('suffix,raw,expected', CASES)
+@pytest.mark.parametrize('suffix,raw,expected', CASES, ids=[row[0] for row in CASES])
 def test_exact_observed_v2_audio_packet_digest(suffix, raw, expected):
     assert metadata._parse_stream_hash(raw) == expected
     assert metadata._parse_stream_hash(raw.replace(b'\n', b'\r\n')) == expected
@@ -47,7 +47,7 @@ def test_v2_refuses_ambiguous_wrong_stream_algorithm_and_malformed_attestation(m
     b'', b'x' * 65537, b'0,v,SHA256=' + b'a' * 64,
     b'0,a,SHA256=' + b'A' * 64,
     b'0,a,SHA256=' + b'a' * 64 + b'\n0,a,SHA256=' + b'a' * 64,
-])
+], ids=['empty', 'over-budget', 'wrong-media', 'uppercase-digest', 'multiple-digests'])
 def test_legacy_unknown_empty_or_multiple_digest_is_not_accepted(raw):
     with pytest.raises(AudioError):
         metadata._parse_stream_hash(raw)

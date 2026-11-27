@@ -66,6 +66,7 @@ class TrustStatusDialog(wx.Dialog):
             add('Check renewal now', self.on_refresh)
         if controller.updates is not None:
             add('Check offline update repository', self.on_update)
+        add('Review owner update configuration', self.on_maintenance)
         actions.Add(wx.Button(self, wx.ID_CANCEL, label='Close'), 0, wx.ALL, 5)
         layout.Add(actions, 0, wx.ALIGN_RIGHT)
         self.SetSizer(layout)
@@ -125,6 +126,14 @@ class TrustStatusDialog(wx.Dialog):
         self.frame.run_job('Check signed offline update',
             lambda: self.controller.check_repository(repository, cancelled=self.frame.cancel_event.is_set),
             done=lambda release: show_update_review(self.frame, self.controller, repository, release))
+
+    def on_maintenance(self, event=None):
+        if not self._alive or not _live(self.frame):
+            return
+        self.EndModal(wx.ID_OK)
+        if _live(self.frame):
+            from .update_maintenance import choose_update_configuration
+            choose_update_configuration(self.frame)
 
     def Destroy(self):
         if getattr(self, '_destroy_requested', False) or not self:

@@ -113,7 +113,13 @@ jobs:
             tests/conversion/test_archive_reading.py \
             tests/ui/test_audio_conversion_controls.py \
             tests/packaging/test_portable_entry.py \
-            tests/security/test_portable_handoff.py 2>&1 | tee ci-feature-review/boundaries.txt
+            tests/security/test_portable_handoff.py \
+            tests/security/test_https_updates.py \
+            tests/security/test_https_source_policy.py \
+            tests/security/test_standard_update_handoff.py \
+            tests/security/test_update_maintenance.py \
+            tests/security/test_installation.py \
+            tests/security/test_updates.py 2>&1 | tee ci-feature-review/boundaries.txt
       - name: Require Windows acquisition and actual native lookup
         if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success'"
         run: python scripts/ci_check.py --jobs 3 tests/ui/test_native_acquisition.py tests/transcription/test_protocol_fixture_windows.py tests/e2e/test_export_destination.py tests/audio/test_recording_process_windows.py 2>&1 | tee ci-feature-review/native-acquisition-boundaries.txt
@@ -156,6 +162,7 @@ jobs:
             if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Offline rules do not cover the selected runtime programs.' }
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-feature-review/runtime-firewall.json'
             $probes = @(
+              @{ name='native-trust-status'; script='tests/ui/native_trust_status_smoke.py'; arguments=@() },
               @{ name='native-workflow-templates'; script='scripts/windows_workflow_templates_smoke.py'; arguments=@() },
               @{ name='native-translation-batch'; script='scripts/windows_translation_batch_smoke.py'; arguments=@() },
               @{ name='native-recording'; script='scripts/windows_recording_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') }
