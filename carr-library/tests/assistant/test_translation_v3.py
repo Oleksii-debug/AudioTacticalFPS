@@ -760,6 +760,7 @@ def test_provider_editor_keeps_full_profile_on_token_renewal_without_contacting_
     if changed_authority:
         assert saved.endpoint != p.endpoint and not saved.enabled
         assert saved.credential_ref != p.credential_ref and p.credential_ref not in vault.records
+        assert vault.calls.count(('delete', p.id, p.credential_ref)) == 1
     else:
         assert saved.to_dict() == p.to_dict()
         assert vault.calls == [('put', p.id, p.credential_ref)]

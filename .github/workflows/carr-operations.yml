@@ -105,6 +105,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Strict installed canonical operation acceptance failed.' }
             & $python -I -B tests/ui/native_operations_smoke.py 2>&1 | Tee-Object 'ci-operations-results/native-operations.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native Tasks and resource controls failed.' }
+            & $python -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-operations-results/native-translation-v3.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native Advanced translation controls and synthetic protocol acceptance failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }

@@ -10,6 +10,7 @@ import http.client
 import json
 import os
 from pathlib import Path
+import runpy
 from tempfile import TemporaryDirectory
 import threading
 from time import monotonic, sleep, time
@@ -30,6 +31,9 @@ def main():
     from carr_library.assistant.credentials import WindowsCredentialVault
     from carr_library.speech.reading import ReadingDocument
     from carr_library.ui import translation_dialog as ui
+    contract = runpy.run_path(str(Path(__file__).with_name('verify_operations_acceptance.py')))
+    tested_source = contract['source_identity']()
+    tested_origins = contract['installed_origins']()
 
     checks, errors, calls = [], [], []
     def check(label, condition):
@@ -220,7 +224,10 @@ def main():
                 native_handle.close()
     if errors:
         raise RuntimeError('\n'.join(errors))
+    check('exact source and installed origins are unchanged',
+          contract['source_identity']() == tested_source and contract['installed_origins']() == tested_origins)
     print(json.dumps({'status': 'PASS', 'checks': len(checks), 'synthetic_rest_calls': len(calls),
+        'source': tested_source, 'installed_origins': tested_origins, 'source_and_origins_unchanged': True,
         'native_keyboard': 'PASS', 'live_google_api': 'WAITING_INPUT', 'billing_and_quality': 'WAITING_INPUT',
         'native_approval_and_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN'}), flush=True)
     return 0

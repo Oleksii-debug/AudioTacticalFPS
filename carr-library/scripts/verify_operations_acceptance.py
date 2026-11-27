@@ -51,7 +51,8 @@ ORIGINS = [
     "carr_library.assistant.llm",
     "carr_library.assistant.service",
     "carr_library.ui.assistant_dialog",
-    "carr_library.studio.cli"
+    "carr_library.studio.cli",
+    "carr_library.assistant.profiles"
 ]
 SUITES = [
     "tests/operations/test_resources.py",
@@ -68,7 +69,11 @@ SUITES = [
     "tests/transcription/test_runtime_interpreter.py",
     "tests/studio/test_production_cancellation_outcomes.py",
     "tests/assistant/test_local_planning.py",
-    "tests/assistant/test_planning_handlers.py"
+    "tests/assistant/test_planning_handlers.py",
+    "tests/assistant/test_translation.py",
+    "tests/assistant/test_providers.py",
+    "tests/assistant/test_translation_v3.py",
+    "tests/ui/test_profile_project_exports.py"
 ]
 CROSS_PROCESS = {
     'test_actual_cross_process_studio_asr_contention_cancel_and_crash[' + outcome + ']'
