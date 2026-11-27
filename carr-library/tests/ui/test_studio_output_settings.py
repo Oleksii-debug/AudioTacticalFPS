@@ -219,3 +219,94 @@ def test_studio_new_output_preserves_saved_revision_and_current_project(tmp_path
         assert replace(output_project, id=saved.id, revision=saved.revision) == saved
         assert store.load(output_project.id) == output_project and len(store.list()) == 2
     assert f.controller.project == output_project
+
+
+
+def test_studio_save_selected_historical_job_retains_latest_and_anchored_draft(tmp_path):
+    from carr_library.durable_state import read_json
+    from carr_library.studio.project import ProjectStore, parse_script
+    from carr_library.ui.studio_dialog import StudioController
+    saved = parse_script('Narrator: Original.', title='Test',
+                         voice_ids=('test:voice',), project_id='stable-project')
+    store = ProjectStore(tmp_path / 'projects')
+    f = studio_output_fixture(saved, store)
+    f.service.submit(saved, tmp_path, format='wav', stems=True)
+    latest = replace(saved, revision=2, title='Newer project')
+    store.save(latest, expected_revision=1)
+    raw = (store.directory(saved.id) / 'project.json').read_bytes()
+    f.jobs()
+    assert f.controller.project == saved
+    assert 'Historical revision selected' in f.reports[-1][0]
+    with pytest.raises(ValueError, match='Project changed'):
+        f.save()
+    assert (store.directory(saved.id) / 'project.json').read_bytes() == raw
+    draft = read_json(f.controller.draft)
+    assert draft['project_revision'] == 1
+    assert draft['project_fingerprint'] == saved.fingerprint
+    reopened = StudioController(SimpleNamespace(root=store.root.parent), service=f.service)
+    assert 'historical revision' in reopened.restore_draft_project(draft)
+    assert reopened.project == saved
+    with pytest.raises(ValueError, match='Project changed'):
+        reopened.save('Narrator: Edited old draft.', saved.title, ('test:voice',))
+    assert read_json(reopened.draft)['text'] == 'Narrator: Edited old draft.'
+    assert store.load(saved.id) == latest
+
+
+def test_studio_legacy_edited_draft_does_not_overwrite_latest(tmp_path):
+    from carr_library.studio.project import ProjectStore, parse_script
+    saved = parse_script('Narrator: Original.', title='Test',
+                         voice_ids=('test:voice',), project_id='stable-project')
+    store = ProjectStore(tmp_path / 'projects')
+    f = studio_output_fixture(saved, store)
+    store.save(saved)
+    legacy = {'schema': 1, 'project_id': saved.id, 'text': 'Narrator: Old draft.',
+              'title': saved.title, 'voice_ids': ['test:voice']}
+    assert 'separate project' in f.controller.restore_draft_project(legacy)
+    assert f.controller.project is None
+    fresh = f.controller.save(legacy['text'], legacy['title'], legacy['voice_ids'])
+    assert fresh.id != saved.id
+    assert store.load(saved.id) == saved
+
+
+def test_studio_current_rich_snapshot_save_is_noop_and_edit_updates_anchor(tmp_path):
+    from carr_library.durable_state import read_json
+    from carr_library.studio.project import Cue, ProjectStore, parse_script
+    saved = parse_script('Narrator: Original.', title='Test',
+                         voice_ids=('test:voice',), project_id='stable-project')
+    saved = replace(saved, sample_rate=44100,
+                    scenes=(replace(saved.scenes[0], cues=(Cue('old-cue', 'synthetic.wav'),)),))
+    store = ProjectStore(tmp_path / 'projects')
+    f = studio_output_fixture(saved, store)
+    store.save(saved)
+    assert f.save() == saved
+    assert store.load(saved.id) == saved
+    f.editor.SetValue('Narrator: Edited.')
+    edited = f.save()
+    assert edited.id == saved.id and edited.revision == 2
+    draft = read_json(f.controller.draft)
+    assert draft['project_revision'] == edited.revision
+    assert draft['project_fingerprint'] == edited.fingerprint
+    assert f.controller.restore_draft_project(draft) == ''
+    assert f.controller.project == edited
+
+
+def test_studio_concurrent_revision_conflict_keeps_draft(tmp_path, monkeypatch):
+    from carr_library.durable_state import read_json
+    from carr_library.studio.project import ProjectStore, parse_script
+    saved = parse_script('Narrator: Original.', title='Test',
+                         voice_ids=('test:voice',), project_id='stable-project')
+    store = ProjectStore(tmp_path / 'projects')
+    f = studio_output_fixture(saved, store)
+    store.save(saved)
+    actual_save = store.save
+    latest = replace(saved, revision=2, title='Concurrent project')
+    def competing_save(project, **kwargs):
+        actual_save(latest, expected_revision=1)
+        return actual_save(project, **kwargs)
+    monkeypatch.setattr(store, 'save', competing_save)
+    f.editor.SetValue('Narrator: Edited.')
+    with pytest.raises(ValueError, match='Project changed'):
+        f.save()
+    assert store.load(saved.id) == latest
+    assert read_json(f.controller.draft)['text'] == 'Narrator: Edited.'
+    assert f.controller.project == saved

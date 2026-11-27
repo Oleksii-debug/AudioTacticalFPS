@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 import json
+import re
 from pathlib import Path
 import threading
 from uuid import uuid4
@@ -39,17 +40,59 @@ class StudioController:
         self.service = service or ProductionService(library.root / 'state' / 'studio')
         self.draft = library.root / 'state' / 'studio' / 'draft.json'
         self.project = None
+        self.draft_warning = ''
 
     def autosave(self, text, title, voice_ids):
+        project = self.project
         atomic_json(self.draft, {'schema': 1, 'text': text, 'title': title,
-                    'voice_ids': list(voice_ids), 'project_id': self.project.id if self.project else None},
+                    'voice_ids': list(voice_ids), 'project_id': project.id if project else None,
+                    'project_revision': project.revision if project else None,
+                    'project_fingerprint': project.fingerprint if project else None},
                     replace=self.draft.exists())
+
+    def restore_draft_project(self, draft):
+        """Restore the exact edit baseline, never silently rebase recovered text."""
+        self.project = None
+        identity = draft.get('project_id')
+        if not identity:
+            return ''
+        store = self.service.projects
+        latest = store.load(identity)
+        revision, fingerprint = draft.get('project_revision'), draft.get('project_fingerprint')
+        if revision is None and fingerprint is None:
+            # Old drafts carried no revision identity. An ambiguous edited
+            # draft can be saved as a separate project, not over the latest.
+            if (draft['text'], draft['title']) == (latest.original_script, latest.title):
+                self.project = latest
+                return ''
+            return 'Recovered an unversioned draft as a separate project; the existing project will not be overwritten.'
+        if type(revision) is not int or revision < 1 or not isinstance(fingerprint, str) or not re.fullmatch(r'[0-9a-f]{64}', fingerprint):
+            raise ValueError('Invalid draft revision identity; the existing project will not be overwritten.')
+        if (latest.revision, latest.fingerprint) == (revision, fingerprint):
+            self.project = latest
+            return ''
+        historical = store.directory(identity) / 'revisions' / f'{revision:08d}-{fingerprint}.json'
+        snapshot = Project.from_dict(read_json(historical))
+        if (snapshot.id, snapshot.revision, snapshot.fingerprint) != (identity, revision, fingerprint):
+            raise ValueError('Draft revision identity did not match its historical project.')
+        self.project = snapshot
+        return 'Recovered a historical revision. Saving over the newer project is blocked; the draft is retained.'
 
     def save(self, text, title, voice_ids):
         # Keep even an invalid script draft, and report the validation failure.
+        self.draft_warning = ''
         self.autosave(text, title, voice_ids)
+        baseline = self.project
+        if baseline is not None:
+            latest = self.service.projects.load(baseline.id)
+            if latest.to_dict() != baseline.to_dict():
+                raise ValueError('Project changed since this revision was opened. The draft is retained; open the current project or create a separate output from the saved job.')
+            if (text, title) == (baseline.original_script, baseline.title):
+                # Do not reparse away cues, mode, sample rate or role settings
+                # when the visible script has not changed.
+                return self.service.projects.save(baseline, expected_revision=baseline.revision)
         project = parse_script(text, title=title, voice_ids=voice_ids,
-                               project_id=self.project.id if self.project else None)
+                               project_id=baseline.id if baseline else None)
         if self.project:
             previous = {role.name.casefold(): role for role in self.project.roles}
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
@@ -62,8 +105,14 @@ class StudioController:
             project = replace(project, roles=roles, revision=self.project.revision)
             if project.to_dict() != self.project.to_dict():
                 project = replace(project, revision=self.project.revision + 1)
-        self.service.projects.save(project)
+        self.service.projects.save(project, expected_revision=baseline.revision if baseline else None)
         self.project = project
+        try:
+            self.autosave(text, title, voice_ids)
+        except Exception as exc:
+            # The project commit already succeeded; do not misreport it as a
+            # failed save merely because refreshing the draft anchor failed.
+            self.draft_warning = ' Project saved, but refreshing the recovery draft failed: ' + str(exc)
         return project
 
 
@@ -309,7 +358,8 @@ def show_studio(frame):
             result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
             draft_dirty = False
             saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
-            report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.', True)
+            report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.'
+                   + controller.draft_warning, True)
             return result
         except Exception as exc:
             report(f'Project validation failed: {exc} The editable draft was retained if its save succeeded.', True)
@@ -480,7 +530,7 @@ def show_studio(frame):
             phase='Rendering audio production', with_progress=True)
 
     def jobs(event=None):
-        nonlocal current_job
+        nonlocal current_job, saved_signature, draft_dirty
         if busy:
             return
         try:
@@ -501,14 +551,19 @@ def show_studio(frame):
             if row['format'] not in formats or type(row['stems']) is not bool:
                 raise ValueError('The saved job has unsupported output settings.')
             project = Project.from_dict(row['project'])
-            controller.project = service.projects.load(project.id)
+            latest = service.projects.load(project.id)
+            historical = latest.to_dict() != project.to_dict()
+            controller.project = project
             editor.ChangeValue(project.original_script)
             title.ChangeValue(project.title)
             format_choice.SetSelection(formats.index(row['format']))
             stems.SetValue(row['stems'])
             current_job = row['id']
+            saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
+            draft_dirty = False
             report(f'{row["status"]}. {row["error"]}\nFinal format: {row["format"]}; separate stems: '
                    + ('Yes' if row['stems'] else 'No')
+                   + ('. Historical revision selected; saving over the newer project is blocked.' if historical else '')
                    + '. Choose Render / resume to continue or Listen to output after completion.', True)
             controls()
         except Exception as exc:
@@ -607,13 +662,13 @@ def show_studio(frame):
         voice_choice.SetItems([v.name + '; ' + v.language for v in voices])
         if voices:
             voice_choice.SetSelection(0)
+        recovery_notice = ''
         if controller.draft.exists():
             try:
                 draft = read_json(controller.draft)
                 editor.ChangeValue(draft['text'])
                 title.ChangeValue(draft['title'])
-                if draft.get('project_id'):
-                    controller.project = service.projects.load(draft['project_id'])
+                recovery_notice = controller.restore_draft_project(draft)
                 choices = draft.get('voice_ids', ())
                 for index, voice in enumerate(voices):
                     if voice.id in choices:
@@ -627,9 +682,11 @@ def show_studio(frame):
         if controller.project is not None and (editor.GetValue(), title.GetValue()) == (
                 controller.project.original_script, controller.project.title):
             saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
-        report(f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
-               if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
-        editor.SetFocus()
+        notice = (f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
+                  if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.')
+        report((recovery_notice + ' ' if recovery_notice else '') + notice, True)
+        if not recovery_notice:
+            editor.SetFocus()
 
     from .save_all import SaveResult, coordinator_for
     coordinator = coordinator_for(frame)
