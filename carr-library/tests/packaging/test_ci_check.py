@@ -166,7 +166,7 @@ def test_parallel_barrier():
         result = self.run_fixture('def test_ok(): assert True\n',
                                   '--allow-loopback', 'test_sample.py')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('limited to the explicit local-planning HTTP fixture', result.stdout)
+        self.assertIn('FAIL: numeric loopback is limited to the explicit local planning/translation HTTP fixtures.\n', result.stdout)
 
     def test_numeric_loopback_rejects_directory_and_lexical_aliases(self):
         path = 'tests/loopback/test_local_planning.py'
@@ -175,7 +175,7 @@ def test_parallel_barrier():
                 result = self.run_fixture('def test_ok(): assert True\n',
                     '--allow-loopback', selector, fixture_path=path)
                 self.assertEqual(result.returncode, 1)
-                self.assertIn('limited to the explicit local-planning HTTP fixture', result.stdout)
+                self.assertIn('FAIL: numeric loopback is limited to the explicit local planning/translation HTTP fixtures.\n', result.stdout)
 
     def test_inherited_loopback_environment_does_not_change_default_offline_policy(self):
         source = """import os,socket,pytest

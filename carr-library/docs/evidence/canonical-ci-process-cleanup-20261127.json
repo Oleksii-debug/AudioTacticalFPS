@@ -123,5 +123,36 @@
       "test_disabling_scheduled_dump_keeps_arguments_and_end_of_options": 1,
       "test_posix_settlement_waits_for_owned_descendant_confirmation": 1
     }
+  },
+  "observed_followups": {
+    "main_source_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "job_id": 140624345878,
+    "loopback": {
+      "affected_functions": [
+        "test_numeric_loopback_requires_the_explicit_fixture_path",
+        "test_numeric_loopback_rejects_directory_and_lexical_aliases"
+      ],
+      "failure": "Two retained assertions expected the old local-planning-only diagnostic while the reviewed policy names both exact planning and translation HTTP fixtures.",
+      "repair": "Match the exact authorized diagnostic; selectors, negative paths, process exit and network policy are unchanged.",
+      "cases": 48
+    },
+    "duration": {
+      "selector": "tests/audio/test_book_duration.py",
+      "required_cases": 51,
+      "observed_case_starts": 34,
+      "previous_suite_seconds": 600,
+      "reviewed_suite_seconds": 1200,
+      "all_ten_real_codec_cases_completed": true,
+      "first_case_start_utc": "2026-11-27T18:03:39.5477559Z",
+      "last_case_start_utc": "2026-11-27T18:13:22.7026813Z",
+      "timeout_utc": "2026-11-27T18:13:38.8717087Z",
+      "per_case_watchdog": "UNCHANGED",
+      "post_repair_runtime": "NOT_RUN"
+    }
+  },
+  "installed_copy_contract": {
+    "source_staging": false,
+    "override": "Before first run_suite call, the trusted installed qualification caller may assign WINDOWS_OWNER to the imported installed carr_library.audio.windows_process.__file__ after checking installed root and exact SHA256 against the source-bound wheel/checkout. Record and recheck this identity afterward.",
+    "default": "Exact current checkout helper; no discovery or PATH fallback."
   }
 }

@@ -21,11 +21,12 @@ ROOT = Path(__file__).resolve().parents[1]
 WINDOWS_OWNER = ROOT / 'src' / 'carr_library' / 'audio' / 'windows_process.py'
 SUITE_TIMEOUT_SECONDS = 600
 
-# This controlled Word suite deliberately keeps real CSL/DOCX rendering in
-# every authority/publication case. The measured Windows r5 run exhausted
-# 600 seconds after 10 cases; retain all 36 cases and their per-render bounds.
-# Every other required suite keeps the existing ten-minute process deadline.
-SUITE_SECONDS = {'tests/citations/test_word_com.py': 1800}
+# Exact measured native suites retain every case and the existing per-case
+# watchdog. Word r5 reached 10 cases at 600 s; the 7959 duration run made
+# continuous progress through 34/51 cases at 600 s, including all 10 codecs.
+# All other required suites keep the existing ten-minute process deadline.
+SUITE_SECONDS = {'tests/citations/test_word_com.py': 1800,
+                 'tests/audio/test_book_duration.py': 1200}
 
 
 # JUnit alone cannot distinguish a non-strict XPASS from a genuine pass.
