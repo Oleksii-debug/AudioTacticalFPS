@@ -377,6 +377,8 @@ jobs:
         # Four additional real setup/repair calls retain their existing 900s process bounds.
         timeout-minutes: 100
         run: |
+          & $env:CARR_PYTHON -I -B -c "from pathlib import Path; p=Path('packaging/probe_standard_update_windows.py'); compile(p.read_bytes(), str(p), 'exec')"
+          if ($LASTEXITCODE -ne 0) { throw 'The exact standard-update probe must compile before bundle assembly.' }
           if (-not $env:CARR_NATIVE_LAUNCHER -or -not $env:CARR_NATIVE_LAUNCHER_SHA256) { throw 'The native launcher must pass its exact process acceptance before bundle assembly.' }
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -1416,7 +1418,9 @@ jobs:
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        timeout-minutes: 40
+        # Run46057432160 completed 394/450 suites (10,144 passed) before 40m;
+        # admission collected at 38m54s. Individual suite/native limits stay bounded.
+        timeout-minutes: 60
         run: |
           $suites = @(
               'tests/storage/test_library_backup_reading_state.py',

@@ -43,13 +43,20 @@ def test_real_pcm_paused_seek_reaps_previous_child_and_sleep_uses_reader_stop(pc
         controller.bind()
         assert controller.snapshot()['approximate'] is True
         assert player.pause()
-        controller.seek_percent(25); children.append(player._process)
-        assert children[0].poll() is not None and children[1] is not children[0]
+        controller.seek_percent(25)
+        assert children[0].poll() is not None and player._process is None
         assert player.state == 'paused' and .5 <= player.position_seconds < .6
         controller.set_skip(1)
-        controller.skip(1); children.append(player._process)
-        assert children[1].poll() is not None
+        controller.skip(1)
+        assert children[0].poll() is not None and player._process is None
         assert player.state == 'paused' and 1.5 <= player.position_seconds < 1.6
+        # Paused navigation keeps the transport silent. Only explicit Resume
+        # starts the real replacement child, which the same Stop must reap.
+        assert player.resume()
+        children.append(player._process)
+        assert children[1] is not None and children[1] is not children[0]
+        assert children[1].poll() is None and player.state == 'playing'
+        assert player.pause() and player.state == 'paused'
         controller.set_sleep(1); now[0] += 1; controller.tick()
         assert generation == [2] and player.state == 'stopped'
         assert player._process is None and all(child.poll() is not None for child in children)

@@ -447,13 +447,23 @@ class _CaptureReservation:
             self.deferred = True
         # Register only a plain callback. The process runner owns every native
         # termination attempt; neither wx nor the capture executor waits here.
-        owner.add_quiescent_callback(self.close)
+        # Native closure is confirmed before this callback runs. The owner's
+        # public event also covers the remaining callback drain, so waiting for
+        # that event from inside the drain would retain this reservation forever.
+        # Bind the exact owner: a superseded callback cannot release a newer one.
+        owner.add_quiescent_callback(lambda: self._close(confirmed_owner=owner))
 
     def close(self):
+        return self._close()
+
+    def _close(self, *, confirmed_owner=None):
         with self._guard:
             if self.closed:
                 return True
-            if self.owner is not None and not self.owner.quiescent:
+            if confirmed_owner is not None and confirmed_owner is not self.owner:
+                return False
+            if (self.owner is not None and not self.owner.quiescent
+                    and confirmed_owner is not self.owner):
                 return False
             try:
                 if self.directory is not None and os.path.lexists(self.directory):
