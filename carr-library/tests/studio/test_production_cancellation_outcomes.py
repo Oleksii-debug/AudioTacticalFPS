@@ -128,3 +128,89 @@ def test_stop_during_staged_master_validation_prevents_publication_and_resumes(t
     assert completed['status'] == 'complete'
     service._verify_artifacts(completed)
     assert (output / 'master.wav').is_file()
+
+
+@pytest.fixture
+def submission(tmp_path):
+    # Only queue creation is under test; no voice synthesis is invoked.
+    from types import SimpleNamespace
+    registry = SimpleNamespace(voices=lambda: (SimpleNamespace(id='test:voice'),))
+    service = ProductionService(tmp_path / 'state', voices=registry)
+    project = service.create('Synthetic submission.', voice_ids=('test:voice',))
+    output = tmp_path / 'output'
+    output.mkdir()
+    return service, project, output
+
+
+@pytest.mark.parametrize('committed', [False, True])
+def test_submission_retries_same_operation_after_receipt_write_failure(submission, monkeypatch, committed):
+    from carr_library.studio import render
+    service, project, output = submission
+    job = 'receipt-replay'
+    directory = service.jobs_root / job
+    write = render.atomic_json
+
+    def fail_receipt(path, value, **kwargs):
+        if Path(path) == directory / 'job.json':
+            if committed:
+                write(path, value, **kwargs)
+            else:
+                # Simulate a process interruption before publishing the receipt.
+                (directory / '.pending-interrupted').write_bytes(b'partial receipt')
+            raise OSError('Injected receipt write interruption')
+        return write(path, value, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(render, 'atomic_json', fail_receipt)
+        with pytest.raises(OSError, match='Injected receipt'):
+            service.submit(project, output, operation_id=job)
+    assert (directory / 'job.json').exists() is committed
+    reopened = ProductionService(service.root, voices=service.voices)
+    assert reopened.submit(project, output, operation_id=job) == job
+    receipt = reopened.get(job)
+    assert receipt['status'] == 'pending'
+    assert receipt['fingerprint'] == project.fingerprint
+    assert len(reopened.jobs()) == 1
+    assert reopened.submit(project, output, operation_id=job) == job
+    assert reopened.get(job) == receipt
+    with pytest.raises(ValueError, match='different production plan'):
+        reopened.submit(project, output, operation_id=job, stems=False)
+    if not committed:
+        assert (directory / '.pending-interrupted').read_bytes() == b'partial receipt'
+
+
+def test_submission_does_not_adopt_unreceipted_recovery_data(submission):
+    service, project, output = submission
+    directory = service.jobs_root / 'missing-receipt'
+    directory.mkdir()
+    recovery = directory / 'timeline.json'
+    recovery.write_bytes(b'preserve existing recovery data')
+    with pytest.raises(ValueError, match='recovery data but no receipt'):
+        service.submit(project, output, operation_id=directory.name)
+    assert recovery.read_bytes() == b'preserve existing recovery data'
+    assert not (directory / 'job.json').exists()
+
+
+def test_submission_does_not_adopt_existing_unreceipted_output(submission):
+    from carr_library.studio.render import _output_name
+    service, project, output = submission
+    job = 'existing-output'
+    existing = output / f'{_output_name(project.title)}-{job[:12]}'
+    existing.mkdir()
+    master = existing / 'master.wav'
+    master.write_bytes(b'preserve existing output')
+    with pytest.raises(FileExistsError, match='without a matching job receipt'):
+        service.submit(project, output, operation_id=job)
+    assert master.read_bytes() == b'preserve existing output'
+    assert not (service.jobs_root / job / 'job.json').exists()
+
+
+def test_submission_respects_existing_render_lock(submission):
+    from carr_library.durable_state import state_lock
+    service, project, output = submission
+    job = 'locked-submit'
+    with state_lock(service.jobs_root / job, 'render'):
+        with pytest.raises(RuntimeError, match='already being changed'):
+            service.submit(project, output, operation_id=job)
+        assert not (service.jobs_root / job / 'job.json').exists()
+    assert service.submit(project, output, operation_id=job) == job

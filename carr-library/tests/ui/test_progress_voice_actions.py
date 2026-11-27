@@ -166,7 +166,8 @@ def reader(tmp_path, monkeypatch):
     reports, choice = [], Choice()
     report = lambda message, focus=False: reports.append(str(message))
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
-    values = dict(parent=parent, progress=progress, voice_choice=choice,
+    values = dict(parent=parent, library=parent.library, library_root=Path(parent.library.root),
+        progress=progress, voice_choice=choice,
         voices=registry.voices(), registry=registry, run=work, report=report,
         alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
         wx=SimpleNamespace(CallLater=scheduler, CallAfter=lambda action, *args: action(*args), ID_CANCEL=1),
@@ -176,7 +177,7 @@ def reader(tmp_path, monkeypatch):
         dialog=Mock(), autosave_timer=Mock(), executor=CleanupQueue(), audio_files=Mock(),
         unregister=Mock(), owned_registries={registry}, owned_progress_voices=set())
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
-        ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
+        ['check_current', 'reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,

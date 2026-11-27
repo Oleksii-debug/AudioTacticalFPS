@@ -16,6 +16,7 @@ from carr_library.research.topic_tree import TopicTree
 from carr_library.speech import ReadingDocument, Voice, VoiceRegistry
 from carr_library.speech.session import ReaderDraftStore, ReaderResume
 from carr_library.ui import speech_dialog as ui
+from carr_library.ui import reading_shortcuts
 from carr_library.speech.source import read_source_range
 
 
@@ -212,6 +213,8 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             assert get_ident() == main
             assert not self.destroyed
         def SetName(self, value): self.native(); self.name = value
+        def GetName(self): self.native(); return self.name
+        def SetLabel(self, value): self.native(); self.label = value
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
         def GetValue(self): self.native(); return self.value
@@ -221,14 +224,18 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def GetStringSelection(self): self.native(); return ''
         def SetInsertionPoint(self, value): self.native(); self.cursor = value
         def GetInsertionPoint(self): self.native(); return self.cursor
+        def GetLastPosition(self): self.native(); return len(self.value)
+        def GetRange(self, start, end): self.native(); return self.value[start:end]
         def Enable(self, value=True): self.native(); self.enabled = value
         def Disable(self): self.Enable(False)
+        def IsEnabled(self): self.native(); return self.enabled
         def SetFocus(self): self.native(); assert self.enabled
         def Add(self, *args): self.native()
         def SetSizer(self, *args): self.native()
         def SetEscapeId(self, *args): self.native()
         def SetAcceleratorTable(self, *args): self.native()
         def Bind(self, event, callback, *args, **kwargs): self.native(); self.handlers[event] = callback
+        def Unbind(self, event, **kwargs): self.native(); self.handlers.pop(event, None)
         def Start(self, *args): self.native()
         def Stop(self): self.native()
         def EndModal(self, result): self.native()
@@ -252,7 +259,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             assert editor.GetValue() == expected_editor
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             scope()
-            named('Save &as').handlers['button'](None)
+            next(c for c in controls if c.GetName() == 'Save reading copy as').handlers['button'](None)
             statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
             return 5101
 
@@ -270,7 +277,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     identifiers = count(10000)
     wx = SimpleNamespace(Dialog=Dialog, FileDialog=FileDialog, TextEntryDialog=FileDialog,
         TextCtrl=Control, StaticText=Control, Choice=Control, SpinCtrl=Control,
-        Button=Control, BoxSizer=Control, Timer=Control,
+        Button=Control, BoxSizer=Control, WrapSizer=Control, Timer=Control,
         CallAfter=lambda callback, *args: callbacks.put((callback, args)),
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
@@ -282,6 +289,8 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'WXK_F6', 'WXK_F7', 'WXK_F8'):
         setattr(wx, constant, 0)
     monkeypatch.setitem(sys.modules, 'wx', wx)
+    monkeypatch.setattr(reading_shortcuts, 'accelerator_tuple',
+                        lambda shortcut, identifier: (shortcut, 0, int(identifier)))
     monkeypatch.setattr(ui, 'WavePlayer', lambda: SimpleNamespace(
         position_seconds=0, state='stopped', stop=lambda: None, close=lambda: None))
     parent = SimpleNamespace(library=app, report=statuses.append)

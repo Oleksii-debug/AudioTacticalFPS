@@ -7,6 +7,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import difflib
+import io
 import json
 import os
 from pathlib import Path
@@ -172,6 +173,33 @@ def _import_pre_release_anchor(value, text):
     return anchor
 
 
+def _pronunciation_rewrite(value, matches, cancelled):
+    """Admit each segment before allocating a bounded replacement document."""
+    position = size = 0
+    with io.StringIO() as output:
+        for number, row in enumerate(matches):
+            if number % 128 == 0:
+                check_cancelled(cancelled)
+            if (type(row) not in (tuple, list) or len(row) != 3
+                    or type(row[0]) is not int or type(row[1]) is not int
+                    or not position <= row[0] <= row[1] <= len(value)
+                    or type(row[2]) is not str):
+                raise ValueError('Invalid pronunciation substitution result.')
+            start, end, replacement = row
+            size += start - position + len(replacement)
+            if size > 2_000_000:
+                raise ValueError('Pronunciation output exceeds its character budget. Split it into chapters.')
+            output.write(value[position:start])
+            output.write(replacement)
+            position = end
+        size += len(value) - position
+        if size > 2_000_000:
+            raise ValueError('Pronunciation output exceeds its character budget. Split it into chapters.')
+        check_cancelled(cancelled)
+        output.write(value[position:])
+        return text_value(output.getvalue(), 'pronunciation output', empty=True)
+
+
 class ReadingDocument:
     """An editable reading copy with persistent undo/redo, outside evidence APIs."""
     def __init__(self, source_text, *, title='Reading copy', source_path=None, source_anchor=None):
@@ -319,8 +347,9 @@ class ReadingDocument:
         rules = tuple(rules)
         if len(rules) > 1000 or any(not isinstance(rule, PronunciationRule) for rule in rules):
             raise ValueError('Use at most 1000 validated pronunciation rules.')
-        # Compute on a private clone first: errors/cancel never leave partial edits.
-        clone = ReadingDocument(self.text)
+        # Only the final working value enters undo history. A thousand rules
+        # must not create a thousand transient copies or consume edit slots.
+        value = self.text
         for rule in sorted(rules, key=lambda r: bool(r.language) + 2 * bool(r.voice_id)):
             check_cancelled(cancelled)
             if rule.language and rule.language != language:
@@ -328,23 +357,20 @@ class ReadingDocument:
             if rule.voice_id and rule.voice_id != voice_id:
                 continue
             if rule.regex:
-                payload = json.dumps({'text': clone.text, 'pattern': rule.pattern,
+                payload = json.dumps({'text': value, 'pattern': rule.pattern,
                     'replacement': rule.replacement, 'ignore_case': rule.ignore_case}, ensure_ascii=False).encode('utf-8')
                 reply, _, _ = run_process([sys.executable, '-I', '-B', '-X', 'utf8', '-S', str(Path(__file__).with_name('regex_worker.py'))],
                                           input_bytes=payload, timeout=timeout, cancelled=cancelled)
                 matches = json.loads(reply.decode('utf-8'))['matches']
-                result, position = [], 0
-                for start, end, replacement in matches:
-                    result.extend((clone.text[position:start], replacement))
-                    position = end
-                result.append(clone.text[position:])
-                value = ''.join(result)
+                if type(matches) is not list or len(matches) > 10000:
+                    raise ValueError('Invalid pronunciation substitution result.')
             else:
-                flags = re.IGNORECASE if rule.ignore_case else 0
-                value = re.sub(re.escape(rule.pattern), lambda match: rule.replacement, clone.text, flags=flags)
-            clone.set_text(value)
+                pattern = re.compile(re.escape(rule.pattern), re.IGNORECASE if rule.ignore_case else 0)
+                matches = ((match.start(), match.end(), rule.replacement)
+                           for match in pattern.finditer(value))
+            value = _pronunciation_rewrite(value, matches, cancelled)
         check_cancelled(cancelled)
-        return self.set_text(clone.text, label='Pronunciation reading layer')
+        return self.set_text(value, label='Pronunciation reading layer')
 
     def to_dict(self):
         data = {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
@@ -451,20 +477,27 @@ class ReadingDocument:
         return digest(target)
 
 
-def export_dictionary(rules, path):
+def export_dictionary(rules, path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     rules = tuple(rules)
     if len(rules) > 1000 or any(not isinstance(rule, PronunciationRule) for rule in rules):
         raise ValueError('Use at most 1000 validated pronunciation rules.')
     payload = json.dumps({'schema': 'carr.pronunciations.v1', 'rules': [asdict(rule) for rule in rules]}, ensure_ascii=False)
-    with new_output(path) as temporary:
+    with new_output(path, cancelled=cancelled) as temporary:
         temporary.write_text(payload, encoding='utf-8')
 
 
-def import_dictionary(path):
+def import_dictionary(path, *, cancelled=lambda: False):
+    check_cancelled(cancelled)
     source = local_file(path)
     if source.stat().st_size > 8_000_000:
         raise ValueError('The pronunciation dictionary exceeds its size budget.')
-    data = json.loads(source.read_text(encoding='utf-8'), object_pairs_hook=_unique)
+    with source.open('rb') as stream:
+        payload = stream.read(8_000_001)
+    check_cancelled(cancelled)
+    if len(payload) > 8_000_000:
+        raise ValueError('The pronunciation dictionary exceeds its size budget.')
+    data = json.loads(payload.decode('utf-8'), object_pairs_hook=_unique)
     if not isinstance(data, dict) or set(data) != {'schema', 'rules'} or data['schema'] != 'carr.pronunciations.v1':
         raise ValueError('Unsupported pronunciation dictionary.')
     if not isinstance(data['rules'], list) or len(data['rules']) > 1000:

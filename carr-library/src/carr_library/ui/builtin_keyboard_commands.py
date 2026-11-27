@@ -70,9 +70,25 @@ READER_COMMANDS = (
 )
 
 
+VOICE_READER_COMMANDS = (
+    CommandSpec('voice_reader.read', 'Read selection or all', 'voice_reader', 'F6'),
+    CommandSpec('voice_reader.cursor', 'Read from cursor', 'voice_reader'),
+    CommandSpec('voice_reader.line', 'Read current logical line', 'voice_reader'),
+    CommandSpec('voice_reader.paragraph', 'Read current paragraph', 'voice_reader'),
+    CommandSpec('voice_reader.clipboard', 'Read clipboard once', 'voice_reader'),
+    CommandSpec('voice_reader.dictionary', 'Pronunciation dictionary', 'voice_reader'),
+    CommandSpec('voice_reader.pause', 'Pause or resume speech', 'voice_reader', 'F7'),
+    CommandSpec('voice_reader.stop', 'Stop speech operation', 'voice_reader', 'F8'),
+    CommandSpec('voice_reader.save', 'Save reading copy', 'voice_reader', 'Ctrl+S'),
+    CommandSpec('voice_reader.save_as', 'Save reading copy as', 'voice_reader', 'Ctrl+Shift+S'),
+    CommandSpec('voice_reader.commands', 'Find a voice reader command', 'voice_reader', 'Ctrl+Shift+P'),
+    CommandSpec('voice_reader.settings', 'Voice reader keyboard shortcuts', 'voice_reader', 'Ctrl+Alt+K'),
+)
+
+
 def builtin_commands():
     return tuple(CommandSpec(identity, caption, 'main', shortcut)
-                 for identity, _, caption, shortcut in MAIN_COMMANDS) + READER_COMMANDS
+                 for identity, _, caption, shortcut in MAIN_COMMANDS) + READER_COMMANDS + VOICE_READER_COMMANDS
 
 
 def plain_caption(label):

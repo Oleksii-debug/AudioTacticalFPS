@@ -13,7 +13,7 @@ import stat
 import time
 from uuid import uuid4
 
-from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, state_lock
+from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, regular, state_lock
 from .managed_inputs import project_managed_inputs, resolve_managed_input
 from .project import Project, ProjectStore, parse_script, _id
 
@@ -136,12 +136,22 @@ class ProductionService:
         if type(stems) is not bool or not isinstance(project, Project):
             raise ValueError('Invalid production options.')
         job_id = _id(operation_id) if operation_id else uuid4().hex
-        existing_path = self.jobs_root / job_id / 'job.json'
-        previous = self.get(job_id) if existing_path.exists() else None
-        # An old absolute destination is inert after restore, even when this is
-        # an otherwise idempotent submission of a completed job.
-        if previous is not None:
+        directory = self.jobs_root / job_id
+        existing_path = directory / 'job.json'
+
+        def existing_receipt():
+            try:
+                existing_path.lstat()
+            except FileNotFoundError:
+                return None
+            previous = self.get(job_id)
+            # An old absolute destination is inert after restore, even when this
+            # is an otherwise idempotent submission of a completed job.
             self._require_origin(previous)
+            return previous
+
+        # Keep the retained-input origin check before any output-path access.
+        previous = existing_receipt()
         if any(not role.voice_id for role in project.roles if any(
                 line.role == role.id and line.text for scene in project.scenes for line in scene.lines)):
             raise ValueError('Assign an installed voice to every speaking role before rendering.')
@@ -157,21 +167,40 @@ class ProductionService:
         if destination.is_relative_to(self.root):
             raise ValueError('Choose an output directory outside the private production state.')
         output = destination / f'{_output_name(project.title)}-{job_id[:12]}'
-        if previous is not None:
+
+        def already_submitted(previous):
+            if previous is None:
+                return False
             if (previous['fingerprint'] != project.fingerprint or previous['destination'] != str(output)
                     or previous['format'] != format or previous['stems'] != stems):
                 raise ValueError('This operation ID is already bound to a different production plan.')
+            return True
+
+        # A committed receipt keeps its identity even while the renderer runs.
+        if already_submitted(previous):
             return job_id
-        self.projects.save(project)
-        state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
-                 'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
-                 'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
-                 'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
-        if project.schema == 2:
-            state['origin'] = self._local_origin()
-        directory = self.jobs_root / job_id
-        directory.mkdir()
-        atomic_json(directory / 'job.json', state)
+        # Reuse the existing render lock for interrupted receipt publication.
+        with state_lock(directory, 'render'):
+            if already_submitted(existing_receipt()):
+                return job_id
+            for entry in directory.iterdir():
+                if entry.name != '.render.lock' and not entry.name.startswith('.pending-'):
+                    raise ValueError('Production job has recovery data but no receipt; review it before resubmitting.')
+                regular(entry)
+            try:
+                output.lstat()
+            except FileNotFoundError:
+                pass
+            else:
+                raise FileExistsError('Production output already exists without a matching job receipt.')
+            self.projects.save(project)
+            state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
+                     'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
+                     'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
+                     'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
+            if project.schema == 2:
+                state['origin'] = self._local_origin()
+            atomic_json(existing_path, state)
         return job_id
 
     def get(self, job_id):

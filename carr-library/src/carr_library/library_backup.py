@@ -163,11 +163,11 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 total = size + sum(entry.size for entry in entries)
                 pending = None
-                if any(os.path.lexists(app.root / name) for name in
-                       ('imports.sqlite', 'import-requests', 'import-batches')):
+                roots = pending_backup.pending_roots(app.root)
+                if roots:
                     pending = pending_backup.snapshot_pending(app, stage / 'pending',
                         max_bytes=pending_backup.MAX_TOTAL if max_bytes is None else max_bytes - total,
-                        cancelled=cancelled)
+                        cancelled=cancelled, expected_roots=roots)
                     total += sum(entry['size_bytes'] for entry in pending['files'])
                 state_budget = (backup_sidecars.MAX_BYTES + backup_sidecars.backup_producers.MAX_PRIMARY_BYTES
                     + (backup_sidecars.backup_generated.MAX_BYTES

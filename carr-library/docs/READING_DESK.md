@@ -47,6 +47,47 @@ spoken word, or exact text caret. Opening the reader focuses its ordinary text
 control. Closing it restores focus to the invoking library view. Native control
 and keyboard tests do not replace actual NVDA acceptance.
 
+## Voice reading and pronunciation
+
+Use **Voice, Voice reader and reading copy** (**Ctrl+Alt+V**) for an independent
+reading copy. **Voice, Narrate selected book or chapter** (**Ctrl+Alt+R**) opens
+an explicitly chosen retained-source range. Both use the same local voice reader.
+Opening either window does not start speech.
+
+**Read current logical line** reads the newline-delimited line containing the
+caret, rather than a visually wrapped screen line. **Read current paragraph**
+uses blank lines as boundaries. **Read clipboard once** takes one explicit text
+snapshot and speaks it through the selected voice. It neither watches later
+clipboard changes nor inserts the snapshot into a source-bound reading copy.
+
+**Pronunciation dictionary** opens named native controls for adding, editing and
+removing literal or regular-expression rules. Empty language and voice fields
+match any selected voice; nonempty fields match its exact language code or voice
+ID. General rules run before language-specific and voice-specific rules, retaining
+list order within each scope. Import reads the existing dictionary JSON format;
+it replaces the session rule list and does not apply it automatically. Export
+writes a new file outside the private library and refuses existing filenames.
+Export explicitly to retain this session dictionary after closing the reader.
+
+**Apply to reading copy** makes one reversible change. **Undo reading edit** in
+the reader restores the prior text; the retained original, its source locator
+and citation authority remain unchanged. Up to 1,000 rules are accepted; output
+and regex processing have bounded budgets. Cancellation, invalid expressions,
+changed source scope or an exceeded budget leave the reading text unchanged.
+These substitutions do not prove correct stress, phonemes or acoustic quality.
+
+The Voice Reader uses the shared configurable keyboard registry. **F6** reads
+the selection or copy, **F7** pauses/resumes and **F8** stops. **Find a voice
+reader command** and **Voice reader keyboard shortcuts** expose its commands;
+new line, paragraph, clipboard and dictionary actions can receive user-selected
+shortcuts without taking native editing or screen-reader keys. Saved voice-reader
+carets use Unicode text offsets and restore through observed native text ranges.
+This is separate from the Reading Desk's page-level resume described above.
+
+The native control probe uses a declared synthetic voice and playback sink.
+Actual installed voice quality, physical audio playback and Windows 11/NVDA
+acceptance require their separate evidence.
+
 ## Personal reading state
 
 Names and positions are saved locally in `reading-state.json` in the selected
