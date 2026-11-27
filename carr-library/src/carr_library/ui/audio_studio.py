@@ -174,16 +174,20 @@ class StudioController:
                 raise ValueError('Choose an output folder without links or reparse points.')
         return candidate
 
+    def voice_profiles(self):
+        if getattr(self, '_voice_profiles', None) is None:
+            from ..audio.voice_settings import session_for
+            self._voice_profiles = session_for(self.private_root)
+        return self._voice_profiles
+
     def _registry(self):
         if self.registry is None:
-            from ..audio.engines import default_registry
-            self.registry = default_registry(ffmpeg=self.ffmpeg)
+            self.registry = self.voice_profiles().registry(ffmpeg=self.ffmpeg)
         return self.registry
 
     def voices(self, *, reload=False):
         if reload:
-            from ..audio.engines import default_registry
-            self.registry = default_registry(ffmpeg=self.ffmpeg)
+            self.registry = None
         return tuple(_voice_dict(voice) for voice in self._registry().voices())
 
     def voice_status(self):
@@ -465,6 +469,7 @@ class AudioStudioDialog:
         self.controls.append(self.voice)
         voice_row.Add(self.voice, 1, wx.RIGHT, 8)
         self._button(script_page, voice_row, 'Reload local voices', self.reload_voices)
+        self._button(script_page, voice_row, 'Local voice profiles', self.local_voice_profiles)
         self._button(script_page, voice_row, 'Use voice for progress', self.use_progress_voice)
         script_layout.Add(voice_row, 0, wx.EXPAND | wx.ALL, 5)
         self.language = self._text(script_page, script_layout, 'Language code, for example uk, sk or en', controller.language)
@@ -840,6 +845,18 @@ class AudioStudioDialog:
                       'Project text and rendering settings are unchanged.', focus=True)
 
             self._run('Selecting a local progress voice', activate, accepted)
+        except Exception as exc:
+            self._error(exc)
+
+    def local_voice_profiles(self, event=None):
+        if self.busy or not self._stop_for_project_change():
+            return
+        try:
+            from .local_voice_settings import open_local_voice_settings
+            open_local_voice_settings(self.dialog, self.controller.private_root,
+                                      session=self.controller.voice_profiles())
+            self.controller.registry = None
+            self.reload_voices(event=True)
         except Exception as exc:
             self._error(exc)
 
