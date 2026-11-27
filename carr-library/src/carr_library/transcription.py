@@ -424,7 +424,7 @@ class TranscriptionService:
             config = self.configuration(verify=True)
             self._sources(path, job, cancelled)
             if job['status'] == 'completed':
-                self.verify(identity)
+                self.verify(identity, cancelled=cancelled)
                 return job
             for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
                 candidate = path / name
