@@ -1,0 +1,91 @@
+name: Selected Office environment and handle observations
+on:
+  push:
+    branches: [carr/office-native-diagnostics-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-office-native-diagnostics.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: office-native-diagnostics-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact conversion source and test fixtures
+        run: python -m pip install ".[test]"
+      - name: Prepare explicitly selected Office runtime
+        run: |
+          choco install libreoffice-fresh --version=26.8.3 --yes --no-progress --limit-output
+          if ($LASTEXITCODE -notin @(0, 1641, 3010)) { exit $LASTEXITCODE }
+          $office = Join-Path $env:ProgramFiles 'LibreOffice/program/soffice.com'
+          if (-not (Test-Path -LiteralPath $office -PathType Leaf)) { throw 'Selected Office executable is missing.' }
+          "CARR_SOFFICE=$office" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Observe unchanged and single-factor Office variants with selected runtime egress blocked
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force 'ci-office-observations' | Out-Null
+          $python = (Get-Command python.exe).Source
+          $base = (& $python -I -B -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $officePrograms = @(Get-ChildItem -LiteralPath (Split-Path $env:CARR_SOFFICE) -File -Recurse | Where-Object { $_.Extension.ToLowerInvariant() -in @('.exe', '.com', '.bin') } | Select-Object -ExpandProperty FullName)
+          if ($officePrograms.Count -lt 2 -or $officePrograms.Count -gt 256) { throw 'Selected Office executable inventory is outside the diagnostic bound.' }
+          $programs = @($python, $base, (Get-Process -Id $PID).Path,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) + $officePrograms |
+              Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+              ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $prefix = 'CARR-office-observation-' + [guid]::NewGuid().ToString('N')
+          $rules = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $name = $prefix + '-' + $rules.Count
+              $rules += $name
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $rules -ErrorAction Stop)
+            if (@(Get-NetFirewallProfile | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0 -or $active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Runtime denial is not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Runtime denial does not cover the selected processes.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='selected runtime executables' } | ConvertTo-Json -Depth 3 | Set-Content 'ci-office-observations/firewall.json'
+            & $python -I -B -X utf8 -X faulthandler scripts/observe_office_native.py 2>&1 | Tee-Object 'ci-office-observations/observations.txt'
+            $observedExit = $LASTEXITCODE
+            Write-Output ('Office observation owner exit: ' + $observedExit)
+            if ($observedExit -ne 0) { throw ('Office observations did not complete: ' + $observedExit) }
+          } finally {
+            foreach ($name in $rules) { Remove-NetFirewallRule -Name $name -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+            if (@(Get-NetFirewallRule -Name ($prefix + '*') -ErrorAction SilentlyContinue).Count -ne 0) { throw 'Owned runtime firewall cleanup remained pending.' }
+          }
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          New-Item -ItemType Directory -Force 'ci-office-observations' | Out-Null
+          git rev-parse HEAD | Out-File 'ci-office-observations/commit.txt'
+          python -m pip freeze | Out-File 'ci-office-observations/packages.txt'
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: office-observations-${{ github.sha }}
+          path: carr-library/ci-office-observations
+          if-no-files-found: error
