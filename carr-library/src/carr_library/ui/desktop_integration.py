@@ -1,0 +1,502 @@
+"""Opt-in native tray, clipboard review and semantic global command dispatch.
+
+All native operations run on the existing UI thread. There is no key hook,
+clipboard history, background speech, command registry or playback backend here.
+"""
+from hashlib import sha256
+import sys
+
+from ..desktop_preferences import DesktopPreferences, DesktopPreferenceStore, global_shortcut
+from .command_registry import CommandSpec
+
+# These are existing menu identities, not a second command registry. Runtime
+# labels, availability and dispatch still come from the shared native manager.
+GLOBAL_COMMANDS = ('desktop.show', 'voice.clipboard', 'voice.watched_clipboard',
+                   'voice.reader', 'voice.pause', 'voice.stop', 'progress.query')
+
+
+class ClipboardWatch:
+    """Retain only the newest bounded snapshot in memory until explicit Open."""
+    def __init__(self, read, scope, notice):
+        self.read, self.scope, self.notice = read, scope, notice
+        self.enabled, self.closed = False, False
+        self.pending = self._scope = self._digest = self._error = None
+
+    def enable(self):
+        if self.closed:
+            raise ValueError('This desktop window is closed.')
+        self._scope = self.scope()
+        self.pending = self._digest = self._error = None
+        self.enabled = True
+
+    def disable(self):
+        self.enabled = False
+        self.pending = self._scope = self._digest = self._error = None
+
+    def poll(self):
+        if self.closed or not self.enabled:
+            return False
+        if self.scope() != self._scope:
+            self.disable()
+            self.notice('Clipboard watching stopped because the library selection changed.')
+            return False
+        try:
+            from ..speech._io import text_value
+            text = text_value(self.read(), 'Clipboard reading text')
+        except Exception:
+            self.pending = self._digest = None
+            if self._error is None:
+                self.notice('Clipboard text is unavailable. Watching remains on; no reading copy was opened.')
+                self._error = True
+            return False
+        self._error = None
+        fingerprint = sha256(text.encode('utf-8')).digest()
+        if fingerprint == self._digest:
+            return False
+        self._digest, self.pending = fingerprint, text
+        self.notice('New clipboard text is ready. Choose Open watched clipboard to review it; no speech has started.')
+        return True
+
+    def take(self):
+        if self.closed or not self.enabled or self.scope() != self._scope:
+            self.disable()
+            raise ValueError('Clipboard watching stopped or its library selection changed.')
+        if self.pending is None:
+            raise ValueError('No new watched clipboard text is ready.')
+        text, self.pending = self.pending, None
+        return text
+
+    def close(self):
+        self.disable()
+        self.closed = True
+
+
+class WindowsHotkeyAPI:
+    """Use WM_HOTKEY through wx with native no-repeat registration.
+
+    wxWidgets 3.2 discards MOD_NOREPEAT in its RegisterHotKey wrapper. The fixed
+    Win32 call below preserves it; ordinary wx EVT_HOTKEY remains the receiver.
+    """
+    def __init__(self, frame):
+        import ctypes
+        from ctypes import wintypes
+        self.frame = frame
+        self.handle = frame.GetHandle()
+        if not self.handle:
+            raise ValueError('Global shortcuts need a current native window handle.')
+        self.api = ctypes.WinDLL('user32', use_last_error=True)
+        self.api.RegisterHotKey.argtypes = (wintypes.HWND, ctypes.c_int, wintypes.UINT, wintypes.UINT)
+        self.api.RegisterHotKey.restype = wintypes.BOOL
+        self.api.UnregisterHotKey.argtypes = (wintypes.HWND, ctypes.c_int)
+        self.api.UnregisterHotKey.restype = wintypes.BOOL
+
+    def register(self, identifier, shortcut):
+        if self.frame.GetHandle() != self.handle:
+            raise ValueError('The native global-shortcut owner changed.')
+        parts = global_shortcut(shortcut).split('+')
+        modifiers = 0x4000 | sum({'Alt': 1, 'Ctrl': 2, 'Shift': 4}[name] for name in parts[:-1])
+        key = parts[-1]
+        virtual = 0x70 + int(key[1:]) - 1 if key.startswith('F') else ord(key)
+        return bool(self.api.RegisterHotKey(self.handle, identifier, modifiers, virtual))
+
+    def unregister(self, identifier):
+        if self.frame.GetHandle() != self.handle:
+            raise ValueError('The native global-shortcut owner changed before release.')
+        return bool(self.api.UnregisterHotKey(self.handle, identifier))
+
+
+class GlobalHotkeys:
+    """Own a bounded set of native registrations, never an OS keyboard hook."""
+    def __init__(self, frame, manager, dispatch, *, wx_module=None, platform=None, native=None):
+        if wx_module is None:
+            import wx as wx_module
+        self.wx, self.frame, self.manager, self.dispatch = wx_module, frame, manager, dispatch
+        self.platform = sys.platform if platform is None else platform
+        self.enabled, self.closed = False, False
+        self.native, self._dispatching = native, False
+        self._registered, self._bindings = {}, {}
+        self._native_event = getattr(self.wx, 'EVT_HOTKEY', None)
+        if self._native_event is not None:
+            self.frame.Bind(self._native_event, self._event)
+
+    def validate(self, bindings):
+        values = DesktopPreferences(global_shortcuts=bindings).global_shortcuts
+        effective = self.manager.registry.effective(self.manager.overrides)
+        for identity, shortcut in values.items():
+            if identity not in GLOBAL_COMMANDS or identity not in self.manager.bindings:
+                raise ValueError('This global action is unavailable in the current desktop: ' + identity)
+            if self.manager.registry.get(identity).context != 'main':
+                raise ValueError('Global actions must use an installed desktop command.')
+            for other, current in effective.items():
+                if current == shortcut and other != identity:
+                    raise ValueError(shortcut + ' already belongs to ' + self.manager.registry.get(other).label + '.')
+        return dict(values)
+
+    def enable(self, bindings):
+        if self.closed or self._registered:
+            raise ValueError('Disable the previous global shortcuts before changing assignments.')
+        if self.platform != 'win32':
+            raise ValueError('This global-shortcut adapter is available only on Windows.')
+        if self._native_event is None:
+            raise ValueError('This wx build has no native global-key event support.')
+        values = self.validate(bindings)
+        if not values:
+            raise ValueError('Save at least one explicit global shortcut first.')
+        if self.native is None:
+            self.native = WindowsHotkeyAPI(self.frame)
+        try:
+            for index, (identity, shortcut) in enumerate(values.items(), 0x4200):
+                if not self.native.register(index, shortcut):
+                    raise ValueError(shortcut + ' could not be registered; another application or Windows may own it.')
+                self._registered[index] = identity
+            self._bindings, self.enabled = values, True
+        except Exception as exc:
+            try:
+                self.disable()
+            except Exception as cleanup:
+                raise RuntimeError(str(exc) + ' Global-key cleanup needs attention: ' + str(cleanup)) from exc
+            raise
+
+    def disable(self):
+        self.enabled = False  # Queued events lose authority before cleanup begins.
+        failures = []
+        for identifier in tuple(self._registered):
+            try:
+                if not self.native.unregister(identifier):
+                    raise RuntimeError('Windows did not confirm shortcut release.')
+                del self._registered[identifier]
+            except Exception as exc:
+                failures.append(str(exc))
+        self._bindings = {}
+        if failures:
+            raise RuntimeError('; '.join(failures))
+
+    def _event(self, event):
+        if self.closed or not self.enabled or self._dispatching or getattr(self.frame, '_closing', False):
+            return
+        identity = self._registered.get(event.GetId())
+        if identity is None:
+            return
+        try:
+            self.validate(self._bindings)  # Local assignments may have changed.
+        except Exception as exc:
+            try:
+                self.disable()
+            except Exception as cleanup:
+                self.frame.report('Global shortcuts stopped; key release needs attention: ' + str(cleanup))
+            else:
+                self.frame.report('Global shortcuts stopped: ' + str(exc))
+            return
+        self._dispatching = True
+        try:
+            self.dispatch(identity)
+        except Exception as exc:
+            if not self.closed and not getattr(self.frame, '_closing', False):
+                self.frame.report('The global action could not complete: ' + str(exc))
+        finally:
+            self._dispatching = False
+
+    def close(self):
+        self.closed = True
+        try:
+            self.disable()
+        finally:
+            if self._native_event is not None:
+                self.frame.Unbind(self._native_event, handler=self._event)
+
+
+class DesktopIntegration:
+    def __init__(self, frame, *, wx_module=None):
+        if wx_module is None:
+            import wx as wx_module
+        self.wx, self.frame = wx_module, frame
+        self.closed, self.tray, self.reader = False, None, None
+        self.items = {}
+        self.store = DesktopPreferenceStore(frame.library.root)
+        self.preferences = DesktopPreferences()
+        try:
+            self.preferences = self.store.load()
+        except Exception as exc:
+            frame.report('Desktop preferences are unavailable; optional features are off. ' + str(exc))
+        self.watch = ClipboardWatch(self._read, self.scope, frame.report)
+        self.timer = self.wx.Timer(frame)
+        self.frame.Bind(self.wx.EVT_TIMER, self._tick, self.timer)
+        self.frame.Bind(self.wx.EVT_WINDOW_DESTROY, self._destroyed)
+        self.hotkeys = GlobalHotkeys(frame, frame.keyboard_commands, self.invoke, wx_module=self.wx)
+
+    def scope(self):
+        return (id(self.frame.library), str(self.frame.library.root), self.frame.active)
+
+    def _read(self):
+        from .speech_dialog import _read_clipboard_text
+        return _read_clipboard_text(self.wx)
+
+    def _live(self):
+        return not self.closed and not getattr(self.frame, '_closing', False)
+
+    def available(self, identity):
+        if not self._live():
+            return False
+        if identity == 'desktop.show':
+            return True
+        if identity in ('voice.pause', 'voice.stop'):
+            current = self.reader
+            if current is None:
+                return False
+            _token, dialog, controls, alive, scope = current
+            try:
+                return (alive() and scope == self.scope() and dialog.IsEnabled()
+                        and controls[identity].IsEnabled())
+            except RuntimeError:
+                return False
+        if identity == 'voice.watched_clipboard' and self.watch.pending is None:
+            return False
+        return self.frame.keyboard_commands.available(identity)
+
+    def invoke(self, identity):
+        if not self.available(identity):
+            return False
+        manager = self.frame.keyboard_commands
+        manager.registry.get(identity)
+        if identity in ('voice.pause', 'voice.stop'):
+            # Send the same native button event as Space; source/cancel/quiet
+            # checks remain in the existing reader handler, not this adapter.
+            button = self.reader[2][identity]
+            event = self.wx.CommandEvent(self.wx.EVT_BUTTON.typeId, button.GetId())
+            event.SetEventObject(button)
+            return bool(button.GetEventHandler().ProcessEvent(event))
+        if identity == 'desktop.show':
+            item = manager.bindings[identity].item
+            event = self.wx.CommandEvent(self.wx.EVT_MENU.typeId, item.GetId())
+            event.SetEventObject(self.frame)
+            return bool(self.frame.GetEventHandler().ProcessEvent(event))
+        return manager.invoke(identity)
+
+    def attach_reader(self, dialog, pause, stop, alive):
+        if not self._live() or self.reader is not None:
+            raise ValueError('Another reading window already owns the desktop playback controls.')
+        token = object()
+        self.reader = token, dialog, {'voice.pause': pause, 'voice.stop': stop}, alive, self.scope()
+        def detach():
+            if self.reader is not None and self.reader[0] is token:
+                self.reader = None
+        return detach
+
+    def show_window(self, event=None):
+        if not self._live():
+            return
+        self.frame.Show(True)
+        self.frame.Iconize(False)
+        if self.reader is not None and self.reader[3]():
+            self.reader[1].Raise()
+        else:
+            self.frame.Raise()
+
+    def hide_window(self, event=None):
+        if not self._live() or self.tray is None or not self.tray.IsIconInstalled():
+            raise ValueError('Enable the available tray icon before hiding this window.')
+        if not self.frame.IsEnabled() or getattr(self.frame, 'working', False):
+            raise ValueError('Finish the active dialog or operation before hiding this window.')
+        self.frame.Hide()
+
+    def watch_clipboard(self, enabled):
+        if type(enabled) is not bool or not self._live():
+            raise ValueError('Clipboard watching needs an open desktop window.')
+        if enabled:
+            self.watch.enable()
+            if not self.timer.Start(1000):
+                self.watch.disable()
+                raise RuntimeError('The clipboard observation timer could not be started.')
+            self.frame.report('Clipboard watching is on for this library selection. New text stays in memory until you explicitly open it.')
+        else:
+            self.timer.Stop()
+            self.watch.disable()
+            self.frame.report('Clipboard watching is off; its temporary snapshot was cleared.')
+        self._refresh()
+
+    def _refresh(self):
+        if self.closed:
+            return
+        item = self.items.get('desktop.clipboard_watch')
+        if item is not None:
+            item.Check(self.watch.enabled)
+        item = self.items.get('voice.watched_clipboard')
+        if item is not None:
+            item.Enable(self.watch.pending is not None)
+
+    def _tick(self, event=None):
+        if self.closed:
+            return
+        if not self._live():
+            self.timer.Stop()
+            self.watch.close()
+            return
+        # A scope switch clears data even while a modal/operation is active.
+        if self.watch.enabled and self.watch._scope != self.scope():
+            self.watch.disable()
+            self.timer.Stop()
+            self.frame.report('Clipboard watching stopped because the library selection changed.')
+        elif self.frame.IsEnabled() and not getattr(self.frame, 'working', False):
+            self.watch.poll()
+        self._refresh()
+
+    def open_watched(self, event=None):
+        if not self._live() or not self.frame.IsEnabled() or getattr(self.frame, 'working', False):
+            raise ValueError('Finish the active operation before opening watched text.')
+        text = self.watch.take()
+        self._refresh()
+        from .speech_dialog import show_speech_reader
+        show_speech_reader(self.frame, text=text, title='Watched clipboard reading copy',
+                           recovery_slot='clipboard-watch')
+
+    def set_tray(self, enabled):
+        if type(enabled) is not bool or not self._live():
+            raise ValueError('The tray icon needs an open desktop window.')
+        if not enabled:
+            if self.tray is not None:
+                if not self.frame.IsShown():
+                    self.show_window()
+                old = self.tray
+                old.active = False
+                if old.IsIconInstalled() and not old.RemoveIcon():
+                    raise RuntimeError('The desktop did not confirm removal of its tray icon. Retry Disable.')
+                old.Destroy()
+                self.tray = None
+            return
+        if self.tray is not None:
+            if not self.tray.active:
+                raise RuntimeError('Finish the previous tray-icon cleanup before enabling it again.')
+            return
+        import wx.adv
+        if not wx.adv.TaskBarIcon.IsAvailable():
+            raise ValueError('This desktop session does not provide a system tray.')
+        controller, wx = self, self.wx
+        class Tray(wx.adv.TaskBarIcon):
+            active = True
+            def CreatePopupMenu(self):
+                menu = wx.Menu()
+                for identity in ('desktop.show', 'voice.clipboard', 'voice.watched_clipboard',
+                                 'voice.pause', 'voice.stop', 'progress.query', 'desktop.settings'):
+                    command = controller.frame.keyboard_commands.registry.get(identity)
+                    item = menu.Append(wx.ID_ANY, command.label)
+                    item.Enable(self.active and controller.available(identity))
+                    menu.Bind(wx.EVT_MENU,
+                        lambda event, identity=identity: controller.invoke(identity)
+                        if self.active else None, item)
+                return menu
+        tray = Tray()
+        try:
+            icon = self.frame.GetIcon()
+            if not icon.IsOk():
+                icon = wx.ArtProvider.GetIcon(wx.ART_INFORMATION, wx.ART_OTHER, (16, 16))
+            if not tray.SetIcon(icon, 'Resonance — open the menu to show the window'):
+                raise RuntimeError('The system tray did not accept the icon.')
+            tray.Bind(wx.adv.EVT_TASKBAR_LEFT_DCLICK,
+                      lambda event: self.invoke('desktop.show') if tray.active else None)
+        except Exception:
+            tray.active = False
+            tray.Destroy()
+            raise
+        self.tray = tray
+
+    def save_preferences(self, preferences):
+        if not self._live() or self.hotkeys._registered:
+            raise ValueError('Disable global shortcuts before changing saved preferences.')
+        self.hotkeys.validate(preferences.global_shortcuts)
+        previous = self.tray is not None
+        self.set_tray(preferences.tray_icon)
+        try:
+            self.store.save(preferences)
+        except Exception:
+            self.set_tray(previous)
+            raise
+        self.preferences = preferences
+
+    def change_root(self):
+        self.watch_clipboard(False)
+        self.hotkeys.disable()
+        self.reader = None
+        self.set_tray(False)
+        self.store = DesktopPreferenceStore(self.frame.library.root)
+        self.preferences = DesktopPreferences()
+        self.preferences = self.store.load()
+        if self.preferences.tray_icon:
+            self.set_tray(True)
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        self.reader = None
+        self.watch.close()
+        self.timer.Stop()
+        self.frame.Unbind(self.wx.EVT_TIMER, source=self.timer, handler=self._tick)
+        self.frame.Unbind(self.wx.EVT_WINDOW_DESTROY, handler=self._destroyed)
+        errors = []
+        try:
+            self.hotkeys.close()
+        except Exception as exc:
+            errors.append(str(exc))
+        if self.tray is not None:
+            old, self.tray = self.tray, None
+            old.active = False
+            try:
+                if old.IsIconInstalled() and not old.RemoveIcon():
+                    raise RuntimeError('The desktop did not confirm tray-icon removal.')
+            except Exception as exc:
+                errors.append(str(exc))
+            finally:
+                old.Destroy()
+        if errors:
+            raise RuntimeError('Desktop cleanup needs attention: ' + '; '.join(errors))
+
+    def _destroyed(self, event):
+        if event.GetEventObject() is self.frame:
+            try:
+                self.close()
+            except Exception as exc:
+                # Native destruction cannot safely write another UI control.
+                self.cleanup_error = str(exc)
+        event.Skip()
+
+
+def install_desktop_integration(frame):
+    import wx
+    from .builtin_keyboard_commands import plain_caption
+    from .keyboard_settings import register_menu_command
+    from .desktop_settings import show_desktop_settings
+    controller = DesktopIntegration(frame)
+    frame.desktop_integration = controller
+    bar = frame.GetMenuBar()
+    menu = next(bar.GetMenu(index) for index in range(bar.GetMenuCount())
+                if plain_caption(bar.GetMenuLabel(index)) == 'options')
+    menu.AppendSeparator()
+    actions = (
+        ('desktop.settings', 'Desktop integration...', lambda e: show_desktop_settings(frame, controller)),
+        ('desktop.show', 'Show Resonance window', controller.show_window),
+        ('desktop.hide', 'Hide window to tray', controller.hide_window),
+        ('desktop.clipboard_watch', 'Watch clipboard for this library selection',
+         lambda e: controller.watch_clipboard(not controller.watch.enabled)),
+        ('voice.watched_clipboard', 'Open watched clipboard...', controller.open_watched),
+        ('voice.pause', 'Pause or resume current voice reader', lambda e: controller.invoke('voice.pause')),
+        ('voice.stop', 'Stop current voice reader', lambda e: controller.invoke('voice.stop')),
+    )
+    for identity, label, handler in actions:
+        item = (menu.AppendCheckItem(wx.ID_ANY, label) if identity == 'desktop.clipboard_watch'
+                else menu.Append(wx.ID_ANY, label))
+        def invoke(event, handler=handler):
+            if controller._live():
+                try:
+                    handler(event)
+                except Exception as exc:
+                    frame.report(str(exc))
+        frame.Bind(wx.EVT_MENU, invoke, item)
+        register_menu_command(frame, CommandSpec(identity, label), item)
+        controller.items[identity] = item
+    controller._refresh()
+    if controller.preferences.tray_icon:
+        try:
+            controller.set_tray(True)
+        except Exception as exc:
+            frame.report('Saved tray preference is unavailable; the main window remains open. ' + str(exc))
+    return controller

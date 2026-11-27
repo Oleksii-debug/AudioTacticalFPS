@@ -635,6 +635,8 @@ class DesktopFrame(WorkspaceFrame):
         # Older media dialogs use only this panel's quiet/ownership methods.
         # Keep one actual progress owner, shared with canonical task reporting.
         self.operation_progress = self.progress_panel
+        from .desktop_integration import install_desktop_integration
+        install_desktop_integration(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -931,6 +933,11 @@ class DesktopFrame(WorkspaceFrame):
             self.keyboard_commands.change_root(candidate.root)
         if getattr(self, 'progress_panel', None) is not None:
             self.progress_panel.change_root(candidate.root)
+        if getattr(self, 'desktop_integration', None) is not None:
+            try:
+                self.desktop_integration.change_root()
+            except Exception as exc:
+                self.report('Optional desktop features stopped while changing libraries: ' + str(exc))
         self.list_scopes = candidate.list_scopes
         self.refresh_scopes()
         if self.scopes:
@@ -1412,6 +1419,11 @@ class DesktopFrame(WorkspaceFrame):
         if not event.GetVeto():
             self._closing = True
             self.cancel_event.set()
+            if getattr(self, 'desktop_integration', None) is not None:
+                try:
+                    self.desktop_integration.close()
+                except Exception as exc:
+                    self.report(str(exc))
             close_trust_clients = getattr(self, 'close_trust_clients', None)
             if close_trust_clients is not None:
                 close_trust_clients()

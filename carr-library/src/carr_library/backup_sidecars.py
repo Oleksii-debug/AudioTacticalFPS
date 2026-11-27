@@ -26,7 +26,8 @@ MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 ENGINE_SETTINGS_BYTES = 32 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'evidence-drafts.json', 'ocr-language-presets.json', 'progress-preferences.json')
+           'evidence-drafts.json', 'ocr-language-presets.json', 'progress-preferences.json',
+           'desktop-preferences.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -97,6 +98,8 @@ def sidecar_limit(name):
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if name == 'progress-preferences.json':
         return _model('progress_preferences').MAX_BYTES
+    if name == 'desktop-preferences.json':
+        return _model('desktop_preferences').MAX_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
     if maximum := backup_studio.limit(name):
@@ -320,6 +323,8 @@ def validate_sidecar(db, name, raw):
             _model('extract.ocr_languages').validate_presets_bytes(raw)
         elif name == 'progress-preferences.json':
             _model('progress_preferences').validate_progress_preferences(raw)
+        elif name == 'desktop-preferences.json':
+            _model('desktop_preferences').validate_desktop_preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
         elif backup_studio.limit(name) is not None:

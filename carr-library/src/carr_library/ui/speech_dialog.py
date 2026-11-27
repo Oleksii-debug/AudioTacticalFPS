@@ -12,6 +12,36 @@ from ..speech.session import ReaderDraftStore, ReaderResume
 from ..speech.navigation import native_cursor_position, native_insertion_offset, native_selection, select_text_unit
 
 
+def _read_clipboard_text(wx):
+    """Take one explicit Unicode snapshot without modifying the clipboard."""
+    from ..speech._io import text_value
+    clipboard = wx.TheClipboard
+    if not clipboard.Open():
+        raise ValueError('The clipboard is busy. Try again when the other application releases it.')
+    try:
+        if not clipboard.IsSupported(wx.DataFormat(wx.DF_UNICODETEXT)):
+            raise ValueError('The clipboard does not contain Unicode text to read.')
+        data = wx.TextDataObject()
+        if not clipboard.GetData(data):
+            raise ValueError('The clipboard text could not be read. Copy the text again and retry.')
+        text = data.GetText()
+    finally:
+        clipboard.Close()
+    return text_value(text, 'Clipboard reading text')
+
+
+def show_clipboard_reader(parent):
+    """Open the existing reader; voice discovery never starts speech itself."""
+    import wx
+    try:
+        if getattr(parent, '_closing', False):
+            raise ValueError('The library is closing.')
+        text = _read_clipboard_text(wx)
+        show_speech_reader(parent, text=text, title='Clipboard reading copy', recovery_slot='clipboard')
+    except Exception as exc:
+        parent.report(f'The clipboard reading copy could not be opened. {exc}')
+
+
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
                        source_guard=lambda: None, recovery_slot='manual'):
     import wx
@@ -944,6 +974,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     dirty=unsaved, save=save_registered, focus=editor.SetFocus)
                   if coordinator is not None else lambda: None)
     try:
+        desktop = getattr(parent, 'desktop_integration', None)
+        if desktop is not None:
+            dialog._desktop_cleanup = desktop.attach_reader(dialog, pause, stop, lambda: alive)
         capabilities()
         reload()
         autosave_timer.Start(5000)
@@ -955,6 +988,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         cancel.set()
         notices = []
         for cleanup, label in ((unregister, 'Save coordinator'),
+                               (getattr(dialog, '_desktop_cleanup', lambda: None), 'Desktop playback controls'),
                                (autosave_timer.Stop, 'Reading-draft timer'),
                                (playback_timer.Stop, 'Playback timer')):
             try:
@@ -1044,6 +1078,9 @@ def install_speech_actions(frame):
     frame.Bind(wx.EVT_MENU, lambda event: show_speech_reader(frame), item)
     register_menu_command(frame, CommandSpec('voice.reader', 'Voice reader and reading copy',
                                            'main', 'Ctrl+Alt+V'), item)
+    clipboard = menu.Append(wx.ID_ANY, 'Read &clipboard...')
+    frame.Bind(wx.EVT_MENU, lambda event: show_clipboard_reader(frame), clipboard)
+    register_menu_command(frame, CommandSpec('voice.clipboard', 'Read clipboard'), clipboard)
     from .reading_desk import ReadingActions
     from ..speech.source import read_source_range
 
