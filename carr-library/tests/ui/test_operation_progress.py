@@ -247,6 +247,7 @@ class Frame:
         self.active, self.reports, self.notices, self.bindings = True, [], [], []
         self.status = SimpleNamespace(SetValue=self.notices.append)
     def IsActive(self): return self.active
+    def GetId(self): return 101
     def Bind(self, *args): self.bindings.append(args)
     def report(self, message): self.reports.append(message)
 
@@ -474,7 +475,8 @@ def test_worker_player_registration_and_removal_are_marshaled_to_ui(native):
     assert not native.sound.muted and not controller.timer.IsRunning()
 
 
-def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcuts(tmp_path, monkeypatch):
+@pytest.mark.parametrize('replacement_proxy', (False, True), ids=('original-proxy', 'base-destructor-proxy'))
+def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcuts(tmp_path, monkeypatch, replacement_proxy):
     from carr_library.ui.keyboard_settings import KeyboardSettings
     items = []
     class Item:
@@ -517,5 +519,22 @@ def test_installer_adds_native_gauge_query_and_settings_to_configurable_shortcut
     assert install_operation_progress(frame) is controller and len(items) == 2
     destroy = next(binding[1] for binding in frame.bindings if binding[0] == 'destroy')
     skipped = []
-    destroy(SimpleNamespace(GetEventObject=lambda: frame, Skip=lambda: skipped.append(True)))
-    assert controller.closed and skipped == [True]
+    inspected = []
+    def event_object(proxy):
+        inspected.append(proxy)
+        return proxy
+    destroy(SimpleNamespace(GetId=lambda: 102, GetEventObject=lambda: event_object(object()),
+                            Skip=lambda: skipped.append('child')))
+    assert not controller.closed and controller.timer.IsRunning()
+    if replacement_proxy:
+        frame.GetId = lambda: pytest.fail('Cleanup queried a deleted native frame.')
+        frame.IsActive = lambda: pytest.fail('Cleanup queried a deleted native frame.')
+    proxy = object() if replacement_proxy else frame
+    destroy(SimpleNamespace(GetId=lambda: 101, GetEventObject=lambda: event_object(proxy),
+                            Skip=lambda: skipped.append('owner')))
+    assert controller.closed and skipped == ['child', 'owner']
+    assert not controller.timer.IsRunning() and controller.sound.closed
+    assert inspected == []
+    pulses = controller.gauge.pulses
+    controller._tick()
+    assert controller.gauge.pulses == pulses

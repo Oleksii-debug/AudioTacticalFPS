@@ -51,6 +51,7 @@ def install_research_recovery(frame, menu):
     frame.Bind(wx.EVT_MENU, recover, item)
     timer = wx.Timer(frame)
     frame._draft_save_timer = timer
+    owner_id = frame.GetId()
     previous = [None]
     active = True
 
@@ -75,12 +76,14 @@ def install_research_recovery(frame, menu):
 
     def stop_autosave(event):
         nonlocal active
-        if event.GetEventObject() is frame:
-            # wx.Timer does not own its event target. Stop native delivery
-            # while that target still exists, including direct Destroy().
+        if active and event.GetId() == owner_id:
+            # SIP can invalidate the original Python frame before wxFrame
+            # emits this event. Its captured native ID still identifies it;
+            # do not compare replacement proxies or call the dying frame.
+            # Native destruction removes its bindings. This separate timer
+            # must stop before another notification dereferences that owner.
             active = False
             timer.Stop()
-            frame.Unbind(wx.EVT_TIMER, handler=autosave, source=timer)
         event.Skip()
 
     frame.Bind(wx.EVT_WINDOW_DESTROY, stop_autosave)

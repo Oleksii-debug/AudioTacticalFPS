@@ -29,7 +29,11 @@ def main():
         report.update(phase=phase, elapsed_seconds=round(time.monotonic() - started, 3),
             checks=list(checks), failures=list(failures),
             actual_timer_events={case['label']: case['ticks'] for case in cases},
-            destroyed={case['label']: case['destroyed'] for case in cases})
+            actual_progress_timer_events={case['label']: case['progress_ticks'] for case in cases},
+            destroyed={case['label']: case['destroyed'] for case in cases},
+            owner_ids={case['label']: case['owner_id'] for case in cases},
+            owner_destroy_events={case['label']: case['destroy_events'] for case in cases},
+            original_wrapper_deleted_on_destroy={case['label']: case['wrapper_deleted'] for case in cases})
         raw = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + '\n'
         if args.output is not None:
             args.output.write_text(raw, encoding='utf-8')
@@ -47,17 +51,18 @@ def main():
         import wx.siplib
         from carr_library.application import LibraryApp
         from carr_library.ui.desktop_app import DesktopFrame
-        from carr_library.ui import save_actions
+        from carr_library.ui import operation_progress, save_actions
         checkout = Path(__file__).resolve().parents[1]
-        installed = Path(save_actions.__file__).resolve()
         purelib = Path(sysconfig.get_path('purelib')).resolve()
-        if installed.is_relative_to(checkout) or not installed.is_relative_to(purelib):
-            raise AssertionError('The probe must import the installed application.')
-        expected = checkout / 'src' / 'carr_library' / 'ui' / 'save_actions.py'
-        if installed.read_bytes() != expected.read_bytes():
-            raise AssertionError('The installed draft timer differs from the reviewed checkout.')
-        report.update(installed_save_actions=str(installed),
-                      installed_save_actions_sha256=sha256(installed.read_bytes()).hexdigest())
+        for name, module in (('save_actions', save_actions), ('operation_progress', operation_progress)):
+            installed = Path(module.__file__).resolve()
+            if installed.is_relative_to(checkout) or not installed.is_relative_to(purelib):
+                raise AssertionError('The probe must import the installed application.')
+            expected = checkout / 'src' / 'carr_library' / 'ui' / (name + '.py')
+            if installed.read_bytes() != expected.read_bytes():
+                raise AssertionError('The installed timer module differs from the reviewed checkout: ' + name)
+            report['installed_' + name] = str(installed)
+            report['installed_' + name + '_sha256'] = sha256(installed.read_bytes()).hexdigest()
         active = [True]
 
         class ProbeApp(wx.App):
@@ -105,6 +110,9 @@ def main():
                     frame = DesktopFrame(library)
                     case = {'label': label, 'frame': frame,
                             'timer': frame._draft_save_timer, 'ticks': 0,
+                            'progress': frame.operation_progress, 'progress_ticks': 0,
+                            'owner_id': frame.GetId(), 'destroy_events': 0,
+                            'wrapper_deleted': None,
                             'destroyed': False, 'executor': frame.executor,
                             'cancel': frame.cancel_event}
                     cases.append(case)
@@ -118,28 +126,46 @@ def main():
                         state['ticks'] += 1
                         event.Skip()
 
+                    def progress_tick(event, state=case):
+                        state['progress_ticks'] += 1
+                        event.Skip()
+
                     def destroyed(event, state=case):
-                        if event.GetEventObject() is state['frame']:
+                        # The original SIP wrapper can already be invalid when
+                        # the base wxFrame destructor sends this native event.
+                        # Identify its live-captured ID without calling it.
+                        if event.GetId() == state['owner_id']:
                             state['destroyed'] = True
+                            state['destroy_events'] += 1
+                            state['wrapper_deleted'] = wx.siplib.isdeleted(state['frame'])
                             checkpoint(state['label'] + ': owner destroy event')
                         event.Skip()
 
                     frame._dirty = dirty
                     frame.Bind(wx.EVT_TIMER, tick, case['timer'])
+                    frame.Bind(wx.EVT_TIMER, progress_tick, case['progress'].timer)
                     frame.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
                     frame.Show()
                     assert case['timer'].IsRunning()
                     assert case['timer'].GetInterval() == 3000
                     assert case['timer'].GetOwner() is frame
+                    case['progress'].start('Checking native timer lifetime')
+                    assert case['progress'].timer.IsRunning()
+                    assert case['progress'].timer.GetInterval() == 250
+                    assert case['progress'].timer.GetOwner() is frame
                     wx.Panel(frame).Destroy()
+                    assert not case['destroyed']
                     checkpoint(label + ': shown; child destroyed; timer owner verified')
 
                 checks.append('Both actual draft timers initially target their own DesktopFrame')
 
                 def finish():
                     assert all(case['destroyed'] for case in cases)
+                    assert all(case['destroy_events'] == 1 for case in cases)
                     assert all(not case['timer'].IsRunning() for case in cases)
                     assert all(case['ticks'] == case['stopped_ticks'] for case in cases)
+                    assert all(case['progress'].closed and not case['progress'].timer.IsRunning() for case in cases)
+                    assert all(case['progress_ticks'] == case['stopped_progress_ticks'] for case in cases)
                     checks.append('MainLoop remained usable without new ticks beyond the original timer period')
                     checkpoint('late-event interval complete')
                     app.ExitMainLoop()
@@ -151,15 +177,18 @@ def main():
                     assert all(wx.siplib.isdeleted(case['frame']) for case in cases)
                     assert all(not wx.siplib.isdeleted(case['timer']) for case in cases)
                     assert all(not case['timer'].IsRunning() for case in cases)
+                    assert all(case['progress'].closed and not case['progress'].timer.IsRunning() for case in cases)
                     for case in cases:
                         case['stopped_ticks'] = case['ticks']
-                    checks.append('Close and direct Destroy stopped their native draft timers')
+                        case['stopped_progress_ticks'] = case['progress_ticks']
+                    checks.append('Close and direct Destroy stopped their native draft and active progress timers')
                     checkpoint('both owners deleted; stopped timers retained for late-event observation')
                     later(3400, finish)
 
                 def wait_for_live_tick():
                     assert all(case['timer'].IsRunning() for case in cases)
-                    if not all(case['ticks'] > 0 for case in cases):
+                    assert all(case['progress'].timer.IsRunning() for case in cases)
+                    if not all(case['ticks'] > 0 and case['progress_ticks'] > 0 for case in cases):
                         later(50, wait_for_live_tick)
                         return
                     checks.append('Child destruction preserved actual live 3000 ms timer delivery')

@@ -879,9 +879,22 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
                     roots.append(str(package_root.parent))
                 bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
                              "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-                process = subprocess.Popen([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
+                executable = sys.executable
+                environment = dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8')
+                if (os.name == 'nt' and sys.prefix != sys.base_prefix
+                        and getattr(sys, '_base_executable', None)
+                        and os.path.normcase(sys._base_executable) != os.path.normcase(executable)):
+                    # CPython multiprocessing uses this pair on Windows: own
+                    # the interpreter, not the venv redirector, while retaining
+                    # the selected executable/prefix and its site-packages.
+                    # Waiting for a killed redirector alone can race the real
+                    # worker's release of its native writer-lock handle.
+                    environment.pop('PYTHONEXECUTABLE', None)
+                    environment['__PYVENV_LAUNCHER__'] = executable
+                    executable = sys._base_executable
+                process = subprocess.Popen([executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
                                            stdin=input_stream, stdout=output, stderr=errors,
-                                           env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
+                                           env=environment,
                                            **options)
                 deadline = time.monotonic() + timeout
                 while process.poll() is None:

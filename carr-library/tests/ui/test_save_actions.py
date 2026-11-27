@@ -25,6 +25,7 @@ class SaveActionsLifetime(unittest.TestCase):
         self.timer.Start, self.timer.Stop = start, Mock(side_effect=stop)
         self.frame = SimpleNamespace(
             working=False, _closing=False, active=('library', 'topic'),
+            GetId=Mock(return_value=101),
             library=SimpleNamespace(root=Path('synthetic-library')),
             _dirty=Mock(return_value=True), menu_bar=Mock(), report=Mock(), Close=Mock(),
             evidence=SimpleNamespace(displayed=SimpleNamespace(evidence_id='evidence'),
@@ -43,8 +44,11 @@ class SaveActionsLifetime(unittest.TestCase):
         self.assertTrue(self.timer.running)
         self.assertEqual(self.timer.interval, 3000)
 
-    def destroy(self, owner):
-        event = SimpleNamespace(GetEventObject=lambda: owner, Skip=Mock())
+    def destroy(self, owner, *, event_id=None):
+        if event_id is None:
+            event_id = 101 if owner is self.frame else 102
+        event = SimpleNamespace(GetId=lambda: event_id,
+                                GetEventObject=Mock(return_value=owner), Skip=Mock())
         callback = self.bindings.get('destroy')
         if callback is not None:
             callback(event)
@@ -72,7 +76,7 @@ class SaveActionsLifetime(unittest.TestCase):
         self.destroy(self.frame)
         self.assertFalse(self.timer.running)
         self.timer.Stop.assert_called_once_with()
-        self.frame.Unbind.assert_called_once_with('timer', handler=self.tick, source=self.timer)
+        self.frame.Unbind.assert_not_called()
         self.frame._dirty.side_effect = AssertionError('A queued tick touched a destroyed frame.')
         self.tick(None)
         self.frame._dirty.assert_not_called()
@@ -84,6 +88,32 @@ class SaveActionsLifetime(unittest.TestCase):
 
     def test_direct_destroy_also_blocks_a_previously_queued_autosave(self):
         self.assert_owner_stopped()
+
+    def test_base_destructor_proxy_stops_timer_without_accessing_invalid_original_wrapper(self):
+        # SIP's generated subclass destructor invalidates the original wrapper
+        # before the native base destructor sends its destroy event.
+        self.frame.GetId.side_effect = RuntimeError('Original native frame was deleted.')
+        self.frame.Unbind.side_effect = RuntimeError('Original native frame was deleted.')
+        self.frame._dirty.side_effect = AssertionError('A late tick touched a deleted frame.')
+        self.destroy(object(), event_id=101)
+        self.assertFalse(self.timer.running)
+        self.timer.Stop.assert_called_once_with()
+        self.frame.Unbind.assert_not_called()
+        self.frame.GetId.assert_called_once_with()
+        self.tick(None)
+        self.frame._dirty.assert_not_called()
+        self.write.assert_not_called()
+
+    def test_repeated_owner_notification_stops_once_and_keeps_queued_ticks_inert(self):
+        self.destroy(object(), event_id=101)
+        self.destroy(object(), event_id=101)
+        self.assertFalse(self.timer.running)
+        self.timer.Stop.assert_called_once_with()
+        self.frame.Unbind.assert_not_called()
+        self.frame._dirty.side_effect = AssertionError('A late tick touched a deleted frame.')
+        self.tick(None)
+        self.frame._dirty.assert_not_called()
+        self.write.assert_not_called()
 
 
 if __name__ == '__main__':

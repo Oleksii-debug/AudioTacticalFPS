@@ -76,6 +76,7 @@ def make_frame(root, bar):
     root.mkdir(exist_ok=True, parents=True)
     frame = SimpleNamespace(menu_bar=bar, library=SimpleNamespace(root=root), active=('library', 'topic'),
                             working=False, busy=False, _closing=False, report=Mock(),
+                            GetId=lambda: 101,
                             IsBeingDeleted=lambda: False, Bind=Mock(), Unbind=Mock(),
                             choice=Control(), status=Control())
     frame.handler = SimpleNamespace(ProcessEvent=Mock(return_value=True))

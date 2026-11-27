@@ -10,6 +10,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -41,16 +42,72 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False):
+def _wait_for_barrier(process, marker, *, timeout=15.0):
+    """Bound startup separately from the real supervisor timeout under test."""
+    deadline = time.monotonic() + timeout
+    try:
+        while True:
+            try:
+                raw = marker.read_bytes()
+            except FileNotFoundError:
+                raw = None
+            if raw is not None:
+                # The child atomically publishes the entire PID acknowledgement.
+                assert raw.endswith(b'\n') and raw[:-1].isdigit(), raw
+                pid = int(raw[:-1])
+                assert pid > 0, raw
+                return pid
+            if process.poll() is not None:
+                raise AssertionError(
+                    f'Import worker exited before its barrier: {process.returncode}')
+            if time.monotonic() >= deadline:
+                raise AssertionError(
+                    f'Import worker did not reach its barrier within {timeout}s')
+            time.sleep(0.01)
+    except BaseException:
+        # Popen has not returned to _invoke yet, so this fixture owns cleanup.
+        worker._stop(process)
+        raise
+
+
+def _child_exit_check(request, process, pid):
+    """Retain the actual Windows child's handle, including behind a venv launcher."""
+    if sys.platform != 'win32':
+        assert pid == process.pid
+        return lambda: process.poll() is not None
+    import ctypes
+    from ctypes import wintypes
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel.WaitForSingleObject.restype = wintypes.DWORD
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    handle = kernel.OpenProcess(0x00100000, False, pid)  # SYNCHRONIZE only.
+    if not handle:
+        raise ctypes.WinError(ctypes.get_last_error())
+    request.addfinalizer(lambda: kernel.CloseHandle(handle))
+    return lambda: kernel.WaitForSingleObject(handle, 0) == 0  # WAIT_OBJECT_0.
+
+
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False,
+             arm_timeout=False, request=None, startup_delay=0.0):
     """Pause the real child before/after commit, without replacing its result."""
     popen = subprocess.Popen
+    children = []
     code = f'''
 import os, time
 from pathlib import Path
 from carr_library.application import LibraryApp, _CatalogPublisher
 from carr_library.ingest import worker as _worker
 def _pause():
-    Path({str(marker)!r}).write_text('observed', encoding='utf-8')
+    time.sleep({startup_delay!r})
+    marker = Path({str(marker)!r})
+    temporary = marker.with_name(marker.name + '.tmp')
+    temporary.write_bytes((str(os.getpid()) + '\\n').encode('ascii'))
+    os.replace(temporary, marker)
     if {exit_after!r}:
         os._exit(7)
     time.sleep(20)
@@ -93,9 +150,62 @@ LibraryApp._import_file = _replay
             return popen(command, **options)
         command[index] = ('import sys,runpy\nsys.path[:0]=sys.argv[1:]\n' + code
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-        return popen(command, **options)
+        process = popen(command, **options)
+        child = dict(process=process)
+        children.append(child)
+        if arm_timeout:
+            assert request is not None
+            # The request is already in Popen's temporary stdin file. Wait for
+            # the actual SQL boundary before _invoke starts its unchanged clock.
+            # No production timeout, clock, result, or stop operation is replaced.
+            try:
+                pid = _wait_for_barrier(process, marker)
+                child['exited'] = _child_exit_check(request, process, pid)
+            except BaseException:
+                worker._stop(process)
+                raise
+        return process
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    return children
+
+
+def _assert_reaped(children, *, acknowledged=False):
+    assert len(children) == 1, children
+    child = children[0]
+    assert child['process'].poll() is not None
+    assert child['process'].wait(timeout=1) == child['process'].returncode
+    if acknowledged:
+        assert child['exited'](), 'The acknowledged native child is still running.'
+
+
+@pytest.mark.parametrize('child_code', ('import time; time.sleep(20)', 'pass'),
+                         ids=('missing-barrier', 'exit-before-barrier'))
+def test_barrier_startup_is_bounded_and_reaps_unacknowledged_child(tmp_path, child_code):
+    options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
+                | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)}
+               if sys.platform == 'win32' else {'start_new_session': True})
+    process = subprocess.Popen([sys.executable, '-I', '-B', '-c', child_code], **options)
+    with pytest.raises(AssertionError, match='before its barrier|did not reach its barrier'):
+        _wait_for_barrier(process, tmp_path / 'never-published', timeout=0.1)
+    assert process.poll() is not None
+    assert process.wait(timeout=1) == process.returncode
+
+
+def test_timeout_follows_acknowledged_barrier_after_slow_startup(tmp_path, monkeypatch, request):
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Independent startup budget')
+    source = _source(tmp_path, 'txt')
+    original = source.read_bytes()
+    marker = tmp_path / 'delayed-after-commit'
+    children = _barrier(monkeypatch, marker, boundary='after', arm_timeout=True,
+                        request=request, startup_delay=0.25)
+    result = worker.run_request(app.root, workspace, source, _metadata(), Config(), timeout=0.1)
+    assert marker.exists(), result
+    _assert_reaped(children, acknowledged=True)
+    assert result['state'] == 'complete' and result['publication_recovered'] is True, result
+    assert source.read_bytes() == original
+    assert app.assets.resolve(result['asset']).read_bytes() == original
 
 
 @pytest.mark.parametrize('arguments, expected', [
@@ -113,18 +223,20 @@ def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, argumen
 
 @pytest.mark.parametrize('kind', ('txt', 'pdf', 'docx'))
 @pytest.mark.parametrize('termination', ('cancel', 'crash', 'timeout'))
-def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind, termination):
+def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, request, kind, termination):
     app = LibraryApp(tmp_path / 'private')
     workspace = app.create_workspace('Publication')
     collection = app.create_collection(workspace, 'Published collection')
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
-    _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
+    children = _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
+                        arm_timeout=termination == 'timeout', request=request)
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
         timeout=3.0 if termination == 'timeout' else 15.0)
     assert marker.exists(), result
+    _assert_reaped(children, acknowledged=termination == 'timeout')
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
     assert result['verified'] is (kind == 'txt')
@@ -150,16 +262,19 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
 
 @pytest.mark.parametrize('kind', ('pdf', 'docx'))
 @pytest.mark.parametrize('termination', ('cancel', 'crash', 'timeout'))
-def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypatch, kind, termination):
+def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypatch, request, kind, termination):
     app = LibraryApp(tmp_path / 'private')
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
+    original = source.read_bytes()
     marker = tmp_path / 'before-commit'
-    _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
+    children = _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
+                        arm_timeout=termination == 'timeout', request=request)
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
         timeout=3.0 if termination == 'timeout' else 15.0)
     assert marker.exists(), result
+    _assert_reaped(children, acknowledged=termination == 'timeout')
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:
@@ -169,6 +284,7 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     record = worker.load_request(app.root, result['request_id'])
     assert record['publication_candidate'] is not None
     assert record['state'] == result['state']
+    assert source.read_bytes() == original
 
 
 @pytest.mark.parametrize('kind', ('txt', 'pdf', 'docx'))
