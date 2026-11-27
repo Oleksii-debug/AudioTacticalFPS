@@ -202,10 +202,17 @@ def _fingerprint_studio(tmp_path, voices):
     from types import SimpleNamespace
     from carr_library.studio.render import ProductionService
 
-    # Cancellation happens before any audio operation. An unexpected render
-    # cannot succeed through this inventory-only fixture runtime.
+    # Cancellation happens before any audio operation. Supply regular byte
+    # identities for the production cache seal without a runnable audio engine.
+    # An unexpected render still cannot succeed through this fixture runtime.
+    executables = {}
+    for name in ('ffmpeg', 'ffprobe'):
+        path = tmp_path / (name + '-identity-fixture')
+        path.write_bytes((name + ': synthetic identity bytes; never executed.').encode('ascii'))
+        executables[name] = path
     service = ProductionService(tmp_path / 'state', voices=voices,
         runtime_factory=lambda *_args, **_kwargs: SimpleNamespace(
+            **executables,
             capabilities=lambda: {'fixture': 'fingerprint boundary; no audio engine'}))
     output = tmp_path / 'output'
     output.mkdir()
