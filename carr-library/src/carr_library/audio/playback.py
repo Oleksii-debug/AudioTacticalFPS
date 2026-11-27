@@ -7,6 +7,7 @@ used. See docs/AUDIO_PLAYBACK.md for the reviewed native contracts and limits.
 from __future__ import annotations
 
 from collections import deque
+from contextlib import nullcontext
 import ctypes as C
 from dataclasses import asdict, dataclass, replace
 import math
@@ -285,12 +286,14 @@ class PCMPlayer:
     on_status via wx.CallAfter. stop() joins the worker with a bounded timeout.
     The private backend hook is for state-machine tests, not native acceptance.
     """
-    def __init__(self, *, buffer_ms=80, buffer_count=4, on_status=None, _backend_factory=None):
+    def __init__(self, *, buffer_ms=80, buffer_count=4, on_status=None, _backend_factory=None,
+                 progress_hub=None):
         if type(buffer_ms) is not int or not 10 <= buffer_ms <= 250:
             raise ValueError("Playback buffers must be between 10 and 250 milliseconds.")
         if type(buffer_count) is not int or not 2 <= buffer_count <= 8:
             raise ValueError("Playback requires between two and eight buffers.")
         self.buffer_ms, self.buffer_count, self.on_status = buffer_ms, buffer_count, on_status
+        self._progress_hub = progress_hub
         self._factory = _backend_factory or _WinMMBackend
         self._native = _backend_factory is None
         self._lock, self._commands = threading.Lock(), queue.Queue(maxsize=32)
@@ -404,6 +407,14 @@ class PCMPlayer:
         self.close()
 
     def _run(self, path, expected_identity, info, start, end, device_id):
+        # The native worker owns actual device activity, not the caller's
+        # short-lived progress binding. Keep quiet while paused and through
+        # cleanup; release even after source/device errors or observer failure.
+        activity = self._progress_hub.media_activity() if self._progress_hub is not None else nullcontext()
+        with activity:
+            self._run_device(path, expected_identity, info, start, end, device_id)
+
+    def _run_device(self, path, expected_identity, info, start, end, device_id):
         backend, pending = None, deque()
         state, failure, cleanup_error = "stopped", None, None
         base, cursor, completed = start, start, 0

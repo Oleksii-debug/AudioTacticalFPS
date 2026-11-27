@@ -449,3 +449,151 @@ def test_direct_seek_respects_active_endpoint(tmp_path):
         assert devices[0].resets == 1
     finally:
         player.close()
+
+
+def test_native_media_lifetime_outlives_reporter_binding_and_includes_pause(tmp_path):
+    from carr_library.progress import ProgressHub, current_progress
+    hub = ProgressHub()
+    reporter = hub.start("Open player")
+    player, devices = player_fixture(progress_hub=hub)
+    try:
+        with reporter.bind():
+            player.play(source(tmp_path / "media-lifetime.wav"))
+            wait(player, lambda status: status.state == "playing")
+        assert current_progress() is None and hub.media_active
+        player.pause()
+        wait(player, lambda status: status.state == "paused")
+        assert hub.media_active
+        player.resume()
+        wait(player, lambda status: status.state == "playing")
+        closed_while_active = []
+        close = devices[0].close
+        def closing():
+            closed_while_active.append(hub.media_active)
+            close()
+        devices[0].close = closing
+        player.stop()
+        assert closed_while_active == [True]
+        assert devices[0].closed and not hub.media_active
+        player.close()
+        assert not hub.media_active
+    finally:
+        player.close()
+
+
+@pytest.mark.parametrize("ending", ["complete", "device-error"])
+def test_native_media_context_releases_on_worker_exit_without_a_ui_poll(tmp_path, ending):
+    from carr_library.progress import ProgressHub
+    hub = ProgressHub()
+    player, devices = player_fixture(progress_hub=hub)
+    try:
+        player.play(source(tmp_path / "media-ending.wav"), start_seconds=.9)
+        wait(player, lambda status: status.state == "playing")
+        assert hub.media_active
+        if ending == "complete":
+            devices[0].advance()
+        else:
+            def failed():
+                raise PlaybackError("Synthetic media device failed")
+            devices[0].position = failed
+        # The worker must release media ownership itself. There is no status()
+        # or UI timer call between this event and the lifecycle assertion.
+        player._thread.join(3)
+        assert not player._thread.is_alive()
+        assert not hub.media_active and devices[0].closed
+        assert player.status().state == ("completed" if ending == "complete" else "error")
+    finally:
+        player.close()
+
+
+def test_native_media_open_failure_releases_context_before_returning_error(tmp_path):
+    from carr_library.progress import ProgressHub
+    hub, observed = ProgressHub(), []
+    def unavailable(info, device_id):
+        observed.append(hub.media_active)
+        raise PlaybackUnavailable("Synthetic output unavailable")
+    player = PCMPlayer(_backend_factory=unavailable, progress_hub=hub)
+    try:
+        player.play(source(tmp_path / "media-open-error.wav"))
+        player._thread.join(3)
+        assert not player._thread.is_alive()
+        assert observed == [True] and not hub.media_active
+        assert player.status().state == "unavailable"
+    finally:
+        player.close()
+
+
+def test_native_media_cleanup_error_releases_only_after_cleanup_attempt(tmp_path):
+    from carr_library.progress import ProgressHub
+    hub = ProgressHub()
+    player, devices = player_fixture(progress_hub=hub)
+    player.play(source(tmp_path / "media-cleanup-error.wav"))
+    wait(player, lambda status: status.state == "playing")
+    observed, close = [], devices[0].close
+    def failed_close():
+        observed.append(hub.media_active)
+        close()  # No actual driver owns this synthetic fixture.
+        raise PlaybackError("Synthetic close error")
+    devices[0].close = failed_close
+    with pytest.raises(PlaybackError, match="Synthetic close error"):
+        player.close()
+    assert observed == [True] and devices[0].closed
+    assert not hub.media_active and not player._thread.is_alive()
+
+
+def test_concurrent_native_players_release_only_their_own_media_context(tmp_path):
+    from carr_library.progress import ProgressHub
+    hub = ProgressHub()
+    first, _ = player_fixture(progress_hub=hub)
+    second, _ = player_fixture(progress_hub=hub)
+    path = source(tmp_path / "two-media-owners.wav")
+    try:
+        first.play(path)
+        second.play(path)
+        wait(first, lambda status: status.state == "playing")
+        wait(second, lambda status: status.state == "playing")
+        assert hub.media_active
+        first.close()
+        assert hub.media_active and second.status().state == "playing"
+        second.close()
+        assert not hub.media_active
+    finally:
+        first.close()
+        second.close()
+
+
+def test_failed_native_thread_start_never_acquires_a_media_context(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from carr_library.progress import ProgressHub
+    from carr_library.audio import playback
+    hub = ProgressHub()
+    player, devices = player_fixture(progress_hub=hub)
+    class Unstarted:
+        def __init__(self, **kwargs):
+            pass
+        def start(self):
+            raise RuntimeError("Synthetic thread allocation failure")
+        def is_alive(self):
+            return False
+    monkeypatch.setattr(playback, "threading", SimpleNamespace(
+        Thread=Unstarted, current_thread=threading.current_thread))
+    try:
+        with pytest.raises(RuntimeError, match="thread allocation"):
+            player.play(source(tmp_path / "media-thread-failure.wav"))
+        assert not devices and not hub.media_active
+    finally:
+        player.close()
+
+
+def test_default_player_does_not_capture_notification_reporter_as_media(tmp_path):
+    from carr_library.progress import ProgressHub
+    hub = ProgressHub()
+    reporter = hub.start("Notification output")
+    with reporter.bind():
+        player, _ = player_fixture()
+    try:
+        player.play(source(tmp_path / "notification-output.wav"))
+        wait(player, lambda status: status.state == "playing")
+        assert not hub.media_active
+    finally:
+        player.close()
