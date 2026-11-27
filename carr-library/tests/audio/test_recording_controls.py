@@ -172,10 +172,19 @@ def test_changed_runtime_while_paused_refuses_before_second_input(capture):
 
 def test_initial_pause_never_opens_input_and_has_bounded_wait(capture, monkeypatch):
     monkeypatch.setattr(recording, 'MAX_PAUSED_SECONDS', .02)
-    started = time.monotonic()
+    paused_at = []
+
+    def state_changed(state):
+        if state.state == 'paused' and not paused_at:
+            # Admission and immutable runtime validation precede the pause budget.
+            paused_at.append(time.monotonic())
+
     with pytest.raises(AudioError, match='pause allowance'):
-        capture.service.capture(capture.device.id, options=capture.options, pause_requested=lambda: True)
-    assert time.monotonic() - started < 1 and capture.runs == []
+        capture.service.capture(capture.device.id, options=capture.options,
+                                pause_requested=lambda: True, state_changed=state_changed)
+    assert capture.runs == []
+    assert paused_at, 'The real capture must acknowledge Pause before its allowance expires.'
+    assert time.monotonic() - paused_at[0] < 1
     assert not list(capture.service.root.glob('.pending-*'))
 
 
