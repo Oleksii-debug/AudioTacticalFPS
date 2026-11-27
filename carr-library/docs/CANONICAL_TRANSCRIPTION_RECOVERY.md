@@ -158,3 +158,27 @@ At authoring these changes are **NOT_RUN**: no compilation, inference,
 speech quality, provider/model qualification or NVDA claim is inferred from the
 owner implementation or from static review. Exact source/installed/native
 qualification is recorded separately by the committed focused gate.
+
+
+### Exact focused Windows gate
+
+`.github/workflows/carr-legacy-transcription.yml` runs 265 exact source cases,
+the same 265 installed cases, and 53 exact native-event assertions. The literal
+function-multiplicity and native-label Counters are committed in
+`scripts/legacy_transcription_oracles.json`. Each test phase uses the existing
+isolated acceptance harness, the complete tracked-checkout attestation, the
+declared source-wheel package inventory and all installed Python file hashes.
+Copied fixtures are separately hashed. The full native module-origin map and
+bytes are checked before/after, then matched to the exact installed wheel.
+
+The job has a 75-minute bound, each test child 1200 seconds with a 22-minute
+outer step, and the native probe a 50-second watchdog with a five-minute outer
+step. Raw textual receipts, logs and JUnit are always uploaded. Timeout,
+missing/extra/skipped cases, mismatched identities or any failed phase produce
+FAIL. The unchanged shared test helper's optional `actual_ffmpeg` field is null
+for this gate: no FFmpeg, recognizer or real model is downloaded or executed.
+Current preparation uses a public nonexecutable runtime-inventory fixture;
+the broader retained-service regression tests use their existing harmless
+protocol children. The 56 production package pins are the existing integrated
+lock, including signed-admission dependencies. No private media, model or
+runtime payload enters the evidence artifact.
