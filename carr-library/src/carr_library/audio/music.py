@@ -504,6 +504,7 @@ def _neural(runtime, spec, output, *, sample_rate, channels, cancelled, progress
         env.update({'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1', 'HF_DATASETS_OFFLINE': '1',
                     'HF_HUB_DISABLE_TELEMETRY': '1', 'DO_NOT_TRACK': '1', 'PYTHONDONTWRITEBYTECODE': '1',
                     'HF_HOME': str(config.directory / 'hf-cache'), 'TORCH_HOME': str(stage / 'torch-cache'),
+                    'NUMBA_CACHE_DIR': str(stage / 'numba-cache'),
                     'TMPDIR': str(stage), 'TEMP': str(stage), 'TMP': str(stage),
                     'ACESTEP_CHECKPOINTS_DIR': str(config.directory / 'checkpoints'),
                     'ACESTEP_DISABLE_TQDM': '1'})

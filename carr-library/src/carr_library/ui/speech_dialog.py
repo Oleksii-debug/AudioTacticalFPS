@@ -21,11 +21,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     cancel = threading.Event()
     audio_files = TemporaryDirectory(prefix='research-reader-')
     player = WavePlayer()
-    progress = getattr(parent, 'operation_progress', None)
+    progress = getattr(parent, 'progress_panel', None)
     if progress is not None:
         progress.register_player(player)
     document = ReadingDocument(text, title=title)
     registry = None
+    owned_registries = set()
+    owned_progress_voices = set()
     voices = ()
     alive = True
     busy = False
@@ -163,20 +165,25 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         selected = voice_choice.GetSelection()
         if progress is None or not 0 <= selected < len(voices):
             return
-        library_root = Path(parent.library.root)
-        voice_id = voices[selected].id
+        root, voice_id = Path(parent.library.root), voices[selected].id
+
+        def activate():
+            provider = activate_progress_voice(root, voice_id)
+            owned_progress_voices.add(provider)
+            return provider
 
         def activated(provider):
             try:
-                progress.set_speech_provider(provider, root=library_root)
+                progress.set_speech_provider(provider, root=root)
+                owned_progress_voices.discard(provider)
             except Exception:
                 provider.close()
                 raise
-            progress.settings_dialog()
+            progress.settings()
             report(f'Progress voice selected for this session: {provider.label}. '
                    f'Sound mode: {progress.preferences.mode}.')
 
-        run(lambda: activate_progress_voice(library_root, voice_id), activated)
+        run(activate, activated)
 
     def start_playback(action):
         generation = playback_generation
@@ -189,12 +196,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
                 from ..runtime_settings import voice_registry
-                return voice_registry(Path(library_root) / 'state')
-            return VoiceRegistry.discover()
+                found = voice_registry(Path(library_root) / 'state', cancelled=cancel.is_set)
+            else:
+                found = VoiceRegistry.discover(cancelled=cancel.is_set)
+            owned_registries.add(found)
+            return found
 
         def loaded(value):
             nonlocal registry, voices, document, source_loaded, draft_store, recovered, recovery_notice
+            previous = registry
             registry, source = value
+            if previous is not None and previous is not registry:
+                previous.close()
+                owned_registries.discard(previous)
             voices = registry.voices()
             if source is not None:
                 source_guard()
@@ -229,8 +243,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             else:
                 report(recovery_notice + 'No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
-        run(lambda: (discover_configured(),
-                     source_loader(cancel.is_set) if not source_loaded else None), loaded)
+        def load():
+            source = source_loader(cancel.is_set) if not source_loaded else None
+            return discover_configured(), source
+        run(load, loaded)
 
     def sync_document():
         document.set_text(editor.GetValue())
@@ -389,7 +405,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return False
 
     def open_project(event=None):
-        nonlocal document, save_path, draft_store, recovery_notice
+        nonlocal document, save_path, playback_generation, draft_store, recovery_notice
         if busy:
             report('Stop the current render before opening another document.', focus=True)
             return
@@ -417,6 +433,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     or loaded.source_anchor != document.source_anchor):
                 raise ValueError('Open unrelated or unbound reading projects in the standalone voice reader.')
             player.stop()
+            playback_generation += 1
             if progress is not None:
                 progress.refresh_audio_state()
             document, save_path = loaded, selected
@@ -503,6 +520,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     dialog.SetAcceleratorTable(wx.AcceleratorTable(accelerators))
     autosave_timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, autosave_timer)
+    from .save_all import SaveResult, coordinator_for
+    coordinator = coordinator_for(parent)
+    def unsaved():
+        sync_document()
+        return bool(document.text) and document.dirty
+    def save_registered(completed):
+        if busy:
+            completed(SaveResult(False, 'Speech is running; stop it before saving the reading copy.'))
+        else:
+            completed(SaveResult(bool(save_project()), 'The reading copy was not saved.'))
+    unregister = (coordinator.register('reading.' + str(id(dialog)), 'Voice reading copy',
+                    dirty=unsaved, save=save_registered, focus=editor.SetFocus)
+                  if coordinator is not None else lambda: None)
     try:
         capabilities()
         reload()
@@ -512,64 +542,96 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     finally:
         alive = False
         cancel.set()
-        silence_confirmed = False
-        worker_finished = False
         notices = []
+        for cleanup, label in ((unregister, 'Save coordinator'),
+                               (autosave_timer.Stop, 'Reading-draft timer')):
+            try:
+                cleanup()
+            except Exception as exc:
+                notices.append(f'{label} could not be detached: {exc}')
+        silence_confirmed = False
         try:
+            player.close()
+            silence_confirmed = True
+        except Exception as exc:
+            notices.append(f'Playback device reported a close error: {exc}')
+        if progress is not None:
             try:
-                autosave_timer.Stop()
-            except (OSError, RuntimeError) as exc:
-                notices.append(f'Reading-draft timer could not be stopped: {exc}')
-            try:
-                player.close()
-                silence_confirmed = True
-            except (OSError, RuntimeError) as exc:
-                notices.append(f'Playback device reported a close error: {exc}')
-            if progress is not None:
-                try:
-                    progress.unregister_player(player, silence_confirmed=silence_confirmed)
-                except Exception as exc:
-                    notices.append(f'Playback progress feedback could not be refreshed: {exc}')
-            # Never remove a worker's output while it may still be writing it.
-            try:
-                executor.shutdown(wait=True, cancel_futures=True)
-                worker_finished = True
-            except (OSError, RuntimeError) as exc:
-                notices.append(f'The reading worker has not confirmed shutdown: {exc}')
-            removed = False
-            if silence_confirmed and worker_finished:
-                try:
+                progress.unregister_player(player, silence_confirmed=silence_confirmed)
+            except Exception as exc:
+                notices.append(f'Playback progress feedback could not be refreshed: {exc}')
+
+        def retain_resources(resources):
+            retained = getattr(parent, '_reader_playback_retained', None)
+            if not isinstance(retained, list):
+                retained = []
+                parent._reader_playback_retained = retained
+            retained.append((player, audio_files, executor, resources))
+
+        # The serial worker releases registries and temporary output only after
+        # active synthesis/discovery exits; closing the UI never waits for it.
+        class ReaderResources:
+            def close(self):
+                errors = []
+                for owned in (*owned_registries, *owned_progress_voices):
+                    try:
+                        owned.close()
+                    except Exception as exc:
+                        errors.append(str(exc))
+                if silence_confirmed:
                     audio_files.cleanup()
-                    removed = True
-                except (OSError, RuntimeError) as exc:
-                    notices.append(f'Temporary reading audio could not be removed: {exc}')
-            if not removed:
-                # A failed MCI close can leave its WAV open. Keep its private
-                # directory alive with the application instead of deleting an
-                # uncertain transport's input or losing its cleanup handle.
-                retained = getattr(parent, '_reader_playback_retained', None)
-                if not isinstance(retained, list):
-                    retained = []
-                    parent._reader_playback_retained = retained
-                retained.append((player, audio_files))
-                notices.append('Temporary playback audio is retained until the device and worker are confirmed closed.')
-            if notices:
+                if errors:
+                    raise RuntimeError('; '.join(errors))
+        resources = ReaderResources()
+        if not silence_confirmed:
+            retain_resources(resources)
+            notices.append('Temporary playback audio is retained until the device confirms it is closed.')
+        try:
+            from .worker_cleanup import close_after_worker
+            cleanup_future = close_after_worker(executor, resources)
+            def cleanup_finished(future):
                 try:
-                    parent.report(' '.join(notices))
-                except Exception:
-                    # A detached parent reporter must not keep the modal open.
-                    pass
+                    future.result()
+                except Exception as exc:
+                    # The dialog is already closed. Keep failed cleanup's owned
+                    # files alive and deliver its warning on the native queue.
+                    retain_resources(resources)
+                    message = f'Temporary reading audio cleanup needs attention: {exc}'
+                    def notify():
+                        try:
+                            parent.report(message)
+                        except Exception:
+                            pass
+                    try:
+                        wx.CallAfter(notify)
+                    except Exception:
+                        pass
+            cleanup_future.add_done_callback(cleanup_finished)
+        except Exception as exc:
+            retain_resources(resources)
+            notices.append(f'The reading worker has not confirmed cleanup: {exc}')
         finally:
-            dialog.Destroy()
+            try:
+                if notices:
+                    try:
+                        parent.report(' '.join(notices))
+                    except Exception:
+                        pass  # A detached reporter must not trap the modal.
+            finally:
+                dialog.Destroy()
 
 
 def install_speech_actions(frame):
     """Add one conventional menu without modifying existing keyboard bindings."""
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
 
     menu = wx.Menu()
     item = menu.Append(wx.ID_ANY, 'Voice reader and reading copy...\tCtrl+Alt+V')
     frame.Bind(wx.EVT_MENU, lambda event: show_speech_reader(frame), item)
+    register_menu_command(frame, CommandSpec('voice.reader', 'Voice reader and reading copy',
+                                           'main', 'Ctrl+Alt+V'), item)
     from .reading_desk import ReadingActions
     from ..speech.source import read_source_range
 
@@ -602,5 +664,7 @@ def install_speech_actions(frame):
     actions = ReadingActions(frame, reader_factory=BookSpeechReader)
     selected = menu.Append(wx.ID_ANY, 'Narrate selected book or chapter...\tCtrl+Alt+R')
     frame.Bind(wx.EVT_MENU, actions.open_book, selected)
+    register_menu_command(frame, CommandSpec('voice.book', 'Narrate selected book or chapter',
+                                           'main', 'Ctrl+Alt+R'), selected)
     frame.speech_reading_actions = actions
     frame.GetMenuBar().Append(menu, '&Voice')

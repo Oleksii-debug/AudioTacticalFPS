@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import time
 from uuid import uuid4
 
@@ -71,7 +72,20 @@ def _output_name(title):
 
 
 class ProductionService:
-    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=()):
+    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(),
+                 total_disk_bytes=32 * 1024**3):
+        """Bound private state/cache, staging and this job's published copies.
+
+        This logical-byte allowance is independent of each AudioBudget output
+        limit. Shared retained cache counts once, including earlier revisions;
+        verified reuse does not reserve a second copy. Increase the allowance
+        explicitly when resuming work that requires more retained space.
+        """
+        if type(total_disk_bytes) is not int or not 1024**2 <= total_disk_bytes <= 2**63 - 1:
+            raise ValueError('Total production disk budget must be an integer of at least one MiB.')
+        self.total_disk_bytes = total_disk_bytes
+        self._owns_voices = voices is None
+        self._closed = False
         self.root = local_path(directory)
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.projects = ProjectStore(self.root / 'projects')
@@ -85,17 +99,35 @@ class ProductionService:
 
     @property
     def voices(self):
+        self._check_open()
         if self._voices is None:
             from ..runtime_settings import voice_registry
             self._voices = voice_registry(self.root.parent)
         return self._voices
 
+    def _check_open(self):
+        if self._closed:
+            raise RuntimeError('The production service is closed.')
+
+    def close(self):
+        """Release a lazily owned registry after the caller's worker finishes."""
+        if self._closed:
+            return
+        self._closed = True
+        voices, self._voices = self._voices, None
+        if self._owns_voices and voices is not None:
+            close = getattr(voices, 'close', None)
+            if callable(close):
+                close()
+
     def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):
+        self._check_open()
         project = parse_script(text, title=title, voice_ids=voice_ids, mode=mode)
         self.projects.save(project)
         return project
 
     def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):
+        self._check_open()
         if format not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
             raise ValueError('Choose a supported local audio output format.')
         if type(stems) is not bool or not isinstance(project, Project):
@@ -165,13 +197,14 @@ class ProductionService:
                              input_roots=(self.cache, *self.input_roots))
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
-        from ..audio import AudioCancelled, Track, MusicSpec
+        self._check_open()
+        from ..audio import Track, MusicSpec, AudioError, AudioCancelled
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
         with state_lock(job_root, 'render'):
             state = self.get(job_id)
             if state['status'] == 'complete':
-                self._verify_artifacts(state)
+                self._verify_artifacts(state, cancelled=cancelled)
                 return state
             project = Project.from_dict(state['project'])
             runtime = self._runtime()
@@ -180,14 +213,35 @@ class ProductionService:
             # FFmpeg/voice version must not silently reuse incompatible work.
             runtime_identity = sha256(encode(capabilities)).hexdigest()
             state['runtime'] = capabilities
+            state['total_disk_bytes'] = self.total_disk_bytes
             state['status'], state['error'] = 'running', ''
             control = job_root / 'control.json'
             if control.exists():
                 control.unlink()  # explicit Run/Resume authorizes continuing the saved job
             self._save(state)
 
-            def stopping():
+            def requested_stop():
                 return bool(cancelled()) or control.exists()
+
+            last_disk_check, retained = 0.0, 0
+
+            def capacity(additional=0, *, force=False, honor_cancel=True):
+                nonlocal last_disk_check, retained
+                now = time.monotonic()
+                if force or now - last_disk_check >= .2:
+                    retained = _retained_bytes((self.root, Path(state['destination'])),
+                                               requested_stop if honor_cancel else lambda: False)
+                    last_disk_check = now
+                if retained + additional > self.total_disk_bytes:
+                    raise AudioError('The total production disk budget would be exceeded. '
+                                     'Increase total_disk_bytes to resume; completed files are retained.')
+                return self.total_disk_bytes - retained - additional
+
+            def stopping():
+                if requested_stop():
+                    return True
+                capacity()
+                return False
 
             def check():
                 if stopping():
@@ -198,6 +252,23 @@ class ProductionService:
                 self._save(state)
                 if progress is not None:
                     progress(message)
+
+            def generate(path, operation):
+                remaining = capacity(65536, force=True)
+                if remaining < 4096:
+                    raise AudioError('The total production disk budget has no room for another audio step.')
+                previous_budget = runtime.budget
+                runtime.budget = replace(previous_budget,
+                    max_output_bytes=min(previous_budget.max_output_bytes, remaining))
+                try:
+                    operation(path)
+                    capacity(force=True, honor_cancel=False)
+                except AudioError:
+                    # Only the unaccepted UUID attempt belongs to this cleanup.
+                    path.unlink(missing_ok=True)
+                    raise
+                finally:
+                    runtime.budget = previous_budget
 
             def node(kind, identity, operation):
                 check()
@@ -220,7 +291,7 @@ class ProductionService:
                 report(f'{kind}: rendering local audio')
                 # Each attempt gets a fresh path, including recovery from corrupt cache bytes.
                 path = self.cache / (key + '-' + uuid4().hex[:10] + '.wav')
-                operation(path)
+                generate(path, operation)
                 # The provider has atomically completed a real output. Verify
                 # and receipt it before honoring cancellation of the next step,
                 # so resume cannot silently repeat accepted expensive work.
@@ -374,11 +445,22 @@ class ProductionService:
                         if digest_file(target) != identity:
                             raise FileExistsError('An output was changed externally; it will not be overwritten.')
                     else:
+                        def reserve_copy(size):
+                            # Publication may use a different volume from the
+                            # render cache. Preserve the same reserve there,
+                            # including bounded filesystem metadata overhead.
+                            required = size + runtime.budget.reserve_disk_bytes + 65536
+                            if shutil.disk_usage(target.parent).free < required:
+                                raise AudioError('Not enough output disk space to publish while preserving the configured reserve.')
+                            capacity(size + 65536, force=True)
+
+                        reserve_copy(artifact['size'])
                         temporary = target.parent / ('.pending-' + uuid4().hex)
                         try:
                             with Path(source).open('rb') as read, temporary.open('xb') as write:
                                 while block := read.read(1024 * 1024):
                                     check()
+                                    reserve_copy(len(block))
                                     write.write(block)
                                 write.flush()
                                 os.fsync(write.fileno())
@@ -408,7 +490,8 @@ class ProductionService:
                     if not (cached and encoded.exists() and digest_file(encoded) == cached.get('sha256')):
                         if encoded.exists():
                             encoded = self.cache / (key + '-' + uuid4().hex[:10] + '.' + state['format'])
-                        runtime.convert(master, encoded, sample_rate=project.sample_rate, cancelled=stopping)
+                        generate(encoded, lambda target: runtime.convert(master, target,
+                            sample_rate=project.sample_rate, cancelled=stopping))
                         atomic_json(receipt, {'sha256': digest_file(encoded), 'file': encoded.name}, replace=receipt.exists())
                     publish(encoded, 'audiobook.' + state['format'])
                 for role_id, paths in stem_scenes.items():
@@ -445,7 +528,7 @@ class ProductionService:
                     publish(source, name)
                 state['result'] = metadata
                 state['status'], state['progress'] = 'complete', 'Audio files and checksums verified.'
-                self._verify_artifacts(state)
+                self._verify_artifacts(state, cancelled=stopping)
                 self._save(state)
                 return state
             except BaseException as exc:
@@ -464,11 +547,13 @@ class ProductionService:
                 self._save(state)
                 raise
 
-    def _verify_artifacts(self, state):
+    def _verify_artifacts(self, state, *, cancelled=lambda: False):
+        if cancelled():
+            raise InterruptedError('Production output verification cancelled.')
         root = local_path(state['destination'], exists=True)
         for artifact in state['artifacts']:
             path = local_path(artifact['path'], root=root, exists=True)
-            if path.stat().st_size != artifact['size'] or digest_file(path) != artifact['sha256']:
+            if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:
                 raise ValueError('A rendered output is missing or its checksum changed.')
 
     def assistant_callback(self, arguments, output_directory, cancelled, progress):
@@ -485,6 +570,29 @@ class ProductionService:
         result = self.run(job, cancelled=cancelled, progress=progress)
         return {'job_id': job, 'status': result['status'],
                 'artifacts': [item['path'] for item in result['artifacts']]}
+
+
+def _retained_bytes(roots, cancelled):
+    """Count disjoint private/output trees without reading waveforms or links."""
+    pending, total = list(roots), 0
+    while pending:
+        if cancelled():
+            raise InterruptedError('Production disk accounting cancelled.')
+        path = pending.pop()
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise ValueError('Production disk accounting cannot follow links or reparse points.')
+        if stat.S_ISDIR(info.st_mode):
+            with os.scandir(path) as entries:
+                pending.extend(Path(entry.path) for entry in entries)
+        elif stat.S_ISREG(info.st_mode):
+            total += info.st_size
+        else:
+            raise ValueError('Production state contains an unsupported special file.')
+    return total
 
 
 def json_safe(value):

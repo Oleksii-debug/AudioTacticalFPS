@@ -38,13 +38,18 @@ def collect_installed_voices(library, *, cancelled=lambda: False):
         raise InterruptedError("Installed voice inventory cancelled.")
     from ..runtime_settings import voice_registry
     registry = voice_registry(Path(library.root) / "state")
-    if cancelled():
-        raise InterruptedError("Installed voice inventory cancelled after the bounded adapter probe.")
-    voices = tuple(registry.voices())
-    notices = tuple(registry.notices)
-    if len(voices) > 10_000 or len(notices) > 1000 or any(not isinstance(item, str) or len(item) > 4000 for item in notices):
-        raise ValueError("The local voice inventory exceeds its metadata limits.")
-    return InstalledVoiceInventory(voices, notices, datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    try:
+        if cancelled():
+            raise InterruptedError("Installed voice inventory cancelled after the bounded adapter probe.")
+        voices = tuple(registry.voices())
+        notices = tuple(registry.notices)
+        if len(voices) > 10_000 or len(notices) > 1000 or any(not isinstance(item, str) or len(item) > 4000 for item in notices):
+            raise ValueError("The local voice inventory exceeds its metadata limits.")
+        return InstalledVoiceInventory(voices, notices, datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    finally:
+        close = getattr(registry, "close", None)
+        if callable(close):
+            close()
 
 
 class LanguageMatrixController:
@@ -350,4 +355,7 @@ def install_language_actions(frame):
         menu.AppendSeparator()
     item = menu.Append(wx.ID_ANY, "Languages and capability evidence...")
     frame.Bind(wx.EVT_MENU, lambda event: show_language_matrix(frame), item)
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec("voice.languages", "Languages and capability evidence"), item)
     frame._carr_language_actions_installed = True

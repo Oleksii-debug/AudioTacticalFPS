@@ -245,3 +245,121 @@ def test_resume_cannot_substitute_another_import_queue(environment):
     result = service.run(identity)
     assert result.status == 'attention' and result.completed == 0
     assert not app.browse(workspace)
+
+
+@pytest.mark.parametrize('worker_finished', [False, True])
+def test_native_probe_waits_for_resumed_job_result_callback(environment, worker_finished):
+    """An old completed summary is not the result of the new async resume.
+
+    Execute the actual installed dialog Run handler and saved-job service with
+    an explicit GUI queue. The Windows probe must wait both while the worker
+    runs and after it finishes but before its queued native update is applied.
+    """
+    import ast
+    from concurrent.futures import ThreadPoolExecutor
+    import inspect
+    from queue import Queue
+    from types import SimpleNamespace
+
+    from carr_library.ui import assistant_dialog
+
+    app, inputs, outputs = environment
+    source = inputs / 'railway.txt'
+    source.write_text('Railway transport connected cities.', encoding='utf-8')
+    service = AssistantService(app)
+    plan = service.preview('Create library "Resumed"\nImport "' + str(source)
+                           + '"\nSearch "Railway transport"',
+                           Scope(input_roots=(inputs,), output_root=outputs, allow_create=True))
+    identity = service.submit(plan)
+    completed = service.run(identity)
+    assert completed.status == 'complete' and completed.completed == completed.total == 3
+    workspace = completed.results[0]['workspace']
+    imported = tuple(row.edition_id for row in app.browse(workspace))
+
+    class Control:
+        enabled = True
+
+        def __init__(self, value=''):
+            self.value = value
+
+        def Enable(self): self.enabled = True
+        def Disable(self): self.enabled = False
+        def IsEnabled(self): return self.enabled
+        def GetValue(self): return self.value
+        def ChangeValue(self, value): self.value = value
+        def SetFocus(self): pass
+
+    review = Control('complete: 3/3. All selected operations completed.\n'
+                     'Resume uses the original reviewed scope.')
+    buttons = {name: Control() for name in ('preview', 'run', 'jobs', 'pause')}
+    callbacks, entered, release = Queue(), Event(), Event()
+
+    def resume(*args, **kwargs):
+        entered.set()
+        if not release.wait(5):
+            raise TimeoutError('The synthetic resume barrier was not released.')
+        return service.resume(*args, **kwargs)
+
+    dialog_tree = ast.parse(inspect.getsource(assistant_dialog))
+    show = next(node for node in dialog_tree.body
+                if isinstance(node, ast.FunctionDef) and node.name == 'show_assistant')
+    handlers = [node for node in show.body
+                if isinstance(node, ast.FunctionDef) and node.name in ('report', 'run')]
+    assert len(handlers) == 2
+    factory = ast.parse('def make_run(identity):\n'
+                        '    busy, job_id, plan, alive = False, identity, None, True\n').body[0]
+    factory.body.extend(handlers)
+    factory.body.append(ast.Return(value=ast.Name(id='run', ctx=ast.Load())))
+
+    probe = Path(__file__).resolve().parents[2] / 'scripts/windows_assistant_smoke.py'
+    poll = next(node for node in ast.walk(ast.parse(probe.read_text(encoding='utf-8')))
+                if isinstance(node, ast.FunctionDef) and node.name == 'poll')
+    predicate = next(node.test for node in ast.walk(poll)
+                     if isinstance(node, ast.If)
+                     and ast.unparse(node.test).startswith("state['phase'] == 'running'"))
+    predicate_code = compile(ast.Expression(body=predicate), str(probe), 'eval')
+    ready = lambda: eval(predicate_code, {
+        'state': {'phase': 'running'}, 'review': review, 'dialog': object(),
+        'button': lambda dialog, label: buttons['run'],
+    })
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        submitted = []
+
+        def submit(*args, **kwargs):
+            future = executor.submit(*args, **kwargs)
+            submitted.append(future)
+            return future
+
+        namespace = {
+            'executor': SimpleNamespace(submit=submit), 'service': SimpleNamespace(resume=resume),
+            'cancel': Event(), 'review': review, 'buttons': buttons, 'json': json,
+            'wx': SimpleNamespace(CallAfter=lambda function, *args: callbacks.put((function, args))),
+            **{name: Control() for name in
+               ('scope_choice', 'instruction', 'input_folder', 'output_folder', 'full_backup')},
+        }
+        exec(compile(ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[])),
+                     assistant_dialog.__file__, 'exec'), namespace)
+        namespace['make_run'](identity)()
+        try:
+            assert entered.wait(5)
+            if worker_finished:
+                release.set()
+                assert submitted[0].result(timeout=5).status == 'complete'
+            assert not buttons['run'].IsEnabled()
+            assert review.GetValue().startswith('complete:')
+            assert '3 of 3 verified operations' not in review.GetValue()
+            assert not ready(), 'A stale saved-job summary was mistaken for the resumed result.'
+        finally:
+            release.set()
+        # The durable service emits a final numeric progress update before
+        # the dialog's completion callback. Dispatch both through the GUI queue.
+        for _ in range(3):
+            if buttons['run'].IsEnabled():
+                break
+            callback, arguments = callbacks.get(timeout=5)
+            callback(*arguments)
+        assert ready() and '3 of 3 verified operations' in review.GetValue()
+    verified = service.get(identity)
+    assert verified.status == 'complete' and verified.results == completed.results
+    assert tuple(row.edition_id for row in app.browse(workspace)) == imported

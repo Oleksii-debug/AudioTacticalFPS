@@ -97,16 +97,31 @@ def run_native(source, timeout):
 
             def export(button, destination):
                 # No native chooser automation or external file launch is
-                # claimed. All other widgets and handlers are real wx.
+                # claimed. Destination and confirmation are controlled; all
+                # other widgets and handlers are real wx.
+                previous = b'Previous export selected for replacement.'
+                destination.write_bytes(previous)
+                confirmations = []
+
+                def confirm(message, title, style, parent):
+                    check('confirmation names the final destination', destination.name in message)
+                    check('replacement defaults to No', bool(style & wx.NO_DEFAULT))
+                    check('confirmation belongs to this dialog', parent is dialog)
+                    check('confirmation preserves previous bytes', destination.read_bytes() == previous)
+                    confirmations.append(destination)
+                    return wx.YES
+
                 class SelectedDestination:
                     def __init__(self, *args, **kwargs):
-                        check('export requests overwrite confirmation',
-                              bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
+                        check('picker defers confirmation to the captured destination',
+                              bool(kwargs['style'] & wx.FD_SAVE)
+                              and not bool(kwargs['style'] & wx.FD_OVERWRITE_PROMPT))
                     def ShowModal(self): return wx.ID_OK
                     def GetPath(self): return str(destination)
                     def Destroy(self): pass
-                with patch.object(wx, 'FileDialog', SelectedDestination):
+                with patch.object(wx, 'FileDialog', SelectedDestination), patch.object(wx, 'MessageBox', confirm):
                     command(button, wx.EVT_BUTTON)
+                check('one captured-destination confirmation', confirmations == [destination])
                 check('export started on the desktop worker', dialog.pending and frame.working)
 
             def completed():

@@ -48,8 +48,8 @@ def test_late_stop_does_not_hide_error_after_verified_outputs(tmp_path, voices, 
     verify = service._verify_artifacts
     stopping, accepted = [False], {}
 
-    def verify_then_fail(state):
-        verify(state)
+    def verify_then_fail(state, *, cancelled=lambda: False):
+        verify(state, cancelled=cancelled)
         assert state['status'] == 'complete' and state['artifacts']
         for artifact in state['artifacts']:
             path = Path(artifact['path'])

@@ -9,6 +9,7 @@ import sys
 import threading
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
+from unittest.mock import Mock
 
 import pytest
 
@@ -49,7 +50,8 @@ def module():
         setattr(wx, name, Control)
     for n, name in enumerate(('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT',
             'TOP', 'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'ID_CANCEL', 'ID_OK',
-            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')):
+            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+            'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES', 'NO')):
         setattr(wx, name, 1 << n)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -57,6 +59,7 @@ def module():
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
+    wx.MessageBox = Mock(return_value=wx.YES)
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -207,7 +210,7 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert getattr(form, 'export_' + kind)()
     assert module.wx.files[0].destroyed
     style = module.wx.files[0].options['style']
-    assert style & module.wx.FD_SAVE and style & module.wx.FD_OVERWRITE_PROMPT
+    assert style & module.wx.FD_SAVE and not style & module.wx.FD_OVERWRITE_PROMPT
     destination = Path(module.wx.file_path)
     assert not destination.exists() and library.calls == []
     frame.finish()
@@ -275,11 +278,24 @@ def test_late_report_callback_does_not_display_foreign_scope_data(setup):
 def test_checked_writer_refuses_private_source_overwrite(module, setup):
     form, frame, library = setup
     module.wx.file_path = str(library.original)
-    assert form.export_inventory()
-    frame.finish()
+    assert not form.export_inventory()
+    assert not frame.jobs
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+def test_catalog_export_preserves_file_changed_during_render(module, setup, kind):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Approved previous export')
+    library.hook = lambda: target.write_bytes(b'Independent edit during rendering')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert target.read_bytes() == b'Independent edit during rendering'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(target.parent.glob('.research-export-*'))
 
 
 def test_report_limit_is_explicit_and_does_not_show_a_partial_result(module, setup):

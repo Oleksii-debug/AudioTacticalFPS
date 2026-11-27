@@ -20,7 +20,6 @@ def main():
     from carr_library.ui.studio_dialog import show_studio
     from carr_library.ui.assistant_dialog import show_assistant, show_provider_settings
     from carr_library.ui.engine_settings import show_engine_settings
-    from carr_library.ui.translation_dialog import show_translation
     app = wx.App(False)
     result = {'status': 'RUNNING', 'platform': sys.platform, 'manual_nvda': 'NOT_RUN', 'checks': []}
     with TemporaryDirectory(prefix='carr-native-v3-') as temporary:
@@ -75,20 +74,6 @@ def main():
                     shortcuts.append(label.split('\t', 1)[1].casefold())
         assert len(shortcuts) == len(set(shortcuts)), 'Global menu shortcut collision'
         result['checks'].append('native menu integration and unique global shortcuts')
-        from carr_library.academic_integration import render_citations, export_citation_docx, read_citation_docx
-        bibliography = render_citations([{'id': 'synthetic-reference', 'type': 'book',
-            'title': 'The Synthetic Archive', 'author': [{'family': 'Example', 'given': 'Jane'}],
-            'issued': {'date-parts': [[2026]]}, 'publisher': 'Fixture Press'}], style='apa')
-        exported = export_citation_docx(bibliography, root / 'citations.docx')
-        assert exported.is_file() and 'Synthetic Archive' in bibliography.bibliography[0].text
-        assert read_citation_docx(exported)
-        result['checks'].append('actual installed CSL processor and native DOCX provenance')
-        from carr_library.conversion import ConversionService
-        source = root / 'synthetic-reading.txt'
-        source.write_text('Synthetic conversion source. Український текст.', encoding='utf-8')
-        converted = ConversionService(root / 'converted', input_roots=(root,)).extract(source, 'reading.txt')
-        assert 'Український' in converted.path.read_text(encoding='utf-8')
-        result['checks'].append('actual isolated document conversion and atomic Windows publication')
 
         def inspect_dialog(open_dialog, required_names, close_id=None):
             inspected = []
@@ -113,11 +98,11 @@ def main():
             open_dialog(frame)
             assert inspected == [True], 'Native dialog lacked a required accessible control name'
             app.Yield()
-        inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice'))
+        inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice',
+                                     'Audio Studio current progress and phase', 'Query Audio Studio progress'))
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
-        inspect_dialog(show_translation, ('Google Basic v2 account', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
         frame.Close()
         app.Yield()

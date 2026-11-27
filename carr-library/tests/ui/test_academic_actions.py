@@ -71,13 +71,15 @@ def module():
     names = ('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT', 'TOP', 'BOTTOM',
              'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'VSCROLL', 'TAB_TRAVERSAL',
              'ID_SAVE', 'ID_CANCEL', 'ID_OK', 'EVT_BUTTON', 'EVT_CLOSE', 'FD_OPEN',
-             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')
+             'FD_FILE_MUST_EXIST', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+             'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES', 'NO')
     for number, name in enumerate(names):
         setattr(wx, name, 1 << number)
     wx.callbacks = []
     wx.CallAfter = wx.callbacks.append
     wx.FileDialog = Mock(side_effect=AssertionError('Unexpected file dialog'))
     wx.SingleChoiceDialog = Mock(side_effect=AssertionError('Unexpected choice dialog'))
+    wx.MessageBox = Mock(return_value=wx.YES)
     root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
 
     def load(name, path):
@@ -418,8 +420,8 @@ def test_export_keeps_original_private_root_even_if_active_library_changes(
     other_root = tmp_path / 'another-library'
     other_root.mkdir()
     frame.library = SimpleNamespace(root=other_root)
-    with pytest.raises(ValueError, match='outside the private library'):
-        finish(frame)
+    assert not frame.jobs
+    assert len(frame.reports) == 1 and 'outside the private library' in frame.reports[0]
     assert destination.read_bytes() == b'Original library bytes'
 
 
@@ -464,3 +466,27 @@ def test_outline_handler_passes_exact_topic_and_atomic_export_text(module, editi
     library.export_outline.assert_called_once_with('workspace', 'topic', cancelled=frame.cancel_event.is_set)
     assert destination.read_text(encoding='utf-8') == '# Research — Україна\n'
     assert file.destroyed and 'Research outline exported' in frame.reports[-1]
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_changed_destination_during_academic_render_is_preserved(
+        module, edition, tmp_path, monkeypatch, action):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'selected.txt'
+    destination.write_bytes(b'Approved previous export')
+    choose(module, monkeypatch, path=destination)
+
+    def render(*args, **kwargs):
+        destination.write_bytes(b'Independent work saved during rendering')
+        return 'New export must not overwrite independent work'
+
+    if action == 'bibliography':
+        library.export_bibliography.side_effect = render
+        module.export_bibliography(frame)
+    else:
+        library.export_outline.side_effect = render
+        module.export_research_outline(frame)
+    with pytest.raises(ValueError, match='destination changed'):
+        finish(frame)
+    assert destination.read_bytes() == b'Independent work saved during rendering'
+    assert not list(tmp_path.glob('.research-export-*'))
