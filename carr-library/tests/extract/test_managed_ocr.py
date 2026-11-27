@@ -174,7 +174,13 @@ def test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance
     execute = page_module.run_ocr
     def traced(runtime, argv, *, remaining):
         try:
-            return execute(runtime, argv, remaining=remaining)
+            completed = execute(runtime, argv, remaining=remaining)
+            print('OCR_PROCESS_DIAGNOSTIC', json.dumps({
+                'arguments': completed.args,
+                'stdout': completed.stdout.decode('utf-8', 'replace'),
+                'stderr': completed.stderr.decode('utf-8', 'replace'),
+                'returncode': completed.returncode}, ensure_ascii=False), flush=True)
+            return completed
         except subprocess.CalledProcessError as exc:
             raise AssertionError({'arguments': exc.cmd,
                                   'stderr': exc.stderr.decode('utf-8', 'replace')}) from exc
