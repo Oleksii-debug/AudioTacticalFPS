@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEW_PENDING_RUNTIME_NOT_RUN",
+  "original": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+  "maintenance": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+  "candidate_base": "4e733a4f081c7f7bf0464983e94711604fc93fa1",
+  "observed_predecessor": {
+    "commit": "480f8ecee5e7eee108245391fb617cf8eaa7bfa5",
+    "run": 46053395802,
+    "ordinary_installer_checks": 6,
+    "ordinary_installer_result": "PASS",
+    "managed_update_result": "FAIL_BEFORE_NEW_GENERATION_ACTIVATION",
+    "inner_inno_log": "NOT_RETAINED_IN_THAT_RUN"
+  },
+  "source_diagnosis": "Original O's own reserve-generation helper uses its old WindowsStandardHost snapshot. Its file_info requires a single hardlink for the OS PowerShell helper. The actual current runner helper had two links. This deterministically rejects that source path; the precise inner exception from the historical run was not logged.",
+  "contract": [
+    "Build O, maintenance A and B as distinct real sources; never patch O in place or relabel B as A.",
+    "Ordinary O-to-A maintenance has no CARRUPDATE argument and requires pending/prior transaction metadata absent; no manual clearing or trust bypass.",
+    "Retain O's actual owned process and sealed generation through maintenance and managed B, along with the existing A process/data assertions.",
+    "Keep the existing15 managed A-to-B/rollback/restart checks unchanged; add4 separately reported maintenance checks.",
+    "Write a durable maintenance phase receipt before managed upgrade so later failures cannot erase which stage actually passed.",
+    "Instrument the actual inherited WindowsStandardHost.launch only to append a fixed owned CI Inno log flag. Original arguments, environment, timeout, process ownership and acceptance stay unchanged."
+  ],
+  "maintenance_checks": [
+    "exact-original-source-installed",
+    "ordinary-maintenance-installer-without-update-authority",
+    "original-process-and-sealed-generation-preserved",
+    "maintenance-native-self-test-and-user-data-preserved"
+  ],
+  "limits": [
+    "Source-only authoring; no new Windows qualification yet.",
+    "Requires the separately composed builder and workflows with original/maintenance inputs and real ancestry.",
+    "No production signing authority, distribution clearance, private service, NVDA or physical audio assertion."
+  ]
+}
