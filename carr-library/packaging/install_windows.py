@@ -92,6 +92,15 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    launcher_files = {"ResearchLibrary.exe", "native-launcher-build.json"}
+    included_launcher = manifest.get("bundled_native_launcher", False)
+    if type(included_launcher) is not bool:
+        raise ValueError("invalid native launcher installation flag")
+    if included_launcher:
+        if not manifest.get("bundled_python") or not launcher_files.issubset(files):
+            raise ValueError("native launcher requires bundled Python and complete build evidence")
+    elif launcher_files.intersection(files) or any(os.path.lexists(root / name) for name in launcher_files):
+        raise ValueError("unannounced native launcher files")
     audio = root / "audio-runtime"
     included = manifest.get("bundled_audio_runtime", False)
     expected_audio = {p for p in files if p.startswith("audio-runtime/")}
@@ -156,7 +165,8 @@ def main():
     # An incomplete or interrupted install must never be treated as ready.
     # Exclusive creation is the final lifecycle step; never delete an old environment.
     (destination / ".installation-complete").touch(exist_ok=False)
-    print("Installation complete. Open ResearchLibrary.cmd. Research data has not been changed.")
+    entry = "ResearchLibrary.exe" if (root / "ResearchLibrary.exe").is_file() else "ResearchLibrary.cmd"
+    print(f"Installation complete. Open {entry}. Research data has not been changed.")
     return 0
 
 

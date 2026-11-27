@@ -108,7 +108,8 @@ def verify_application_source(wheel, source_commit):
 
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, audio_dir=None):
+                 ocr_source_archive=None, audio_dir=None, native_launcher=None,
+                 native_launcher_evidence=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
@@ -116,6 +117,17 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         raise ValueError("source commit must be a full lowercase Git SHA")
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
+    if (native_launcher is None) != (native_launcher_evidence is None):
+        raise ValueError("supply both native launcher and build evidence")
+    launcher_snapshot = None
+    if native_launcher is not None:
+        if python_archive is None:
+            raise ValueError("native launcher requires bundled Python")
+        spec = importlib.util.spec_from_file_location(
+            "carr_native_launcher_capture", HERE / "native_launcher.py")
+        capture = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(capture)
+        launcher_snapshot = capture.capture_native_launcher(native_launcher, native_launcher_evidence)
     pins = read_lock(lock)
     if sbom is not None:
         sbom = regular(Path(sbom))
@@ -312,12 +324,16 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if launcher_snapshot is not None:
+            (staged / "ResearchLibrary.exe").write_bytes(launcher_snapshot[0])
+            (staged / "native-launcher-build.json").write_bytes(launcher_snapshot[1])
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
                     "bundled_audio_runtime": audio_dir is not None,
+                    "bundled_native_launcher": launcher_snapshot is not None,
                     "files": files}
         if source_commit is not None:
             manifest["source_commit"] = source_commit
@@ -350,11 +366,15 @@ def main():
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
     parser.add_argument("--audio-dir", type=Path,
                         help="Optional hash-verified private Windows FFmpeg runtime with notices")
+    parser.add_argument("--native-launcher", type=Path,
+                        help="Optional unsigned private ResearchLibrary.exe built from current native launcher sources")
+    parser.add_argument("--native-launcher-evidence", type=Path,
+                        help="Exact source/toolchain/PE build-evidence.json for the selected launcher")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.audio_dir)))
+                                  args.audio_dir, args.native_launcher, args.native_launcher_evidence)))
 
 
 if __name__ == "__main__":
