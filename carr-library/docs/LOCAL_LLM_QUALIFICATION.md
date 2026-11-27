@@ -1,0 +1,49 @@
+# Actual local model proposal qualification
+
+This isolated Linux CPU probe exercises the existing product's
+`propose_local_plan`, `ProviderGateway`, `Plan`, `Scope`, and
+`AssistantService.validate` with real model inference. It adds no product
+planner, engine, gateway, downloader, or automatic execution path.
+
+## Pinned inputs
+
+- Official Qwen `Qwen3-0.6B-GGUF` revision
+  `23749fefcc72300e3a2ad315e1317431b06b590a`, Q8_0, 639,446,688 bytes.
+  The exact [model repository](https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/tree/23749fefcc72300e3a2ad315e1317431b06b590a)
+  publishes Apache-2.0 terms in its LICENSE file.
+- Official llama.cpp `b12774`, commit
+  `171527522610996f5f0acf12334e185156ca8f44`, Ubuntu x64 CPU archive,
+  23,454,685 bytes. The [pinned release](https://github.com/ggml-org/llama.cpp/releases/tag/b12774)
+  and exact MIT LICENSE are retained in the input record.
+- `packaging/local-llm-proof-inputs.json` records publisher hashes, immutable
+  download URLs, exact license bytes and the unchanged product-module hashes.
+  Acquisition has explicit byte/time limits and no automatic retries.
+
+The selected runtime uses two CPU threads, one slot, a 2,048-token context and a
+256-token prediction cap. Thinking is disabled using the model's template
+parameter. A generic JSON-object grammar constrains syntax; it does not choose
+tools, arguments, permissions or expected answers. The service binds only to
+loopback and uses the runtime's offline option. This does not establish an
+operating-system network sandbox.
+
+## Acceptance
+
+The probe requires actual English and Ukrainian model proposals to pass the
+existing argument and scope validation. Separate actual model responses must be
+refused when they request unapproved library creation or an input outside the
+selected roots. Duplicate-operation and pre-send cancellation controls must
+prevent further HTTP requests.
+
+No model proposal is submitted or executed. The probe replaces those two service
+entry points only with forbidden-call assertions, delegates every actual request
+to the existing HTTP transport, and verifies that jobs and the catalog remain
+unchanged. It records the original model responses, source and artifact hashes,
+actual command, selected outcomes and native-process cleanup.
+
+Only synthetic JSON evidence is uploaded. Model weights, native binaries,
+credential data and library originals are never included in artifacts. A passed
+report is required before claiming actual model inference. The source workflow's
+presence alone is not an acceptance result.
+
+Native Windows packaging, installed offline behavior, general language coverage,
+research accuracy, accessibility and broad model quality remain separate gates.
