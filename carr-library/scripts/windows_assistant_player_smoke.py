@@ -172,14 +172,17 @@ def native():
             user32.SetForegroundWindow(top.GetHandle())
             control.SetFocus()
             state['key_pending'] = True
+            key_record = {'label': control.GetLabel()[:200], 'native_id': control.GetId(),
+                          'down': None, 'up': None}
+            state['last_key'] = key_record
             def key():
                 try:
                     if errors:
                         return
                     assert control and top and wx.Window.FindFocus() is control
                     assert user32.GetForegroundWindow() == top.GetHandle()
-                    simulator.KeyDown(wx.WXK_SPACE)
-                    simulator.KeyUp(wx.WXK_SPACE)
+                    key_record['down'] = bool(simulator.KeyDown(wx.WXK_SPACE))
+                    key_record['up'] = bool(simulator.KeyUp(wx.WXK_SPACE))
                 except (Exception, KeyboardInterrupt):
                     failed(traceback.format_exc())
                 finally:
@@ -282,6 +285,46 @@ def native():
                 press(state['assistant']['controls']['buttons']['close'])
             else:
                 raise AssertionError('Unexpected completed native plan: ' + label)
+
+        def diagnostic_snapshot():
+            current, selected = state['assistant'], state.get('plan', {})
+            details = {'phase': state['phase'], 'plan_label': selected.get('label'),
+                       'plan_tool': selected.get('tool'), 'key_pending': state['key_pending'],
+                       'last_key': state.get('last_key'), 'hold_next': state['hold_next'],
+                       'held_callbacks': len(state['held']),
+                       'completion_deliveries': len(state['completed_deliveries'])}
+            if current is not None:
+                live = bool(current['dialog'])
+                details['assistant_alive'] = live
+                if live:
+                    widgets = current['controls']
+                    details['enabled'] = {name: widgets['buttons'][name].IsEnabled()
+                                          for name in ('preview', 'run', 'pause', 'close')}
+                    details['instruction_enabled'] = widgets['instruction'].IsEnabled()
+                    details['instruction'] = widgets['instruction'].GetRange(0, 2048)
+                    details['review'] = widgets['review'].GetRange(0, 4096)
+                    focus = wx.Window.FindFocus()
+                    details['focus'] = ({'id': focus.GetId(), 'name': focus.GetName()[:200]}
+                                        if focus else None)
+                identities = tuple(current['service'].store.identities())
+                fresh = set(identities) - selected.get('before', set())
+                details['saved_job_count'] = len(identities)
+                details['fresh_job_count'] = len(fresh)
+                details['fresh_job_ids'] = sorted(fresh)[:8]
+                details['saved_jobs'] = []
+                for identity in sorted(identities)[:8]:
+                    row = current['service'].get(identity)
+                    details['saved_jobs'].append({'id': identity, 'status': row.status,
+                        'completed': row.completed, 'total': row.total,
+                        'message': row.message[:2048]})
+            view = core.status()
+            details['reader'] = {'state': view.state, 'busy': core.busy,
+                                 'quiescent': core.quiescent,
+                                 'pause_requested': core._pause,
+                                 'same_future': core._future is state.get('reading_future'),
+                                 'fixture_state': fixture.state,
+                                 'fixture_resume_count': fixture.resume_count}
+            return details
 
         def advance(event):
             if errors or state['finished']:
@@ -393,7 +436,14 @@ def native():
                 else:
                     raise AssertionError('Unexpected native stage: ' + phase)
             except (Exception, KeyboardInterrupt):
-                failed(traceback.format_exc())
+                detail = traceback.format_exc()
+                try:
+                    print('NATIVE_ASSISTANT_FAILURE ' + json.dumps(diagnostic_snapshot(),
+                          ensure_ascii=True, sort_keys=True), flush=True)
+                except (Exception, KeyboardInterrupt) as diagnostic_error:
+                    print('NATIVE_ASSISTANT_DIAGNOSTIC_ERROR ' + str(diagnostic_error)[:1024],
+                          flush=True)
+                failed(detail)
 
         def show_reader():
             try:
