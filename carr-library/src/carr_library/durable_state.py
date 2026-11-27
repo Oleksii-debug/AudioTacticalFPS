@@ -62,11 +62,54 @@ def _unique(pairs):
     return value
 
 
+def _open_json_reader(path):
+    """Read one JSON generation without blocking Windows atomic replacement."""
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes = [wintypes.HANDLE]
+    close.restype = wintypes.BOOL
+    # GENERIC_READ; SHARE_READ | SHARE_WRITE | SHARE_DELETE; OPEN_EXISTING.
+    # OPEN_REPARSE_POINT also prevents following a last-component link swapped
+    # into place after the caller's regular-path check.
+    handle = create(str(path), 0x80000000, 0x1 | 0x2 | 0x4,
+                    None, 3, 0x80 | 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        error = ctypes.WinError(ctypes.get_last_error())
+        error.filename = str(path)
+        raise error
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        info = os.fstat(descriptor)
+        # A replaced generation can have no remaining directory entry while
+        # this handle still identifies that prior generation.
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink > 1
+                or getattr(info, 'st_file_attributes', 0) & 0x400):
+            raise ValueError('State must use regular local files, without links.')
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 def read_json(path):
     path = local_path(path, exists=True)
     if regular(path).st_size > MAX_JSON_BYTES:
         raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
+    with _open_json_reader(path) as stream:
         raw = stream.read(MAX_JSON_BYTES + 1)
     if len(raw) > MAX_JSON_BYTES:
         raise ValueError('State grew beyond its JSON budget.')

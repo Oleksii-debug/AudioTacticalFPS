@@ -1,9 +1,9 @@
-"""Windows-only, no-model diagnosis of concurrent transcription status reads.
+"""Windows-only, no-model qualification of concurrent transcription status reads.
 
 The required test is repeated without modifying its implementation. A separate
 controlled schedule holds the actual host reader open while the original
-synthetic worker publishes its next status. Diagnostic completion is not a
-product acceptance or a neural inference result.
+synthetic worker publishes its next status. This narrow runtime proof is not a
+whole-product acceptance or a neural inference result.
 """
 from hashlib import sha256
 import importlib.util
@@ -17,10 +17,10 @@ import time
 import traceback
 from unittest.mock import patch
 
-BASE_SOURCE = 'e1ea9300fe286eb32f36c7470a295e52d803b1e2'
+BASE_SOURCE = '865aa3223a154278d086ef5c98e07a4274a10202'
 PINS = {
     'src/carr_library/transcription.py': '6b3b3ff112e8d96d7f8000181bd0521e57ed2876065aeea425523221a49ffc62',
-    'src/carr_library/durable_state.py': 'addbe9ff1322fd1e7f8eb688087d4786e7295425ca8ce418703c03396146fb9f',
+    'src/carr_library/durable_state.py': 'be38c92f88c6d31d21de4982bb10e5a2c7280c55917dc2cf01b7a1493750d002',
     'src/carr_library/audio/process.py': '545ae5553207a604337fa156b3f3728b4532c7763f2ffe29c20d2f5a41e34649',
     'tests/transcription/test_supplied_worker_bridge.py': '58e68412909fbd561e36242df10506d6d324408a5c65f5c317c3b9ebb0a269fe',
 }
@@ -111,11 +111,19 @@ while not (job / 'host-reader-held').exists():
     time.sleep(.001)
 if MODE == 'progress-wait':"""
         assert raw.count(needle) == 1
-        worker.write_text(raw.replace(needle, replacement), encoding='utf-8')
+        raw = raw.replace(needle, replacement)
+        publish_line = "    os.replace(temp, job / 'job_status.json')"
+        assert raw.count(publish_line) == 1
+        raw = raw.replace(publish_line, """    try:
+        os.replace(temp, job / 'job_status.json')
+    finally:
+        if (job / 'host-reader-held').exists():
+            (job / 'status-replace-attempted').write_bytes(b'attempted')""")
+        worker.write_text(raw, encoding='utf-8')
         service.configure(Path(sys.executable).resolve(), worker, case / 'models')
         identity = service.submit([original])
         status = service._path(identity) / 'job_status.json'
-        original_open = Path.open
+        original_open = durable_state._open_json_reader
         held = []
         class DelayedReader:
             def __init__(self, stream):
@@ -126,26 +134,31 @@ if MODE == 'progress-wait':"""
                 return self.stream.__exit__(*args)
             def read(self, *args, **kwargs):
                 (status.parent / 'host-reader-held').write_bytes(b'ready\n')
-                time.sleep(.25)
+                deadline = time.monotonic() + 5
+                while not (status.parent / 'status-replace-attempted').exists():
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError('Child did not attempt publication while its reader was held.')
+                    time.sleep(.001)
                 return self.stream.read(*args, **kwargs)
-        def overlap(path, *args, **kwargs):
-            stream = original_open(path, *args, **kwargs)
-            mode = args[0] if args else kwargs.get('mode', 'r')
-            if path == status and mode == 'rb' and not held:
+        def overlap(path):
+            stream = original_open(path)
+            if path == status and not held:
                 held.append(True)
                 return DelayedReader(stream)
             return stream
         def broken(*args):
             raise RuntimeError('Synthetic detached observer')
-        with patch.object(Path, 'open', overlap):
+        with patch.object(durable_state, '_open_json_reader', overlap):
             result = service.run(identity, timeout=10, progress=broken)
         emit('controlled_actual_host_reader_result', result=result, reader_held=bool(held))
         assert held and result['status'] == 'failed'
-        assert 'PermissionError' in result['last_error'] and 'job_status.json' in result['last_error']
+        assert result['last_error'] == 'A required transcription export is missing.'
+        assert (status.parent / 'status-replace-attempted').exists()
         assert result['artifacts'] == []
-        emit('diagnostic_summary', status='WINDOWS_COLLISION_REPRODUCED', unchanged_passed=successes,
-             unchanged_failed=failures, controlled_failure=True, neural_inference='NOT_RUN',
-             production_fix='NOT_APPLIED', acoustic_assets='NONE')
+        assert not failures, 'An unchanged required case failed; see its complete result above.'
+        emit('diagnostic_summary', status='WINDOWS_SHARED_READER_QUALIFIED', unchanged_passed=successes,
+             unchanged_failed=failures, controlled_publication=True, neural_inference='NOT_RUN',
+             production_fix='NATIVE_READER_VERIFIED', acoustic_assets='NONE')
 
 
 if __name__ == '__main__':

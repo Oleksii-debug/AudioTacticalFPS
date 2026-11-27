@@ -1,4 +1,4 @@
-name: Windows transcription status collision diagnostic
+name: Windows transcription shared reader qualification
 on:
   push:
     branches: [carr/transcription-status-diagnostic-20261127-137c]
@@ -41,7 +41,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Reproduce actual Windows status overlap and repeat the unchanged case
+      - name: Verify native replacement, unchanged cases and required source regressions
         timeout-minutes: 4
         run: |
           $python = (Get-Command python).Source
@@ -49,6 +49,8 @@ jobs:
           try {
             New-NetFirewallRule -DisplayName $rule -Direction Outbound -Program $python -Action Block -Profile Any | Out-Null
             & $python -I -B -X utf8 scripts/windows_status_diagnostic.py
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & $python scripts/ci_check.py --jobs 2 tests/storage/test_durable_state_publication.py tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_v5_worker_profile.py
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           } finally {
             Get-NetFirewallRule -DisplayName $rule -ErrorAction SilentlyContinue | Remove-NetFirewallRule
