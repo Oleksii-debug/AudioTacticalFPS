@@ -22,7 +22,7 @@ class StudioOptionControl:
     SetValue = ChangeValue = SetSelection
 
 
-def studio_output_fixture(project=None, store=None):
+def studio_output_fixture(project=None, store=None, *, service=None, output_path='/synthetic'):
     N = SimpleNamespace
     rows, calls, reports, decisions, prompts, saves, entries = [], [], [], [], [], [], []
     if store is None:
@@ -40,7 +40,7 @@ def studio_output_fixture(project=None, store=None):
         def ShowModal(self):
             return decisions.pop(0) if decisions else 1
         def GetPath(self):
-            return '/synthetic'
+            return str(output_path)
         def GetSelection(self):
             return 0
         def Destroy(self):
@@ -58,9 +58,10 @@ def studio_output_fixture(project=None, store=None):
         calls.append(identity)
         return {'destination': 'synthetic'}
 
-    service = N(submit=submit, run=run_job, get=lambda i: rows[int(i)],
-                jobs=lambda: rows, projects=store if store is not None else N(load=lambda i: project),
-                restored_inputs_to_review=lambda identity: ())
+    if service is None:
+        service = N(submit=submit, run=run_job, get=lambda i: rows[int(i)],
+                    jobs=lambda: rows, projects=store if store is not None else N(load=lambda i: project),
+                    restored_inputs_to_review=lambda identity: ())
     editor = StudioOptionControl(project.original_script)
     title = StudioOptionControl(project.title)
     if store is None:
@@ -306,3 +307,95 @@ def test_studio_output_controls_follow_the_actual_busy_owner():
     env['controls']()
     assert env['format_choice'].enabled is True and env['stems'].enabled is True
     assert buttons['render'].enabled is True and buttons['pause'].enabled is False
+
+
+@pytest.mark.parametrize('approved', [False, True])
+def test_studio_changed_restored_options_use_real_pending_input_admission(tmp_path, monkeypatch, approved):
+    import wave
+    from hashlib import sha256
+    from carr_library.durable_state import atomic_json
+    from carr_library.studio.backup_inputs import _waiting_job, input_review
+    from carr_library.studio.project import Cue, parse_script
+    from carr_library.studio.render import ProductionService
+
+    selected = tmp_path / 'selected'
+    selected.mkdir()
+    source = selected / 'clip.wav'
+    with wave.open(str(source), 'wb') as output:
+        output.setparams((1, 2, 8000, 0, 'NONE', 'not compressed'))
+        output.writeframes(b'\x00\x00' * 80)
+    original = source.read_bytes()
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    inventory = SimpleNamespace(voices=lambda: (SimpleNamespace(id='test:voice'),))
+    service = ProductionService(tmp_path / 'state' / 'studio', voices=inventory)
+    project = parse_script('Narrator: Retained source.', title='Restored source',
+                           voice_ids=('test:voice',))
+    project = replace(project, scenes=(replace(project.scenes[0],
+                      cues=(Cue('selected-clip', str(source)),)),))
+    reads, events = [], []
+    original_open = Path.open
+    allowed = False
+
+    def observed_open(path, *args, **kwargs):
+        mode = args[0] if args else kwargs.get('mode', 'r')
+        if path == source and 'r' in mode:
+            assert allowed, 'An unapproved local cue was read before explicit review.'
+            reads.append(path)
+        return original_open(path, *args, **kwargs)
+
+    real_approve = service.approve_restored_inputs
+
+    def approve(paths, *, cancelled):
+        nonlocal allowed
+        assert paths == (str(source),) and not reads and not cancelled()
+        events.append('approve')
+        allowed = True
+        return real_approve(paths, cancelled=cancelled)
+
+    def inspected_run(identity, *, cancelled, progress):
+        assert allowed and not cancelled()
+        state = service.get(identity)
+        assert (state['format'], state['stems']) == ('flac', False)
+        assert service._cue_source(project.scenes[0].cues[0]) == source
+        events.append(('run', identity))
+        return {'destination': state['destination']}
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, 'open', observed_open)
+            old_job = service.submit(project, outputs, format='wav', stems=True)
+            assert input_review(service.root)['pending'] == [str(source)] and not reads
+            restored = _waiting_job(service.get(old_job), project, project, retained=False)
+            receipt = service.jobs_root / old_job / 'job.json'
+            atomic_json(receipt, restored, replace=True)
+            original_receipt = receipt.read_bytes()
+            patch.setattr(service, 'approve_restored_inputs', approve)
+            patch.setattr(service, 'run', inspected_run)
+            f = studio_output_fixture(project, service.projects, service=service, output_path=outputs)
+            f.jobs()
+            f.format_choice.SetSelection(1)
+            f.stems.SetValue(False)
+            f.decisions.extend([f.wx.ID_OK, f.wx.ID_YES if approved else 0])
+            f.render()
+
+            rows = service.jobs()
+            assert len(rows) == 2, f.reports
+            fresh = next(row for row in rows if row['id'] != old_job)
+            assert (fresh['format'], fresh['stems']) == ('flac', False)
+            assert fresh['project'] == project.to_dict() and fresh['status'] == 'pending'
+            assert receipt.read_bytes() == original_receipt
+            assert service.get(old_job)['recovery']['requires_output_directory'] is True
+            assert not f.saves
+            assert any('need approval on this machine' in prompt for prompt in f.prompts)
+            if approved:
+                assert reads and events == ['approve', ('run', fresh['id'])]
+                assert input_review(service.root)['approved'][str(source)] == {
+                    'size_bytes': len(original), 'sha256': sha256(original).hexdigest()}
+                assert input_review(service.root)['pending'] == []
+            else:
+                assert not reads and not events
+                assert input_review(service.root)['pending'] == [str(source)]
+                assert str(source) not in input_review(service.root)['approved']
+    finally:
+        service.close()
