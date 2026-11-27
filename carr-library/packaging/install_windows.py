@@ -92,6 +92,19 @@ def verify(root, *, manifest_bytes=None):
             raise ValueError("unexpected or missing native runtime file")
     elif os.path.lexists(native) or expected_native:
         raise ValueError("unannounced native runtime files")
+    for component, flag, required in (
+            ('audio', 'bundled_audio', {'audio/bin/ffmpeg.exe', 'audio/bin/ffprobe.exe', 'audio/LICENSE'}),
+            ('citation-runtime', 'bundled_citation_runtime', {'citation-runtime/node.exe', 'citation-runtime/LICENSE'})):
+        included = manifest.get(flag, False)
+        if type(included) is not bool:
+            raise ValueError('invalid optional runtime flag')
+        actual = {p.relative_to(root).as_posix() for p in (root / component).rglob('*') if p.is_file()}
+        expected_component = {p for p in files if p.startswith(component + '/')}
+        if included:
+            if not required <= actual or actual != expected_component:
+                raise ValueError('unexpected or missing ' + component + ' runtime file')
+        elif actual or expected_component:
+            raise ValueError('unannounced ' + component + ' runtime')
 
 
 def main():

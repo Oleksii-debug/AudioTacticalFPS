@@ -22,6 +22,7 @@ MAX_MANIFEST = 2 * 1024 * 1024
 MAX_FILES = 2048
 MAX_FILE = 256 * 1024 * 1024
 MAX_TOTAL = 512 * 1024 * 1024
+NON_READING_MODELS = frozenset({'osd', 'equ'})
 
 
 class OcrRuntimeError(ValueError):
@@ -108,8 +109,9 @@ class OcrRuntime:
     def command(self, argv):
         """Bind every model-using call, preserving an explicit pinned staging dir."""
         argv = list(argv)
-        if (self.tessdata is not None and '--tessdata-dir' not in argv
-                and '--version' not in argv):
+        if (self.tessdata is not None and '--version' not in argv
+                and not any(arg == '--tessdata-dir' or arg.startswith('--tessdata-dir=')
+                            for arg in argv[1:])):
             argv[1:1] = ['--tessdata-dir', str(self.tessdata)]
         return argv
 
@@ -122,6 +124,8 @@ class OcrRuntime:
             selected = model_ids(languages)
         except ValueError:
             raise OcrRuntimeError('Invalid OCR language selection.') from None
+        if NON_READING_MODELS.intersection(selected):
+            raise OcrRuntimeError('Choose reading languages or scripts; special detectors are separate.')
         if self.portable:
             wanted = set(selected) | ({'osd'} if orientation else set())
             if not wanted <= set(self.languages):
@@ -293,6 +297,7 @@ def check_runtime(*, timeout=30):
     import subprocess
     import tempfile
     import time
+    from .ocr_process import run_ocr
 
     deadline = time.monotonic() + timeout
 
@@ -307,10 +312,8 @@ def check_runtime(*, timeout=30):
         raise OcrRuntimeError('No local OCR engine was found.')
 
     def run(*args):
-        return subprocess.run(runtime.command([runtime.executable, *args]),
-                              check=True, capture_output=True, timeout=remaining(),
-                              cwd=runtime.root,
-                              creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)).stdout.decode('utf-8')
+        return run_ocr(runtime, [runtime.executable, *args],
+                       remaining=remaining).stdout.decode('utf-8')
 
     version = run('--version').splitlines()[0]
     if not version.startswith('tesseract '):

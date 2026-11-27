@@ -75,6 +75,15 @@ export when moving to another computer. A restored library retains the same
 source identities; a different library cannot accept the export. No cloud
 account or network retrieval is involved.
 
+The same backup also preserves the existing application-state and pending-import
+records. When personal reading state exists, version five binds those records and
+the reading sidecar in one manifest. Without a reading sidecar, the existing
+version-two, version-three or version-four format is retained. Both historical
+version-three layouts remain readable: application state and reading-state-only
+backups are distinguished by their exact declared fields. A mixed or incomplete
+manifest is rejected. Generated audio remains an explicit backup option; pending
+source inputs needed to resume an import remain part of the checked snapshot.
+
 ## Implementation and primary references
 
 The feature uses the existing authorized SQLite snapshots, retained-source

@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shutil
 
 import pytest
 
@@ -71,7 +72,7 @@ def test_full_backup_keeps_bookmarks_resume_and_archived_library(populated, tmp_
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = manifest_at(folder)
-    assert manifest['version'] == 3
+    assert manifest['version'] == 5
     assert manifest['reading_state'] == dict(filename=reading_state.FILENAME,
         size_bytes=len(before), sha256=sha256(before).hexdigest())
     assert (folder / reading_state.FILENAME).read_bytes() == before
@@ -193,11 +194,159 @@ def test_absent_and_explicit_empty_state_remain_distinct(tmp_path, exists):
         path.write_text(reading_state._encode({}, {}), encoding='utf-8')
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
-    assert (manifest_at(folder)['reading_state'] is not None) == exists
+    manifest = manifest_at(folder)
+    assert (manifest.get('reading_state') is not None) == exists
+    if exists:
+        assert manifest['version'] == 5 and manifest['pending'] is None
+        assert manifest['state'] == [] and (folder / 'state').is_dir()
     target = restore_backup(folder, tmp_path / 'restored', digest)
     assert (target / reading_state.FILENAME).exists() == exists
     if exists:
         assert (target / reading_state.FILENAME).read_bytes() == path.read_bytes()
+
+
+@pytest.mark.parametrize('include_generated', [False, True])
+def test_v5_restores_reading_state_settings_and_resumable_originals_together(
+        populated, tmp_path, include_generated):
+    app, workspaces, books, pages, state, bookmarks, topic = populated
+    settings = app.root / 'state/studio/projects/private.json'
+    settings.parent.mkdir(parents=True)
+    settings.write_bytes(b'{"roles":["Narrator"],"revision":3}\n')
+    cache = app.root / 'state/studio/cache/chunk.wav'
+    cache.parent.mkdir(parents=True)
+    cache.write_bytes(b'synthetic-generated-audio-cache')
+    sources = [tmp_path / f'pending-{number}.txt' for number in range(2)]
+    for number, source in enumerate(sources):
+        source.write_text(f'Original pending railway source {number}.', encoding='utf-8')
+    planned = app.plan_import_batch(workspaces[0], sources)
+    stop = False
+    def progress(value):
+        nonlocal stop
+        stop = value['counts']['complete'] == 1
+    partial = app.run_import_batch(workspaces[0], planned['batch_id'],
+        cancelled=lambda: stop, progress=progress)
+    assert partial['counts']['complete'] == 1 and partial['counts']['queued'] == 1
+    before = state.path.read_bytes()
+    evidence = app.evidence(workspaces[0], topic)
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder, include_generated=include_generated)
+    manifest = manifest_at(folder)
+    assert manifest['version'] == 5
+    assert manifest['generated_audio_included'] is include_generated
+    assert manifest['reading_state']['sha256'] == sha256(before).hexdigest()
+    assert manifest['pending'] is not None
+    originals = {entry['filename']: entry for entry in
+                 manifest['assets'] + manifest['pending']['assets']}
+    assert len(originals) == 3  # the two initial editions share one original
+    for source in sources:
+        source.unlink()
+    restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
+    assert restored.evidence(workspaces[0], topic) == evidence
+    assert (restored.root / reading_state.FILENAME).read_bytes() == before
+    assert (restored.root / 'state/studio/projects/private.json').read_bytes() == settings.read_bytes()
+    restored_cache = restored.root / 'state/studio/cache/chunk.wav'
+    assert restored_cache.exists() is include_generated
+    if include_generated:
+        assert restored_cache.read_bytes() == cache.read_bytes()
+    assert not (restored.root / 'pending').exists()
+    assert {path.name for path in restored.assets_dir.iterdir()} == set(originals)
+    for name, entry in originals.items():
+        retained = restored.assets_dir / name
+        assert sha256(retained.read_bytes()).hexdigest() == entry['sha256']
+        assert retained.stat().st_size == entry['size_bytes'] and retained.stat().st_nlink == 1
+    saved = ReadingState(restored.root)
+    for workspace, book, page, bookmark in zip(workspaces, books, pages, bookmarks):
+        assert saved.resume(workspace, book['edition']) == page.location
+        assert saved.bookmarks(workspace, book['edition']) == (bookmark,)
+        assert ReadingDesk(restored, workspace, book['edition']).validate(page.location) == page
+    final = restored.run_import_batch(workspaces[0], planned['batch_id'])
+    assert final['state'] == 'complete' and final['counts']['complete'] == 2
+    for previous, current in zip(planned['rows'], final['rows']):
+        for key in ('row_id', 'work_id', 'edition_id', 'request_id', 'manifest'):
+            assert current[key] == previous[key]
+    assert not (restored.root / INCOMPLETE).exists()
+    assert (folder / reading_state.FILENAME).read_bytes() == before
+
+
+@pytest.mark.parametrize('component', ['reading', 'state'])
+def test_distinct_historical_v3_shapes_restore_their_exact_component(
+        populated, tmp_path, component):
+    app, workspaces, books, pages, state, bookmarks, _ = populated
+    settings = app.root / 'state/ui/settings.json'
+    settings.parent.mkdir(parents=True)
+    settings.write_bytes(b'{"private-setting":"preserved"}\n')
+    folder = tmp_path / 'historical-v3'
+    create_backup(app, folder)
+    manifest = manifest_at(folder)
+    manifest['version'] = 3
+    manifest.pop('pending')
+    shutil.rmtree(folder / 'pending')
+    if component == 'reading':
+        for name in ('state', 'generated_audio_included'):
+            manifest.pop(name)
+        shutil.rmtree(folder / 'state')
+    else:
+        manifest.pop('reading_state')
+        (folder / reading_state.FILENAME).unlink()
+    digest = replace_manifest(folder, manifest)
+    restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
+    if component == 'reading':
+        saved = ReadingState(restored.root)
+        assert saved.path.read_bytes() == state.path.read_bytes()
+        for workspace, book, page, bookmark in zip(workspaces, books, pages, bookmarks):
+            assert saved.resume(workspace, book['edition']) == page.location
+            assert saved.bookmarks(workspace, book['edition']) == (bookmark,)
+        assert not (restored.root / 'state').exists()
+    else:
+        assert (restored.root / 'state/ui/settings.json').read_bytes() == settings.read_bytes()
+        assert not (restored.root / reading_state.FILENAME).exists()
+    assert restored.search(workspaces[0], 'Перший')[0].quote == 'Перший'
+
+
+def test_legacy_v3_absent_reading_state_remains_absent(tmp_path):
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Historical empty reading state')
+    folder = tmp_path / 'legacy'
+    create_backup(app, folder)
+    manifest = manifest_at(folder)
+    assert manifest['version'] == 2
+    manifest.update(version=3, reading_state=None)
+    restored = restore_backup(folder, tmp_path / 'restored', replace_manifest(folder, manifest))
+    assert not (restored / reading_state.FILENAME).exists()
+    assert not (restored / 'state').exists()
+
+
+@pytest.mark.parametrize('component', ['state', 'pending'])
+def test_v5_missing_declared_component_never_publishes_partial_reading_restore(
+        populated, tmp_path, component):
+    app, _, _, _, state, _, _ = populated
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    shutil.rmtree(folder / component)
+    target = tmp_path / 'rejected'
+    with pytest.raises(ValueError, match='incomplete'):
+        restore_backup(folder, target, digest)
+    assert not target.exists()
+    assert (folder / reading_state.FILENAME).read_bytes() == state.path.read_bytes()
+
+
+def test_cancellation_after_valid_reading_snapshot_never_publishes_v5(
+        populated, tmp_path, monkeypatch):
+    from carr_library import library_backup
+    app, _, _, _, state, _, _ = populated
+    original = library_backup._reading_snapshot
+    stop = False
+    def checked_snapshot(*args, **kwargs):
+        nonlocal stop
+        result = original(*args, **kwargs)
+        stop = True
+        return result
+    monkeypatch.setattr(library_backup, '_reading_snapshot', checked_snapshot)
+    target = tmp_path / 'cancelled'
+    before = state.path.read_bytes()
+    with pytest.raises(InterruptedError):
+        create_backup(app, target, cancelled=lambda: stop)
+    assert stop and not target.exists() and state.path.read_bytes() == before
 
 
 @pytest.mark.parametrize('operation', ['backup', 'restore'])
@@ -306,8 +455,14 @@ def test_sidecar_presence_must_agree_with_versioned_manifest(populated, tmp_path
     else:
         manifest['version'] = 2
         del manifest['reading_state']
+        # Keep a real legacy envelope while leaving the unbound reader file.
+        for name in ('state', 'generated_audio_included', 'pending'):
+            manifest.pop(name)
+        shutil.rmtree(folder / 'state')
+        shutil.rmtree(folder / 'pending')
     digest = replace_manifest(folder, manifest)
-    with pytest.raises(ValueError, match='incomplete backup|unexpected reading-state'):
+    expected = 'missing reading-state' if damage == 'unexpected' else 'incomplete backup'
+    with pytest.raises(ValueError, match=expected):
         restore_backup(folder, tmp_path / 'rejected', digest)
     assert not (tmp_path / 'rejected').exists()
 

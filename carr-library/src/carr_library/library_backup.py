@@ -1,14 +1,15 @@
 """Complete local research-library backups using the canonical SQLite snapshot.
 
-Backups include all workspaces, saved research, registered original files and
-the optional personal reading-state file with bookmarks and resume positions.
-Retained files from failed/unpublished imports are deliberately not included.
+Backups include all workspaces, saved research and registered original files.
+Canonical version 3 includes private application state; version 4 also includes
+resumable import journals and their pinned unpublished sources. Version 5 adds
+the personal reading-state file with exact bookmarks and resume positions.
 The independently retained manifest digest binds the database and every asset.
-Version 2 also identifies the exact schema, not just its numeric user_version;
-version 3 additionally binds reading-state bytes and their original locations.
-Legacy version 1 backups and version 2 backups are accepted only for an exact
-supported V3 or V4 schema. V3 snapshots are restored unchanged; opening the
-restored library performs the normal checked upgrade to V4.
+Version 2 also identifies the exact schema, not just its numeric user_version.
+Historical reading-only version 3 backups have a distinct exact manifest shape
+and remain readable alongside canonical versions 1 through 4. Every version
+requires an exact supported V3 or V4 database schema. V3 database snapshots are
+restored unchanged; opening the library performs the checked upgrade to V4.
 Restoration always creates a new data directory and never merges or overwrites.
 """
 from contextlib import closing
@@ -27,6 +28,7 @@ from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
+from .durable_state import local_path
 from .storage.revisions import Storage
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader import reading_state
@@ -43,7 +45,7 @@ READING_STATE = reading_state.FILENAME
 
 
 def _destination(value, source):
-    path = guard_data_directory(value, purpose='backup or restored library')
+    path = local_path(guard_data_directory(value, purpose='backup or restored library'))
     _plain(path.parent, directory=True)
     if os.path.lexists(path):
         raise FileExistsError(path)
@@ -117,13 +119,17 @@ def _reading_snapshot(root, db, expected=None):
     return raw
 
 
-def create_backup(app, destination):
+def create_backup(app, destination, *, include_generated=False, cancelled=lambda: False):
     """Back up every library to a fresh folder and return its manifest SHA256.
 
     The host's explicit Backup action authorizes all-workspace inclusion. The
     private source/destination parents must be stable local directories. A
     publication interrupted before manifest.json is incomplete and not restorable.
     """
+    if type(include_generated) is not bool or not callable(cancelled):
+        raise ValueError('Invalid backup options.')
+    if cancelled():
+        raise InterruptedError('Backup cancelled.')
     destination = _destination(destination, app.root)
     with exclusive_writer(app.root):
         _plain(app.database)
@@ -147,15 +153,38 @@ def create_backup(app, destination):
                 _sync_file(stage / READING_STATE, reading)
                 reading_manifest = dict(filename=READING_STATE, size_bytes=len(reading),
                                         sha256=sha256(reading).hexdigest())
-            manifest = dict(version=3, kind='carr-library', schema_version=4,
+            manifest = dict(version=2, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
-                assets=_asset_manifest(entries), reading_state=reading_manifest)
+                assets=_asset_manifest(entries))
+            if os.path.lexists(app.root / 'state'):
+                from .state_backup import snapshot_state
+                (stage / 'state').mkdir()
+                state = snapshot_state(app.root / 'state', stage / 'state',
+                                       include_generated=include_generated, cancelled=cancelled)
+                manifest.update(version=3, state=state, generated_audio_included=include_generated)
+            if any(os.path.lexists(app.root / name) for name in
+                   ('imports.sqlite', 'import-requests', 'import-batches')):
+                from .pending_backup import snapshot_pending
+                manifest.update(version=4, pending=snapshot_pending(app, stage / 'pending', cancelled=cancelled))
+                if 'state' not in manifest:
+                    (stage / 'state').mkdir()
+                    manifest.update(state=[], generated_audio_included=include_generated)
+            if reading is not None:
+                # A distinct version avoids confusing the two historical v3
+                # layouts. Keep the canonical component producers unchanged.
+                if 'state' not in manifest:
+                    (stage / 'state').mkdir()
+                    manifest.update(state=[], generated_audio_included=include_generated)
+                manifest.update(version=5, reading_state=reading_manifest)
+                manifest.setdefault('pending', None)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
                 raise RestoreError('manifest size limit')
             _sync_file(stage / MANIFEST, raw)
+            if cancelled():
+                raise InterruptedError('Backup cancelled.')
             # mkdir provides exclusive no-replace ownership of the destination.
             # The final manifest is the completion marker; no partial bundle is
             # silently overwritten or presented as a successful backup.
@@ -166,7 +195,14 @@ def create_backup(app, destination):
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             if reading is not None:
                 os.link(stage / READING_STATE, destination / READING_STATE)
+            if 'state' in manifest:
+                from .state_backup import publish_state
+                publish_state(stage / 'state', destination / 'state')
+                if manifest.get('pending') is not None:
+                    publish_state(stage / 'pending', destination / 'pending')
             _sync_directory(destination / ORIGINALS)
+            if cancelled():
+                raise InterruptedError('Backup cancelled before publication. The incomplete folder has no manifest.')
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
             _sync_directory(destination.parent)
@@ -179,7 +215,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
     names = set(p.name for p in directory.iterdir())
     required = {DATABASE, ORIGINALS, MANIFEST}
-    if not required <= names or not names <= required | {READING_STATE}:
+    if not required <= names or not names <= required | {READING_STATE, 'state', 'pending'}:
         raise RestoreError('incomplete backup or unexpected files')
     size = _plain(directory / MANIFEST).st_size
     if not 0 < size <= MAX_MANIFEST:
@@ -193,12 +229,21 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3)):
+            or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
+    version = manifest['version']
     fields = {'version','kind','schema_version','database','assets'}
-    if manifest['version'] >= 2:
+    if version >= 2:
         fields.add('schema_fingerprint')
-    if manifest['version'] == 3:
+    if version == 3 and set(manifest) == fields | {'reading_state'}:
+        # Earlier reading backups used v3 before canonical application-state
+        # snapshots did. Only this complete historical shape selects that path.
+        fields.add('reading_state')
+    elif version >= 3:
+        fields.update(('state', 'generated_audio_included'))
+    if version >= 4:
+        fields.add('pending')
+    if version == 5:
         fields.add('reading_state')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
@@ -210,7 +255,23 @@ def _read_manifest(directory, expected_manifest_sha256):
         if (not isinstance(fingerprint, str) or not re.fullmatch(r'[0-9a-f]{64}', fingerprint)
                 or fingerprint != expected_schema_fingerprint(manifest['schema_version'])):
             raise RestoreError('unsupported backup schema fingerprint')
+    if 'state' in fields:
+        from .state_backup import validate_state
+        if type(manifest['generated_audio_included']) is not bool:
+            raise RestoreError('invalid application state backup options')
+        validate_state(manifest['state'])
+        required.add('state')
+    if 'pending' in fields:
+        if manifest['pending'] is None:
+            if version != 5:
+                raise RestoreError('missing pending import backup')
+        else:
+            from .pending_backup import validate_pending
+            validate_pending(manifest['pending'])
+            required.add('pending')
     reading = manifest.get('reading_state')
+    if version == 5 and reading is None:
+        raise RestoreError('missing reading-state manifest')
     if reading is not None:
         if (type(reading) is not dict or set(reading) != {'filename','size_bytes','sha256'}
                 or reading['filename'] != READING_STATE
@@ -221,7 +282,7 @@ def _read_manifest(directory, expected_manifest_sha256):
             raise RestoreError('invalid reading-state manifest')
         required.add(READING_STATE)
     if names != required:
-        raise RestoreError('incomplete backup or unexpected reading-state file')
+        raise RestoreError('incomplete backup or unexpected component files')
     database = manifest['database']
     if (type(database) is not dict or set(database) != {'filename','size_bytes','sha256'}
             or database['filename'] != DATABASE or type(database['size_bytes']) is not int
@@ -283,7 +344,9 @@ def restore_backup(source, destination, expected_manifest_sha256):
     opened writable. A failed/terminated publication retains .restore-incomplete;
     the application must reject such a root instead of opening partial data.
     """
-    source = Path(source).absolute()
+    # Validate the original lexical path before resolving it, otherwise an
+    # ancestor symlink/junction would be hidden from the component verifiers.
+    source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
@@ -306,6 +369,13 @@ def restore_backup(source, destination, expected_manifest_sha256):
                 raise RestoreError('asset manifest disagrees with the database')
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
+        pending = {'assets': [], 'paths': []}
+        if 'state' in manifest:
+            from .state_backup import restore_state
+            restore_state(source / 'state', stage / 'state', manifest['state'])
+        if manifest.get('pending') is not None:
+            from .pending_backup import restore_pending
+            pending = restore_pending(source / 'pending', stage, destination, manifest['pending'])
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
@@ -315,6 +385,16 @@ def restore_backup(source, destination, expected_manifest_sha256):
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
         if reading is not None:
             os.link(stage / READING_STATE, destination / READING_STATE)
+        for entry in pending['assets']:
+            os.link(stage / ORIGINALS / entry['filename'], destination / ORIGINALS / entry['filename'])
+        if 'state' in manifest:
+            from .state_backup import publish_state
+            publish_state(stage / 'state', destination / 'state')
+            for name in pending['paths']:
+                if (stage / name).is_dir():
+                    publish_state(stage / name, destination / name)
+                else:
+                    os.link(stage / name, destination / name)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.

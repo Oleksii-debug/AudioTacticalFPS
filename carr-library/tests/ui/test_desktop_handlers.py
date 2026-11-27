@@ -128,6 +128,21 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
+    new_installers = []
+    for module, installer in [('speech_dialog', 'install_speech_actions'),
+                              ('language_matrix', 'install_language_actions'),
+                              ('translation_dialog', 'install_translation_actions'),
+                              ('studio_dialog', 'install_studio_actions'),
+                              ('assistant_dialog', 'install_assistant_actions'),
+                              ('document_conversion', 'install_conversion_actions'),
+                              ('keyboard_settings', 'install_keyboard_settings'),
+                              ('citation_formatting', 'install_citation_actions'),
+                              ('operation_progress', 'install_operation_progress'),
+                              ('save_actions', 'install_save_actions')]:
+        callback = Mock()
+        new_installers.append(callback)
+        monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
+                            SimpleNamespace(**{installer: callback}))
 
     value._menus()
 
@@ -138,7 +153,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Import Center: files, folders and queues' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook):
+    for installer in (*installers.values(), ebook, *new_installers):
         installer.assert_called_once_with(value)
     value.help(None)
     guide = env['show_text'].call_args.args[2]

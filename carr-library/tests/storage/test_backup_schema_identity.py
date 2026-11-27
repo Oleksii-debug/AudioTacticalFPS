@@ -3,6 +3,7 @@ from contextlib import closing
 from hashlib import sha256
 import json
 import sqlite3
+import shutil
 
 import pytest
 
@@ -31,6 +32,17 @@ def backup(tmp_path):
 
 
 def write_manifest(directory, manifest):
+    if type(manifest.get('version')) is int and manifest['version'] in (1, 2):
+        # Produce an actual historical shape for legacy compatibility tests.
+        for key in ('state', 'generated_audio_included', 'pending', 'reading_state'):
+            manifest.pop(key, None)
+        for name in ('state', 'pending'):
+            if (directory / name).exists():
+                shutil.rmtree(directory / name)
+    elif manifest.get('version') == 3:
+        manifest.pop('pending', None)
+        if (directory / 'pending').exists():
+            shutil.rmtree(directory / 'pending')
     raw = (json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
     (directory / 'manifest.json').write_bytes(raw)
     return sha256(raw).hexdigest()
@@ -49,11 +61,11 @@ def forbid_writable_storage(monkeypatch):
 
 def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):
     app, workspace, topic, directory, manifest = backup
-    assert manifest['version'] == 3
+    assert manifest['version'] == 4
     assert manifest['schema_version'] == 4
     assert set(manifest) == {'version', 'kind', 'schema_version',
-                             'schema_fingerprint', 'database', 'assets', 'reading_state'}
-    assert manifest['reading_state'] is None
+                             'schema_fingerprint', 'database', 'assets', 'state',
+                             'generated_audio_included', 'pending'}
     with closing(sqlite3.connect((directory / 'library.sqlite').as_uri() + '?mode=ro',
                                  uri=True)) as db:
         assert manifest['schema_fingerprint'] == schema_fingerprint(db)
@@ -81,11 +93,10 @@ def test_fingerprint_is_layout_identity_not_database_content(tmp_path):
             assert schema_fingerprint(first.db) != original
 
 
-@pytest.mark.parametrize('version', [1, 2])
+@pytest.mark.parametrize('version', [1, 2, 3])
 def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
     app, workspace, topic, directory, manifest = backup
     manifest['version'] = version
-    del manifest['reading_state']
     if version == 1:
         del manifest['schema_fingerprint']
     digest = write_manifest(directory, manifest)
@@ -97,7 +108,7 @@ def test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):
     assert bundle_bytes(directory) == original
 
 
-@pytest.mark.parametrize('version', [1, 2, 3])
+@pytest.mark.parametrize('version', [1, 2, 3, 4])
 @pytest.mark.parametrize('sql', [
     # The competing unreleased layout used workspace_profile at user_version=3.
     'ALTER TABLE workspace_meta RENAME TO workspace_profile',
@@ -114,8 +125,6 @@ def test_different_layout_is_rejected_before_writable_open(
         db.execute(sql)
         db.commit()
     manifest['version'] = version
-    if version < 3:
-        del manifest['reading_state']
     if version == 1:
         del manifest['schema_fingerprint']
     # A valid outer checksum cannot turn an incompatible layout into our schema.
@@ -166,6 +175,35 @@ def test_manifest_fields_are_strict_before_writable_open(
         restore_backup(directory, destination, digest)
     assert not destination.exists()
     assert bundle_bytes(directory) == original
+
+
+@pytest.mark.parametrize('shape', ['mixed-v3', 'partial-reading-v3',
+                                  'reading-added-to-v4', 'v5-without-reading'])
+def test_component_version_shapes_are_unambiguous_before_writable_open(
+        backup, tmp_path, monkeypatch, shape):
+    _, _, _, directory, manifest = backup
+    if shape == 'mixed-v3':
+        manifest.update(version=3, reading_state=None)
+        manifest.pop('pending')
+        shutil.rmtree(directory / 'pending')
+    elif shape == 'partial-reading-v3':
+        manifest.update(version=3, reading_state=None)
+        manifest.pop('state')
+        manifest.pop('pending')
+        shutil.rmtree(directory / 'state')
+        shutil.rmtree(directory / 'pending')
+        # A reading-only v3 never declared this leftover generated-audio flag.
+    elif shape == 'reading-added-to-v4':
+        manifest['reading_state'] = None
+    else:
+        manifest.update(version=5, reading_state=None)
+    raw = (json.dumps(manifest, sort_keys=True) + '\n').encode('utf-8')
+    (directory / 'manifest.json').write_bytes(raw)
+    forbid_writable_storage(monkeypatch)
+    target = tmp_path / 'rejected'
+    with pytest.raises(RestoreError):
+        restore_backup(directory, target, sha256(raw).hexdigest())
+    assert not target.exists()
 
 
 @pytest.mark.parametrize('duplicate', ['schema_fingerprint', 'database_size'])
