@@ -20,6 +20,9 @@ MAX_RUNTIME_FILES = 8192
 MAX_RUNTIME_BYTES = 2 * 1024**3
 MAX_COMPONENT_BYTES = 512 * 1024**2
 MAX_INVENTORY_BYTES = 2 * 1024**2
+# Bounded low-level readers; the pinned Windows calibre closure exceeds384.
+# Python's descriptor I/O uses the CRT low-I/O table, not stdio FILE* streams.
+MAX_CODE_HANDLES = 1024
 INVENTORY_NAME = 'legacy-runtime.json'
 EXECUTABLES = {
     'calibre': ('ebook-convert.exe', 'ebook-convert'),
@@ -216,7 +219,7 @@ def admitted_runtime(selection, stage, kind, deadline):
     code = [row for row in value['files']
             if Path(row['name']).suffix.casefold() in ('.exe', '.dll', '.pyd', '.zip', '.so')
             or row['name'] in (value['executable'], 'calibre-debug')]
-    if len(code) > 384:
+    if len(code) > MAX_CODE_HANDLES:
         raise ConversionUnavailable('Selected native code inventory exceeds its handle budget.')
     with ExitStack() as stack:
         for row in code:

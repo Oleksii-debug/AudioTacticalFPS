@@ -158,7 +158,7 @@ jobs:
           $report = Get-Content converter-ci-results/legacy-converter-gate.json -Raw | ConvertFrom-Json
           $expected = if ($env:CARR_CONVERTER_FAMILY -eq 'calibre') { 9 } else { 4 }
           if ($report.status -ne 'PASS' -or $report.native_source_cases -ne $expected -or $report.native_installed_cases -ne $expected -or
-              $report.portable_source_cases -ne 151 -or $report.portable_installed_cases -ne 151 -or
+              $report.portable_source_cases -ne 154 -or $report.portable_installed_cases -ne 154 -or
               $report.source_commit -ne $env:CARR_CONVERTER_COMMIT -or $report.source_tree -ne $env:CARR_CONVERTER_TREE -or
               -not $report.installed_identity.isolated) { throw 'Actual legacy fixture qualification is incomplete.' }
           & git diff --exit-code HEAD --

@@ -364,3 +364,47 @@ def test_chm_undeclared_or_complex_doctype_remains_refused(declaration):
     assert legacy._chm_html(raw) == raw
     with pytest.raises(ValueError, match='document type|doctype|DOCTYPE'):
         extract_document(raw, '.html')
+
+
+@pytest.mark.parametrize('outcome', ['complete', 'native-error'])
+def test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits(
+        tmp_path, monkeypatch, outcome):
+    from contextlib import contextmanager
+    executable = runtime(tmp_path, 'calibre')
+    for index in range(382):
+        (executable.parent / ('component-' + str(index) + '.dll')).write_bytes(b'SYNTHETIC CODE IDENTITY')
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    selected = legacy_runtime.ToolSelection.capture(executable, 'calibre').snapshot(stage)
+    real, streams = legacy_runtime.verified_reader, []
+
+    @contextmanager
+    def tracked(path, **options):
+        with real(path, **options) as stream:
+            streams.append(stream)
+            yield stream
+    monkeypatch.setattr(legacy_runtime, 'verified_reader', tracked)
+    try:
+        with legacy_runtime.admitted_runtime(selected, stage, 'calibre', time.monotonic() + 60):
+            assert sum(not stream.closed for stream in streams) == 385
+            if outcome == 'native-error':
+                raise RuntimeError('synthetic native failure')
+    except RuntimeError as error:
+        assert outcome == 'native-error' and str(error) == 'synthetic native failure'
+    assert streams and all(stream.closed for stream in streams)
+    for path in executable.parent.iterdir():
+        with path.open('r+b') as stream:
+            stream.write(b'RELEASED')
+
+
+def test_excessive_code_handle_inventory_is_refused_before_any_native_lease(tmp_path, monkeypatch):
+    value = {'root': str(tmp_path), 'executable': 'ebook-convert.exe',
+             'files': [{'name': 'component-' + str(index) + '.dll', 'identity': [0] * 6}
+                       for index in range(legacy_runtime.MAX_CODE_HANDLES + 1)]}
+    monkeypatch.setattr(legacy_runtime, '_load', lambda *a, **k: value)
+    monkeypatch.setattr(legacy_runtime, 'verified_reader',
+                        lambda *a, **k: pytest.fail('Excessive native inventory opened a code lease.'))
+    with pytest.raises(ConversionUnavailable, match='handle budget'):
+        with legacy_runtime.admitted_runtime({'sha256': '0' * 64}, tmp_path, 'calibre',
+                                            time.monotonic() + 5):
+            pytest.fail('Excessive native inventory reached execution.')
