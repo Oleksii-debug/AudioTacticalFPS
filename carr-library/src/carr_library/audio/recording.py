@@ -421,7 +421,9 @@ class RecordingService:
 
     @staticmethod
     def _input_arguments(device):
-        return ['-thread_queue_size', '128', '-rtbufsize', '16M', '-f', 'dshow',
+        # Realtime frames are bounded at the input. Current FFmpeg treats
+        # thread_queue_size as output-only; keep that limit in _capture after -i.
+        return ['-rtbufsize', '16M', '-f', 'dshow',
                 '-i', 'audio=' + device.alternative]
 
     def capture(self, device_id, *, title='Microphone recording', options=None,
@@ -487,7 +489,7 @@ class RecordingService:
         command = [self.runtime.ffmpeg, '-hide_banner', '-loglevel', 'error', '-n', '-nostats',
             '-max_alloc', str(budget.max_alloc_bytes), '-threads', str(budget.threads),
             '-stats_period', '0.1', '-progress', 'pipe:1',
-            *self._input_arguments(device), '-map', '0:a:0', '-vn',
+            *self._input_arguments(device), '-thread_queue_size', '128', '-map', '0:a:0', '-vn',
             '-c:a', 'pcm_s16le', '-ar', str(options.sample_rate), '-ac', str(options.channels),
             '-t', str(options.max_seconds), '-f', 'wav', '-rf64', 'never', str(staged)]
         self._validate_root()

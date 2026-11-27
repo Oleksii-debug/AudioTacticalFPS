@@ -98,6 +98,10 @@ def _dispatch_path(relative):
 def _prepared(relative, value):
     """Return a modified typed record, or None for unchanged opaque state."""
     path = _dispatch_path(relative)
+    if path == PurePosixPath('speech/presentation.json'):
+        from .speech.presentation import ReadingAppearance
+        ReadingAppearance.from_dict(value)
+        return None
     if _publication_path(path):
         from .studio.publishing import validate_publication_document
         validate_publication_document(value)
@@ -185,6 +189,10 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
         if cancelled():
             raise InterruptedError('Application state verification cancelled.')
         relative = _dispatch_path(entry['filename'])
+        if relative == PurePosixPath('speech/presentation.json'):
+            from .speech.presentation import MAX_BYTES
+            if not 0 < entry['size_bytes'] <= MAX_BYTES:
+                raise ValueError('Reading appearance settings exceed their recovery size limit.')
         if relative.as_posix().startswith(recording_backup.STATE_PREFIX):
             # The dedicated copied-tree verifier below parses only receipts,
             # streams actual PCM and validates the complete retake graph.
@@ -206,7 +214,8 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
             value = read_json(path)
         except (UnicodeError, json.JSONDecodeError):
             if (_publication_path(relative)
-                    or relative in (PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'))
+                    or relative in (PurePosixPath('speech/presentation.json'),
+                                    PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'))
                     or len(relative.parts) == 5 and relative.parts[0] == 'transcription'
                     and relative.parts[2] == 'jobs' and relative.name == 'job.json'):
                 raise ValueError('Invalid typed transcription recovery JSON.') from None

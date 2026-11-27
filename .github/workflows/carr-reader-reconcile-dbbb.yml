@@ -1,0 +1,80 @@
+name: CARR one-off reader and canonical reconciliation
+on:
+  push:
+    branches: [carr/reader-reconcile-dbbb-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-reader-reconcile-dbbb.yml']
+permissions:
+  contents: read
+concurrency:
+  group: carr-reader-reconcile-dbbb
+  cancel-in-progress: false
+jobs:
+  reader-review:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Review the exact public canonical merge without modifying a branch
+        working-directory: .
+        run: |
+          python -B carr-library/scripts/ci_reconcile_e69_review.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Install pinned desktop and exact reviewed source
+        id: install
+        run: |
+          New-Item -ItemType Directory -Force 'ci-reader-results' | Out-Null
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require new appearance and complete recovery regressions
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          python -B scripts/ci_check.py --jobs 2 tests/speech/test_presentation.py tests/ui/test_reader_presentation.py tests/storage/test_reader_presentation_backup.py 2>&1 | Tee-Object 'ci-reader-results/appearance-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the exact pinned FFmpeg version for recording compatibility
+        id: audio
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-reader-audio'
+          python -B packaging/prepare_windows_audio.py --output $audio --download | Tee-Object 'ci-reader-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Require actual bounded recording with all production input options
+        if: ${{ !cancelled() && steps.audio.outcome == 'success' }}
+        run: |
+          python -B scripts/ci_check.py tests/audio/test_recording.py 2>&1 | Tee-Object 'ci-reader-results/recording-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain the one-off review evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-reader-reconciliation-${{ github.sha }}
+          path: |
+            ci-reader-results/**
+            carr-library/ci-reader-results/**
+            carr-library/ci-results/**
+          retention-days: 7
+          if-no-files-found: error
