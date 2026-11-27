@@ -31,13 +31,18 @@ def relative_name(value):
         raise ValueError('State manifest path exceeds the 4096-character limit.')
     if value.count('/') + 1 > MAX_STATE_PATH_DEPTH:
         raise ValueError('State manifest path exceeds the 64-component depth limit.')
-    if '\\' in value or ':' in value or any(ord(c) < 32 for c in value):
+    if any(c in '<>:"\\|?*' or ord(c) < 32 for c in value):
         raise ValueError('Invalid state manifest path.')
     path = PurePosixPath(value)
-    if path.is_absolute() or str(path) != value or any(x in ('.', '..') or x.endswith((' ', '.')) for x in path.parts):
+    if (not path.parts or path.is_absolute() or str(path) != value
+            or any(x in ('.', '..') or x.endswith((' ', '.')) for x in path.parts)):
         raise ValueError('Invalid state manifest path.')
-    if any(x.split('.')[0].casefold() in {'con','prn','aux','nul',*(f'com{i}' for i in range(1,10)),
-                                        *(f'lpt{i}' for i in range(1,10))} for x in path.parts):
+    # Win32 also reserves superscript 1, 2 and 3 for COM/LPT devices.
+    # A name valid on a POSIX source must not create an unrestorable backup.
+    digits = '123456789\u00b9\u00b2\u00b3'
+    reserved = {'con', 'prn', 'aux', 'nul', 'conin$', 'conout$',
+                *(f'{prefix}{i}' for prefix in ('com', 'lpt') for i in digits)}
+    if any(x.split('.')[0].rstrip(' ').casefold() in reserved for x in path.parts):
         raise ValueError('Invalid portable state filename.')
     return path
 

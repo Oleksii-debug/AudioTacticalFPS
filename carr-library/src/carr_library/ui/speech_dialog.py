@@ -46,6 +46,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 document = recovered.document
                 text = document.text
                 recovery_notice = 'Recovered your saved reading draft and voice settings. '
+            if recovered is not None and recovered.document.format_notice:
+                recovery_notice += recovered.document.format_notice
+                # The earlier dialect is imported in memory; retain its saved
+                # recovery bytes until the user explicitly writes a new copy.
+                draft_store = None
     except (OSError, ValueError, RuntimeError) as exc:
         recovery_notice = f'Reading-draft recovery is unavailable: {exc}. Save As remains available. '
         draft_store = None
@@ -229,8 +234,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         # Keep the prior recovery file unchanged; Save As is still available.
                         draft_store = None
                         recovered = None
-                        recovery_notice = ('Previous draft has no matching source lineage and was preserved. '
-                                           'Use Save As for this new copy. ')
+                        recovery_notice += ('Previous draft has no matching source lineage and was preserved. '
+                                            'Use Save As for this new copy. ')
                     document = fresh
                 editor.ChangeValue(document.text)
                 source_loaded = True
@@ -248,7 +253,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
-                report('No local voice is available. Install a SAPI 5 voice on Windows or an optional '
+                report(recovery_notice + 'No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
         def load():
             source = source_loader(cancel.is_set) if not source_loaded else None
@@ -487,7 +492,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return False
 
     def open_project(event=None):
-        nonlocal document, save_path
+        nonlocal document, save_path, draft_store, recovery_notice
         if busy:
             report('Stop the current render before opening another document.', focus=True)
             return
@@ -518,10 +523,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if progress is not None:
                 progress.refresh_audio_state()
             document, save_path = loaded, selected
+            if document.format_notice:
+                draft_store = None
+                save_path = None
+                recovery_notice = document.format_notice
             editor.ChangeValue(document.text)
             sync_document()
             editor.SetFocus()
-            report('Reading copy opened. Original text is retained separately; no quotation was approved.')
+            report(recovery_notice + 'Reading copy opened. Original text is retained separately; no quotation was approved.')
         except Exception as exc:
             report(str(exc), focus=True)
 

@@ -57,6 +57,94 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           "CARR_V3_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Prepare the verified OCR engine before installed recovery acceptance
+        timeout-minutes: 10
+        run: |
+          $ocrWork = Join-Path $env:RUNNER_TEMP 'carr-v3-ocr'
+          New-Item -ItemType Directory -Force $ocrWork | Out-Null
+          python -m pip install --only-binary=:all: zstandard==0.25.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ocr = Join-Path $ocrWork 'ocr'
+          $ocrSource = Join-Path $ocrWork 'ocr-corresponding-source.tar'
+          python packaging/prepare_windows_ocr.py --cache (Join-Path $ocrWork 'ocr-cache') --output $ocr --source-archive $ocrSource --download | Tee-Object 'ci-v3-results/ocr-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Verify installed backup and import publication integrity
+        timeout-minutes: 10
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+          PYTEST_ADDOPTS: ''
+        run: |
+          $installedRecovery = @'
+          import json, pathlib, sys, xml.etree.ElementTree as ET
+          import carr_library, carr_library.state_backup, carr_library.ingest.worker
+          import carr_library.application, carr_library.pending_backup, carr_library.library_backup
+          import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
+          import carr_library.speech.runtime, carr_library.academic_integration.doi
+          import carr_library.speech.session
+          import carr_library.storage.revisions, carr_library.storage.schema_identity
+          import pytest
+          checkout = pathlib.Path.cwd().resolve()
+          names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
+                   'carr_library.application', 'carr_library.pending_backup', 'carr_library.library_backup',
+                   'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
+                   'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
+                   'carr_library.speech.session',
+                   'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
+          def installed_origins():
+              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
+              assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
+              return origins
+          installed_origins()
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          policy = RejectExpectedFailures()
+          report = pathlib.Path('ci-v3-results/installed-recovery.xml')
+          suites = ['tests/storage/test_v3_state_backup.py',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
+                    'tests/storage/test_state_backup_portability.py::test_portable_manifest_keeps_ordinary_unicode_names',
+                    'tests/storage/test_state_backup_portability.py::test_portable_snapshot_roundtrip_unicode',
+                    'tests/storage/test_pending_backup.py',
+                    'tests/storage/test_complete_pending_backup.py',
+                    'tests/storage/test_academic_migration.py',
+                    'tests/storage/test_backup_schema_identity.py',
+                    'tests/e2e/test_import_worker_publication.py',
+                    'tests/ingest/test_import_replay_identity.py',
+                    'tests/speech/test_reading.py',
+                    'tests/speech/test_source.py',
+                    'tests/speech/test_session.py',
+                    'tests/packaging/test_worker_bytecode.py']
+          status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
+                               '-o', 'xfail_strict=true', '--import-mode=importlib',
+                               '--junitxml=' + str(report), *suites], plugins=[policy])
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          passed = len(cases) - failed - skipped
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen
+          result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
+                        skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
+                        origins=installed_origins(), manual_nvda='NOT_RUN')
+          pathlib.Path('ci-v3-results/installed-recovery.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result), flush=True)
+          raise SystemExit(0 if ok else 1)
+          '@
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $installedRecovery | python -I -B -X utf8 - 2>&1 | Tee-Object 'ci-v3-results/installed-recovery.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+          }
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
           $python = (Get-Command python.exe).Source
@@ -100,7 +188,7 @@ jobs:
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

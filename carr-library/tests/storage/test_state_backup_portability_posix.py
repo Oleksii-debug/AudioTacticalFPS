@@ -29,3 +29,16 @@ def test_snapshot_refuses_unrestorable_portable_names(tmp_path, names):
     with pytest.raises(ValueError, match='Duplicate|collide'):
         snapshot_state(source, target)
     assert all((source / name).read_bytes() == b'x' for name in names)
+
+
+def test_snapshot_rejects_nonportable_real_source(tmp_path):
+    import os
+
+    if os.name == 'nt':
+        pytest.skip('POSIX-only filename fixture')
+    root = tmp_path / 'source'
+    root.mkdir()
+    (root / 'draft?.json').write_bytes(b'x')
+    with pytest.raises(ValueError, match='Invalid'):
+        snapshot_state(root, tmp_path / 'stage')
+    assert not (tmp_path / 'stage').exists()
