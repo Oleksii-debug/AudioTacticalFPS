@@ -235,3 +235,114 @@ child.wait()
         if unrelated.poll() is None:
             unrelated.terminate()
         unrelated.wait(timeout=5)
+
+
+@pytest.mark.parametrize('finish_on_wait', [True, False], ids=['exit-in-progress', 'still-running'])
+def test_windows_refused_stop_requires_bounded_exact_handle_exit(
+        tmp_path, monkeypatch, finish_on_wait):
+    """Control the exit race while retaining real Windows processes and waits.
+
+    Only the failed stop request is injected. Successful cleanup must still
+    wait for the actual process object to signal; a still-live object is never
+    accepted merely because TerminateProcess reports access denied.
+    """
+    from types import SimpleNamespace
+
+    ready = tmp_path / 'owned-child-ready'
+    held_file = tmp_path / 'capture-owned.wav'
+    code = (
+        'import sys; from pathlib import Path; '
+        f'stream=open({str(held_file)!r},"wb"); stream.write(b"pending"); stream.flush(); '
+        f'Path({str(ready)!r}).write_text("ready"); '
+        'assert sys.stdin.buffer.read(1) == b"x"; stream.close()')
+    child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code],
+        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    kernel = _kernel()
+    actual_windll = ctypes.WinDLL
+    observed = SimpleNamespace(owned=None, job=None, refused=[], waits=[], closing=[])
+    proof = kernel.OpenProcess(0x00100000 | 0x0001, False, child.pid)
+    assert proof, ctypes.get_last_error()
+
+    def opened(handle):
+        observed.owned = handle
+    def created(handle):
+        observed.job = handle
+    class RefusedStop(_ObservedFunction):
+        def __call__(self, handle, exit_code):
+            assert handle == observed.owned
+            assert kernel.WaitForSingleObject(proof, 0) == 258
+            observed.refused.append(handle)
+            ctypes.set_last_error(5)  # ERROR_ACCESS_DENIED during concurrent exit
+            return 0
+    class ObservedWait(_ObservedFunction):
+        def __call__(self, handle, milliseconds):
+            if handle == observed.owned and milliseconds:
+                assert observed.refused and 0 < milliseconds <= 5000
+                assert kernel.WaitForSingleObject(proof, 0) == 258
+                with pytest.raises(PermissionError):
+                    held_file.unlink()
+                if finish_on_wait:
+                    # Let the real child complete only once cleanup has entered
+                    # its bounded wait, never after an immediate zero-time poll.
+                    child.stdin.write(b'x')
+                    child.stdin.flush()
+                    child.stdin.close()
+                value = self._function(handle, milliseconds)
+                observed.waits.append(value)
+                return value
+            return self._function(handle, milliseconds)
+    def closing(arguments):
+        if arguments[0] == observed.job:
+            observed.closing.append(kernel.WaitForSingleObject(proof, 0))
+    class KernelProxy:
+        OpenProcess = _ObservedFunction(kernel.OpenProcess, after=opened)
+        CreateJobObjectW = _ObservedFunction(kernel.CreateJobObjectW, after=created)
+        TerminateProcess = RefusedStop(kernel.TerminateProcess)
+        WaitForSingleObject = ObservedWait(kernel.WaitForSingleObject)
+        CloseHandle = _ObservedFunction(kernel.CloseHandle, before=closing)
+        def __getattr__(self, name):
+            return getattr(kernel, name)
+
+    release = None
+    try:
+        deadline = time.monotonic() + 10
+        while not ready.exists():
+            assert child.poll() is None
+            assert time.monotonic() < deadline
+            time.sleep(.01)
+        monkeypatch.setattr(ctypes, 'WinDLL', lambda *args, **kwargs: KernelProxy()
+            if args[0].casefold() == 'kernel32' else actual_windll(*args, **kwargs))
+        release = module._capture_lifetime(child)
+        if finish_on_wait:
+            release()
+            assert observed.refused == [observed.owned]
+            assert observed.waits == [0] and observed.closing == [0]
+            assert kernel.WaitForSingleObject(proof, 0) == 0
+            assert child.wait(5) == 0
+            held_file.unlink()
+        else:
+            started = time.monotonic()
+            with pytest.raises(module.CaptureCleanupError, match='confirm complete') as failure:
+                release()
+            assert time.monotonic() - started < 8
+            assert observed.refused == [observed.owned] and observed.waits == [258]
+            assert 'remains unconfirmed' in str(failure.value.__cause__)
+            assert 'WinError 5' in str(failure.value.__cause__)
+            # The fail-closed Job fallback can stop the child afterwards. It
+            # does not turn this operation into an accepted cleanup receipt.
+            assert kernel.WaitForSingleObject(proof, 5000) == 0
+        release()  # Original idempotent handle ownership is preserved.
+        assert len(observed.closing) == 1
+    finally:
+        if kernel.WaitForSingleObject(proof, 0) == 258:
+            kernel.TerminateProcess(proof, 99)
+        kernel.WaitForSingleObject(proof, 5000)
+        if release is not None:
+            try:
+                release()
+            except module.CaptureCleanupError:
+                pass
+        kernel.CloseHandle(proof)
+        if child.stdin and not child.stdin.closed:
+            child.stdin.close()
+        child.wait(timeout=5)

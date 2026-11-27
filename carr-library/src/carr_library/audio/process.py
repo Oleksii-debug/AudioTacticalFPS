@@ -156,6 +156,7 @@ def _capture_lifetime(process):
         released = True
         handles = {process.pid: child}
         confirmed = False
+        stop_errors = {}
         deadline = time.monotonic() + 5
 
         def members():
@@ -204,12 +205,17 @@ def _capture_lifetime(process):
                     handles[identity] = handle
                 for handle in handles.values():
                     if status(handle) == 258 and not kernel.TerminateProcess(handle, 1):
-                        if status(handle) != 0:  # A concurrent normal exit is safe only once signaled.
-                            raise CaptureCleanupError('Windows could not stop an owned capture process.')
+                        # A concurrent exit can reject a new termination request
+                        # before the retained process object becomes signaled.
+                        # The request's return is never a cleanup receipt: use
+                        # the same bounded exact-handle wait on either outcome.
+                        stop_errors[handle] = ctypes.get_last_error()
                 for handle in handles.values():
                     remaining = deadline - time.monotonic()
                     if remaining <= 0 or status(handle, max(1, int(remaining * 1000))) != 0:
-                        raise CaptureCleanupError('Capture process termination remains unconfirmed.')
+                        detail = (' (WinError ' + str(stop_errors[handle]) + ')'
+                                  if handle in stop_errors else '')
+                        raise CaptureCleanupError('Capture process termination remains unconfirmed.' + detail)
                 remaining_members = members()
                 if all(identity in handles and status(handles[identity]) == 0
                        for identity in remaining_members):
