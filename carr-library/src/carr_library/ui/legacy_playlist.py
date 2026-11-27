@@ -129,9 +129,9 @@ class LegacyQueueAction:
 
     def _failed(self, token, error):
         if isinstance(error, service.QueueImportCommittedError):
-            self._complete(token, error.result, open_project=False)
+            self._complete(token, error.result, open_project=False, notice=str(error))
 
-    def _complete(self, token, result, *, open_project=True):
+    def _complete(self, token, result, *, open_project=True, notice=''):
         # A committed identity survives a stale UI/library or a later reopen
         # failure. It is never converted into an instruction to import again.
         self.last_result = result
@@ -141,6 +141,8 @@ class LegacyQueueAction:
             message += 'Final durability was not acknowledged. Reopen and verify this existing project before continuing. '
         if result.warning:
             message += result.warning + ' '
+        if notice:
+            message += notice + ' '
         if not self._current(token):
             report = getattr(getattr(self.owner, 'parent', None), 'report', None)
             if callable(report):

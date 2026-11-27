@@ -138,3 +138,15 @@ def test_real_worker_result_retains_identity_when_stale_native_callback_is_suppr
     _, work, _suppressed_done, _ = ui.jobs.pop()
     assert work() is result
     assert action.last_result is result and not ui.opened and not ui.messages
+
+
+def test_committed_cleanup_failure_keeps_warning_even_after_confirmed_durable_publication(tmp_path):
+    ui = owner(tmp_path)
+    action = module.LegacyQueueAction(ui)
+    result = QueueImportResult('2' * 32, Path('/new/project.json'), 'a' * 64, 2, True, '')
+    error = QueueImportCommittedError(result)
+    action._failed(action._token(), error)
+    assert action.last_result is result and not ui.opened and not ui.jobs
+    assert result.project_id in ui.messages[-1]
+    assert str(error) in ui.messages[-1]
+    assert 'cleanup or durability step failed' in ui.messages[-1]
