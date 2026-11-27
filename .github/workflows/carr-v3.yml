@@ -36,6 +36,12 @@ jobs:
         with:
           python-version: '3.11'
           architecture: x64
+      - name: Verify native Windows state replacement semantics
+        timeout-minutes: 3
+        run: |
+          New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
+          python -I -B scripts/windows_json_replace_diagnostic.py 2>&1 | Tee-Object 'ci-v3-results/native-json-replacement.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Native state replacement diagnostic failed.' }
       - name: Install exact application and native desktop dependencies
         id: install-runtime
         run: |
@@ -74,6 +80,7 @@ jobs:
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.academic_integration.doi
           import carr_library.speech.session
+          import carr_library.durable_state, carr_library.ui.save_actions
           import carr_library.storage.revisions, carr_library.storage.schema_identity
           import pytest
           checkout = pathlib.Path.cwd().resolve()
@@ -82,6 +89,7 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
+                   'carr_library.durable_state', 'carr_library.ui.save_actions',
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
@@ -110,7 +118,9 @@ jobs:
                     'tests/speech/test_reading.py',
                     'tests/speech/test_source.py',
                     'tests/speech/test_session.py',
-                    'tests/packaging/test_worker_bytecode.py']
+                    'tests/packaging/test_worker_bytecode.py',
+                    'tests/storage/test_state_json_reader.py',
+                    'tests/ui/test_save_actions.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
@@ -174,6 +184,12 @@ jobs:
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/runtime-firewall.json'
             & $python -I -B scripts/windows_v3_smoke.py 2>&1 | Tee-Object 'ci-v3-results/native-v3.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual native speech and production acceptance failed.' }
+            & $python -I -B scripts/windows_live_reading_smoke.py --output 'ci-v3-results/live-reading-native.json'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual native live reading acceptance failed.' }
+            & $python -I -B tests/ui/native_transcription_smoke.py 2>&1 | Tee-Object 'ci-v3-results/transcription-native.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual native transcription workflow failed.' }
+            & $python -I -B scripts/windows_save_timer_smoke.py --output 'ci-v3-results/native-save-timer.json' 2>&1 | Tee-Object 'ci-v3-results/native-save-timer.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native draft timer lifetime acceptance failed.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -188,7 +204,7 @@ jobs:
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_worker_bytecode.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/integrations tests/reader/test_live_reading.py tests/reader/test_live_player.py tests/ui/test_live_reading_controls.py tests/ui/test_reading_copy_save_guard.py tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/acquisition tests/research/test_bibtex_import.py tests/search/test_advanced_search.py tests/search/test_federated_advanced.py tests/e2e/test_advanced_research_search.py tests/ui/probe_advanced_query_builder.py tests/ui/test_acquisition_dialog.py tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_backup_v5_extensions.py tests/storage/test_studio_input_backup.py tests/storage/test_backup_studio_media.py tests/storage/test_backup_legacy_compat.py tests/storage/test_backup_transcription.py tests/storage/test_state_backup_portability.py tests/storage/test_backup_reporting.py tests/storage/test_backup_restore_cancellation.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/e2e/test_import_worker_publication.py tests/ingest/test_import_replay_identity.py tests/packaging/test_worker_bytecode.py tests/ui/test_save_actions.py tests/storage/test_state_json_reader.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()

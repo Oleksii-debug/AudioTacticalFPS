@@ -1,0 +1,32 @@
+{
+  "archives": {
+    "v3": {
+      "archive_sha256": "b961a14e920d631c05ad3ae4fa80b7e3d8a2336a7b941f68d73bcd7a77a473c0",
+      "edition": "9403d0a7bdf54da1974630eca5d433de",
+      "manifest_sha256": "81c5ce448b9f88b781fdee12fdaa0a51afa43ee93f4ffad5361c2d0a91ff7beb",
+      "narration": "d8a1705b4ae3418a92974414696d3393",
+      "original_text": "Exact source.\r\nУкраїнський текст.",
+      "workspace": "422e4738c9d648a18c1864cf38ebb9a9"
+    },
+    "v3-empty": {
+      "archive_sha256": "6e517bce151e508d51e25bcca0f4a6a12e5af938524c7578613cc017df5298a7",
+      "manifest_sha256": "d3557a49b5eec643d1ea28bb7fc91041ce43949a4c55f590ad263415bb3ee3ef",
+      "workspace": "9438011d974a41169fbf677144f24678"
+    },
+    "v4": {
+      "archive_sha256": "f62f9ce8c9310ff281a0805f0347eae0fd52c0b15877fc71b4b3b96f6b25c533",
+      "edition": "a238289dc4f0490292dbfcb6e39ab209",
+      "manifest_sha256": "a2cca55dc853566e80a68e5c94c182dc48db1963b9864d9ac78555193d6b6e6d",
+      "narration": "300b2644450e45778e213e0ea5eabf95",
+      "original_text": "Exact source.\r\nУкраїнський текст.",
+      "project_id": "89b989af24874a6abf9210af052828a5",
+      "project_revision": "0100af2dd7cfb09753077c350d66cda2fb6584dacfddb6807ac9a05ac0b76098",
+      "request_id": "395a0e29fe3640f08eaeb5d5bd37fc77",
+      "required_audio": "/tmp/legacy-backup-fixtures-meyotgjj/unavailable-effect.wav",
+      "workspace": "ee592e481e6843db953882c04a2a42d3"
+    }
+  },
+  "source_checkpoint": "5580d4dfa99991592d45ec40dd1d1736408d43c8",
+  "source_tree": "98ad0a16c2654965f3f956c3ef4f4c9d51720616",
+  "synthetic": true
+}

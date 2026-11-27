@@ -26,10 +26,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 INSTALL_HARNESS = r'''
 import collections, hashlib, importlib.machinery, importlib.util, json
-import logging, os, pathlib, platform, runpy, shlex, shutil, stat
+import io, logging, os, pathlib, platform, runpy, shlex, shutil, stat
 import subprocess, sys, sysconfig, types
 root = pathlib.Path(sys.argv[1])
 real_run = subprocess.run
+real_popen = subprocess.Popen
 
 def probe(flags, name, environment, arguments=()):
     code = ('import importlib, json, sys; sys.path.insert(0, '
@@ -86,6 +87,24 @@ def package_process(command, **kwargs):
         raise subprocess.CalledProcessError(1, command)
     return result
 
+class ProbeProcess:
+    def __init__(self, result):
+        self.returncode = result.returncode
+        self.stdout = io.BytesIO(((result.stdout or '') + (result.stderr or '')).encode('utf-8'))
+    def poll(self): return self.returncode
+    def wait(self, timeout=None): return self.returncode
+
+def package_popen(command, **kwargs):
+    # The production logger streams Popen. Only the synthetic target interpreter
+    # is replaced; its flags/environment still drive real import probes above.
+    if pathlib.Path(command[0]) != root / '.venv' / 'Scripts' / 'python.exe':
+        return real_popen(command, **kwargs)
+    try:
+        result = package_process(command, **kwargs)
+    except subprocess.CalledProcessError as error:
+        result = subprocess.CompletedProcess(command, error.returncode, '', str(error))
+    return ProbeProcess(result)
+
 # Keep pathlib bound to the host filesystem while the installer's Windows gate
 # sees the intended target. No native Windows execution is represented here.
 windows_os = types.ModuleType('os')
@@ -99,6 +118,8 @@ version = collections.namedtuple('Version', 'major minor micro releaselevel seri
 sys.version_info = version(3, 11, 18, 'final', 0)
 sys.meta_path.insert(0, VenvFinder())
 subprocess.run = package_process
+subprocess.Popen = package_popen
+sys.argv = [str(root / 'install_windows.py')]
 runpy.run_path(str(root / 'install_windows.py'), run_name='__main__')
 '''
 
@@ -324,11 +345,24 @@ def test_install_completion_lifecycle(tmp_path, fail_stage):
 @pytest.mark.parametrize('name', ['ResearchLibrary.cmd', 'CheckInstallation.cmd'])
 def test_launcher_requires_completion_before_python(name):
     launcher = (ROOT / 'packaging' / name).read_text(encoding='utf-8')
-    guard = 'if not exist "%~dp0.venv\\.installation-complete" (\n'
-    start = launcher.index(guard)
-    end = launcher.index('\n)', start)
-    assert 'exit /b 1' in launcher[start:end]
-    assert 'fresh package' in launcher[start:end]
+    if name == 'CheckInstallation.cmd':
+        guard = 'if not exist "%~dp0.venv\\.installation-complete" goto incomplete'
+        start = launcher.index(guard)
+        incomplete = launcher[launcher.index(':incomplete'):]
+        assert 'fresh package' in incomplete
+        assert 'installation-*.log' in incomplete
+        assert 'set "CHECK_RESULT=1"' in incomplete
+        assert '.venv\\Scripts\\python.exe' not in incomplete
+        assert incomplete.count('--show-install-log') == 2
+        assert '"%~dp0runtime\\python.exe" -I -B -X utf8' in incomplete
+        assert 'py -3.11 -I -B -X utf8' in incomplete
+        end = start + len(guard)
+    else:
+        guard = 'if not exist "%~dp0.venv\\.installation-complete" (\n'
+        start = launcher.index(guard)
+        end = launcher.index('\n)', start)
+        assert 'exit /b 1' in launcher[start:end]
+        assert 'fresh package' in launcher[start:end]
     invocations = [line for line in launcher.splitlines()
                    if line.lstrip().startswith('"%~dp0.venv\\Scripts\\python.exe" ')]
     assert invocations

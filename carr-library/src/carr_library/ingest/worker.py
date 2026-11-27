@@ -21,6 +21,7 @@ import time
 from uuid import uuid4
 
 from .pipeline import Ingest, canonical
+from ..extract.document_formats import MIME_SUFFIXES
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -473,9 +474,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                 or set(expected_manifest) != {'sha256', 'mime', 'size'}
                 or not isinstance(expected_manifest['sha256'], str)
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
-                or expected_manifest['mime'] not in (
-                    'text/plain', 'application/pdf', 'application/epub+zip',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
                 or not 0 < expected_manifest['size'] <= MAX_BYTES):
             raise ValueError('Invalid planned source manifest.')
@@ -509,7 +508,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
                 timeout=120.0, request_id=None):
-    """Execute a new or resumed PDF/DOCX/EPUB request without parsing in the caller."""
+    """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):

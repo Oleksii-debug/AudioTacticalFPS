@@ -112,54 +112,40 @@ def test_real_two_archive_roundtrip_preserves_exact_manifest_and_trusted_install
     instructions = (Path(report["output"]) / "START_HERE_UK.txt").read_text(encoding="utf-8")
     assert "ОБИДВА" in instructions and "ОДНУ Й ТУ САМУ НОВУ" in instructions
     assert app.name in instructions and source.name in instructions
+    assert "Запускайте програму через ResearchLibrary.cmd" in instructions
+    assert "ResearchLibrary.exe" not in instructions
     no_staging(tmp_path)
 
 
-@pytest.mark.parametrize("fields,payload", [
-    ({"bundled_audio": True}, None),
-    ({"bundled_audio_runtime": True}, None),
-    ({"bundled_audio": 0}, None),
-    ({"bundled_audio_runtime": None}, None),
-    ({}, "audio/bin/ffmpeg.exe"),
-    ({}, "audio-runtime/bin/ffplay.exe"),
-    ({"bundled_audio": False}, "AuDiO/bin/ffprobe.exe"),
-    ({"bundled_audio_runtime": False, "public_distribution_clearance": True},
-     "AUDIO-RUNTIME/provenance/source-lock.json"),
-])
-def test_transfer_rejects_unreviewed_audio_before_staging(bundle, tmp_path, monkeypatch,
-                                                           fields, payload):
+def test_sealed_native_entry_is_delivered_and_named_in_start_instructions(bundle, tmp_path):
+    # Explicit synthetic bytes test archive/instruction selection, never native execution.
+    payload = b"Synthetic sealed native entry, never executed."
+    (bundle / "ResearchLibrary.exe").write_bytes(payload)
     path = bundle / delivery.MANIFEST
-    manifest = json.loads(path.read_bytes())
-    manifest.update(fields)
-    if payload:
-        file = bundle / payload
-        file.parent.mkdir(parents=True, exist_ok=True)
-        file.write_bytes(b"synthetic local-only runtime payload")
-        manifest["files"][payload] = sha(file.read_bytes())
-    path.write_text(json.dumps(manifest), encoding="utf-8")
-    original = path.read_bytes()
-
-    def forbidden(*args, **kwargs):
-        pytest.fail("Uncleared runtime must be rejected before installer verification.")
-
-    monkeypatch.setattr(delivery, "_trusted_verify", forbidden)
-    with pytest.raises(ValueError, match="Audio runtime distribution clearance"):
-        create(bundle, tmp_path)
-    assert path.read_bytes() == original
-    if payload:
-        assert (bundle / payload).read_bytes() == b"synthetic local-only runtime payload"
-    assert not (tmp_path / "delivery").exists()
-    no_staging(tmp_path)
-
-
-def test_explicit_audio_absence_preserves_transfer(bundle, tmp_path):
-    path = bundle / delivery.MANIFEST
-    manifest = json.loads(path.read_bytes())
-    # A legacy no-audio bundle may explicitly record either absence flag.
-    for flag in ("bundled_audio", "bundled_audio_runtime"):
-        delivery._require_transferable_audio_inventory(dict(manifest, **{flag: False}))
+    manifest = json.loads(path.read_text())
+    manifest["files"]["ResearchLibrary.exe"] = sha(payload)
+    path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     report = create(bundle, tmp_path)
-    assert report["manifest_sha256"] == sha(path.read_bytes())
+    app, _source = paths(report)
+    with zipfile.ZipFile(app) as archive:
+        assert archive.read(delivery.PREFIX + "ResearchLibrary.exe") == payload
+    instructions = (Path(report["output"]) / "START_HERE_UK.txt").read_text(encoding="utf-8")
+    assert "Запускайте програму через ResearchLibrary.exe" in instructions
+    assert "виконає локальне встановлення" in instructions
+    assert "не має цифрового підпису" in instructions
+    assert "run ResearchLibrary.exe" in report["instructions"]
+    assert report["boundaries"]["native_execution"] == "NOT_RUN"
+
+
+def test_unlisted_executable_does_not_change_the_reviewed_delivery_entry(bundle, tmp_path):
+    (bundle / "ResearchLibrary.exe").write_bytes(b"unlisted neighboring file")
+    report = create(bundle, tmp_path)
+    app, _source = paths(report)
+    with zipfile.ZipFile(app) as archive:
+        assert delivery.PREFIX + "ResearchLibrary.exe" not in archive.namelist()
+    instructions = (Path(report["output"]) / "START_HERE_UK.txt").read_text(encoding="utf-8")
+    assert "Запускайте програму через ResearchLibrary.cmd" in instructions
+    assert "ResearchLibrary.exe" not in instructions
 
 
 def test_unlisted_private_environments_and_tests_never_enter_archives(bundle, tmp_path):
@@ -547,3 +533,50 @@ def test_no_giant_payload_reads(bundle, tmp_path, monkeypatch):
     monkeypatch.setattr(delivery, "_stream", stream)
     create(bundle, tmp_path)
     assert reads
+
+
+@pytest.mark.parametrize("fields,payload", [
+    ({"bundled_audio": True}, None),
+    ({"bundled_audio_runtime": True}, None),
+    ({"bundled_audio": 0}, None),
+    ({"bundled_audio_runtime": None}, None),
+    ({}, "audio/bin/ffmpeg.exe"),
+    ({}, "audio-runtime/bin/ffplay.exe"),
+    ({"bundled_audio": False}, "AuDiO/bin/ffprobe.exe"),
+    ({"bundled_audio_runtime": False, "public_distribution_clearance": True},
+     "AUDIO-RUNTIME/provenance/source-lock.json"),
+])
+def test_transfer_rejects_unreviewed_audio_before_staging(bundle, tmp_path, monkeypatch,
+                                                           fields, payload):
+    path = bundle / delivery.MANIFEST
+    manifest = json.loads(path.read_bytes())
+    manifest.update(fields)
+    if payload:
+        file = bundle / payload
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_bytes(b"synthetic local-only runtime payload")
+        manifest["files"][payload] = sha(file.read_bytes())
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    original = path.read_bytes()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Uncleared runtime must be rejected before installer verification.")
+
+    monkeypatch.setattr(delivery, "_trusted_verify", forbidden)
+    with pytest.raises(ValueError, match="Audio runtime distribution clearance"):
+        create(bundle, tmp_path)
+    assert path.read_bytes() == original
+    if payload:
+        assert (bundle / payload).read_bytes() == b"synthetic local-only runtime payload"
+    assert not (tmp_path / "delivery").exists()
+    no_staging(tmp_path)
+
+
+def test_explicit_audio_absence_preserves_transfer(bundle, tmp_path):
+    path = bundle / delivery.MANIFEST
+    manifest = json.loads(path.read_bytes())
+    # A legacy no-audio bundle may explicitly record either absence flag.
+    for flag in ("bundled_audio", "bundled_audio_runtime"):
+        delivery._require_transferable_audio_inventory(dict(manifest, **{flag: False}))
+    report = create(bundle, tmp_path)
+    assert report["manifest_sha256"] == sha(path.read_bytes())

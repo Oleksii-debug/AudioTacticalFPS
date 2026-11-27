@@ -1,6 +1,7 @@
 """Read authorized source positions for an explicitly requested narration copy."""
 from dataclasses import dataclass
 from hashlib import sha256
+import copy
 
 from ._io import check_cancelled
 
@@ -15,6 +16,11 @@ class NarrationSource:
     positions: tuple[dict, ...]
     warnings: tuple[str, ...]
     asset_sha256: str
+
+    @property
+    def locations(self):
+        from .session import document_source_locations
+        return document_source_locations(self.reading_document())
 
     def reading_document(self):
         """Build the existing editable document with explicit, non-authorizing lineage."""
@@ -37,6 +43,9 @@ def read_source_range(desk, first, last, *, guard=lambda: None,
         raise ValueError('Choose a valid first and last source reading position.')
     if type(max_characters) is not int or not 1 <= max_characters <= 2_000_000:
         raise ValueError('Choose a positive bounded narration-copy character budget.')
+    desk = copy.copy(desk)
+    desk.cancelled = cancelled
+    desk.timeout = min(30.0, desk.timeout)
     pieces, positions, warnings, offset = [], [], [], 0
     for ordinal in range(first, last + 1):
         guard()

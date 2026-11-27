@@ -600,8 +600,13 @@ def _parse_import(data, format):
         rows = _parse_ris(text)
     elif format == 'csl-json':
         rows = _parse_csl(text)
+    elif format == 'bibtex':
+        from .bibtex_import import parse_bibtex
+        # Stored author display text remains literal; do not guess personal-name
+        # roles or remove braces that belong to the decoded source.
+        rows = parse_bibtex(text, literal_names=True)
     else:
-        raise ValueError('Supported import formats are RIS and CSL JSON.')
+        raise ValueError('Supported import formats are RIS, BibTeX and CSL JSON.')
     if not 1 <= len(rows) <= MAX_IMPORT_RECORDS:
         raise ValueError('Import between 1 and 2,000 references at a time.')
     result = []

@@ -66,31 +66,31 @@ def catalog_inventory(db, *, include_all_workspaces=False,
     return tuple(entries)
 
 
-def _checked_path(store, entry):
-    path = store.resolve(entry.digest)  # existing hash, file type and link checks
+def _checked_path(store, entry, *, cancelled=lambda: False):
+    path = store.resolve(entry.digest, cancelled=cancelled)
     if path.name != entry.filename or path.stat().st_size != entry.size:
         raise RetentionError('retained asset disagrees with catalog MIME or size')
     return path
 
 
-def verify_catalog_assets(db, store, **limits):
+def verify_catalog_assets(db, store, *, cancelled=lambda: False, **limits):
     """Verify exact copied namespace and return catalog-derived manifest entries."""
     entries = catalog_inventory(db, **limits)
     if {p.name for p in store.root.iterdir()} != {e.filename for e in entries}:
         raise RetentionError('unexpected or incomplete catalog asset namespace')
     for entry in entries:
-        _checked_path(store, entry)
+        _checked_path(store, entry, cancelled=cancelled)
     return entries
 
 
-def copy_catalog_assets(db, source, destination, **limits):
+def copy_catalog_assets(db, source, destination, *, cancelled=lambda: False, **limits):
     """Copy originals with existing retention API; never overwrite.
 
     Partial output on failure remains explicitly incomplete until independently
     verified. A future outer manifest must bind the DB bytes and these entries.
     """
     entries = catalog_inventory(db, **limits)
-    paths = [_checked_path(source, entry) for entry in entries]
+    paths = [_checked_path(source, entry, cancelled=cancelled) for entry in entries]
     destination = Path(destination)
     if os.path.lexists(destination):
         raise FileExistsError(destination)
@@ -100,9 +100,17 @@ def copy_catalog_assets(db, source, destination, **limits):
     destination.mkdir(mode=0o700)
     target = RetainedAssets(destination)
     for entry, path in zip(entries, paths):
+        if cancelled():
+            raise InterruptedError('Original copy cancelled.')
         with path.open('rb') as stream:
-            data = stream.read(entry.size + 1)
+            chunks, count = [], 0
+            while block := stream.read(min(1024 * 1024, entry.size + 1 - count)):
+                if cancelled():
+                    raise InterruptedError('Original copy cancelled.')
+                count += len(block)
+                chunks.append(block)
+            data = b''.join(chunks)
         if len(data) != entry.size:
             raise RetentionError('retained asset size changed')
         target.retain(data, entry.mime, entry.digest)
-    return verify_catalog_assets(db, target, **limits)
+    return verify_catalog_assets(db, target, cancelled=cancelled, **limits)

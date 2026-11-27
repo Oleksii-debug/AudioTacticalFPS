@@ -62,12 +62,64 @@ def _unique(pairs):
     return value
 
 
+def _open_json_file(path):
+    """Read one snapshot without blocking another process's atomic replacement."""
+    if os.name != 'nt':
+        return path.open('rb')
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    # GENERIC_READ; FILE_SHARE_READ | WRITE | DELETE; OPEN_EXISTING;
+    # FILE_FLAG_OPEN_REPARSE_POINT. No delete-on-close or write access is given.
+    handle = create(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    try:
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
 def read_json(path):
-    path = local_path(path, exists=True)
-    if regular(path).st_size > MAX_JSON_BYTES:
-        raise ValueError('State exceeds its configured JSON budget.')
-    with path.open('rb') as stream:
-        raw = stream.read(MAX_JSON_BYTES + 1)
+    # An atomic writer can win between lstat and open. Retry that race only;
+    # linked paths and invalid opened objects still fail before reading bytes.
+    for _ in range(8):
+        path = local_path(path, exists=True)
+        before = regular(path)
+        if before.st_size > MAX_JSON_BYTES:
+            raise ValueError('State exceeds its configured JSON budget.')
+        with _open_json_file(path) as stream:
+            opened = os.fstat(stream.fileno())
+            # A valid snapshot can already have zero links after replacement;
+            # multiple links or reparse points are never admitted.
+            if (not stat.S_ISREG(opened.st_mode)
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400
+                    or opened.st_nlink > 1):
+                raise ValueError('State must use regular local files, without links.')
+            if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+                continue
+            # Recheck ancestors after opening, before consuming the bound handle.
+            local_path(path, exists=True)
+            if opened.st_size > MAX_JSON_BYTES:
+                raise ValueError('State exceeds its configured JSON budget.')
+            raw = stream.read(MAX_JSON_BYTES + 1)
+        break
+    else:
+        raise ValueError('State changed repeatedly while opening; retry the operation.')
     if len(raw) > MAX_JSON_BYTES:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
@@ -81,6 +133,103 @@ def sync_directory(path):
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
+
+
+def _replace_state_file(source, destination):
+    """Publish a flushed sibling file while delete-sharing readers retain it.
+
+    MoveFileExW, and therefore Python's os.replace on Windows, cannot replace
+    an open destination using the older rename semantics. FileRenameInfoEx
+    flags 1|2 keep old handles valid and direct new opens to the new file.
+    See Microsoft's FILE_RENAME_INFORMATION and FILE_RENAME_INFO contracts.
+    """
+    if os.name != 'nt':
+        os.replace(source, destination)
+        return
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    source = local_path(source, exists=True)
+    destination = local_path(destination)
+    if source.parent != destination.parent:
+        raise ValueError('State replacement must use a sibling staging file.')
+    before = regular(source)
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create = kernel.CreateFileW
+    create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                       ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+    create.restype = wintypes.HANDLE
+    close = kernel.CloseHandle
+    close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+    rename = kernel.SetFileInformationByHandle
+    rename.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD)
+    rename.restype = wintypes.BOOL
+
+    class RenameInfo(ctypes.Structure):
+        _fields_ = [('flags', wintypes.DWORD), ('root', wintypes.HANDLE),
+                    ('length', wintypes.DWORD), ('name', wintypes.WCHAR * 1)]
+
+    # GENERIC_READ | DELETE; shared read/write/delete; OPEN_EXISTING;
+    # OPEN_REPARSE_POINT. The native operation is bound to our staged file.
+    handle = create(str(source), 0x80010000, 7, None, 3, 0x00200000, None)
+    if handle == ctypes.c_void_p(-1).value:
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
+    except BaseException:
+        close(handle)
+        raise
+    unsupported = False
+    published = False
+    try:
+        opened = os.fstat(descriptor)
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+                or getattr(opened, 'st_file_attributes', 0) & 0x400
+                or (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino)):
+            raise ValueError('State staging identity changed before publication.')
+        # Revalidate the owned namespace without following substituted links.
+        local_path(source, exists=True)
+        observed = regular(source)
+        if (observed.st_dev, observed.st_ino) != (opened.st_dev, opened.st_ino):
+            raise ValueError('State staging identity changed before publication.')
+        local_path(destination)
+
+        encoded = str(destination).encode('utf-16-le')
+        buffer = ctypes.create_string_buffer(ctypes.sizeof(RenameInfo) + len(encoded))
+        info = RenameInfo.from_buffer(buffer)
+        # REPLACE_IF_EXISTS | POSIX_SEMANTICS; do not override read-only flags.
+        info.flags, info.root, info.length = 3, None, len(encoded)
+        ctypes.memmove(ctypes.addressof(buffer) + RenameInfo.name.offset,
+                       encoded, len(encoded))
+        if not rename(handle, 22, buffer, len(buffer)):  # FileRenameInfoEx
+            error = ctypes.get_last_error()  # capture before closing the handle
+            if error not in (1, 50, 87):  # unsupported OS/filesystem/class only
+                raise ctypes.WinError(error)
+            unsupported = True
+        else:
+            published = True
+    except BaseException:
+        # Preserve the publication error if descriptor cleanup also fails.
+        # Never retry a descriptor: close may have released it before raising.
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        raise
+    else:
+        try:
+            # open_osfhandle transferred ownership; do not close the raw handle.
+            os.close(descriptor)
+        except OSError:
+            if not published:
+                raise
+            # Native success already committed the new file. A close error
+            # cannot turn that durable outcome into a failed/retryable save.
+    if unsupported:
+        # Preserve the prior failure behavior on unsupported filesystems. This
+        # has no copy/delete fallback, target unlink, attribute change or retry.
+        os.replace(source, destination)
 
 
 def atomic_bytes(path, raw, *, replace=False):
@@ -99,7 +248,7 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace:
-            os.replace(temporary, path)
+            _replace_state_file(temporary, path)
         else:
             # link is the portable same-filesystem no-replace publication primitive.
             os.link(temporary, path)

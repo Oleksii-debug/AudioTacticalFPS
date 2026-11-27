@@ -467,10 +467,32 @@ class _AudioQuietHold:
         controller = self.controller
         if self.closed or controller.closed:
             return False
+        if controller._uncertain_players:
+            return False
+        if not self.recording and any(hold.recording and not hold.closed
+                                      for hold in tuple(controller._audio_holds)):
+            return False
+        for player in tuple(controller._players):
+            try:
+                state = player.state
+            except Exception:
+                return False
+            if state not in ('playing', 'stopped', 'paused', 'error'):
+                return False
+            if self.recording and state == 'playing':
+                return False
+        if self.recording:
+            if controller.audio_active or controller.live_media_feedback.busy:
+                return False
+            media = getattr(controller.frame, 'progress_media_busy', False)
+            try:
+                if bool(media() if callable(media) else media):
+                    return False
+            except Exception:
+                return False
         if not self.recording and not controller.preferences.mute_during_audio:
             return True
-        return (not controller._uncertain_players
-                and bool(getattr(controller.sound, 'quiescent', True)))
+        return bool(getattr(controller.sound, 'quiescent', True))
 
     def close(self):
         if self.closed:
@@ -483,12 +505,82 @@ class _AudioQuietHold:
             controller._release_audio_hold(self)
 
 
+class LiveMediaFeedback:
+    """Nonblocking handoff from the one progress sound to reader/device audio.
+
+    Leases contain plain activity callables, never native controls. Their release
+    may run after a reader window has closed while its worker finishes cleanup.
+    No release callback schedules GUI work or waits for the audio thread.
+    """
+    def __init__(self, progress):
+        self.progress = progress
+        self._lock = threading.Lock()
+        self._activities = {}
+
+    @property
+    def quiet_during_media(self):
+        return self.progress.preferences.mute_during_audio
+
+    @property
+    def quiescent(self):
+        if (self.progress.closed or self.progress._uncertain_players
+                or any(hold.recording and not hold.closed
+                       for hold in tuple(self.progress._audio_holds))):
+            return False
+        with self._lock:
+            activities = tuple(self._activities.values())
+        for activity in activities:
+            try:
+                if getattr(activity, 'silence_uncertain', False):
+                    return False
+            except Exception:
+                return False
+        if not self.quiet_during_media:
+            return True
+        return bool(getattr(self.progress.sound, 'quiescent', False))
+
+    @property
+    def busy(self):
+        with self._lock:
+            activities = tuple(self._activities.values())
+        for activity in activities:
+            try:
+                if activity():
+                    return True
+            except Exception:
+                # Unknown cleanup/device state must not start another cue.
+                return True
+        return False
+
+    def suspend(self):
+        if self.quiet_during_media:
+            self.progress.sound.muted = True
+
+    def hold(self, activity):
+        if not callable(activity):
+            raise ValueError('A plain media activity callback is required.')
+        token = object()
+        with self._lock:
+            self._activities[token] = activity
+        self.suspend()
+
+        def release():
+            with self._lock:
+                self._activities.pop(token, None)
+        return release
+
+
 class OperationProgress:
     """Bind measured events to native controls without changing keyboard focus."""
-    def __init__(self, frame, gauge, label, *, wx_module=None, clock=time.monotonic, sound=None):
+    def __init__(self, frame, gauge, label, *, wx_module=None, clock=time.monotonic, sound=None, accessible_name=None):
         if wx_module is None:
             import wx as wx_module
         self.frame, self.gauge, self.label, self.wx = frame, gauge, label, wx_module
+        if accessible_name is not None and (not isinstance(accessible_name, str)
+                or not accessible_name.strip() or len(accessible_name) > 256
+                or any(ord(character) < 32 for character in accessible_name)):
+            raise ValueError('Use a short readable native progress control name.')
+        self.accessible_name = accessible_name
         self.clock, self.tracker = clock, ProgressTracker(clock=clock)
         self.sound = sound or WindowsProgressSound()
         self._ui_thread, self._pending_lock = threading.get_ident(), threading.Lock()
@@ -499,6 +591,8 @@ class OperationProgress:
         self._players = weakref.WeakSet()
         self._uncertain_players, self._audio_holds = set(), set()
         self.root, self.preferences = None, ProgressPreferences()
+        self.live_media_feedback = LiveMediaFeedback(self)
+        frame.live_media_feedback = self.live_media_feedback
         self.timer = self.wx.Timer(frame)
         frame.Bind(self.wx.EVT_TIMER, self._tick, self.timer)
         self.reload_preferences()
@@ -568,6 +662,11 @@ class OperationProgress:
             except (OSError, RuntimeError):
                 # An uncertain device state stays quiet until stop or close.
                 uncertain = True
+        media = getattr(self.frame, 'progress_media_busy', False)
+        try:
+            media = bool(media() if callable(media) else media)
+        except Exception:
+            media = True
         recording = recording or any(hold.recording for hold in self._audio_holds)
         playback_wait = any(not hold.recording for hold in self._audio_holds)
         unavailable_voice = (self.preferences.mode in ('speech', 'both')
@@ -577,7 +676,8 @@ class OperationProgress:
                             or self.preferences.volume == 0
                             or not self.preferences.background and not self.frame.IsActive()
                             or recording or uncertain or self.preferences.mute_during_audio
-                            and (self.audio_active or playing or playback_wait))
+                            and (self.audio_active or playing or playback_wait
+                                  or media or self.live_media_feedback.busy))
         if self.sound.muted:
             # A mute boundary discards deferred audio immediately, even if the
             # policy is lifted before the next GUI timer event.
@@ -759,7 +859,7 @@ class OperationProgress:
         if not force and not state_changed and now - self._last_display < .1:
             return
         text = describe_progress(event)
-        self.gauge.SetName('Operation progress: ' + _LABELS[event.state])
+        self.gauge.SetName(self.accessible_name or ('Operation progress: ' + _LABELS[event.state]))
         self.gauge.SetRange(100)
         if event.percent is not None:
             self.gauge.SetValue(event.percent)

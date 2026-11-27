@@ -181,6 +181,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     output = tmp_path / 'reading.reading.json'
     main = get_ident()
     callbacks, controls = Queue(), []
+    live_view = {}
     guard_calls = []
     statuses = []
 
@@ -206,7 +207,8 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             self.value = kwargs.get('value', kwargs.get('initial', ''))
             self.name, self.items, self.selection = '', [], -1
             self.enabled, self.destroyed, self.cursor = True, False, 0
-            self.handlers = {}
+            self.handlers, self.timer_handlers = {}, {}
+            self.identity, self.running = next(identifiers), False
             controls.append(self)
         def native(self):
             assert get_ident() == main
@@ -215,6 +217,13 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
         def GetValue(self): self.native(); return self.value
+        def GetRange(self, start, end): self.native(); return self.value[start:end]
+        def GetLastPosition(self): self.native(); return len(self.value)
+        def GetId(self): self.native(); return self.identity
+        def GetParent(self): self.native(); return self.parent
+        def IsEnabled(self): self.native(); return self.enabled
+        def IsModal(self): self.native(); return True
+        def SetMinSize(self, *args): self.native()
         def Set(self, values): self.native(); self.items = list(values)
         def SetSelection(self, value): self.native(); self.selection = value
         def GetSelection(self): self.native(); return self.selection
@@ -228,9 +237,14 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def SetSizer(self, *args): self.native()
         def SetEscapeId(self, *args): self.native()
         def SetAcceleratorTable(self, *args): self.native()
-        def Bind(self, event, callback, *args, **kwargs): self.native(); self.handlers[event] = callback
-        def Start(self, *args): self.native()
-        def Stop(self): self.native()
+        def Bind(self, event, callback, *args, **kwargs):
+            self.native()
+            if event == 'timer':
+                self.timer_handlers[args[0]] = callback
+            else:
+                self.handlers[event] = callback
+        def Start(self, *args): self.native(); self.running = True
+        def Stop(self): self.native(); self.running = False
         def EndModal(self, result): self.native()
         def Destroy(self): self.native(); self.destroyed = True
 
@@ -241,19 +255,27 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def ShowModal(self):
             self.native()
             deadline = time.monotonic() + 5
-            while not named('Reload &voices').enabled:
+            editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
+            voice = next(control for control in controls if control.name == 'Local reading voice; choose explicitly')
+            while not (live_view and not live_view['live'].core.busy
+                       and named('Read current text aloud').enabled
+                       and bool(voice.items) == voice_available and editor.GetValue() == expected_editor):
                 assert time.monotonic() < deadline, 'Canonical discovery did not complete.'
                 try:
                     callback, args = callbacks.get(timeout=.02)
                 except Empty:
-                    continue
-                callback(*args)
-            editor = next(control for control in controls if control.name.startswith('Reading copy (editable'))
+                    pass
+                else:
+                    callback(*args)
+                for timer, callback in self.timer_handlers.items():
+                    if timer.running:
+                        callback(None)
             assert editor.GetValue() == expected_editor
-            statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
+            assert voice.selection == -1, 'Discovery must not select a live voice implicitly.'
+            statuses.append(next(c for c in controls if c.name == 'Reading-copy save and export status').GetValue())
             scope()
             named('Save &as').handlers['button'](None)
-            statuses.append(next(c for c in controls if c.name == 'Speech and save status').GetValue())
+            statuses.append(next(c for c in controls if c.name == 'Reading-copy save and export status').GetValue())
             return 5101
 
     class FileDialog(Control):
@@ -270,24 +292,24 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     identifiers = count(10000)
     wx = SimpleNamespace(Dialog=Dialog, FileDialog=FileDialog, TextEntryDialog=FileDialog,
         TextCtrl=Control, StaticText=Control, Choice=Control, SpinCtrl=Control,
-        Button=Control, BoxSizer=Control, Timer=Control,
+        Button=Control, BoxSizer=Control, WrapSizer=Control, CheckBox=Control, Timer=Control,
         CallAfter=lambda callback, *args: callbacks.put((callback, args)),
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
-        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer')
+        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer', EVT_TEXT='text')
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
-            'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'WXK_F6', 'WXK_F7', 'WXK_F8'):
+            'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'ACCEL_ALT', 'BOTTOM',
+            'WXK_F6', 'WXK_F7', 'WXK_F8', 'WXK_F9'):
         setattr(wx, constant, 0)
     monkeypatch.setitem(sys.modules, 'wx', wx)
-    monkeypatch.setattr(ui, 'WavePlayer', lambda: SimpleNamespace(
-        position_seconds=0, state='stopped', stop=lambda: None, close=lambda: None))
     parent = SimpleNamespace(library=app, report=statuses.append)
 
     ui.show_speech_reader(parent, source_guard=scope,
-        source_loader=lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled))
+        source_loader=lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled),
+        on_ready=lambda dialog, view: live_view.update(view))
     assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
     assert guard_calls
     if recovery_case in ('legacy', 'foreign', 'revision'):

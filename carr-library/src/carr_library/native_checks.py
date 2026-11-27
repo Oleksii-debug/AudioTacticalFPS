@@ -51,7 +51,9 @@ def _manifest(root):
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'bundled_native_runtime'}
+            or value.keys() - required - {'source_commit', 'bundled_native_runtime', 'native_launcher',
+                 'bundled_audio', 'bundled_citation_runtime', 'use_scope',
+                 'parent_source_commit', 'parent_manifest_sha256'}
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
@@ -60,6 +62,14 @@ def _manifest(root):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
     if ('bundled_native_runtime' in value and type(value['bundled_native_runtime']) is not bool):
         raise ValueError('The bundled_native_runtime installation flag must be a boolean.')
+    for flag in ('bundled_audio', 'bundled_citation_runtime'):
+        if flag in value and type(value[flag]) is not bool:
+            raise ValueError('Optional engine installation flags must be boolean.')
+    if 'use_scope' in value and value['use_scope'] != 'private-personal-installation':
+        raise ValueError('Unsupported private refresh profile.')
+    for name, length in (('parent_source_commit', 40), ('parent_manifest_sha256', 64)):
+        if name in value and (not isinstance(value[name], str) or not re.fullmatch('[0-9a-f]{' + str(length) + '}', value[name])):
+            raise ValueError('Invalid parent bundle identity.')
     if ('source_commit' in value and (not isinstance(value['source_commit'], str)
             or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
         raise ValueError('Invalid installation source commit.')
@@ -76,6 +86,8 @@ def _manifest(root):
                 or not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)):
             raise ValueError('Invalid or duplicate installation inventory entry.')
         folded.add(name.casefold())
+    from .native_launcher import validate_manifest_entry
+    validate_manifest_entry(value)
     return value
 
 
@@ -84,13 +96,23 @@ def check_native_dependencies(bundle_root):
     report = {'status': 'FAIL', 'platform': sys.platform, 'machine': platform.machine(),
               'python': platform.python_version(), 'windows_execution': 'NOT_RUN',
               'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN', 'checks': [],
-              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'}}
+              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'},
+              'native_launcher': {'status': 'NOT_INCLUDED'}, 'audio': {'status': 'NOT_INCLUDED'},
+              'citations': {'status': 'NOT_INCLUDED'}}
     component = 'installation manifest'
     _runtime_handle = None
     try:
         root = Path(bundle_root).absolute()
         manifest = _manifest(root)
         report['bundle_target'] = manifest['target']
+        if 'source_commit' in manifest:
+            report['source_commit'] = manifest['source_commit']
+        if 'native_launcher' in manifest:
+            component = 'native launch entry identity'
+            report['native_launcher']['status'] = 'FAIL'
+            from .native_launcher import verify_payload
+            report['native_launcher'] = verify_payload(root)
+            report['checks'].append(component)
         for name, flag in (('semantic', 'bundled_model'), ('ocr', 'bundled_ocr')):
             if manifest[flag]:
                 report[name]['status'] = 'NOT_RUN'
@@ -131,6 +153,12 @@ def check_native_dependencies(bundle_root):
                 raise RuntimeError('The canonical OCR installation check did not pass.')
             report['ocr'] = result
             report['checks'].append(component)
+        from .bundled_engines import verify_optional_runtime
+        for key, directory in (('audio', 'audio'), ('citations', 'citation-runtime')):
+            component = 'bundled ' + key + ' runtime'
+            report[key] = verify_optional_runtime(root, manifest, directory, execute=True)
+            if report[key]['status'] == 'PASS':
+                report['checks'].append(component)
         report['status'] = 'PASS'
     except Exception as exc:
         report['failed_component'] = component

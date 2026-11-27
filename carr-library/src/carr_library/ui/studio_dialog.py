@@ -5,11 +5,13 @@ import json
 from pathlib import Path
 import threading
 
-from ..durable_state import atomic_json, atomic_bytes, read_json
+from ..durable_state import atomic_json, encode, read_json
+from ..research.export_file import write_binary_export
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
 from .operation_progress import OperationProgress, operation_outcome
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
+from .export_destination import confirm_export_destination
 
 SCRIPT_HELP = '''Write ordinary prose for one narrator, or use named speaking roles:
 Narrator [center]: The team enters the archive.
@@ -47,9 +49,25 @@ class StudioController:
     def save(self, text, title, voice_ids):
         # Keep even an invalid script draft, and report the validation failure.
         self.autosave(text, title, voice_ids)
-        project = parse_script(text, title=title, voice_ids=voice_ids,
-                               project_id=self.project.id if self.project else None)
-        if self.project:
+        previous_project = self.project
+        if previous_project and text == previous_project.original_script:
+            # JSON projects can contain recorded clips, source bindings and
+            # non-default render settings which the prose grammar cannot express.
+            # Saving an unchanged script must preserve that complete performance.
+            project = replace(previous_project, title=title)
+        else:
+            project = parse_script(text, title=title, voice_ids=voice_ids,
+                                   mode=previous_project.mode if previous_project else 'faithful',
+                                   project_id=previous_project.id if previous_project else None)
+        if previous_project and text != previous_project.original_script:
+            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues}
+            current = {scene.id: scene for scene in project.scenes}
+            if any(identity not in current or current[identity].title != old.title
+                   for identity, old in attached.items()):
+                raise ValueError('A scene with attached audio changed its identity. '
+                                 'Move or remove its clips in the scene audio editor before changing scene structure.')
+            scenes = tuple(replace(scene, cues=attached[scene.id].cues)
+                           if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
                                   language=previous[role.name.casefold()].language,
@@ -58,10 +76,13 @@ class StudioController:
                                   rate=previous[role.name.casefold()].rate,
                                   volume=previous[role.name.casefold()].volume)
                           if role.name.casefold() in previous else role for role in project.roles)
-            project = replace(project, roles=roles, revision=self.project.revision)
-            if project.to_dict() != self.project.to_dict():
-                project = replace(project, revision=self.project.revision + 1)
-        self.service.projects.save(project)
+            project = replace(project, roles=roles, scenes=scenes,
+                              sample_rate=previous_project.sample_rate,
+                              schema=previous_project.schema, revision=previous_project.revision)
+        if previous_project and project.to_dict() != previous_project.to_dict():
+            project = replace(project, revision=previous_project.revision + 1)
+        self.service.projects.save(project,
+            expected_revision=previous_project.revision if previous_project else None)
         self.project = project
         return project
 
@@ -339,6 +360,7 @@ def show_studio(frame):
                 raise ValueError('The script exceeds the editable text budget; split it by chapters.')
             if path.suffix.casefold() == '.json':
                 project = Project.from_dict(read_json(path))
+                controller.service.register_project_inputs(project, imported=True)
                 controller.service.projects.save(project)
                 controller.project = project
                 editor.SetValue(project.original_script)
@@ -354,15 +376,25 @@ def show_studio(frame):
             chooser.Destroy()
 
     def save_as(event=None):
+        library = frame.library
         project = save()
         if project is None:
             return
         chooser = wx.FileDialog(dialog, 'Save audio project as', defaultFile='audio-project.json',
-                                wildcard='Project JSON (*.json)|*.json', style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                                wildcard='Project JSON (*.json)|*.json', style=wx.FD_SAVE)
         try:
             if chooser.ShowModal() == wx.ID_OK:
                 path = Path(chooser.GetPath())
-                atomic_json(path, project.to_dict(), replace=path.exists())
+                if controller.draft.resolve() != (library.root / 'state' / 'studio' / 'draft.json').resolve():
+                    raise ValueError('The library changed. Reopen the studio before exporting.')
+                approval = confirm_export_destination(dialog, path, private_root=library.root,
+                                                       title='Replace audio project')
+                if approval is None:
+                    return
+                if frame.library is not library:
+                    raise ValueError('The library changed. Reopen the studio before exporting.')
+                write_binary_export(path, encode(project.to_dict()), private_root=library.root,
+                                    approval=approval)
                 report('Project exported. Voice credentials and source library files are not embedded.', True)
         except Exception as exc:
             report(str(exc), True)
@@ -441,8 +473,40 @@ def show_studio(frame):
                 return
             finally:
                 chooser.Destroy()
+        approved_inputs = ()
+        try:
+            pending_inputs = service.restored_inputs_to_review(current_job)
+            if pending_inputs:
+                review = wx.MessageDialog(dialog,
+                    'This imported or restored project refers to external audio. Review these local paths:\n\n'
+                    + '\n'.join(pending_inputs)
+                    + '\n\nAllow this project to read these local files and include them in future backups?',
+                    'Review restored audio inputs', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                try:
+                    if review.ShowModal() != wx.ID_YES:
+                        return
+                    approved_inputs = pending_inputs
+                finally:
+                    review.Destroy()
+            restored = service.get(current_job).get('recovery', {}).get('requires_output_directory') is True
+            if restored:
+                chooser = wx.DirDialog(dialog, 'Choose a new output folder for the restored production job')
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    service.relocate_restored_job(current_job, Path(chooser.GetPath()))
+                finally:
+                    chooser.Destroy()
+        except Exception as exc:
+            report(str(exc), True)
+            return
         identity = current_job
-        run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
+        def render_selected(measured):
+            if approved_inputs:
+                measured('Verifying explicitly approved restored audio inputs')
+                service.approve_restored_inputs(approved_inputs, cancelled=cancel.is_set)
+            return service.run(identity, cancelled=cancel.is_set, progress=measured)
+        run(render_selected,
             lambda result: report('Production complete. ' + result['destination'] +
                 '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True),
             phase='Rendering audio production', with_progress=True)
@@ -578,7 +642,8 @@ def show_studio(frame):
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
 
-    run(lambda: service.voices.voices(), loaded, phase='Checking installed local voices')
+    run(lambda: service.discover_voices(cancelled=cancel.is_set).voices(), loaded,
+        phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:
@@ -657,8 +722,14 @@ def show_audio_conversion(frame):
 def install_studio_actions(frame):
     import wx
     from .engine_settings import show_engine_settings
+    from .studio_clips import show_clip_editor
+    from .recording_dialog import show_recording
+    from .publishing_dialog import show_publishing
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
+                            ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
+                            ('Record microphone...', lambda e: show_recording(frame)),
+                            ('Publish synchronized EPUB3...', lambda e: show_publishing(frame)),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)

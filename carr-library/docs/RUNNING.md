@@ -33,6 +33,13 @@ checks succeed. If installation fails or is interrupted, extract the package to
 a fresh program folder and run `Install.cmd` there. Keep research data in its
 existing separate location; the installer does not overwrite an environment.
 
+Every installation attempt creates its own `installation-*.log` text file in
+the program folder. Output is shown in the console and kept as readable UTF-8;
+each log retains the beginning and latest diagnostics within a 256 KiB limit.
+If the first-launch window closes after a failure, open `CheckInstallation.cmd`
+to read the latest log. This also works when installation stopped before the
+application environment became usable. Earlier attempt logs are retained.
+
 A private complete package may include the verified Microsoft C++ runtime
 supplement required by wxPython and ONNX Runtime. Its original licenses and
 source provenance accompany the files. This supplement is for the account

@@ -1,6 +1,7 @@
 """Execute production voice/playback callbacks without claiming native UI input."""
 
 import ast
+from concurrent.futures import Future
 from pathlib import Path
 import threading
 from types import SimpleNamespace
@@ -138,6 +139,7 @@ def reader(tmp_path, monkeypatch):
     reports, choice = [], Choice()
     report = lambda message, focus=False: reports.append(str(message))
     parent = SimpleNamespace(library=SimpleNamespace(root=tmp_path), report=report)
+    live = SimpleNamespace(voice=choice, _voices=registry.voices(), core=Mock(busy=False), close=Mock())
     values = dict(parent=parent, progress=progress, voice_choice=choice,
         voices=registry.voices(), registry=registry, run=work, report=report,
         alive=True, playback_generation=0, cancel=threading.Event(), player=Mock(),
@@ -145,9 +147,10 @@ def reader(tmp_path, monkeypatch):
         document=SimpleNamespace(dirty=False, text=''), source_loaded=True,
         source_guard=lambda: None, recovered=None, recovery_notice='', draft_store=None, editor=Mock(),
         source_status=Mock(), sync_document=lambda: None, save_project=lambda: True,
-        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock())
+        dialog=Mock(), autosave_timer=Mock(), executor=Mock(), audio_files=Mock(),
+        live=live, busy=False, resources_closed=False)
     handlers = callbacks('speech_dialog.py', 'show_speech_reader',
-        ['reload', 'select_progress_voice', 'start_playback', 'stop_audio', 'closing'],
+        ['select_progress_voice', 'close_resources', 'closing'],
         values, globals_={'activate_progress_voice': activate}, cleanup=True)
     yield SimpleNamespace(handlers=handlers, progress=progress, scheduler=scheduler,
         work=work, roots=roots, activations=activations, created=created, values=values,
@@ -157,9 +160,11 @@ def reader(tmp_path, monkeypatch):
 
 
 def test_reader_discovery_does_not_activate_progress_and_explicit_choice_uses_current_root(reader, tmp_path):
-    reader.handlers.reload()
-    reader.work.finish()
-    assert reader.choice.items and reader.choice.selection == 0
+    from carr_library.ui.live_reading import LiveReadingControls
+    live = reader.values['live']
+    live.closed, live._report = False, Mock()
+    LiveReadingControls.discover(live)
+    live.core.discover_voices.assert_called_once_with()
     assert reader.activations == []
     assert reader.progress.provider is None and reader.progress.events == []
 
@@ -195,25 +200,35 @@ def test_reader_rejected_activation_closes_provider_without_opening_settings(rea
 
 
 @pytest.mark.parametrize('termination', ['stop', 'close'])
-def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(reader, termination):
-    started = Mock()
-    reader.handlers.start_playback(started)
-    assert reader.scheduler.pending and not reader.progress.holds[0].closed
-    if termination == 'stop':
-        reader.handlers.stop_audio()
-        reader.values['player'].stop.assert_called_once()
-    else:
-        reader.handlers.closing(None)
-        reader.values['dialog'].EndModal.assert_called_once_with(1)
-        # Execute the real outer finally block when the simulated modal unwinds.
-        reader.handlers.cleanup()
-        reader.values['player'].close.assert_called_once()
-    reader.progress.ready = True
-    reader.scheduler.tick()
-    started.assert_not_called()
-    assert reader.scheduler.pending == []
-    assert all(hold.closed for hold in reader.progress.holds)
-    assert not any('Playback did not start' in report for report in reader.reports)
+def test_reader_stop_or_modal_cleanup_invalidates_already_deferred_playback(tmp_path, termination):
+    import time
+    from carr_library.reader.live_reading import DocumentSequence, LiveReader
+    from carr_library.speech.reading import ReadingDocument
+    voice = Voice('fixture:explicit', 'Explicit fixture', 'fixture', 'en')
+    render, player = Mock(), Mock()
+    player.available.return_value = True
+    sequence = DocumentSequence(tmp_path, ReadingDocument('A deferred source sentence.'))
+    core = LiveReader(sequence, discover=lambda **kwargs: (voice,), render=render,
+                      player_factory=lambda: player, require_display_ack=True)
+    try:
+        core.discover_voices().result(5)
+        future = core.start(1, voice.id)
+        deadline = time.monotonic() + 5
+        while core.status().section is None:
+            assert time.monotonic() < deadline
+            time.sleep(.01)
+        section = core.status().section
+        assert not future.done()
+        (core.stop if termination == 'stop' else core.close)()
+        core.acknowledge(section)  # A late native/display acknowledgement cannot start it.
+        future.result(5)
+        render.assert_not_called()
+        player.play.assert_not_called()
+        assert core.status().state in ('closed', 'stopped') and core.quiescent
+    finally:
+        completion = core.close()
+        if completion is not None:
+            completion.result(5)
 
 
 def test_studio_explicit_voice_selection_creates_independent_parent_selection(reader):
@@ -390,52 +405,58 @@ def test_hold_acquisition_failure_preserves_original_error_and_releases_every_pr
 
 
 def test_reader_failed_close_retains_its_pcm_and_still_destroys_dialog(reader):
-    player, temporary = reader.values['player'], reader.values['audio_files']
-    player.close.side_effect = RuntimeError('Native stop and close failed')
+    # PCM/device retention is covered against the real LiveReader in
+    # test_live_reading; this host must still finish after a failed handoff.
+    live = reader.values['live']
+    live.close.side_effect = RuntimeError('Native stop and close failed')
     reader.handlers.cleanup()
-    temporary.cleanup.assert_not_called()
+    live.close.assert_called_once()
     reader.values['dialog'].Destroy.assert_called_once()
-    assert ('unregister', 'main', False) in reader.progress.events
-    assert (player, temporary) in reader.parent._reader_playback_retained
+    reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     assert any('Native stop and close failed' in message for message in reader.reports)
 
 
-@pytest.mark.parametrize('stage', ['worker_shutdown', 'temporary_cleanup'])
+@pytest.mark.parametrize('stage', ['worker_shutdown', 'live_cleanup'])
 def test_reader_dialog_is_destroyed_even_when_final_cleanup_raises(reader, stage):
-    player, temporary = reader.values['player'], reader.values['audio_files']
     if stage == 'worker_shutdown':
         message = 'Worker shutdown unavailable'
         reader.values['executor'].shutdown.side_effect = RuntimeError(message)
     else:
-        message = 'Temporary file cleanup denied'
-        temporary.cleanup.side_effect = PermissionError(message)
+        message = 'Live worker cleanup unavailable'
+        reader.values['live'].close.side_effect = PermissionError(message)
     reader.handlers.cleanup()
     reader.values['dialog'].Destroy.assert_called_once()
-    assert (player, temporary) in reader.parent._reader_playback_retained
     assert any(message in report for report in reader.reports)
-    if stage == 'worker_shutdown':
-        temporary.cleanup.assert_not_called()
-    else:
-        temporary.cleanup.assert_called_once()
+    reader.values['live'].close.assert_called_once()
 
 
 def test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction(reader):
-    player, temporary = reader.values['player'], reader.values['audio_files']
-    player.close.side_effect = RuntimeError('Native close failed')
+    reader.values['live'].close.side_effect = RuntimeError('Native close failed')
     reader.parent.report = Mock(side_effect=RuntimeError('Parent reporter detached'))
     reader.handlers.cleanup()
     reader.parent.report.assert_called_once()
     reader.values['dialog'].Destroy.assert_called_once()
-    temporary.cleanup.assert_not_called()
-    assert (player, temporary) in reader.parent._reader_playback_retained
 
 
 def test_reader_detached_progress_observer_does_not_prevent_actual_resource_cleanup(reader):
     reader.progress.unregister_player = Mock(side_effect=RuntimeError('Progress observer detached'))
     reader.handlers.cleanup()
-    reader.values['player'].close.assert_called_once()
-    reader.values['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
-    reader.values['audio_files'].cleanup.assert_called_once()
+    reader.values['live'].close.assert_called_once()
+    reader.values['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     reader.values['dialog'].Destroy.assert_called_once()
-    assert any('Progress observer detached' in message for message in reader.reports)
+    reader.progress.unregister_player.assert_not_called()  # Plain worker-completion lease, no late native observer.
     assert not hasattr(reader.parent, '_reader_playback_retained')
+
+
+def test_reader_late_progress_voice_activation_is_closed_without_touching_destroyed_ui(reader):
+    future, queued, completed = Future(), [], Mock()
+    reader.values['executor'].submit.return_value = future
+    reader.values['wx'] = SimpleNamespace(CallAfter=queued.append)
+    handlers = callbacks('speech_dialog.py', 'show_speech_reader', ['run', 'close_resources'], reader.values)
+    handlers.run(lambda: None, completed, discard=lambda provider: provider.close())
+    handlers.close_resources()
+    provider = activate_progress_voice(reader.parent.library.root, 'fixture:selected',
+        _registry_factory=lambda state: reader.registry)
+    future.set_result(provider)
+    assert provider._closed.is_set() and queued == []
+    completed.assert_not_called()

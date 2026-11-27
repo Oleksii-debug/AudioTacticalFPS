@@ -497,3 +497,87 @@ def test_quiet_toggle_between_timer_ticks_discards_pending_final_speech(media):
     assert not media.sound._thread.is_alive()
     assert voice.heard == [], 'Unmuting must not replay a cue discarded by the quiet policy'
     assert not controller.timer.IsRunning()
+
+
+@pytest.mark.parametrize('mute', [False, True])
+def test_recording_admission_waits_for_plain_live_reader_and_confirmed_silence(media, mute):
+    from carr_library.ui.live_reading import _MediaActivity
+    media.controller.configure(ProgressPreferences(mode='beep', mute_during_audio=mute))
+    core = SimpleNamespace(busy=True, quiescent=False, silence_uncertain=False,
+                           status=lambda: SimpleNamespace(state='playing'))
+    activity = _MediaActivity(False, core)
+    release = media.controller.live_media_feedback.hold(activity)
+    capture = media.controller.hold_audio(recording=True)
+    try:
+        assert not capture.ready
+        core.busy, core.silence_uncertain = False, True
+        assert not capture.ready, 'A completed worker is not proof that its audio stopped.'
+        core.quiescent, core.silence_uncertain = True, False
+        assert capture.ready
+    finally:
+        capture.close()
+        release()
+
+
+@pytest.mark.parametrize('mute', [False, True])
+def test_capture_reservation_blocks_new_reader_and_preview_without_self_deadlock(media, mute):
+    media.controller.configure(ProgressPreferences(mode='beep', mute_during_audio=mute))
+    bridge = media.controller.live_media_feedback
+    reading = [False]
+    release = bridge.hold(lambda: reading[0])
+    capture = media.controller.hold_audio(recording=True)
+    preview = media.controller.hold_audio()
+    try:
+        assert capture.ready
+        assert not bridge.quiescent and not preview.ready
+        capture.close()
+        reading[0] = True
+        assert bridge.quiescent, 'A reader must not block on its own plain activity lease.'
+        assert preview.ready
+    finally:
+        capture.close()
+        preview.close()
+        release()
+
+
+@pytest.mark.parametrize('state', ['playing', 'recording', 'monitoring', 'unknown', None, 'query-failed'])
+def test_capture_admission_checks_registered_transport_even_without_optional_mute(media, state):
+    current = [state]
+
+    class Player:
+        @property
+        def state(self):
+            if current[0] == 'query-failed':
+                raise RuntimeError('Native transport cannot confirm its current state.')
+            return current[0]
+
+    player = Player()
+    media.controller.register_player(player)
+    capture = media.controller.hold_audio(recording=True)
+    try:
+        assert not capture.ready
+        current[0] = 'stopped'
+        assert capture.ready
+    finally:
+        capture.close()
+        media.controller.unregister_player(player)
+
+
+def test_capture_admission_keeps_legacy_activity_and_unknown_callbacks_exclusive(media):
+    capture = media.controller.hold_audio(recording=True)
+    try:
+        media.controller.set_audio_active(True)
+        assert not capture.ready
+        media.controller.set_audio_active(False)
+        media.frame.progress_media_busy = lambda: True
+        assert not capture.ready
+
+        def unknown():
+            raise RuntimeError('Playback cleanup is unresolved.')
+
+        media.frame.progress_media_busy = unknown
+        assert not capture.ready
+        media.frame.progress_media_busy = lambda: False
+        assert capture.ready
+    finally:
+        capture.close()
