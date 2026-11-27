@@ -3,12 +3,14 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import argparse
 import base64
+import faulthandler
 import json
 from pathlib import Path
 import sys
 import threading
 from tempfile import TemporaryDirectory
 import time
+import traceback
 
 
 def main(argv=None):
@@ -37,7 +39,19 @@ def main(argv=None):
     if args.source is None:
         assert not Path(ui.__file__).resolve().is_relative_to(Path(__file__).resolve().parents[2])
         assert not Path(polling.__file__).resolve().is_relative_to(Path(__file__).resolve().parents[2])
-    app = wx.App(False)
+    diagnostic = {'phase': 'create-app', 'callback_error': None}
+    def trace(phase, **details):
+        diagnostic['phase'] = phase
+        print('DIAG: ' + json.dumps({'phase': phase, **details}, sort_keys=True), flush=True)
+    class ProbeApp(wx.App):
+        def OnExceptionInMainLoop(self):
+            failure = sys.exc_info()[1] or RuntimeError('Unhandled native event-loop exception')
+            diagnostic['callback_error'] = failure
+            trace('event-loop-exception', exception=type(failure).__name__, detail=str(failure))
+            traceback.print_exc()
+            return False
+    faulthandler.enable(all_threads=True)
+    app = ProbeApp(False)
     app.SetExitOnFrameDelete(False)
     checks = []
     def check(name, condition):
@@ -180,6 +194,13 @@ def main(argv=None):
                 poll_frame = BusyDesktopFrame(LibraryApp(root / 'poll-library'), trust_controller=poll_controller)
                 poll_frame.Show()
                 host, timer = poll_frame.trust_update_poll_host, poll_frame.trust_client_timer
+                poll_owner_id = poll_frame.GetId()
+                def observed_destroy(event):
+                    if event.GetId() == poll_owner_id:
+                        trace('poll-frame-native-destroy-event', event_id=event.GetId(),
+                              worker_alive=host._thread.is_alive(), phase_before=host.status.phase)
+                    event.Skip()
+                poll_frame.Bind(wx.EVT_WINDOW_DESTROY, observed_destroy)
                 try:
                     check('Configured polling uses an actual running wx.Timer', isinstance(timer, wx.Timer) and timer.IsRunning())
                     start = time.monotonic()
@@ -204,10 +225,16 @@ def main(argv=None):
                           'Automatic checks do not download' in configured_status.text.GetValue()
                           and any(button.GetName() == 'Check offline update repository'
                                   for button in configured_status.buttons))
+                    trace('configured-status-destroy-request')
                     configured_status.Destroy()
+                    trace('configured-status-destroy-returned')
                 finally:
                     poll_frame.working = False
+                    trace('poll-frame-close-request', phase_before=host.status.phase,
+                          worker_alive=host._thread.is_alive())
                     poll_frame.Close()
+                    trace('poll-frame-close-returned', phase_after=host.status.phase,
+                          worker_alive=host._thread.is_alive())
                     yield (lambda: host.status.phase == 'stopped', 8,
                            lambda: 'Native owner destruction did not stop polling: phase=' + host.status.phase)
                 check('Native owner destruction stops the metadata worker', not host._thread.is_alive())
@@ -217,7 +244,9 @@ def main(argv=None):
                     timer_stopped = not timer
                 check('Native owner destruction stops or destroys the actual timer', timer_stopped)
             finally:
+                trace('first-frame-close-request')
                 frame.Close()
+                trace('first-frame-close-returned')
                 yield None
     # Run every native assertion from the real application event loop. Yielding
     # a predicate schedules a bounded check; it never dispatches product timer
@@ -230,6 +259,7 @@ def main(argv=None):
         if error is not None and state['error'] is None:
             state['error'] = error
         state['finished'] = True
+        trace('scenario-complete', error=type(error).__name__ if error else None)
         app.ExitMainLoop()
 
     def advance(error=None):
@@ -275,10 +305,15 @@ def main(argv=None):
     # can otherwise exit MainLoop before the queued first-frame callback.
     advance()
     if not state['finished']:
+        trace('main-loop-enter')
         app.MainLoop()
+        trace('main-loop-returned', finished=state['finished'])
     watchdog.Stop()
+    if diagnostic['callback_error'] is not None and state['error'] is None:
+        state['error'] = diagnostic['callback_error']
     if not state['finished']:
-        raise AssertionError('Native application event loop exited before the scenario finished.')
+        state['error'] = state['error'] or AssertionError(
+            'Native application event loop exited before the scenario finished.')
     if state['error'] is not None:
         print(json.dumps({'status': 'FAIL', 'checks': checks,
                           'reason': str(state['error']), 'nvda': 'NOT_RUN'}), flush=True)

@@ -1,0 +1,89 @@
+name: CARR exact native trust lifetime
+
+on:
+  push:
+    branches: ['carr/v3-trust-native-d3a-*']
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-trust-native.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-trust-native-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  installed-native-trust:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the same integrated package and test pins before blocking network
+        run: |
+          New-Item -ItemType Directory -Force ci-results | Out-Null
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git rev-parse HEAD | Set-Content ci-results/tested-commit.txt
+          git rev-parse 'HEAD^{tree}' | Set-Content ci-results/tested-tree.txt
+          $program = python -I -c "import sys; print(sys.executable)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_PYTHON=$($program.Trim())" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True -ErrorAction Stop
+          New-NetFirewallRule -Name 'carr-trust-native-offline' -DisplayName 'CARR native trust offline' -Direction Outbound -Action Block -Profile Any -Program $program.Trim() -Enabled True -ErrorAction Stop | Out-Null
+          $rule = Get-NetFirewallRule -PolicyStore ActiveStore -Name 'carr-trust-native-offline' -ErrorAction Stop
+          if ($rule.Enabled -ne 'True' -or $rule.Direction -ne 'Outbound' -or $rule.Action -ne 'Block') { throw 'Actual native trust firewall rule unavailable.' }
+      - name: Exercise real installed native destruction with all fifteen assertions
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X faulthandler tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-results/trust-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @'
+          from collections import Counter
+          from hashlib import sha256
+          import json,pathlib,sys
+          raw=pathlib.Path('ci-results/trust-native.txt').read_text(encoding='utf-8-sig')
+          report=[json.loads(line) for line in raw.splitlines() if line.lstrip().startswith('{')][-1]
+          oracle=json.loads(pathlib.Path('scripts/v3_acceptance_oracles.json').read_text(encoding='utf-8'))
+          assert report['status']=='PASS' and Counter(report['checks'])==Counter(oracle['native_trust']) and len(report['checks'])==15
+          assert report['nvda']=='NOT_RUN' and report['production_authority']=='NOT_CONFIGURED' and report['production_installer_upgrade']=='NOT_RUN'
+          for key,relative in [('ui_module','ui/trust_status.py'),('polling_module','security/polling.py')]:
+              origin=pathlib.Path(report[key]).resolve()
+              assert origin.is_relative_to(pathlib.Path(sys.prefix).resolve())
+              assert sha256(origin.read_bytes()).hexdigest()==sha256((pathlib.Path('src/carr_library')/relative).read_bytes()).hexdigest()
+          report.update(source_commit=pathlib.Path('ci-results/tested-commit.txt').read_text(encoding='utf-8-sig').strip(),
+              actual_windows=True,actual_offline_firewall=True)
+          pathlib.Path('ci-results/trust-native-proof.json').write_text(json.dumps(report,sort_keys=True)+'\n',encoding='utf-8')
+          print(json.dumps(report,sort_keys=True))
+          '@ | & $env:CARR_PYTHON -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain exact diagnostics even when native lifetime fails
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-trust-native-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: error
+          retention-days: 7
