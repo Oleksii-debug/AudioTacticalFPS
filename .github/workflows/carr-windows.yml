@@ -493,6 +493,8 @@ jobs:
           "CARR_CI_TRANSFER_BUNDLE=$nativeBundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           & $env:CARR_PYTHON packaging/add_audio_runtime.py --bundle $nativeBundle --audio-runtime $audioRuntime --output $bundle | Tee-Object 'ci-results/full-bundle-audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Collect import tables for the exact sealed FFmpeg images, not a guessed dependency list.
+          & ./packaging/inspect_audio_pe.ps1 -Runtime (Join-Path $bundle 'audio-runtime') -SourceLock 'packaging/audio-runtime/source-lock.json' -Evidence 'ci-results'
           $manifest = Join-Path $bundle 'bundle-manifest.json'
           $manifestEvidence = 'ci-results/bundle-manifests'
           New-Item -ItemType Directory -Force $manifestEvidence | Out-Null
