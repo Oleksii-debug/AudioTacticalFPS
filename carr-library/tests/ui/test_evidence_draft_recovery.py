@@ -1,5 +1,6 @@
 """Real database and draft files behind explicit headless native-control doubles."""
 import ast
+from importlib.util import find_spec
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import replace
@@ -49,11 +50,13 @@ def recovery(tmp_path):
                          MessageBox=Mock(return_value=1), SingleChoiceDialog=Mock(return_value=chooser),
                          CallAfter=queued.append, EVT_TIMER=object())
     env = dict(__package__='carr_library.ui', wx=wx, replace=replace, format_citation=format_citation)
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
-    for name in ('evidence_panel.py', 'desktop_evidence_panel.py'):
-        tree = ast.parse((source / name).read_text(encoding='utf-8'))
+    for name in ('evidence_panel', 'desktop_evidence_panel'):
+        spec = find_spec('carr_library.ui.' + name)
+        assert spec is not None and spec.origin, name
+        source = Path(spec.origin).resolve()
+        tree = ast.parse(source.read_text(encoding='utf-8'))
         nodes = [node for node in tree.body if isinstance(node, ast.ClassDef)]
-        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source / name), 'exec'), env)
+        exec(compile(ast.Module(body=nodes, type_ignores=[]), str(source), 'exec'), env)
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Recovery native workflow')
     topic = app.create_topic(workspace, 'Research')
@@ -281,7 +284,9 @@ def test_corrupt_recovery_storage_reports_error_and_keeps_editor(recovery):
 
 def test_declined_or_failed_discard_keeps_scope_open(recovery):
     panel, _, _, wx, _ = recovery
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/workspace_shell.py'
+    spec = find_spec('carr_library.ui.workspace_shell')
+    assert spec is not None and spec.origin
+    source = Path(spec.origin).resolve()
     tree = ast.parse(source.read_text(encoding='utf-8'))
     method = next(node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == '_confirm')
     env = dict(wx=wx)

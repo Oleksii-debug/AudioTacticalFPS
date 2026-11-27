@@ -195,7 +195,8 @@ def main():
         print(json.dumps(report, indent=2, ensure_ascii=False), flush=True)
         return 0 if report['status'] == 'PASS' else 1
     finally:
-        native_handle.close()
+        if native_handle is not None:
+            native_handle.close()
 
 
 if __name__ == '__main__':

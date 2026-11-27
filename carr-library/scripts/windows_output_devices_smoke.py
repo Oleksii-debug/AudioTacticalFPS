@@ -8,6 +8,8 @@ and NVDA always remain separate, and an empty device inventory is reported.
 from hashlib import sha256
 import json
 import os
+import sys
+import sysconfig
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic
@@ -16,7 +18,7 @@ import traceback
 import wave
 
 
-def main():
+def run_native():
     if os.name != 'nt':
         print(json.dumps({'result': 'NOT_RUN', 'reason': 'Actual Windows is required.'}))
         return 77
@@ -38,8 +40,24 @@ def main():
         if not condition:
             raise AssertionError(label)
         checks.append(label)
-    installed = Path(carr_library.__file__).resolve()
-    check('application is the actual installed package', 'site-packages' in str(installed).lower())
+    from importlib import import_module
+    checkout = Path(__file__).resolve().parents[1]
+    purelib = Path(sysconfig.get_path('purelib')).resolve()
+    origins = {}
+    for name in ('carr_library', 'carr_library.audio.output_devices',
+                 'carr_library.speech.player', 'carr_library.reader.live_player',
+                 'carr_library.reader.live_reading', 'carr_library.ui.live_reading',
+                 'carr_library.ui.output_devices'):
+        module = import_module(name)
+        installed = Path(module.__file__).resolve()
+        relative = Path(*name.split('.'))
+        source = checkout / 'src' / relative / '__init__.py' if name == 'carr_library' else (
+            checkout / 'src' / relative.with_suffix('.py'))
+        check(name + ' imports from this interpreter installation',
+              installed.is_relative_to(purelib) and not installed.is_relative_to(checkout))
+        check(name + ' matches the reviewed checkout bytes', installed.read_bytes() == source.read_bytes())
+        origins[name] = dict(path=str(installed), sha256=sha256(installed.read_bytes()).hexdigest())
+    observed.update(installed_origins=origins, interpreter=str(Path(sys.executable).resolve()))
     check('native wx Windows backend', wx.Platform == '__WXMSW__')
     actual = devices.output_devices()
     check('real WinMM inventory obeys fixed bounds', len(actual) <= 256)
@@ -190,14 +208,17 @@ def main():
             core_factory=Core, ready=lambda: bool(dialog))
         dialog.reading = controls
         native_id = dialog.GetId()
+        owner_events = []
         def destroyed(event):
             if event.GetId() == native_id:
+                owner_events.append(event.GetId())
                 controls.close()
             event.Skip()
         dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
         dialog.SetSizer(layout)
         owners.append((outer, dialog, controls))
-        state.update(outer=outer, dialog=dialog, controls=controls)
+        state.update(outer=outer, dialog=dialog, controls=controls,
+                     owner_events=owner_events, owner_id=native_id)
         outer.Show()
         dialog.Show()
         return controls
@@ -238,9 +259,12 @@ def main():
         open_choice(direct_disposal)
 
     def direct_disposal():
-        controls = state['controls']
-        state['dialog'].Destroy()
-        until(lambda: modal() is None, lambda: after_direct(controls))
+        controls, owner, chooser = state['controls'], state['dialog'], modal()
+        events, native_id = state['owner_events'], state['owner_id']
+        check('direct disposal has a live native modal', chooser is not None)
+        owner.Destroy()
+        until(lambda: not owner and not chooser and events == [native_id],
+              lambda: after_direct(controls))
 
     def after_direct(controls):
         check('direct native owner destruction closes reading controls', controls.closed and controls.core.closed)
@@ -250,9 +274,12 @@ def main():
         open_choice(parent_disposal)
 
     def parent_disposal():
-        controls = state['controls']
-        state['outer'].Destroy()
-        until(lambda: modal() is None, lambda: after_parent(controls))
+        controls, owner, chooser = state['controls'], state['dialog'], modal()
+        outer, events, native_id = state['outer'], state['owner_events'], state['owner_id']
+        check('parent disposal has a live native modal', chooser is not None)
+        outer.Destroy()
+        until(lambda: not outer and not owner and not chooser and events == [native_id],
+              lambda: after_parent(controls))
 
     def after_parent(controls):
         check('actual parent destruction closes borrowed controls', controls.closed and controls.core.closed)
@@ -285,6 +312,18 @@ def main():
     check('complete native UI sequence executed', observed.get('native_ui') == 'PASS')
     print(json.dumps({'result': 'PASS', 'checks': checks, **observed}, ensure_ascii=False))
     return 0
+
+
+def main():
+    if os.name != 'nt' or not sys.flags.isolated or not sys.dont_write_bytecode:
+        raise RuntimeError('Run the installed native probe on Windows with Python -I -B.')
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
+    try:
+        return run_native()
+    finally:
+        if native_handle is not None:
+            native_handle.close()
 
 
 if __name__ == '__main__':
