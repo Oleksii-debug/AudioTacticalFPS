@@ -228,9 +228,15 @@ def _validate_engine_settings(value):
             if 'expected_worker_sha256' in helper:
                 checksum(helper['expected_worker_sha256'])
         else:
-            fields(helper, {'executable', 'sha256', 'engine_name'}, {'enabled', 'max_voices'})
+            fields(helper, {'executable', 'sha256', 'engine_name'}, {'enabled', 'max_voices', 'script', 'script_sha256'})
             path(helper['executable'])
             checksum(helper['sha256'])
+            script, script_digest = helper.get('script'), helper.get('script_sha256')
+            if (script is None) != (script_digest is None):
+                raise ValueError('A local helper script and its identity must be configured together.')
+            if script is not None:
+                path(script)
+                checksum(script_digest)
             text(helper['engine_name'], 128)
             if 'enabled' in helper:
                 boolean(helper['enabled'])
