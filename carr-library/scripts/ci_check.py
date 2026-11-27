@@ -3,16 +3,23 @@
 Use only on a trusted synthetic test checkout, never on imported documents.
 """
 import argparse
-from functools import partial
+from contextlib import contextmanager
+import ctypes
+from functools import lru_cache, partial
+import importlib.util
 from concurrent.futures import ThreadPoolExecutor
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
+from time import monotonic, sleep
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+WINDOWS_OWNER = ROOT / 'src' / 'carr_library' / 'audio' / 'windows_process.py'
+SUITE_TIMEOUT_SECONDS = 600
 
 # This controlled Word suite deliberately keeps real CSL/DOCX rendering in
 # every authority/publication case. The measured Windows r5 run exhausted
@@ -126,6 +133,142 @@ raise SystemExit(status)
 """.replace("__CARR_CI_WATCHDOG_PATH__", repr(str(Path(__file__).resolve().with_name("ci_watchdog.py"))))
 
 
+
+class _SuiteCleanupPending(RuntimeError):
+    """The actual process owner and its private reports must remain retained."""
+    def __init__(self, process, error):
+        super().__init__('Required-suite process cleanup is unconfirmed: '
+                         + type(error).__name__ + ': ' + str(error)[:1000])
+        self.process = process
+
+
+_PENDING_SUITES = []
+
+
+@lru_cache(maxsize=1)
+def _windows_launcher():
+    # Reuse the existing standalone launcher at this exact trusted checkout.
+    # No PATH lookup, taskkill ancestry scan or second native process family.
+    spec = importlib.util.spec_from_file_location('_carr_ci_windows_process', WINDOWS_OWNER)
+    if spec is None or spec.loader is None:
+        raise OSError('The current owned Windows process helper is unavailable.')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.WindowsJobProcess
+
+
+def _start_test_process(command, *, env):
+    options = dict(cwd=ROOT, env=env, stdin=subprocess.DEVNULL, shell=False)
+    if os.name == 'nt':
+        return _windows_launcher()(command, **options)
+    return subprocess.Popen(command, start_new_session=True, **options)
+
+
+def _settle_test_process(process):
+    """Keep the current Windows job until its entire owned family is empty."""
+    if os.name != 'nt':
+        # The existing process-family contract uses a private POSIX session.
+        # Its descendants can outlive a successfully exited pytest leader.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout=10)
+        return
+    job = getattr(process, '_carr_job', None)
+    if job is None or job.handle is None:
+        raise OSError('The required suite has no retained Windows job owner.')
+    deadline = monotonic() + 10
+    handle = job.handle
+    if not job.api.kernel.TerminateJobObject(handle, 1):
+        raise job.api.error()
+    process.wait(timeout=max(0, deadline - monotonic()))
+    retained = getattr(process, '_handle', None)
+    if retained is not None:
+        retained.Close()
+    # JOBOBJECT_BASIC_ACCOUNTING_INFORMATION, as used by the current capture
+    # settlement boundary. The current launcher remains the sole job owner.
+    class Accounting(ctypes.Structure):
+        _fields_ = [('user_time', ctypes.c_int64), ('kernel_time', ctypes.c_int64),
+                    ('period_user', ctypes.c_int64), ('period_kernel', ctypes.c_int64),
+                    ('page_faults', ctypes.c_uint32), ('total_processes', ctypes.c_uint32),
+                    ('active_processes', ctypes.c_uint32), ('terminated_processes', ctypes.c_uint32)]
+    query = job.api.kernel.QueryInformationJobObject
+    query.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p,
+                      ctypes.c_uint32, ctypes.c_void_p]
+    query.restype = ctypes.c_int
+    while True:
+        accounting = Accounting()
+        if not query(handle, 1, ctypes.byref(accounting), ctypes.sizeof(accounting), None):
+            raise job.api.error()
+        if accounting.active_processes == 0:
+            break
+        if monotonic() >= deadline:
+            raise TimeoutError('The required-suite Windows job did not become empty.')
+        sleep(min(.02, max(0, deadline - monotonic())))
+    # Empty-job confirmation precedes the existing owner's final close.
+    job.close()
+
+
+def _run_test_process(command, *, env, timeout):
+    process = _start_test_process(command, env=env)
+    failure = None
+    try:
+        return process.wait(timeout=timeout)
+    except BaseException as error:
+        failure = error
+        raise
+    finally:
+        try:
+            _settle_test_process(process)
+        except BaseException as error:
+            if failure is not None:
+                print('FAIL: required-suite process cleanup after '
+                      + type(failure).__name__ + ': ' + type(error).__name__
+                      + ': ' + str(error)[:1000], flush=True)
+            raise _SuiteCleanupPending(process, error) from failure or error
+
+
+def _cleanup_report_directory(directory):
+    # Retry only transient Windows sharing/permission failures, for 0.2 s.
+    for attempt in range(5):
+        try:
+            directory.cleanup()
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            sleep(.05)
+
+
+@contextmanager
+def _report_directory(suite):
+    directory = tempfile.TemporaryDirectory(prefix='carr-ci-')
+    original = None
+    try:
+        yield directory.name
+    except BaseException as error:
+        original = error
+        raise
+    finally:
+        if isinstance(original, _SuiteCleanupPending):
+            # Do not delete paths while their native owner may still use them.
+            # Retain both objects and disable automatic destructive cleanup;
+            # this failed run never emits PASS. OS job ownership also survives
+            # until interpreter exit if explicit settlement could not finish.
+            directory._finalizer.detach()
+            _PENDING_SUITES.append((original.process, directory))
+        else:
+            try:
+                _cleanup_report_directory(directory)
+            except OSError as error:
+                if original is None:
+                    raise
+                print(f'FAIL: {suite}: temporary report cleanup failed after '
+                      f'{type(original).__name__}: {type(error).__name__}: {error}',
+                      flush=True)
+
+
 def run_suite(suite: str, *, allow_loopback=False) -> bool:
     path = (ROOT / suite).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
@@ -147,29 +290,30 @@ def run_suite(suite: str, *, allow_loopback=False) -> bool:
     env['HF_HUB_OFFLINE'] = '1'
     env['HF_HUB_DISABLE_TELEMETRY'] = '1'
     env['DO_NOT_TRACK'] = '1'
-    with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
-        report = Path(tmp) / 'junit.xml'
-        try:
-            proc = subprocess.run([
+    try:
+        with _report_directory(suite) as tmp:
+            report = Path(tmp) / 'junit.xml'
+            returncode = _run_test_process([
                 sys.executable, '-c', PYTEST_CHILD,
                 'numeric-loopback' if allow_loopback else 'offline', '-o', 'addopts=',
                 '-o', 'xfail_strict=true',
                 '--durations=15', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
-            ], cwd=ROOT, env=env, timeout=SUITE_SECONDS.get(suite, 600), check=False)
+            ], env=env, timeout=SUITE_SECONDS.get(suite, SUITE_TIMEOUT_SECONDS))
             cases = list(ET.parse(report).iter('testcase'))
-        except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
-            print(f'FAIL: {suite}: required suite did not produce a valid report: '
-                  f'{type(exc).__name__}: {exc}', flush=True)
-            return False
-        failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
-        skipped = sum(c.find('skipped') is not None for c in cases)
-        passed = len(cases) - failed - skipped
-        ok = proc.returncode == 0 and passed > 0 and failed == skipped == 0
+            failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
+            skipped = sum(c.find('skipped') is not None for c in cases)
+            passed = len(cases) - failed - skipped
+            ok = returncode == 0 and passed > 0 and failed == skipped == 0
+        # Both the owned process family and private report files are settled.
         print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-              f'skipped={skipped}, pytest_exit={proc.returncode}', flush=True)
+              f'skipped={skipped}, pytest_exit={returncode}', flush=True)
         return ok
+    except (OSError, subprocess.TimeoutExpired, ET.ParseError, _SuiteCleanupPending) as error:
+        print(f'FAIL: {suite}: required suite did not complete cleanly: '
+              f'{type(error).__name__}: {str(error)[:2000]}', flush=True)
+        return False
 
 
 def main() -> int:
