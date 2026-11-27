@@ -388,16 +388,23 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
 def show_operations(frame):
     import wx
     dialog = create_operations_dialog(frame)
+    controller = dialog.controller
     handoff = None
     try:
         dialog.CentreOnParent()
-        wx.CallAfter(dialog.controller.refresh)
+        wx.CallAfter(controller.refresh)
         dialog.ShowModal()
-        handoff = dialog.handoff
+        if not controller.closed and dialog and not dialog.IsBeingDeleted():
+            handoff = dialog.handoff
     finally:
-        dialog.controller.dispose()
-        dialog.Destroy()
-    if handoff is not None:
+        controller.dispose()
+        # ShowModal can return before the deferred native destroy event.
+        if dialog and not dialog.IsBeingDeleted():
+            dialog.Destroy()
+    if (handoff is not None and not getattr(frame, '_closing', False)
+            and frame and not frame.IsBeingDeleted()
+            and frame.library is controller.library
+            and getattr(frame, 'active', None) == controller.active):
         from .transcription_dialog import show_transcription
         show_transcription(frame, job_id=handoff)
 
