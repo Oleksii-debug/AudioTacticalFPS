@@ -1,0 +1,150 @@
+{
+  "run_id": 45921407314,
+  "job_id": 140252755833,
+  "source_commit": "3924f36f3af767c441d0b48532744df1650cb71e",
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45921407314",
+  "emitted_stages": [
+    {
+      "actual_musicgen_inference": "NOT_RUN",
+      "application_commit": "3924f36f3af767c441d0b48532744df1650cb71e",
+      "attention_backend": "torch",
+      "av_library_versions": {
+        "libavcodec": [
+          58,
+          134,
+          100
+        ],
+        "libavdevice": [
+          58,
+          13,
+          100
+        ],
+        "libavfilter": [
+          7,
+          110,
+          100
+        ],
+        "libavformat": [
+          58,
+          76,
+          100
+        ],
+        "libavutil": [
+          56,
+          70,
+          100
+        ],
+        "libswresample": [
+          3,
+          9,
+          100
+        ],
+        "libswscale": [
+          5,
+          9,
+          100
+        ]
+      },
+      "helper_sha256": "108a65cc169896a39786b9968b49effe53cc70de57a78664a88f3df2a96037d7",
+      "inventory": {
+        "bytes": 2253356755,
+        "entries": 35668,
+        "entry_limit": 65536,
+        "estimated_manifest_bytes": 4780779,
+        "file_limit": 100000,
+        "files": 32874,
+        "manifest_byte_limit": 8388608,
+        "runtime_code_files": 134
+      },
+      "model_weights": "NOT_DOWNLOADED",
+      "network_control": {
+        "errno": 101,
+        "interfaces": [
+          "lo"
+        ],
+        "unhooked_socket": "blocked"
+      },
+      "numba_cache_scope": "current operation staging",
+      "python": "3.11.18",
+      "runtime_files_sha256": "9b2a9e7fa772e25e2fd1beed4c91ba0dc68a7b3b3a433486d06f96803754967c",
+      "stage": "canonical_audited_real_framework_imports",
+      "status": "PREFLIGHT_PASS",
+      "versions": {
+        "av": "11.0.0",
+        "numpy": "1.26.4",
+        "scipy": "1.11.4",
+        "torch": "2.1.0+cpu",
+        "torchaudio": "2.1.0+cpu",
+        "torchvision": "0.16.0+cpu",
+        "transformers": "4.33.3",
+        "xformers": "0.0.22.post7"
+      }
+    },
+    {
+      "bytes": 840843863,
+      "file": "state_dict.bin",
+      "repository": "facebook/musicgen-small",
+      "revision": "4c8334b02c6ec4e8664a91979669a501ec497792",
+      "sha256": "830fe5771e2835cbd305f3ffdda22d3ff38718fbbe8274bd19dc203265de7244",
+      "stage": "asset_verified"
+    },
+    {
+      "bytes": 236001935,
+      "file": "compression_state_dict.bin",
+      "repository": "facebook/musicgen-small",
+      "revision": "4c8334b02c6ec4e8664a91979669a501ec497792",
+      "sha256": "37d256b525d4117f8bbf790ab448a8e9f4746cd401900fe1ae72e154b1513a30",
+      "stage": "asset_verified"
+    },
+    {
+      "bytes": 891646390,
+      "file": "model.safetensors",
+      "repository": "google-t5/t5-base",
+      "revision": "a9723ea7f1b39c1eae772870f3b547bf6ef7e6c1",
+      "sha256": "a90903540cc02cbeb7ff9f823f1a80eb778c7e22426a0e620b01c77a5ec8f5b4",
+      "stage": "asset_verified"
+    },
+    {
+      "bytes": 1208,
+      "file": "config.json",
+      "repository": "google-t5/t5-base",
+      "revision": "a9723ea7f1b39c1eae772870f3b547bf6ef7e6c1",
+      "sha256": "46dd7cb62d29c81fb551e0ef1ea274c24a46ba441eeb948897706252933df033",
+      "stage": "asset_verified"
+    },
+    {
+      "bytes": 791656,
+      "file": "spiece.model",
+      "repository": "google-t5/t5-base",
+      "revision": "a9723ea7f1b39c1eae772870f3b547bf6ef7e6c1",
+      "sha256": "d60acb128cf7b7f2536e8f38a5b18a05535c9e14c7a355904270e15b0945ea86",
+      "stage": "asset_verified"
+    },
+    {
+      "bytes": 1389353,
+      "file": "tokenizer.json",
+      "repository": "google-t5/t5-base",
+      "revision": "a9723ea7f1b39c1eae772870f3b547bf6ef7e6c1",
+      "sha256": "d2acde0d8d71dd30a711834b07781b9c89feaac33fd332f60507699282740066",
+      "stage": "asset_verified"
+    },
+    {
+      "actual_musicgen_inference": "NOT_RUN",
+      "bytes": 1970674405,
+      "stage": "assets_ready"
+    },
+    {
+      "actual_musicgen_inference": "NOT_RUN",
+      "bytes": 4224031200,
+      "entries": 35680,
+      "entry_limit": 65536,
+      "estimated_manifest_bytes": 4781721,
+      "file_limit": 100000,
+      "files": 32881,
+      "manifest_byte_limit": 8388608,
+      "manifest_sha256": "88b91e106ae864d946977217f21f72f91aa717f0c2bf21c3e7bd473e9ecedf11",
+      "runtime_code_files": 134,
+      "stage": "complete_canonical_manifest_verified"
+    }
+  ]
+}
