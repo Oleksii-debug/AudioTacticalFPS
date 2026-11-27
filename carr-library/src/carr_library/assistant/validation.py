@@ -25,6 +25,9 @@ _KEYS = {
 
 
 def validate_arguments(step):
+    if step.tool == 'audio.transcribe':
+        from .transcription_tools import validate_arguments as validate_transcription
+        return validate_transcription(step)
     if step.tool in ('topic.list', 'topic.create', 'topic.export'):
         from .topic_tools import validate_arguments as validate_topic
         return validate_topic(step)
@@ -210,6 +213,9 @@ def validate_job(value, *, identity=None):
         if validated.tool in ('reader.control', 'player.control'):
             from .interactive_tools import validate_saved_scope
             validate_saved_scope(validated, scope, value['data_dir'])
+        if validated.tool == 'audio.transcribe':
+            from .transcription_tools import validate_saved_scope
+            validate_saved_scope(validated, scope, value['data_dir'])
         if validated.tool.startswith('library.import'):
             target = _path(validated.arguments['path'])
             if not any(type(target) is type(_path(root)) and target.is_relative_to(_path(root))
@@ -221,7 +227,7 @@ def validate_job(value, *, identity=None):
         if validated.tool in ('library.extract', 'library.backup', 'topic.export'):
             _output_name(validated.arguments['name'])
         if (validated.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce',
-                                   'document.convert', 'audio.effects')
+                                   'document.convert', 'audio.effects', 'audio.transcribe')
                 and workspace is None and creates == 0):
             raise ValueError('Checkpoint operation has no approved library scope.')
         if (type(checkpoint) is not dict or set(checkpoint) != {'status', 'intent', 'result', 'message'}
@@ -234,10 +240,14 @@ def validate_job(value, *, identity=None):
             {'sha256'} if validated.tool == 'library.extract' else
             {'derived_publication'} if validated.tool in ('document.convert', 'audio.effects') else
             {'interactive_dispatch'} if validated.tool in ('reader.control', 'player.control') else
-            {'topic_publication'} if validated.tool == 'topic.export' else set())
+            {'topic_publication'} if validated.tool == 'topic.export' else
+            {'transcription'} if validated.tool == 'audio.transcribe' else set())
         if set(intent) - permitted:
             raise ValueError('Invalid assistant step intent.')
         expected_operation = uuid5(NAMESPACE_URL, 'carr-assistant:' + job_id + ':' + str(index)).hex
+        if validated.tool == 'audio.transcribe':
+            from .transcription_tools import validate_intent
+            validate_intent(validated, intent, scope, operation_id=expected_operation)
         if 'derived_publication' in intent:
             from .derived_tools import validate_intent
             prepared = validate_intent(validated, intent, scope)
@@ -270,6 +280,11 @@ def validate_job(value, *, identity=None):
             validate_result(validated, result, scope, intent)
         elif 'interactive_receipt' in result:
             raise ValueError('Only a native interactive tool may have an interactive receipt.')
+        if validated.tool == 'audio.transcribe':
+            from .transcription_tools import validate_result
+            validate_result(validated, result, scope, intent)
+        elif 'transcription_receipt' in result:
+            raise ValueError('Only a transcription tool may have a transcription receipt.')
         if len(result['artifacts']) > scope['max_files']:
             raise ValueError('Too many assistant artifacts in checkpoint.')
         artifact_bytes, artifact_paths = 0, set()

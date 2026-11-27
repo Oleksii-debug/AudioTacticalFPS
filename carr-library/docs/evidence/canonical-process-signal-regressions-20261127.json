@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "kind": "canonical-current-api-regression-port",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+  "implementation_parent": "61adc656bc863db40e2ea2f8487eb0c74eb6526e",
+  "source_root": "0203c8253c2faf4cb155b25b4ca5f244c0787132",
+  "canonical_sources": {
+    "carr-library/tests/audio/test_audio_process.py": "8a1cbc082a9fcb1cd1647e5b658c48a5810587db",
+    "carr-library/tests/audio/test_dsp.py": "8522fa552beba8910aa2e749c19369eb4f90e09a"
+  },
+  "current_owners": [
+    "src/carr_library/audio/recording_process.py",
+    "src/carr_library/audio/engines.py",
+    "src/carr_library/audio/windows_process.py",
+    "src/carr_library/audio/cleanup.py",
+    "src/carr_library/audio/ffmpeg.py",
+    "src/carr_library/audio/models.py"
+  ],
+  "added_module": "tests.audio.test_canonical_process_signal",
+  "declared_function_counter": {
+    "test_fast_owned_diagnostic_overflow_is_rejected_after_actual_exit": 2,
+    "test_owned_process_timeout_terminates_actual_child_promptly": 1,
+    "test_prestart_cancel_prevents_child_side_effects": 1,
+    "test_completed_worker_staging_is_checked_after_actual_exit": 3,
+    "test_nonzero_owned_child_is_not_reported_as_success": 1,
+    "test_progress_reaches_caller_while_actual_child_is_still_running": 1,
+    "test_argument_admission_refuses_shell_text_and_unresolved_executable": 2,
+    "test_actual_equalizer_preserves_canonical_selective_gain_tolerances": 1,
+    "test_actual_reflection_impulse_positions_keep_declared_millisecond_units": 2,
+    "test_actual_silence_has_no_fabricated_finite_loudness_or_peak": 1
+  },
+  "declared_cases": 15,
+  "product_changes": [],
+  "rationale": [
+    "Port concrete canonical assertions that had no equally direct current-API regression, while preserving the current owned process and FFmpeg implementations.",
+    "Actual small Python children finish before the runner's first poll for both diagnostic streams and watched-stage quotas; existing final validation and cleanup must still refuse them.",
+    "Progress uses an actual child-to-caller handshake and verifies the callback runs before child exit on the calling thread.",
+    "EQ preserves the canonical +6 dB center / <0.2 dB off-frequency tolerances; delay and room-reflection tests inspect exact sample positions; actual silence retains absent finite LUFS and true peak."
+  ],
+  "fixtures": {
+    "transport": "none",
+    "process": "current interpreter -I -B, application-owned launcher",
+    "signal": "actual selected local FFmpeg through audio.runtime.resolve_ffmpeg; no synthetic DSP substitution",
+    "completed_speech": "separate reviewed component 61adc656, not replaced by these tests"
+  },
+  "validation": {
+    "lexical_balance": "reviewed in JavaScript only; not Python compilation",
+    "compilation": "NOT_RUN",
+    "source_tests": "NOT_RUN",
+    "installed_tests": "NOT_RUN",
+    "native_signal_execution": "NOT_RUN"
+  },
+  "limits": [
+    "A source assertion inventory is not runtime evidence.",
+    "No old AudioRuntime/ProductionService API is reintroduced.",
+    "Existing publication/final output, disk reserve and resource-owner tests remain selected separately."
+  ]
+}

@@ -623,7 +623,8 @@ class ChunkCache:
                 publish_new(path, self.root / name, cancelled=self.cancelled, expected_identity=identity)
                 published.append(self.root / name)
             check_cancelled(self.cancelled)
-            publish_new(source, target, cancelled=self.cancelled, expected_identity=source_identity)
+            publish_new(source, target, cancelled=self.cancelled, expected_identity=source_identity,
+                        expected_sha256=checksum)
             published.append(target)
             check_cancelled(self.cancelled)
             atomic_json(self.root / (key + '.json'), metadata)

@@ -1886,7 +1886,7 @@
       "test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
       "test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
       "test_chm_truncated_member_publishes_no_complete_worker_report": 1,
-      "test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 11,
+      "test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 13,
       "test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
       "test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
       "test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
@@ -1902,7 +1902,8 @@
       "test_chm_paragraph_normalization_keeps_active_hidden_and_literal_tokens_inert": 1,
       "test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
       "test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
-      "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2
+      "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
+      "test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified": 6
     },
     "tests.assistant.test_backup_receipt": {
       "test_cancel_and_file_limit_apply_before_complete_receipt": 1,
@@ -2678,6 +2679,116 @@
       "test_manifest_replacement_cannot_install_an_unapproved_model": 1,
       "test_approved_checksum_does_not_relax_strict_json": 2,
       "test_oversized_manifest_cannot_substitute_the_empty_content_checksum": 1
+    },
+    "tests.assistant.test_transcription_cli": {
+      "test_cli_profile_listing_is_passive_and_has_no_automatic_selection": 1,
+      "test_cli_preview_requires_explicit_selected_profile": 1,
+      "test_cli_preview_displays_complete_settings_without_executing": 1,
+      "test_cli_actual_protocol_run_and_completed_resume_use_current_checkpoint": 1,
+      "test_cli_profile_authority_is_rejected_for_passive_unrelated_actions": 3,
+      "test_named_transcription_template_retains_only_inert_typed_options": 1
+    },
+    "tests.assistant.test_transcription_recovery": {
+      "test_actual_process_exit_resumes_only_bound_work_and_never_replays_uncertain_inference": 10,
+      "test_same_byte_foreign_output_directory_cannot_adopt_owned_sealed_stage": 1,
+      "test_changed_partial_export_is_refused_without_overwrite_or_worker_replay": 1,
+      "test_changed_parent_after_sealing_cannot_rebind_directory_publication": 1,
+      "test_stop_immediately_after_complete_publication_preserves_committed_success": 1,
+      "test_completed_step_same_size_source_change_refuses_replay_and_preserves_export": 1,
+      "test_completed_receipt_cannot_change_source_settings_runtime_or_artifact_binding": 1,
+      "test_restore_and_rebackup_keep_retained_transcripts_without_external_paths_or_launch_authority": 1,
+      "test_backup_rejects_shape_valid_assistant_binding_to_different_managed_definition": 4
+    },
+    "tests.assistant.test_transcription_tools": {
+      "test_guided_transcription_shows_all_effective_settings_without_creating_jobs": 2,
+      "test_preview_requires_current_explicit_profile_without_activating_settings": 3,
+      "test_typed_arguments_cannot_choose_runtime_or_grant_profile_authority": 5,
+      "test_invalid_settings_and_output_names_refuse_before_dispatch": 6,
+      "test_source_outside_selected_folder_and_private_library_are_refused": 1,
+      "test_export_budget_includes_all_formats_and_provenance": 1,
+      "test_overlapping_transcription_directories_refuse_whole_plan_before_preparation": 2,
+      "test_actual_protocol_child_exports_all_formats_and_retains_independent_owned_inputs": 1,
+      "test_actual_empty_transcripts_are_legitimate_silence_and_never_rerun": 1,
+      "test_actual_unaccepted_child_outputs_are_not_published_or_replayed": 3,
+      "test_selected_owner_revocation_cancels_actual_domain_child_and_releases_lease": 1,
+      "test_profile_disabled_after_submission_blocks_before_owned_preparation": 1,
+      "test_same_size_and_mtime_source_change_refuses_before_inference": 2,
+      "test_new_output_directory_after_preview_preserves_foreign_data": 1,
+      "test_pure_pending_checkpoint_validation_does_not_open_saved_paths_or_profiles": 1,
+      "test_all_seventeen_tools_are_explicit_with_no_dynamic_runtime_names": 1,
+      "test_changed_pinned_runtime_bytes_after_submit_refuse_before_preparation": 3
+    },
+    "tests.ui.test_assistant_transcription": {
+      "test_native_profile_choice_is_explicit_none_and_preview_cannot_enable_it": 1,
+      "test_current_native_selection_previews_then_runs_existing_protocol_service": 1,
+      "test_profile_choice_change_invalidates_preview_even_without_native_event": 2,
+      "test_profile_change_during_queued_preview_cannot_replace_captured_registration": 1,
+      "test_close_before_queued_run_cancels_without_creating_managed_asr_job": 1,
+      "test_loading_template_clears_transcription_profile_and_current_authority": 1,
+      "test_library_switch_before_queued_run_never_submits_under_another_owner": 1
+    },
+    "tests.conversion.test_chm_html_recovery": {
+      "test_complete_observed_publisher_shape_population_preserves_order": 11,
+      "test_recovery_retains_declared_charset_and_numeric_unicode_without_replacement": 3,
+      "test_recovery_preserves_active_hidden_and_comment_suppression": 1,
+      "test_general_or_undeclared_html_never_enters_legacy_recovery": 3,
+      "test_later_unsafe_tokens_still_fail_after_an_admitted_orphan_end": 7,
+      "test_original_reader_budgets_apply_before_native_html_recovery": 4,
+      "test_serialized_recovery_expansion_is_bounded_before_a_reading_is_returned": 1,
+      "test_recovery_cannot_silently_drop_reorder_or_expose_text": 3,
+      "test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1
+    },
+    "tests.audio.test_completed_speech_checkpoint": {
+      "test_actual_completed_speech_is_sealed_before_stop_and_never_synthesized_again": 3,
+      "test_late_stop_never_receipts_corrupt_or_aliased_engine_output": 3,
+      "test_cancel_before_render_starts_no_engine_or_completed_chunk": 1,
+      "test_seal_failure_is_not_masked_by_late_stop_and_restores_original_callback": 1,
+      "test_completed_speech_cancel_deferral_has_a_bounded_deadline_and_restores_callback": 1,
+      "test_cache_copy_must_match_the_hash_recorded_before_publication": 1
+    },
+    "tests.audio.test_canonical_process_signal": {
+      "test_fast_owned_diagnostic_overflow_is_rejected_after_actual_exit": 2,
+      "test_owned_process_timeout_terminates_actual_child_promptly": 1,
+      "test_prestart_cancel_prevents_child_side_effects": 1,
+      "test_completed_worker_staging_is_checked_after_actual_exit": 3,
+      "test_nonzero_owned_child_is_not_reported_as_success": 1,
+      "test_progress_reaches_caller_while_actual_child_is_still_running": 1,
+      "test_argument_admission_refuses_shell_text_and_unresolved_executable": 2,
+      "test_actual_equalizer_preserves_canonical_selective_gain_tolerances": 1,
+      "test_actual_reflection_impulse_positions_keep_declared_millisecond_units": 2,
+      "test_actual_silence_has_no_fabricated_finite_loudness_or_peak": 1
+    },
+    "tests.packaging.test_audio_acquisition": {
+      "test_exact_pinned_bytes_publish_through_real_no_replace_owner": 1,
+      "test_approved_https_redirect_is_checked_by_actual_urllib_before_streaming": 5,
+      "test_denied_redirect_never_opens_second_connection_and_closes_response": 8,
+      "test_control_ambiguous_or_credential_urls_fail_before_request_construction": 6,
+      "test_body_size_and_digest_are_checked_without_trusting_absent_length": 3,
+      "test_unexpected_response_metadata_is_refused_before_body_read": 8,
+      "test_redirect_loop_stays_bounded_and_removes_owned_partial": 1,
+      "test_existing_even_matching_archive_is_not_adopted_or_downloaded": 1,
+      "test_cancel_timeout_and_transport_failures_settle_response_and_partial": 5,
+      "test_destination_created_during_download_is_preserved_by_atomic_publication": 1,
+      "test_downloaded_source_is_rehashed_during_copy_before_publication": 1,
+      "test_changed_directory_owner_refuses_before_publication": 1,
+      "test_partial_cleanup_does_not_remove_a_replacement_foreign_file": 1,
+      "test_download_directory_admission_precedes_any_network": 3
+    },
+    "tests.packaging.test_local_audio_download": {
+      "test_download_plan_accounts_for_archive_copy_and_does_not_authorize_execution": 1,
+      "test_default_cli_remains_offline_plan_only": 1,
+      "test_interactive_download_refusal_is_read_only": 5,
+      "test_explicit_download_uses_current_preparer_and_cleans_temporary_archive": 2,
+      "test_manual_archive_preparation_does_not_enter_network_path": 1,
+      "test_conflicting_authority_options_refuse_before_any_write": 3,
+      "test_changed_reviewed_download_plan_refuses_before_network": 4,
+      "test_destination_created_during_confirmation_is_preserved_without_download": 1,
+      "test_download_disk_budget_refuses_before_temporary_creation": 1,
+      "test_unsupported_platform_cannot_start_download_or_create_work": 1,
+      "test_wrong_download_digest_cleans_inputs_without_publishing_runtime": 1,
+      "test_native_failure_is_not_reported_as_prepared_and_does_not_keep_network_input": 1,
+      "test_temporary_cleanup_failure_cannot_leave_a_success_receipt": 1,
+      "test_keyboard_stop_during_transfer_keeps_existing_library_and_archive": 1
     }
   },
   "installed": {
@@ -4496,7 +4607,7 @@
       "test_chm_ambiguous_or_excessive_listing_never_selects_members": 5,
       "test_chm_worker_uses_declared_toc_and_existing_inert_html_reader": 1,
       "test_chm_truncated_member_publishes_no_complete_worker_report": 1,
-      "test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 11,
+      "test_fixed_calibre_wrapper_enforces_private_io_and_no_network_or_programs": 13,
       "test_tcr_dictionary_and_actual_expansion_are_bounded_before_native_decoder": 3,
       "test_windows_cached_directory_metadata_does_not_invalidate_regular_components": 1,
       "test_real_hardlink_alias_remains_refused_after_fresh_windows_stat": 1,
@@ -4512,7 +4623,8 @@
       "test_chm_paragraph_normalization_keeps_active_hidden_and_literal_tokens_inert": 1,
       "test_chm_paragraph_normalization_does_not_relax_other_malformed_structure": 3,
       "test_chm_undeclared_html_and_general_html_reader_keep_their_strict_endtag_contract": 1,
-      "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2
+      "test_chm_paragraph_normalization_uses_current_text_and_absolute_time_budgets": 2,
+      "test_qualified_calibre_formats_still_require_explicit_selection_and_leave_chm_unqualified": 6
     },
     "tests.assistant.test_backup_receipt": {
       "test_cancel_and_file_limit_apply_before_complete_receipt": 1,
@@ -5288,6 +5400,84 @@
       "test_manifest_replacement_cannot_install_an_unapproved_model": 1,
       "test_approved_checksum_does_not_relax_strict_json": 2,
       "test_oversized_manifest_cannot_substitute_the_empty_content_checksum": 1
+    },
+    "tests.assistant.test_transcription_cli": {
+      "test_cli_profile_listing_is_passive_and_has_no_automatic_selection": 1,
+      "test_cli_preview_requires_explicit_selected_profile": 1,
+      "test_cli_preview_displays_complete_settings_without_executing": 1,
+      "test_cli_actual_protocol_run_and_completed_resume_use_current_checkpoint": 1,
+      "test_cli_profile_authority_is_rejected_for_passive_unrelated_actions": 3,
+      "test_named_transcription_template_retains_only_inert_typed_options": 1
+    },
+    "tests.assistant.test_transcription_recovery": {
+      "test_actual_process_exit_resumes_only_bound_work_and_never_replays_uncertain_inference": 10,
+      "test_same_byte_foreign_output_directory_cannot_adopt_owned_sealed_stage": 1,
+      "test_changed_partial_export_is_refused_without_overwrite_or_worker_replay": 1,
+      "test_changed_parent_after_sealing_cannot_rebind_directory_publication": 1,
+      "test_stop_immediately_after_complete_publication_preserves_committed_success": 1,
+      "test_completed_step_same_size_source_change_refuses_replay_and_preserves_export": 1,
+      "test_completed_receipt_cannot_change_source_settings_runtime_or_artifact_binding": 1,
+      "test_restore_and_rebackup_keep_retained_transcripts_without_external_paths_or_launch_authority": 1,
+      "test_backup_rejects_shape_valid_assistant_binding_to_different_managed_definition": 4
+    },
+    "tests.assistant.test_transcription_tools": {
+      "test_guided_transcription_shows_all_effective_settings_without_creating_jobs": 2,
+      "test_preview_requires_current_explicit_profile_without_activating_settings": 3,
+      "test_typed_arguments_cannot_choose_runtime_or_grant_profile_authority": 5,
+      "test_invalid_settings_and_output_names_refuse_before_dispatch": 6,
+      "test_source_outside_selected_folder_and_private_library_are_refused": 1,
+      "test_export_budget_includes_all_formats_and_provenance": 1,
+      "test_overlapping_transcription_directories_refuse_whole_plan_before_preparation": 2,
+      "test_actual_protocol_child_exports_all_formats_and_retains_independent_owned_inputs": 1,
+      "test_actual_empty_transcripts_are_legitimate_silence_and_never_rerun": 1,
+      "test_actual_unaccepted_child_outputs_are_not_published_or_replayed": 3,
+      "test_selected_owner_revocation_cancels_actual_domain_child_and_releases_lease": 1,
+      "test_profile_disabled_after_submission_blocks_before_owned_preparation": 1,
+      "test_same_size_and_mtime_source_change_refuses_before_inference": 2,
+      "test_new_output_directory_after_preview_preserves_foreign_data": 1,
+      "test_pure_pending_checkpoint_validation_does_not_open_saved_paths_or_profiles": 1,
+      "test_all_seventeen_tools_are_explicit_with_no_dynamic_runtime_names": 1,
+      "test_changed_pinned_runtime_bytes_after_submit_refuse_before_preparation": 3
+    },
+    "tests.ui.test_assistant_transcription": {
+      "test_native_profile_choice_is_explicit_none_and_preview_cannot_enable_it": 1,
+      "test_current_native_selection_previews_then_runs_existing_protocol_service": 1,
+      "test_profile_choice_change_invalidates_preview_even_without_native_event": 2,
+      "test_profile_change_during_queued_preview_cannot_replace_captured_registration": 1,
+      "test_close_before_queued_run_cancels_without_creating_managed_asr_job": 1,
+      "test_loading_template_clears_transcription_profile_and_current_authority": 1,
+      "test_library_switch_before_queued_run_never_submits_under_another_owner": 1
+    },
+    "tests.conversion.test_chm_html_recovery": {
+      "test_complete_observed_publisher_shape_population_preserves_order": 11,
+      "test_recovery_retains_declared_charset_and_numeric_unicode_without_replacement": 3,
+      "test_recovery_preserves_active_hidden_and_comment_suppression": 1,
+      "test_general_or_undeclared_html_never_enters_legacy_recovery": 3,
+      "test_later_unsafe_tokens_still_fail_after_an_admitted_orphan_end": 7,
+      "test_original_reader_budgets_apply_before_native_html_recovery": 4,
+      "test_serialized_recovery_expansion_is_bounded_before_a_reading_is_returned": 1,
+      "test_recovery_cannot_silently_drop_reorder_or_expose_text": 3,
+      "test_existing_conversion_worker_keeps_raw_and_recovered_member_identities": 1
+    },
+    "tests.audio.test_completed_speech_checkpoint": {
+      "test_actual_completed_speech_is_sealed_before_stop_and_never_synthesized_again": 3,
+      "test_late_stop_never_receipts_corrupt_or_aliased_engine_output": 3,
+      "test_cancel_before_render_starts_no_engine_or_completed_chunk": 1,
+      "test_seal_failure_is_not_masked_by_late_stop_and_restores_original_callback": 1,
+      "test_completed_speech_cancel_deferral_has_a_bounded_deadline_and_restores_callback": 1,
+      "test_cache_copy_must_match_the_hash_recorded_before_publication": 1
+    },
+    "tests.audio.test_canonical_process_signal": {
+      "test_fast_owned_diagnostic_overflow_is_rejected_after_actual_exit": 2,
+      "test_owned_process_timeout_terminates_actual_child_promptly": 1,
+      "test_prestart_cancel_prevents_child_side_effects": 1,
+      "test_completed_worker_staging_is_checked_after_actual_exit": 3,
+      "test_nonzero_owned_child_is_not_reported_as_success": 1,
+      "test_progress_reaches_caller_while_actual_child_is_still_running": 1,
+      "test_argument_admission_refuses_shell_text_and_unresolved_executable": 2,
+      "test_actual_equalizer_preserves_canonical_selective_gain_tolerances": 1,
+      "test_actual_reflection_impulse_positions_keep_declared_millisecond_units": 2,
+      "test_actual_silence_has_no_fabricated_finite_loudness_or_peak": 1
     }
   },
   "native_trust": [

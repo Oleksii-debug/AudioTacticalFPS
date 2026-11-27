@@ -41,7 +41,7 @@ def _plain(value):
 
 
 class AssistantService:
-    def __init__(self, app, *, state_dir=None, production=None, interactive=None):
+    def __init__(self, app, *, state_dir=None, production=None, interactive=None, transcription=None):
         self.app = app
         managed = app.root / 'state' / 'assistant'
         if state_dir is not None and local_path(state_dir, must_exist=False) != managed:
@@ -49,9 +49,16 @@ class AssistantService:
         self.store = JobStore(managed, writer_root=app.root)
         self.production = production
         self.interactive = interactive
+        self.transcription = transcription
 
     def preview(self, instruction, scope):
         plan = preview(instruction, scope)
+        if any(step.tool == 'audio.transcribe' for step in plan.steps):
+            from .models import Step
+            from .transcription_tools import _settings
+            plan = Plan(scope, tuple(Step(step.tool, {**step.arguments,
+                'settings': _settings(step.arguments)}) if step.tool == 'audio.transcribe'
+                else step for step in plan.steps), plan.summary)
         self.validate(plan)
         return plan
 
@@ -71,7 +78,7 @@ class AssistantService:
                     raise ValueError('Create a new library as the first step.')
                 workspace = '<new>'
             if step.tool not in ('library.create', 'library.list', 'library.backup', 'audio.produce',
-                                 'document.convert', 'audio.effects') and not workspace:
+                                 'document.convert', 'audio.effects', 'audio.transcribe') and not workspace:
                 raise PermissionError('Choose a library before this operation.')
             if step.tool.startswith('library.import'):
                 path = plan.scope.input(step.arguments['path'])
@@ -95,6 +102,9 @@ class AssistantService:
                 if self.interactive is None:
                     raise PermissionError('Open the assistant from the selected native reader to approve this command.')
                 self.interactive.validate_step(step, plan.scope)
+            if step.tool == 'audio.transcribe':
+                from .transcription_tools import review_step
+                review_step(self.app, step, plan.scope, self.transcription)
             if step.tool == 'audio.produce':
                 if plan.scope.output_root is None:
                     raise PermissionError('Choose the audio output directory.')
@@ -104,6 +114,8 @@ class AssistantService:
                     self.production.plan(step.arguments, max_bytes=plan.scope.max_bytes)
         from .topic_tools import validate_plan_outputs
         validate_plan_outputs(plan)
+        from .transcription_tools import validate_plan_outputs as validate_transcription_outputs
+        validate_transcription_outputs(plan)
         return plan
 
     def submit(self, plan):
@@ -114,6 +126,12 @@ class AssistantService:
                   'status': 'queued', 'message': '', 'workspace': plan.scope.workspace_id,
                   'steps': [{'status': 'pending', 'intent': {}, 'result': None, 'message': ''}
                             for _ in plan.steps]}
+        for index, step in enumerate(plan.steps):
+            if step.tool == 'audio.transcribe':
+                from .transcription_tools import initial_intent
+                operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + identity + ':' + str(index)).hex
+                record['steps'][index]['intent'] = initial_intent(
+                    self.app, step, plan.scope, self.transcription, operation_id)
         self.store.save(record)
         return identity
 
@@ -261,6 +279,10 @@ class AssistantService:
                             if step.tool in ('topic.list', 'topic.create', 'topic.export'):
                                 from .topic_tools import verify_completed
                                 verify_completed(self.app, step, plan.scope, record, checkpoint, stopped, index)
+                            if step.tool == 'audio.transcribe':
+                                from .transcription_tools import verify_completed
+                                verify_completed(self.app, step, plan.scope, checkpoint['intent'],
+                                                 checkpoint['result'], cancelled=stopped)
                             self._verify_completed(checkpoint['result'], plan.scope, stopped)
                         except Exception:
                             checkpoint['status'] = 'failed'
@@ -281,7 +303,7 @@ class AssistantService:
                         # Publication is complete. Preserve that outcome if Stop
                         # arrives while the final artifact hashes are checked.
                         result['artifacts'] = self._artifacts(result, plan.scope, lambda: False)
-                    elif step.tool == 'topic.export':
+                    elif step.tool in ('topic.export', 'audio.transcribe'):
                         # Existing publisher returned a committed file; a late Stop
                         # cannot turn that publication into a retry.
                         result['artifacts'] = self._artifacts(result, plan.scope, lambda: False)
@@ -357,6 +379,14 @@ class AssistantService:
         args = step.arguments
         workspace = record['workspace']
         intent = checkpoint['intent']
+        if step.tool == 'audio.transcribe':
+            from .transcription_tools import execute
+            operation_id = uuid5(NAMESPACE_URL, 'carr-assistant:' + record['id'] + ':' + str(index)).hex
+            def transcription_progress(message):
+                if progress:
+                    progress(index, len(record['steps']), message)
+            return execute(self.app, self.transcription, step, scope, intent, persist,
+                           operation_id=operation_id, cancelled=cancelled, progress=transcription_progress)
         if step.tool in ('topic.list', 'topic.create', 'topic.export'):
             from .topic_tools import execute
             return execute(self.app, step, scope, record, checkpoint, persist, cancelled, index)

@@ -505,6 +505,35 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
             raise InterruptedError('Audio production stopped while waiting for shared resources.') from exc
 
 
+def _seal_completed_speech(cache, key, source, *, provenance):
+    """Finish only a returned speech chunk before acknowledging a late stop.
+
+    The selected engine has returned from its owned native work. The existing
+    cache still checks PCM framing, source identity, SHA256, copy and quotas.
+    Deferral applies only to that private cache transaction, for at most five
+    seconds after the first observed cancellation at its bounded I/O checks.
+    It never starts an engine or permits the next processing step.
+    """
+    requested = cache.cancelled
+    deadline = None
+
+    def settling_cancelled():
+        nonlocal deadline
+        stopped = requested()
+        if stopped and deadline is None:
+            deadline = time.monotonic() + 5.0
+        return deadline is not None and time.monotonic() >= deadline
+
+    # This cache instance belongs to the current project-locked render. No
+    # global cancellation callback or other operation's lease is replaced.
+    cache.cancelled = settling_cancelled
+    try:
+        cache.reserve(0)
+        return cache.seal(key, source, provenance=provenance)
+    finally:
+        cache.cancelled = requested
+
+
 def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_manifest_resolver=None,
                    trust_controller=None, existing_only=False):
     cache = None
@@ -640,7 +669,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                         raise RuntimeError('A cached audio input changed before its dependent step was sealed.')
                 return identities
 
-            def cached(settings, create, *, provenance=None, estimate=0, companions=(), dependencies=()):
+            def cached(settings, create, *, provenance=None, estimate=0, companions=(), dependencies=(),
+                       completed_speech=False):
                 key = digest({'pipeline_version': PIPELINE_VERSION, **settings})
                 ready = cache.get(key)
                 if ready is not None:
@@ -653,10 +683,17 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                     stage.unlink()
                 try:
                     create(stage)
-                    check_cancelled(cancelled)
-                    verify_dependencies(dependencies, identities)
-                    cache.reserve(0)
-                    result = cache.seal(key, stage, provenance=provenance, companions=companions)
+                    if completed_speech:
+                        if companions or dependencies or settings.get('kind') != 'speech':
+                            raise RuntimeError('Only a returned raw speech chunk can defer cache cancellation.')
+                        # Only the raw selected-engine speech call uses this
+                        # boundary; no companions or dependent render start.
+                        result = _seal_completed_speech(cache, key, stage, provenance=provenance)
+                    else:
+                        check_cancelled(cancelled)
+                        verify_dependencies(dependencies, identities)
+                        cache.reserve(0)
+                        result = cache.seal(key, stage, provenance=provenance, companions=companions)
                     checkpoint('Completed and saved an audio step.')
                     return result
                 finally:
@@ -691,7 +728,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                             raw, raw_info = cached(speech_settings,
                                 lambda path, content=piece, r=role: engine.synthesize(content, path, voice=r.voice,
                                     language=r.language, rate=r.rate, pitch=r.pitch, volume=r.volume, cancelled=cancelled),
-                                provenance={'kind': 'speech', 'engine': identities[role.name], 'text_sha256': hashlib.sha256(piece.encode('utf-8')).hexdigest()})
+                                provenance={'kind': 'speech', 'engine': identities[role.name], 'text_sha256': hashlib.sha256(piece.encode('utf-8')).hexdigest()},
+                                completed_speech=True)
                             processed = cached({'kind': 'voice_processing', 'raw_sha256': raw_info['sha256'],
                                 'sample_rate': plan.sample_rate, 'pan': role.pan, 'effects': [asdict(e) for e in role.effects], 'processor': processor},
                                 lambda path, source=raw, r=role: audio.process_voice(source, path, ffmpeg=ffmpeg,

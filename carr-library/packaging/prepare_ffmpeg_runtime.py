@@ -1,12 +1,14 @@
 """Prepare the hash-pinned optional FFmpeg runtime from an existing archive.
 
-No download, package installer, arbitrary archive extraction or public upload
-is performed. In Windows CI pass --verify-native before sealing the private
-application package. Linux preparation verifies bytes only, never Windows use.
+The existing prepare/CLI path stays offline. Explicit local setup may call
+acquire_archive to fetch the one current fixed archive before using prepare.
+No package installer, arbitrary extraction, engine selection or upload is used.
+Windows --verify-native is required for native execution evidence.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,6 +16,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import zipfile
 
 # Support the source-tree build before the package is installed. This is a
@@ -23,6 +29,145 @@ from carr_library.audio.runtime import (ARCHIVE_MEMBERS, FFMPEG_ARCHIVE_BYTES,
     FFMPEG_ARCHIVE_SHA256, FFMPEG_ARCHIVE_URL, FFMPEG_SOURCE_COMMIT,
     FFMPEG_VERSION, REQUIRED_FILTERS, file_sha256, regular_file,
     trusted_directory, verify_runtime)
+
+
+
+# The optional network boundary is used only by explicit local setup. These are
+# the publisher and its release-asset host, not arbitrary runtime/manifest URLs.
+DOWNLOAD_HOSTS = frozenset(('github.com', 'release-assets.githubusercontent.com'))
+DOWNLOAD_FILENAME = 'ffmpeg-pinned.zip'
+DOWNLOAD_SECONDS = 600
+DOWNLOAD_SOCKET_SECONDS = 30
+_DOWNLOAD_CHUNK = 1024 * 1024
+
+
+def _download_url(value):
+    if (type(value) is not str or not value or len(value) > 8192
+            or any(character.isspace() or ord(character) < 32 or ord(character) == 127 for character in value)
+            or '\\' in value):
+        raise ValueError('Expected the fixed HTTPS audio archive URL.')
+    parsed = urllib.parse.urlsplit(value)
+    if (parsed.scheme != 'https' or parsed.hostname not in DOWNLOAD_HOSTS
+            or parsed.username is not None or parsed.password is not None
+            or parsed.fragment or parsed.port not in (None, 443)):
+        raise ValueError('Audio downloads require the approved HTTPS publisher or release-asset host.')
+    return value
+
+
+class _ApprovedRedirects(urllib.request.HTTPRedirectHandler):
+    max_repeats = 2
+    max_redirections = 5
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # urllib calls this before opening the redirected connection.
+        try:
+            _download_url(newurl)
+        except BaseException:
+            fp.close()
+            raise
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _download_opener():
+    return urllib.request.build_opener(_ApprovedRedirects())
+
+
+def _directory_owner(directory):
+    from carr_library.audio.jobs import checked_directory
+    info = checked_directory(directory).stat()
+    return info.st_dev, info.st_ino
+
+
+def acquire_archive(directory, *, cancelled=lambda: False):
+    """Explicitly acquire the one fixed archive without adopting any old file.
+
+    Stream the response into an exclusive owned partial, then use the existing
+    receipt-bound no-replace publisher. No HTTP-provided name, path, command or
+    executable is accepted. A completed download alone is not native evidence.
+    """
+    from carr_library.audio.jobs import checked_directory, publish_new
+    selected = Path(directory)
+    if not selected.is_absolute() or '..' in selected.parts:
+        raise ValueError('Choose an absolute local audio download directory.')
+    directory = checked_directory(selected)
+    owner = _directory_owner(directory)
+    destination = directory / DOWNLOAD_FILENAME
+    if os.path.lexists(destination):
+        raise FileExistsError('The fixed archive destination already exists; choose a new folder.')
+    started = time.monotonic()
+
+    def check():
+        if cancelled():
+            raise InterruptedError('Audio acquisition was cancelled.')
+        if time.monotonic() - started >= DOWNLOAD_SECONDS:
+            raise TimeoutError('The fixed audio download exceeded its elapsed-time budget.')
+
+    check()
+    request = urllib.request.Request(_download_url(FFMPEG_ARCHIVE_URL),
+        headers={'User-Agent': 'CARR-explicit-local-audio/1',
+                 'Accept': 'application/octet-stream', 'Accept-Encoding': 'identity'})
+    descriptor, name = tempfile.mkstemp(prefix='.ffmpeg-download-', suffix='.partial', dir=directory)
+    partial = Path(name)
+    identity = None
+    digest, count, final_host = hashlib.sha256(), 0, None
+    try:
+        with os.fdopen(descriptor, 'wb') as target:
+            info = os.fstat(target.fileno())
+            identity = info.st_dev, info.st_ino
+            check()
+            try:
+                response = _download_opener().open(request, timeout=DOWNLOAD_SOCKET_SECONDS)
+            except urllib.error.HTTPError as error:
+                error.close()
+                raise ValueError('The audio server refused the fixed archive request.') from None
+            with response:
+                final_url = _download_url(response.geturl())
+                final_host = urllib.parse.urlsplit(final_url).hostname
+                if response.status != 200 or response.headers.get('Content-Range') is not None:
+                    raise ValueError('The audio server did not return one complete archive.')
+                encodings = response.headers.get_all('Content-Encoding', [])
+                if encodings and encodings != ['identity']:
+                    raise ValueError('The audio server changed the pinned byte representation.')
+                lengths = response.headers.get_all('Content-Length', [])
+                if lengths and (len(lengths) != 1 or not lengths[0].isascii()
+                        or not lengths[0].isdigit() or len(lengths[0]) > 20
+                        or int(lengths[0]) != FFMPEG_ARCHIVE_BYTES):
+                    raise ValueError('The audio response length differs from the fixed archive.')
+                while True:
+                    check()
+                    chunk = response.read(min(_DOWNLOAD_CHUNK, FFMPEG_ARCHIVE_BYTES - count + 1))
+                    check()
+                    if not chunk:
+                        break
+                    count += len(chunk)
+                    if count > FFMPEG_ARCHIVE_BYTES:
+                        raise ValueError('The audio download exceeded its fixed byte limit.')
+                    digest.update(chunk)
+                    target.write(chunk)
+            if count != FFMPEG_ARCHIVE_BYTES or digest.hexdigest() != FFMPEG_ARCHIVE_SHA256:
+                raise ValueError('The downloaded audio archive size or SHA256 differs from the fixed release.')
+            target.flush()
+            os.fsync(target.fileno())
+        check()
+        if _directory_owner(directory) != owner:
+            raise ValueError('The selected audio download directory was replaced.')
+        # publish_new verifies the bytes copied against this digest while its
+        # immutable source reader is held, then commits without replacing a file.
+        publish_new(partial, destination, expected_sha256=FFMPEG_ARCHIVE_SHA256,
+                    cancelled=check)
+        return {'schema': 1, 'status': 'downloaded', 'archive': str(destination),
+                'archive_url': FFMPEG_ARCHIVE_URL, 'archive_bytes': count,
+                'archive_sha256': digest.hexdigest(), 'final_host': final_host,
+                'native_verification': 'NOT_RUN'}
+    finally:
+        # A concurrent replacement at the old partial path is not our file.
+        try:
+            info = partial.lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            if identity is not None and (info.st_dev, info.st_ino) == identity:
+                partial.unlink()
 
 
 def _native_check(directory: Path) -> dict:

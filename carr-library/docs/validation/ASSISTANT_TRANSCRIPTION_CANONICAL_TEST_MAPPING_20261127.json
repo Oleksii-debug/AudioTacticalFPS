@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "canonical_commit": "a44fac04072389caa40e0d6e799b13797712f797",
+  "canonical_path": "carr-library/tests/assistant/test_supplied_transcription.py",
+  "canonical_blob_sha": "16f1896735602c43760e9a07485bf5168540fb33",
+  "prior_disposition": "OPEN_ASSISTANT_TRANSCRIPTION_BRIDGE at9e27 baseline",
+  "current_disposition": "IMPLEMENTED_IN_CURRENT_SERVICE_WITH_72_AUTHORED_CASES",
+  "source_checkpoint": "d24b517ed34b4d22a2d141c0c7b7c4d3bfbfe08d",
+  "gate_checkpoint": "429bacf2327b37973f1028c4df81459dd76081ce",
+  "follow_up": "Three additive post-submit pinned-byte mutation cases require the successor684-case gate.",
+  "execution_claim": "NONE; frozen predecessor681-case run is queued, native30 remains pending.",
+  "old_test_pass_transfer": false,
+  "case_population_equivalence": false,
+  "publication_decision": "Use one complete exclusively published directory with separate format files; exact stage and parent identity governs partial/crash recovery.",
+  "tests": [
+    {
+      "canonical_function": "test_real_owned_process_uses_job_dir_and_existing_assistant_checkpoint",
+      "current_test_references": [
+        "tests/assistant/test_transcription_tools.py::test_actual_protocol_child_exports_all_formats_and_retains_independent_owned_inputs"
+      ]
+    },
+    {
+      "canonical_function": "test_worker_exit_zero_is_not_success_without_bound_complete_outputs",
+      "current_test_references": [
+        "tests/assistant/test_transcription_tools.py::test_actual_unaccepted_child_outputs_are_not_published_or_replayed"
+      ]
+    },
+    {
+      "canonical_function": "test_empty_transcript_preserves_silence_without_language_retry",
+      "current_test_references": [
+        "tests/assistant/test_transcription_tools.py::test_actual_empty_transcripts_are_legitimate_silence_and_never_rerun"
+      ]
+    },
+    {
+      "canonical_function": "test_changed_bytes_same_size_and_mtime_do_not_resume_wrong_source",
+      "current_test_references": [
+        "tests/assistant/test_transcription_tools.py::test_same_size_and_mtime_source_change_refuses_before_inference",
+        "tests/assistant/test_transcription_recovery.py::test_completed_step_same_size_source_change_refuses_replay_and_preserves_export"
+      ]
+    },
+    {
+      "canonical_function": "test_partial_publication_resumes_only_exact_saved_artifacts",
+      "current_test_references": [
+        "tests/assistant/test_transcription_recovery.py::test_actual_process_exit_resumes_only_bound_work_and_never_replays_uncertain_inference"
+      ]
+    },
+    {
+      "canonical_function": "test_cancel_after_publication_recovers_without_running_worker_again",
+      "current_test_references": [
+        "tests/assistant/test_transcription_recovery.py::test_stop_immediately_after_complete_publication_preserves_committed_success",
+        "tests/assistant/test_transcription_recovery.py::test_actual_process_exit_resumes_only_bound_work_and_never_replays_uncertain_inference"
+      ]
+    },
+    {
+      "canonical_function": "test_changed_partial_export_is_never_overwritten",
+      "current_test_references": [
+        "tests/assistant/test_transcription_recovery.py::test_changed_partial_export_is_refused_without_overwrite_or_worker_replay",
+        "tests/assistant/test_transcription_recovery.py::test_same_byte_foreign_output_directory_cannot_adopt_owned_sealed_stage"
+      ]
+    },
+    {
+      "canonical_function": "test_runtime_and_model_identity_fail_before_launch",
+      "current_test_references": [
+        "tests/assistant/test_transcription_tools.py::test_changed_pinned_runtime_bytes_after_submit_refuse_before_preparation",
+        "tests/assistant/test_transcription_tools.py::test_profile_disabled_after_submission_blocks_before_owned_preparation"
+      ]
+    },
+    {
+      "canonical_function": "test_mid_file_cancel_terminates_worker_and_keeps_saved_intent",
+      "current_test_references": [
+        "tests/assistant/test_transcription_tools.py::test_selected_owner_revocation_cancels_actual_domain_child_and_releases_lease"
+      ]
+    },
+    {
+      "canonical_function": "test_native_preview_does_not_enable_an_unconfigured_engine",
+      "current_test_references": [
+        "tests/ui/test_assistant_transcription.py::test_native_profile_choice_is_explicit_none_and_preview_cannot_enable_it",
+        "tests/assistant/test_transcription_tools.py::test_preview_requires_current_explicit_profile_without_activating_settings"
+      ]
+    },
+    {
+      "canonical_function": "test_typed_plan_cannot_expand_authority_or_runtime_settings",
+      "current_test_references": [
+        "tests/assistant/test_transcription_tools.py::test_typed_arguments_cannot_choose_runtime_or_grant_profile_authority",
+        "tests/assistant/test_transcription_tools.py::test_invalid_settings_and_output_names_refuse_before_dispatch",
+        "tests/assistant/test_transcription_tools.py::test_source_outside_selected_folder_and_private_library_are_refused"
+      ]
+    },
+    {
+      "canonical_function": "test_unreviewed_worker_source_cannot_be_prepared",
+      "current_test_references": [
+        "tests/assistant/test_transcription_tools.py::test_changed_pinned_runtime_bytes_after_submit_refuse_before_preparation"
+      ]
+    },
+    {
+      "canonical_function": "test_assistant_backup_retains_inert_transcription_checkpoint",
+      "current_test_references": [
+        "tests/assistant/test_transcription_recovery.py::test_restore_and_rebackup_keep_retained_transcripts_without_external_paths_or_launch_authority",
+        "tests/assistant/test_transcription_recovery.py::test_backup_rejects_shape_valid_assistant_binding_to_different_managed_definition"
+      ]
+    }
+  ],
+  "existing_domain_qualification": {
+    "run_id": 46030395296,
+    "source_cases": 422,
+    "installed_cases": 422,
+    "native_checks": 53,
+    "scope": "Existing service/history family only; not a PASS for this new assistant bridge."
+  },
+  "actual_asr_model_inference": "NOT_RUN",
+  "language_quality": "NOT_QUALIFIED",
+  "nvda": "NOT_RUN"
+}

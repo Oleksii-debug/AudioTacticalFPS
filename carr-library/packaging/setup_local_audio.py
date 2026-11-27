@@ -1,8 +1,8 @@
 """Plan or explicitly prepare the existing pinned private Windows audio runtime.
 
-The default only reports a plan. This wrapper never downloads, selects an engine,
-writes library settings, or modifies the installed application. --prepare or an
-interactive YES delegates to the existing archive preparer and runtime verifier.
+The default only reports a plan. --prepare or an interactive YES uses an existing
+archive. --download, or YES after an explicit download plan, first acquires the
+one fixed archive through the same preparer. No engine/settings are activated.
 """
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from pathlib import Path
 import shutil
 import struct
 import sys
+import tempfile
 from uuid import uuid4
 
 from carr_library.audio import runtime
@@ -82,7 +83,9 @@ def _existing_parent(path):
     return runtime.trusted_directory(parent)
 
 
-def plan(archive=None, destination=None, *, library_root=None):
+def plan(archive=None, destination=None, *, library_root=None, download=False):
+    if type(download) is not bool or download and archive is not None:
+        raise ValueError('Choose either the existing archive or an explicit fixed download.')
     output = _external_destination(destination if destination is not None else _default_destination(),
                                    library_root)
     selected, identity = None, None
@@ -108,8 +111,10 @@ def plan(archive=None, destination=None, *, library_root=None):
         'destination': str(output), 'runtime_directory': str(output / 'runtime'),
         'library_root': str(local_path(library_root)) if library_root is not None else None,
         'runtime_files': sorted(runtime.ARCHIVE_MEMBERS),
-        'runtime_bytes': payload_bytes, 'required_free_bytes': 2 * payload_bytes + HEADROOM,
-        'downloads': False, 'engine_settings_changed': False,
+        'runtime_bytes': payload_bytes,
+        'required_free_bytes': 2 * payload_bytes + HEADROOM +
+            (2 * runtime.FFMPEG_ARCHIVE_BYTES if download else 0),
+        'downloads': download, 'engine_settings_changed': False,
         'native_verification': 'required when preparing; NOT_RUN for this plan',
         'rights': 'Private local preparation; this does not authorize redistributing the runtime.',
     }
@@ -155,26 +160,64 @@ def prepare_local(reviewed):
     }
 
 
+
+def download_local(reviewed):
+    """Act only on a reviewed fixed-download plan; reuse manual preparation."""
+    _require_windows()
+    if (not isinstance(reviewed, dict) or reviewed.get('downloads') is not True
+            or reviewed.get('archive') is not None):
+        raise ValueError('Review an explicit fixed-download plan before preparing audio.')
+    current = plan(destination=reviewed['destination'], library_root=reviewed['library_root'],
+                   download=True)
+    if current != reviewed:
+        raise ValueError('The reviewed audio download plan changed; review a new plan.')
+    output = Path(current['destination'])
+    ancestor = _existing_parent(output)
+    if shutil.disk_usage(ancestor).free < current['required_free_bytes']:
+        raise OSError('Not enough free disk space for the fixed download and prepared audio runtime.')
+    preparer = _load_preparer()
+    # The network input is private temporary setup material. It is removed only
+    # after manual preparation/final verification has closed its immutable reader.
+    with tempfile.TemporaryDirectory(prefix='.carr-audio-acquire-', dir=ancestor) as temporary:
+        directory = Path(temporary)
+        acquisition = preparer.acquire_archive(directory)
+        if plan(destination=output, library_root=current['library_root'], download=True) != current:
+            raise ValueError('The selected audio destination or download plan changed.')
+        archive = directory / preparer.DOWNLOAD_FILENAME
+        local = plan(archive, output, library_root=current['library_root'])
+        result = prepare_local(local)
+    # Temporary cleanup is part of completion, including on Windows.
+    return {**result, 'downloads': True, 'acquisition': acquisition}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--archive', type=Path, help='Existing pinned archive; no download is performed.')
+    parser.add_argument('--archive', type=Path, help='Existing pinned archive; this manual path stays offline.')
     parser.add_argument('--destination', type=Path, help='New external audio work folder.')
     parser.add_argument('--library-root', type=Path, help='Current library to keep separate from audio files.')
     consent = parser.add_mutually_exclusive_group()
     consent.add_argument('--prepare', action='store_true', help='Explicitly prepare and execute fixed version/filter checks.')
-    consent.add_argument('--interactive', action='store_true', help='Ask for YES after displaying the exact plan.')
+    consent.add_argument('--interactive', action='store_true', help='Ask for YES after displaying the exact local or download plan.')
+    consent.add_argument('--download', action='store_true', help='Explicitly acquire the one fixed archive, then prepare and verify it.')
     args = parser.parse_args(argv)
+    if args.download and args.archive is not None:
+        parser.error('--download cannot be combined with --archive.')
     try:
-        reviewed = plan(args.archive, args.destination, library_root=args.library_root)
+        downloading = args.download or (args.interactive and args.archive is None)
+        reviewed = plan(args.archive, args.destination, library_root=args.library_root,
+                        download=downloading)
         print(json.dumps(reviewed, ensure_ascii=False, sort_keys=True, indent=2))
-        if not args.prepare and not args.interactive:
+        if not args.prepare and not args.interactive and not args.download:
             return 0
-        if reviewed['archive'] is None:
-            raise ValueError('Download the shown pinned archive separately, then select it with --archive.')
-        if args.interactive and input('Prepare these local files and run their fixed checks? Type YES: ').strip() != 'YES':
+        if reviewed['archive'] is None and not downloading:
+            raise ValueError('Select an existing archive with --archive, or explicitly choose --download.')
+        prompt = ('Download this exact archive, prepare it and run its fixed checks? Type YES: '
+                  if downloading else 'Prepare these local files and run their fixed checks? Type YES: ')
+        if args.interactive and input(prompt).strip() != 'YES':
             print('Cancelled. No audio files or engine settings were changed.')
             return 0
-        print(json.dumps(prepare_local(reviewed), ensure_ascii=False, sort_keys=True, indent=2))
+        result = download_local(reviewed) if downloading else prepare_local(reviewed)
+        print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
         return 0
     except EOFError:
         print('Cancelled. No confirmation was received.')

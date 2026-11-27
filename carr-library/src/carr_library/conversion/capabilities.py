@@ -62,7 +62,7 @@ def capabilities(*, pandoc_selected=False, image_ocr_selected=False, office_sele
             limitation='Explicit OCR language/profile or verified model-pack selection is required. Every bounded image/TIFF frame becomes unverified reading text; printed pagination and exact layout are not invented.'))
     legacy_selected = {'calibre': calibre_selected, 'djvu': djvu_selected, 'chm': chm_selected}
     legacy_limits = {
-        'calibre': 'Unprotected MOBI/KF8, TextRead PRC, freely generated LIT and TCR only. Fixed calibre 9.19 wrapper, fresh configuration, no user plugins or protected-book handling. Plain reading text requires source review.',
+        'calibre': 'Qualification covers synthetic unprotected MOBI (including AZW/PRC extension aliases), AZW3/KF8, freely generated LIT and TCR with explicitly selected calibre 9.19.0. Its exact-version wrapper rejects other revisions, user plugins and protected-book handling. Plain reading text requires source review; arbitrary real books and other Palm database subtypes are not qualified.',
         'djvu': 'Embedded UTF-8 text from standalone or bundled self-contained pages only. Indirect/shared-dictionary references and pages requiring OCR remain explicit errors.',
         'chm': 'Bounded 7-Zip CHM extraction to stdout and existing inert HTML reader. One strict UTF-8 TOC or declared stable filename order; no help viewer, scripts, ActiveX or network loading.',
     }

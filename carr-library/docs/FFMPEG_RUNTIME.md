@@ -51,6 +51,12 @@ the complete fixed publisher inventory into a new local directory: the three
 executables, `FFmpeg-LICENSE.txt`, `FFmpeg-README.txt`, all original `doc/` and
 `presets/` files. It verifies each size/hash and
 writes `ffmpeg-runtime.json` last. Arbitrary ZIP paths are never extracted.
+Explicit local setup can first acquire this same fixed archive with
+`SetupLocalAudio.cmd --download --destination <new-external-folder>`; see
+[the consent, transport and cleanup contract](LOCAL_AUDIO_SETUP.md). The direct
+`prepare_ffmpeg_runtime.py` archive CLI remains offline. Acquisition does not
+qualify a different build or clear corresponding-source distribution obligations.
+
 Existing complete matching bundles can be checked again; existing unrelated or
 incomplete contents are not silently overwritten. Linux preparation is allowed
 without `--verify-native`, with `native_validation.status = NOT_RUN`.

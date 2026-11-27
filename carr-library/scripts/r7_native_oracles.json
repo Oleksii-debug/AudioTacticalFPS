@@ -1410,5 +1410,96 @@
       "metrics.failed_save_scenarios": 1,
       "metrics.successful_save_scenarios": 1
     }
+  },
+  "assistant-transcription": {
+    "probe": "scripts/windows_assistant_transcription_smoke.py",
+    "arguments": [
+      "--work",
+      "ci-results/full-bundle-assistant-transcription-work"
+    ],
+    "subprocess_timeout_seconds": 240,
+    "modules": [
+      "carr_library.assistant.transcription_tools",
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.snapshots",
+      "carr_library.assistant.planner",
+      "carr_library.assistant.cli",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.transcription_service",
+      "carr_library.transcription_state",
+      "carr_library.supplied_transcription_backup",
+      "carr_library.runtime_settings"
+    ],
+    "probe_modules": [
+      "carr_library.assistant.transcription_tools",
+      "carr_library.assistant.models",
+      "carr_library.assistant.service",
+      "carr_library.assistant.validation",
+      "carr_library.assistant.snapshots",
+      "carr_library.assistant.planner",
+      "carr_library.assistant.cli",
+      "carr_library.ui.assistant_dialog",
+      "carr_library.transcription_service",
+      "carr_library.transcription_state",
+      "carr_library.supplied_transcription_backup",
+      "carr_library.runtime_settings"
+    ],
+    "checks": {
+      "native_actual_windows_isolated_interpreter": 1,
+      "native_fixture_exact_reviewed_protocol_bytes": 1,
+      "native_assistant_owned_current_frame": 1,
+      "native_transcription_profile_named_explicit_none": 1,
+      "native_initial_run_disabled": 1,
+      "native_unconfigured_preview_refused": 1,
+      "native_unconfigured_preview_creates_no_job": 1,
+      "native_profile_preview_binds_exact_manifest_and_settings": 1,
+      "native_profile_change_revokes_reviewed_run": 1,
+      "native_repreview_remains_passive": 1,
+      "native_explicit_run_completes_current_assistant_job": 1,
+      "native_actual_child_completion_binds_retained_job": 1,
+      "native_all_four_formats_and_provenance_published": 1,
+      "native_original_source_is_unchanged": 1,
+      "native_accepted_worker_releases_shared_resources": 1,
+      "actual_completed_recovery_preserves_exact_run_without_new_inference": 1,
+      "native_second_library_has_its_own_explicit_profile": 1,
+      "native_cancel_preview_does_not_start_worker": 1,
+      "native_pause_targets_actual_running_protocol_child": 1,
+      "native_pause_waits_for_owned_child_cleanup": 1,
+      "native_cancelled_run_keeps_inputs_without_export": 1,
+      "native_cancelled_worker_releases_shared_resources": 1,
+      "native_uncertain_dispatch_requires_new_review_not_replay": 1,
+      "actual_backup_retains_assistant_and_managed_transcription_producers": 1,
+      "actual_restored_assistant_requires_new_scope_approval": 1,
+      "actual_restored_job_cannot_launch_saved_runtime": 1,
+      "actual_restored_transcripts_read_without_external_source_or_runtime": 1,
+      "actual_rebackup_preserves_passive_cross_binding": 1,
+      "native_fixture_bytes_remain_unchanged": 1,
+      "native_all_assistant_workers_settled_after_close": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "actual_windows": true,
+      "isolated": true,
+      "fixture_sha256": "8fb51637e1d6aba3c2a54374f95bf5ace5844d4dbe2da0fdcf00fa02eface2ac",
+      "synthetic_protocol_worker": true,
+      "actual_asr_model_inference": "NOT_RUN",
+      "language_model_quality": "NOT_QUALIFIED",
+      "nvda": "NOT_RUN",
+      "physical_audio": "NOT_RUN"
+    },
+    "exact_metrics": {
+      "metrics.accepted_domain_jobs": 1,
+      "metrics.accepted_formats": 4,
+      "metrics.exported_files": 5,
+      "metrics.cancelled_domain_jobs": 1,
+      "metrics.profiles_explicitly_selected": 2,
+      "metrics.restored_asr_jobs": 1,
+      "metrics.rebackup_verified": 1
+    },
+    "source_digest_fields": {
+      "fixture_sha256": "tests/assistant/transcription_fixture.py"
+    }
   }
 }

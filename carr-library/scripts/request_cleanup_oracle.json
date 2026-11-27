@@ -2,7 +2,7 @@
   "schema": 1,
   "component": "Preserved publication, canonical recovery, progress settings, native manifests and headless admission",
   "authoring_status": "NOT_RUN",
-  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases. Retain300; add41 explicit-TXT source/receipt/worker boundaries and4 current Studio semantic-keymap cases. Retain345 and add9 parent-owned Office native/publication workspace, resource, identity and argv boundaries. Retain354 and restore4 canonical OCR manifest snapshot, rehashed malformed JSON and oversize checksum regressions on the current installer.",
+  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases. Retain300; add41 explicit-TXT source/receipt/worker boundaries and4 current Studio semantic-keymap cases. Retain345 and add9 parent-owned Office native/publication workspace, resource, identity and argv boundaries. Retain354 and restore4 canonical OCR manifest snapshot, rehashed malformed JSON and oversize checksum regressions on the current installer. Retain358; add10 current completed-speech checkpoint/stop/identity cases and15 direct canonical owned-process and measured FFmpeg signal regressions.",
   "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
   "failure_run_id": 45993629737,
   "tests": {
@@ -195,9 +195,29 @@
       "test_manifest_replacement_cannot_install_an_unapproved_model": 1,
       "test_approved_checksum_does_not_relax_strict_json": 2,
       "test_oversized_manifest_cannot_substitute_the_empty_content_checksum": 1
+    },
+    "tests/audio/test_completed_speech_checkpoint.py": {
+      "test_actual_completed_speech_is_sealed_before_stop_and_never_synthesized_again": 3,
+      "test_late_stop_never_receipts_corrupt_or_aliased_engine_output": 3,
+      "test_cancel_before_render_starts_no_engine_or_completed_chunk": 1,
+      "test_seal_failure_is_not_masked_by_late_stop_and_restores_original_callback": 1,
+      "test_completed_speech_cancel_deferral_has_a_bounded_deadline_and_restores_callback": 1,
+      "test_cache_copy_must_match_the_hash_recorded_before_publication": 1
+    },
+    "tests/audio/test_canonical_process_signal.py": {
+      "test_fast_owned_diagnostic_overflow_is_rejected_after_actual_exit": 2,
+      "test_owned_process_timeout_terminates_actual_child_promptly": 1,
+      "test_prestart_cancel_prevents_child_side_effects": 1,
+      "test_completed_worker_staging_is_checked_after_actual_exit": 3,
+      "test_nonzero_owned_child_is_not_reported_as_success": 1,
+      "test_progress_reaches_caller_while_actual_child_is_still_running": 1,
+      "test_argument_admission_refuses_shell_text_and_unresolved_executable": 2,
+      "test_actual_equalizer_preserves_canonical_selective_gain_tolerances": 1,
+      "test_actual_reflection_impulse_positions_keep_declared_millisecond_units": 2,
+      "test_actual_silence_has_no_fabricated_finite_loudness_or_peak": 1
     }
   },
-  "total_cases": 358,
+  "total_cases": 383,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
   "canonical_progress_cases": 59,
@@ -208,5 +228,7 @@
   "canonical_conversion_cases": 41,
   "canonical_studio_keyboard_cases": 4,
   "office_workspace_cases": 9,
-  "canonical_ocr_manifest_cases": 4
+  "canonical_ocr_manifest_cases": 4,
+  "completed_speech_checkpoint_cases": 10,
+  "canonical_process_signal_cases": 15
 }

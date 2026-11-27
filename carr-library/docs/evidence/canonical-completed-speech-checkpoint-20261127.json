@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "status": "NOT_RUN",
+  "date_utc": "2026-11-27",
+  "canonical_source": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_test": {
+    "path": "tests/studio/test_production_hardening.py",
+    "blob": "79fda93171f594bb0554a6a48096201c1c734d4d",
+    "case": "test_completed_actual_speech_is_receipted_before_cancellation"
+  },
+  "current_base": "0203c8253c2faf4cb155b25b4ca5f244c0787132",
+  "observed_source_gap": "Current raw-speech cached() checked cancellation after the selected engine returned and before cache.seal; its finally deleted the completed but unreceipted private chunk. Existing tests cancelled after checkpoint and did not cover this boundary.",
+  "repair": "Use the same project-locked private ChunkCache and receipt schema. Only after a raw selected-engine synthesize call returns, defer observed cancellation during PCM/hash/quota/copy/receipt acceptance for at most five seconds at existing bounded I/O checks. Restore the exact original callback in finally, then the existing checkpoint acknowledges cancellation before processing/mixing/another synthesis.",
+  "integrity": "Existing seal verifies PCM header and single-link identity; copied raw PCM must now match its pre-copy SHA256 via existing publish_new expected_sha256. No new cache format or runtime owner.",
+  "latency_limit": "Cooperative bounded I/O checks permit at most five seconds after first observed cancellation; this does not claim an operating-system timeout for a blocked filesystem flush.",
+  "preserved": [
+    "pre-start cancellation launches no engine",
+    "no new inference or complete-book publication after observed stop",
+    "invalid/truncated/aliased output cannot become an accepted chunk",
+    "seal errors remain errors even if stop is requested",
+    "existing cache quotas, immutable readers, no-clobber publication and cleanup remain",
+    "verified accepted speech resumes without resynthesis or byte/mtime changes"
+  ],
+  "test_module": "tests.audio.test_completed_speech_checkpoint",
+  "functions": {
+    "test_actual_completed_speech_is_sealed_before_stop_and_never_synthesized_again": 3,
+    "test_late_stop_never_receipts_corrupt_or_aliased_engine_output": 3,
+    "test_cancel_before_render_starts_no_engine_or_completed_chunk": 1,
+    "test_seal_failure_is_not_masked_by_late_stop_and_restores_original_callback": 1,
+    "test_completed_speech_cancel_deferral_has_a_bounded_deadline_and_restores_callback": 1,
+    "test_cache_copy_must_match_the_hash_recorded_before_publication": 1
+  },
+  "cases_per_mode": 10,
+  "test_scope": "Three primary boundary variants use actual selected FFmpeg Flite and exact no-resynthesis replay. Three actual-return corruption variants, publication failure, pre-start refusal, a deterministic cooperative deadline and a source-to-copy digest race exercise refusal/cleanup. No real speech quality, SAPI, model, listening or NVDA inference claim.",
+  "runtime": "NOT_RUN"
+}

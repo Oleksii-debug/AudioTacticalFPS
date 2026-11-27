@@ -193,18 +193,13 @@ jobs:
           }
 
       - name: Prepare the sealed local FFmpeg runtime before audio regressions
-        timeout-minutes: 8
+        timeout-minutes: 15
         run: |
           $audioRoot = Join-Path $env:RUNNER_TEMP 'carr-pinned-audio'
           New-Item -ItemType Directory -Force $audioRoot | Out-Null
-          $pin = & $env:CARR_PYTHON -c "import json; from carr_library.audio.runtime import FFMPEG_ARCHIVE_URL,FFMPEG_ARCHIVE_SHA256,FFMPEG_ARCHIVE_BYTES; print(json.dumps(dict(url=FFMPEG_ARCHIVE_URL,sha256=FFMPEG_ARCHIVE_SHA256,size=FFMPEG_ARCHIVE_BYTES)))" | ConvertFrom-Json
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $archive = Join-Path $audioRoot 'ffmpeg-pinned.zip'
-          Invoke-WebRequest -Uri $pin.url -OutFile $archive
-          if ((Get-Item -LiteralPath $archive).Length -ne $pin.size -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $pin.sha256) { throw 'Pinned FFmpeg archive mismatch.' }
           $audioWork = Join-Path $audioRoot 'explicit-local-audio'
           $audioBin = Join-Path $audioWork 'runtime'
-          & $env:CARR_PYTHON packaging/setup_local_audio.py --archive $archive --destination $audioWork --prepare | Tee-Object 'ci-results/local-audio-setup.txt'
+          & $env:CARR_PYTHON packaging/setup_local_audio.py --download --destination $audioWork | Tee-Object 'ci-results/local-audio-setup.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B -c "import json,sys; from carr_library.audio.runtime import verify_runtime; value=verify_runtime(sys.argv[1]); assert value['native_validation']['status']=='PASS'; print(json.dumps(value,sort_keys=True))" $audioBin | Tee-Object 'ci-results/audio-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -647,7 +642,16 @@ jobs:
             'tests/conversion/test_explicit_text_encoding.py',
             'tests/ui/test_audio_studio_keyboard.py',
             'tests/conversion/test_office_workspace.py',
-            'tests/extract/test_model_pack_manifest_identity.py'
+            'tests/extract/test_model_pack_manifest_identity.py',
+            'tests/assistant/test_transcription_cli.py',
+            'tests/assistant/test_transcription_recovery.py',
+            'tests/assistant/test_transcription_tools.py',
+            'tests/ui/test_assistant_transcription.py',
+            'tests/conversion/test_chm_html_recovery.py',
+            'tests/audio/test_completed_speech_checkpoint.py',
+            'tests/audio/test_canonical_process_signal.py',
+            'tests/packaging/test_audio_acquisition.py',
+            'tests/packaging/test_local_audio_download.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1268,6 +1272,9 @@ jobs:
           & $installedPython -I -B -X utf8 scripts/r7_native_gate.py assistant-topics --report ci-results/full-bundle-topic-native.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Remove-Item -LiteralPath 'ci-results/full-bundle-topic-work' -Recurse -Force -ErrorAction Stop
+          & $installedPython -I -B -X utf8 scripts/r7_native_gate.py assistant-transcription --report ci-results/full-bundle-assistant-transcription-native.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item -LiteralPath 'ci-results/full-bundle-assistant-transcription-work' -Recurse -Force -ErrorAction Stop
           $runInstalledTests = @'
           import ctypes, hashlib, json, os, pathlib, sys
           from ctypes import wintypes
@@ -1672,6 +1679,13 @@ jobs:
               'tests/ui/test_audio_studio_keyboard.py',
               'tests/conversion/test_office_workspace.py',
               'tests/extract/test_model_pack_manifest_identity.py',
+              'tests/assistant/test_transcription_cli.py',
+              'tests/assistant/test_transcription_recovery.py',
+              'tests/assistant/test_transcription_tools.py',
+              'tests/ui/test_assistant_transcription.py',
+              'tests/conversion/test_chm_html_recovery.py',
+              'tests/audio/test_completed_speech_checkpoint.py',
+              'tests/audio/test_canonical_process_signal.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
