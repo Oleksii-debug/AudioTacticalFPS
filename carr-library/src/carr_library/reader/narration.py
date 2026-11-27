@@ -10,10 +10,12 @@ from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from hashlib import sha256
 import json
+import math
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import stat
+import sys
 from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
@@ -29,6 +31,9 @@ MAX_HISTORY = 50
 MAX_RULES = 1000
 MAX_RULE_CHARACTERS = 64 * 1024
 MAX_MATCH_STEPS = 20_000_000
+MAX_DICTIONARY_BYTES = 1024 * 1024
+MAX_REGEX_MATCHES = 10000
+MAX_REGEX_RESPONSE = 900 * 1024
 MAX_PROJECTS = 1000
 MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
 _ID = re.compile(r'[0-9a-f]{32}')
@@ -96,10 +101,14 @@ class PronunciationRule:
     written: str
     spoken: str
     language: str = ''
+    voice_id: str = ''
+    regex: bool = False
+    ignore_case: bool = False
+    language_scope: bool = False
 
     def __post_init__(self):
         if not isinstance(self.written, str) or not self.written or len(self.written) > 1000:
-            raise ValueError('Enter a literal phrase of 1 to 1000 characters to replace.')
+            raise ValueError('Enter a written phrase or pattern of 1 to 1000 characters.')
         if not isinstance(self.spoken, str) or len(self.spoken) > 4000:
             raise ValueError('A pronunciation replacement must be at most 4000 characters.')
         _body(self.written)
@@ -108,6 +117,14 @@ class PronunciationRule:
             raise ValueError('Invalid pronunciation language label.')
         if self.language:
             _text(self.language, 'pronunciation language', limit=64)
+        if not isinstance(self.voice_id, str) or len(self.voice_id) > 2048:
+            raise ValueError('Invalid pronunciation voice identity.')
+        if self.voice_id:
+            _text(self.voice_id, 'pronunciation voice identity', limit=2048)
+        if any(type(value) is not bool for value in (self.regex, self.ignore_case, self.language_scope)):
+            raise ValueError('Pronunciation flags must be booleans.')
+        if self.language_scope and not self.language:
+            raise ValueError('A language-scoped rule needs an explicit language identifier.')
 
 
 @dataclass(frozen=True)
@@ -160,10 +177,9 @@ class NarrationProject:
             raise ValueError('The first reading-copy revision must preserve the original text.')
         if any(a.number >= b.number for a, b in zip(self.revisions, self.revisions[1:])):
             raise ValueError('Reading-copy revisions must have increasing identities.')
-        if (type(self.rules) is not tuple or len(self.rules) > MAX_RULES
-                or any(type(rule) is not PronunciationRule for rule in self.rules)
-                or len({rule.written for rule in self.rules}) != len(self.rules)):
-            raise ValueError('Use distinct literal phrases in the pronunciation dictionary.')
+        if type(self.rules) is not tuple:
+            raise ValueError('Use a validated pronunciation dictionary.')
+        validate_pronunciation_rules(self.rules)
         if sum(len(item.text.encode('utf-8')) for item in self.revisions) > MAX_PROJECT_BYTES // 2:
             raise ValueError('Reading-copy undo history exceeds its memory budget. Save a new copy of the text.')
 
@@ -222,52 +238,222 @@ def normalization_preview(text):
     return re.sub(r'\n{3,}', '\n\n', text)
 
 
-def pronunciation_preview(text, rules):
-    """One non-cascading literal pass with an explicit character-work budget.
+def _rule_key(rule):
+    return (rule.written, rule.regex, rule.ignore_case,
+            rule.language.casefold() if rule.language_scope else '', rule.voice_id)
 
-    A trie selects the longest match. Neither written nor spoken text becomes
-    a regular expression, so overlapping phrases cannot create regex backtracking.
-    """
-    _body(text)
+
+def validate_pronunciation_rules(rules):
     rules = tuple(rules)
     if (len(rules) > MAX_RULES or any(type(rule) is not PronunciationRule for rule in rules)
-            or len({rule.written for rule in rules}) != len(rules)):
-        raise ValueError('Invalid or duplicate pronunciation phrases.')
-    if not rules:
-        return text, 0
+            or len({_rule_key(rule) for rule in rules}) != len(rules)):
+        raise ValueError('Invalid or duplicate pronunciation phrases and scopes.')
     if sum(len(rule.written) + len(rule.spoken) for rule in rules) > MAX_RULE_CHARACTERS:
         raise ValueError('Pronunciation dictionary exceeds its character budget. Use a smaller project dictionary.')
+    return rules
+
+
+def _pronunciation_context(language, voice_id):
+    for value, label, limit in ((language, 'selected pronunciation language', 64),
+                                (voice_id, 'selected pronunciation voice', 2048)):
+        if not isinstance(value, str) or len(value) > limit:
+            raise ValueError('Invalid ' + label + '.')
+        if value:
+            _text(value, label, limit=limit)
+    return language.casefold(), voice_id
+
+
+def _check_pronunciation_cancelled(cancelled):
+    if not callable(cancelled):
+        raise ValueError('A pronunciation cancellation callback is required.')
+    if cancelled():
+        raise InterruptedError('Pronunciation preview cancelled. The reading text is unchanged.')
+
+
+def _pattern_matches(text, selected, *, timeout, cancelled):
+    """Run only reviewed package code, with pattern/text sent as bounded data."""
+    from ..audio.engines import _run, EngineUnavailable
+    from ..audio.model_manifest import offline_environment
+    message = dict(version=1, text=text, rules=[
+        dict(index=index, pattern=rule.written, replacement=rule.spoken,
+             regex=rule.regex, ignore_case=rule.ignore_case)
+        for index, rule in selected])
+    raw = json.dumps(message, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode('utf-8')
+    if len(raw) > 64 * 1024 * 1024:
+        raise ValueError('Pronunciation request exceeds its byte budget.')
+    try:
+        reply = _run([sys.executable, '-I', '-B', '-S',
+                      str(Path(__file__).with_name('pronunciation_worker.py'))],
+                     data=raw, cancelled=cancelled, timeout=timeout, env=offline_environment())
+    except TimeoutError:
+        raise TimeoutError('Pronunciation patterns exceeded their time budget. The reading text is unchanged.') from None
+    except EngineUnavailable:
+        raise ValueError('The isolated pronunciation worker could not complete. The reading text is unchanged.') from None
+    if len(reply) > MAX_REGEX_RESPONSE:
+        raise ValueError('Pronunciation matches exceed their response budget.')
+    try:
+        value = json.loads(reply.decode('utf-8'), object_pairs_hook=_unique)
+    except (UnicodeError, ValueError, RecursionError):
+        raise ValueError('The pronunciation worker returned an invalid bounded response.') from None
+    if type(value) is dict and set(value) == {'error'}:
+        reasons = {'invalid-pattern': 'A pronunciation pattern or replacement is invalid.',
+                   'work-limit': 'Pronunciation matches exceed their work or output budget.',
+                   'invalid-request': 'The pronunciation worker rejected its bounded request.'}
+        reason = value['error']
+        raise ValueError(reasons.get(reason, 'The pronunciation worker could not complete.')
+                         if type(reason) is str else 'The pronunciation worker returned an invalid error.')
+    if (type(value) is not dict or set(value) != {'matches'} or type(value['matches']) is not list
+            or len(value['matches']) > MAX_REGEX_MATCHES):
+        raise ValueError('The pronunciation worker returned an invalid match inventory.')
+    allowed = {index for index, _ in selected}
+    seen, rows = set(), []
+    for row in value['matches']:
+        _check_pronunciation_cancelled(cancelled)
+        if (type(row) is not list or len(row) != 4
+                or any(type(part) is not int for part in row[:2] + row[3:])
+                or not 0 <= row[0] <= row[1] <= len(text) or row[3] not in allowed
+                or type(row[2]) is not str):
+            raise ValueError('The pronunciation worker returned an invalid match.')
+        key = row[0], row[1], row[3]
+        if key in seen:
+            raise ValueError('The pronunciation worker repeated a match.')
+        seen.add(key)
+        _body(row[2])
+        rows.append(row)
+    return rows
+
+
+def pronunciation_preview(text, rules, *, language='', voice_id='', cancelled=lambda: False, timeout=1.0):
+    """One atomic, non-cascading pass; patterns run in a bounded local child.
+
+    Legacy language labels remain descriptive unless language_scope is True.
+    Scoped rules match the explicitly selected language/voice only. At each
+    source position the longest match wins, then voice/language specificity,
+    then dictionary order. No replacement is scanned again.
+    """
+    _body(text)
+    rules = validate_pronunciation_rules(rules)
+    language, voice_id = _pronunciation_context(language, voice_id)
+    if type(timeout) not in (int, float) or not math.isfinite(timeout) or not .05 <= timeout <= 10:
+        raise ValueError('Pronunciation time budget must be between 0.05 and 10 seconds.')
+    _check_pronunciation_cancelled(cancelled)
+    selected = [(index, rule) for index, rule in enumerate(rules)
+                if (not rule.language_scope or rule.language.casefold() == language)
+                and (not rule.voice_id or rule.voice_id == voice_id)]
+    if not selected:
+        return text, 0
+    rank = {index: (2 * bool(rule.voice_id) + bool(rule.language_scope), -index)
+            for index, rule in selected}
+    patterns = [(index, rule) for index, rule in selected if rule.regex or rule.ignore_case]
+    matches = _pattern_matches(text, patterns, timeout=timeout, cancelled=cancelled) if patterns else ()
+    by_start = {}
+    for start, end, replacement, index in matches:
+        candidate = (end, replacement, index)
+        prior = by_start.get(start)
+        if prior is None or (end, *rank[index]) > (prior[0], *rank[prior[2]]):
+            by_start[start] = candidate
     tree = {}
-    for rule in rules:
+    for index, rule in selected:
+        if rule.regex or rule.ignore_case:
+            continue
         node = tree
         for char in rule.written:
             node = node.setdefault(char, {})
-        node[None] = rule.spoken
+        prior = node.get(None)
+        if prior is None or rank[index] > rank[prior[1]]:
+            node[None] = rule.spoken, index
     pieces, cursor, position, size, count, steps = [], 0, 0, 0, 0, 0
-    while position < len(text):
-        node, end, matched_end, replacement = tree, position, None, None
+    while position <= len(text):
+        if position % 1024 == 0:
+            _check_pronunciation_cancelled(cancelled)
+        node, end, candidate = tree, position, by_start.get(position)
         while end < len(text):
             steps += 1
             if steps > MAX_MATCH_STEPS:
                 raise ValueError('Pronunciation matching exceeded its work budget. Use a smaller text section.')
+            if steps % 1024 == 0:
+                _check_pronunciation_cancelled(cancelled)
             node = node.get(text[end])
             if node is None:
                 break
             end += 1
             if None in node:
-                matched_end, replacement = end, node[None]
-        if matched_end is None:
+                replacement, index = node[None]
+                if candidate is None or (end, *rank[index]) > (candidate[0], *rank[candidate[2]]):
+                    candidate = end, replacement, index
+        if candidate is None:
             position += 1
             continue
+        matched_end, replacement, _ = candidate
         unchanged = text[cursor:position]
         size += len(unchanged.encode('utf-8')) + len(replacement.encode('utf-8'))
         if size > MAX_TEXT_BYTES:
             raise ValueError('Pronunciation expansion exceeds the reading-section budget.')
         pieces.extend((unchanged, replacement))
-        cursor, position, count = matched_end, matched_end, count + 1
+        cursor, position, count = matched_end, max(position + 1, matched_end), count + 1
     pieces.append(text[cursor:])
-    result = ''.join(pieces)
-    return _body(result), count
+    _check_pronunciation_cancelled(cancelled)
+    return _body(''.join(pieces)), count
+
+
+def _dictionary_value(value):
+    canonical = False
+    if type(value) is list:
+        items = value  # Existing unversioned literal-editor interchange.
+    elif type(value) is dict and set(value) == {'schema', 'rules'} and value['schema'] == 'carr.pronunciations.v1':
+        items, canonical = value['rules'], True
+    elif (type(value) is dict and set(value) == {'kind', 'version', 'rules'}
+          and value['kind'] == 'carr-pronunciation-dictionary' and type(value['version']) is int
+          and value['version'] == 1):
+        items = value['rules']
+    else:
+        raise ValueError('Unsupported pronunciation dictionary format.')
+    if type(items) is not list or len(items) > MAX_RULES:
+        raise ValueError('Invalid pronunciation dictionary entry count.')
+    rules = []
+    for row in items:
+        if type(row) is not dict:
+            raise ValueError('Invalid pronunciation dictionary entry.')
+        if canonical:
+            if not {'pattern', 'replacement'} <= row.keys() or row.keys() - {
+                    'pattern', 'replacement', 'language', 'voice_id', 'regex', 'ignore_case'}:
+                raise ValueError('Invalid canonical pronunciation dictionary entry.')
+            row = dict(written=row['pattern'], spoken=row['replacement'], language=row.get('language', ''),
+                       voice_id=row.get('voice_id', ''), regex=row.get('regex', False),
+                       ignore_case=row.get('ignore_case', False), language_scope=bool(row.get('language', '')))
+        try:
+            rules.append(PronunciationRule(**row))
+        except TypeError as exc:
+            raise ValueError('Invalid pronunciation dictionary fields.') from exc
+    return validate_pronunciation_rules(rules)
+
+
+def decode_pronunciation_dictionary(raw):
+    if isinstance(raw, str):
+        raw = raw.encode('utf-8')
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_DICTIONARY_BYTES:
+        raise ValueError('Pronunciation dictionary exceeds its editing byte budget.')
+    def constant(_):
+        raise ValueError('Nonfinite pronunciation dictionary value.')
+    try:
+        value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique, parse_constant=constant)
+        return _dictionary_value(value)
+    except (UnicodeError, RecursionError, TypeError) as exc:
+        raise ValueError('Invalid pronunciation dictionary.') from exc
+
+
+def encode_pronunciation_dictionary(rules):
+    value = dict(kind='carr-pronunciation-dictionary', version=1,
+                 rules=[asdict(rule) for rule in validate_pronunciation_rules(rules)])
+    raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + '\n').encode('utf-8')
+    if len(raw) > MAX_DICTIONARY_BYTES:
+        raise ValueError('Pronunciation dictionary exceeds its interchange byte budget.')
+    return raw
+
+
+def load_pronunciation_dictionary(path):
+    from ..audio.jobs import read_json
+    return _dictionary_value(read_json(path, limit=MAX_DICTIONARY_BYTES))
 
 
 def source_spans(project):
@@ -309,7 +495,11 @@ def comparison_text(project):
 def encode_project(project):
     if type(project) is not NarrationProject:
         raise ValueError('A validated reading project is required.')
-    value = dict(kind='carr-reading-copy', version=2, **asdict(project))
+    advanced = any(rule.voice_id or rule.regex or rule.ignore_case or rule.language_scope for rule in project.rules)
+    value = dict(kind='carr-reading-copy', version=3 if advanced else 2, **asdict(project))
+    if not advanced:
+        value['rules'] = [dict(written=rule.written, spoken=rule.spoken, language=rule.language)
+                          for rule in project.rules]
     raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
     if len(raw) > MAX_PROJECT_BYTES:
         raise ValueError('Reading project exceeds its storage budget.')
@@ -323,15 +513,22 @@ def decode_project(raw):
         value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
         fields = {'kind', 'version', 'id', 'title', 'original_text', 'original_sha256',
                   'source_location', 'revisions', 'cursor', 'rules'}
-        if type(value) is dict and value.get('version') == 2:
+        if type(value) is dict and value.get('version') in (2, 3):
             fields.add('original_path')
         if (type(value) is not dict or set(value) != fields or value['kind'] != 'carr-reading-copy'
-                or type(value['version']) is not int or value['version'] not in (1, 2)
+                or type(value['version']) is not int or value['version'] not in (1, 2, 3)
                 or type(value['revisions']) is not list or len(value['revisions']) > MAX_HISTORY
                 or type(value['rules']) is not list or len(value['rules']) > MAX_RULES):
             raise ValueError('Unsupported reading-project format.')
         location = None if value['source_location'] is None else _location(value['source_location'])
         revisions = tuple(Revision(**row) for row in value['revisions'])
+        if value['version'] in (1, 2):
+            if any(type(row) is not dict or not {'written', 'spoken'} <= row.keys()
+                   or row.keys() - {'written', 'spoken', 'language'} for row in value['rules']):
+                raise ValueError('Legacy reading rules cannot contain unversioned pattern or scope fields.')
+        elif any(type(row) is not dict or set(row) != {'written', 'spoken', 'language', 'voice_id',
+                 'regex', 'ignore_case', 'language_scope'} for row in value['rules']):
+            raise ValueError('Version 3 reading rules require their complete scoped fields.')
         rules = tuple(PronunciationRule(**row) for row in value['rules'])
         return NarrationProject(value['id'], value['title'], value['original_text'], value['original_sha256'],
                                 location, revisions, value['cursor'], rules, value.get('original_path'))

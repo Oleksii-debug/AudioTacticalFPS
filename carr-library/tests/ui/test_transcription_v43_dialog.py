@@ -201,12 +201,13 @@ def view_fixture(tmp_path):
     view.frame, view.root, view.service = frame, tmp_path, Service(tmp_path)
     view.wx = SimpleNamespace(CallAfter=lambda callback, *args: queue.append((callback, args)))
     view.sources, view.manifest_path, view.current_job = (), '', None
+    view.runtime_profile = None
     view.definition = view.summary = None
     view.rows, view.pause_requested = (), False
     view.fields = fields()
     for name in ('title', 'manifest', 'runtime_identity', 'source_list', 'jobs_list', 'outputs', 'status'):
         setattr(view, name, Control('Synthetic job' if name == 'title' else ''))
-    view.buttons = {name: Control() for name in ('files', 'folder', 'remove', 'manifest', 'new',
+    view.buttons = {name: Control() for name in ('files', 'folder', 'remove', 'manifest', 'profiles', 'engine_settings', 'new',
         'refresh', 'load', 'prepare', 'start', 'pause', 'resume', 'stop', 'verify', 'reading', 'close')}
     view.session = ui.TranscriptionSession(frame, dispatch=view.wx.CallAfter,
         changed=view.controls, report=view.report, close=Mock(), request_stop=view._request_stop)
@@ -357,6 +358,81 @@ def test_reading_action_reuses_existing_editor_only_after_service_reverification
     else:
         factory.assert_called_once_with(tmp_path)
         editor.assert_called_once_with(view.dialog, store, original, guard=view.session.guard)
+
+
+def test_saved_runtime_profile_is_readmitted_before_prepare_and_start(tmp_path, monkeypatch):
+    from carr_library import runtime_settings
+    view, finish = view_fixture(tmp_path)
+    view.sources = (str(tmp_path / 'selected.wav'),)
+    view.manifest_path = str(tmp_path / 'installed' / 'manifest.json')
+    view.runtime_profile = ('c' * 32, 'd' * 64)
+    admission = Mock(return_value=SimpleNamespace(manifest=SimpleNamespace(
+        path=Path(view.manifest_path), manifest_sha256='d' * 64)))
+    monkeypatch.setattr(runtime_settings, 'EngineProfileStore',
+                        lambda root: SimpleNamespace(admit=admission))
+    view.prepare()
+    finish()
+    view.start()
+    finish()
+    assert [call[0] for call in view.service.calls] == ['prepare', 'run']
+    assert admission.call_count == 2
+    assert all(call.args == ('c' * 32,) and call.kwargs['engine'] == 'supplied-whisper'
+               for call in admission.call_args_list)
+
+
+@pytest.mark.parametrize('failure', ['disabled', 'changed-pin', 'changed-path'])
+def test_changed_saved_profile_cannot_enter_supervisor(tmp_path, monkeypatch, failure):
+    from carr_library import runtime_settings
+    view, finish = view_fixture(tmp_path)
+    view.sources = (str(tmp_path / 'selected.wav'),)
+    view.manifest_path = str(tmp_path / 'installed' / 'manifest.json')
+    view.runtime_profile = ('c' * 32, 'd' * 64)
+    admission = Mock()
+    if failure == 'disabled':
+        admission.side_effect = ValueError('The selected profile is disabled.')
+    else:
+        admission.return_value = SimpleNamespace(manifest=SimpleNamespace(
+            path=Path(view.manifest_path) if failure != 'changed-path' else tmp_path / 'other.json',
+            manifest_sha256='e' * 64 if failure == 'changed-pin' else 'd' * 64))
+    monkeypatch.setattr(runtime_settings, 'EngineProfileStore',
+                        lambda root: SimpleNamespace(admit=admission))
+    view.prepare()
+    finish()
+    assert view.service.calls == [] and view.current_job is None
+    assert 'disabled' in view.status.value or 'selection changed' in view.status.value
+
+
+def test_new_job_drops_machine_profile_selection_without_rebinding_outputs(tmp_path):
+    view, finish = view_fixture(tmp_path)
+    view.runtime_profile = ('c' * 32, 'd' * 64)
+    view.manifest_path = str(tmp_path / 'installed.json')
+    view.new()
+    assert view.runtime_profile is None and not view.manifest_path
+
+
+def test_saved_runtime_picker_shows_only_enabled_transcription_profiles(tmp_path, monkeypatch):
+    from carr_library import runtime_settings
+    view, finish = view_fixture(tmp_path)
+    view.dialog = object()
+    active = SimpleNamespace(id='c' * 32, name='Installed tiny', engine='supplied-whisper', enabled=True)
+    disabled = SimpleNamespace(id='e' * 32, name='Disabled', engine='supplied-whisper', enabled=False)
+    speech = SimpleNamespace(id='f' * 32, name='Speech voice', engine='piper', enabled=True)
+    reviewed = SimpleNamespace(manifest=SimpleNamespace(
+        path=tmp_path / 'installed.json', manifest_sha256='d' * 64, settings={'model': 'tiny'}))
+    store = SimpleNamespace(snapshot=lambda: SimpleNamespace(profiles=(active, disabled, speech)),
+                            admit=Mock(return_value=reviewed))
+    monkeypatch.setattr(runtime_settings, 'EngineProfileStore', lambda root: store)
+    picker = SimpleNamespace(ShowModal=lambda: 1, GetSelection=lambda: 0, Destroy=Mock())
+    choices = Mock(return_value=picker)
+    view.wx.SingleChoiceDialog, view.wx.ID_OK = choices, 1
+    view.choose_profile()
+    assert choices.call_args.args[-1] == ['Installed tiny']
+    assert not view.manifest_path  # No active selection until current assets pass.
+    finish()
+    assert view.runtime_profile == ('c' * 32, 'd' * 64)
+    assert view.fields['model'].value == 'tiny'
+    assert view.manifest_path == str(reviewed.manifest.path)
+    picker.Destroy.assert_called_once()
 
 
 @pytest.mark.parametrize('index', range(3), ids=['workspace-receipts', 'workspace-v5', 'library-supplied'])
