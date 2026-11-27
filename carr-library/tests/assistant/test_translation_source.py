@@ -4,6 +4,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import runpy
+import threading
 from time import time
 from types import SimpleNamespace
 
@@ -236,9 +237,8 @@ def test_cli_library_review_binds_exact_source_revision_before_submit(source_lib
     assert not e.service.list()
 
 
-def test_native_source_choice_uses_library_snapshot_and_explicit_transfer(translation_handlers, transport, monkeypatch):
+def native_source(e, monkeypatch):
     import sys
-    e = translation_handlers
     app = e.frame.library
     workspace = app.create_workspace('Native source choice')
     source = app.add_text(workspace, 'Selected book', 'Exact selected source.\fOther source position.')
@@ -253,25 +253,154 @@ def test_native_source_choice_uses_library_snapshot_and_explicit_transfer(transl
         def GetSelection(self): return 2  # The actual second source position.
         def Destroy(self): pass
     monkeypatch.setattr(wx, 'SingleChoiceDialog', Picker, raising=False)
+    return source
+
+
+def load_native_source(e):
+    prepare_handler(e)
+    e.press('Load library source')
+    assert len(e.state['queue']) == 1
+    e.complete()
+    assert len(e.state['queue']) == 1
+    e.complete()
+
+
+def test_native_source_choice_uses_library_snapshot_and_explicit_transfer(translation_handlers, transport, monkeypatch):
+    e = translation_handlers
+    source = native_source(e, monkeypatch)
     def scenario():
-        prepare_handler(e)
-        e.press('Load library source')
-        assert len(e.state['queue']) == 1
-        e.complete()
-        assert len(e.state['queue']) == 1
-        e.complete()
+        load_native_source(e)
         assert e.find('Selected text; originals remain unchanged').value == 'Other source position.'
         assert not e.service.list() and len(transport['calls']) == 1
         e.press('Preview')
+        e.complete()
         assert source['edition'] in e.find('Preview, supported languages and job status').value
         e.press('Translate / resume')
         assert len(transport['calls']) == 1
+        e.complete()
+        queued, = e.service.list()
+        assert queued['status'] == 'queued' and len(transport['calls']) == 1
         e.complete()
         job, = e.service.list()
         assert job['status'] == 'complete'
         assert job['source_anchor']['positions'][0]['ordinal'] == 2
         assert job['source_metadata']['title'] == 'Selected book'
         assert len(transport['calls']) == 2
+    e.scenario(scenario)
+
+
+def test_source_preview_and_submission_validate_on_worker_using_frozen_fields(
+        translation_handlers, transport, monkeypatch):
+    e = translation_handlers
+    source = native_source(e, monkeypatch)
+    ui_thread = threading.get_ident()
+    validations = []
+    original = TranslationService._validate_source
+    def validate(service, job, **kwargs):
+        if job.get('source_anchor') is not None:
+            validations.append(threading.get_ident())
+            assert validations[-1] != ui_thread, 'Source verification blocked the UI thread.'
+        return original(service, job, **kwargs)
+    monkeypatch.setattr(TranslationService, '_validate_source', validate)
+    def complete_on_worker():
+        callback, done, failed = e.state['queue'].pop(0)
+        outcome = []
+        def work():
+            try: outcome.append((done, callback()))
+            except Exception as error: outcome.append((failed, error))
+        worker = threading.Thread(target=work)
+        worker.start(); worker.join(10)
+        assert not worker.is_alive() and len(outcome) == 1
+        handler, result = outcome[0]
+        handler(result)
+    def scenario():
+        load_native_source(e)
+        widget_type = type(e.find('Selected text; originals remain unchanged'))
+        get_value = widget_type.GetValue
+        def read_on_ui(widget):
+            assert threading.get_ident() == ui_thread, 'The worker read a live wx control.'
+            return get_value(widget)
+        monkeypatch.setattr(widget_type, 'GetValue', read_on_ui)
+        e.press('Preview')
+        assert validations == [] and len(e.state['queue']) == 1
+        assert not e.find('Translate / resume').enabled
+        complete_on_worker()
+        assert len(validations) == 1 and e.find('Translate / resume').enabled
+        e.press('Translate / resume')
+        assert len(validations) == 1 and len(e.state['queue']) == 1
+        assert len(e.state['approvals']) == 2 and not e.service.list()
+        # Even a programmatic widget change cannot alter the captured approval.
+        e.find('Target language code').ChangeValue('de')
+        e.find('Selected text; originals remain unchanged').ChangeValue('Unreviewed replacement')
+        complete_on_worker()
+        queued, = e.service.list()
+        assert queued['status'] == 'queued' and len(transport['calls']) == 1
+        assert queued['source_text'] == 'Other source position.' and queued['target_language'] == 'uk'
+        assert queued['source_anchor']['edition'] == source['edition']
+        assert len(e.state['queue']) == 1
+        complete_on_worker()
+        assert e.service.list()[0]['status'] == 'complete' and len(transport['calls']) == 2
+        assert all(identity != ui_thread for identity in validations)
+    e.scenario(scenario)
+
+
+@pytest.mark.parametrize('phase', ['preview', 'submit'])
+def test_source_review_and_submission_can_cancel_during_real_validation(
+        translation_handlers, transport, monkeypatch, phase):
+    e = translation_handlers
+    native_source(e, monkeypatch)
+    entered, release = threading.Event(), threading.Event()
+    original = TranslationService._validate_source
+    def scenario():
+        load_native_source(e)
+        if phase == 'submit':
+            e.press('Preview'); e.complete()
+        def validate(service, job, **kwargs):
+            entered.set()
+            assert release.wait(5)
+            return original(service, job, **kwargs)
+        monkeypatch.setattr(TranslationService, '_validate_source', validate)
+        e.press('Preview' if phase == 'preview' else 'Translate / resume')
+        assert not entered.is_set() and len(e.state['queue']) == 1
+        callback, done, failed = e.state['queue'].pop(0)
+        outcome = []
+        def work():
+            try: outcome.append((done, callback()))
+            except Exception as error: outcome.append((failed, error))
+        worker = threading.Thread(target=work)
+        worker.start()
+        try:
+            assert entered.wait(5)
+            assert e.find('Pause').enabled
+            e.press('Pause')
+        finally:
+            release.set()
+            worker.join(10)
+        assert not worker.is_alive() and len(outcome) == 1
+        handler, result = outcome[0]
+        assert isinstance(result, InterruptedError)
+        handler(result)
+        assert not e.service.list() and not e.state['queue'] and len(transport['calls']) == 1
+        assert e.find('Preview').enabled
+    e.scenario(scenario)
+
+
+def test_pause_after_source_submission_before_ui_completion_does_not_resume(
+        translation_handlers, transport, monkeypatch):
+    e = translation_handlers
+    native_source(e, monkeypatch)
+    def scenario():
+        load_native_source(e)
+        e.press('Preview'); e.complete()
+        e.press('Translate / resume')
+        callback, done, failed = e.state['queue'].pop(0)
+        identity = callback()
+        e.press('Pause')
+        done(identity)
+        queued, = e.service.list()
+        assert queued['id'] == identity and queued['status'] == 'queued'
+        assert not e.state['queue'] and len(transport['calls']) == 1
+        assert 'Resume explicitly' in e.find('Preview, supported languages and job status').value
     e.scenario(scenario)
 
 
