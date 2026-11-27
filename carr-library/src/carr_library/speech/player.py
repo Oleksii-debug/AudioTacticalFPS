@@ -185,6 +185,9 @@ class WavePlayer:
                     raise ValueError('The current playlist file changed. Review it again.')
                 self._playlist_armed = True
                 return False
+            started = self.play_current()
+            self._playlist_armed = bool(started)
+            return started
         return self._play_queue_item(index)
 
     def _play_queue_item(self, index):

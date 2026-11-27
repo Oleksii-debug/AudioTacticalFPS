@@ -192,3 +192,13 @@ def test_explicit_play_queue_resumes_current_paused_file_without_restart(queued)
     assert player.play_queue(0) and player.queue_active
     assert sum(command.startswith('open ') for command in mci.calls) == opened
     assert mci.starts[-1].startswith('resume ')
+
+
+def test_explicit_queue_play_keeps_silently_restored_original_cursor(queued):
+    player, mci = queued
+    player.select_queue(1)
+    player.seek(.375, start_if_stopped=False)
+    assert not mci.starts and player.position_seconds == .375
+    assert player.play_queue(1) and player.queue_active
+    assert mci.starts[-1].endswith(' from 375')
+    assert player.playlist_index == 1

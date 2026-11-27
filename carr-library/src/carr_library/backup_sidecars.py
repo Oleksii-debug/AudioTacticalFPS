@@ -70,6 +70,7 @@ def _validate_collections(db, stage, entries, cancelled):
     backup_studio.validate_collection(db, stage, entries, cancelled=cancelled)
     backup_transcription.validate_collection(db, stage, entries, cancelled=cancelled)
     _model('speech.tabs').validate_collection(stage, entries)
+    _model('speech.playlist').validate_collection(stage, entries)
 
 
 def _model(module):
@@ -109,6 +110,8 @@ def sidecar_limit(name):
         return _model('speech.reading').MAX_DICTIONARY_BYTES
     if name == 'state/speech/reading-tabs.json':
         return _model('speech.tabs').MAX_BYTES
+    if name == 'state/speech/playback-queue.json':
+        return _model('speech.playlist').MAX_STATE_BYTES
     if maximum := backup_studio.limit(name):
         return maximum
     if maximum := backup_transcription.limit(name):
@@ -342,6 +345,8 @@ def validate_sidecar(db, name, raw):
             _model('speech.reading').validate_dictionary(_json(raw))
         elif name == 'state/speech/reading-tabs.json':
             _model('speech.tabs').ReadingTabs.from_dict(_json(raw))
+        elif name == 'state/speech/playback-queue.json':
+            _model('speech.playlist').SavedPlaylist.from_dict(_json(raw))
         elif backup_studio.limit(name) is not None:
             backup_studio.validate(db, name, _json(raw))
         elif backup_transcription.limit(name) is not None:
@@ -521,6 +526,7 @@ def _ignored(name):
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
     if name in ('state/studio/.input-review.lock',
+                'state/studio/inputs/.selected-clip.lock',
                 'state/studio/recordings/.recording.lock',
                 'state/studio/effect-presets/.effect-presets.lock'):
         return True
@@ -534,7 +540,8 @@ def _ignored(name):
         return path.name in ('.state.lock', '.render.lock') or path.name.startswith('.pending-')
     if path.parent.as_posix() == 'state/speech':
         return bool(re.fullmatch(r'\.[0-9a-f]{64}\.lock', path.name)
-                    or path.name in ('.reading-presentation.lock', '.pronunciations.lock', '.reading-tabs.lock')
+                    or path.name in ('.reading-presentation.lock', '.pronunciations.lock', '.reading-tabs.lock',
+                                     '.playback-queue.lock')
                     or path.name.startswith('.pending-'))
     if path.parent.as_posix() == 'state/audio':
         return path.name == '.state.lock' or path.name.startswith('.pending-')

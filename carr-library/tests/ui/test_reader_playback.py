@@ -35,8 +35,9 @@ class Widget:
     def GetSelection(self): self.native(); return self.selection
     def SetSelection(self, value): self.native(); self.selection = value
     def Set(self, values): self.native(); self.choices = list(values); self.selection = -1
-    def Bind(self, event, handler, *args): self.native(); self.handlers[event] = handler
-    def EndModal(self, result): self.native()
+    def Bind(self, event, handler, *args, **kwargs): self.native(); self.handlers[event] = handler
+    def SetAcceleratorTable(self, value): self.native(); self.accelerators = value
+    def EndModal(self, result): self.native(); self.ended = result
     def Destroy(self): self.native(); self.destroyed = True
     def Enable(self, value): self.native(); self.enabled = value
 
@@ -46,7 +47,9 @@ def dialog(monkeypatch):
     widgets, deferred, subscriptions, actions = [], [], [], []
     Widget.widgets = widgets
     fixture = SimpleNamespace(driver=lambda _dialog: None, prepare_listening=None,
-                              allow_queue=False, review_playlist=None)
+                              allow_queue=False, review_playlist=None, save_queue=None,
+                              review_saved=None, saved_pending=lambda: False,
+                              queue_changed=lambda: None)
     class Dialog(Widget):
         def ShowModal(self):
             self.native()
@@ -57,7 +60,10 @@ def dialog(monkeypatch):
     wx = SimpleNamespace(Dialog=Dialog, StaticText=StaticText, TextCtrl=Widget,
         Choice=Widget, ListBox=Widget, CheckBox=Widget, ScrolledWindow=Widget,
         Button=Widget, BoxSizer=Widget, GridSizer=Widget, ID_CANCEL=2,
-        EVT_BUTTON='button')
+        EVT_BUTTON='button', EVT_MENU='menu', EVT_CLOSE='close', ACCEL_CTRL=1,
+        NewIdRef=lambda: 71, AcceleratorTable=lambda entries: entries,
+        YES_NO=2, NO_DEFAULT=4, ICON_WARNING=8, YES=1, NO=0,
+        MessageBox=lambda *args, **kwargs: 0)
     for key in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'EXPAND', 'ALL',
                 'TE_READONLY', 'TE_MULTILINE', 'ALIGN_RIGHT', 'TAB_TRAVERSAL', 'VSCROLL', 'HORIZONTAL'):
         setattr(wx, key, 0)
@@ -93,7 +99,9 @@ def dialog(monkeypatch):
         return show_reader_playback(object(), player, execute=execute,
             stop=lambda: actions.append(('stop',)), pause=lambda: actions.append(('pause',)),
             subscribe=fixture.subscribe, prepare_listening=fixture.prepare_listening,
-            allow_queue=fixture.allow_queue, review_playlist=fixture.review_playlist)
+            allow_queue=fixture.allow_queue, review_playlist=fixture.review_playlist,
+            save_queue=fixture.save_queue, review_saved=fixture.review_saved,
+            saved_pending=fixture.saved_pending, queue_changed=fixture.queue_changed)
     fixture.show = show
     def find(name):
         # A StaticText label and its explicitly named TextCtrl are distinct
@@ -604,3 +612,104 @@ def test_reordering_and_removal_are_silent_owned_actions(queue_dialog):
     dialog.driver = drive
     dialog.show()
     assert all(action[0] == 'queue' for action in dialog.actions)
+
+
+@pytest.fixture
+def saved_queue_dialog(queue_dialog):
+    dialog = queue_dialog
+    dialog.saved_calls, dialog.restore_calls, dialog.changed = [], [], []
+    dialog.save_queue = lambda: (dialog.saved_calls.append(True), 'Durably saved exact queue.')[1]
+    dialog.pending_recovery = True
+    dialog.saved_pending = lambda: dialog.pending_recovery
+    dialog.queue_changed = lambda: dialog.changed.append(True)
+    def review(completed, failed, *, active, use_current_controls):
+        dialog.restore_calls.append((completed, failed, active, use_current_controls))
+        return lambda: dialog.review_cancelled.append(True)
+    dialog.review_saved = review
+    return dialog
+
+
+def test_ctrl_s_calls_real_owned_save_callback_and_displays_its_completed_result(saved_queue_dialog):
+    dialog = saved_queue_dialog
+    def drive(window):
+        assert window.accelerators == [(1, ord('S'), 71)]
+        window.handlers['menu'](None)
+        assert dialog.saved_calls == [True]
+        assert 'Durably saved exact queue.' in dialog.find('Current reader playback status').GetValue()
+        assert dialog.actions == [] and not dialog.deferred
+    dialog.driver = drive
+    dialog.show()
+
+
+def test_saved_queue_review_freezes_explicit_controls_choice_and_never_calls_play(saved_queue_dialog):
+    dialog = saved_queue_dialog
+    def drive(window):
+        choice = dialog.find('Explicitly replace saved playback settings with current controls')
+        choice.SetValue(True)
+        dialog.press('Review saved queue without playing')
+        assert dialog.actions == [('stop',)]
+        completed, failed, active, current = dialog.restore_calls[0]
+        assert current is True and active()
+        choice.SetValue(False)
+        dialog.pending_recovery = False
+        completed()
+        assert not dialog.find('Review saved queue without playing').enabled
+        assert not any(item[0] in ('play', 'play-queue') for item in dialog.actions)
+    dialog.driver = drive
+    dialog.show()
+
+
+def test_failed_queue_save_vetoes_close_by_default_and_preserves_controls(saved_queue_dialog):
+    dialog = saved_queue_dialog
+    def fail():
+        raise OSError('synthetic storage failure')
+    dialog.save_queue = fail
+    def drive(window):
+        dialog.press('Close playback controls')
+        assert not hasattr(window, 'ended')
+        assert 'storage failure' in dialog.find('Current reader playback status').GetValue()
+        assert not window.destroyed
+    dialog.driver = drive
+    dialog.show()
+
+
+def test_confirmed_close_without_saving_is_explicit(saved_queue_dialog):
+    dialog = saved_queue_dialog
+    messages = []
+    def answer(*args, **kwargs):
+        messages.append((args, kwargs))
+        return 1
+    sys.modules['wx'].MessageBox = answer
+    dialog.save_queue = lambda: (_ for _ in ()).throw(OSError('synthetic storage failure'))
+    def drive(window):
+        dialog.press('Close playback controls')
+        assert window.ended == 2
+        assert messages[0][0][2] & sys.modules['wx'].NO_DEFAULT
+    dialog.driver = drive
+    dialog.show()
+
+
+def test_queue_mutation_notifies_only_after_actual_order_is_changed(saved_queue_dialog):
+    dialog = saved_queue_dialog
+    def drive(window):
+        dialog.press('Stop and move item down')
+        assert dialog.player.playlist == tuple(reversed(dialog.items))
+        assert dialog.changed == [True]
+        dialog.press('Stop and clear playlist')
+        assert dialog.player.playlist == () and dialog.changed == [True, True]
+    dialog.driver = drive
+    dialog.show()
+
+
+def test_late_saved_review_completion_cannot_touch_destroyed_controls(saved_queue_dialog):
+    dialog = saved_queue_dialog
+    dialog.driver = lambda window: dialog.press('Review saved queue without playing')
+    dialog.show()
+    assert dialog.review_cancelled == [True]
+    completed, failed, active, _ = dialog.restore_calls[0]
+    assert not active()
+    for widget in dialog.widgets:
+        widget.destroyed = True
+    completed()
+    failed(RuntimeError('late failure'))
+    assert dialog.actions == [('stop',)]

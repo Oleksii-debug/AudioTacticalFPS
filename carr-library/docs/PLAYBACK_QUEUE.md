@@ -1,11 +1,13 @@
-# Session playlists and player-owned live controls
+# Saved playlists and player-owned live controls
 
-The existing `WavePlayer` can review an ordered session playlist of explicitly
+The existing `WavePlayer` can review an ordered playlist of explicitly
 chosen local PCM WAV files. Review reads bounded blocks on the existing desktop
 worker and records each complete file's SHA-256, frame count and local identity.
 A playlist contains at most 256 recordings, at most 4 GiB per file and at most
-32 GiB in total, with a two-minute cancellable review budget. Playlist records
-are kept only in this session; they are not restored external-file authority.
+32 GiB in total, with separate two-minute cancellable review and retention budgets. The standalone
+owner retains only these explicitly reviewed bytes through the existing Studio
+selected-input transaction. The content-addressed private copies live alongside
+Studio inputs; no access is granted to neighbouring files.
 
 Selecting, reordering or replacing the playlist never starts audio. Explicit
 **Play queue** arms sequential playback. The existing owner timer reports an
@@ -21,6 +23,38 @@ stops the transition without selecting a substitute.
 The text reader keeps its own document-bound player. Queue controls belong to
 standalone **Audio playback**, so a foreign recording cannot replace a reading
 copy's saved cursor or approximate highlighting timeline.
+
+
+## Saving, restart and complete backup
+
+**Ctrl+S** and **Save playback queue** save the ordered relative media identities,
+original labels, selected entry, original PCM frame cursor, skip intervals,
+volume/mute/balance and explicitly selected output identity. The queue joins the
+existing application **Save All** coordinator. The existing owner timer saves a
+changed cursor at five-second intervals; validated queue edits save immediately.
+Close flushes the cursor before stopping resets native playback position. A
+failed write remains visibly unsaved, Save All remains incomplete, and Close
+asks explicitly before discarding those unsaved changes. Compare-and-swap
+tokens prevent one open queue from silently replacing a concurrent writer.
+
+Loading the JSON reads only passive metadata. **Review saved queue without
+playing** hashes the confined retained copies on the existing worker, checks
+their exact PCM dimensions and saved identities, then selects the original
+cursor silently. It revalidates a saved output interface rather than selecting
+a replacement device by ordinal. Missing output or unsupported live controls
+fail visibly. The optional **Review saved queue using current controls and
+output instead of saved settings** choice is an explicit alternative; it does
+not silently discard a saved mute/output choice. No restored queue automatically
+plays, arms sequential playback, resumes A–B repeat or restarts a sleep timer.
+Press Play or Play queue explicitly after review.
+
+The typed full-backup adapter includes the saved queue and its retained PCM,
+checks every row against actual captured bytes, and rejects missing or changed
+media. It never opens an external path from the saved document. Restore uses
+relative managed identities in the new library and still requires explicit
+review. Original selected files may be removed after retention; their paths are
+not required to restore the playlist. Session-native handles and active timers
+are never serialized.
 
 ## Volume, mute and balance
 
@@ -73,7 +107,7 @@ WinMM contracts used here:
 Portable preservation and new boundary tests:
 
 ```text
-python -m pytest -q tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/ui/test_audio_playback.py tests/ui/test_reader_playback.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/speech/test_listening.py
+python -m pytest -q tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/speech/test_playlist_recovery.py tests/ui/test_audio_playback.py tests/ui/test_reader_playback.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/speech/test_listening.py
 ```
 
 Actual Windows, with the same installed package bytes as the checkout:
@@ -84,7 +118,8 @@ python scripts/windows_audio_player_smoke.py --installed
 
 The native probe uses real wx controls, the real Windows file picker and
 keyboard, the shared frame worker, real silent PCM, native position/pause and
-EOF transitions, and two independent waveOut handles to check volume isolation.
+EOF transitions, actual Ctrl+S and silent saved-queue reopen after moving original files,
+and two independent waveOut handles to check volume isolation.
 It fails when required native output capabilities are absent. The existing
 `windows_reader_player_smoke.py` remains a separate MCI/listening preservation
 gate. The new `audio.playback` semantic command has no default shortcut; it is
