@@ -234,8 +234,43 @@ def _paths(path):
     return root, tuple(sorted(names))
 
 
+def _registry(root):
+    """Bind the one declared POSIX distribution registry link explicitly.
+
+    Ordinary source/runtime paths retain the shared no-link policy. Some
+    distribution packages place this exact registry directory under /etc.
+    Its selected target and the link identity become part of this inventory.
+    """
+    entry = Path(root) / 'share' / 'registry'
+    parent = checked_directory(entry.parent)
+    before = entry.lstat()
+    link = ''
+    if stat.S_ISLNK(before.st_mode):
+        if os.name == 'nt':
+            raise ConversionUnavailable('The selected Windows registry directory must be ordinary.')
+        link = os.readlink(entry)
+        if not link or len(link) > 4096 or '\x00' in link:
+            raise ConversionUnavailable('The selected office registry link is invalid.')
+        target = Path(link)
+        if not target.is_absolute():
+            target = parent / target
+        target = checked_directory(Path(os.path.abspath(target)))
+    else:
+        target = checked_directory(entry)
+    target_info = regular(target, directory=True)
+    after = entry.lstat()
+    def stamp(info):
+        return (info.st_dev, info.st_ino, info.st_mode,
+                info.st_mtime_ns, info.st_ctime_ns)
+    if stamp(before) != stamp(after) or (link and os.readlink(entry) != link):
+        raise ConversionError('The selected office registry location changed.')
+    identity = (*stamp(before), link, str(target), target_info.st_dev, target_info.st_ino)
+    return target, identity
+
+
 def _component(root, name):
-    path = root / name
+    path = (_registry(root)[0] / name.removeprefix(_REGISTRY)
+            if name.startswith(_REGISTRY) else root / name)
     checked_directory(path.parent)
     info = regular_file(path)
     maximum = _MAX_REGISTRY if name.startswith(_REGISTRY) else _MAX_COMPONENT
@@ -249,13 +284,14 @@ class OfficeSelection:
     path: Path
     root_identity: tuple
     files: tuple
+    registry_identity: tuple
 
     @classmethod
     def capture(cls, value):
         root, names = _paths(value)
         info = root.stat()
         entries = tuple((name, file_identity(_component(root, name)[1])) for name in names)
-        result = cls(Path(value), (info.st_dev, info.st_ino), entries)
+        result = cls(Path(value), (info.st_dev, info.st_ino), entries, _registry(root)[1])
         result._unchanged()
         return result
 
@@ -263,6 +299,7 @@ class OfficeSelection:
         root, names = _paths(self.path)
         info = root.stat()
         if ((info.st_dev, info.st_ino) != self.root_identity
+                or _registry(root)[1] != self.registry_identity
                 or tuple(name for name, _ in self.files) != names
                 or any(file_identity(_component(root, name)[1]) != identity for name, identity in self.files)):
             raise ConversionError('The selected LibreOffice installation changed after selection.')
@@ -282,11 +319,12 @@ class OfficeSelection:
         _cancel(cancelled)
         self._unchanged()
         return dict(root=str(root), root_identity=list(self.root_identity),
+                    registry_identity=list(self.registry_identity),
                     executable='program/' + self.path.name, files=rows)
 
 
 def _admit(selection, suffix, deadline):
-    if (type(selection) is not dict or set(selection) != {'root', 'root_identity', 'executable', 'files'}
+    if (type(selection) is not dict or set(selection) != {'root', 'root_identity', 'registry_identity', 'executable', 'files'}
             or type(selection['root']) is not str or type(selection['executable']) is not str
             or selection['executable'] not in ('program/soffice', 'program/soffice.exe', 'program/soffice.com')
             or type(selection['files']) is not list
@@ -296,6 +334,9 @@ def _admit(selection, suffix, deadline):
     root, names = _paths(Path(selection['root']) / selection['executable'])
     info = root.stat()
     if (str(root) != selection['root'] or [info.st_dev, info.st_ino] != selection['root_identity']
+            or type(selection['registry_identity']) is not list
+            or json.dumps(selection['registry_identity'], ensure_ascii=False) !=
+               json.dumps(list(_registry(root)[1]), ensure_ascii=False)
             or len(selection['files']) != len(names)
             or [row.get('name') for row in selection['files'] if isinstance(row, dict)] != list(names)):
         raise ConversionError('The selected LibreOffice inventory has missing or foreign components.')
@@ -396,11 +437,11 @@ def _run(args, stage, deadline, *, output=None, output_limit=0, stage_limit=PROF
         if os.name == 'nt' else os.defpath)
     environment.update(TMPDIR=str(stage), TEMP=str(stage), TMP=str(stage),
                        SAL_USE_VCLPLUGIN='svp', SAL_DISABLE_OPENCL='1', MAX_CONCURRENCY='1')
-    with TemporaryFile() as stdout, TemporaryFile() as stderr:
+    with TemporaryFile(dir=stage) as incoming, TemporaryFile(dir=stage) as stdout, TemporaryFile(dir=stage) as stderr:
         _remaining(deadline)
         _stage_usage(stage, stage_limit, deadline)
         process = subprocess.Popen([str(arg) for arg in args], cwd=stage, env=environment,
-            stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, shell=False,
+            stdin=incoming, stdout=stdout, stderr=stderr, shell=False,
             start_new_session=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
             while True:

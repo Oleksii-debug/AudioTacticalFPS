@@ -58,6 +58,9 @@ jobs:
         run: |
           mkdir -p ci-legacy-reading
           python scripts/ci_check.py --diagnostics --jobs 3 tests/conversion/test_conversion.py tests/conversion/test_conversion_publication.py tests/conversion/test_office_selection.py tests/conversion/test_archive_reading.py tests/ui/test_audio_conversion_controls.py 2>&1 | tee ci-legacy-reading/boundaries.txt
+      - name: Require selected POSIX registry link identity
+        if: "!cancelled() && runner.os == 'Linux'"
+        run: python scripts/ci_check.py --diagnostics tests/conversion/test_office_registry_posix.py 2>&1 | tee ci-legacy-reading/registry-posix.txt
       - name: Prepare selected Linux office runtime
         if: "!cancelled() && runner.os == 'Linux'"
         run: |
