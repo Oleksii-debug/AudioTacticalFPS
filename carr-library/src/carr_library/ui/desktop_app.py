@@ -14,7 +14,7 @@ from ..application import LibraryApp
 from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
-from ..research.export_file import write_export, write_binary_export
+from ..research.export_file import write_export, write_binary_export, export_completion
 from .export_destination import confirm_export_destination
 from ..reader.source_file import prepare_source_file, launch_source_file
 from ..research.saved_topic_query import SavedTopicQueries
@@ -28,7 +28,7 @@ from .search_model import Hit
 from .catalog_metadata_dialog import edit_selected_book
 from .catalog_tools_dialog import show_catalog_tools
 from .desktop_evidence_panel import DesktopEvidencePanel
-from .research_actions import install_research_actions
+from .research_actions import install_research_actions, NativeDialogs
 from .source_review import install_source_review_actions
 from .academic_actions import install_academic_actions
 from .notebook_search import search_saved_research
@@ -572,6 +572,10 @@ class DesktopFrame(WorkspaceFrame):
         install_speech_actions(self)
         install_studio_actions(self)
         install_assistant_actions(self)
+        from .transcription_dialog import install_transcription_actions
+        from .operations_dialog import install_operations_actions
+        install_transcription_actions(self)
+        install_operations_actions(self)
         install_save_actions(self)
         install_library_assistant_actions(self)
         from .translation_dialog import install_translation_actions
@@ -1171,17 +1175,18 @@ class DesktopFrame(WorkspaceFrame):
                 if self.cancel_event.is_set():
                     raise TimeoutError('Export cancelled; the destination was not changed.')
                 writer = write_binary_export if format == 'docx' else write_export
-                writer(path,content,private_root=library.root,
-                       cancelled=self.cancel_event.is_set, approval=approval)
+                return writer(path,content,private_root=library.root,
+                              cancelled=self.cancel_event.is_set, approval=approval)
 
             def done(result):
                 if format in ('ris','bibtex'):
-                    self.report('Bibliography exported. Quotations and research notes are not included.')
+                    message = 'Bibliography exported. Quotations and research notes are not included.'
                 elif format in ('docx', 'html'):
-                    self.report('Research document exported with navigable headings, source citations, '
-                                'and quotations kept separate from research notes.')
+                    message = ('Research document exported with navigable headings, source citations, '
+                               'and quotations kept separate from research notes.')
                 else:
-                    self.report('Topic exported with quotations and research notes kept separate.')
+                    message = 'Topic exported with quotations and research notes kept separate.'
+                self.report(export_completion(message, result))
 
             self.run_job('Exporting verified topic',export,done,
                          lambda error: self.report(f'Export not completed: {error}'))
@@ -1227,7 +1232,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a complete backup, including unfinished imports')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1238,9 +1243,10 @@ class DesktopFrame(WorkspaceFrame):
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(checksum):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
-                'All completed libraries, original files, saved evidence, notes, tags, searches, '
-                'reading positions and bookmarks are included. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
+                'All libraries, retained original files, saved evidence, notes, tags, searches, reading state, '
+                'and durable application projects are included. Unfinished imports and their retained inputs '
+                'are included so they can be resumed after restoration. External engines, model weights, '
+                'credentials and regenerable audio caches are not copied.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
 
@@ -1340,8 +1346,8 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'New full library backups include reading positions and bookmarks. Reading menu export/import also supports selective transfer and recovery from older backups.\n'
+            'Backups include all libraries, reading positions, bookmarks, saved projects, unfinished imports and their retained inputs. '
+            'Restoration creates a new folder; external engines and models require a fresh review before transcription resumes.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):

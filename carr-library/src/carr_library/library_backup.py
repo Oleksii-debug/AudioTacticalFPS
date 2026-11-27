@@ -149,7 +149,8 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                         max_bytes=pending_backup.MAX_TOTAL if max_bytes is None else max_bytes - total,
                         cancelled=cancelled, expected_roots=roots)
                     total += sum(entry['size_bytes'] for entry in pending['files'])
-                state_budget = (backup_sidecars.MAX_BYTES + (backup_sidecars.backup_generated.MAX_BYTES
+                state_budget = (backup_sidecars.MAX_BYTES + backup_sidecars.backup_transcription.MAX_INPUT_BYTES
+                    + (backup_sidecars.backup_generated.MAX_BYTES
                     if include_generated else 0)) if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
                     max_bytes=state_budget, include_generated=include_generated, cancelled=cancelled)
@@ -338,6 +339,14 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         inventory, entries, pending_entries = _verify_contents(source, stage, manifest,
             copy_originals=True, new_root=destination, cancelled=cancelled)
         backup_sidecars._check_cancelled(cancelled)
+        restored_sidecars = inventory.entries
+        if (stage / 'state' / 'transcription').exists():
+            # Authenticate the canonical backup first, then revoke only staged
+            # external execution trust before publishing the restored directory.
+            from .backup_transcription import prepare_restored_inventory
+            restored_sidecars = prepare_restored_inventory(
+                stage, destination, restored_sidecars, cancelled=cancelled)
+        backup_sidecars._check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
         _sync_directory(destination)
@@ -345,7 +354,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         os.link(snapshot, destination / DATABASE)
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
-        backup_sidecars.publish(stage, destination, inventory.entries, sync_directory=_sync_directory)
+        backup_sidecars.publish(stage, destination, restored_sidecars, sync_directory=_sync_directory)
         backup_sidecars.publish(stage, destination, pending_entries, sync_directory=_sync_directory)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)

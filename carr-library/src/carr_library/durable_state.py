@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import stat
 import tempfile
+import time
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
@@ -87,6 +88,27 @@ def sync_directory(path):
             os.close(descriptor)
 
 
+def _replace_state(temporary, path):
+    """Allow a short Windows reader to release its non-delete-sharing handle.
+
+    Reading a tiny control/state file can overlap its atomic replacement on
+    Windows. Retain one fully flushed staging file and retry only the Windows
+    sharing/access errors, with a bounded total delay of 0.63 seconds. A real
+    denial or an unrelated filesystem error still fails without truncating the
+    old state. In particular, never fall back to unlinking the destination.
+    """
+    delays = iter((0.01, 0.02, 0.04, 0.08, 0.16, 0.32))
+    while True:
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError as exc:
+            delay = next(delays, None)
+            if getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
+                raise
+            time.sleep(delay)
+
+
 def atomic_bytes(path, raw, *, replace=False):
     path = local_path(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -103,7 +125,7 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace:
-            os.replace(temporary, path)
+            _replace_state(temporary, path)
         else:
             # link is the portable same-filesystem no-replace publication primitive.
             os.link(temporary, path)
