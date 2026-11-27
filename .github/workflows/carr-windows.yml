@@ -8,6 +8,8 @@ on:
       - .github/workflows/carr-windows.yml
       - .github/workflows/carr-flite.yml
       - .github/workflows/carr-sync.yml
+      - .github/workflows/carr-trusted-client.yml
+      - .github/workflows/carr-managed-update.yml
   push:
     branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/academic-research-workbench, carr/academic-search-20261126, carr/notebook-release-ascii-e021-20261126, carr/v3-primary103-recovered-composition-20261126, carr/unified-publication-24-20261127]
     paths:
@@ -15,6 +17,8 @@ on:
       - .github/workflows/carr-windows.yml
       - .github/workflows/carr-flite.yml
       - .github/workflows/carr-sync.yml
+      - .github/workflows/carr-trusted-client.yml
+      - .github/workflows/carr-managed-update.yml
   workflow_dispatch:
 
 permissions:
@@ -25,6 +29,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source-syntax:
+    name: Exact source / Python 3.11 syntax and package metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Compile exact source without importing modules or writing bytecode
+        working-directory: carr-library
+        shell: bash
+        run: |
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          import subprocess
+          import tomllib
+          roots = ('src', 'scripts', 'packaging')
+          paths = {path for root in roots for path in Path(root).rglob('*.py')}
+          paths.update(Path('tests').rglob('test_*.py'))
+          assert paths
+          inventory = []
+          for path in sorted(paths):
+              raw = path.read_bytes()
+              compile(raw, str(path), 'exec', dont_inherit=True)
+              inventory.append((path.as_posix(), sha256(raw).hexdigest()))
+          project = tomllib.loads(Path('pyproject.toml').read_text(encoding='utf-8'))
+          packages = project['tool']['setuptools']['packages']
+          assert len(packages) == len(set(packages)), 'Duplicate explicit package'
+          for name in packages:
+              assert (Path('src') / Path(*name.split('.')) / '__init__.py').is_file(), name
+          print(json.dumps(dict(status='PASS', source_commit=subprocess.check_output(
+              ['git', 'rev-parse', 'HEAD'], text=True).strip(), python_files=len(paths),
+              inventory_sha256=sha256(json.dumps(inventory, separators=(',', ':')).encode()).hexdigest(),
+              explicit_packages=len(packages), scope='Compilation and TOML only; no runtime qualification'),
+              sort_keys=True))
+          PY
+
   # Mandatory Linux capability coverage complements the selected Windows build.
   flite-runtime:
     name: Required Linux Flite speech
@@ -35,11 +82,22 @@ jobs:
     name: Required portable encrypted backup
     uses: ./.github/workflows/carr-sync.yml
 
+  # Both platforms must qualify the signed client and actual installed origins.
+  trusted-client:
+    name: Required signed client and maintenance boundaries
+    uses: ./.github/workflows/carr-trusted-client.yml
+
+  # Immutable A to exact-event B: real install, lease refusal, rollback and repair.
+  managed-update:
+    name: Required native managed update
+    uses: ./.github/workflows/carr-managed-update.yml
+
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    # Retain the prior job budget and add the new 15-minute core acceptance gate.
-    timeout-minutes: 85
+    # Run 45971365426 needed about55 minutes before the new transfer/standard
+    # lifecycle and additional strict suites. Only orchestration headroom changes.
+    timeout-minutes: 110
     defaults:
       run:
         shell: pwsh
@@ -336,12 +394,13 @@ jobs:
           report = reports[0]
           assert report['status'] == 'PASS' and report['platform'] == 'Windows'
           assert report['source_override'] is None and report['nvda'] == 'NOT_RUN'
-          expected = {"controls":"native wx","keyboard":"native UIActionSimulator F6/F8","clipboard":"one explicit native read","voice_provider":"synthetic PCM fixture","playback":"synthetic sink; no device opened","file_pickers":"controlled answers; NOT_RUN","unsaved_close_confirmation":"controlled answer; NOT_RUN","sapi":"NOT_RUN in this synthetic control probe","acoustics":"NOT_RUN","nvda":"NOT_RUN"}
+          expected = {"controls":"native wx","keyboard":"native UIActionSimulator F6/F8/Ctrl+F","navigation":"native word and sentence selections without automatic speech","find_replace":"native preview, selected replacement, durable recovery and one Undo","clipboard":"one explicit native read","voice_provider":"synthetic PCM fixture","playback":"synthetic sink; no device opened","file_pickers":"controlled answers; NOT_RUN","unsaved_close_confirmation":"controlled answer; NOT_RUN","sapi":"NOT_RUN in this synthetic control probe","acoustics":"NOT_RUN","nvda":"NOT_RUN"}
           assert report['voice_reader'] == expected, report['voice_reader']
           phases = ["logical-line action uses exact native caret text","paragraph action uses the blank-line boundary","explicit clipboard speech does not replace or bind the reading copy","native dictionary export uses the existing validated format","dictionary completion has a readable focused native status","dictionary application is one undoable source-bound edit","native Stop cancels the actual worker without starting late playback","all native reader usability phases completed","closing the native reader releases its owned synthetic voice","all voice-reader actions preserve the retained source bytes"]
+          phases += ["word and sentence navigation select text without starting speech","native Find modifier is delivered","native Find modifier is released","native Find preview leaves the source and reading copy unchanged","reviewed Find result selects the exact native word after Unicode text","native Find replacement persists one source-preserving recovery revision","one native Find replacement is undoable in the actual recovered copy","native Find Undo retains immutable original bytes","shared keyboard command renders the current reading copy"]
           assert all('PASS: ' + phase in text.splitlines() for phase in phases), phases
           origins = report['origins']
-          required = {'carr_library.speech.reading', 'carr_library.ui.speech_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts'}
+          required = {'carr_library.speech.reading', 'carr_library.speech.navigation', 'carr_library.ui.speech_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts', 'carr_library.ui.find_replace_dialog'}
           assert required <= origins.keys() and all(not pathlib.Path(origins[name]).is_relative_to(pathlib.Path.cwd().resolve()) for name in required), origins
           evidence = dict(status='PASS', voice_reader=report['voice_reader'], required_phases=phases, origins=origins, nvda='NOT_RUN')
           pathlib.Path('ci-results/native-reader-usability.json').write_text(json.dumps(evidence, indent=2), encoding='utf-8')
@@ -349,6 +408,34 @@ jobs:
           '@
           $checkReader | & $env:CARR_PYTHON -I -B -
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual installed Tasks and resources controls
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_operations_smoke.py 2>&1 | Tee-Object 'ci-results/native-operations.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual native Tasks/resources acceptance failed.' }
+          $checkOperations = @'
+          import json, pathlib
+          reports = []
+          for line in pathlib.Path('ci-results/native-operations.txt').read_text(encoding='utf-8-sig').splitlines():
+              try:
+                  report = json.loads(line)
+              except ValueError:
+                  continue
+              if isinstance(report, dict) and 'measured_hardware_capacity' in report:
+                  reports.append(report)
+          assert len(reports) == 1, 'Missing or ambiguous native Tasks/resources evidence.'
+          report = reports[0]
+          required = set(["Tasks action belongs to the existing native command inventory","actual wx main event loop is active","native palette resolves only the existing Tasks action","canonical journals load on the host executor","native job controls have readable accessible names","stored completion is not presented as verified output","initial task selection grants no implicit controls","actual saved assistant job is selected by native keyboard","original pause action is available","native Space records original assistant Pause without resubmission","native Space records original Cancel without claiming acknowledgement","native Ctrl+Tab reaches resource allowances","stale native policy cannot overwrite a newer owner edit","native Refresh shows the actual current policy","reviewed native policy save commits through the shared broker","a real native admission lock is held for the responsiveness case","native close remains available during actual admission waiting","native close cancels only the waiting task-view operation","explicit selected native row exposes only its controls","a refreshed replacement row never inherits selection or control","native child destruction does not dispose its parent controller","controller detaches before deferred native destruction","queued callback cannot touch a destroyed native view","job identity and original queued result survive every task-view action","Tasks UI and facade load from the installed wheel","native Windows wx is active","all native Tasks/resources stages completed","installed source identity: operations/models.py","installed source identity: operations/_locks.py","installed source identity: operations/broker.py","installed source identity: operations/facade.py","installed source identity: operations/cli.py","installed source identity: ui/operations_dialog.py","installed source identity: ui/transcription_dialog.py"])
+          assert report['status'] == 'PASS' and report['native_keyboard'] == 'PASS' and not report['errors']
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          assert all(report[name] == 'NOT_RUN' for name in ('manual_keyboard', 'nvda', 'measured_hardware_capacity', 'model_inference'))
+          pathlib.Path('ci-results/native-operations.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+          $checkOperations | & $env:CARR_PYTHON -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Native Tasks/resources evidence is incomplete.' }
 
       - name: Exercise native incremental backup over the shared Vault
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
@@ -456,14 +543,39 @@ jobs:
           "CARR_EPUBCHECK_ARCHIVE=$epubcheckArchive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_EPUBCHECK_JAVA=$epubJava" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           @{ status='PASS'; validator='EPUBCheck5.3.0'; epub_specification='3.3'; archive_sha256=$pin.sha256; java=$epubJava; java_version=$epubJavaVersion; java_sha256=(Get-FileHash -LiteralPath $epubJava -Algorithm SHA256).Hash.ToLowerInvariant(); audio_directory=$audio; acquisition='explicit before offline firewall'; bundled=$false } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/publication-test-runtimes.json'
+          # Explicit test-only DTD acquisition finishes before the existing egress firewall.
+          # The validator uses the already hash-pinned lxml 6.1.3; no runtime downgrade or bundled schemas.
+          $daisySchemas = Join-Path $env:RUNNER_TEMP 'carr-daisy-validation-schemas'
+          New-Item -ItemType Directory -Force $daisySchemas | Out-Null
+          $daisyPin = Get-Content -LiteralPath 'packaging/daisy-validation-schemas.json' -Raw | ConvertFrom-Json
+          $daisyNames = @('SMIL10.dtd', 'xhtml-lat1.ent', 'xhtml-special.ent', 'xhtml-symbol.ent', 'xhtml1-transitional.dtd')
+          $daisyProperties = @($daisyPin.files.PSObject.Properties)
+          if ($daisyPin.schema -ne 1 -or $daisyProperties.Count -ne 5 -or @(Compare-Object ($daisyNames | Sort-Object) ($daisyProperties.Name | Sort-Object) -CaseSensitive).Count -ne 0) { throw 'Unexpected DAISY schema inventory.' }
+          $daisyEvidence = @()
+          foreach ($property in $daisyProperties) {
+            $schemaPath = Join-Path $daisySchemas $property.Name
+            Invoke-WebRequest -Uri $property.Value.url -OutFile $schemaPath -TimeoutSec 60
+            $digest = (Get-FileHash -LiteralPath $schemaPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ((Get-Item -LiteralPath $schemaPath).Length -ne $property.Value.size -or $digest -ne $property.Value.sha256) { throw ('DAISY validation schema differs from its pin: ' + $property.Name) }
+            $daisyEvidence += @{ name=$property.Name; bytes=$property.Value.size; sha256=$digest; url=$property.Value.url }
+          }
+          "CARR_DAISY_SCHEMAS=$daisySchemas" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          @{ status='PASS'; schema_pin_sha256=(Get-FileHash -LiteralPath 'packaging/daisy-validation-schemas.json' -Algorithm SHA256).Hash.ToLowerInvariant(); schemas=$daisyEvidence; acquisition='explicit before offline firewall'; bundled=$false } | ConvertTo-Json -Depth 5 | Set-Content 'ci-results/daisy-schema-acquisition.json'
+
+          # Acquire the pinned compiler before any installed-runtime egress block.
+          $innoRoot = Join-Path $env:RUNNER_TEMP 'carr-standard-inno'
+          & ./packaging/windows_installer/prepare_inno.ps1 -OutputDirectory $innoRoot
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath (Join-Path $innoRoot 'toolchain-receipt.json') -PathType Leaf)) { throw 'Pinned Inno acquisition failed.' }
+          "CARR_CI_INNO_ROOT=$innoRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Copy-Item -LiteralPath (Join-Path $innoRoot 'toolchain-receipt.json') -Destination 'ci-results/standard-inno-toolchain.json'
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        # Exact c112 bundle acceptance reached 93% after 18 minutes, with
-        # 1,648 real cases and no observed failure before its superseding commit.
-        # Keep every case; allow the final source-lineage and seal checks to finish.
-        timeout-minutes: 35
+        # Retain all installed cases and seals; the optional56 trust/native gates
+        # and mandatory format/reader coverage add work to the previously35-minute lane.
+        # Individual process/test budgets remain unchanged.
+        timeout-minutes: 45
         run: |
           if (!(Test-Path -LiteralPath $env:CARR_PUBLISHING_AUDIO_DIR -PathType Container) -or !(Test-Path -LiteralPath $env:CARR_EPUBCHECK_JAVA -PathType Leaf) -or !(Test-Path -LiteralPath $env:CARR_EPUBCHECK_ARCHIVE -PathType Leaf)) { throw 'Explicit pinned publication test runtime preparation did not complete.' }
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -473,7 +585,7 @@ jobs:
           $nativeBundle = Join-Path $bundleWork 'native bundle'
           $bundle = Join-Path $bundleWork 'complete bundle'
           New-Item -ItemType Directory -Force $wheelhouse, $applicationWheels | Out-Null
-          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-cp311.lock --dest $wheelhouse
+          & $env:CARR_PYTHON -m pip download --only-binary=:all: --no-deps --require-hashes -r packaging/windows-semantic-trusted-cp311.lock --dest $wheelhouse
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -m pip wheel --no-deps --wheel-dir $applicationWheels .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -524,7 +636,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $sourceCommit = (git rev-parse HEAD).Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-cp311.lock --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --sbom packaging/windows-semantic-sbom.cdx.json --native-launcher $launcher --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
+          & $env:CARR_PYTHON packaging/build_windows_bundle.py --wheel $applicationWheel --wheelhouse $wheelhouse --lock packaging/windows-semantic-trusted-cp311.lock --python-archive $pythonArchive --model-dir $env:CARR_CI_MODEL_DIR --model-manifest $env:CARR_CI_MODEL_MANIFEST --ocr-dir $ocr --ocr-source-archive $ocrSource --source-commit $sourceCommit --sbom packaging/windows-semantic-trusted-sbom.cdx.json --trusted-client --launcher-dir $launcherOutput --output $baseBundle | Tee-Object 'ci-results/full-bundle-build.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON packaging/add_native_runtime.py --bundle $baseBundle --native-runtime $nativeRuntime --output $nativeBundle | Tee-Object 'ci-results/full-bundle-native-runtime.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -539,7 +651,7 @@ jobs:
             if (!(Test-Path -LiteralPath $metadata -PathType Leaf)) { throw "Missing sealed metadata: $relative" }
             Copy-Item -LiteralPath $metadata -Destination (Join-Path $manifestEvidence (Split-Path $relative -Leaf))
           }
-          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-sbom.cdx.json').Hash.ToLowerInvariant()
+          $expectedSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath 'packaging/windows-semantic-trusted-sbom.cdx.json').Hash.ToLowerInvariant()
           $sealedSbom = Join-Path $bundle 'runtime-sbom.cdx.json'
           if (!(Test-Path -LiteralPath $sealedSbom -PathType Leaf)) { throw 'Missing sealed SBOM' }
           $actualSbom = (Get-FileHash -Algorithm SHA256 -LiteralPath $sealedSbom).Hash.ToLowerInvariant()
@@ -558,7 +670,9 @@ jobs:
             (Join-Path $bundle 'audio-runtime/bin/ffmpeg.exe'), (Join-Path $bundle 'audio-runtime/bin/ffprobe.exe'),
             (Join-Path $bundle 'audio-runtime/bin/ffplay.exe'),
             (Join-Path $env:CARR_PUBLISHING_AUDIO_DIR 'bin/ffmpeg.exe'),
-            (Join-Path $env:CARR_PUBLISHING_AUDIO_DIR 'bin/ffprobe.exe'), $env:CARR_EPUBCHECK_JAVA) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+            (Join-Path $env:CARR_PUBLISHING_AUDIO_DIR 'bin/ffprobe.exe'), $env:CARR_EPUBCHECK_JAVA,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -606,7 +720,7 @@ jobs:
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_bibliography_interchange_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-bibliography-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
-          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
+          & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime'] and manifest['bundled_launcher'] and manifest['bundled_trusted_client']; assert 'runtime-sbom.cdx.json' in manifest['files']; assert (root/'runtime-sbom.cdx.json').read_bytes()==pathlib.Path('packaging/windows-semantic-trusted-sbom.cdx.json').read_bytes(); print(json.dumps(dict(status='PASS',runtime_sbom='VERIFIED',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -614,6 +728,37 @@ jobs:
           # Test dependencies are installed only after production installation passes.
           & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Run the whole trust suite against this exact optional56 installed runtime.
+          # Packaging fixtures keep their real checkout/Git paths; runtime imports are
+          # hash-bound to this installed wheel before and after the strict child.
+          & $python -I -B scripts/installed_trusted_client_probe.py --report 'ci-results/full-bundle-trusted-client.xml' 2>&1 | Tee-Object 'ci-results/full-bundle-trusted-client.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'The actual optional bundle failed strict installed trust acceptance.' }
+          & $python -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path tests/ui/native_trust_status_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-trust-native.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'The actual optional bundle failed native signed-status acceptance.' }
+          $validateTrust = @'
+          import json, pathlib
+          reports = []
+          for line in pathlib.Path('ci-results/full-bundle-trust-native.txt').read_text(encoding='utf-8-sig').splitlines():
+              try:
+                  value = json.loads(line)
+              except ValueError:
+                  continue
+              if isinstance(value, dict) and 'production_authority' in value:
+                  reports.append(value)
+          assert len(reports) == 1, 'Native signed-status evidence is missing or ambiguous.'
+          report = reports[0]
+          required = set(["Actual desktop Help exposes the signed client status","Signed status uses the existing configurable keyboard registry","Repeated module installation does not duplicate the Help command","Native Help event reaches the status action","Default status is a named native read-only multiline control","Private default shows perpetual operation and no fake authority actions","Terms and profile are readable before accepting","Import requires explicit native checkbox acceptance","Native acceptance event enables import","Reviewed signed grant is durably verified"])
+          assert report['status'] == 'PASS' and required <= set(report['checks'])
+          assert report['nvda'] == 'NOT_RUN' and report['production_authority'] == 'NOT_CONFIGURED'
+          assert report['production_installer_upgrade'] == 'NOT_RUN'
+          origin = pathlib.Path(report['ui_module']).resolve(strict=True)
+          assert origin.is_relative_to(pathlib.Path(__import__('sys').prefix).resolve())
+          assert not origin.is_relative_to(pathlib.Path.cwd().resolve())
+          pathlib.Path('ci-results/full-bundle-trust-native.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+          $validateTrust | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Optional-bundle signed-status evidence is incomplete.' }
           # Exercise the installed shared transcription boundary with its explicit
           # synthetic worker after test dependencies are available and while
           # the same offline firewall rules remain active.
@@ -625,8 +770,84 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Installed native portable clip editing failed.' }
           & $python -I -B scripts/windows_publishing_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-publishing-native.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native EPUB publishing failed.' }
+          $verifyPublicationNative = @'
+          import json, pathlib, re
+          raw = pathlib.Path('ci-results/full-bundle-publishing-native.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'daisy_2_02_interchange' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Missing or ambiguous native publication report.'
+          report = reports[0]
+          assert report['result'] == 'PASS'
+          assert all(report[name] == 'PASS' for name in ('native_keyboard', 'daisy_2_02_interchange', 'measured_m4b_chapters', 'line_lrc'))
+          assert all(report[name] == 'NOT_RUN' for name in ('independent_daisy_validation', 'reader_interoperability', 'speech_quality', 'manual_keyboard', 'nvda'))
+          required = {'native export completed with a durable receipt',
+              'shared progress completes only after publication verification',
+              'native completion focuses readable publication status',
+              'native duplicate export cannot overwrite completed bytes',
+              'M4B carries actual measured chapter names and bounds',
+              'LRC retains measured line starts without inferred word timestamps',
+              'DAISY requires explicitly supplied publisher metadata',
+              'native DAISY export commits the second durable receipt',
+              'DAISY preserves exact script, measured audio and explicit publisher',
+              'native DAISY verification follows the selected receipt'}
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          pathlib.Path('ci-results/native-publication-formats.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(dict(status='PASS', required_checks=sorted(required), acoustic_quality='NOT_RUN', manual_nvda='NOT_RUN')), flush=True)
+          '@
+          $verifyPublicationNative | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Native DAISY, M4B and LRC evidence is incomplete.' }
           & $python -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json --report ci-results/full-bundle-epubcheck.json --require-installed 2>&1 | Tee-Object 'ci-results/full-bundle-epubcheck.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed EPUB3.3 conformance or invalid-mimetype control failed.' }
+          & $python -I -B scripts/daisy_schema_acceptance.py --schemas $env:CARR_DAISY_SCHEMAS --report ci-results/full-bundle-daisy.json --require-installed --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-daisy.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed DAISY DTD validation or invalid-XHTML control failed.' }
+          $verifyDaisy = @'
+          from hashlib import sha256
+          import importlib.metadata as metadata
+          import json, pathlib, platform, re, subprocess, sys
+          from lxml import etree
+          report = json.loads(pathlib.Path('ci-results/full-bundle-daisy.json').read_text(encoding='utf-8'))
+          pin = json.loads(pathlib.Path('packaging/daisy-validation-schemas.json').read_text(encoding='utf-8'))
+          expected_hashes = {name: item['sha256'] for name, item in pin['files'].items()}
+          assert len(expected_hashes) == 5
+          assert report['status'] == 'PASS' and report['installed_required'] is True
+          publications = report['publications']
+          expected_cases = {'narrated-from-wav', 'reused-job-mp3', 'untranscribed-retained-clip'}
+          assert len(publications) == 3 and {item['case'] for item in publications} == expected_cases
+          assert metadata.version('lxml') == '6.1.3' and tuple(etree.LXML_VERSION[:3]) == (6, 1, 3)
+          tool_path = pathlib.Path(etree.__file__).resolve(strict=True)
+          assert tool_path.is_relative_to(pathlib.Path(sys.prefix).resolve())
+          for item in publications:
+              assert item['status'] == 'PASS' and item['invalid_xhtml_rejected'] is True
+              assert item['schema_sha256'] == expected_hashes
+              assert item['lxml_version'] == list(etree.LXML_VERSION) and item['libxml_version'] == list(etree.LIBXML_VERSION)
+              documents = item['documents']
+              assert len(documents) == 4 and {row['file'] for row in documents} == {'ncc.html', 'content.html', 'source.html', 'book.smil'}
+              assert all(row['dtd_valid'] is True for row in documents)
+              assert re.fullmatch('[0-9a-f]{64}', item['publication_sha256'])
+              assert all(item[name] == 'NOT_RUN' for name in ('full_daisy_rule_conformance', 'reader_interoperability', 'nvda'))
+          for name, relative in (('publisher_module_sha256', 'studio/publishing.py'), ('daisy_module_sha256', 'studio/daisy.py')):
+              actual = sha256((pathlib.Path('src/carr_library') / relative).read_bytes()).hexdigest()
+              assert report[name] == actual and all(item[name] == actual for item in publications)
+          proof = dict(status='PASS', source_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+              source_tree=subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
+              python=sys.version, platform=platform.platform(), lxml_version=list(etree.LXML_VERSION),
+              libxml_version=list(etree.LIBXML_VERSION), lxml_module=str(tool_path),
+              lxml_module_sha256=sha256(tool_path.read_bytes()).hexdigest(),
+              core_lock_sha256=sha256(pathlib.Path('packaging/windows-cp311.lock').read_bytes()).hexdigest(),
+              schemas=expected_hashes, publication_cases=sorted(expected_cases), dtd_valid_documents=12,
+              invalid_xhtml_controls=3, audio_binaries=report['audio_binaries'],
+              full_daisy_rule_conformance='NOT_RUN', reader_interoperability='NOT_RUN', speech_quality='NOT_RUN', nvda='NOT_RUN')
+          pathlib.Path('ci-results/daisy-validation-proof.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
+          print(json.dumps(proof), flush=True)
+          '@
+          $verifyDaisy | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'DAISY validator identity or exact three-case evidence is incomplete.' }
           # Separate native-launch integrity from later test-owned child processes.
           # Keep the final seal check as an independent required delivery gate.
           & $bundledPython -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged before installed workflow tests')" $bundle | Tee-Object 'ci-results/full-bundle-pretest-seal.txt'
@@ -644,7 +865,7 @@ jobs:
           assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
           assert pathlib.Path(ocr_runtime.__file__).resolve().is_relative_to(root / '.venv')
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
-          assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']
+          assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime'] and manifest['bundled_launcher'] and manifest['bundled_trusted_client']
           # Test-only command discovery is scoped to this installed-package child.
           # Production calls bind the verified runtime and never mutate PATH.
           # Synthetic non-isolated descendants inherit this; production -I
@@ -662,17 +883,22 @@ jobs:
               assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           import importlib
           assistant_modules = ('carr_library.assistant.profiles', 'carr_library.assistant.providers', 'carr_library.assistant.state', 'carr_library.assistant.translation', 'carr_library.assistant.translation_cli', 'carr_library.assistant.llm', 'carr_library.assistant.service', 'carr_library.studio.cli', 'carr_library.ui.assistant_dialog', 'carr_library.ui.translation_dialog')
-          publication_modules = ('carr_library.studio.publishing', 'carr_library.ui.publishing_dialog', 'carr_library.ui.studio_dialog')
+          publication_modules = ('carr_library.studio.publishing', 'carr_library.ui.publishing_dialog', 'carr_library.ui.studio_dialog', 'carr_library.audio.audiobook', 'carr_library.audio.dsp', 'carr_library.studio.daisy')
           recording_modules = ('carr_library.audio.models', 'carr_library.audio.process', 'carr_library.audio.windows_job', 'carr_library.audio.cleanup', 'carr_library.audio.recording', 'carr_library.speech.runtime', 'carr_library.ui.recording_dialog', 'carr_library.ui.desktop_app')
           clip_modules = ('carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup', 'carr_library.backup_transcription', 'carr_library.backup_sidecars', 'carr_library.backup_producers', 'carr_library.durable_state')
-          reader_modules = ('carr_library.speech.reading', 'carr_library.speech.navigation', 'carr_library.ui.speech_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts')
+          reader_modules = ('carr_library.speech.reading', 'carr_library.speech.navigation', 'carr_library.ui.speech_dialog', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts', 'carr_library.ui.find_replace_dialog')
           integrity_modules = ('carr_library.audio_runtime', 'carr_library.research.export_file')
           incremental_modules = ('carr_library.incremental_backup', 'carr_library.incremental_backup_cli', 'carr_library.sync.vault', 'carr_library.file_publication', 'carr_library.ui.incremental_backup_dialog')
-          for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules):
+          operations_modules = ["carr_library.operations.models","carr_library.operations._locks","carr_library.operations.broker","carr_library.operations.facade","carr_library.operations.cli","carr_library.ui.operations_dialog"]
+          for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules):
               importlib.import_module(module_name)
           def installed_assistant_origins():
-              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules)}
+              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules)}
               assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in origins.values()), origins
+              from hashlib import sha256
+              for name in operations_modules:
+                  source = pathlib.Path.cwd() / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+                  assert sha256(pathlib.Path(origins[name]).read_bytes()).digest() == sha256(source.read_bytes()).digest(), name
               return origins
           print(json.dumps({'assistant_installed_origins': installed_assistant_origins()}), flush=True)
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
@@ -795,13 +1021,32 @@ jobs:
               'tests/storage/test_incremental_backup_cli.py',
               'tests/sync/test_vault.py',
               'tests/ui/test_incremental_backup_dialog.py',
+              'tests/audio/test_audiobook.py',
+              'tests/studio/test_audiobook_publication.py',
+              'tests/studio/test_daisy_publishing.py',
+              'tests/studio/test_daisy_boundaries.py',
+              'tests/studio/test_publishing_boundaries.py',
+              'tests/storage/test_backup_publication_formats.py',
+              'tests/ui/test_find_replace_hooks.py',
+              'tests/ui/test_reader_navigation_ui.py',
+              'tests/ui/test_find_replace_ui.py',
+              'tests/ui/test_find_replace.py',
+              'tests/operations/test_facade.py',
+              'tests/operations/test_import_admission.py',
+              'tests/operations/test_production_admission.py',
+              'tests/operations/test_resources.py',
+              'tests/operations/test_transcription_admission.py',
+              'tests/operations/test_current_union.py',
+              'tests/ui/test_operations_dialog.py',
+              'tests/ui/test_operations_policy.py',
+              'tests/e2e/test_operations_cli.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
           import xml.etree.ElementTree as ET
           publication_cases = list(ET.parse('ci-results/full-bundle-workflows.xml').iter('testcase'))
-          publication_expected = {'test_publishing': 48, 'test_publishing_cli': 5, 'test_publishing_handlers': 7}
+          publication_expected = {'test_publishing': 48, 'test_audiobook': 17, 'test_audiobook_publication': 1, 'test_daisy_publishing': 29, 'test_daisy_boundaries': 15, 'test_publishing_boundaries': 15, 'test_publishing_handlers': 12, 'test_publishing_cli': 7, 'test_backup_publication_formats': 8}
           publication_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in publication_expected}
           assert publication_counts == publication_expected, publication_counts
           clip_expected = {"test_clip_editing":20,"test_clip_restoration":16,"test_clip_dialog":35,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
@@ -822,6 +1067,9 @@ jobs:
           reader_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in reader_expected}
           reader_required = {"test_one_thousand_matching_pronunciation_rules_commit_one_undo_step", "test_literal_expansion_is_admitted_before_large_allocation_and_is_atomic", "test_regex_backreference_expansion_is_bounded_inside_the_real_child", "test_cancellation_during_many_literal_matches_leaves_the_copy_unchanged", "test_recovered_caret_roundtrips_native_crlf_and_surrogate_offsets", "test_completed_synthesis_rechecks_current_source_before_late_playback", "test_dictionary_requires_explicit_save_of_a_changed_rule_form_before_apply"}
           reader_seen = {case.get('name', '').split('[', 1)[0] for case in publication_cases}
+          find_expected_modules = ["test_find_replace_hooks","test_reader_navigation_ui","test_find_replace_ui","test_find_replace"]
+          find_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in find_expected_modules}
+          assert all(find_counts.values()), find_counts
           assert reader_counts == reader_expected and reader_required <= reader_seen, (reader_counts, sorted(reader_required - reader_seen))
           integrity_expected_modules = ('test_audio_runtime', 'test_audio_bundle', 'test_export_reconciliation')
           integrity_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in integrity_expected_modules}
@@ -831,6 +1079,12 @@ jobs:
           incremental_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in incremental_expected}
           assert all(incremental_counts.values()), incremental_counts
           print(json.dumps({'status': 'PASS', 'incremental_installed_counts': incremental_counts, 'canonical_format': 4}), flush=True)
+          operations_expected = {"test_facade":22,"test_import_admission":6,"test_production_admission":18,"test_resources":18,"test_transcription_admission":10,"test_current_union":11,"test_operations_dialog":13,"test_operations_policy":37,"test_operations_cli":5}
+          operations_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in operations_expected}
+          assert operations_counts == operations_expected, operations_counts
+          print(json.dumps({'status': 'PASS', 'operations_installed_counts': operations_counts,
+              'resource_measurement': 'Declared cooperative estimates; no measured hardware claim',
+              'manual_nvda': 'NOT_RUN'}), flush=True)
           installed_assistant_origins()
           kernel = ctypes.WinDLL('kernel32', use_last_error=True)
           kernel.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
@@ -875,6 +1129,90 @@ jobs:
           Copy-Item -LiteralPath $testedSealedWheel -Destination $testedWheel
           if ((Get-FileHash -LiteralPath $testedWheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $testedWheelHash) { throw 'Tested application wheel copy differs.' }
           @{ status='PASS'; source_commit=$sourceCommit; source_tree=$testedSourceTree; wheel=$wheels[0].Name; sha256=$testedWheelHash; bundle_manifest_sha256=(Get-FileHash -LiteralPath $testedManifestPath -Algorithm SHA256).Hash.ToLowerInvariant(); installed_bundle='PASS' } | ConvertTo-Json | Set-Content 'ci-results/tested-application-wheel.json'
+          # Retain the exact public-source PE and its original build receipt,
+          # plus only the five additional dependency wheels needed by the existing
+          # semantic parent. The full56 inventory remains independently sealed.
+          # These files are eligible for delivery only after overall workflow success.
+          $retainOptional = @'
+          import hashlib, importlib.metadata, json, pathlib, shutil, sys
+          from packaging.utils import canonicalize_name, parse_wheel_filename
+          sys.path.insert(0, str(pathlib.Path('packaging').resolve()))
+          from build_windows_bundle import read_lock, verify_native_launcher
+          bundle, compiled = map(pathlib.Path, sys.argv[1:3])
+          source_commit, source_tree = sys.argv[3:5]
+          manifest = json.loads((bundle / 'bundle-manifest.json').read_text(encoding='utf-8'))
+          assert manifest['source_commit'] == source_commit and manifest['source_tree'] == source_tree
+          assert manifest['bundled_trusted_client'] is True and manifest['bundled_launcher'] is True
+          def digest(path):
+              with path.open('rb') as stream:
+                  return hashlib.file_digest(stream, 'sha256').hexdigest()
+          def sealed(relative):
+              path = bundle / relative
+              value = digest(path)
+              assert manifest['files'][relative] == value, relative
+              return path, value
+          binary, receipt = verify_native_launcher(bundle, source_commit, receipt_name='native-launcher-build.json')
+          assert binary == (compiled / 'ResearchLibrary.exe').read_bytes()
+          assert receipt == (compiled / 'build-evidence.json').read_bytes()
+          launcher, launcher_hash = sealed('ResearchLibrary.exe')
+          build_receipt, receipt_hash = sealed('native-launcher-build.json')
+          retained_launcher = pathlib.Path('ci-results/tested-native-launcher')
+          retained_launcher.mkdir(exist_ok=False)
+          shutil.copyfile(launcher, retained_launcher / 'ResearchLibrary.exe')
+          shutil.copyfile(build_receipt, retained_launcher / 'build-evidence.json')
+          assert digest(retained_launcher / 'ResearchLibrary.exe') == launcher_hash
+          assert digest(retained_launcher / 'build-evidence.json') == receipt_hash
+          lock = pathlib.Path('packaging/windows-semantic-trusted-cp311.lock')
+          base_lock = pathlib.Path('packaging/windows-semantic-cp311.lock')
+          pins, previous = read_lock(lock), read_lock(base_lock)
+          extra = {'cffi', 'cryptography', 'pycparser', 'securesystemslib', 'tuf'}
+          assert len(pins) == 56 and len(previous) == 51 and set(pins) - set(previous) == extra
+          assert all(pins[name] == item for name, item in previous.items())
+          source_proof = json.loads((bundle / 'application-source.json').read_text(encoding='utf-8'))
+          assert source_proof['source_commit'] == source_commit and source_proof['source_tree'] == source_tree
+          rows, seen, application = [], set(), []
+          retained_dependencies = pathlib.Path('ci-results/tested-optional-wheels')
+          retained_dependencies.mkdir(exist_ok=False)
+          for path in sorted((bundle / 'wheelhouse').iterdir()):
+              assert path.is_file() and path.suffix == '.whl'
+              name, version, _, _ = parse_wheel_filename(path.name)
+              name = canonicalize_name(name)
+              relative = 'wheelhouse/' + path.name
+              _, value = sealed(relative)
+              if name not in pins:
+                  assert value == source_proof['wheel_sha256']
+                  application.append(path.name)
+                  continue
+              assert name not in seen and str(version) == pins[name][0] and value in pins[name][1]
+              assert importlib.metadata.version(name) == pins[name][0]
+              seen.add(name)
+              row = dict(name=name, version=str(version), filename=path.name, bytes=path.stat().st_size,
+                         sha256=value, retained=name in extra)
+              if name in extra:
+                  destination = retained_dependencies / path.name
+                  shutil.copyfile(path, destination)
+                  assert digest(destination) == value
+              rows.append(row)
+          assert seen == set(pins) and len(application) == 1 and len(list(retained_dependencies.iterdir())) == 5
+          sbom_path, sbom_hash = sealed('runtime-sbom.cdx.json')
+          assert sbom_path.read_bytes() == pathlib.Path('packaging/windows-semantic-trusted-sbom.cdx.json').read_bytes()
+          review_path, review_hash = sealed('trusted-client-dependencies.json')
+          assert review_path.read_bytes() == pathlib.Path('packaging/trusted-client-dependencies.json').read_bytes()
+          proof = dict(status='PASS', source_commit=source_commit, source_tree=source_tree,
+              bundle_manifest_sha256=digest(bundle / 'bundle-manifest.json'),
+              dependency_count=56, retained_optional_count=5, wheels=rows,
+              dependency_lock_sha256=digest(lock), semantic_parent_lock_sha256=digest(base_lock),
+              sbom_sha256=sbom_hash, dependency_review_sha256=review_hash,
+              application_wheel=application[0], application_wheel_sha256=source_proof['wheel_sha256'],
+              launcher_sha256=launcher_hash, native_build_receipt_sha256=receipt_hash,
+              launcher_qualification='Exact source-built PE passed native process and installed-launch probes',
+              production_issuer='UNCONFIGURED', authenticode='NOT_RUN', manual_nvda='NOT_RUN',
+              eligibility='Requires overall successful exact-head workflow; this receipt alone is not release approval')
+          pathlib.Path('ci-results/tested-optional-profile.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
+          print(json.dumps(proof), flush=True)
+          '@
+          $retainOptional | & $python -I -B - $bundle $launcherOutput $sourceCommit $testedSourceTree | Tee-Object 'ci-results/tested-optional-profile.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'The tested optional dependency closure or exact native launcher could not be retained.' }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
@@ -933,6 +1271,74 @@ jobs:
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
 
+      - name: Build pinned standard setup and execute actual install, repair and uninstall
+        if: ${{ !cancelled() && steps.complete_bundle.conclusion == 'success' }}
+        timeout-minutes: 20
+        shell: pwsh
+        working-directory: carr-library
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = $env:CARR_CI_BUNDLE
+          if (-not $bundle -or -not (Test-Path (Join-Path $bundle 'bundle-manifest.json') -PathType Leaf)) { throw 'The previously verified full bundle is required.' }
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          if (-not (Test-Path $python -PathType Leaf)) { throw 'The verified bundle must already be installed.' }
+          $identity = [Guid]::NewGuid().ToString('N')
+          $compilerRoot = $env:CARR_CI_INNO_ROOT
+          if (-not $compilerRoot -or -not (Test-Path (Join-Path $compilerRoot 'toolchain-receipt.json') -PathType Leaf)) { throw 'The previously verified pinned Inno toolchain is required.' }
+          $buildRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-setup-' + $identity)
+          $workRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-lifecycle-' + $identity)
+          $report = Join-Path (Resolve-Path 'ci-results').Path 'standard-installer'
+          $manifest = (Get-FileHash -LiteralPath (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+          & $python -I -B -X utf8 packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --installed-bundle --output $buildRoot --iscc (Join-Path $compilerRoot 'tools/ISCC.exe') --toolchain-receipt (Join-Path $compilerRoot 'toolchain-receipt.json') 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Dependency and compiler acquisition is complete; block the selected
+          # fixture's real setup, installed runtime and maintenance programs.
+          # This does not claim a whole-machine native network trace.
+          $installedRoot = Join-Path $workRoot 'Resonance installed Ω'
+          $programs = @($python, (Join-Path $bundle 'runtime/python.exe'),
+            (Join-Path $buildRoot 'compiled/ResonanceSetup.exe'),
+            (Join-Path $installedRoot 'app/runtime/python.exe'),
+            (Join-Path $installedRoot 'app/runtime/pythonw.exe'),
+            (Join-Path $installedRoot 'app/.venv/Scripts/python.exe'),
+            (Join-Path $installedRoot 'app/.venv/Scripts/pythonw.exe'),
+            (Join-Path $installedRoot 'app/ResearchLibrary.exe'),
+            (Join-Path $installedRoot 'unins000.exe'),
+            (Join-Path $installedRoot 'maintenance/ResonanceSetup.exe'),
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) |
+            ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Select-Object -Unique
+          $rulePrefix = 'CARR-standard-native-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Standard native acceptance requires active firewall profiles.' }
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Standard native outbound rules are incomplete.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Standard native rules do not cover every selected runtime.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='selected setup/runtime/maintenance paths; no whole-machine trace claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-results/standard-installer-firewall.json'
+          & $python -I -B -X utf8 scripts/windows_standard_installer_smoke.py --setup (Join-Path $buildRoot 'compiled/ResonanceSetup.exe') --build-evidence (Join-Path $buildRoot 'setup-build.json') --work $workRoot --report $report 2>&1 | Tee-Object 'ci-results/standard-installer-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $result = Get-Content (Join-Path $report 'result.json') -Raw | ConvertFrom-Json
+          $build = Get-Content (Join-Path $buildRoot 'setup-build.json') -Raw | ConvertFrom-Json
+          if ($result.status -ne 'PASS' -or -not $result.actual_inno_install -or -not $result.actual_repair -or -not $result.actual_uninstall -or -not $result.live_job_preserved -or -not $result.populated_library_bytes_preserved -or -not $result.fresh_shortcut_collision_refused -or -not $result.uninstaller_wrapper_removed) { throw 'The complete native standard installation lifecycle did not pass.' }
+          if ($result.bundle_manifest_sha256 -ne $manifest -or $result.setup_sha256 -ne $build.setup_sha256 -or $result.source_commit -ne $build.source_commit) { throw 'Native lifecycle evidence is not bound to this exact setup and source.' }
+          if ($result.authenticode_verified -or $result.nvda_verified -or $result.native_network_trace -ne 'NOT_RUN' -or $result.unprivileged_account_qualification -ne 'NOT_RUN') { throw 'This gate cannot claim unrelated release qualifications.' }
+          Copy-Item (Join-Path $buildRoot 'setup-build.json') (Join-Path $report 'setup-build.json')
+          Copy-Item (Join-Path $compilerRoot 'toolchain-receipt.json') (Join-Path $report 'toolchain-receipt.json')
+      
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+
       - name: Publish public phase diagnostics before extended source acceptance
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -943,16 +1349,18 @@ jobs:
             carr-library/ci-results/*.log
             carr-library/ci-results/*.json
             carr-library/ci-results/*.xml
+            carr-library/ci-results/standard-installer/*.json
           if-no-files-found: warn
           retention-days: 3
 
-      # Evidence and exact public-source Python wheel only: no model, native DLLs, OCR source payload, or user documents
-      # are uploaded. NVDA and final-download identity remain separate acceptance.
+      # Retain reports, the exact tested application wheel/source-built PE and five optional
+      # public dependency wheels only; no model, native DLLs, audio or OCR source payload,
+      # Setup binary or user documents. Overall success and release qualifications remain required.
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        # Run 45965036727/job140391587252 needed 24m35s for 257 suites.
-        # Add room for the new suites; each suite keeps its existing 600s limit.
-        timeout-minutes: 35
+        # Run 45971365426/job140412333419 took31m13s for257 suites (09:33:17–10:04:30).
+        # The new304 selectors retain600s per suite and jobs3; only aggregate headroom changes.
+        timeout-minutes: 45
         run: |
           $suites = @(
             'tests/e2e/test_import_progress.py',
@@ -1221,7 +1629,44 @@ jobs:
             'tests/storage/test_incremental_backup.py',
             'tests/storage/test_incremental_backup_cli.py',
             'tests/sync/test_vault.py',
-            'tests/ui/test_incremental_backup_dialog.py'
+            'tests/ui/test_incremental_backup_dialog.py',
+            'tests/audio/test_audiobook.py',
+            'tests/studio/test_audiobook_publication.py',
+            'tests/studio/test_daisy_publishing.py',
+            'tests/studio/test_daisy_boundaries.py',
+            'tests/studio/test_publishing_boundaries.py',
+            'tests/storage/test_backup_publication_formats.py',
+            'tests/packaging/test_managed_launch_boundary.py',
+            'tests/packaging/test_managed_update_native_policy.py',
+            'tests/packaging/test_native_launcher_bundle.py',
+            'tests/packaging/test_standard_installer.py',
+            'tests/security/test_anchor_locking.py',
+            'tests/security/test_canonical_boundary.py',
+            'tests/security/test_controller.py',
+            'tests/security/test_entitlements.py',
+            'tests/security/test_idle_renewal.py',
+            'tests/security/test_independent_review_boundaries.py',
+            'tests/security/test_installation.py',
+            'tests/security/test_managed_installation.py',
+            'tests/security/test_managed_registration.py',
+            'tests/security/test_publication_integrity.py',
+            'tests/security/test_refresh.py',
+            'tests/security/test_updates.py',
+            'tests/ui/test_trust_status_handlers.py',
+            'tests/security/test_windows_vault.py',
+            'tests/ui/test_find_replace_hooks.py',
+            'tests/ui/test_reader_navigation_ui.py',
+            'tests/ui/test_find_replace_ui.py',
+            'tests/ui/test_find_replace.py',
+            'tests/operations/test_facade.py',
+            'tests/operations/test_import_admission.py',
+            'tests/operations/test_production_admission.py',
+            'tests/operations/test_resources.py',
+            'tests/operations/test_transcription_admission.py',
+            'tests/operations/test_current_union.py',
+            'tests/ui/test_operations_dialog.py',
+            'tests/ui/test_operations_policy.py',
+            'tests/e2e/test_operations_cli.py'
           )
           $previousPath = $env:PATH
           $previousOcr = $env:CARR_OCR_DIR
@@ -1236,6 +1681,7 @@ jobs:
             $env:PATH = "$audioBin;$env:CARR_CI_OCR_DIR;$previousPath"
             $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
             $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+            # All newly integrated reader/Find and trust modules remain whole-module strict gates.
             # The actual Windows run completed this suite alone in 208 seconds;
             # another run reached its unchanged 600-second bound alongside other suites.
             $academicSuite = 'tests/research/test_academic_library.py'
@@ -1246,6 +1692,21 @@ jobs:
             & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @parallelSuites 2>&1 | Tee-Object -Append 'ci-results/integrated-tests.txt'
             $parallelExit = $LASTEXITCODE
             if ($academicExit -ne 0 -or $parallelExit -ne 0) { exit 1 }
+            $operationsCounts = @{
+              'tests/operations/test_facade.py' = 22
+              'tests/operations/test_import_admission.py' = 6
+              'tests/operations/test_production_admission.py' = 18
+              'tests/operations/test_resources.py' = 18
+              'tests/operations/test_transcription_admission.py' = 10
+              'tests/operations/test_current_union.py' = 11
+              'tests/ui/test_operations_dialog.py' = 13
+              'tests/ui/test_operations_policy.py' = 37
+              'tests/e2e/test_operations_cli.py' = 5
+            }
+            foreach ($entry in $operationsCounts.GetEnumerator()) {
+              $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+              if (@(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern $pattern).Count -ne 1) { throw ('Required operations case inventory differs: ' + $entry.Key) }
+            }
             $speechVerdict = @(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
             if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
             $readerExpected = @{
@@ -1257,6 +1718,20 @@ jobs:
               $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
               $verdict = @(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern $pattern)
               if ($verdict.Count -ne 1) { throw ("Required reader coverage differs: " + $entry.Key) }
+            }
+            $formatExpected = @{
+              'tests/audio/test_audiobook.py' = 17
+              'tests/studio/test_audiobook_publication.py' = 1
+              'tests/studio/test_daisy_publishing.py' = 29
+              'tests/studio/test_daisy_boundaries.py' = 15
+              'tests/studio/test_publishing_boundaries.py' = 15
+              'tests/studio/test_publishing_handlers.py' = 12
+              'tests/studio/test_publishing_cli.py' = 7
+              'tests/storage/test_backup_publication_formats.py' = 8
+            }
+            foreach ($entry in $formatExpected.GetEnumerator()) {
+              $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+              if (@(Select-String -LiteralPath 'ci-results/integrated-tests.txt' -Pattern $pattern).Count -ne 1) { throw ("Required publication-format coverage differs: " + $entry.Key) }
             }
           } finally {
             $env:PATH = $previousPath

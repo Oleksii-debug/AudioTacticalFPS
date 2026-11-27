@@ -1,0 +1,5 @@
+# Build-host-only native-runtime extraction; never an added application component.
+# PyPI official file: zstandard-0.25.0-cp311-cp311-win_amd64.whl
+# https://pypi.org/project/zstandard/0.25.0/#files (retrieved 2026-11-27)
+zstandard==0.25.0 \
+    --hash=sha256:daab68faadb847063d0c56f361a289c4f268706b598afbf9ad113cbe5c38b6b2

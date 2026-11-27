@@ -91,6 +91,7 @@ jobs:
           import carr_library.speech.runtime, carr_library.acquisition.providers, carr_library.academic_integration.doi
           import carr_library.speech.session
           import carr_library.speech.navigation, carr_library.ui.pronunciation_dialog, carr_library.ui.reading_shortcuts
+          import carr_library.ui.find_replace_dialog
           import carr_library.audio_runtime, carr_library.research.export_file
           import carr_library.incremental_backup, carr_library.incremental_backup_cli, carr_library.sync.vault, carr_library.file_publication, carr_library.ui.incremental_backup_dialog
           import carr_library.extract.ocr_runtime
@@ -109,7 +110,7 @@ jobs:
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.acquisition.providers', 'carr_library.academic_integration.doi',
                    'carr_library.speech.session',
-                   'carr_library.speech.navigation', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts',
+                   'carr_library.speech.navigation', 'carr_library.ui.pronunciation_dialog', 'carr_library.ui.reading_shortcuts', 'carr_library.ui.find_replace_dialog',
                    'carr_library.audio_runtime', 'carr_library.research.export_file',
                    'carr_library.incremental_backup', 'carr_library.incremental_backup_cli', 'carr_library.sync.vault', 'carr_library.file_publication', 'carr_library.ui.incremental_backup_dialog',
                    'carr_library.extract.ocr_runtime',
@@ -175,7 +176,11 @@ jobs:
                     'tests/storage/test_incremental_backup.py',
                     'tests/storage/test_incremental_backup_cli.py',
                     'tests/sync/test_vault.py',
-                    'tests/ui/test_incremental_backup_dialog.py']
+                    'tests/ui/test_incremental_backup_dialog.py',
+                    'tests/ui/test_find_replace_hooks.py',
+                    'tests/ui/test_reader_navigation_ui.py',
+                    'tests/ui/test_find_replace_ui.py',
+                    'tests/ui/test_find_replace.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
                                '--junitxml=' + str(report), *suites], plugins=[policy])
@@ -198,7 +203,9 @@ jobs:
           reader_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in reader_expected}
           reader_required = {"test_one_thousand_matching_pronunciation_rules_commit_one_undo_step", "test_literal_expansion_is_admitted_before_large_allocation_and_is_atomic", "test_regex_backreference_expansion_is_bounded_inside_the_real_child", "test_cancellation_during_many_literal_matches_leaves_the_copy_unchanged", "test_recovered_caret_roundtrips_native_crlf_and_surrogate_offsets", "test_completed_synthesis_rechecks_current_source_before_late_playback", "test_dictionary_requires_explicit_save_of_a_changed_rule_form_before_apply"}
           reader_seen = {case.get('name', '').split('[', 1)[0] for case in cases}
-          reader_complete = reader_counts == reader_expected and reader_required <= reader_seen
+          find_expected_modules = ["test_find_replace_hooks","test_reader_navigation_ui","test_find_replace_ui","test_find_replace"]
+          find_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in find_expected_modules}
+          reader_complete = reader_counts == reader_expected and reader_required <= reader_seen and all(find_counts.values())
           integrity_modules = ('test_audio_runtime', 'test_audio_bundle', 'test_export_reconciliation')
           integrity_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in integrity_modules}
           incremental_expected = ('test_incremental_backup', 'test_incremental_backup_cli', 'test_vault', 'test_incremental_backup_dialog')
@@ -208,7 +215,7 @@ jobs:
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), portable_complete=portable_complete, portable_cases=len(portable),
                         recovery_counts=recovery_counts, reader_complete=reader_complete,
-                        reader_counts=reader_counts, reader_required=sorted(reader_required),
+                        reader_counts=reader_counts, reader_required=sorted(reader_required), find_counts=find_counts,
                         audio_export_integrity_counts=integrity_counts, incremental_counts=incremental_counts,
                         ocr_inventory_cases=sorted(ocr_cases),
                         ocr_inventory_exact=ocr_exact, state_inventory_exact=state_inventory_exact,
@@ -279,6 +286,24 @@ jobs:
           "CARR_EPUBCHECK_ARCHIVE=$epubcheckArchive" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "CARR_EPUBCHECK_JAVA=$epubJava" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           @{ status='PASS'; validator='EPUBCheck5.3.0'; epub_specification='3.3'; archive_sha256=$pin.sha256; java=$epubJava; java_version=$epubJavaVersion; java_sha256=(Get-FileHash -LiteralPath $epubJava -Algorithm SHA256).Hash.ToLowerInvariant(); acquisition='explicit before offline firewall'; bundled=$false } | ConvertTo-Json -Depth 4 | Set-Content 'ci-v3-results/epubcheck-test-runtime.json'
+          # Explicit test-only DTD acquisition finishes before the existing egress firewall.
+          # The validator uses the already hash-pinned lxml 6.1.3; no runtime downgrade or bundled schemas.
+          $daisySchemas = Join-Path $env:RUNNER_TEMP 'carr-daisy-validation-schemas'
+          New-Item -ItemType Directory -Force $daisySchemas | Out-Null
+          $daisyPin = Get-Content -LiteralPath 'packaging/daisy-validation-schemas.json' -Raw | ConvertFrom-Json
+          $daisyNames = @('SMIL10.dtd', 'xhtml-lat1.ent', 'xhtml-special.ent', 'xhtml-symbol.ent', 'xhtml1-transitional.dtd')
+          $daisyProperties = @($daisyPin.files.PSObject.Properties)
+          if ($daisyPin.schema -ne 1 -or $daisyProperties.Count -ne 5 -or @(Compare-Object ($daisyNames | Sort-Object) ($daisyProperties.Name | Sort-Object) -CaseSensitive).Count -ne 0) { throw 'Unexpected DAISY schema inventory.' }
+          $daisyEvidence = @()
+          foreach ($property in $daisyProperties) {
+            $schemaPath = Join-Path $daisySchemas $property.Name
+            Invoke-WebRequest -Uri $property.Value.url -OutFile $schemaPath -TimeoutSec 60
+            $digest = (Get-FileHash -LiteralPath $schemaPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ((Get-Item -LiteralPath $schemaPath).Length -ne $property.Value.size -or $digest -ne $property.Value.sha256) { throw ('DAISY validation schema differs from its pin: ' + $property.Name) }
+            $daisyEvidence += @{ name=$property.Name; bytes=$property.Value.size; sha256=$digest; url=$property.Value.url }
+          }
+          "CARR_DAISY_SCHEMAS=$daisySchemas" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          @{ status='PASS'; schema_pin_sha256=(Get-FileHash -LiteralPath 'packaging/daisy-validation-schemas.json' -Algorithm SHA256).Hash.ToLowerInvariant(); schemas=$daisyEvidence; acquisition='explicit before offline firewall'; bundled=$false } | ConvertTo-Json -Depth 5 | Set-Content 'ci-v3-results/daisy-schema-acquisition.json'
       - name: Real native SAPI, scene production, keyboard controls and restart
         run: |
           $python = (Get-Command python.exe).Source
@@ -317,7 +342,7 @@ jobs:
       - name: Require publication, recording, portable clip and reader source contracts
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' }}
         run: |
-          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
+          python scripts/ci_check.py tests/studio/test_publishing.py tests/studio/test_publishing_cli.py tests/studio/test_publishing_handlers.py tests/packaging/test_prepare_windows_audio.py tests/audio/test_recording.py tests/audio/test_recording_cleanup.py tests/audio/test_recording_compatibility.py tests/audio/test_recording_export.py tests/ui/test_recording_dialog.py tests/audio/test_audio_process.py tests/audio/test_publication_fsync.py tests/audio/test_dsp.py tests/studio/test_production_cancellation_outcomes.py tests/speech/test_runtime.py tests/speech/test_python_helper.py tests/audio/test_windows_audio_ownership.py tests/studio/test_clip_editing.py tests/studio/test_clip_restoration.py tests/studio/test_clip_dialog.py tests/studio/test_clip_cli.py tests/storage/test_state_clip_inputs.py tests/studio/test_studio_controller.py tests/speech/test_reader_usability.py tests/speech/test_navigation.py tests/packaging/test_audio_runtime.py tests/packaging/test_audio_bundle.py tests/reader/test_export_reconciliation.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py tests/ui/test_keyboard_manager.py tests/ui/test_progress_voice_actions.py tests/storage/test_incremental_backup.py tests/storage/test_incremental_backup_cli.py tests/sync/test_vault.py tests/ui/test_incremental_backup_dialog.py tests/audio/test_audiobook.py tests/studio/test_audiobook_publication.py tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/studio/test_publishing_boundaries.py tests/storage/test_backup_publication_formats.py 2>&1 | Tee-Object 'ci-v3-results/strict-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $speechVerdict = @(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern '^PASS: tests/speech/test_runtime\.py: junit_passed=13, failed=0, skipped=0, pytest_exit=0$')
           if ($speechVerdict.Count -ne 1) { throw 'All 12 shared speech cases and the actual Windows SAPI case are required.' }
@@ -330,6 +355,20 @@ jobs:
             $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
             $verdict = @(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern $pattern)
             if ($verdict.Count -ne 1) { throw ("Required reader coverage differs: " + $entry.Key) }
+          }
+          $formatExpected = @{
+            'tests/audio/test_audiobook.py' = 17
+            'tests/studio/test_audiobook_publication.py' = 1
+            'tests/studio/test_daisy_publishing.py' = 29
+            'tests/studio/test_daisy_boundaries.py' = 15
+            'tests/studio/test_publishing_boundaries.py' = 15
+            'tests/studio/test_publishing_handlers.py' = 12
+            'tests/studio/test_publishing_cli.py' = 7
+            'tests/storage/test_backup_publication_formats.py' = 8
+          }
+          foreach ($entry in $formatExpected.GetEnumerator()) {
+            $pattern = '^PASS: ' + [regex]::Escape($entry.Key) + ': junit_passed=' + $entry.Value + ', failed=0, skipped=0, pytest_exit=0$'
+            if (@(Select-String -LiteralPath 'ci-v3-results/strict-publication.txt' -Pattern $pattern).Count -ne 1) { throw ("Required publication-format coverage differs: " + $entry.Key) }
           }
       - name: Verify installed publication, recording, clips and EPUB3.3 without egress
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.publication-audio-runtime.outcome == 'success' && steps.epubcheck-runtime.outcome == 'success' }}
@@ -374,7 +413,8 @@ jobs:
           names = ('carr_library.studio.publishing', 'carr_library.ui.publishing_dialog',
                    'carr_library.studio.cli', 'carr_library.ui.studio_dialog',
                    'carr_library.audio.models', 'carr_library.audio.process', 'carr_library.audio.windows_job', 'carr_library.audio.cleanup', 'carr_library.audio.recording', 'carr_library.speech.runtime', 'carr_library.ui.recording_dialog', 'carr_library.ui.desktop_app',
-                   'carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup')
+                   'carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup',
+                    'carr_library.audio.audiobook', 'carr_library.audio.dsp', 'carr_library.studio.daisy', 'carr_library.backup_producers', 'carr_library.backup_sidecars')
           for name in names:
               importlib.import_module(name)
           def installed_origins():
@@ -394,14 +434,20 @@ jobs:
           suites = ['tests/studio/test_publishing.py', 'tests/studio/test_publishing_cli.py',
                     'tests/studio/test_publishing_handlers.py',
                     'tests/audio/test_recording.py', 'tests/audio/test_recording_cleanup.py', 'tests/audio/test_recording_compatibility.py', 'tests/audio/test_recording_export.py', 'tests/ui/test_recording_dialog.py', 'tests/audio/test_audio_process.py', 'tests/audio/test_publication_fsync.py', 'tests/audio/test_dsp.py', 'tests/studio/test_production_cancellation_outcomes.py', 'tests/speech/test_runtime.py', 'tests/speech/test_python_helper.py', 'tests/audio/test_windows_audio_ownership.py',
-                    'tests/studio/test_clip_editing.py', 'tests/studio/test_clip_restoration.py', 'tests/studio/test_clip_dialog.py', 'tests/studio/test_clip_cli.py', 'tests/storage/test_state_clip_inputs.py', 'tests/studio/test_studio_controller.py']
+                    'tests/studio/test_clip_editing.py', 'tests/studio/test_clip_restoration.py', 'tests/studio/test_clip_dialog.py', 'tests/studio/test_clip_cli.py', 'tests/storage/test_state_clip_inputs.py', 'tests/studio/test_studio_controller.py',
+                    'tests/audio/test_audiobook.py',
+                    'tests/studio/test_audiobook_publication.py',
+                    'tests/studio/test_daisy_publishing.py',
+                    'tests/studio/test_daisy_boundaries.py',
+                    'tests/studio/test_publishing_boundaries.py',
+                    'tests/storage/test_backup_publication_formats.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
                                '--import-mode=importlib', '--junitxml=' + str(report), *suites],
                               plugins=[policy])
           cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
-          expected = {'test_publishing': 48, 'test_publishing_cli': 5, 'test_publishing_handlers': 7}
+          expected = {'test_publishing': 48, 'test_audiobook': 17, 'test_audiobook_publication': 1, 'test_daisy_publishing': 29, 'test_daisy_boundaries': 15, 'test_publishing_boundaries': 15, 'test_publishing_handlers': 12, 'test_publishing_cli': 7, 'test_backup_publication_formats': 8}
           counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in expected}
           required = {'test_actual_ffmpeg_completed_job_to_verified_epub',
                       'test_published_epub_import_and_read_keep_derivative_bytes_unverified',
@@ -444,8 +490,84 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native portable clip editing failed.' }
             & $python -I -B scripts/windows_publishing_smoke.py --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/native-publishing.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Actual installed native EPUB publication failed.' }
+            $verifyPublicationNative = @'
+          import json, pathlib, re
+          raw = pathlib.Path('ci-v3-results/native-publishing.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'daisy_2_02_interchange' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Missing or ambiguous native publication report.'
+          report = reports[0]
+          assert report['result'] == 'PASS'
+          assert all(report[name] == 'PASS' for name in ('native_keyboard', 'daisy_2_02_interchange', 'measured_m4b_chapters', 'line_lrc'))
+          assert all(report[name] == 'NOT_RUN' for name in ('independent_daisy_validation', 'reader_interoperability', 'speech_quality', 'manual_keyboard', 'nvda'))
+          required = {'native export completed with a durable receipt',
+              'shared progress completes only after publication verification',
+              'native completion focuses readable publication status',
+              'native duplicate export cannot overwrite completed bytes',
+              'M4B carries actual measured chapter names and bounds',
+              'LRC retains measured line starts without inferred word timestamps',
+              'DAISY requires explicitly supplied publisher metadata',
+              'native DAISY export commits the second durable receipt',
+              'DAISY preserves exact script, measured audio and explicit publisher',
+              'native DAISY verification follows the selected receipt'}
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          pathlib.Path('ci-v3-results/native-publication-formats.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(dict(status='PASS', required_checks=sorted(required), acoustic_quality='NOT_RUN', manual_nvda='NOT_RUN')), flush=True)
+          '@
+            $verifyPublicationNative | & $python -I -B -
+            if ($LASTEXITCODE -ne 0) { throw 'Native DAISY, M4B and LRC evidence is incomplete.' }
             & $python -I -B scripts/epubcheck_acceptance.py --archive $env:CARR_EPUBCHECK_ARCHIVE --java $env:CARR_EPUBCHECK_JAVA --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json --report ci-v3-results/epubcheck-installed.json --require-installed 2>&1 | Tee-Object 'ci-v3-results/epubcheck-installed.txt'
             if ($LASTEXITCODE -ne 0) { throw 'Installed EPUB3.3 conformance or invalid-mimetype control failed.' }
+            & $python -I -B scripts/daisy_schema_acceptance.py --schemas $env:CARR_DAISY_SCHEMAS --report ci-v3-results/daisy-installed.json --require-installed --audio-directory $env:CARR_V3_PUBLICATION_AUDIO --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-v3-results/daisy-installed.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Installed DAISY DTD validation or invalid-XHTML control failed.' }
+            $verifyDaisy = @'
+          from hashlib import sha256
+          import importlib.metadata as metadata
+          import json, pathlib, platform, re, subprocess, sys
+          from lxml import etree
+          report = json.loads(pathlib.Path('ci-v3-results/daisy-installed.json').read_text(encoding='utf-8'))
+          pin = json.loads(pathlib.Path('packaging/daisy-validation-schemas.json').read_text(encoding='utf-8'))
+          expected_hashes = {name: item['sha256'] for name, item in pin['files'].items()}
+          assert len(expected_hashes) == 5
+          assert report['status'] == 'PASS' and report['installed_required'] is True
+          publications = report['publications']
+          expected_cases = {'narrated-from-wav', 'reused-job-mp3', 'untranscribed-retained-clip'}
+          assert len(publications) == 3 and {item['case'] for item in publications} == expected_cases
+          assert metadata.version('lxml') == '6.1.3' and tuple(etree.LXML_VERSION[:3]) == (6, 1, 3)
+          tool_path = pathlib.Path(etree.__file__).resolve(strict=True)
+          assert tool_path.is_relative_to(pathlib.Path(sys.prefix).resolve())
+          for item in publications:
+              assert item['status'] == 'PASS' and item['invalid_xhtml_rejected'] is True
+              assert item['schema_sha256'] == expected_hashes
+              assert item['lxml_version'] == list(etree.LXML_VERSION) and item['libxml_version'] == list(etree.LIBXML_VERSION)
+              documents = item['documents']
+              assert len(documents) == 4 and {row['file'] for row in documents} == {'ncc.html', 'content.html', 'source.html', 'book.smil'}
+              assert all(row['dtd_valid'] is True for row in documents)
+              assert re.fullmatch('[0-9a-f]{64}', item['publication_sha256'])
+              assert all(item[name] == 'NOT_RUN' for name in ('full_daisy_rule_conformance', 'reader_interoperability', 'nvda'))
+          for name, relative in (('publisher_module_sha256', 'studio/publishing.py'), ('daisy_module_sha256', 'studio/daisy.py')):
+              actual = sha256((pathlib.Path('src/carr_library') / relative).read_bytes()).hexdigest()
+              assert report[name] == actual and all(item[name] == actual for item in publications)
+          proof = dict(status='PASS', source_commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+              source_tree=subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
+              python=sys.version, platform=platform.platform(), lxml_version=list(etree.LXML_VERSION),
+              libxml_version=list(etree.LIBXML_VERSION), lxml_module=str(tool_path),
+              lxml_module_sha256=sha256(tool_path.read_bytes()).hexdigest(),
+              core_lock_sha256=sha256(pathlib.Path('packaging/windows-cp311.lock').read_bytes()).hexdigest(),
+              schemas=expected_hashes, publication_cases=sorted(expected_cases), dtd_valid_documents=12,
+              invalid_xhtml_controls=3, audio_binaries=report['audio_binaries'],
+              full_daisy_rule_conformance='NOT_RUN', reader_interoperability='NOT_RUN', speech_quality='NOT_RUN', nvda='NOT_RUN')
+          pathlib.Path('ci-v3-results/daisy-validation-proof.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
+          print(json.dumps(proof), flush=True)
+          '@
+            $verifyDaisy | & $python -I -B -
+            if ($LASTEXITCODE -ne 0) { throw 'DAISY validator identity or exact three-case evidence is incomplete.' }
           } finally {
             foreach ($ruleName in $publicationRules) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }

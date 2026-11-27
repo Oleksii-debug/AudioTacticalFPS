@@ -122,6 +122,77 @@ jobs:
         run: |
           & $env:CARR_SYNC_PYTHON -I -B scripts/installed_sync_probe.py --report 'sync-ci-results/installed.xml' 2>&1 | Tee-Object 'sync-ci-results/installed.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual POSIX fork ownership in source and installed runtime
+        if: runner.os == 'Linux'
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_SYNC_PYTHON -B scripts/ci_check.py tests/operations/test_resources_posix.py 2>&1 | Tee-Object 'sync-ci-results/operations-fork-source.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Required POSIX source ownership case failed.' }
+          $verdict = @(Select-String -LiteralPath 'sync-ci-results/operations-fork-source.txt' -Pattern '^PASS: tests/operations/test_resources_posix\.py: junit_passed=1, failed=0, skipped=0, pytest_exit=0$')
+          if ($verdict.Count -ne 1) { throw 'The actual POSIX source fork case must execute without a skip.' }
+          $installedFork = @'
+          import json, os, pathlib, subprocess, sys, tempfile, xml.etree.ElementTree as ET
+          root = pathlib.Path.cwd().resolve()
+          report = root / 'sync-ci-results' / 'operations-fork-installed.xml'
+          origins = report.with_suffix('.origins.json')
+          environment = {name: value for name, value in os.environ.items()
+              if name.upper() not in ('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'CARR_CI_ALLOW_LOOPBACK')}
+          environment.update(PYTEST_DISABLE_PLUGIN_AUTOLOAD='1', PYTHONDONTWRITEBYTECODE='1')
+          script = r"""
+          from hashlib import sha256
+          import importlib, json
+          from pathlib import Path
+          import runpy, sys
+          root, output = Path(sys.argv[1]), Path(sys.argv[2])
+          sys.argv = ['installed-operations-fork', *sys.argv[3:]]
+          names = ('carr_library.operations.models', 'carr_library.operations._locks',
+                   'carr_library.operations.broker')
+          def check():
+              found = {}
+              for name in names:
+                  actual = Path(importlib.import_module(name).__file__).resolve(strict=True)
+                  expected = root / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  assert actual.is_relative_to(Path(sys.prefix).resolve()) and not actual.is_relative_to(root), name
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == sha256(expected.read_bytes()).hexdigest(), name
+                  found[name] = dict(path=str(actual), sha256=digest)
+              return found
+          import pytest
+          original = pytest.main
+          def guarded(*args, **kwargs):
+              before = check()
+              result = original(*args, **kwargs)
+              after = check()
+              assert before == after
+              output.write_text(json.dumps(after, indent=2), encoding='utf-8')
+              return result
+          pytest.main = guarded
+          # Use the unchanged full offline and expected-failure policy.
+          exec(compile(runpy.run_path(str(root / 'scripts' / 'ci_check.py'))['PYTEST_CHILD'],
+                       str(root / 'scripts' / 'ci_check.py'), 'exec'))
+          """
+          with tempfile.TemporaryDirectory(prefix='carr-installed-fork-') as temporary:
+              config = pathlib.Path(temporary) / 'pytest.ini'
+              config.write_text('[pytest]\n', encoding='utf-8')
+              result = subprocess.run([sys.executable, '-I', '-B', '-c', script,
+                  str(root), str(origins), '-c', str(config), '-o', 'addopts=', '-o', 'pythonpath=',
+                  '-o', 'xfail_strict=true', '--import-mode=importlib', '--junitxml', str(report),
+                  str(root / 'tests/operations/test_resources_posix.py')],
+                  cwd=temporary, env=environment, timeout=120, check=False)
+          assert report.is_file() and origins.is_file(), 'Installed fork proof is missing.'
+          cases = list(ET.parse(report).iter('testcase'))
+          assert result.returncode == 0 and len(cases) == 1
+          assert cases[0].get('name') == 'test_forked_child_cannot_release_parent_reservation'
+          assert not any(cases[0].find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+          proof = dict(status='PASS', actual_posix_fork=True, cases=1, failed=0, skipped=0,
+              installed_modules=json.loads(origins.read_text(encoding='utf-8')),
+              qualification='Actual fork ownership; no Windows skip substitutes for this required Linux case')
+          (root / 'sync-ci-results/operations-fork-installed.json').write_text(json.dumps(proof, indent=2), encoding='utf-8')
+          print(json.dumps(proof), flush=True)
+          '@
+          $installedFork | & $env:CARR_SYNC_PYTHON -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Required exact-installed POSIX fork ownership case failed.' }
+
       - name: Exercise actual encrypted native publication and restore without egress
         if: ${{ matrix.native }}
         timeout-minutes: 3
