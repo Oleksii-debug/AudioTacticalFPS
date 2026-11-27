@@ -219,10 +219,28 @@ def test_exact_publisher_unterminated_entity_keeps_its_html_prefix_meaning(orpha
     ('&copy', '©'),
     ('&amp;', '&'),
 ])
-def test_legacy_named_reference_preserves_exact_source_terminator(lexeme, expected):
+def test_legacy_named_reference_preserves_exact_source_terminator(lexeme, expected, monkeypatch):
     original = document('<p>FIRST ' + lexeme + ' LAST</a></p>', 'cp1252')
+    recover = legacy._chm_recovered_html
+    normalized = []
+    def checked(text, **options):
+        normalized.append(text)
+        canonical = ''.join('&#' + str(ord(char)) + ';' for char in expected)
+        assert canonical in text
+        assert lexeme not in text
+        return recover(text, **options)
+    monkeypatch.setattr(legacy, '_chm_recovered_html', checked)
     recovered = legacy._chm_html(original)
+    assert len(normalized) == 1
     assert text_of(recovered).split() == ['FIRST', expected, 'LAST']
+    assert original == document('<p>FIRST ' + lexeme + ' LAST</a></p>', 'cp1252')
+    if lexeme.endswith(';'):
+        clean = document('<p>FIRST ' + lexeme + ' LAST</p>', 'cp1252')
+        monkeypatch.setattr(legacy, '_chm_recovered_html',
+                            lambda *args, **options: pytest.fail('terminated reference alone must not invoke recovery'))
+        unchanged = legacy._chm_html(clean)
+        assert unchanged == clean.replace(DECLARATION.encode('ascii'), b'<!DOCTYPE html>', 1)
+        assert text_of(unchanged).split() == ['FIRST', expected, 'LAST']
 
 
 @pytest.mark.parametrize('hidden_first', [False, True])

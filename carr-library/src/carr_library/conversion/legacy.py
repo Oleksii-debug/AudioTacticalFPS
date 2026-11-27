@@ -422,6 +422,8 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
             self.insertions = []
             self.description_ends = []
             self.entity_replacements = []
+            self.unterminated_entities = False
+            self.terminated_entities = False
             self.recovery = False
             self.line_number = 1
             self.line_start = 0
@@ -460,11 +462,15 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
             # a literal semicolon after the valid HTML "&lt" prefix.
             value = unescape(text[offset:end])
             self.handle_data(value)
-            if not terminated:
-                # Numeric references cannot become markup when the normalized
-                # reading copy later enters libxml and the unchanged reader.
-                canonical = ''.join('&#' + str(ord(char)) + ';' for char in value)
-                self.entity_replacements.append((offset, end, canonical))
+            # Protect this exact decoded lexeme from platform-specific libxml
+            # named-reference handling if another token requires normalization.
+            # Numeric references cannot turn the decoded value into markup.
+            canonical = ''.join('&#' + str(ord(char)) + ';' for char in value)
+            self.entity_replacements.append((offset, end, canonical))
+            if terminated:
+                self.terminated_entities = True
+            else:
+                self.unterminated_entities = True
                 self.recovery = True
 
         def handle_endtag(self, tag):
@@ -533,8 +539,10 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
         notices.append(warning)
     if parser.description_ends:
         budget.warnings.add('legacy_html_implicit_description_end_materialized')
-    if parser.entity_replacements:
+    if parser.unterminated_entities:
         budget.warnings.add('legacy_html_unterminated_named_reference_normalized')
+    if parser.terminated_entities:
+        budget.warnings.add('legacy_html_terminated_named_reference_normalized')
     if parser.recovery:
         return _chm_recovered_html(normalized, encoding=encoding, before=budget,
             max_chars=max_chars, deadline=deadline, notices=notices)
