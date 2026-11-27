@@ -130,7 +130,12 @@ def main():
     finally:
         (output / 'gate.json').write_text(json.dumps(report, indent=2, sort_keys=True) + '\n',
                                          encoding='utf-8')
-    print(json.dumps({key: report[key] for key in ('status', 'platform', 'source_commit')},
+    # Keep the exact validated receipt visible in the job log without printing
+    # the large per-file source inventory retained in gate.json.
+    summary_fields = ('status', 'source_only', 'platform', 'source_commit', 'source_tree',
+                      'required_cases', 'execution', 'process_family', 'fork',
+                      'oracle_sha256', 'runtime', 'python', 'executable_sha256', 'reason')
+    print(json.dumps({key: report[key] for key in summary_fields if key in report},
                      sort_keys=True), flush=True)
     return 0 if report['status'] == 'PASS' else 1
 

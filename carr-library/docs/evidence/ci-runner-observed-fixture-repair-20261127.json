@@ -62,5 +62,6 @@
       "error": "ValueError converting an empty descendant.pid immediately after path creation; the observing start wrapper raised before returning the actual process to the runner. Its fixture fallback then killed only the leader, and outer private cleanup encountered WinError32 on the descendant-held file."
     },
     "repair": "The synthetic child closes a same-directory ready file before atomically renaming it to the PID marker. Until the observing wrapper returns, it retains ownership and settles the complete existing process family on any observation exception. No product runner, timeout or case population changes."
-  }
+  },
+  "receipt_visibility": "The unchanged strict gate additionally prints a fixed allowlist of existing validated receipt fields (exact execution Counter, required count, source identity, quiescence, runtime/oracle/interpreter hashes) to the job log. The large full source inventory stays in gate.json. No acceptance predicate changes."
 }
