@@ -1,0 +1,249 @@
+name: CARR exact pinned Node citation acceptance
+
+on:
+  push:
+    branches: [carr/validate-pinned-node-ce-b171-20261127]
+    paths: [.github/workflows/carr-pinned-node-ce.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-pinned-node-ce-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  pinned-citations:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      CARR_VALIDATION_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Check out the exact application candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ce646900cc3a606279dadb0aef870e56e3a9e628
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact application and citation test dependencies
+        run: |
+          New-Item -ItemType Directory -Force 'ci-node-results' | Out-Null
+          $head = (git rev-parse HEAD).Trim()
+          if ($head -ne 'ce646900cc3a606279dadb0aef870e56e3a9e628') { throw 'Wrong application source checkout.' }
+          $head | Set-Content 'ci-node-results/tested-commit.txt'
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare only the exact lock-verified Node files
+        run: |
+          $prepare = @'
+          from hashlib import sha256
+          import io, json, os, pathlib, subprocess, urllib.request, zipfile
+          lock = json.loads(pathlib.Path('packaging/windows-citations.lock.json').read_bytes())
+          assert lock['version'] == '24.22.3'
+          assert set(lock['files']) == {'node.exe', 'LICENSE', 'README.md'}
+          target = pathlib.Path(os.environ['RUNNER_TEMP']) / 'carr-pinned-node-ce'
+          target.mkdir()
+          with urllib.request.urlopen(lock['url'], timeout=60) as response:
+              raw = response.read(lock['archive_size'] + 1)
+          assert len(raw) == lock['archive_size'] and sha256(raw).hexdigest() == lock['archive_sha256']
+          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+              for name, digest in lock['files'].items():
+                  member = f"node-v{lock['version']}-win-x64/{name}"
+                  data = archive.read(member)
+                  assert sha256(data).hexdigest() == digest
+                  (target / name).write_bytes(data)
+          executable = target / 'node.exe'
+          details = json.loads(subprocess.check_output([str(executable), '-p',
+              'JSON.stringify({version:process.versions.node,arch:process.arch,platform:process.platform})'], text=True))
+          assert details == {'version': '24.22.3', 'arch': 'x64', 'platform': 'win32'}
+          with pathlib.Path(os.environ['GITHUB_PATH']).open('a', encoding='utf-8') as stream:
+              stream.write(str(target) + '\n')
+          with pathlib.Path(os.environ['GITHUB_ENV']).open('a', encoding='utf-8') as stream:
+              stream.write('CARR_PINNED_NODE=' + str(executable) + '\n')
+          evidence = dict(status='PASS', tested_commit='ce646900cc3a606279dadb0aef870e56e3a9e628',
+              validation_commit=os.environ['CARR_VALIDATION_COMMIT'], archive_sha256=lock['archive_sha256'],
+              archive_size=len(raw), files_sha256=lock['files'], runtime=details)
+          pathlib.Path('ci-node-results/node-runtime.json').write_text(json.dumps(evidence, indent=2) + '\n')
+          print(json.dumps(evidence))
+          '@
+          $prepare | python -I -B -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise installed CSL and actual native formatting with runtime egress blocked
+        timeout-minutes: 7
+        run: |
+          $python = (Get-Command python.exe).Source
+          $programs = @($python, $env:CARR_PINNED_NODE) | ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $prefix = 'CARR-node-ce-' + [guid]::NewGuid().ToString('N')
+          $rules = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $name = $prefix + '-' + $rules.Count
+              $rules += $name
+              New-NetFirewallRule -Name $name -DisplayName $name -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $rules -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'Runtime firewall rules are not active.' }
+            if (@(Get-NetFirewallProfile | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Runtime firewall profiles are not enabled.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'Wrong runtime programs are blocked.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='Python and exact pinned Node executable' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-node-results/runtime-firewall.json'
+            $acceptance = @'
+          from hashlib import sha256
+          import json, os, pathlib, shutil, sys, tempfile, threading, time, traceback
+          import xml.etree.ElementTree as ET
+          import carr_library
+          from carr_library.academic_integration import formatting, read_citation_docx
+          expected = pathlib.Path(os.environ['CARR_PINNED_NODE']).resolve()
+          lock = json.loads(pathlib.Path('packaging/windows-citations.lock.json').read_bytes())
+          assert sys.platform == 'win32'
+          assert sha256(expected.read_bytes()).hexdigest() == lock['files']['node.exe']
+          assert pathlib.Path(shutil.which('node')).samefile(expected)
+          assert pathlib.Path(formatting._node_binary(None)).samefile(expected)
+          assert not pathlib.Path(carr_library.__file__).resolve().is_relative_to(pathlib.Path.cwd())
+          launches = []
+          def audit(event, arguments):
+              if event != 'subprocess.Popen':
+                  return
+              executable, argv = arguments[:2]
+              candidate = pathlib.Path(executable)
+              if candidate.name.lower() in ('node', 'node.exe'):
+                  candidate = candidate if candidate.is_absolute() else pathlib.Path(shutil.which(str(candidate)))
+                  assert candidate.samefile(expected), 'Citation execution selected another Node build.'
+                  if any(str(value).endswith('csl_worker.cjs') for value in argv):
+                      launches.append(str(candidate))
+          sys.addaudithook(audit)
+          import pytest
+          suites = ['tests/academic_integration/test_formatting.py',
+                    'tests/academic_integration/test_documents.py',
+                    'tests/academic_integration/test_citation_ui.py']
+          status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=', '-o', 'xfail_strict=true',
+              '--import-mode=importlib', '--junitxml=ci-node-results/citation-tests.xml', *suites])
+          if status:
+              raise SystemExit(status)
+          cases = list(ET.parse('ci-node-results/citation-tests.xml').iter('testcase'))
+          assert cases and all(not any(case.find(tag) is not None for tag in ('failure','error','skipped')) for case in cases)
+          assert len({(case.get('classname'), case.get('name')) for case in cases}) == len(cases)
+          expected_cases = {'tests.academic_integration.test_formatting': 24,
+              'tests.academic_integration.test_documents': 10, 'tests.academic_integration.test_citation_ui': 10}
+          assert len(cases) == 44 and {name: sum(case.get('classname') == name for case in cases)
+              for name in expected_cases} == expected_cases
+          assert len(launches) >= 10
+          import wx
+          from carr_library.application import LibraryApp
+          from carr_library.ui.desktop_app import DesktopFrame
+          from carr_library.ui.academic_library_dialog import AcademicController
+          from carr_library.ui.citation_formatting import CitationFormattingController, _native_types
+          errors = []
+          class ProbeApp(wx.App):
+              def OnExceptionInMainLoop(self):
+                  errors.append(traceback.format_exc())
+                  return False
+          watchdog = threading.Timer(90, lambda: os._exit(6))
+          watchdog.daemon = True
+          watchdog.start()
+          app = ProbeApp(False)
+          frame = dialog = None
+          try:
+              with tempfile.TemporaryDirectory(prefix='carr-node-native-') as temporary:
+                  root = pathlib.Path(temporary)
+                  library = LibraryApp(root / 'library')
+                  workspace = library.create_workspace('Pinned Node native qualification')
+                  library.add_text(workspace, 'Retained original', 'Exact immutable spectroscopy source.')
+                  hit, = library.search(workspace, 'spectroscopy')
+                  quotation = library.copy(workspace, hit.ref, hit.revision, 'quote')
+                  academic = AcademicController(library, workspace)
+                  reference = academic.create({'title': 'Синтетична бібліотека', 'authors': ('Example Research Group',),
+                      'item_type': 'book', 'year': '2024', 'publisher': 'Fixture Press', 'pages': '1-400',
+                      'notes': 'Private synthetic note must remain separate.'})
+                  frame = DesktopFrame(library)
+                  frame.Show()
+                  app.Yield()
+                  assert frame.active[0] == workspace
+                  controller = CitationFormattingController(library, workspace)
+                  CitationDialog, _ = _native_types()
+                  dialog = CitationDialog(frame, controller)
+                  dialog.Show()
+                  def wait_for(predicate, label):
+                      deadline = time.monotonic() + 30
+                      while time.monotonic() < deadline:
+                          app.Yield()
+                          assert not errors, errors
+                          if predicate():
+                              return
+                          assert not dialog.status.GetValue().startswith('Operation did not complete.'), dialog.status.GetValue()
+                          time.sleep(.02)
+                      raise AssertionError(label + ': ' + dialog.status.GetValue())
+                  wait_for(lambda: len(dialog.references) == 1 and not dialog.pending, 'Native reference load')
+                  assert dialog.node.GetValue() == ''
+                  assert dialog.format_button.IsEnabled()
+                  before = len(launches)
+                  event = wx.CommandEvent(wx.EVT_BUTTON.typeId, dialog.format_button.GetId())
+                  event.SetEventObject(dialog.format_button)
+                  assert dialog.format_button.GetEventHandler().ProcessEvent(event)
+                  wait_for(lambda: dialog.result is not None and not dialog.pending, 'Native format completion')
+                  assert len(launches) > before
+                  assert 'Синтетична бібліотека' in dialog.preview.GetValue()
+                  assert 'Private synthetic note' not in dialog.preview.GetValue()
+                  assert wx.Window.FindFocus() is dialog.preview
+                  destination = controller.export_docx(dialog.snapshot, dialog.result, root / 'qualified-citations.docx')
+                  restored = read_citation_docx(destination)
+                  assert restored['references'][0]['id'] == reference.id
+                  assert academic.get(reference.id) == reference
+                  assert library.copy(workspace, hit.ref, hit.revision, 'quote') == quotation
+                  dialog.shutdown()
+                  dialog.Destroy()
+                  dialog = None
+                  frame.Close()
+                  app.Yield()
+                  frame = None
+          finally:
+              if dialog is not None:
+                  dialog.shutdown()
+                  dialog.Destroy()
+              if frame is not None:
+                  frame.Destroy()
+              watchdog.cancel()
+          assert not errors
+          assert sha256(expected.read_bytes()).hexdigest() == lock['files']['node.exe']
+          result = dict(status='PASS', tested_commit='ce646900cc3a606279dadb0aef870e56e3a9e628',
+              validation_commit=os.environ['CARR_VALIDATION_COMMIT'], node_version=lock['version'],
+              node_sha256=lock['files']['node.exe'], installed_package=True, suites=len(suites),
+              passed=len(cases), failed=0, skipped=0, real_csl_worker_launches=len(launches),
+              native_format_button='PASS', native_completion_focus='PASS', actual_docx_provenance='PASS',
+              source_and_reference_unchanged='PASS', node_bytes_after_execution='UNCHANGED',
+              manual_nvda='NOT_RUN', operating_system_file_picker='NOT_TESTED')
+          pathlib.Path('ci-node-results/pinned-node-acceptance.json').write_text(json.dumps(result, indent=2) + '\n')
+          print(json.dumps(result))
+          '@
+            $acceptance | & $python -I -B - 2>&1 | Tee-Object 'ci-node-results/citation-acceptance.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Pinned Node citation acceptance failed.' }
+          } finally {
+            foreach ($name in $rules) { Remove-NetFirewallRule -Name $name -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Preserve source and runtime qualification evidence only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-pinned-node-ce-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/ci-node-results/
+          retention-days: 7
