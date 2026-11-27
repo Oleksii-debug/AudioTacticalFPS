@@ -152,6 +152,42 @@ def completed(prepared, *, options=None, files=None):
     return identity, result
 
 
+def test_selected_virtualenv_remains_the_actual_worker_runtime(prepared, tmp_path):
+    import venv
+
+    _, _, service, original, _ = prepared
+    runtime = tmp_path / 'selected-environment'
+    venv.EnvBuilder(with_pip=False, symlinks=os.name != 'nt').create(runtime)
+    executable = runtime / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    packages = runtime / ('Lib/site-packages' if os.name == 'nt' else
+                         f'lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')
+    packages.mkdir(parents=True, exist_ok=True)
+    marker = 'carr_synthetic_selected_environment_marker'
+    (packages / (marker + '.py')).write_text('VALUE = "selected runtime"\n', encoding='utf-8')
+    # This package exists only in the deliberately selected environment.
+    probe = subprocess.run([str(executable), '-I', '-c', f'import {marker}; print({marker}.VALUE)'],
+                           capture_output=True, text=True, encoding='utf-8', timeout=15)
+    assert probe.returncode == 0 and probe.stdout.strip() == 'selected runtime', probe.stderr
+    worker = tmp_path / 'venv-worker.py'
+    worker.write_text(f'import {marker}\n' +
+                      SYNTHETIC_WORKER.replace('__MODE__', repr('complete')), encoding='utf-8')
+    configured = service.configure(executable, worker, tmp_path / 'models')
+    identity = service.submit([original])
+    result = service.run(identity, timeout=15)
+    assert result['status'] == 'completed', result['last_error']
+    assert configured['python'] == str(executable)
+    source = result['sources'][0]['filename']
+    recognized = service.text(identity, source)
+    assert 'Український' in recognized
+
+    # Change only this fixture's entry, never the real interpreter behind it.
+    executable.unlink()
+    executable.write_bytes(b'Synthetic changed interpreter; never executed.')
+    with pytest.raises(ValueError, match='runtime changed'):
+        service.configuration(verify=True)
+    assert service.text(identity, source) == recognized
+
+
 def test_real_subprocess_preserves_original_and_exports_separate_edits(prepared, tmp_path):
     app, workspace, service, original, _ = prepared
     before = original.read_bytes()
@@ -497,6 +533,64 @@ def test_scope_archive_and_unknown_job_do_not_create_junk(prepared):
     assert not service._path(missing).exists()
     other = app.create_workspace('Unrelated library')
     assert app.transcription(other).list() == ()
+    app.archive_workspace(workspace)
+    with pytest.raises(ValueError, match='archived'):
+        service.get(identity)
+
+
+def test_edit_rechecks_workspace_after_receipt_verification(prepared, monkeypatch):
+    app, workspace, service, original, _ = prepared
+    identity, result = completed(prepared)
+    source = result['sources'][0]['filename']
+    retained = service.save_edit(identity, source, 'Previously saved correction.')
+    directory = service._path(identity)
+    saved_edit = directory / 'edits' / (retained + '.json')
+    original_edit = saved_edit.read_bytes()
+    original_job = (directory / 'job.json').read_bytes()
+    original_media = original.read_bytes()
+    verify = service.verify
+
+    def archive_after_verification(*args, **kwargs):
+        verified = verify(*args, **kwargs)
+        app.archive_workspace(workspace)
+        return verified
+
+    monkeypatch.setattr(service, 'verify', archive_after_verification)
+    with pytest.raises(ValueError, match='archived'):
+        service.save_edit(identity, source, 'Must not be published after archival.')
+
+    assert list((directory / 'edits').iterdir()) == [saved_edit]
+    assert saved_edit.read_bytes() == original_edit
+    assert (directory / 'job.json').read_bytes() == original_job
+    assert original.read_bytes() == original_media
+
+
+def test_edit_publication_excludes_concurrent_workspace_archival(prepared, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from carr_library import transcription
+    from carr_library.ingest.writer_guard import WriterBusy
+
+    app, workspace, service, _, _ = prepared
+    identity, result = completed(prepared)
+    source = result['sources'][0]['filename']
+    publish = transcription.atomic_json
+    attempts = []
+
+    def publish_while_archive_attempts(path, value, **kwargs):
+        if path.parent.name == 'edits':
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                competing = pool.submit(app.archive_workspace, workspace)
+                with pytest.raises(WriterBusy):
+                    competing.result(timeout=5)
+            attempts.append(path)
+        return publish(path, value, **kwargs)
+
+    monkeypatch.setattr(transcription, 'atomic_json', publish_while_archive_attempts)
+    revision = service.save_edit(identity, source, 'An authorized published correction.')
+    assert attempts == [service._path(identity) / 'edits' / (revision + '.json')]
+    assert service.edits(identity)[0]['id'] == revision
+    assert service.verify(identity)['status'] == 'completed'
+    # The guard ends with publication; archival is not permanently blocked.
     app.archive_workspace(workspace)
     with pytest.raises(ValueError, match='archived'):
         service.get(identity)
