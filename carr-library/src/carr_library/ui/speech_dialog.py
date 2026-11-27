@@ -746,6 +746,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if destination is not None:
                 bound_document = document
                 snapshot = document.to_dict()
+                saved_scope = None
+                if source_loader is None and bound_document.source_anchor is not None:
+                    active = getattr(parent, 'active', None)
+                    if (library is None or not isinstance(active, (tuple, list))
+                            or len(active) != 2
+                            or active[0] != bound_document.source_anchor['workspace']):
+                        raise ValueError('Open the saved narration source in its authorized library workspace. '
+                                         'The reading project itself remains available.')
+                    saved_scope = tuple(active)
+
+                def guard_saved_scope():
+                    check_current()
+                    active = getattr(parent, 'active', None)
+                    if not isinstance(active, (tuple, list)) or tuple(active) != saved_scope:
+                        raise ValueError('The library or research topic changed during WAV export.')
 
                 def attest_source(_staged):
                     check_current()
@@ -756,6 +771,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         if (fresh.source_text != bound_document.source_text
                                 or fresh.source_anchor != bound_document.source_anchor):
                             raise ValueError('The retained narration source changed during WAV export.')
+                    elif saved_scope is not None:
+                        from ..speech.source import attest_saved_narration_copy
+                        attest_saved_narration_copy(library, bound_document, saved_scope[0],
+                            topic=saved_scope[1], guard=guard_saved_scope, cancelled=cancel.is_set)
                     check_current()
                     if document is not bound_document or document.to_dict() != snapshot:
                         raise ValueError('The reading copy changed during WAV export.')
