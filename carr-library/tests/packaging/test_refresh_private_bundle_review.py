@@ -69,7 +69,7 @@ def bundle(tmp_path, monkeypatch):
     (packaging / 'wheel-notices' / 'SOURCES.json').write_text('{"synthetic-current-notices":true}\n')
     (project / 'docs').mkdir()
     for name in ('RUNNING.md', 'START_V3_UK.txt', 'TRANSCRIPTION.md'):
-        (project / 'docs' / name).write_text('Synthetic current installation guidance.\n')
+        (project / 'docs' / name).write_bytes(b'Synthetic current installation guidance.\n')
     for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
         (packaging / name).write_text('raise AssertionError("PACKAGING MUST NOT EXECUTE PAYLOAD")\n')
     package = project / 'src/carr_library'
