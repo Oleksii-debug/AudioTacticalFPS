@@ -605,7 +605,9 @@ def _parse_import(data, format):
         rows = _parse_csl(text)
     elif format == 'bibtex':
         from .bibtex_import import parse_bibtex
-        rows = parse_bibtex(text)
+        # This store preserves every author as literal display text. Omit only
+        # parser-generated markers; retain braces present in the source itself.
+        rows = parse_bibtex(text, literal_names=True)
     else:
         raise ValueError('Supported import formats are RIS, BibTeX and CSL JSON.')
     if not 1 <= len(rows) <= MAX_IMPORT_RECORDS:

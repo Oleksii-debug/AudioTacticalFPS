@@ -8,8 +8,7 @@ from pathlib import Path
 import sys
 import threading
 from types import ModuleType, SimpleNamespace
-from unittest.mock import patch
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -44,14 +43,14 @@ class Control:
 
 
 @pytest.fixture
-def module():
+def module(monkeypatch):
     wx = ModuleType('wx')
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Control)
     for n, name in enumerate(('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT',
             'TOP', 'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'ID_CANCEL', 'ID_OK',
             'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
-            'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES', 'NO')):
+            'YES', 'NO', 'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION')):
         setattr(wx, name, 1 << n)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -59,7 +58,14 @@ def module():
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
-    wx.MessageBox = Mock(return_value=wx.YES)
+    wx.overwrite_result, wx.overwrite_hook, wx.overwrites = wx.YES, None, []
+    def message_box(*args):
+        wx.overwrites.append(args)
+        if wx.overwrite_hook:
+            wx.overwrite_hook()
+        return wx.overwrite_result
+    wx.MessageBox = Mock(side_effect=message_box)
+
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -75,8 +81,8 @@ def module():
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
-    with patch.dict(sys.modules, {'wx': wx}):
-        spec.loader.exec_module(mod)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    spec.loader.exec_module(mod)
     return mod
 
 
@@ -278,24 +284,11 @@ def test_late_report_callback_does_not_display_foreign_scope_data(setup):
 def test_checked_writer_refuses_private_source_overwrite(module, setup):
     form, frame, library = setup
     module.wx.file_path = str(library.original)
-    assert not form.export_inventory()
-    assert not frame.jobs
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == []
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled
-
-
-@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
-def test_catalog_export_preserves_file_changed_during_render(module, setup, kind):
-    form, frame, library = setup
-    target = Path(module.wx.file_path)
-    target.write_bytes(b'Approved previous export')
-    library.hook = lambda: target.write_bytes(b'Independent edit during rendering')
-    assert getattr(form, 'export_' + kind)()
-    frame.finish()
-    assert target.read_bytes() == b'Independent edit during rendering'
-    assert 'destination changed' in form.status.GetValue()
-    assert not list(target.parent.glob('.research-export-*'))
 
 
 def test_report_limit_is_explicit_and_does_not_show_a_partial_result(module, setup):
@@ -408,3 +401,41 @@ def test_wrapper_rejects_ambiguous_collection_identifiers(module, setup, monkeyp
     monkeypatch.setattr(library, 'collections', lambda workspace: rows)
     module.show_catalog_tools(frame)
     assert not module.wx.callbacks and 'Collection choices changed' in frame.messages[-1]
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+@pytest.mark.parametrize('existing', [False, True])
+def test_each_catalog_export_preserves_competing_file_during_render(module, setup, kind, existing):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    if existing: destination.write_bytes(b'Previously approved output')
+    library.hook = lambda: destination.write_bytes(b'Newer independent work')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert destination.read_bytes() == b'Newer independent work'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(destination.parent.glob('.research-export-*'))
+    assert not form.pending
+
+
+def test_catalog_overwrite_decline_restores_button_without_render(module, setup):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    destination.write_bytes(b'Keep work')
+    module.wx.overwrite_result = module.wx.NO
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == [] and form.inventory_button.focused
+    assert destination.read_bytes() == b'Keep work'
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+def test_catalog_export_preserves_file_changed_during_render(module, setup, kind):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Approved previous export')
+    library.hook = lambda: target.write_bytes(b'Independent edit during rendering')
+    assert getattr(form, 'export_' + kind)()
+    frame.finish()
+    assert target.read_bytes() == b'Independent edit during rendering'
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(target.parent.glob('.research-export-*'))

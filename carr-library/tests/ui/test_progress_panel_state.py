@@ -85,3 +85,58 @@ def test_failed_unmute_keeps_sound_muted_and_saved_preferences_unchanged(tmp_pat
         failure.assert_called_once()
     finally:
         panel.feedback.close()
+
+
+from types import SimpleNamespace
+
+
+def bare_panel():
+    panel = object.__new__(NativeProgressPanel)
+    panel.hub, panel.active_task, panel.closed = ProgressHub(), None, False
+    panel.refresh = Mock()
+    panel.feedback, panel.media, panel.timer = Mock(), Mock(), Mock()
+    panel.speech_provider = None
+    panel._native_owner_id = 701
+    return panel
+
+
+def test_compatibility_producer_updates_the_same_task_without_native_refresh():
+    panel = bare_panel()
+    task = panel.begin('Files', total=4)
+    panel.refresh.reset_mock()
+    panel.update(1, 4, 'First file', token=task.operation_id)
+    assert panel.event.token == task.operation_id
+    assert panel.event.percent == task.snapshot().percent == 25
+    panel.update(phase='Second phase', token=task.operation_id)
+    assert task.snapshot().total == 4
+    panel.refresh.assert_not_called()
+
+
+def test_stale_or_cancelling_token_cannot_change_current_task():
+    panel = bare_panel()
+    earlier = panel.begin('Earlier', total=2)
+    current = panel.begin('Current', total=3)
+    before = current.snapshot()
+    panel.update(2, 2, token=earlier.operation_id)
+    assert current.snapshot() == before
+    current.request_cancel()
+    before = current.snapshot()
+    panel.update(1, 3, token=current.operation_id)
+    assert current.snapshot() == before
+
+
+def test_native_owner_id_detaches_once_without_querying_dead_wrapper():
+    panel = bare_panel()
+    wrapper = Mock(side_effect=AssertionError('Dead native wrapper queried'))
+    event = SimpleNamespace(GetId=lambda: 702, GetEventObject=wrapper, Skip=Mock())
+    panel._destroyed(event)
+    assert not panel.closed
+    event.GetId = lambda: 701
+    panel._destroyed(event)
+    assert panel.closed
+    panel.timer.Stop.assert_called_once()
+    panel.feedback.close.assert_called_once()
+    panel.media.close.assert_called_once()
+    wrapper.assert_not_called()
+    panel.refresh = NativeProgressPanel.refresh.__get__(panel)
+    panel.refresh()

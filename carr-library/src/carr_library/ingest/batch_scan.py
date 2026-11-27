@@ -84,7 +84,8 @@ def planned_snapshot(path):
     return asset
 
 
-def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: False):
+def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: False,
+               supported=None, file_manifest=None, max_files=None, skip_unsupported=False):
     """Return a bounded, deterministic import plan without changing any files.
 
     ``existing_assets`` contains SHA256 digests from the caller's authorized
@@ -97,9 +98,28 @@ def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: F
     caller must revalidate bytes when importing: a preflight is not authority to
     read a subsequently changed file. Memory retains one <=64 MiB intake
     snapshot at a time, bounded path lists, manifests and digest identities.
+
+    Internal adapters may select another bounded file policy. ``file_manifest``
+    returns a streaming-verified SHA256/size/MIME manifest; document callers keep
+    the existing intake adapter. Explicitly skipped unsupported files remain
+    visible as ``excluded`` rows, bounded by the same scan-entry allowance.
     """
     if type(recursive) is not bool or isinstance(paths, (str, bytes, os.PathLike)):
         raise ValueError('Choose a sequence of files or folders and a boolean recursion option.')
+    if supported is None:
+        supported = SUPPORTED
+    if (not isinstance(supported, frozenset) or not 1 <= len(supported) <= 64
+            or any(not isinstance(value, str) or not re.fullmatch(r'\.[a-z0-9]{1,16}', value)
+                   for value in supported)):
+        raise ValueError('A scan policy requires a bounded set of lowercase file extensions.')
+    if file_manifest is not None and not callable(file_manifest):
+        raise ValueError('A scan file-manifest policy must be callable.')
+    if max_files is None:
+        max_files = MAX_FILES
+    if type(max_files) is not int or not 1 <= max_files <= MAX_FILES:
+        raise ValueError('A scan file allowance must remain within the existing bounded policy.')
+    if type(skip_unsupported) is not bool or not callable(cancelled):
+        raise ValueError('Invalid scan exclusion or cancellation policy.')
 
     def check():
         if cancelled():
@@ -181,24 +201,36 @@ def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: F
                 return
             if not stat.S_ISREG(info.st_mode):
                 raise ValueError('Only regular files are imported.')
-            if path.suffix.casefold() not in SUPPORTED:
-                reject(path, root, 'Unsupported file skipped; see Help, Document formats for supported sources.')
+            if path.suffix.casefold() not in supported:
+                if skip_unsupported:
+                    rows.append(_row(path, root, 'excluded', 'Unsupported file excluded by the selected file policy.'))
+                else:
+                    reject(path, root, 'Unsupported file skipped; see Help, Document formats for supported sources.')
                 return
-            if attempts >= MAX_FILES:
+            if attempts >= max_files:
                 raise _ScanLimit(path, root,
                     'Supported-file limit reached; remaining files were not scanned. Select a smaller batch.')
             attempts += 1
             if info.st_nlink != 1:
                 raise ValueError('Hard-linked source files are not imported.')
             check()
-            asset = planned_snapshot(path)
+            if file_manifest is None:
+                asset = planned_snapshot(path)
+                manifest = asset.manifest()
+                del asset
+            else:
+                manifest = file_manifest(path)
+                if (not isinstance(manifest, dict) or set(manifest) != {'sha256', 'mime', 'size'}
+                        or not isinstance(manifest['sha256'], str) or not _DIGEST.fullmatch(manifest['sha256'])
+                        or not isinstance(manifest['mime'], str) or not manifest['mime']
+                        or type(manifest['size']) is not int or manifest['size'] != info.st_size):
+                    raise ValueError('The selected file policy returned an invalid source manifest.')
             check()
             after = path.lstat()
             _parents(path)
             if _linked(after) or after.st_nlink != 1 or _stamp(after) != _stamp(info):
                 raise ValueError('Source changed during the scan; select it again.')
-            manifest = asset.manifest()
-            del asset
+
             digest = manifest['sha256']
             if digest in existing:
                 rows.append(_row(path, root, 'duplicate',

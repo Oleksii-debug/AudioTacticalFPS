@@ -4,13 +4,50 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import time
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.ingest import worker
+
+
+class WorkerSubprocess:
+    """Scope instrumentation to this supervisor, never the stdlib process module."""
+
+    def __init__(self, original, popen):
+        self._original = original
+        self.Popen = popen
+
+    def __getattr__(self, name):
+        return getattr(self._original, name)
+
+
+class BarrierClock:
+    """Arm the supervisor deadline before a committed child triggers expiry."""
+
+    def __init__(self, marker):
+        self.marker = marker
+        self._armed = False
+        self._expired = False
+        self.sleep = time.sleep
+
+    def monotonic(self):
+        now = time.monotonic()
+        if self._armed and self.marker.exists():
+            self._expired = True
+        self._armed = True
+        return now + (100 if self._expired else 0)
+
+
+def assert_reconciliation_rejected(app, request):
+    try:
+        recovered = worker._reconcile_publication(
+            app.root, request['request_id'], request['attempt'],
+            workspace=request['workspace'])
+    except ValueError:
+        return
+    assert recovered is None
 
 
 def source_file(tmp_path, kind):
@@ -75,7 +112,7 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
                 return process
         return popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess(worker.subprocess, launch))
     return processes
 
 
@@ -89,10 +126,7 @@ def test_durable_publication_survives_stopped_worker(tmp_path, monkeypatch, kind
     marker = tmp_path / 'committed'
     processes = publication_barrier(monkeypatch, marker, crash=stop == 'crash')
     if stop == 'timeout':
-        monotonic = time.monotonic
-        monkeypatch.setattr(worker, 'time', SimpleNamespace(
-            monotonic=lambda: monotonic() + (100 if marker.exists() else 0),
-            sleep=time.sleep))
+        monkeypatch.setattr(worker, 'time', BarrierClock(marker))
     cancelled = lambda: stop == 'cancel' and marker.exists()
     if kind == 'txt':
         batch = app.plan_import_batch(workspace, [source])
@@ -141,7 +175,7 @@ def test_prelaunch_cancellation_never_starts_or_recovers_a_worker(tmp_path, monk
     source = source_file(tmp_path, 'docx')
     def forbidden(*args, **kwargs):
         raise AssertionError('A pre-cancelled import must not launch a process.')
-    monkeypatch.setattr(worker.subprocess, 'Popen', forbidden)
+    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess(worker.subprocess, forbidden))
     result = app.import_file(workspace, source, cancelled=lambda: True)
     assert result['state'] == 'cancelled'
     assert 'recovered_publication' not in result
@@ -195,13 +229,13 @@ def test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_f
         if (isinstance(command, list) and '-c' in command
                 and "runpy.run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1]):
             assert not competing
-            # A genuine independent publication after the supervisor's watermark,
+            # A genuine independent publication during the supervised attempt,
             # before its actual child. No row/result is fabricated or retargeted.
             competing.append(app._import_file(workspace, source, **other))
             assert competing[0]['state'] == 'complete'
         return original_popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess(worker.subprocess, launch))
     result = app.import_file(workspace, source, **wanted, cancelled=marker.exists, timeout=30)
     assert result['state'] == ('cancelled' if conflict == 'collections' else 'failed'), result
     assert 'recovered_publication' not in result
@@ -233,7 +267,7 @@ def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, chan
     else:
         changed['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], changed)
-    assert worker._published_after_stop(app, initial, 0) is None
+    assert_reconciliation_rejected(app, initial)
 
 
 def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
@@ -246,7 +280,7 @@ def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
     raw = bytearray(retained.read_bytes())
     raw[-1] ^= 1
     retained.write_bytes(raw)
-    assert worker._published_after_stop(app, initial, 0) is None
+    assert_reconciliation_rejected(app, initial)
 
 
 @pytest.mark.parametrize('binding', ('job', 'configuration'))
@@ -262,4 +296,4 @@ def test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, bi
     else:
         request['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], request)
-    assert worker._published_after_stop(app, request, 0) is None
+    assert_reconciliation_rejected(app, request)

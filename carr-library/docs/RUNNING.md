@@ -248,6 +248,58 @@ installations outside that directory and Windows Credential Manager secrets
 are not transferred as ordinary application state. Historical backup formats
 remain readable only with the data that their own manifests declared.
 
+The common writer retains format 4 and its typed producer inventory. It includes
+supported Advanced/Basic translation jobs and usage receipts, transcription
+jobs and retained media, shared resource settings, recordings and Studio input
+receipts. Restored jobs remain passive and their external paths require review.
+Historical state envelopes 3–6 use their original exact manifest shapes and
+bounded validators; an invalid new typed manifest is never retried as a legacy
+backup. An unreadable or changing producer aborts the snapshot before a final
+manifest is published. See [backup compatibility](BACKUP_FORMAT_V6.md).
+
+## Transcription, recording and retained clips
+
+The existing transcription service accepts explicitly configured supplied-worker
+profiles and retains the original audio or video separately from verified
+results and editable transcript derivatives. File/folder planning, cancellation,
+resume and text/subtitle export share its saved-job lifecycle. A protocol fixture
+does not qualify a private neural model. Runtime, interpreter, wrapper and model
+paths remain local, explicitly selected dependencies.
+See [transcription](TRANSCRIPTION.md).
+
+Microphone recording uses explicit device selection and bounded PCM capture.
+Stop saves a retained original; Cancel discards the new recording. The same
+resource broker arbitrates recording, transcription and Studio work, and keeps
+native cleanup ownership until child processes stop. Studio clips support
+trim, fade, gain and pan without altering retained originals. EPUB 3 publication
+uses measured audio intervals and verifies the generated archive.
+See [recording](MICROPHONE_RECORDING.md),
+[clip editing](STUDIO_CLIP_EDITING.md) and
+[EPUB publication](STUDIO_EPUB_PUBLISHING.md).
+
+## Assistant and translation
+
+Local-model planning is optional and requires an enabled, explicitly selected
+local profile. A proposed plan passes the existing scoped tool validator and
+requires a separate Run action. The application does not start a model server
+automatically. Plain-text translation supports the existing Basic v2 path and
+Advanced v3 with an explicitly supplied expiring OAuth token, numeric project,
+selected model and optional exact glossary. Source-bound reading derivatives,
+chunk receipts and the independent decoded-text usage ledger support reviewed
+resume. Formatted-document translation and local translation inference are
+separate unfinished capabilities. See [assistant](assistant_runtime.md) and
+[translation](translation_workstation.md).
+
+## Optional license and update verification
+
+The private local application remains usable without the optional trust
+dependencies. When those dependencies are installed, the trust tools can inspect
+owner-provided Ed25519 entitlements and a selected signed TUF repository using an
+independently trusted bootstrap. Verified package download does not install or
+activate an update. Production signing authority, perpetual-policy selection
+and transactional update activation require separate configuration and work.
+User-data access is retained. See [trusted client](TRUSTED_CLIENT.md).
+
 ## Review the source catalog
 
 Open a library, then use the **Research** menu:

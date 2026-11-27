@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "name": "EPUBCheck",
+  "version": "5.3.0",
+  "purpose": "CI-only EPUB 3.3 conformance check; not an application dependency or distributed payload",
+  "source_commit": "029831b8f477e4519e9734c984ee24357547a698",
+  "release": "https://github.com/w3c/epubcheck/releases/tag/v5.3.0",
+  "url": "https://github.com/w3c/epubcheck/releases/download/v5.3.0/epubcheck-5.3.0.zip",
+  "size": 33071108,
+  "sha256": "6c07e68584b2e2ce2f89fe06e1246dfead3eb36b46b340e7d93524f29dcff6c5",
+  "jar": "epubcheck-5.3.0/epubcheck.jar",
+  "license": "BSD-3-Clause",
+  "license_source": "https://github.com/w3c/epubcheck/blob/029831b8f477e4519e9734c984ee24357547a698/LICENSE.md",
+  "notices": ["epubcheck-5.3.0/LICENSE.txt", "epubcheck-5.3.0/THIRD-PARTY.txt"],
+  "qualification": "Checks package conformance only; no speech, synchronized reader, WCAG or NVDA qualification"
+}

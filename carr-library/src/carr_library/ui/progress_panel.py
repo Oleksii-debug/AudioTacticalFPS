@@ -65,6 +65,7 @@ class NativeProgressPanel:
         self.media = ProgressMedia(self)
 
         self.panel = wx.Panel(frame.host)
+        self._native_owner_id = self.panel.GetId()
         self.panel.SetName('Operation progress')
         layout = wx.BoxSizer(wx.VERTICAL)
         self.gauge = wx.Gauge(self.panel, range=100, style=wx.GA_HORIZONTAL)
@@ -174,6 +175,8 @@ class NativeProgressPanel:
         self.media.refresh()
 
     def begin(self, title, *, total=None, unit='units'):
+        if self.closed:
+            raise RuntimeError('The progress view is closed.')
         task = self.hub.start(title, total=total, unit=unit)
         self.active_task = task
         self._last_revision = None
@@ -185,6 +188,43 @@ class NativeProgressPanel:
         if self.active_task is not None and _state(self.active_task.snapshot()) not in _TERMINAL:
             self.active_task.request_cancel()
             self.refresh()
+
+    @property
+    def event(self):
+        """Read-only compatibility snapshot from the current Hub task."""
+        from .operation_progress import ProgressEvent
+        task = self.active_task
+        if task is None:
+            return ProgressEvent()
+        value = task.snapshot()
+        return ProgressEvent(token=value.operation_id, sequence=value.revision,
+            state=_state(value), phase=value.phase or value.title,
+            completed=value.completed, total=value.total, percent=value.percent,
+            elapsed_seconds=max(0, value.updated_at - value.started_at),
+            eta_seconds=value.eta_seconds)
+
+    def update(self, completed=None, total=None, phase=None, *, token=None):
+        """Update the same task without native control access from a worker.
+
+        Dialog-local audio gauges retain their fractional-second tracker.
+        Shared library producers report integral files, pages and chunks.
+        """
+        task = self.active_task
+        if (self.closed or task is None or token is not None and token != task.operation_id
+                or _state(task.snapshot()) != 'running'):
+            return None
+        options = dict(completed=completed, phase=phase)
+        if total is not None:
+            options['total'] = total
+        return task.update(**options)
+
+    def reload_preferences(self):
+        if self.closed:
+            return
+        self.change_root(Path(self.frame.library.root))
+
+    def settings_dialog(self, event=None):
+        return self.settings(event)
 
     def finish(self, task, state, message=''):
         if task is None:
@@ -380,7 +420,7 @@ class NativeProgressPanel:
         self.refresh()
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.panel:
+        if event.GetId() == self._native_owner_id:
             self.close()
         event.Skip()
 
@@ -489,10 +529,11 @@ class ProgressSettingsDialog:
 def install_progress_panel(frame):
     existing = getattr(frame, 'progress_panel', None)
     if existing is not None:
+        frame.operation_progress = existing
         return existing
     import wx
     panel = NativeProgressPanel(frame)
-    frame.progress_panel = panel
+    frame.progress_panel = frame.operation_progress = panel
     bar = frame.GetMenuBar()
     options = next((bar.GetMenu(index) for index in range(bar.GetMenuCount())
                     if bar.GetMenuLabel(index).replace('&', '').strip().casefold() == 'options'), None)

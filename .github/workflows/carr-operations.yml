@@ -1,0 +1,120 @@
+name: CARR canonical operations acceptance
+
+on:
+  pull_request:
+    branches: [carr-library]
+    paths: ['carr-library/**', '.github/workflows/carr-operations.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-operations-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  installed-operations:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the exact source wheel and pinned desktop dependencies
+        timeout-minutes: 8
+        run: |
+          New-Item -ItemType Directory -Force 'ci-operations-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-operations-results/tested-commit.txt'
+          git rev-parse 'HEAD^{tree}' | Set-Content 'ci-operations-results/tested-tree.txt'
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip wheel --no-deps . --wheel-dir 'ci-operations-results'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath 'ci-operations-results' -Filter '*.whl')
+          if ($wheels.Count -ne 1) { throw 'Exactly one current-source wheel is required.' }
+          Get-FileHash -Algorithm SHA256 -LiteralPath $wheels[0].FullName | Select-Object Hash, Path | ConvertTo-Json | Set-Content 'ci-operations-results/wheel-sha256.json'
+          python -m pip install --no-deps $wheels[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the existing pinned private test audio executables
+        timeout-minutes: 6
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-operations-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download | Tee-Object 'ci-operations-results/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "CARR_OPERATIONS_AUDIO=$audio" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Require installed native contention, cancellation, crash and Tasks controls
+        timeout-minutes: 12
+        run: |
+          $python = (Get-Command python.exe).Source
+          $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $programs = @($python, $basePython,
+            (Join-Path (Split-Path $python) 'pythonw.exe'),
+            (Join-Path (Split-Path $basePython) 'pythonw.exe'),
+            (Get-Command node.exe).Source,
+            (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
+            (Join-Path $env:CARR_OPERATIONS_AUDIO 'bin/ffmpeg.exe'),
+            (Join-Path $env:CARR_OPERATIONS_AUDIO 'bin/ffprobe.exe')) |
+            Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            ForEach-Object { [System.IO.Path]::GetFullPath($_) } | Sort-Object -Unique
+          $rulePrefix = 'CARR-operations-offline-' + [guid]::NewGuid().ToString('N')
+          $ruleNames = @()
+          $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
+          try {
+            Set-NetFirewallProfile -Profile Domain, Private, Public -Enabled True -ErrorAction Stop
+            foreach ($program in $programs) {
+              $ruleName = $rulePrefix + '-' + $ruleNames.Count
+              $ruleNames += $ruleName
+              New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Profile Any -Program $program -Enabled True -ErrorAction Stop | Out-Null
+            }
+            $profiles = @(Get-NetFirewallProfile -ErrorAction Stop)
+            if (@($profiles | Where-Object { $_.Enabled -ne 'True' }).Count -ne 0) { throw 'Runtime verification requires enabled firewall profiles.' }
+            $active = @(Get-NetFirewallRule -PolicyStore ActiveStore -Name $ruleNames -ErrorAction Stop)
+            if ($active.Count -ne $programs.Count -or @($active | Where-Object { $_.Enabled -ne 'True' -or $_.Direction -ne 'Outbound' -or $_.Action -ne 'Block' }).Count -ne 0) { throw 'The selected runtime rules are not active.' }
+            $filters = @($active | Get-NetFirewallApplicationFilter -ErrorAction Stop | Select-Object -ExpandProperty Program | ForEach-Object { [System.IO.Path]::GetFullPath($_) })
+            if (@(Compare-Object ($programs | Sort-Object) ($filters | Sort-Object)).Count -ne 0) { throw 'The selected runtime programs are not covered.' }
+            @{ status='PASS'; blocked_programs=$filters; scope='selected test runtime executables, not whole-machine or private-worker network clearance' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-operations-results/runtime-firewall.json'
+            & $python -I -B scripts/verify_operations_acceptance.py --audio-root $env:CARR_OPERATIONS_AUDIO --results 'ci-operations-results' 2>&1 | Tee-Object 'ci-operations-results/installed-operations.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Strict installed canonical operation acceptance failed.' }
+            & $python -I -B tests/ui/native_operations_smoke.py 2>&1 | Tee-Object 'ci-operations-results/native-operations.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Actual native Tasks and resource controls failed.' }
+            & $python -I -B scripts/windows_translation_v3_smoke.py 2>&1 | Tee-Object 'ci-operations-results/native-translation-v3.txt'
+            if ($LASTEXITCODE -ne 0) { throw 'Native Advanced translation controls and synthetic protocol acceptance failed.' }
+          } finally {
+            foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
+            foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
+          }
+      - name: Preserve exact source wheel and synthetic acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-operations-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/ci-operations-results/
+          retention-days: 7
