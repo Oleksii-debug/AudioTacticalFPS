@@ -52,7 +52,7 @@ def _manifest(root):
         raise ValueError('The installation manifest changed while being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
-    optional_flags = {'bundled_native_runtime', 'bundled_audio',
+    optional_flags = {'bundled_native_runtime', 'bundled_audio_runtime', 'bundled_audio',
                       'bundled_citation_runtime', 'bundled_launcher'}
     provenance = {'source_commit', 'source_tree', 'parent_source_commit',
                   'parent_manifest_sha256', 'use_scope'}

@@ -515,3 +515,45 @@ def test_post_create_launch_failure_keeps_uncertain_owner_receipt(owned_fixture,
         stop(parent)
         if handle is not None:
             api.CloseHandle(handle)
+
+
+def test_canonical_local_audio_setup_runs_through_actual_owned_entry_without_download(
+        owned_fixture, tmp_path):
+    from carr_library import local_audio_setup
+
+    root, executable = owned_fixture
+    site = root / '.venv/Lib/site-packages'
+    package = site / 'carr_library'
+    source = Path(carr_library.__file__).resolve().parent
+    for name in ('local_audio_setup.py', 'audio_runtime.py', 'native_runtime.py'):
+        shutil.copyfile(source / name, package / name)
+    packaging = Path(__file__).resolve().parents[2] / 'packaging'
+    manifest_path = root / 'bundle-manifest.json'
+    manifest = json.loads(manifest_path.read_bytes())
+    for name in local_audio_setup.TOOL_FILES:
+        target = root / 'tools/audio-setup' / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(packaging / name, target)
+        manifest['files']['tools/audio-setup/' + name] = sha256(target.read_bytes()).hexdigest()
+    manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
+    before = {name: (root / name).read_bytes() for name in manifest['files']}
+    before_manifest = manifest_path.read_bytes()
+    output = tmp_path / 'declined local audio runtime'
+    result = subprocess.run(
+        [str(executable), '-I', '-B', '-X', 'utf8', '-m', 'carr_library.local_audio_setup',
+         '--interactive', '--output', str(output)],
+        input='NO\n', encoding='utf-8', capture_output=True, timeout=30,
+        env=dict(os.environ, CARR_PORTABLE_TEST_SITE_ROOT=str(tmp_path)))
+    assert result.returncode == 0, result.stderr
+    assert '95294294' in result.stdout
+    assert 'Скасовано: нічого не завантажено й не записано.' in result.stdout
+    assert not output.exists()
+    assert {name: (root / name).read_bytes() for name in manifest['files']} == before
+    assert manifest_path.read_bytes() == before_manifest
+    # Both the ordinary guardian and the admitted child initialized site; the
+    # selected callback therefore did not silently bypass the owned bootstrap.
+    assert len(list(tmp_path.glob('site-*'))) == 2
+    control = portable_entry.control_root(root)
+    with leases.installation_lease(control, exclusive=True):
+        portable_entry.require_clean_owners(root)
+    assert not list(control.glob('owner-*.json'))

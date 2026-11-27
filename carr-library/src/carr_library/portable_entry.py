@@ -28,6 +28,7 @@ CONTROL_SUFFIX = '.update-control'
 _CALLBACKS = {
     ('carr_library.__main__', 'main'),
     ('carr_library.native_checks', 'main'),
+    ('carr_library.local_audio_setup', 'main'),
     ('carr_library.operations.cli', 'main'),
     ('carr_library.transcription_cli', 'main'),
     ('carr_library.security.__main__', 'main'),
@@ -40,7 +41,7 @@ OWNED_SOURCES = (
     'installation_lease.py', 'portable_entry.py', 'portable_bootstrap.py',
     'durable_state.py', 'windows_state.py',
     'audio/windows_process.py', '__main__.py', 'native_checks.py',
-    'transcription_cli.py', 'security/__main__.py', 'studio/cli.py',
+    'transcription_cli.py', 'security/__main__.py', 'studio/cli.py', 'local_audio_setup.py',
     'extract/ocr_model_catalog.py', 'assistant/translation_cli.py', 'operations/cli.py',
 )
 _owner_root = None

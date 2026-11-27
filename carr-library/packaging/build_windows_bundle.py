@@ -27,6 +27,8 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 
 TARGET = "Windows x64 / CPython 3.11"
+# Exact unsigned candidate independently built and executed on Windows; no override.
+NATIVE_LAUNCHER_SHA256 = "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec"
 HERE = Path(__file__).resolve().parent
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
@@ -185,7 +187,8 @@ def verify_portable_entry_sources(wheel, launcher_payload):
         for relative in ("installation_lease.py", "portable_entry.py", "portable_bootstrap.py",
                          "durable_state.py", "windows_state.py", "audio/windows_process.py",
                          "__main__.py", "native_checks.py", "transcription_cli.py", "security/__main__.py",
-                         "studio/cli.py", "extract/ocr_model_catalog.py", "assistant/translation_cli.py", "operations/cli.py"):
+                         "studio/cli.py", "extract/ocr_model_catalog.py", "assistant/translation_cli.py", "operations/cli.py",
+                         "local_audio_setup.py"):
             current = regular(package / relative).read_bytes()
             name = "carr_library/" + relative
             names = [entry for entry in archive.infolist() if entry.filename == name]
@@ -200,23 +203,30 @@ def verify_portable_entry_sources(wheel, launcher_payload):
 
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, launcher_dir=None, portable_updates=False):
+                 ocr_source_archive=None, native_launcher=None, *,
+                 launcher_dir=None, portable_updates=False):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
     if type(portable_updates) is not bool:
-        raise ValueError('portable_updates must be an explicit boolean')
+        raise ValueError("portable_updates must be an explicit boolean")
+    if native_launcher is not None and launcher_dir is not None:
+        raise ValueError("Choose the canonical pinned launcher or an exact-source owned launcher, not both")
     if portable_updates and (source_commit is None or launcher_dir is None or python_archive is None):
-        raise ValueError('portable updates require exact source, native launcher and bundled Python')
+        raise ValueError("portable updates require exact source, owned native launcher and bundled Python")
     launcher_payload = None
     if launcher_dir is not None:
         if python_archive is None:
-            raise ValueError("native launcher requires the complete bundled Python runtime")
+            raise ValueError("owned native launcher requires the complete bundled Python runtime")
         launcher_payload = verify_native_launcher(launcher_dir, source_commit)
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
+    if native_launcher is not None:
+        native_launcher = regular(Path(native_launcher))
+        if sha256(native_launcher) != NATIVE_LAUNCHER_SHA256:
+            raise ValueError("Native launcher differs from the exact Windows-tested executable")
     pins = read_lock(lock)
     if sbom is not None:
         sbom = regular(Path(sbom))
@@ -378,8 +388,33 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     raise ValueError("OCR source archive changed during bundle assembly")
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
+        # Setup helpers are source only. A user may explicitly acquire and
+        # prepare the pinned runtime on their own machine; transfer archives
+        # never include that runtime. Copy only this reviewed file inventory.
+        setup_entry = "SetupLocalAudioOwned.cmd" if launcher_payload is not None else "SetupLocalAudio.cmd"
+        shutil.copyfile(regular(HERE / setup_entry), staged / "SetupLocalAudio.cmd")
+        for relative in (
+            "setup_local_audio.py",
+            "acquire_audio_runtime.py",
+            "prepare_audio_runtime.py",
+            "audio-runtime/README.txt",
+            "audio-runtime/licenses/BUILD_RECIPES_LICENSE",
+            "audio-runtime/licenses/COPYING.GPLv2",
+            "audio-runtime/licenses/COPYING.GPLv3",
+            "audio-runtime/licenses/COPYING.LGPLv2.1",
+            "audio-runtime/licenses/COPYING.LGPLv3",
+            "audio-runtime/licenses/LICENSE.md",
+            "audio-runtime/provenance/build-configuration.txt",
+            "audio-runtime/provenance/checksums.sha256",
+            "audio-runtime/provenance/dependency-source-index.json",
+            "audio-runtime/source-lock.json",
+        ):
+            target = staged / "tools" / "audio-setup" / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(regular(HERE / relative), target)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
         # Ship the guides referenced by the installed README, including the
         # exact advanced-query syntax and complete-backup behavior.
         guides = staged / "docs"
@@ -395,6 +430,11 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if native_launcher is not None:
+            destination = staged / "ResearchLibrary.exe"
+            shutil.copyfile(regular(native_launcher), destination)
+            if sha256(destination) != NATIVE_LAUNCHER_SHA256:
+                raise ValueError("Native launcher changed during bundle assembly")
         if launcher_payload is not None:
             (staged / "ResearchLibrary.exe").write_bytes(launcher_payload[0])
             (staged / "native-launcher-build.json").write_bytes(launcher_payload[1])
@@ -406,15 +446,23 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             if Path(portable_entry.__file__).resolve() != (HERE.parent / "src/carr_library/portable_entry.py").resolve():
                 raise ValueError("portable contract was imported from another application")
             (staged / portable_entry.PORTABLE_MARKER).write_bytes(portable_entry.PORTABLE_CONTRACT)
+        if source_evidence is not None:
+            # Retain the verifier's exact commit/tree/wheel binding inside the
+            # sealed payload, so installed acceptance can attest those same
+            # bytes. Use deterministic LF bytes on both build platforms.
+            (staged / "application-source.json").write_bytes(
+                (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
-                    "bundled_launcher": launcher_payload is not None,
                     "files": files}
+        if launcher_payload is not None:
+            manifest["bundled_launcher"] = True
         if source_commit is not None:
             manifest["source_commit"] = source_commit
+            manifest["source_tree"] = source_evidence["source_tree"]
         (staged / "bundle-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         # Reserve a fresh destination; never overwrite an existing installation.
@@ -442,15 +490,18 @@ def main():
                         help="Verified portable Windows Tesseract runtime and language models")
     parser.add_argument("--ocr-source-archive", type=Path,
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
+    parser.add_argument("--native-launcher", type=Path,
+                        help="Optional exact Windows-tested ResearchLibrary.exe; its SHA256 is source-pinned")
     parser.add_argument("--launcher-dir", type=Path,
-                        help="Private native launcher build with its exact-source receipt")
+                        help="Opt-in exact-source native launcher build and ownership receipt")
     parser.add_argument("--portable-updates", action="store_true",
-                        help="Opt this new sealed bundle into owned portable entries and external idle activation")
+                        help="Opt this new bundle into owned portable entries and external idle activation")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.launcher_dir, portable_updates=args.portable_updates)))
+                                  args.native_launcher, launcher_dir=args.launcher_dir,
+                                  portable_updates=args.portable_updates)))
 
 
 if __name__ == "__main__":

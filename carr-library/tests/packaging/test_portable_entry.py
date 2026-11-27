@@ -96,7 +96,7 @@ def test_exact_bootstrap_self_test_does_not_open_a_completed_public_bypass(tmp_p
 
 @pytest.mark.parametrize('name', ['installation_lease.py', 'portable_entry.py',
                                  'durable_state.py', 'windows_state.py',
-                                 'audio/windows_process.py', 'native_checks.py', 'unchanged'])
+                                 'audio/windows_process.py', 'native_checks.py', 'local_audio_setup.py', 'unchanged'])
 def test_portable_builder_rejects_old_or_changed_ownership_sources(tmp_path, monkeypatch, name):
     import importlib.util
     import zipfile
@@ -112,7 +112,8 @@ def test_portable_builder_rejects_old_or_changed_ownership_sources(tmp_path, mon
     relatives = ('installation_lease.py', 'portable_entry.py', 'portable_bootstrap.py',
                  'durable_state.py', 'windows_state.py', 'audio/windows_process.py',
                  '__main__.py', 'native_checks.py', 'transcription_cli.py', 'security/__main__.py',
-                 'studio/cli.py', 'extract/ocr_model_catalog.py', 'assistant/translation_cli.py', 'operations/cli.py')
+                 'studio/cli.py', 'extract/ocr_model_catalog.py', 'assistant/translation_cli.py',
+                 'operations/cli.py', 'local_audio_setup.py')
     for relative in relatives:
         target = package / relative
         target.parent.mkdir(parents=True, exist_ok=True)
