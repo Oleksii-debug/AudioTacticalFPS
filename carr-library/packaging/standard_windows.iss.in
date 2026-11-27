@@ -167,7 +167,8 @@ begin
   Result := Length(Value) = Size;
   if not Result then exit;
   for I := 1 to Length(Value) do
-    if not (Value[I] in ['0'..'9', 'a'..'f']) then begin
+    if not (((Value[I] >= '0') and (Value[I] <= '9')) or
+            ((Value[I] >= 'a') and (Value[I] <= 'f'))) then begin
       Result := False;
       exit;
     end;
@@ -184,7 +185,7 @@ begin
   Result := (Value[22] = '-') and (Value[23] <> '0');
   if not Result then exit;
   for I := 23 to Length(Value) do
-    if not (Value[I] in ['0'..'9']) then begin
+    if (Value[I] < '0') or (Value[I] > '9') then begin
       Result := False;
       exit;
     end;
