@@ -144,6 +144,7 @@ def test_mismatched_existing_approval_rejected_before_open(tmp_path, monkeypatch
     assert not list(tmp_path.glob('.research-export-*'))
     assert not opened
 
+    assert not inspected
 
 @pytest.mark.parametrize('phase', ('before-write', 'after-staging'))
 def test_replaced_existing_destination_not_opened(publication, monkeypatch, phase):
@@ -187,4 +188,3 @@ def test_replaced_existing_destination_not_opened(publication, monkeypatch, phas
     assert not opened and not native_queries
     assert target.read_bytes() == unrelated
     assert not list(target.parent.glob('.research-export-*'))
-    assert not inspected
