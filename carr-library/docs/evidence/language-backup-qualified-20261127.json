@@ -1,5 +1,5 @@
 {
-  "status": "IN_PROGRESS",
+  "status": "DEVELOPMENT_COMPONENTS_VERIFIED",
   "product_subtree": "e4d5c6e27b0fae7fb61544675cd878b46eed4379",
   "frozen_windows_candidate": "d9ffe4515a625cf1157db71bf7d2a95229ae5dda",
   "workflow_only_followup": "b00c173c63f9f414f7e1c656f2d99d1e0d3ffa78",
@@ -656,21 +656,504 @@
       "passed": 360,
       "failed": 0,
       "skipped": 0
+    },
+    {
+      "key": "backupWindows",
+      "run": 45930802682,
+      "job": 140282715461,
+      "platform": "Windows",
+      "commit": "b00c173c63f9f414f7e1c656f2d99d1e0d3ffa78",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45930802682/job/140282715461",
+      "suites": [
+        {
+          "suite": "tests/storage/test_backup_audio_composition.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_boundary.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_generated_audio.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_keyboard_drafts.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_pending_compatibility.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_publication_recovery.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_reading_state.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_schema_identity.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_source_binding_review.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_v4_sidecars.py",
+          "passed": 34,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_complete_pending_backup.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_crash_backup.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup_reading_state.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_pending_backup.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/assistant/test_backup_receipt.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_metadata_backup_roundtrip.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_desktop_handlers.py",
+          "passed": 60,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_offline_startup.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "passed": 360,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "platform": "Linux",
+      "job": 140290653517,
+      "run": 45933294591,
+      "commit": "b1756d30655a387a487a95086f4fd79a37c88a63",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45933294591/job/140290653517",
+      "suites": [
+        {
+          "suite": "tests/storage/test_backup_audio_composition.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_boundary.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_generated_audio.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_keyboard_drafts.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_pending_compatibility.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_publication_recovery.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_reading_state.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_schema_identity.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_source_binding_review.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_studio_project_schema.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_v4_sidecars.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_complete_pending_backup.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_crash_backup.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup_reading_state.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_pending_backup.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/assistant/test_backup_receipt.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_metadata_backup_roundtrip.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_desktop_handlers.py",
+          "passed": 60,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_offline_startup.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "passed": 377,
+      "failed": 0,
+      "skipped": 0,
+      "installed_exact_adapter": true,
+      "installed_revision_roundtrip": true,
+      "isolated": true
+    },
+    {
+      "platform": "Windows",
+      "job": 140290653831,
+      "run": 45933294591,
+      "commit": "b1756d30655a387a487a95086f4fd79a37c88a63",
+      "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45933294591/job/140290653831",
+      "suites": [
+        {
+          "suite": "tests/storage/test_backup_audio_composition.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_boundary.py",
+          "passed": 6,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_generated_audio.py",
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_keyboard_drafts.py",
+          "passed": 14,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_pending_compatibility.py",
+          "passed": 30,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_publication_recovery.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_reading_state.py",
+          "passed": 40,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_schema_identity.py",
+          "passed": 27,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_source_binding_review.py",
+          "passed": 3,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_studio_project_schema.py",
+          "passed": 15,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_backup_v4_sidecars.py",
+          "passed": 36,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_complete_pending_backup.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_crash_backup.py",
+          "passed": 5,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup.py",
+          "passed": 9,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_library_backup_reading_state.py",
+          "passed": 54,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/storage/test_pending_backup.py",
+          "passed": 28,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/assistant/test_backup_receipt.py",
+          "passed": 12,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/catalog/test_metadata_backup_roundtrip.py",
+          "passed": 1,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/ui/test_desktop_handlers.py",
+          "passed": 60,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        },
+        {
+          "suite": "tests/e2e/test_offline_startup.py",
+          "passed": 7,
+          "failed": 0,
+          "skipped": 0,
+          "exit": 0
+        }
+      ],
+      "passed": 377,
+      "failed": 0,
+      "skipped": 0,
+      "installed_exact_adapter": true,
+      "installed_revision_roundtrip": true,
+      "isolated": true
     }
   ],
   "pending": [
     {
-      "name": "Full Windows installed bundle",
-      "run": 45929938111
+      "name": "Original full source and Windows workflow",
+      "run": 45929938111,
+      "source_commit": "d9ffe4515a625cf1157db71bf7d2a95229ae5dda",
+      "status": "NO_TERMINAL_RESULT_OBSERVED"
     },
     {
-      "name": "Windows backup workflow with prepared audio parent",
-      "run": 45930802682
+      "name": "Current merged product sealed Windows installer",
+      "run": 45935576559,
+      "workflow_commit": "d404bcb80324164e244f84394edd361846e38ad6",
+      "source_commit": "b1756d30655a387a487a95086f4fd79a37c88a63",
+      "status": "QUEUED"
     }
   ],
   "limitations": [
-    "No manual NVDA listening qualification",
-    "No private voice-cloning engine or paid Google API request qualification",
-    "Canonical studio/provider migration outside the supported typed layouts is not claimed"
-  ]
+    "Full source gate and sealed-bundle acceptance are independent requirements; neither is inferred from the component tests.",
+    "Manual NVDA listening qualification remains separate.",
+    "Private voice-cloning engines, optional neural model quality and real paid Google API requests are not qualified by these tests.",
+    "Studio project/revision data with external media cues, studio jobs and unsupported provider/runtime state remain explicitly unsupported; canonical runtime convergence is not claimed."
+  ],
+  "selected_host": {
+    "branch": "carr/v3-integrated-private-ce034-20261126",
+    "commit": "7816e682bf567b02b0e3e4e86dd74135c6d23f2d",
+    "tree": "c3f8e5866623b4e82c5def719d1e910ee02c5a92",
+    "matches_qualified_commit": "b1756d30655a387a487a95086f4fd79a37c88a63"
+  },
+  "merged_pull_requests": [
+    {
+      "number": 136,
+      "sha": "196ea32161c0932101f97f9903b465b2a5407d16",
+      "merged": true,
+      "message": "Pull Request successfully merged"
+    },
+    {
+      "number": 158,
+      "sha": "7816e682bf567b02b0e3e4e86dd74135c6d23f2d",
+      "merged": true,
+      "message": "Pull Request successfully merged"
+    }
+  ],
+  "recorded_at": "2026-11-27 03:42:42 UTC"
 }
