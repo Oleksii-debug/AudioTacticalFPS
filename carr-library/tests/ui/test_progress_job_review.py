@@ -559,6 +559,7 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     parent_progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
     progress.pause.assert_called_once_with('Audio production paused; completed chunks retained')
     progress.close.assert_called_once_with()
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    executor.submit.assert_called_once_with(service.close)
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
     dialog.EndModal.assert_called_once_with(123)
     assert report.call_count == int(device_failure)
