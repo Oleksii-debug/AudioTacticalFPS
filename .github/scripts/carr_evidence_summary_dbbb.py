@@ -12,9 +12,7 @@ REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
 RUN = 46031920263
 HEAD = "94ecfdd48c65d03f0b29abee9000fd4e2a1610ee"
 ARTIFACTS = (
-    (15219682723, "e62c9c91dc49507b928dd113814b122014602e9f340dd34351075e09306a9c1b"),
-    (15219374659, "73da99c774c97c347c93607a320701f07595512adccc7f00aa19f76ed229ef2d"),
-    (15219017917, "7376120d1d6de7c6e47b94da495d06db622bedfc806f6f795052fc6eacf3f489"),
+    (15222511230, "1b8d4313d87515f4d7900870c6d974d97acdab50b407877145f2f63bba068bde"),
 )
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -34,7 +32,7 @@ def fetch(url, limit):
         if len(data) > limit:
             raise ValueError("Evidence read exceeded its reviewed bound")
         return data
-remaining = 150000
+remaining = 220000
 def emit(text):
     global remaining
     if remaining <= 0:
@@ -59,6 +57,7 @@ for identity, digest in ARTIFACTS:
         if len(entries) > 2000 or sum(x.file_size for x in entries) > 128 * 1024 * 1024:
             raise ValueError("Evidence archive exceeds reviewed bound")
         emit("FILES " + json.dumps([(x.filename, x.file_size) for x in entries if not x.is_dir()])[:10000])
+        entries.sort(key=lambda entry: (0 if "required" in entry.filename.lower() or "full-runtime" in entry.filename.lower() else 1, entry.filename))
         for entry in entries:
             name = entry.filename
             path = PurePosixPath(name)
