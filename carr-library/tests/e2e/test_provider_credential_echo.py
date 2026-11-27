@@ -1,15 +1,13 @@
 """Credential reflection must never become a saved provider result.
 
-All credentials are synthetic. Most cases exercise the real durable ledger
-through an explicit transport double; the two local controls use actual HTTP
-on an ephemeral loopback port and never consult a vault or external service.
+All credentials are synthetic. The real durable ledger is exercised through
+an explicit transport double. The local controls prove credential-free routing
+and admission without sockets; the separate allowlisted loopback suite retains
+its existing actual HTTP coverage.
 """
-from dataclasses import asdict
 from contextlib import closing
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import sqlite3
-from threading import Thread
 from time import time
 from types import SimpleNamespace
 
@@ -40,9 +38,11 @@ class Transport:
     def __init__(self):
         self.response = b''
         self.calls = 0
+        self.requests = []
 
     def post(self, profile, route, payload, headers, **kwargs):
         self.calls += 1
+        self.requests.append((route, dict(headers), payload))
         return self.response
 
 
@@ -154,51 +154,33 @@ def test_native_task_controller_never_publishes_reflected_credentials(tmp_path, 
 
 
 @pytest.mark.parametrize('kind', ['llm', 'translation'])
-def test_actual_local_http_without_credentials_remains_available(tmp_path, monkeypatch, kind):
-    calls = []
+def test_local_requests_without_credentials_remain_available(tmp_path, monkeypatch, kind):
     response = json.dumps(
         {'choices': [{'message': {'content': 'Synthetic local answer &#65;.'}}]}
         if kind == 'llm' else {'translatedText': 'Synthetic local translation &#65;.'}).encode()
-    class Handler(BaseHTTPRequestHandler):
-        def do_POST(self):
-            size = int(self.headers['Content-Length'])
-            calls.append((self.path, dict(self.headers), self.rfile.read(size)))
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Content-Length', str(len(response)))
-            self.end_headers()
-            self.wfile.write(response)
-
-        def log_message(self, *args):
-            pass
 
     def no_vault(*args, **kwargs):
         raise AssertionError('The selected local request must not consult a credential vault.')
 
     monkeypatch.setattr(api, 'WindowsCredentialVault', no_vault)
-    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
-    server.daemon_threads = True
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    try:
-        origin = 'http://127.0.0.1:' + str(server.server_port)
-        profile = api.ProviderProfile('local', 'Selected local service',
-            'openai-compatible' if kind == 'llm' else api.LOCAL_TRANSLATION_PROVIDER,
-            origin + '/v1' if kind == 'llm' else origin, 'reviewed-local-runtime',
-            ('llm',) if kind == 'llm' else ('translation',), local=True)
-        request = (api.ProviderRequest('llm', 'Synthetic local input.') if kind == 'llm'
-            else api.LocalTranslationRequest(text='Synthetic local input.', source='en', target='uk'))
-        approval = api.JobApproval('local-job', profile.fingerprint, (request.fingerprint(profile),),
-            mode='LOCAL_ONLY', allow_loopback=True)
-        ledger = api.BudgetLedger(tmp_path / 'local.sqlite')
-        assert api.ProviderGateway(ledger).perform(profile, request, approval=approval,
-            operation_id='local-request', estimated_micros=0) == response
-        assert len(calls) == 1
-        assert calls[0][0] == ('/v1/chat/completions' if kind == 'llm' else '/translate')
-        assert not {'authorization', 'xi-api-key', 'x-goog-api-key'} & {key.lower() for key in calls[0][1]}
-        assert ledger.report('local-job')[0]['state'] == 'complete'
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
-        assert not thread.is_alive()
+    origin = 'http://127.0.0.1:54321'
+    profile = api.ProviderProfile('local', 'Selected local service',
+        'openai-compatible' if kind == 'llm' else api.LOCAL_TRANSLATION_PROVIDER,
+        origin + '/v1' if kind == 'llm' else origin, 'reviewed-local-runtime',
+        ('llm',) if kind == 'llm' else ('translation',), local=True)
+    request = (api.ProviderRequest('llm', 'Synthetic local input.') if kind == 'llm'
+        else api.LocalTranslationRequest(text='Synthetic local input.', source='en', target='uk'))
+    approval = api.JobApproval('local-job', profile.fingerprint, (request.fingerprint(profile),),
+        mode='LOCAL_ONLY', allow_loopback=True)
+    ledger = api.BudgetLedger(tmp_path / 'local.sqlite')
+    transport = Transport()
+    transport.response = response
+    assert api.ProviderGateway(ledger, transport=transport).perform(
+        profile, request, approval=approval, operation_id='local-request', estimated_micros=0) == response
+    assert transport.calls == 1
+    route, headers, payload = transport.requests[0]
+    assert route == ('/chat/completions' if kind == 'llm' else '/translate')
+    assert headers == {}
+    assert json.loads(payload)['model' if kind == 'llm' else 'source'] == (
+        'reviewed-local-runtime' if kind == 'llm' else 'en')
+    assert ledger.report('local-job')[0]['state'] == 'complete'
