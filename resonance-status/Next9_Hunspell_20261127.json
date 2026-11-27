@@ -1,0 +1,356 @@
+{
+  "schema": "resonance-hunspell-composition/1",
+  "status": "DRAFT_NOT_RUN",
+  "context": {
+    "current_candidate": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+    "current_tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87",
+    "refs_changed": false,
+    "executor_available": false
+  },
+  "scope": "Optional explicit local Hunspell profile; one existing Reader worker, current resource broker and native cleanup, preview/apply/undo only. No downloaded engine/dictionary, extra Python distribution, new package or persisted profile.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/speech/spelling.py",
+      "sha": "01e2d104e2a88073df43277f95e1c15efd26522d",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/spelling_worker.py",
+      "sha": "be0426fd607705d9cc774c36d9c40e2ba0ef3420",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/spelling_dialog.py",
+      "sha": "a80e55f628aad25df2d19e23864ceff4cdb44657",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/speech/test_spelling.py",
+      "sha": "c807c9b998e7cda5ab9eace965132dadbc811035",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/speech/spelling_fixtures.py",
+      "sha": "38061fb1aa1dae11bb3ea13d8f1e6863850ae58f",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/speech/test_spelling_handlers.py",
+      "sha": "a43b5194ca3df1998cea8e60dba003c9c71d18d8",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/speech/test_spelling_reader_hook.py",
+      "sha": "6d2539385b8ea26b6911dbf240efcf0a5e50e616",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/scripts/hunspell_acceptance.py",
+      "sha": "20a824c9086696d8f26564c68c58cb386339f862",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/scripts/build_hunspell_msvc.py",
+      "sha": "42326e61656be7496e4bfb239b4a77c309bad4bb",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/scripts/hunspell-1.7.2-source.json",
+      "sha": "10c4d69a72a5d1b2cf4a373a176d694b4687a1d2",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/packaging/test_hunspell_build.py",
+      "sha": "89590cb3af450ca7062732643cca7531f0d932ad",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/scripts/windows_hunspell_smoke.py",
+      "sha": "2497c1de4442f132f51573f6019c965d60ec5aa9",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/docs/HUNSPELL_REVIEW.md",
+      "sha": "d019e1c394c6ed005c632cee83c633bdb88d50de",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/docs/HUNSPELL_WINDOWS_BUILD.md",
+      "sha": "92b3dbc09ae6ee36522d399e526c96ccd870fe1a",
+      "preimage": null
+    }
+  ],
+  "shared_hooks": {
+    "blob": "d7686bcecec464b4ecc23c92a9db84562a355c0e",
+    "count": 11,
+    "preimages": {
+      "reader": "d4e6f21083b393dd31135626b7bc475cab011c62",
+      "commands": "73abb2139623cfb0873fae3e13a4d6557f09169b"
+    },
+    "application": "Apply each exact before/after once; preserve current reader/narration receipt and export revalidation. Ten reader hunks, one canonical command inventory hunk.",
+    "unique_application_check": "PASS_BY_TEXT_ONLY"
+  },
+  "required_validation": {
+    "whole_modules": [
+      {
+        "path": "tests/speech/test_spelling.py",
+        "static_expected_cases": 54
+      },
+      {
+        "path": "tests/speech/test_spelling_handlers.py",
+        "static_expected_cases": 20
+      },
+      {
+        "path": "tests/speech/test_spelling_reader_hook.py",
+        "static_expected_cases": 9
+      },
+      {
+        "path": "tests/packaging/test_hunspell_build.py",
+        "static_expected_cases": 31
+      }
+    ],
+    "static_expected_total": 114,
+    "case_status": "NOT_COLLECTED_NOT_RUN",
+    "source_and_installed": "All four whole suites, zero skip/error/failure/XFAIL/XPASS. Existing ci_check socket denial and per-suite deadlines unchanged.",
+    "installed_fixture_companions": [
+      "tests/speech/spelling_fixtures.py",
+      "tests/ui/test_find_replace_hooks.py",
+      "scripts/build_hunspell_msvc.py",
+      "scripts/hunspell-1.7.2-source.json"
+    ],
+    "headless": {
+      "script": "scripts/hunspell_acceptance.py",
+      "source_args": "--library <exact built DLL> --source-root <exact candidate carr-library/src> --output <new source report>",
+      "installed_args": "-I -B scripts/hunspell_acceptance.py --library <exact built DLL> --source-root <exact candidate carr-library/src> --require-installed --output <new installed report>",
+      "source_imports": "Existing approved source import environment; -B, no application-side downloads.",
+      "origins": [
+        "carr_library.speech.spelling",
+        "carr_library.speech.spelling_worker",
+        "carr_library.speech.reading",
+        "carr_library.speech._io",
+        "carr_library.ui.spelling_dialog",
+        "carr_library.ui.pronunciation_dialog",
+        "carr_library.audio.models",
+        "carr_library.audio.process",
+        "carr_library.audio.cleanup",
+        "carr_library.operations.broker",
+        "carr_library.operations.models",
+        "carr_library.durable_state"
+      ],
+      "behavior_checks": [
+        "exact selected native library hash",
+        "actual C API, UTF-8 dictionary and affix expansion",
+        "exact Unicode/CRLF reading offsets",
+        "selected-text scope with original character positions",
+        "overlong tokens are explicitly uncheckable",
+        "actual native result remains review-only",
+        "explicit correction preserves source and one undo",
+        "external dictionary bytes remain unchanged",
+        "declared legacy encoding with no replacement decoding",
+        "same-size changed dictionary is rejected before use",
+        "malformed dictionary cannot report a complete review",
+        "actual mid-staging/check cancellation reaps and removes private copies",
+        "actual owned deadline wrapper reaps and removes private copies",
+        "shared spelling reservations released after native cleanup",
+        "native engine bytes remain unchanged",
+        "installed sources unchanged after actual C API acceptance"
+      ],
+      "installed_required_checks": [
+        "installed origin: carr_library.speech.spelling",
+        "installed origin: carr_library.speech.spelling_worker",
+        "installed origin: carr_library.speech.reading",
+        "installed origin: carr_library.speech._io",
+        "installed origin: carr_library.ui.spelling_dialog",
+        "installed origin: carr_library.ui.pronunciation_dialog",
+        "installed origin: carr_library.audio.models",
+        "installed origin: carr_library.audio.process",
+        "installed origin: carr_library.audio.cleanup",
+        "installed origin: carr_library.operations.broker",
+        "installed origin: carr_library.operations.models",
+        "installed origin: carr_library.durable_state",
+        "exact module bytes: carr_library.speech.spelling",
+        "exact module bytes: carr_library.speech.spelling_worker",
+        "exact module bytes: carr_library.speech.reading",
+        "exact module bytes: carr_library.speech._io",
+        "exact module bytes: carr_library.ui.spelling_dialog",
+        "exact module bytes: carr_library.ui.pronunciation_dialog",
+        "exact module bytes: carr_library.audio.models",
+        "exact module bytes: carr_library.audio.process",
+        "exact module bytes: carr_library.audio.cleanup",
+        "exact module bytes: carr_library.operations.broker",
+        "exact module bytes: carr_library.operations.models",
+        "exact module bytes: carr_library.durable_state",
+        "exact selected native library hash",
+        "actual C API, UTF-8 dictionary and affix expansion",
+        "exact Unicode/CRLF reading offsets",
+        "selected-text scope with original character positions",
+        "overlong tokens are explicitly uncheckable",
+        "actual native result remains review-only",
+        "explicit correction preserves source and one undo",
+        "external dictionary bytes remain unchanged",
+        "declared legacy encoding with no replacement decoding",
+        "same-size changed dictionary is rejected before use",
+        "malformed dictionary cannot report a complete review",
+        "actual mid-staging/check cancellation reaps and removes private copies",
+        "actual owned deadline wrapper reaps and removes private copies",
+        "shared spelling reservations released after native cleanup",
+        "native engine bytes remain unchanged",
+        "installed sources unchanged after actual C API acceptance"
+      ],
+      "installed_required_unique_count": 40,
+      "source_required_unique_count": 28,
+      "fields": {
+        "status": "PASS",
+        "actual_c_api": "PASS",
+        "child_and_resource_cleanup": "PASS",
+        "native_windows": "EXECUTED",
+        "manual_nvda": "NOT_RUN",
+        "distribution_clearance": "NOT_GRANTED"
+      }
+    },
+    "native": {
+      "script": "scripts/windows_hunspell_smoke.py",
+      "args": "-I -B scripts/windows_hunspell_smoke.py --library <same built DLL> --source-root <exact candidate carr-library/src> --require-installed --output <new native report>",
+      "hard_deadline_seconds": 180,
+      "origins": [
+        "carr_library.speech.spelling",
+        "carr_library.speech.spelling_worker",
+        "carr_library.speech.reading",
+        "carr_library.speech.source",
+        "carr_library.speech.session",
+        "carr_library.speech._io",
+        "carr_library.ui.spelling_dialog",
+        "carr_library.ui.pronunciation_dialog",
+        "carr_library.ui.speech_dialog",
+        "carr_library.ui.reading_shortcuts",
+        "carr_library.ui.builtin_keyboard_commands",
+        "carr_library.ui.desktop_app",
+        "carr_library.ui.worker_lifetime",
+        "carr_library.ui.worker_cleanup",
+        "carr_library.audio.process",
+        "carr_library.audio.windows_job",
+        "carr_library.audio.cleanup",
+        "carr_library.operations.broker",
+        "carr_library.operations.models",
+        "carr_library.native_runtime"
+      ],
+      "essential_checks": [
+        "all twenty application module bytes and requested installed origins match",
+        "actual native DesktopFrame and Windows controls",
+        "spelling uses the current semantic command identity",
+        "profile starts empty without loading a native library",
+        "native Review hashes the exact three selected files without execution",
+        "profile identity is displayed in a read-only native control",
+        "actual Hunspell C API returns UTF8 affix and Unicode results",
+        "checking alone never edits the retained reading copy",
+        "native selection preserves the Unicode source character range",
+        "native Preview remains a non-mutating read-only review",
+        "explicit native Apply changes exactly the reviewed word",
+        "reading recovery preserves original source and non-authorizing lineage",
+        "spelling never overwrites the original library asset",
+        "one native Undo restores the exact reading copy",
+        "changed dictionary cannot reuse its earlier native profile",
+        "native check retains its private request and shared reservation",
+        "actual Cancel reaps the native Job before releasing staging and admission",
+        "Close is available while the existing spelling worker is active",
+        "retained source loads through the existing reader worker",
+        "spelling needs no installed voice or audio endpoint",
+        "late native completion after modal destruction is safely discarded",
+        "native CtrlS saves only the unchanged reading derivative",
+        "all spelling and source work uses the one existing reader worker",
+        "reader cleanup closes the metadata-only voice owner exactly once",
+        "native spell check leaves selected runtime and dictionaries unchanged",
+        "retained source remains byte-exact after every native action",
+        "actual host and existing owner finalizers close cleanly",
+        "application bytes remain exact after native work and cleanup"
+      ],
+      "required_check_count": 28,
+      "fields": {
+        "status": "PASS",
+        "actual_hunspell_c_api": "PASS",
+        "actual_reader_worker": "PASS",
+        "native_review_apply_undo": "PASS",
+        "native_cancel_and_close": "PASS",
+        "owned_child_invocations": 4,
+        "speech_audio": "NOT_RUN",
+        "manual_nvda": "NOT_RUN",
+        "dictionary_quality": "NOT_RUN",
+        "distribution_clearance": "NOT_GRANTED"
+      },
+      "qualification": "Actual retained-source DesktopFrame/Reader/serial executor and native controls; tiny original dictionaries and empty metadata-only VoiceRegistry. Last two actual owned children use a declared stdlib delay before the unchanged worker. Native child death/Job close/staging/lease release are asserted before fallback cleanup."
+    },
+    "evidence_binding": "Require exact application checkout/source-wheel identity and same DLL SHA across build receipt, both C API reports and native report; all origin hashes before and after. Successful probe does not override any failed parent workflow."
+  },
+  "acquisition": {
+    "phase": "Explicit CI setup before firewall; no automatic runtime/application downloads.",
+    "repository": "https://github.com/hunspell/hunspell",
+    "tag": "v1.7.2",
+    "commit": "2969be996acad84b91ab3875b1816636fe61a40e",
+    "source_manifest": {
+      "path": "scripts/hunspell-1.7.2-source.json",
+      "blob": "10c4d69a72a5d1b2cf4a373a176d694b4687a1d2",
+      "sha256": "f5ea8a9afae905cd1d2dd56415b320fd0949d85e28151eb8ddb63d19d128aefc",
+      "files": 38,
+      "bytes": 3332658
+    },
+    "license_files": [
+      "COPYING",
+      "COPYING.LESSER",
+      "COPYING.MPL",
+      "license.hunspell",
+      "license.myspell"
+    ],
+    "tools": "Already installed explicit VS2022 MSBuild, v143 x64 VC tools and Windows10 SDK version. The helper validates layout and binds selected msbuild/cl/link/rc hashes; do not assume PATH.",
+    "command": "python -B scripts/build_hunspell_msvc.py --source <explicit pinned official checkout> --output <new external directory> --msbuild <explicit MSBuild.exe> --vc-tools-dir <explicit VC/Tools/MSVC/version> --sdk-dir <explicit Windows Kits/10> --sdk-version <explicit installed version>",
+    "deadline_seconds": 300,
+    "outputs": [
+      "bin/libhunspell.dll",
+      "build-report.json",
+      "build.log",
+      "source/"
+    ],
+    "build_fields": {
+      "schema": "resonance-hunspell-msvc-build/1",
+      "status": "BUILT",
+      "source_commit": "2969be996acad84b91ab3875b1816636fe61a40e",
+      "source_bytes_modified": false,
+      "native_api": "NOT_RUN",
+      "bundled": false,
+      "distribution_clearance": "NOT_GRANTED"
+    },
+    "dependency_changes": "None; preserve current core15/semantic51/trusted56 inventories.",
+    "artifact_policy": "Retain public reports, source inventory/notices and bounded compiler logs. The DLL is an external ephemeral CI input, not an added application/wheel/delivery payload; no redistribution approval."
+  },
+  "documentation": {
+    "paths": [
+      "docs/HUNSPELL_REVIEW.md",
+      "docs/HUNSPELL_WINDOWS_BUILD.md"
+    ],
+    "official_source_retrieval_date": "2026-11-27",
+    "official_urls": [
+      "https://github.com/hunspell/hunspell/tree/2969be996acad84b91ab3875b1816636fe61a40e",
+      "https://github.com/hunspell/hunspell/blob/2969be996acad84b91ab3875b1816636fe61a40e/src/hunspell/hunspell.h",
+      "https://github.com/hunspell/hunspell/blob/2969be996acad84b91ab3875b1816636fe61a40e/license.hunspell",
+      "https://github.com/hunspell/hunspell/blob/2969be996acad84b91ab3875b1816636fe61a40e/msvc/libhunspell.vcxproj"
+    ]
+  },
+  "static_reviews": [
+    {
+      "reviewer": "progress_completion",
+      "scope": "core/worker/modal admission, retained cleanup and exact edit source scope",
+      "result": "ACCEPTED_STATIC_NOT_RUN"
+    },
+    {
+      "reviewer": "locate_project",
+      "scope": "native2497 actual API/field/control, child death/closed Job, before-fallback cleanup and watchdog",
+      "result": "ACCEPTED_STATIC_NOT_RUN"
+    }
+  ],
+  "final_fixture_adaptation": "Eleven old direct valid calls now use existing state_root helpers. All assertions and the intentional missing/invalid current-library negatives are unchanged. Reader-hook factory already accepts and forwards keyword options.",
+  "limitations": [
+    "No local parsing/execution while executor unavailable",
+    "No actual current-head source or installed results yet",
+    "No current native DLL/compiler/Windows Reader result yet",
+    "No universal segmentation or grammar, dictionary-quality, 135-language or manual NVDA qualification"
+  ]
+}

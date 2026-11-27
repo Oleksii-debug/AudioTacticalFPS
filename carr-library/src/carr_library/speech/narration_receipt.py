@@ -82,6 +82,14 @@ def validate_narration(value, text=None):
             or not _integer(span['end'], span['start'], value['source_characters'])
             or (span['exact'] and span['end'] - span['start'] != selected['end'] - selected['start'])):
         raise ValueError('Invalid mapped narration span.')
+    # Exact source runs never include the synthetic two-character separator
+    # between retained positions. An untrusted, resealed receipt must not
+    # describe such a selection as exact even without the saved project.
+    anchor = value['source_anchor']
+    if (anchor is not None and span['exact'] and not any(
+            row['start'] <= span['start'] < span['end'] <= row['end']
+            for row in anchor['positions'])):
+        raise ValueError('Exact narration span crosses a derived source separator.')
     if text is not None:
         text_value(text, 'Narrated selection')
         if len(text) != selected['end'] - selected['start'] or _hash(text) != selected['text_sha256']:

@@ -34,6 +34,8 @@ class ClipDialog(wx.Dialog):
         self._worker_future = None
         self.projects = ()
         self.project = None
+        self._undo = []
+        self._redo = []
         self.pending = self.closing = self.closed = False
         self.player = None
         self.playback_generation = 0
@@ -88,7 +90,8 @@ class ClipDialog(wx.Dialog):
              ('scene_effects', 'Scene effects...', self.scene_effects),
              ('master_effects', 'Master effects...', self.master_effects),
              ('dry_preview', 'Preview without clip effects', self.preview_dry)),
-            (('render', 'Render saved project', self.render),
+            (('timeline', 'Timeline edits and &history...', self.timeline),
+             ('render', 'Render saved project', self.render),
              ('stop', 'S&top playback', self.stop), ('cancel', 'Cancel operation', self.cancel),
              ('close', '&Close', self.close))):
             row = wx.BoxSizer(wx.HORIZONTAL)
@@ -229,7 +232,8 @@ class ClipDialog(wx.Dialog):
             finish(error=exc)
         return True
 
-    def _accept(self, project):
+    def _accept(self, project, *, history_mode=None):
+        self._record_history(project, history_mode)
         scene_id = clip_id = None
         old_clips = set()
         try:
@@ -242,7 +246,7 @@ class ClipDialog(wx.Dialog):
         self.projects = tuple(item for item in self.projects if item.id != project.id) + (project,)
         self.project_choice.Set([f'{item.title}; revision {item.revision}' for item in self.projects])
         self.project_choice.SetSelection(len(self.projects) - 1)
-        self.select_project()
+        self.select_project(preserve_history=True)
         index = next((index for index, scene in enumerate(project.scenes) if scene.id == scene_id), None)
         if index is not None:
             self.scene_choice.SetSelection(index)
@@ -273,7 +277,9 @@ class ClipDialog(wx.Dialog):
             chooser.Destroy()
         self._run('Creating audio project', lambda: self.editor.create(title), self._accept)
 
-    def select_project(self, event=None):
+    def select_project(self, event=None, *, preserve_history=False):
+        if not preserve_history:
+            self._undo, self._redo = [], []
         index = self.project_choice.GetSelection()
         self.project = self.projects[index] if 0 <= index < len(self.projects) else None
         scenes = self.project.scenes if self.project else ()
@@ -447,6 +453,175 @@ class ClipDialog(wx.Dialog):
             self._run('Rendering saved clip project', work, complete)
         except (ValueError, OSError) as exc:
             self.message(exc)
+
+    def _record_history(self, project, mode):
+        from ..studio.project_history import RevisionRef
+        previous = getattr(self, 'project', None)
+        if previous is None or previous.id != project.id:
+            self._undo, self._redo = [], []
+            return
+        if previous.fingerprint == project.fingerprint:
+            return
+        undo, redo = getattr(self, '_undo', []), getattr(self, '_redo', [])
+        reference = RevisionRef(previous.revision, previous.fingerprint)
+        if mode == 'undo':
+            if undo:
+                undo.pop()
+            redo.append(reference)
+        elif mode == 'redo':
+            if redo:
+                redo.pop()
+            undo.append(reference)
+        else:
+            undo.append(reference)
+            redo.clear()
+        self._undo, self._redo = undo[-100:], redo[-100:]
+
+    def timeline(self, event=None):
+        if self.pending or self.frame.working or not self._scope_current():
+            return
+        choices = (
+            'Split selected clip...',
+            'Cut an interval and leave its time as silence...',
+            'Rejoin the next section of the same original...',
+            'Undo the last saved project edit in this session',
+            'Redo the last undone project edit in this session',
+            'Browse and restore an earlier saved project revision...',
+        )
+        chooser = wx.SingleChoiceDialog(self,
+            'Choose a saved-project operation. Original audio is always retained.',
+            'Timeline editing and project history', choices)
+        try:
+            if chooser.ShowModal() != wx.ID_OK:
+                return
+            index = chooser.GetSelection()
+        finally:
+            chooser.Destroy()
+        if self.pending or self.frame.working or not self._scope_current():
+            return
+        actions = (self.split, self.cut, self.join, self.undo, self.redo, self.history)
+        if 0 <= index < len(actions):
+            actions[index]()
+
+    def _time_entry(self, title, message):
+        chooser = wx.TextEntryDialog(self, message, title)
+        try:
+            if chooser.ShowModal() != wx.ID_OK:
+                return None
+            return chooser.GetValue()
+        finally:
+            chooser.Destroy()
+
+    def split(self, event=None):
+        try:
+            project, scene, cue = self.project, self._scene(), self._clip()
+            value = self._time_entry('Split saved clip',
+                'Position in seconds from the selected clip start. The original and scene timing remain unchanged.')
+            if value is None:
+                return
+            seconds = float(value)
+            self._run('Splitting saved clip', lambda: self.editor.split(
+                project, scene.id, cue.id, seconds, cancelled=self._cancelled), self._accept)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+    def cut(self, event=None):
+        try:
+            project, scene, cue = self.project, self._scene(), self._clip()
+            value = self._time_entry('Cut saved clip interval',
+                'Enter start and end seconds from the clip start, separated by a space. '
+                'Removed time stays silent; other clips do not move. Example: 1.25 2.5')
+            if value is None:
+                return
+            parts = value.split()
+            if len(parts) != 2:
+                raise ValueError('Enter exactly two numbers: the interval start and end.')
+            start, end = map(float, parts)
+            self._run('Cutting interval from saved clip', lambda: self.editor.cut(
+                project, scene.id, cue.id, start, end, cancelled=self._cancelled), self._accept)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+    def join(self, event=None):
+        try:
+            project, scene, cue = self.project, self._scene(), self._clip()
+            candidates = tuple(item for item in scene.cues
+                               if item.id != cue.id and item.path == cue.path and item.start >= cue.start)
+            if not candidates:
+                raise ValueError('Select the first of two adjacent sections of the same retained original.')
+            chooser = wx.SingleChoiceDialog(self,
+                'Choose the following section. Source and scene positions must be contiguous; '
+                'internal fades or changed curves cannot be discarded.',
+                'Rejoin saved clips',
+                [f'{item.title or item.id}; scene start {item.start:g} seconds' for item in candidates])
+            try:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                index = chooser.GetSelection()
+            finally:
+                chooser.Destroy()
+            if not 0 <= index < len(candidates):
+                return
+            second = candidates[index]
+            self._run('Rejoining saved clip sections', lambda: self.editor.join(
+                project, scene.id, cue.id, second.id, cancelled=self._cancelled), self._accept)
+        except (ValueError, OSError) as exc:
+            self.message(exc)
+
+    def _restore_history(self, reference, *, mode=None):
+        project = self.project
+        if project is None:
+            self.message('Choose a saved project first.')
+            return
+        self._run('Restoring reviewed project content as a new revision',
+            lambda: self.editor.restore(project, reference, cancelled=self._cancelled),
+            lambda result: self._accept(result, history_mode=mode))
+
+    def undo(self, event=None):
+        if not getattr(self, '_undo', []):
+            self.message('There is no earlier saved edit in this session. Use project history for older revisions.')
+            return
+        self._restore_history(self._undo[-1], mode='undo')
+
+    def redo(self, event=None):
+        if not getattr(self, '_redo', []):
+            self.message('There is no undone saved edit to redo in this session.')
+            return
+        self._restore_history(self._redo[-1], mode='redo')
+
+    def history(self, event=None, *, before_revision=None):
+        project = self.project
+        if project is None:
+            self.message('Choose a saved project first.')
+            return
+
+        def reviewed(references):
+            if not references:
+                self.message('There are no earlier saved revisions on this page.')
+                return
+            labels = [f'Revision {item.revision}; identity {item.fingerprint[:12]}' for item in references]
+            if len(references) == 100:
+                labels.append('Show earlier saved revisions...')
+            chooser = wx.SingleChoiceDialog(self,
+                'Restore the whole saved project, including timing, roles and effects. '
+                'This creates a new revision; originals and completed outputs remain available.',
+                'Saved project history', labels)
+            try:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                index = chooser.GetSelection()
+            finally:
+                chooser.Destroy()
+            if not self._scope_current() or self.project is None or self.project.fingerprint != project.fingerprint:
+                self.message('The selected project or library changed. Review history again.')
+                return
+            if index == len(references) and len(references) == 100:
+                self.history(before_revision=references[-1].revision)
+            elif 0 <= index < len(references):
+                self._restore_history(references[index])
+
+        self._run('Reviewing saved project history', lambda: self.editor.history(
+            project, before_revision=before_revision, cancelled=self._cancelled), reviewed)
 
     def clip_effects(self, event=None):
         return self._effects('clip')

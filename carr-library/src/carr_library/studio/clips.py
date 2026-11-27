@@ -218,6 +218,132 @@ class ClipEditor:
                           scenes=tuple(replacements.get(scene.id, scene) for scene in project.scenes))
         return self.service.projects.save(updated, expected_revision=project.revision)
 
+    def _clip_geometry(self, project, cues, *, cancelled):
+        """Inspect selected retained inputs under the existing shared broker."""
+        from ..operations import ResourceRequest
+        from .clip_operations import aligned_index
+        self._cancel(cancelled)
+        runtime = self.service._runtime()
+        broker = self.service._admission_broker(cancelled)
+        request = ResourceRequest(cpu_slots=runtime.budget.threads,
+            memory_bytes=max(512 * 1024**2, 2 * runtime.budget.max_alloc_bytes))
+        result = []
+        with broker.reserve(request, operation_id='studio-clip-edit:' + uuid4().hex,
+                            cancelled=cancelled, timeout=60) as lease:
+            self._current(project)
+            for cue in cues:
+                self._cancel(lease.cancelled)
+                source = self.service._cue_source(cue, cancelled=lease.cancelled, schema=project.schema)
+                info = runtime.inspect(source, cancelled=lease.cancelled)
+                if info.sample_rate != project.sample_rate or type(info.frames) is not int or info.frames < 1:
+                    raise ValueError('Sample-preserving edits need an original with a verified sample count '
+                                     'at the project sample rate. Use Convert first.')
+                trim = aligned_index(cue.trim_start, project.sample_rate, 'Original selection start')
+                available = info.frames - trim
+                frames = available if cue.duration is None else aligned_index(
+                    cue.duration, project.sample_rate, 'Selected duration')
+                selected = frames / project.sample_rate
+                if available <= 0 or frames < 1 or frames > available:
+                    raise ValueError('Clip selection exceeds its retained original audio.')
+                if max(cue.fade_in, cue.fade_out) > selected:
+                    raise ValueError('Clip fades do not fit the retained audio.')
+                result.append(frames)
+            self._current(project)
+            self._cancel(lease.cancelled)
+        return tuple(result)
+
+    @staticmethod
+    def _selected_clip(scene, clip_id):
+        matches = tuple(cue for cue in scene.cues if cue.id == clip_id)
+        if len(matches) != 1:
+            raise ValueError('Select one unambiguous clip in this scene.')
+        return matches[0]
+
+    def _save_clip_operation(self, project, scene, *, cancelled):
+        self._cancel(cancelled)
+        self._current(project)
+        updated = replace(project, schema=max(2, project.schema), revision=project.revision + 1,
+            scenes=tuple(scene if item.id == scene.id else item for item in project.scenes))
+        return self.service.projects.save(updated, expected_revision=project.revision,
+                                          expected_fingerprint=project.fingerprint)
+
+    def split(self, project, scene_id, clip_id, seconds, *, cancelled=lambda: False):
+        """Split one clip at a sample-aligned clip-relative time."""
+        from .clip_operations import split_clip
+        self._cancel(cancelled)
+        project = self._current(project)
+        self._portable(project)
+        self._editable_effects(project)
+        scene = self._scene(project, scene_id)
+        cue = self._selected_clip(scene, clip_id)
+        if len(scene.cues) >= AudioBudget().max_inputs - 2:
+            raise ValueError('This scene has reached its simultaneous audio input allowance.')
+        frames, = self._clip_geometry(project, (cue,), cancelled=cancelled)
+        pieces = split_clip(cue, seconds, frames=frames, sample_rate=project.sample_rate)
+        changed = replace(scene, cues=tuple(piece for item in scene.cues
+            for piece in (pieces if item.id == clip_id else (item,))))
+        return self._save_clip_operation(project, changed, cancelled=cancelled)
+
+    def cut(self, project, scene_id, clip_id, start, end, *, cancelled=lambda: False):
+        """Remove an interval from this clip while preserving all scene positions."""
+        from .clip_operations import cut_clip
+        self._cancel(cancelled)
+        project = self._current(project)
+        self._portable(project)
+        self._editable_effects(project)
+        scene = self._scene(project, scene_id)
+        cue = self._selected_clip(scene, clip_id)
+        frames, = self._clip_geometry(project, (cue,), cancelled=cancelled)
+        pieces = cut_clip(cue, start, end, frames=frames, sample_rate=project.sample_rate)
+        if len(scene.cues) - 1 + len(pieces) > AudioBudget().max_inputs - 2:
+            raise ValueError('This scene has reached its simultaneous audio input allowance.')
+        changed = replace(scene,
+            minimum_duration=max(scene.minimum_duration, cue.start + frames / project.sample_rate),
+            cues=tuple(piece for item in scene.cues
+                for piece in (pieces if item.id == clip_id else (item,))))
+        return self._save_clip_operation(project, changed, cancelled=cancelled)
+
+    def join(self, project, scene_id, first_id, second_id, *, cancelled=lambda: False):
+        """Rejoin two contiguous selections of one original, retaining the first ID."""
+        from .clip_operations import join_clips
+        self._cancel(cancelled)
+        project = self._current(project)
+        self._portable(project)
+        self._editable_effects(project)
+        scene = self._scene(project, scene_id)
+        first, second = self._selected_clip(scene, first_id), self._selected_clip(scene, second_id)
+        lengths = self._clip_geometry(project, (first, second), cancelled=cancelled)
+        joined = join_clips(first, second, first_frames=lengths[0], second_frames=lengths[1],
+                            sample_rate=project.sample_rate)
+        changed = replace(scene, cues=tuple(joined if cue.id == first_id else cue
+                                           for cue in scene.cues if cue.id != second_id))
+        return self._save_clip_operation(project, changed, cancelled=cancelled)
+
+    def history(self, project, *, before_revision=None, cancelled=lambda: False):
+        """Browse existing saved project identities without loading voices or media."""
+        from .project_history import revisions
+        self._cancel(cancelled)
+        project = self._current(project)
+        result = revisions(self.service.projects, project, before_revision=before_revision,
+                           cancelled=cancelled)
+        self._current(project)
+        self._cancel(cancelled)
+        return result
+
+    def restore(self, project, reference, *, cancelled=lambda: False):
+        """Restore whole-project content as a new revision; outputs remain immutable."""
+        from .project_history import restored_project
+        self._cancel(cancelled)
+        project = self._current(project)
+        self._portable(project)
+        self._editable_effects(project)
+        restored = restored_project(self.service.projects, project, reference)
+        self._portable(restored)
+        self._editable_effects(restored)
+        self._cancel(cancelled)
+        return self.service.projects.save(restored, expected_revision=project.revision,
+                                          expected_fingerprint=project.fingerprint)
+
     @staticmethod
     def _cancel(cancelled):
         if cancelled():

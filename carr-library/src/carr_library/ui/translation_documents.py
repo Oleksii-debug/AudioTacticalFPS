@@ -70,7 +70,9 @@ class DocumentTranslationController:
         if not current.enabled or current.to_dict() != profile.to_dict():
             raise ValueError('The selected translation profile changed; review it again.')
 
-    def start(self, title, operation, accepted, failed):
+    def start(self, title, operation, accepted, failed, *, accept_committed=False):
+        if type(accept_committed) is not bool:
+            raise ValueError('Committed-result handling must be an explicit boolean.')
         self.guard()
         if self.busy or getattr(self.frame, 'working', False):
             raise ValueError('Finish or cancel the active operation first.')
@@ -82,7 +84,10 @@ class DocumentTranslationController:
             return operation()
         def done(value):
             self.busy = False
-            if self.current() and not self.stopped():
+            committed = (accept_committed and type(value) is dict
+                and value.get('status') == 'complete'
+                and type(value.get('path')) is str and bool(value['path']))
+            if self.current() and (committed or not self.stopped()):
                 accepted(value)
         def failure(error):
             self.busy = False
@@ -157,7 +162,8 @@ def show_translation_documents(frame):
         ('add', '&Add book or range'), ('remove', '&Remove selection'), ('languages', 'Fetch &languages'),
         ('preview', '&Preview document batch'), ('prepare', 'Approve and &save jobs'),
         ('run', '&Run / resume saved jobs'), ('saved', 'Choose saved &document jobs'),
-        ('export', '&Export saved documents'), ('pause', 'Pa&use'), ('close', '&Close')):
+        ('export', '&Export saved documents'), ('layout', 'Translate DOCX with &layout'),
+        ('pause', 'Pa&use'), ('close', '&Close')):
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
         button.Bind(wx.EVT_BUTTON, lambda event, key=name: dispatch(key))
@@ -381,6 +387,12 @@ def show_translation_documents(frame):
             lambda: export_documents(service, identities, parent,
                 cancelled=controller.stopped, guard=controller.guard), report)
 
+    def formatted():
+        from .translation_layout import show_translation_layout
+        controller.guard()
+        show_translation_layout(frame)
+        controller.guard()
+
     def close():
         controller.close()
         dialog.EndModal(wx.ID_CLOSE)
@@ -391,7 +403,7 @@ def show_translation_documents(frame):
             if key != 'close' and controller.busy and key != 'pause':
                 raise ValueError('Finish or pause the active document operation first.')
             {'add': add, 'remove': remove, 'languages': languages, 'preview': preview,
-             'prepare': prepare, 'run': run, 'saved': choose_saved, 'export': export,
+             'prepare': prepare, 'run': run, 'saved': choose_saved, 'export': export, 'layout': formatted,
              'pause': controller.cancel.set, 'close': close}[key]()
             controls()
         except Exception as error:

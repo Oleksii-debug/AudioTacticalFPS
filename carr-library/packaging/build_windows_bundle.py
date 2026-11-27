@@ -55,6 +55,12 @@ USER_GUIDES = (
     "DESKTOP_INTEGRATION.md",
     "CLIPBOARD_READING.md",
     "LOCAL_SCHEDULES.md",
+    "HUNSPELL_REVIEW.md",
+    "HUNSPELL_WINDOWS_BUILD.md",
+    "LIBRARY_SCALE_BENCHMARK.md",
+    "STUDIO_ENVELOPES.md",
+    "STUDIO_CLIP_HISTORY.md",
+    "FORMATTED_TRANSLATION.md",
 )
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))

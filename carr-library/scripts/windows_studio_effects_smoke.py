@@ -43,6 +43,7 @@ def main():
     from carr_library.operations import broker
     from carr_library.speech import VoiceRegistry
     from carr_library.studio import project as project_module, clips, managed_inputs, render
+    from carr_library.studio import clip_operations, project_history
     from carr_library.studio.project import Role
     from dataclasses import replace
     from carr_library.runtime_settings import audio_runtime
@@ -150,7 +151,8 @@ def main():
     check('actual wx Windows controls', wx.Platform == '__WXMSW__')
     checkout = Path(__file__).resolve().parents[1]
     for module in (project_module, clips, managed_inputs, render, studio_clips, effects_dialog,
-                   effect_presets, envelopes, dsp, process, broker, durable_state, runtime_settings):
+                   effect_presets, envelopes, clip_operations, project_history,
+                   dsp, process, broker, durable_state, runtime_settings):
         actual = Path(module.__file__).resolve()
         module_origins[module.__name__] = str(actual)
         module_hashes[module.__name__] = sha256(actual.read_bytes()).hexdigest()
@@ -380,6 +382,87 @@ def main():
                           all(node['reused'] for node in curve_job['nodes'].values()
                               if node['kind'] == 'scene mix')
                           and any(node['kind'] == 'scene mix' for node in curve_job['nodes'].values()))
+                    before_timeline = edited
+                    check('native timeline menu is available', 'timeline' in dialog.buttons)
+
+                    def enter_time(popup, value):
+                        check('native clip time entry dialog', isinstance(popup, wx.TextEntryDialog))
+                        popup.SetValue(value)
+                        press(wx.Window.FindWindowById(wx.ID_OK, popup))
+
+                    def timeline_action(index, entry_title=None, entry_value=None):
+                        if entry_title is not None:
+                            later(entry_title, lambda popup: enter_time(popup, entry_value))
+                        later('Timeline editing and project history', lambda popup: choose(popup, index))
+                        press(dialog.buttons['timeline'])
+                        pump(lambda: not frame.working and not dialog.pending, 'Complete native timeline action')
+
+                    timeline_action(0, 'Split saved clip', '.5')
+                    split_project = service.projects.load(project.id)
+                    first, second = split_project.scenes[0].cues
+                    check('native split retains two exact original selections',
+                          first.path == second.path == before_timeline.scenes[0].cues[0].path
+                          and (first.start, first.trim_start, first.duration) == (0, 0, .5)
+                          and (second.start, second.trim_start, second.duration) == (.5, .5, .5)
+                          and first.effects == second.effects == before_timeline.scenes[0].cues[0].effects)
+                    timeline_action(3)
+                    undone = service.projects.load(project.id)
+                    check('native project undo restores prior complete content',
+                          replace(undone, revision=before_timeline.revision) == before_timeline)
+                    timeline_action(4)
+                    redone = service.projects.load(project.id)
+                    check('native project redo returns reviewed split',
+                          replace(redone, revision=split_project.revision) == split_project)
+                    dialog.clip_choice.SetSelection(0)
+                    dialog.select_clip()
+                    later('Rejoin saved clips', lambda popup: choose(popup, 0))
+                    timeline_action(2)
+                    joined = service.projects.load(project.id)
+                    check('native rejoin recovers original timing and effect chains',
+                          joined.scenes[0].cues[0].id == before_timeline.scenes[0].cues[0].id
+                          and len(joined.scenes[0].cues) == 1
+                          and joined.scenes[0].cues[0].duration == 1
+                          and joined.effects == before_timeline.effects
+                          and joined.scenes[0].cues[0].effects == before_timeline.scenes[0].cues[0].effects)
+                    timeline_action(1, 'Cut saved clip interval', '.25 .5')
+                    cut_project = service.projects.load(project.id)
+                    cut_first, cut_second = cut_project.scenes[0].cues
+                    check('native cut preserves scene clock and removes selected interval',
+                          cut_first.duration == .25 and cut_second.start == .5
+                          and cut_second.trim_start == .5 and cut_second.duration == .5
+                          and cut_project.scenes[0].minimum_duration == 1)
+                    press(dialog.buttons['render'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Render native cut interval')
+                    cut_job, = [row for row in service.jobs()
+                                if row['fingerprint'] == cut_project.fingerprint and row['status'] == 'complete']
+                    cut_master = Path(cut_job['destination']) / 'master.wav'
+                    cut_pcm = array('h')
+                    cut_pcm.frombytes(pcm(cut_master)[0])
+                    if sys.byteorder != 'little':
+                        cut_pcm.byteswap()
+                    left_edge, right_edge = 6000 * 2, 12000 * 2
+                    check('native cut renders silence only inside selected interval',
+                          pcm(cut_master)[1] == pcm(curve_master)[1]
+                          and max(abs(value) for value in cut_pcm[left_edge:right_edge]) == 0
+                          and max(abs(a - b) for a, b in zip(cut_pcm[:left_edge], new_pcm[:left_edge])) <= 3
+                          and max(abs(a - b) for a, b in zip(cut_pcm[right_edge:], new_pcm[right_edge:])) <= 3)
+
+                    def choose_original_history(popup):
+                        popup.SetSelection(4)
+                        check('native history picker targets exact reviewed revision',
+                              popup.GetStringSelection() ==
+                              f'Revision {before_timeline.revision}; identity {before_timeline.fingerprint[:12]}')
+                        press(wx.Window.FindWindowById(wx.ID_OK, popup))
+                    later('Saved project history', choose_original_history)
+                    timeline_action(5)
+                    edited = service.projects.load(project.id)
+                    check('native saved project history restores exact prior content',
+                          replace(edited, revision=before_timeline.revision) == before_timeline)
+                    check('native history restore creates new revision without replacing outputs',
+                          edited.revision == cut_project.revision + 1
+                          and pcm(curve_master)[0] == new_pcm.tobytes()
+                          and pcm(cut_master)[1] == (24000, 2, 24000))
+
                     newer = None
                     def concurrent_review(popup):
                         nonlocal newer
@@ -445,6 +528,7 @@ def main():
               sha256(Path(location).read_bytes()).hexdigest() == module_hashes[name])
     print(json.dumps({'result': 'PASS', 'checks': checks, 'module_origins': module_origins,
         'module_sha256': module_hashes, 'actual_gain_envelope': 'PASS',
+        'actual_clip_editing': 'PASS', 'project_history_restore': 'PASS',
         'audio_runtime': proof, 'native_keyboard': 'PASS', 'actual_ffmpeg': 'PASS',
         'fixture': 'actual synthetic PCM and a dormant role; no speech inference',
         'project_schema': 3, 'native_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN',
