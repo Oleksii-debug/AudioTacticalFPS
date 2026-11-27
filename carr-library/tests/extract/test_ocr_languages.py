@@ -101,7 +101,7 @@ def test_script_selection_does_not_bypass_pinned_profile_or_installed_inventory(
     'List of available languages in "x" (2):\neng\neng',
     'List of available languages in "x" (1):\n../eng',
     'List of available languages in "x" (1):\neng --psm 1',
-    'x' * (models.MAX_REPORT_BYTES + 1)])
+    pytest.param('x' * (models.MAX_REPORT_BYTES + 1), id='oversized-native-report')])
 def test_invalid_native_inventory_is_not_silently_filtered_into_a_valid_choice(text):
     with pytest.raises(ValueError):
         models.parse_language_report(text)
@@ -240,7 +240,7 @@ def test_linked_preset_file_is_not_read_or_overwritten(tmp_path):
 
 @pytest.mark.parametrize('raw', [b'{}', b'{"version":true,"presets":[]}',
     b'{"version":1,"version":1,"presets":[]}', b'{"version":1,"presets":[],"path":"outside"}',
-    b'\xff', b'x' * (models.MAX_PRESET_BYTES + 1)])
+    b'\xff', pytest.param(b'x' * (models.MAX_PRESET_BYTES + 1), id='oversized-preset-file')])
 def test_invalid_or_unbounded_saved_preferences_fail_closed(raw):
     with pytest.raises(ValueError):
         models.validate_presets_bytes(raw)

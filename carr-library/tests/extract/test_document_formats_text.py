@@ -293,6 +293,7 @@ def test_eml_cp1251_8bit_bytes_preserved_and_bad_bytes_rejected():
     b'Content-Type: text/plain\r\nContent-Type: text/html\r\n\r\nambiguous',
     b'Content-Transfer-Encoding: base64\r\n\r\nYWJj@',
     b'Content-Transfer-Encoding: base64\r\n\r\nYWJj====',
+    b'Content-Transfer-Encoding: base64\r\n\r\nZh==',
     b'Content-Transfer-Encoding: quoted-printable\r\n\r\nabc=zz',
     b'Content-Transfer-Encoding: x-uuencode\r\n\r\nunsupported',
     b'Content-Type: text/plain; charset=base64_codec\r\n\r\nunsupported',
@@ -301,6 +302,14 @@ def test_eml_cp1251_8bit_bytes_preserved_and_bad_bytes_rejected():
 def test_eml_malformed_structures_and_decodings_fail_closed(source):
     with pytest.raises(ValueError):
         extract(source, '.eml')
+
+
+@pytest.mark.parametrize('payload', [b'Zg==', b'Zm8=', b'Zm9v', b'Z\r\n m\t9v\r\n'])
+def test_eml_canonical_base64_and_mime_whitespace_preserve_exact_decoded_text(payload):
+    source = b'Content-Transfer-Encoding: base64\r\n\r\n' + payload
+    import base64
+    expected = base64.b64decode(payload.translate(None, b' \t\r\n')).decode('ascii')
+    assert texts(extract(source, '.eml')) == [expected]
 
 
 def test_eml_mail_part_budget_before_unbounded_recursion():
