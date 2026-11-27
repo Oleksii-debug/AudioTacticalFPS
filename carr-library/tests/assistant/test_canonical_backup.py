@@ -194,12 +194,14 @@ def test_concurrent_control_cannot_change_checkpoint_during_real_copy(local_job,
             with ThreadPoolExecutor(max_workers=1) as pool:
                 with pytest.raises(RuntimeError, match='state is being saved'):
                     pool.submit(getattr(service, command), identity).result(timeout=5)
-            checked.append(name)
+            checked.append((name, target is None))
         return original(root, name, target, stamp, cancelled)
     monkeypatch.setattr(library_backup, '_copy_sidecar', guarded)
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
-    assert checked == [relative]
+    # The same native state guard covers the actual copy and the final
+    # streaming digest check before the completed snapshot is published.
+    assert checked == [(relative, False), (relative, True)]
     verify_backup(backup, digest)
     control = service.store.path(identity).with_suffix('.control.json')
     assert control.read_bytes() == before
