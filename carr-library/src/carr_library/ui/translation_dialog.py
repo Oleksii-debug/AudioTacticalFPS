@@ -362,12 +362,30 @@ def show_translation(frame, *, initial_text='', title='Translation', service=Non
         dialog.Destroy()
 
 
+
+class TranslationActions:
+    def __init__(self, frame):
+        self.frame = frame
+
+    def open(self, event=None):
+        show_translation(self.frame)
+
+
 def install_translation_actions(frame):
+    """Register one stable command before or after keyboard settings installation."""
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    existing = getattr(frame, 'translation_actions', None)
+    if existing is not None:
+        return existing
     menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
                  if frame.menu_bar.GetMenuLabel(index).replace('&', '').casefold() == 'tools'), None)
     if menu is None:
-        raise RuntimeError('Install the shared Tools menu before translation actions.')
-    identity = wx.NewIdRef()
-    menu.Append(identity, 'Translate selected te&xt...')
-    frame.Bind(wx.EVT_MENU, lambda event: show_translation(frame), id=int(identity))
+        raise ValueError('Install the shared Tools menu before translation actions.')
+    actions = TranslationActions(frame)
+    item = menu.Append(wx.ID_ANY, 'Translate selected te&xt...')
+    frame.Bind(wx.EVT_MENU, actions.open, item)
+    register_menu_command(frame, CommandSpec('translation.text', 'Translate selected text', 'main'), item)
+    frame.translation_actions = actions
+    return actions

@@ -158,3 +158,47 @@ def test_failed_worker_submission_releases_dialog_controls():
         frame, dialog, status, controls, Event(), SimpleNamespace(ID_CLOSE=42))
     assert begin('Translation', lambda: None, Mock()) is False
     assert controls.call_count == 2
+
+
+@pytest.mark.parametrize('manager_installed', [False, True], ids=['before-keyboard', 'after-keyboard'])
+def test_translation_installer_registers_one_semantic_command_and_keeps_overrides(monkeypatch, manager_installed):
+    import sys
+    from carr_library.ui import translation_dialog
+    from carr_library.ui.command_registry import CommandRegistry, CommandSpec
+    existing = CommandSpec('library.existing', 'Existing command', 'main', 'Ctrl+J')
+    registry = CommandRegistry((existing,))
+    overrides = {'library.existing': 'Ctrl+Shift+J'}
+    original = dict(overrides)
+    tools, research = SimpleNamespace(items=[]), SimpleNamespace(items=[])
+    def append(identifier, caption):
+        item = SimpleNamespace(identifier=100 + len(tools.items), caption=caption)
+        tools.items.append(item)
+        return item
+    tools.Append = append
+    frame = SimpleNamespace(menu_bar=SimpleNamespace(
+        GetMenuCount=lambda: 2, GetMenuLabel=lambda index: ('&Research', '&Tools')[index],
+        GetMenu=lambda index: (research, tools)[index]), Bind=Mock())
+    registrations = []
+    if manager_installed:
+        def register(spec, item):
+            registry.register(spec)
+            registry.validate(overrides)
+            registrations.append((spec, item))
+        frame.keyboard_commands = SimpleNamespace(register_menu_command=register)
+    event_type = object()
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_ANY=-1, EVT_MENU=event_type))
+    open_workspace = Mock()
+    monkeypatch.setattr(translation_dialog, 'show_translation', open_workspace)
+    actions = translation_dialog.install_translation_actions(frame)
+    assert translation_dialog.install_translation_actions(frame) is actions
+    assert len(tools.items) == 1 and not research.items
+    registered = registrations if manager_installed else frame._pending_keyboard_commands
+    assert len(registered) == 1
+    spec, item = registered[0]
+    assert spec.command_id == 'translation.text' and spec.context == 'main'
+    assert spec.default_shortcut == '' and item is tools.items[0]
+    assert overrides == original
+    frame.Bind.assert_called_once_with(event_type, actions.open, item)
+    open_workspace.assert_not_called()  # Installing a menu does not create state or send data.
+    actions.open()
+    open_workspace.assert_called_once_with(frame)
