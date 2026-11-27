@@ -28,11 +28,20 @@ def _pairs(items):
 
 
 def transfer(request, output):
-    if (type(request) is not dict or set(request) != {'url', 'maximum', 'timeout', 'ca_pem'}
+    if (type(request) is not dict or set(request) not in (
+                {'url', 'maximum', 'timeout', 'ca_pem'},
+                {'url', 'maximum', 'timeout', 'ca_pem', 'resume'})
             or type(request['maximum']) is not int or not 1 <= request['maximum'] <= 16 * 1024**3
             or type(request['timeout']) not in (int, float)
             or not math.isfinite(request['timeout']) or not 0 < request['timeout'] <= 1800):
         raise ValueError('Invalid reviewed transfer limits.')
+    resume = request.get('resume')
+    if 'resume' in request and (
+            type(resume) is not dict or set(resume) != {'offset', 'total'}
+            or type(resume['offset']) is not int or type(resume['total']) is not int
+            or not 0 <= resume['offset'] < resume['total'] <= 16 * 1024**3
+            or request['maximum'] != resume['total'] - resume['offset']):
+        raise ValueError('Invalid exact target range.')
     url = request['url']
     if (not isinstance(url, str) or not 0 < len(url) <= 8192
             or any(ord(c) < 33 or ord(c) > 126 or c == '\\' for c in url)):
@@ -51,16 +60,32 @@ def transfer(request, output):
     connection = http.client.HTTPSConnection(address.hostname, 443 if address.port is None else address.port,
         context=context, timeout=min(10.0, request['timeout']))
     try:
-        connection.request('GET', address.path or '/', headers={
+        headers = {
             'Accept': 'application/octet-stream, application/json',
             'Accept-Encoding': 'identity', 'Connection': 'close',
             'User-Agent': 'Resonance-Reviewed-TUF/1',
-        })
+        }
+        if resume is not None and resume['offset']:
+            headers['Range'] = f"bytes={resume['offset']}-"
+        connection.request('GET', address.path or '/', headers=headers)
         response = connection.getresponse()
         try:
             # Even a redirect to the same hostname requires a new reviewed source.
-            if response.status != 200:
+            expected_status = 206 if resume is not None and resume['offset'] else 200
+            if response.status != expected_status:
+                if resume is not None and resume['offset'] and response.status == 200:
+                    return {'status': 'range-refused'}
                 return {'status': 'http', 'code': response.status}
+            if resume is not None:
+                ranges = response.headers.get_all('Content-Range', [])
+                if expected_status == 206:
+                    match = re.fullmatch(r'bytes ([0-9]{1,20})-([0-9]{1,20})/([0-9]{1,20})',
+                                         ranges[0].strip()) if len(ranges) == 1 else None
+                    if (match is None or tuple(map(int, match.groups())) !=
+                            (resume['offset'], resume['total'] - 1, resume['total'])):
+                        raise ValueError('The response does not match the exact signed target range.')
+                elif ranges:
+                    raise ValueError('Unexpected partial representation.')
             if response.getheader('Content-Encoding', 'identity').strip().lower() != 'identity':
                 raise ValueError('Encoded update transport is not accepted.')
             lengths = response.headers.get_all('Content-Length', [])
@@ -71,6 +96,20 @@ def transfer(request, output):
                 raise ValueError('Update response exceeds its byte limit.')
             if response.getheader('Transfer-Encoding') and lengths:
                 raise ValueError('Ambiguous update response framing.')
+            if resume is not None:
+                if expected is not None and expected != request['maximum']:
+                    raise ValueError('The target range length differs from the signed target.')
+                if response.getheader('Transfer-Encoding', '').strip().lower() not in ('', 'chunked'):
+                    raise ValueError('Unsupported target range framing.')
+                # The parent reads this only after this exact child has stopped.
+                # A valid header marker permits retaining incomplete DATA only;
+                # the signed full length/hash still belongs to TUF.
+                marker = dict(schema='carr-update-response/1', url=url,
+                              offset=resume['offset'], total=resume['total'])
+                with output.with_name('response-headers.json').open('xb') as stream:
+                    stream.write(json.dumps(marker, sort_keys=True, separators=(',', ':')).encode('ascii'))
+                    stream.flush()
+                    os.fsync(stream.fileno())
             used, digest = 0, sha256()
             with output.open('xb') as stream:
                 while True:
@@ -116,7 +155,7 @@ def main(argv=None):
     except Exception:
         result = {'status': 'failed'}
     print(json.dumps(result, sort_keys=True, separators=(',', ':')))
-    return 0 if result['status'] in ('complete', 'http') else 2
+    return 0 if result['status'] in ('complete', 'http', 'range-refused') else 2
 
 
 if __name__ == '__main__':

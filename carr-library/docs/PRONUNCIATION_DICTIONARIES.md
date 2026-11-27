@@ -189,13 +189,17 @@ import/preview/apply/undo for all three foreign dialects, with installed source
 identity checked before and after. Its picker/confirmation answers and
 synthetic voice inventory are reported separately from real keyboard events.
 
-The earlier draft completed 109 source and 109 isolated installed tests in
-[run 46019038992](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46019038992).
-That run predates the author-observation corrections and is not a pass for
-these final bytes. The final source/installed review branch is
-`carr/dictionary-import-review-20261127`; its exact result must be recorded
-after completion. The extended Windows native probe remains NOT_RUN until its
-corresponding gate completes.
+The final implementation completed **159 source tests and 159 isolated
+installed-package tests, with zero failures or skips**, in
+[run 46028769389](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46028769389)
+(job `140606886756`). The qualified code is commit
+`7530a3632c2d57f76baee5ebf17de818a8f7c9ab`, tree
+`86003846a9f35422c1fb69d968caf4512d91b8b4`, on
+`carr/dictionary-import-review-20261127`. Its installed-package checks verify
+the exact module origins and source bytes, and all 49 authored observations
+are included. This documentation-only result update does not alter that
+qualified implementation. The extended Windows native probe remains NOT_RUN
+until its corresponding gate completes.
 
 A successful format test does not establish natural pronunciation, stress,
 phoneme quality, voice quality, NVDA behavior, or equivalence with every

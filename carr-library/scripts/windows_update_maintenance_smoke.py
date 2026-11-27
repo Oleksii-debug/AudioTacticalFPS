@@ -6,6 +6,7 @@ packaging/probe_standard_update_windows.py. No production trust is provisioned.
 """
 from hashlib import sha256
 import argparse
+import faulthandler
 import json
 import os
 from pathlib import Path
@@ -34,16 +35,32 @@ def _fixture_root():
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--report', type=Path)
+    parser.add_argument('--native-child', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if os.name != 'nt' or not sys.flags.isolated or not sys.dont_write_bytecode:
         raise RuntimeError('Use native Windows and the installed interpreter with -I -B -X utf8.')
+    if not args.native_child:
+        from carr_library.audio.models import AudioBudget
+        from carr_library.audio.process import run_process
+        command = [sys.executable, '-I', '-B', '-X', 'utf8', str(Path(__file__).resolve()), '--native-child']
+        if args.report is not None:
+            command.extend(['--report', str(args.report.absolute())])
+        outcome = run_process(command, budget=AudioBudget(timeout=240, max_log_bytes=1024 * 1024),
+                              owned_tree=True, allow_failure=True)
+        sys.stdout.write(outcome.stdout.decode('utf-8', 'replace'))
+        sys.stderr.write(outcome.stderr.decode('utf-8', 'replace'))
+        return outcome.returncode
+    faulthandler.dump_traceback_later(210, exit=True)
     from carr_library.native_runtime import activate_bundled_runtime
     runtime = activate_bundled_runtime()
     try:
         result = run_native()
     finally:
-        if runtime is not None:
-            runtime.close()
+        try:
+            if runtime is not None:
+                runtime.close()
+        finally:
+            faulthandler.cancel_dump_traceback_later()
     if args.report:
         with args.report.open('x', encoding='utf-8') as stream:
             json.dump(result, stream, indent=2); stream.write('\n')
@@ -56,17 +73,19 @@ def run_native():
     from ctypes import wintypes
     import wx
     from carr_library.application import LibraryApp
-    from carr_library.security import maintenance, standard_handoff, handoff, https, updates, installation
+    from carr_library.security import maintenance, standard_handoff, handoff, https, updates, installation, download_state, _https_worker
     from carr_library.security._files import json_bytes
     from carr_library import portable_entry, installation_lease
     from carr_library.audio import windows_job
     from carr_library.ui.desktop_app import DesktopFrame
     from carr_library.ui import update_maintenance as ui
+    from carr_library.ui import progress_panel
+    from carr_library import progress
 
     checkout = Path(__file__).resolve().parents[1]
     verify_sources = runpy.run_path(str(checkout / 'scripts/windows_publishing_smoke.py'))['verify_installed_sources']
     modules = (ui, maintenance, standard_handoff, handoff, https, updates, installation,
-               portable_entry, installation_lease, windows_job)
+               portable_entry, installation_lease, windows_job, download_state, _https_worker, progress, progress_panel)
     bindings = verify_sources(*modules)
     fixture = runpy.run_path(str(checkout / 'tests/security/conftest.py'))
     checks, errors, releases, owners = [], [], [], []
@@ -164,14 +183,133 @@ def run_native():
             @property
             def working(self):
                 return frame.working
-            def run_job(self, label, operation, *, done, failed):
+            def run_job(self, label, operation, *, done, failed, with_progress=False):
                 def completed(value):
                     self.delivered.append('done')
                     done(value)
                 def rejected(error):
                     self.delivered.append('failed')
                     failed(error)
-                return frame.run_job(label, operation, done=completed, failed=rejected)
+                return frame.run_job(label, operation, done=completed, failed=rejected, with_progress=with_progress)
+
+
+        def exercise_pause_resume():
+            # A separate authored signed target and cache keep the old native
+            # check/download/lifetime scenarios byte-for-byte meaningful.
+            resumed_source = fixture['Repository'](root / 'resumable-source')
+            target_bytes = bytes(range(256)) * 4096
+            target_info = resumed_source.publish(target_bytes)
+            source_file = resumed_source.root / 'targets' / (
+                target_info.hashes['sha256'] + '.' + resumed_source.target_path)
+            selected_root = root / 'resume-bootstrap.json'
+            selected_root.write_bytes(resumed_source.bootstrap)
+
+            def selected_config(label):
+                value = dict(config_value)
+                value['bootstrap'] = dict(path=str(selected_root),
+                    sha256=sha256(resumed_source.bootstrap).hexdigest())
+                value['repository'] = dict(kind='local', path=str(resumed_source.root))
+                value['cache'] = str(root / ('cache-' + label))
+                path = root / ('configuration-' + label + '.json')
+                raw = json_bytes(value); path.write_bytes(raw)
+                return maintenance.UpdateConfiguration.read(path, sha256(raw).hexdigest())
+
+            held = {}
+            actual_report = download_state.TargetDownload.report
+            def report(transfer, *args):
+                actual_report(transfer, *args)
+                if (held and not held['seen'] and transfer.received >= 65536
+                        and os.path.samefile(transfer.downloads, held['downloads'])):
+                    held['seen'] = True
+                    held['received'] = transfer.received
+                    held['entered'].set()
+                    if not held['release'].wait(20):
+                        raise TimeoutError('Release this authored native download prefix barrier.')
+
+            def hold_prefix(configuration):
+                entered, release = threading.Event(), threading.Event()
+                releases.append(release)
+                held.clear()
+                held.update(entered=entered, release=release, seen=False,
+                            downloads=Path(configuration.checked()['cache']) / 'downloads')
+                return entered, release
+
+            download_state.TargetDownload.report = report
+            try:
+                selection = selected_config('resume')
+                paused_session = maintenance.MaintenanceSession(library, selection)
+                view = ui.MaintenanceDialog(frame, paused_session)
+                owners.append(view); view.Show()
+                press(view.actions[0])
+                pump(lambda: paused_session.release is not None and not frame.working and not view._busy)
+                entered, release = hold_prefix(selection)
+                press(view.actions[1])
+                pump(entered.is_set)
+                task = frame.progress_panel.active_task
+                check('Actual signed bytes are pending on the existing Desktop task',
+                      task is not None and frame.working and view._downloading
+                      and view.download_actions[0].IsEnabled())
+                press(view.download_actions[0])
+                check('Native Pause requests only this transfer', view._pause.is_set()
+                      and not view._cancel.is_set() and not frame.cancel_event.is_set())
+                release.set()
+                pump(lambda: paused_session.download_state is not None and not frame.working and not view._busy)
+                partial = paused_session.download_state
+                check('Actual paused checkpoint is not an installable package or100 percent',
+                      partial.received == held['received'] and paused_session.package is None
+                      and task.snapshot().state.value == 'paused'
+                      and task.snapshot().completed == partial.received
+                      and task.snapshot().percent < 100 and not view.actions[2].IsEnabled())
+                folder = next(Path(selection.checked()['cache']).glob('downloads/.paused-*'))
+                retained = {path.name: path.read_bytes() for path in folder.iterdir()}
+                view.Destroy(); pump(lambda: not view)
+                check('Closing a paused review preserves the exact inert checkpoint',
+                      retained == {path.name: path.read_bytes() for path in folder.iterdir()})
+                reopened = maintenance.MaintenanceSession(library, selection)
+                view = ui.MaintenanceDialog(frame, reopened)
+                owners.append(view); view.Show()
+                check('A new window neither resumes nor activates automatically',
+                      reopened.release is None and reopened.package is None and not frame.working)
+                press(view.actions[0])
+                pump(lambda: reopened.release is not None and not frame.working and not view._busy)
+                check('Fresh signed review exposes explicit Resume', reopened.download_state == partial
+                      and view.download_actions[1].IsEnabled() and not view.actions[1].IsEnabled())
+                press(view.download_actions[1])
+                pump(lambda: reopened.package is not None and not frame.working and not view._busy)
+                check('Native Resume reaches100 only after the same full signed target verifies',
+                      reopened.package.path.read_bytes() == target_bytes
+                      and reopened.download_state is None and not folder.exists()
+                      and frame.progress_panel.active_task.snapshot().state.value == 'succeeded'
+                      and frame.progress_panel.active_task.snapshot().percent == 100
+                      and reopened.last_result is None and not (root / 'program').exists()
+                      and not (root / 'work').exists())
+                view.Destroy(); pump(lambda: not view)
+
+                selection = selected_config('cancel')
+                cancelled_session = maintenance.MaintenanceSession(library, selection)
+                view = ui.MaintenanceDialog(frame, cancelled_session)
+                owners.append(view); view.Show()
+                press(view.actions[0])
+                pump(lambda: cancelled_session.release is not None and not frame.working and not view._busy)
+                entered, release = hold_prefix(selection)
+                press(view.actions[1]); pump(entered.is_set)
+                task = frame.progress_panel.active_task
+                press(view.download_actions[2])
+                check('Actual Cancel is local to its selected transfer', view._cancel.is_set()
+                      and not frame.cancel_event.is_set())
+                release.set()
+                pump(lambda: not frame.working and not view._busy)
+                check('Native Cancel waits for cleanup and cannot leave an installable result',
+                      cancelled_session.package is None and cancelled_session.download_state is None
+                      and task.snapshot().state.value == 'cancelled'
+                      and not tuple(Path(selection.checked()['cache']).glob('downloads/.paused-*'))
+                      and not tuple(Path(selection.checked()['cache']).glob('downloads/*.zip'))
+                      and source_file.read_bytes() == target_bytes)
+                view.Destroy(); pump(lambda: not view)
+            finally:
+                for release in releases:
+                    release.set()
+                download_state.TargetDownload.report = actual_report
 
         def exercise():
             try:
@@ -195,6 +333,8 @@ def run_native():
                       and session.last_result is None)
                 dialog.Destroy()
                 pump(lambda: not dialog)
+
+                exercise_pause_resume()
 
                 for death in ('direct', 'native-parent'):
                     owner = QueueOwner(); owner.Show(); owners.append(owner)
@@ -231,13 +371,14 @@ def run_native():
                         forbidden_access.append(True)
                         raise AssertionError('Late completion touched a deleted native control.')
                     target.status.SetValue = target.status.SetFocus = invalid
-                    for action in target.actions:
+                    for action in (*target.actions, *target.download_actions):
                         action.Enable = invalid
                     release.set()
                     pump(lambda: owner.delivered == ['done'] and not frame.working)
                     delivered = []
                     def replay(target=target):
                         target.on_check(); target.on_download(); target.on_apply(); target.on_recover(); target.on_command()
+                        target.on_pause_download(); target.on_resume_download(); target.on_cancel_download()
                         delivered.append(True)
                     wx.CallAfter(replay)
                     pump(lambda: delivered == [True])
@@ -260,7 +401,7 @@ def run_native():
                     release.set()
                 gui.ExitMainLoop()
 
-        watchdog = wx.CallLater(120000, lambda: (errors.append('Native maintenance exceeded 120 seconds.'),
+        watchdog = wx.CallLater(180000, lambda: (errors.append('Native maintenance exceeded 180 seconds.'),
                                                 [event.set() for event in releases], gui.ExitMainLoop()))
         try:
             wx.CallAfter(exercise)

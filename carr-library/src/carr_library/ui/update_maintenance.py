@@ -6,6 +6,8 @@ import wx
 
 from ..security.maintenance import UpdateConfiguration, MaintenanceSession
 from ..security.controller import release_text
+from ..security.download_state import PausedDownload
+from ..security.updates import UpdateCancelled
 
 
 def _live(window):
@@ -22,6 +24,7 @@ class MaintenanceDialog(wx.Dialog):
         self.frame, self.session, self.app = frame, session, session.app
         self._native_id, self._alive, self._destroy_requested = self.GetId(), True, False
         self._cancel, self._token, self._busy = threading.Event(), None, False
+        self._pause, self._downloading = threading.Event(), False
         self.Bind(wx.EVT_WINDOW_DESTROY, self._destroyed)
         self.Bind(wx.EVT_CLOSE, self.on_close)
         layout = wx.BoxSizer(wx.VERTICAL)
@@ -41,6 +44,17 @@ class MaintenanceDialog(wx.Dialog):
             button.SetName(label); button.Bind(wx.EVT_BUTTON, callback)
             self.actions.append(button); actions.Add(button, 0, wx.ALL, 4)
         layout.Add(actions, 0, wx.EXPAND | wx.ALL, 4)
+        transfer_actions = wx.BoxSizer(wx.HORIZONTAL)
+        self.download_actions = []
+        for label, callback in (
+                ('Pause update download', self.on_pause_download),
+                ('Resume update download', self.on_resume_download),
+                ('Cancel update download', self.on_cancel_download)):
+            button = wx.Button(self, label=label)
+            button.SetName(label); button.Bind(wx.EVT_BUTTON, callback)
+            self.download_actions.append(button)
+            transfer_actions.Add(button, 0, wx.ALL, 4)
+        layout.Add(transfer_actions, 0, wx.EXPAND | wx.ALL, 4)
         self.close_button = wx.Button(self, wx.ID_CLOSE, label='Close')
         self.close_button.Bind(wx.EVT_BUTTON, self.on_close)
         layout.Add(self.close_button, 0, wx.ALIGN_RIGHT | wx.ALL, 8)
@@ -56,10 +70,17 @@ class MaintenanceDialog(wx.Dialog):
             return
         configured = self.session.configuration.checked()['installation']['kind']
         reviewed, downloaded = self.session.release is not None, self.session.package is not None
-        enabled = (True, reviewed, downloaded and configured == 'standard',
+        retained = getattr(self.session, 'download_state', None) is not None
+        enabled = (True, reviewed and not retained, downloaded and configured == 'standard',
                    downloaded and configured == 'standard', reviewed)
         for button, allowed in zip(self.actions, enabled):
             button.Enable(bool(allowed and not self._busy))
+        active_download = self._busy and self._downloading
+        for button, allowed in zip(self.download_actions, (
+                active_download and not self._pause.is_set() and not self._cancel.is_set(),
+                reviewed and retained and not self._busy,
+                active_download or (reviewed and retained and not self._busy))):
+            button.Enable(bool(allowed))
 
     def _write(self, value):
         if self._current():
@@ -67,15 +88,16 @@ class MaintenanceDialog(wx.Dialog):
             if self._current():
                 self.status.SetFocus()
 
-    def _run(self, label, operation, completed):
+    def _run(self, label, operation, completed, *, downloading=False):
         if not self._current() or self._busy:
             return
         if self.frame.working:
             self._write('Another operation is using the desktop worker. Finish or cancel that operation before update review.')
             return
         token = object()
-        self._token, self._busy = token, True
+        self._token, self._busy, self._downloading = token, True, downloading
         self._cancel.clear()
+        self._pause.clear()
         host_cancel = self.frame.cancel_event
         self._capabilities()
         def work():
@@ -85,19 +107,19 @@ class MaintenanceDialog(wx.Dialog):
         def done(value):
             if not self._current() or token is not self._token:
                 return
-            self._busy, self._token = False, None
+            self._busy, self._token, self._downloading = False, None, False
             completed(value)
             if self._current():
                 self._capabilities()
         def failed(error):
             if not self._current() or token is not self._token:
                 return
-            self._busy, self._token = False, None
+            self._busy, self._token, self._downloading = False, None, False
             self._write('The update operation was not confirmed. Keep the prepared package and recovery workspace. '
                         + str(error)[:1200])
             self._capabilities()
         try:
-            accepted = self.frame.run_job(label, work, done=done, failed=failed)
+            accepted = self.frame.run_job(label, work, done=done, failed=failed, with_progress=downloading)
             if (self._token is token and self._busy
                     and (accepted is False or not self.frame.working)):
                 failed(RuntimeError('The desktop worker did not admit this update operation.'))
@@ -107,18 +129,83 @@ class MaintenanceDialog(wx.Dialog):
     def on_check(self, event=None):
         self._run('Check explicitly configured signed update source',
                   lambda cancelled: self.session.check(cancelled=cancelled),
-                  lambda release: self._write(release_text(release)))
+                  lambda release: self._write(release_text(release) + (
+                      '\n\nA retained download is available. Choose Resume update download to recheck and continue it.'
+                      if getattr(self.session, 'download_state', None) is not None else '')))
 
-    def on_download(self, event=None):
-        if not self._current() or self.session.release is None:
+    def _download_result(self, result):
+        if not self._current():
+            return
+        if isinstance(result, dict) and result.get('status') == 'cancelled':
+            self._write('Download cancelled. No update was installed. A completed verified package, if already present, remains unchanged.')
+            return
+        result = result.get('download') if isinstance(result, dict) else result
+        if isinstance(result, PausedDownload):
+            self._write(f'Download {result.state}. {result.received} of {result.release.length} bytes are retained.'
+                        '\n\nResume rechecks these bytes and current signed metadata. The fragment cannot be installed. '
+                        'Cancel download discards only this retained fragment; closing this paused review keeps it for a later session.')
+        else:
+            self._write(
+                'The exact signed package is prepared.\n\n' + release_text(result.release)
+                + ('\n\n' + self.session.download_notice if self.session.download_notice else '')
+                + '\n\nPortable installations: finish and close the program, then run the reviewed external maintenance command. '
+                  'Standard installations can explicitly Apply here; older generations and the research backup are retained.')
+
+    def _download(self, *, resume=False):
+        if not self._current() or self.session.release is None or self._busy:
             return
         release = self.session.release
-        self._run('Download exact reviewed signed update',
-                  lambda cancelled: self.session.download(release, cancelled=cancelled),
-                  lambda package: self._write(
-                      'The exact signed package is prepared.\n\n' + release_text(package.release)
-                      + '\n\nPortable installations: finish and close the program, then run the reviewed external maintenance command. '
-                        'Standard installations can explicitly Apply here; older generations and the research backup are retained.'))
+
+        def operation(cancelled):
+            from ..progress import current_progress
+            task = current_progress()
+
+            def progress(received, total):
+                if task is not None:
+                    task.update(completed=received, total=total,
+                                phase='Receiving reviewed update bytes',
+                                message=f'{received} of {total} bytes received; full signed verification is pending.')
+            try:
+                method = self.session.resume_download if resume else self.session.download
+                result = method(release, cancelled=cancelled, paused=self._pause.is_set, progress=progress)
+                if isinstance(result, PausedDownload):
+                    return {'status': result.state, 'download': result}
+                return result
+            except UpdateCancelled:
+                # Metadata refresh may observe Cancel before the target fetcher
+                # opens. Discard the same bound fragment through this worker too.
+                return self.session.cancel_download(release)
+        self._run('Resume exact reviewed signed update' if resume else 'Download exact reviewed signed update',
+                  operation, self._download_result, downloading=True)
+
+    def on_download(self, event=None):
+        self._download()
+
+    def on_resume_download(self, event=None):
+        if self._current() and getattr(self.session, 'download_state', None) is not None:
+            self._download(resume=True)
+
+    def on_pause_download(self, event=None):
+        if not self._current() or not self._busy or not self._downloading:
+            return
+        self._pause.set()
+        self._write('Pause requested. Waiting for the owned transfer to stop and the retained bytes to be durably recorded.')
+        self._capabilities()
+
+    def on_cancel_download(self, event=None):
+        if not self._current() or self.session.release is None:
+            return
+        if self._busy:
+            if self._downloading:
+                self._cancel.set()
+                self._pause.clear()
+                self._write('Cancellation requested. Waiting for the owned transfer to stop before discarding its fragment.')
+                self._capabilities()
+            return
+        if getattr(self.session, 'download_state', None) is not None:
+            release = self.session.release
+            self._run('Cancel retained update download',
+                      lambda _cancelled: self.session.cancel_download(release), self._download_result)
 
     def _confirm(self, recovery):
         if not self._current() or self._busy or self.session.package is None:
@@ -175,7 +262,7 @@ class MaintenanceDialog(wx.Dialog):
     def dispose(self):
         if self._alive:
             self._alive = False
-            self._busy = False
+            self._busy = self._downloading = False
             self._cancel.set()
             self._token = None
 
