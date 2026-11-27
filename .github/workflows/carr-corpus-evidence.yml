@@ -1,0 +1,203 @@
+name: Read exact retained corpus measurements
+
+on:
+  push:
+    branches: ['carr/ci-corpus-evidence-*']
+    paths: ['.github/workflows/carr-corpus-evidence.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inspect-1000-book-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Verify exact public synthetic artifact and print bounded phase metrics
+        env:
+          CARR_EVIDENCE_TOKEN: ${{ github.token }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          from io import BytesIO
+          import json
+          import math
+          import os
+          from pathlib import PurePosixPath
+          import stat
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          import zipfile
+          
+          REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
+          ARTIFACT = 15223331300
+          RUN = 46037427185
+          HEAD = 'fb39ed3cb1e23ffa3be8bd768c1dd64216f110da'
+          DIGEST = '22d16b19a4a29af7d29ac589ac4cff03902e03e7f30be715cf813ef8c9bb2283'
+          ZIP_BYTES = 9564
+          SCHEMA = 'carr-library-corpus-benchmark/1'
+          JSON_NAMES = {'configuration.json', 'library-corpus-scale.json',
+                        '1000/build.json', '1000/measure.json', '1000/restart.json'}
+          TEXT_NAMES = {'tested-commit.txt', 'tested-tree.txt', 'benchmark.txt'}
+          class InspectionFailure(ValueError):
+              pass
+          def require(value, message):
+              if not value:
+                  raise InspectionFailure(message)
+          def unique(pairs):
+              result = {}
+              for key, value in pairs:
+                  require(key not in result, 'Duplicate JSON key.')
+                  result[key] = value
+              return result
+          def parsed(raw):
+              require(len(raw) <= 256 * 1024, 'JSON member is oversized.')
+              value = json.loads(raw.decode('utf-8'), object_pairs_hook=unique,
+                  parse_constant=lambda _: (_ for _ in ()).throw(InspectionFailure('Non-finite JSON.')))
+              pending, count = [(value, 0)], 0
+              while pending:
+                  item, depth = pending.pop()
+                  count += 1
+                  require(count <= 20000 and depth <= 32, 'JSON structure exceeds its bound.')
+                  if isinstance(item, float):
+                      require(math.isfinite(item), 'Non-finite JSON number.')
+                  elif isinstance(item, dict):
+                      pending.extend((v, depth + 1) for v in item.values())
+                  elif isinstance(item, list):
+                      pending.extend((v, depth + 1) for v in item)
+              return value
+          def emit(label, value):
+              raw = json.dumps(value, ensure_ascii=True, sort_keys=True, allow_nan=False)
+              require(len(raw) <= 24000, 'Projected log section is oversized.')
+              print(label + ' ' + raw, flush=True)
+          def read_bounded(response, maximum):
+              data = response.read(maximum + 1)
+              require(len(data) <= maximum, 'HTTP response exceeds its bound.')
+              return data
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          def main():
+              endpoint = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(ARTIFACT)
+              headers = {'Authorization': 'Bearer ' + os.environ['CARR_EVIDENCE_TOKEN'],
+                         'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'}
+              opener = urllib.request.build_opener(NoRedirect)
+              with opener.open(urllib.request.Request(endpoint, headers=headers), timeout=20) as response:
+                  metadata = parsed(read_bounded(response, 64 * 1024))
+              require(metadata['id'] == ARTIFACT and metadata['expired'] is False
+                      and metadata['size_in_bytes'] == ZIP_BYTES, 'Artifact identity or size differs.')
+              require(metadata['workflow_run']['id'] == RUN
+                      and metadata['workflow_run']['head_sha'] == HEAD, 'Artifact source run differs.')
+              require(metadata['digest'] == 'sha256:' + DIGEST
+                      and metadata['name'] == 'retained-corpus-1000-' + HEAD + '-1',
+                      'Artifact digest or matrix identity differs.')
+              try:
+                  with opener.open(urllib.request.Request(endpoint + '/zip', headers=headers), timeout=20):
+                      raise InspectionFailure('Expected an authenticated storage redirect.')
+              except urllib.error.HTTPError as response:
+                  require(response.code == 302, 'Artifact endpoint refused its storage redirect.')
+                  location = response.headers.get('Location', '')
+                  response.close()
+              target = urllib.parse.urlsplit(location)
+              require(target.scheme == 'https' and bool(target.hostname)
+                      and target.username is None and target.password is None
+                      and not target.fragment, 'Unsafe artifact storage URL.')
+              # No GitHub credential is forwarded to temporary object storage.
+              with urllib.request.urlopen(location, timeout=30) as response:
+                  archive = read_bounded(response, 64 * 1024)
+              require(len(archive) == ZIP_BYTES and sha256(archive).hexdigest() == DIGEST,
+                      'Downloaded ZIP does not match the exact requested artifact.')
+              payloads = {}
+              with zipfile.ZipFile(BytesIO(archive)) as bundle:
+                  members = bundle.infolist()
+                  require(len(members) <= 16 and sum(v.file_size for v in members) <= 1024 * 1024,
+                          'ZIP inventory exceeds its bound.')
+                  seen = set()
+                  for member in members:
+                      name = member.filename
+                      parts = PurePosixPath(name)
+                      require(name not in seen and name.casefold() not in {v.casefold() for v in seen}
+                              and '\\' not in name and not parts.is_absolute()
+                              and all(v not in ('', '.', '..') for v in name.rstrip('/').split('/')),
+                              'ZIP contains an unsafe or duplicate member.')
+                      seen.add(name)
+                      mode = stat.S_IFMT(member.external_attr >> 16)
+                      if member.is_dir():
+                          require(name == '1000/' and mode in (0, stat.S_IFDIR), 'Unknown ZIP directory.')
+                          continue
+                      require(name in JSON_NAMES | TEXT_NAMES and mode in (0, stat.S_IFREG)
+                              and not member.flag_bits & 1
+                              and member.compress_type in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED)
+                              and member.file_size <= 256 * 1024, 'Unknown or unsafe ZIP file.')
+                      if name in JSON_NAMES or name in {'tested-commit.txt', 'tested-tree.txt'}:
+                          with bundle.open(member) as stream:
+                              raw = read_bounded(stream, 256 * 1024)
+                          require(len(raw) == member.file_size, 'Truncated ZIP member.')
+                          payloads[name] = raw
+              require(JSON_NAMES <= set(payloads), 'A required phase JSON is missing.')
+              require(payloads['tested-commit.txt'].decode('ascii').strip() == HEAD,
+                      'Retained checkout proof differs.')
+              config = parsed(payloads['configuration.json'])
+              report = parsed(payloads['library-corpus-scale.json'])
+              require(config['schema'] == report['schema'] == SCHEMA
+                      and config['sizes'] == report['requested_sizes'] == [1000]
+                      and report['status'] == 'PASS', 'Unexpected corpus report identity/status.')
+              require(report['configuration_sha256'] == sha256(payloads['configuration.json']).hexdigest(),
+                      'Report configuration hash differs.')
+              require(len(report['cases']) == 1 and report['cases'][0]['requested_books'] == 1000
+                      and report['cases'][0]['status'] == 'PASS', 'Unexpected corpus case.')
+              phases = report['cases'][0]['phases']
+              require([p['phase'] for p in phases] == ['build', 'measure', 'restart'],
+                      'Actual phase inventory differs.')
+              require(len({p['pid'] for p in phases}) == 3
+                      and len({p['corpus_sha256'] for p in phases}) == 1, 'Phase process/corpus identity differs.')
+              fields = ('status', 'phase', 'books', 'segments', 'source_utf8_bytes', 'corpus_sha256',
+                  'startup_seconds', 'bootstrap_seconds', 'initial_integrity_seconds', 'final_integrity_seconds',
+                  'elapsed_seconds', 'process_wall_seconds', 'imports', 'first_result_page',
+                  'late_edition_first_page', 'reading', 'full_traversal', 'cancellation', 'disk',
+                  'database_unchanged', 'baseline_peak_rss_bytes', 'process_peak_rss_bytes',
+                  'peak_rss_method', 'pid', 'process_reaped', 'exit_code')
+              projected = []
+              for phase in phases:
+                  actual = parsed(payloads['1000/' + phase['phase'] + '.json'])
+                  require(all(key in phase and phase[key] == value for key, value in actual.items()),
+                          'Aggregate phase differs from its retained child report.')
+                  require(phase['status'] == 'PASS' and phase['books'] == 1000 and phase['segments'] == 20000
+                          and phase['process_reaped'] is True and phase['exit_code'] == 0,
+                          'Phase did not actually complete the requested corpus.')
+                  require(phase['origins'] == config['origins'] == report['origins']
+                          and phase['harness_sha256'] == config['harness_sha256'] == report['harness_sha256'],
+                          'Phase source identity differs.')
+                  projected.append({key: phase[key] for key in fields if key in phase})
+              emit('EXACT_ARTIFACT', {'repository': REPOSITORY, 'run_id': RUN, 'artifact_id': ARTIFACT,
+                  'head_sha': HEAD, 'source_job_reference': 140639483912,
+                  'zip_bytes': len(archive), 'zip_sha256': DIGEST,
+                  'members': sorted(seen), 'harness_sha256': report['harness_sha256'],
+                  'source_sha256': {name: item['sha256'] for name, item in report['origins'].items()}})
+              emit('MEASUREMENT_CONTEXT', {'environment': report['environment'], 'case': config['case'],
+                  'method': report['method'], 'claims': report['claims'], 'mode': report['mode']})
+              for phase in projected:
+                  emit('MEASURED_PHASE', phase)
+              emit('MEASURED_TOTAL', {'requested_books': 1000, 'segments': 20000,
+                  'sum_phase_wall_seconds': math.fsum(p['process_wall_seconds'] for p in phases),
+                  'larger_sizes': 'NOT_INSPECTED_BY_THIS_WORKFLOW',
+                  'qualification': 'Exact synthetic source measurement; no general capacity or release claim.'})
+          try:
+              main()
+          except Exception as error:
+              print('ARTIFACT_INSPECTION_FAILED ' + type(error).__name__
+                    + (': ' + str(error) if isinstance(error, InspectionFailure) else ''), file=sys.stderr)
+              raise SystemExit(1)
+          
+          PY
