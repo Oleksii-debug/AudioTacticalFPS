@@ -1,0 +1,51 @@
+name: OCR detector immutable package identity
+on:
+  push:
+    branches:
+      - carr/ocr-language-detector-pin-2aa-20261127
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package-identity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify wheel, model and source without importing the package
+        shell: python
+        run: |
+          import hashlib, io, json, urllib.request, zipfile
+          url = 'https://files.pythonhosted.org/packages/69/2d/0eeff2727c970b1d553be70d15ba2d84e3830696c09a79d954c5ae3d5212/py3langid-0.4.0-py3-none-any.whl'
+          expected = 'c25bd038147951ba3a89efe9ec12cc7d2116cb6f311ff8af84ade398a8bc0616'
+          with urllib.request.urlopen(url, timeout=30) as response:
+              raw = response.read(5 * 1024 * 1024 + 1)
+          assert len(raw) <= 5 * 1024 * 1024
+          assert hashlib.sha256(raw).hexdigest() == expected
+          pins = {
+              'py3langid/data/model.npz.xz': ('2221d7ba925849f78981d97d610fec208a89ed97', 4586720),
+              'py3langid/langid.py': ('d711eeeebf9a2f3c929edd39f7a7a596d9625875', 12687),
+              'py3langid/modelio.py': ('caf680fa6b74894367454b9fa5933b61032e165e', 2965),
+              'py3langid/__init__.py': ('4e213b01d14c517f556ddecb7ff4af05a5dc8a88', 73),
+          }
+          with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+              infos = archive.infolist()
+              assert len(infos) <= 64 and len({entry.filename for entry in infos}) == len(infos)
+              assert sum(entry.file_size for entry in infos) <= 8 * 1024 * 1024
+              licenses = [entry.filename for entry in infos if entry.filename.endswith('/LICENSE')]
+              assert len(licenses) == 1, licenses
+              pins[licenses[0]] = ('0fe5497e6ec0c31a974783851d8b9d0a97cafd12', 1676)
+              records = {}
+              for name, (git_pin, length) in pins.items():
+                  assert archive.getinfo(name).file_size == length
+                  value = archive.read(name)
+                  git_hash = hashlib.sha1(b'blob ' + str(len(value)).encode() + b'\0' + value).hexdigest()
+                  assert git_hash == git_pin, (name, git_hash)
+                  records[name] = {'sha256': hashlib.sha256(value).hexdigest(), 'size': len(value), 'git_blob': git_hash}
+              metadata_name = 'py3langid-0.4.0.dist-info/METADATA'
+              metadata = archive.read(metadata_name).decode('utf-8')
+              assert 'Name: py3langid\n' in metadata and 'Version: 0.4.0\n' in metadata
+              assert 'Requires-Dist: numpy>=2.0.0' in metadata
+          print('CARR_OCR_DETECTOR_PIN=' + json.dumps({
+              'wheel_sha256': expected, 'wheel_size': len(raw),
+              'upstream_commit': '3b99caf00d0dcbc9416a9d06f8e5b690e919a74e',
+              'files': records, 'package_imported': False}, sort_keys=True))
