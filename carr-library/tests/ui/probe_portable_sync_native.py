@@ -29,6 +29,10 @@ def not_run(reason):
 _UIA_REPLY = r"""
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+$stage = 'assemblies'
+$reason = 'native_exception'
+$observed = @()
+$root_checks = @{}
 try {
     Add-Type -AssemblyName UIAutomationClient
     Add-Type -AssemblyName UIAutomationTypes
@@ -40,13 +44,21 @@ public static class ConfirmationOwner {
     public static extern IntPtr GetWindow(IntPtr window, uint command);
 }
 '@
+    $stage = 'dialog_identity'
     $dialog = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]([long]$request.hwnd))
     $current = $dialog.Current
+    $root_checks = @{
+        pid=($current.ProcessId -eq $request.pid); title=($current.Name -ceq $request.title)
+        hwnd=($current.NativeWindowHandle -eq $request.hwnd); class=($current.ClassName -eq '#32770')
+        enabled=[bool]$current.IsEnabled; offscreen=[bool]$current.IsOffscreen
+    }
     if ($current.ProcessId -ne $request.pid -or $current.Name -cne $request.title -or
             $current.NativeWindowHandle -ne $request.hwnd -or $current.ClassName -ne '#32770' -or
             -not $current.IsEnabled -or $current.IsOffscreen) {
+        $reason = 'dialog_identity_changed'
         throw 'The accessible dialog identity changed'
     }
+    $stage = 'owner_chain'
     $seen = @{}
     $owned = $false
     $parent = [ConfirmationOwner]::GetWindow([IntPtr]([long]$request.hwnd), 4)
@@ -57,12 +69,23 @@ public static class ConfirmationOwner {
         if ($value -eq $request.owner) { $owned = $true; break }
         $parent = [ConfirmationOwner]::GetWindow($parent, 4)
     }
-    if (-not $owned) { throw 'The accessible dialog owner changed' }
+    if (-not $owned) { $reason = 'owner_changed'; throw 'The accessible dialog owner changed' }
+    $stage = 'button_lookup'
     $condition = [System.Windows.Automation.PropertyCondition]::new(
         [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
         [System.Windows.Automation.ControlType]::Button)
     $buttons = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
-    if ($buttons.Count -gt 32) { throw 'Too many accessible confirmation buttons' }
+    if ($buttons.Count -gt 32) { $reason = 'too_many_buttons'; throw 'Too many accessible confirmation buttons' }
+    foreach ($button in $buttons) {
+        $candidate = $button.Current
+        # Boolean role comparisons expose no dialog text or password contents.
+        $observed += @{
+            pid=[long]$candidate.ProcessId; hwnd=[long]$candidate.NativeWindowHandle
+            yes=($candidate.Name -ceq $request.yes); no=($candidate.Name -ceq $request.no)
+            enabled=[bool]$candidate.IsEnabled; offscreen=[bool]$candidate.IsOffscreen
+            type=[int]$candidate.ControlType.Id
+        }
+    }
     $answers = @{}
     foreach ($label in @($request.yes, $request.no)) {
         $matches = @()
@@ -73,14 +96,16 @@ public static class ConfirmationOwner {
                 $matches += $button
             }
         }
-        if ($matches.Count -ne 1) { throw 'The owned dialog has no unique accessible Yes/No pair' }
+        if ($matches.Count -ne 1) { $reason = 'answer_pair_not_unique'; throw 'The owned dialog has no unique accessible Yes/No pair' }
         $answers[$label] = $matches[0]
     }
+    $stage = 'invoke_pattern'
     $selected = $answers[$request.answer]
     $info = $selected.Current
     $pattern = $null
     if (-not $selected.TryGetCurrentPattern(
             [System.Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
+        $reason = 'invoke_unavailable'
         throw 'The owned answer button cannot be invoked'
     }
     $receipt = @{
@@ -91,11 +116,20 @@ public static class ConfirmationOwner {
         enabled=$info.IsEnabled; offscreen=$info.IsOffscreen
     }
     # Invoke the actual accessible control; never manufacture a modal result.
+    $stage = 'invoke'
     ([System.Windows.Automation.InvokePattern]$pattern).Invoke()
     $receipt | ConvertTo-Json -Compress
     exit 0
 } catch {
-    @{status='FAIL'; error='Owned accessible confirmation interaction failed'} | ConvertTo-Json -Compress
+    $failure = $_.Exception
+    for ($depth = 0; $failure.InnerException -and $depth -lt 4; $depth++) {
+        $failure = $failure.InnerException
+    }
+    @{
+        status='UIA_FAILURE'; pid=[long]$request.pid; hwnd=[long]$request.hwnd
+        owner=[long]$request.owner; stage=$stage; reason=$reason
+        hresult=[int]$failure.HResult; controls=$observed; root=$root_checks
+    } | ConvertTo-Json -Depth 4 -Compress
     exit 1
 }
 """
@@ -132,6 +166,7 @@ class AccessibleAnswer:
             return False
         output, unused_error = self.process.communicate(timeout=1)
         if self.process.returncode or len(output) > 16384:
+            report_accessible_failure(output, self.request, self.process.returncode)
             raise AssertionError('Owned accessible confirmation interaction failed')
         try:
             receipt = json.loads(output.decode('utf-8-sig'))
@@ -150,6 +185,61 @@ class AccessibleAnswer:
             raise AssertionError('Owned accessible confirmation receipt does not match the request')
         print(json.dumps(receipt), flush=True)
         return True
+
+
+def report_accessible_failure(output, request, returncode):
+    """Emit only fixed failure codes, integer native metadata and role booleans."""
+    report = dict(status='NATIVE_DIALOG_FAILED', helper_exit=returncode)
+    try:
+        if len(output) > 16384:
+            raise ValueError('oversized helper output')
+        value = json.loads(output.decode('utf-8-sig'))
+        stages = {'assemblies', 'dialog_identity', 'owner_chain', 'button_lookup',
+                  'invoke_pattern', 'invoke'}
+        reasons = {'native_exception', 'dialog_identity_changed', 'owner_changed',
+                   'too_many_buttons', 'answer_pair_not_unique', 'invoke_unavailable'}
+        if (type(value) is not dict or value.get('status') != 'UIA_FAILURE'
+                or any(type(value.get(key)) is not int or value[key] != request[key]
+                       for key in ('pid', 'hwnd', 'owner'))
+                or value.get('stage') not in stages or value.get('reason') not in reasons
+                or type(value.get('hresult')) is not int
+                or type(value.get('controls')) is not list or len(value['controls']) > 32):
+            raise ValueError('uncorrelated helper failure')
+        root = value.get('root', {})
+        if (type(root) is not dict or set(root) not in (set(), {'pid', 'title', 'hwnd', 'class', 'enabled', 'offscreen'})
+                or any(type(flag) is not bool for flag in root.values())):
+            raise ValueError('invalid root diagnostic')
+        controls = []
+        for control in value['controls']:
+            if (type(control) is not dict
+                    or any(type(control.get(key)) is not int for key in ('pid', 'hwnd', 'type'))
+                    or any(type(control.get(key)) is not bool
+                           for key in ('yes', 'no', 'enabled', 'offscreen'))):
+                raise ValueError('invalid helper control metadata')
+            controls.append({key: control[key] for key in
+                             ('pid', 'hwnd', 'type', 'yes', 'no', 'enabled', 'offscreen')})
+        report.update(stage=value['stage'], reason=value['reason'],
+                      hresult=value['hresult'], controls=controls, root=root)
+    except (TypeError, ValueError, UnicodeError):
+        report['reason'] = 'invalid_helper_diagnostic'
+    print(json.dumps(report), flush=True)
+
+
+def answer_successor_password(responses, *, confirmation_gone, find_dialog, answer):
+    """Keep the real successor modal moving while UIA Invoke is still returning.
+
+    Some providers block Invoke until the next modal is dismissed. The original
+    confirmation remains pending until its own successful native receipt arrives.
+    """
+    if (not confirmation_gone or len(responses) < 2
+            or responses[1][0] != 'Snapshot password'):
+        return False
+    dialog = find_dialog('Snapshot password')
+    if dialog is None:
+        return False
+    answer(dialog, responses[1][1])
+    responses.pop(1)
+    return True
 
 
 class WindowsConfirmations:
@@ -174,6 +264,7 @@ class WindowsConfirmations:
             'GetClassNameW': ([wintypes.HWND, wintypes.LPWSTR, ctypes.c_int], ctypes.c_int),
             'GetWindow': ([wintypes.HWND, wintypes.UINT], wintypes.HWND),
             'GetDlgCtrlID': ([wintypes.HWND], ctypes.c_int),
+            'IsWindow': ([wintypes.HWND], wintypes.BOOL),
             'IsWindowVisible': ([wintypes.HWND], wintypes.BOOL),
             'IsWindowEnabled': ([wintypes.HWND], wintypes.BOOL),
             'SetActiveWindow': ([wintypes.HWND], wintypes.HWND),
@@ -193,6 +284,14 @@ class WindowsConfirmations:
             operation, unused_key = self.pending
             operation.close()
             self.pending = None
+
+    def pending_dialog_is_gone(self, owner, title, *, accept):
+        if self.pending is None:
+            return False
+        operation, previous_key = self.pending
+        if previous_key != (owner, title, accept):
+            raise AssertionError('A different owned confirmation operation is still pending')
+        return not bool(self.api.IsWindow(operation.request['hwnd']))
 
     def reply(self, owner, title, *, accept):
         key = (owner, title, accept)
@@ -353,11 +452,22 @@ def run_native(source=None, *, encrypted=False):
                 current = current.GetParent()
             return False
 
+        def owned_wx_dialog(title):
+            return next((window for window in wx.GetTopLevelWindows()
+                         if isinstance(window, wx.Dialog) and window.IsModal()
+                         and window.GetTitle() == title and descendant(window, native.window)), None)
+
+        def answer_password(dialog, password):
+            fields = [child for child in dialog.GetChildren() if isinstance(child, wx.TextCtrl)]
+            check('password entry uses named native masked controls', bool(fields) and all(
+                field.GetWindowStyleFlag() & wx.TE_PASSWORD and field.GetName() for field in fields))
+            for field in fields:
+                field.SetValue(password or '')
+            dialog.EndModal(wx.ID_OK)
+
         def dismiss_one_modal():
-            if windows is not None and native is not None and native._window_alive:
-                for title in confirmation_titles:
-                    if windows.reply(native.window.GetHandle(), title, accept=False):
-                        return True
+            # A successor wx modal may itself keep UIA Invoke waiting. Release it
+            # before polling or changing the pending confirmation operation.
             modals = []
             for window in wx.GetTopLevelWindows():
                 try:
@@ -372,6 +482,16 @@ def run_native(source=None, *, encrypted=False):
             if modals:
                 max(modals, key=lambda item: item[0])[1].EndModal(wx.ID_CANCEL)
                 return True
+            if windows is not None and native is not None and native._window_alive:
+                if windows.pending is not None:
+                    unused_operation, (owner, title, accept) = windows.pending
+                    return not windows.reply(owner, title, accept=accept)
+                for title in confirmation_titles:
+                    answered = windows.reply(native.window.GetHandle(), title, accept=False)
+                    if answered or windows.pending is not None:
+                        # Do not retarget a just-started async No operation to the
+                        # other confirmation title in the same cleanup pass.
+                        return True
             return False
 
         def answer_modals(responses):
@@ -384,6 +504,10 @@ def run_native(source=None, *, encrypted=False):
                 try:
                     title, password = responses[0]
                     if windows is not None and title in confirmation_titles:
+                        answer_successor_password(
+                            responses, confirmation_gone=windows.pending_dialog_is_gone(
+                                native.window.GetHandle(), title, accept=True),
+                            find_dialog=owned_wx_dialog, answer=answer_password)
                         if windows.reply(native.window.GetHandle(), title, accept=True):
                             responses.pop(0)
                             if responses:
@@ -393,21 +517,14 @@ def run_native(source=None, *, encrypted=False):
                         else:
                             timers.append(wx.CallLater(20, answer))
                         return
-                    dialog = next((window for window in wx.GetTopLevelWindows()
-                        if isinstance(window, wx.Dialog) and window.IsModal()
-                        and window.GetTitle() == title and descendant(window, native.window)), None)
+                    dialog = owned_wx_dialog(title)
                     if dialog is None:
                         if monotonic() >= deadline:
                             raise AssertionError('Expected native dialog was not shown: ' + title)
                         timers.append(wx.CallLater(20, answer))
                         return
                     if title == 'Snapshot password':
-                        fields = [child for child in dialog.GetChildren() if isinstance(child, wx.TextCtrl)]
-                        check('password entry uses named native masked controls', bool(fields) and all(
-                            field.GetWindowStyleFlag() & wx.TE_PASSWORD and field.GetName() for field in fields))
-                        for field in fields:
-                            field.SetValue(password or '')
-                        dialog.EndModal(wx.ID_OK)
+                        answer_password(dialog, password)
                     else:
                         dialog.EndModal(wx.ID_YES)
                     responses.pop(0)
@@ -416,6 +533,14 @@ def run_native(source=None, *, encrypted=False):
                 except BaseException as error:
                     errors.append(type(error).__name__ + ': native modal interaction failed')
                     print(json.dumps(dict(status='FAIL', error=errors[-1], nvda='NOT_RUN')), flush=True)
+                    # Only this already-failed standalone synthetic probe can be
+                    # terminated; production windows and results are not involved.
+                    def abort_failed_modal():
+                        Event().wait(5)
+                        if not state['finished']:
+                            print('FAIL: native confirmation could not be released after failure', flush=True)
+                            os._exit(1)
+                    Thread(target=abort_failed_modal, name='failed-modal-watchdog', daemon=True).start()
                     if windows is not None:
                         try:
                             windows.close()

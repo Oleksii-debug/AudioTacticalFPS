@@ -725,6 +725,21 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                    ('imports.sqlite', 'import-requests', 'import-batches', HISTORICAL_DIRECTORY)):
                 from .pending_backup import snapshot_pending
                 pending = snapshot_pending(app, stage / PENDING, cancelled=cancelled)
+            # Metadata is not a content identity. In particular, Windows file
+            # creation time can survive an equal-size edit with restored mtime.
+            # Reuse the bounded streaming reader after all other components
+            # have been captured, before publishing any completed backup.
+            for entry in sidecars:
+                if cancelled():
+                    raise InterruptedError('Library backup cancelled during final source verification.')
+                current = _copy_sidecar(app.root, entry['path'], None,
+                                        inventory[entry['path']], cancelled)
+                if current != entry:
+                    raise RestoreError('Reading/audio state content changed during backup. Retry when it is idle.')
+            check_projects()
+            if inventory != _sidecar_inventory(app.root, max_sidecar_files, max_sidecar_bytes, cancelled):
+                raise RestoreError('Reading/audio state changed during final backup verification.')
+            check_projects()
             managed = pending is not None or any(not _reader_path(entry['path']) for entry in sidecars)
             manifest = dict(version=5 if pending is not None else 4 if managed else 3 if sidecars else 2, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,

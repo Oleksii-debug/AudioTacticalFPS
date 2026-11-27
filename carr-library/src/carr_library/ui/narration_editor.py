@@ -133,6 +133,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     selection. Original and editing views are separate native text controls.
     """
     import wx
+    from .save_all import SaveCoordinator, SaveResult, coordinator_for, defer_close
 
     controller = NarrationController(store, project, expected_digest=expected_digest,
                                      draft_digest=draft_digest, guard=guard)
@@ -165,6 +166,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 5)
     state = {'closed': False, 'refreshing': False, 'last_autosaved': None, 'text_dirty': False}
     timer = wx.Timer(dialog)
+    coordinator = coordinator_for(parent) or SaveCoordinator()
+    dialog._save_coordinator = coordinator
 
     def say(message, *, focus=True):
         status.ChangeValue(message)
@@ -190,8 +193,10 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             controller.set_text(editor.GetValue())
             state['text_dirty'] = False
 
-    def run(operation, *, focus=True):
+    def run(operation, *, focus=True, completed=None):
         if state['closed']:
+            if completed is not None:
+                completed(SaveResult(False, 'The reading editor is closed.'))
             return
         try:
             capture()
@@ -200,11 +205,24 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             if result:
                 say(result, focus=focus)
             timer.StartOnce(1200)
+            outcome = SaveResult(True)
         except Exception as exc:
             say(str(exc), focus=focus)
+            outcome = SaveResult(False, str(exc))
+        if completed is not None:
+            completed(outcome)
 
-    def save(event=None):
-        run(controller.save)
+    def save(event=None, *, completed=None, focus=True):
+        run(controller.save, completed=completed, focus=focus)
+
+    def save_all_open(event=None):
+        if state['closed']:
+            return
+        def completed(summary):
+            if not state['closed']:
+                say(summary.message())
+        if not coordinator.save_all(completed, cancelled=lambda: state['closed']):
+            say('Save All is already waiting for a durable save result.')
 
     def save_new(event=None):
         title = dialogs.text(dialog, 'Save reading project as', 'Name of the new reading project',
@@ -327,6 +345,9 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     def close(event=None):
         if state['closed']:
             return
+        if defer_close(dialog, coordinator, close=close, report=say,
+                       alive=lambda: not state['closed'], post=wx.CallAfter, event=event):
+            return
         try:
             capture()
             if controller.dirty:
@@ -376,7 +397,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         ('Pronunciation &dictionary', dictionary), ('Preview pro&nunciation', pronunciation),
         ('&Find and replace', replace_text), ('Compare &original', compare),
         ('&Export UTF-8 text', export), ('Save and open Audio S&tudio', open_audio_studio),
-        ('C&lose', close),
+        ('Save all open drafts', save_all_open), ('C&lose', close),
     )
     ids, native_buttons = [], []
     for label, handler in actions:
@@ -399,6 +420,10 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     dialog.SetEscapeId(ids[-1])
     editor.SetFocus()
     editor.SetInsertionPoint(0)
+    unregister = coordinator.register(
+        f'reading.{id(dialog)}', 'Reading copy — ' + project.title,
+        dirty=lambda: not state['closed'] and (state['text_dirty'] or controller.dirty),
+        save=lambda completed: save(completed=completed, focus=False), focus=editor.SetFocus)
     try:
         guard()
         if on_ready is not None:
@@ -406,11 +431,12 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                             save=native_buttons[0], save_as=native_buttons[1],
                             normalize=native_buttons[4], pronunciation=native_buttons[7],
                             compare=native_buttons[9], audio_studio=native_buttons[11],
-                            close=native_buttons[-1])
+                            save_all=native_buttons[-2], close=native_buttons[-1])
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()
     finally:
         state['closed'] = True
+        unregister()
         timer.Stop()
         dialog.Destroy()
     return controller.project

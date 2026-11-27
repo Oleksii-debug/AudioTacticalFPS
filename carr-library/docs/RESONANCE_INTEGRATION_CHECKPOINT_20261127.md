@@ -4,7 +4,54 @@ This checkpoint composes the already reviewed source changes on top of
 `587559f403b0c7a164b7e496bcd6975506bbe881`. It is not a final installer
 or a declaration that every V3 platform acceptance gate has passed.
 
-## Changes
+## Continuation after the 6c7afd Windows checkpoint
+
+The next source composition adds completion-aware Save All/Close for the
+existing note, reading and Studio stores; captured Studio Save As/export
+approval; final streaming source-byte revalidation in backups; and the 21
+typed role-effect controls through the current FFmpeg pipeline. Existing
+seven-effect defaults remain unchanged. WMA explicitly encodes at 48 kHz,
+including when the master/timeline uses 96 kHz, and the plan explains that
+constraint. New native effect and Save All probes are required gates.
+
+Actual recovered-executor verification of this composition before another
+transport outage:
+
+- Focused combined selection: 285 passed and one new Save As fixture assertion
+  failed because JSON lists were compared to in-memory tuples. Reopening the
+  actual saved controller corrected the assertion; its complete Studio suite
+  then passed 43/43 with no skips.
+- Existing production, signal, FFmpeg and productivity regressions: 66 passed
+  plus 7 subtests, no skips.
+- Independent Save All/current-store/backup-byte selection: 202 passed across
+  nine strict suites, no skips.
+- Native snapshot probe policy selection: 78 passed, no skips.
+- The new effect tests actually ran synthetic PCM through local FFmpeg,
+  including independent pitch/tempo, notch, stereo width, loudness/limiting,
+  all added default filters and encode/decode of Ogg/AAC/WMA including a
+  96 kHz WMA input. This is signal/runtime evidence, not listening/model quality.
+- Source compilation and workflow YAML parsing passed before the final OCR
+  and native-effect-probe additions; those last additions require the new
+  Windows compile/runtime run.
+
+Exact 6c7afd Windows results: bibliography and keyboard/recovery jobs passed.
+The main job completed 209 required suites: 208 passed; only the portable OCR
+runtime suite failed (38 passed, 2 failed, 1 missing-font skip). The two failures
+revealed native Windows script-pack separators in Tesseract's inventory.
+The continuation normalizes those separators only at the native report boundary,
+keeps user selectors/path guards strict, and uses the pinned Pillow embedded
+font for the orientation fixture instead of skipping on a missing host font.
+Native snapshot source/installed suites passed 270/151 cases; the real modal
+probe failed. Its continuation preserves the pending owned dialog across
+asynchronous Invoke/password succession and adds bounded non-sensitive diagnostics.
+Neither corrected native flow is claimed passed before its new run.
+
+These selections overlap and must not be added as unique test counts.
+The restored large-input extraction was interrupted again without a completion
+verdict. No new private installer, actual ASR inference, NVDA or full-platform
+acceptance is claimed.
+
+## Changes in the preceding 6c7afd checkpoint
 
 - Initialize the assistant Tools menu before translation and document conversion.
 - Reconstruct citation DOCX documents through the existing QuickJS CSL processor,

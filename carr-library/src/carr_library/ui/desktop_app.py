@@ -1242,6 +1242,10 @@ class DesktopFrame(WorkspaceFrame):
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):
+        from .save_all import defer_close
+        if defer_close(self, getattr(self, '_save_coordinator', None), close=lambda: self.Close(),
+                       report=self.report, alive=lambda: not self._closing, post=wx.CallAfter, event=event):
+            return
         if self.working:
             if event.CanVeto():
                 event.Veto()

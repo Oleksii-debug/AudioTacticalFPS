@@ -942,3 +942,44 @@ def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(c
     assert app.evidence(workspace, topics[0].id) == ()
     assert tuple(app.topics(workspace)) == topics
     chooser.return_value.Destroy.assert_called_once()
+
+
+
+def test_main_close_waits_for_save_all_and_only_retries_after_durable_success(classes):
+    from carr_library.ui.save_all import SaveCoordinator, SaveResult
+    value = frame(classes)
+    coordinator = value._save_coordinator = SaveCoordinator()
+    callbacks, dirty = [], {'value': True}
+    coordinator.register('note', 'Note', dirty=lambda: dirty['value'], save=callbacks.append)
+    coordinator.save_all(lambda summary: None)
+    value.working = True
+    value.Close = Mock()
+    event = close_event(True)
+    value.on_close(event)
+    assert event.veto and not value._closing
+    value.executor.shutdown.assert_not_called()
+    value.Close.assert_not_called()
+    value.working, dirty['value'] = False, False
+    callbacks[0](SaveResult(True))
+    assert not value._closing
+    _, queue = classes
+    assert len(queue) == 1
+    queue.pop()()
+    value.Close.assert_called_once_with()
+
+
+def test_failed_save_all_cancels_main_close_without_shutting_down_workers(classes):
+    from carr_library.ui.save_all import SaveCoordinator, SaveResult
+    value = frame(classes)
+    coordinator = value._save_coordinator = SaveCoordinator()
+    callbacks = []
+    coordinator.register('note', 'Note', dirty=lambda: True, save=callbacks.append)
+    coordinator.save_all(lambda summary: None)
+    value.Close = Mock()
+    event = close_event(True)
+    value.on_close(event)
+    callbacks[0](SaveResult(False, 'A newer writer changed the project'))
+    assert event.veto and not value._closing and not value._save_close_pending
+    value.Close.assert_not_called()
+    value.executor.shutdown.assert_not_called()
+    assert 'remains open' in value.report.call_args.args[0]

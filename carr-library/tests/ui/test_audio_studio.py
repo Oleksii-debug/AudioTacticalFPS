@@ -409,12 +409,20 @@ def test_final_new_destination_publication_never_overwrites_a_late_writer(
         destination = tmp_path / 'reading.txt'
         action = lambda: controller.export_reading_copy(destination)
     before = controller._file_hash, controller.project_path, controller._recovery_hash
-    original = module.publish_noreplace
-    def writer_at_publication(stage, target):
-        assert target == destination and not target.exists()
-        target.write_bytes(b'Another writer owns this destination')
-        return original(stage, target)
-    monkeypatch.setattr(module, 'publish_noreplace', writer_at_publication)
+    if operation == 'reading_copy':
+        # Captured reading exports use the shared export publisher's actual
+        # final no-replace primitive, rather than the project save stage.
+        from carr_library.research import export_file
+        owner = export_file.os
+        primitive = 'rename' if owner.name == 'nt' else 'link'
+    else:
+        owner, primitive = module, 'publish_noreplace'
+    original = getattr(owner, primitive)
+    def writer_at_publication(stage, target, *args, **kwargs):
+        assert Path(target) == destination and not destination.exists()
+        destination.write_bytes(b'Another writer owns this destination')
+        return original(stage, target, *args, **kwargs)
+    monkeypatch.setattr(owner, primitive, writer_at_publication)
     with pytest.raises(FileExistsError):
         action()
     assert destination.read_bytes() == b'Another writer owns this destination'
@@ -433,3 +441,168 @@ def test_new_studio_file_keeps_export_filename_guards(controller, tmp_path, name
     assert controller.project_path is None
     assert set(tmp_path.iterdir()) == before
     assert (tmp_path / name).exists() == existed
+
+
+def _destination_dialog(controller, destination):
+    """Exercise the real handlers with only native picker/message adapters."""
+    messages, errors = [], []
+    dialog = SimpleNamespace(
+        busy=False, dialog=object(), controller=controller,
+        _capture=lambda: None,
+        _file=lambda *args, **kwargs: destination,
+        _refresh_text=lambda: None,
+        _message=lambda text, **kwargs: messages.append(text),
+        _error=errors.append)
+    return dialog, messages, errors
+
+
+@pytest.mark.parametrize('operation', ['save_as', 'export_copy'])
+@pytest.mark.parametrize('accepted', [False, True], ids=['declined', 'confirmed'])
+def test_studio_native_replacement_requires_separate_bound_consent(
+        controller, tmp_path, monkeypatch, operation, accepted):
+    import carr_library.ui.audio_studio as module
+    from carr_library.ui.export_destination import approve_export_destination
+    controller.new('Immutable source')
+    controller.edit_script('Explicit reading derivative')
+    destination = tmp_path / ('project.json' if operation == 'save_as' else 'reading.txt')
+    destination.write_text('Existing destination', encoding='utf-8')
+    dialog, messages, errors = _destination_dialog(controller, destination)
+    questions = []
+    def confirm(parent, target):
+        questions.append((parent, target))
+        return accepted
+    monkeypatch.setattr(module, 'approve_export_destination',
+        lambda parent, path, **kwargs: approve_export_destination(
+            parent, path, confirm=confirm, **kwargs))
+    result = getattr(module.AudioStudioDialog, operation)(dialog)
+    assert questions == [(dialog.dialog, destination)]
+    assert not errors and controller.draft.source_text == 'Immutable source'
+    if not accepted:
+        assert destination.read_text(encoding='utf-8') == 'Existing destination'
+        assert not messages and controller.project_path is None and controller.dirty
+        if operation == 'save_as':
+            assert result is False
+    elif operation == 'save_as':
+        assert result is True and controller.project_path == destination
+        reopened = StudioController(private_root=controller.private_root).open(destination)
+        assert reopened.to_dict() == controller.to_dict()
+        assert reopened.script == 'Explicit reading derivative'
+        assert messages and not controller.dirty
+    else:
+        assert destination.read_text(encoding='utf-8') == 'Explicit reading derivative'
+        assert messages and controller.project_path is None and controller.dirty
+
+
+@pytest.mark.parametrize('operation', ['save_as', 'export_copy'])
+def test_studio_native_confirmation_cannot_approve_another_writers_new_bytes(
+        controller, tmp_path, monkeypatch, operation):
+    import carr_library.ui.audio_studio as module
+    from carr_library.ui.export_destination import approve_export_destination
+    controller.new('Immutable source')
+    controller.edit_script('Pending reading derivative')
+    destination = tmp_path / ('project.json' if operation == 'save_as' else 'reading.txt')
+    destination.write_text('Previously displayed destination', encoding='utf-8')
+    dialog, messages, errors = _destination_dialog(controller, destination)
+    before = controller.to_dict(), controller.project_path, controller._file_hash
+    def confirm(parent, target):
+        target.write_text('Another writer changed the destination during confirmation.', encoding='utf-8')
+        return True
+    monkeypatch.setattr(module, 'approve_export_destination',
+        lambda parent, path, **kwargs: approve_export_destination(
+            parent, path, confirm=confirm, **kwargs))
+    result = getattr(module.AudioStudioDialog, operation)(dialog)
+    assert destination.read_text(encoding='utf-8') == 'Another writer changed the destination during confirmation.'
+    assert not messages and len(errors) == 1 and isinstance(errors[0], ValueError)
+    assert (controller.to_dict(), controller.project_path, controller._file_hash) == before
+    assert controller.dirty
+    if operation == 'save_as':
+        assert result is False
+
+
+@pytest.mark.parametrize('operation', ['save_as', 'export_copy'])
+def test_studio_new_destination_remains_absent_bound_after_picker(
+        controller, tmp_path, monkeypatch, operation):
+    import carr_library.ui.audio_studio as module
+    from carr_library.ui.export_destination import approve_export_destination
+    controller.new('Immutable source')
+    controller.edit_script('Pending derivative')
+    destination = tmp_path / ('project.json' if operation == 'save_as' else 'reading.txt')
+    dialog, messages, errors = _destination_dialog(controller, destination)
+    before = controller.to_dict(), controller.project_path, controller._file_hash
+    def do_not_ask(parent, target):
+        raise AssertionError('A new path does not need replacement confirmation.')
+    def approve_then_external_write(parent, path, **kwargs):
+        approval = approve_export_destination(parent, path, confirm=do_not_ask, **kwargs)
+        assert approval.require_absent
+        destination.write_text('Another writer appeared after selection.', encoding='utf-8')
+        return approval
+    monkeypatch.setattr(module, 'approve_export_destination', approve_then_external_write)
+    getattr(module.AudioStudioDialog, operation)(dialog)
+    assert destination.read_text(encoding='utf-8') == 'Another writer appeared after selection.'
+    assert not messages and len(errors) == 1 and isinstance(errors[0], (ValueError, FileExistsError))
+    assert (controller.to_dict(), controller.project_path, controller._file_hash) == before
+    assert controller.dirty
+
+
+def test_reading_copy_captures_before_hashing_an_existing_destination(
+        controller, tmp_path, monkeypatch):
+    import carr_library.ui.audio_studio as module
+    controller.new('Immutable source')
+    controller.edit_script('Pending derivative')
+    destination = tmp_path / 'reading.txt'
+    destination.write_text('Earlier destination', encoding='utf-8')
+    original = module._path_digest
+    def changed_before_hash(path, **kwargs):
+        assert path == destination
+        destination.write_text('Changed before the controller hashes the selected file.', encoding='utf-8')
+        return original(path, **kwargs)
+    monkeypatch.setattr(module, '_path_digest', changed_before_hash)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_reading_copy(destination, overwrite=True)
+    assert destination.read_text(encoding='utf-8') == 'Changed before the controller hashes the selected file.'
+    assert controller.draft.source_text == 'Immutable source' and controller.dirty
+
+
+@pytest.mark.parametrize('operation', ['save_as', 'reading_copy'])
+def test_studio_destination_approval_keeps_selected_parent_identity(
+        controller, tmp_path, operation):
+    from carr_library.research.export_file import capture_export_destination
+    controller.new('Immutable source')
+    controller.edit_script('Pending derivative')
+    parent = tmp_path / 'chosen'
+    parent.mkdir()
+    destination = parent / ('project.json' if operation == 'save_as' else 'reading.txt')
+    approval = capture_export_destination(destination, private_root=controller.private_root)
+    parent.rename(tmp_path / 'original-chosen')
+    parent.mkdir()
+    action = controller.save if operation == 'save_as' else controller.export_reading_copy
+    with pytest.raises(ValueError, match='destination changed'):
+        action(destination, overwrite=True, approval=approval)
+    assert not destination.exists()
+    assert not (tmp_path / 'original-chosen' / destination.name).exists()
+    assert controller.project_path is None and controller.dirty
+
+
+@pytest.mark.parametrize(('save', 'text', 'expected_style'), [
+    (True, True, 1), (True, False, 1), (False, True, 12),
+], ids=['reading-copy', 'project-save-as', 'text-open'])
+def test_studio_picker_only_selects_path_before_separate_replacement_question(
+        tmp_path, save, text, expected_style):
+    from carr_library.ui.audio_studio import AudioStudioDialog
+    selected = tmp_path / ('reading.txt' if text else 'project.json')
+    seen, destroyed = [], []
+    class Picker:
+        def __init__(self, *args, **kwargs):
+            seen.append(kwargs)
+        def ShowModal(self):
+            return 100
+        def GetPath(self):
+            return str(selected)
+        def Destroy(self):
+            destroyed.append(True)
+    wx = SimpleNamespace(
+        FileDialog=Picker, FD_SAVE=1, FD_OVERWRITE_PROMPT=2,
+        FD_OPEN=4, FD_FILE_MUST_EXIST=8, ID_OK=100)
+    dialog = SimpleNamespace(wx=wx, dialog=object())
+    assert AudioStudioDialog._file(dialog, 'Choose destination', save=save, text=text) == selected
+    assert seen[0]['style'] == expected_style and destroyed == [True]

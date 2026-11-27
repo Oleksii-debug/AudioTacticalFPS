@@ -360,3 +360,19 @@ def test_invalid_profile_bindings_do_not_change_a_valid_preset_file(tmp_path, da
 def test_config_cannot_mix_a_managed_profile_and_an_existing_reviewed_pack(tmp_path):
     with pytest.raises(ValueError, match='cannot be combined'):
         Config(model_profile='fast', model_pack_path=str(tmp_path / 'pack'), model_pack_sha256='a' * 64)
+
+
+def test_native_windows_script_separators_are_normalized_only_in_inventory():
+    assert models.parse_language_report(report('eng', r'script\Latin', 'osd')) == (
+        'eng', 'script/Latin', 'osd')
+    with pytest.raises(ValueError):
+        models.model_ids(r'script\Latin')
+
+
+@pytest.mark.parametrize('codes', [
+    ('script/Latin', r'script\Latin'), (r'script\..\eng',),
+    (r'C:\eng',), (r'\script\Latin',), (r'other\Latin',),
+])
+def test_native_separator_normalization_keeps_collision_and_path_guards(codes):
+    with pytest.raises(ValueError):
+        models.parse_language_report(report(*codes))

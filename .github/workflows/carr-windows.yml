@@ -172,6 +172,7 @@ jobs:
             'tests/ui/test_audio_playback_controls.py',
             'tests/audio/test_audio_boundaries.py',
             'tests/audio/test_audio_signal_measurements.py',
+            'tests/audio/test_extended_effects.py',
             'tests/audio/test_narration_plan.py',
             'tests/audio/test_windows_fsync.py',
             'tests/e2e/test_provider_transport_contract.py',
@@ -338,6 +339,8 @@ jobs:
             'tests/ingest/test_terminal_replay_registration.py',
             'tests/reader/test_narration.py',
             'tests/ui/test_narration_editor.py',
+            'tests/ui/test_save_all.py',
+            'tests/ui/test_save_all_current_drafts.py',
             'tests/ui/test_productivity.py',
             'tests/storage/test_backup_reading_state.py',
             'tests/storage/test_backup_source_binding_review.py',
@@ -356,6 +359,7 @@ jobs:
             'tests/packaging/test_delivery_archive.py',
             'tests/audio/test_audio_backup.py',
             'tests/storage/test_backup_unified_audio.py',
+            'tests/storage/test_backup_content_revalidation.py',
             'tests/citations/test_csl_contexts.py',
             'tests/ui/test_citation_styles_jobs.py',
             'tests/reader/test_export_no_clobber.py',
@@ -613,6 +617,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/audio/native_playback_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-playback.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B tests/ui/native_save_all_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-save-all.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_audio_effects_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-audio-effects.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Remove-Item Env:CARR_FFMPEG -ErrorAction SilentlyContinue
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; from carr_library.audio.runtime import resolve_ffmpeg; from pathlib import Path; assert resolve_ffmpeg().samefile(Path(sys.prefix).parent/'audio-runtime/ffmpeg.exe'); runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_audio_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -666,6 +674,8 @@ jobs:
           contents_suites = ['tests/reader/test_ebook_contents.py',
                             'tests/e2e/test_epub_library.py', 'tests/e2e/test_epub_reading_desk.py',
                             'tests/reader/test_narration.py', 'tests/ui/test_narration_editor.py',
+                            'tests/ui/test_save_all.py',
+                            'tests/ui/test_save_all_current_drafts.py',
                             'tests/ui/test_productivity.py', 'tests/storage/test_backup_reading_state.py',
                             'tests/storage/test_backup_source_binding_review.py',
                             'tests/extract/test_ocr_languages.py', 'tests/ui/test_ocr_language_dialog.py',
@@ -683,7 +693,9 @@ jobs:
                             'tests/audio/test_audio_backup.py',
                             'tests/audio/test_managed_projects.py',
                             'tests/audio/test_audio_signal_measurements.py',
+                            'tests/audio/test_extended_effects.py',
                             'tests/storage/test_backup_unified_audio.py',
+                            'tests/storage/test_backup_content_revalidation.py',
                             'tests/citations/test_csl.py',
                             'tests/citations/test_custom_csl.py',
                             'tests/citations/test_documents.py',
@@ -798,7 +810,7 @@ jobs:
       - name: Require contextual commands and recovery regressions
         id: keyboard-regressions
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_save_all.py tests/ui/test_save_all_current_drafts.py tests/ui/test_desktop_evidence_jobs.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise actual native Main keyboard settings and command dispatch
@@ -820,6 +832,13 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native Save All and completion-aware close
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_save_all_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-save-all.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve actual keyboard and recovery evidence
