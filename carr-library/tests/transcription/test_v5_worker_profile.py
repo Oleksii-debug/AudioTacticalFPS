@@ -19,6 +19,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import restore_backup
+from carr_library import transcription
 
 
 PROTOCOL = 'whisper-v5-manifest-v1'
@@ -376,8 +377,7 @@ def test_v5_stop_preserves_cache_and_resume_inputs_then_completes(v5, tmp_path):
     mode(service, identity, 'stop-after-first')
     path = service._path(identity)
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status, shared_replace=True).get('done') == 1
+        return any((path / 'results').rglob('*.json'))
     stopped = service.run(identity, timeout=10, cancelled=cancelled)
     assert stopped['status'] == 'stopped' and stopped['artifacts'] == []
     assert len(list((path / 'input').iterdir())) == 2
@@ -455,13 +455,12 @@ def test_v5_cli_configure_create_run_export_share_the_persisted_profile(v5, tmp_
 
 
 @pytest.mark.parametrize('protocol', ['receipts-v1', PROTOCOL])
-def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_path, monkeypatch, protocol):
-    """Keep the host's old snapshot open until the real child replaces its name."""
-    _, _, _, source, runtime, models = v5
-    # A non-BMP character also checks the native rename's UTF-16 byte count.
-    app = LibraryApp(tmp_path / 'Бібліотека-🎧')
-    service = app.transcription(app.create_workspace('Synthetic live status'))
-    service.configure(Path(sys.executable).resolve(), runtime / 'worker.py', models, protocol=PROTOCOL)
+@pytest.mark.parametrize('live_snapshots', [False, True] if os.name != 'nt' else [False])
+def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_path, monkeypatch,
+                                                                    protocol, live_snapshots):
+    """Never block real publication: no Windows live opens, POSIX held snapshots."""
+    monkeypatch.setattr(transcription, '_LIVE_STATUS_SNAPSHOTS', live_snapshots)
+    _, _, service, source, _, models = v5
     if protocol == 'receipts-v1':
         legacy = runpy.run_path(str(Path(__file__).with_name('test_supplied_worker_bridge.py')))
         worker = tmp_path / 'legacy-progress-worker.py'
@@ -474,7 +473,18 @@ def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_pa
         mode(service, identity, 'wait-before-results')
     release = job / ('progress-observed' if protocol == 'receipts-v1' else 'fixture-release')
     status_path = job / 'job_status.json'
-    observed = {'claimed': False, 'replacement_while_open': False, 'old_snapshot': None}
+    observed = {'claimed': False, 'replacement_while_open': False, 'old_snapshot': None,
+                'process_active': False, 'terminal_reads': 0}
+    actual_run_process = transcription.run_process
+
+    def tracked_process(*arguments, **keywords):
+        observed['process_active'] = True
+        try:
+            return actual_run_process(*arguments, **keywords)
+        finally:
+            observed['process_active'] = False
+
+    monkeypatch.setattr(transcription, 'run_process', tracked_process)
 
     class HeldSnapshot:
         def __init__(self, stream):
@@ -508,23 +518,41 @@ def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_pa
 
     def hold_first_status_reader(original):
         def opened(file, *arguments, **keywords):
+            status_read = (isinstance(file, (str, bytes, os.PathLike))
+                           and Path(os.fsdecode(file)).absolute() == status_path)
+            if status_read and not live_snapshots:
+                assert not observed['process_active'], 'Windows must not open mutable live status.'
+                observed['terminal_reads'] += 1
             stream = original(file, *arguments, **keywords)
-            if (not observed['claimed'] and isinstance(file, (str, bytes, os.PathLike))
-                    and Path(os.fsdecode(file)).absolute() == status_path):
+            if live_snapshots and not observed['claimed'] and status_read:
                 observed['claimed'] = True
                 return HeldSnapshot(stream)
             return stream
         return opened
 
-    # Cover both the original Path.open implementation and the shared-read
-    # opener. Neither the actual child nor os.replace is mocked.
+    # Neither the actual child nor os.replace is mocked. The Windows strategy
+    # is also exercised on POSIX; only POSIX supports held destination snapshots.
     monkeypatch.setattr(builtins, 'open', hold_first_status_reader(builtins.open))
     monkeypatch.setattr(io, 'open', hold_first_status_reader(io.open))
     notices = []
-    result = service.run(identity, timeout=20, progress=lambda *notice: notices.append(notice))
-    assert observed['claimed'] and release.is_file()
-    assert observed['replacement_while_open'], result['last_error']
-    assert observed['old_snapshot']['done'] == 0
+
+    def advanced(done, total, phase):
+        notices.append((done, total, phase))
+        if observed['process_active'] and not live_snapshots:
+            assert done is None and total is None and phase == 'running'
+            if status_path.exists():
+                release.write_text('Release the real synthetic child without opening live status.',
+                                   encoding='utf-8')
+
+    result = service.run(identity, timeout=20, progress=advanced)
+    assert release.is_file()
+    if live_snapshots:
+        assert observed['claimed'] and observed['replacement_while_open'], result['last_error']
+        assert observed['old_snapshot']['done'] == 0
+    else:
+        assert observed['terminal_reads'] > 0
+        assert notices[0] == (None, None, 'running')
+        assert all(done is None and total is None for done, total, _ in notices[:-1])
     assert result['status'] == 'completed' and result['done'] == 1, result['last_error']
     assert {'txt', 'srt', 'vtt', 'json'} <= {item['format'] for item in result['artifacts']}
     assert service.verify(identity)['status'] == 'completed'

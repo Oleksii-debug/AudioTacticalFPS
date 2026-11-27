@@ -17,7 +17,7 @@ The window uses named native controls, keyboard mnemonics and the application's 
 
 Folder checks and source retention run in the shared cancellable background operation. The existing intake allowance is 64 media files, 8 GiB per file and 32 GiB per job; the shared scanner also bounds directory entries and depth. Select smaller folders when a limit is reached. Unsupported sidecars are excluded by extension; a supported extension does not certify that the worker can decode the contents.
 
-The running indicator counts files reported by the worker; these are not accepted exports until their receipts are verified. After Stop, the indicator retains the measured count while the job can truthfully show zero verified results pending explicit resume. Only a completed, verified job reaches 100 percent. Optional progress failures cannot undo a saved job, trigger a second transcription, or interrupt cooperative cancellation.
+On Windows, the active operation shows indeterminate progress while the worker runs. Opening its mutable status file can prevent the supplied worker's atomic replacement, so the host reads bounded terminal status only after the child exits. POSIX systems can show provisional file counts from live snapshots. These counts are not accepted exports until their receipts are verified. After Stop, a valid final worker count remains visible while the job can truthfully show zero verified results pending explicit resume; unavailable counts remain indeterminate. Saved worker files and cache remain reusable. Only a completed, verified job reaches 100 percent. Optional progress failures cannot undo a saved job, trigger a second transcription, or interrupt cooperative cancellation.
 
 ## Durable jobs and restoration
 

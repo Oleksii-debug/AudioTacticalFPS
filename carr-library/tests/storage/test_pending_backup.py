@@ -35,7 +35,7 @@ def _source(tmp_path, name='original.txt', text='Original first page.\fOriginal 
 def _snapshot(app, tmp_path, name='snapshot'):
     stage = tmp_path / name
     stage.mkdir()
-    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=4)) as storage:
+    with exclusive_writer(app.root), closing(Storage(app.database)) as storage:
         storage.backup(stage / 'library.sqlite')
         metadata = snapshot_pending(app, stage / 'pending')
     return stage, metadata
@@ -109,6 +109,53 @@ def test_actual_partial_import_restores_original_and_resumes_same_job(app, tmp_p
         assert db.execute('SELECT count(*) FROM page').fetchone()[0] == 3
     assert len(restored.search(workspace, 'second')) == 1
     assert restored.resume_import(workspace, request['request_id'])['id'] == final['id']
+
+
+def test_lost_parent_reply_backup_preserves_commit_but_discards_attempt_receipt(app, tmp_path):
+    from carr_library.ingest.worker import run_request, _store
+
+    workspace = app.create_workspace('Committed child')
+    source = _source(tmp_path)
+    result = run_request(app.root, workspace, source, _metadata(), Config())
+    assert result['state'] == 'complete'
+    request = load_request(app.root, result['request_id'])
+    assert request['publication_candidate']['revision'] == result['id']
+    request['state'] = 'running'
+    request.pop('result')
+    _store(app.root, result['request_id'], request)
+    backup, metadata = _snapshot(app, tmp_path)
+    source.unlink()
+    restored, _ = _restore(backup, metadata, tmp_path)
+    rebound = load_request(restored.root, result['request_id'])
+    assert 'attempt' not in rebound and 'publication_candidate' not in rebound
+    assert rebound['state'] == 'running'
+    completed = restored.resume_import(workspace, result['request_id'])
+    assert completed['state'] == 'complete' and completed['id'] == result['id']
+    with restored.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM page').fetchone()[0] == 3
+
+
+@pytest.mark.parametrize('field', ('attempt', 'revision', 'sha256', 'completed', 'manifest'))
+def test_malformed_publication_candidate_cannot_enter_backup(app, tmp_path, field):
+    from carr_library.ingest.worker import run_request, _store
+
+    workspace = app.create_workspace('Candidate validation')
+    source = _source(tmp_path)
+    result = run_request(app.root, workspace, source, _metadata(), Config())
+    assert result['state'] == 'complete'
+    request = load_request(app.root, result['request_id'])
+    if field == 'manifest':
+        request['publication_candidate'][field]['sha256'] = '0' * 64
+    elif field == 'completed':
+        request['publication_candidate'][field] = True
+    elif field == 'attempt':
+        request['publication_candidate'][field] = uuid4().hex
+    else:
+        request['publication_candidate'][field] = 'not-a-hash'
+    _store(app.root, result['request_id'], request)
+    with pytest.raises(ValueError, match='publication candidate|foreign source'):
+        _snapshot(app, tmp_path)
 
 
 def test_planned_batch_without_requests_captures_external_bytes_and_duplicates(app, tmp_path):

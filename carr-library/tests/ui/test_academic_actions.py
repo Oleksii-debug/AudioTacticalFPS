@@ -13,6 +13,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+import carr_library
 from carr_library.catalog.read_views import EditionView
 from carr_library.catalog.reference_exchange import preview_references
 
@@ -88,12 +89,15 @@ def module(monkeypatch):
             if wx.overwrite_hook: wx.overwrite_hook()
             return wx.overwrite_result
     wx.MessageDialog = MessageDialog
-    root = Path(__file__).resolve().parents[2] / 'src/carr_library/ui'
+    # Follow the already imported package in both source and isolated wheel runs.
+    root = Path(carr_library.__file__).resolve().parent / 'ui'
 
     def load(name, path):
         spec = importlib.util.spec_from_file_location(name, path)
         value = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(value)
+        assert Path(value.__file__).resolve() == path.resolve()
+        assert Path(value.__file__).resolve().parent == root
         return value
 
     monkeypatch.setitem(sys.modules, 'wx', wx)

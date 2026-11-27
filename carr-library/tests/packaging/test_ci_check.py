@@ -146,7 +146,9 @@ def test_parallel_barrier():
         spec.loader.exec_module(runner)
         original_temp = tempfile.TemporaryDirectory
         with original_temp(prefix='CARR cleanup diagnosis ') as temporary:
-            root = Path(temporary)
+            # The runner compares canonical paths. Windows temporary paths can
+            # use an 8.3 alias, so bind the fixture to the same resolved root.
+            root = Path(temporary).resolve(strict=True)
             (root / 'test_ok.py').write_text('def test_ok(): assert True\n', encoding='utf-8')
 
             @contextlib.contextmanager
@@ -215,7 +217,10 @@ def test_parallel_barrier():
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "pending = marker.with_suffix('.pending')\n"
+                "pending.write_text(str(os.getpid()), encoding='ascii')\n"
+                "pending.replace(marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_timeout.py').write_text(
                 "from pathlib import Path\nimport subprocess,sys,time\n"
@@ -317,7 +322,9 @@ def test_parallel_barrier():
                         pass
                 for process in processes:
                     if process.poll() is None:
-                        process.kill()
+                        # Startup itself may fail before the PID is observed.
+                        # Reap the owned process tree even on that error path.
+                        runner._terminate_process_tree(process)
                     process.wait(timeout=5)
                 if previous_subreaper is not None:
                     if observed.get('pid') and not observed.get('reaped'):
