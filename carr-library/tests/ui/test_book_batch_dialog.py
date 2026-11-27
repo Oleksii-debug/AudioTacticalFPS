@@ -516,3 +516,115 @@ def test_native_batch_diagnostic_failure_cannot_replace_primary_error_or_skip_cl
     assert observed == [('render_callback', False), ('render_callback', True)]
     assert len(errors) == 2 and 'ValueError: original native callback failure' in errors[0]
     assert 'OSError: injected diagnostic observation error' in errors[1]
+
+
+@pytest.mark.parametrize('observer_name, identity_name, event_name', [
+    ('frame_destroyed', 'frame_destroy_id', 'destroyed'),
+    ('bootstrap_closed', 'bootstrap_destroy_id', 'bootstrap_destroyed'),
+])
+def test_native_v3_destroy_observers_use_captured_id_not_python_wrapper(
+        observer_name, identity_name, event_name):
+    import ast
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    observer, = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name == observer_name]
+    module = ast.fix_missing_locations(ast.Module(body=[observer], type_ignores=[]))
+    seen, skipped = threading.Event(), []
+    captured = [-31994]
+    environment = {identity_name: captured, event_name: seen}
+    exec(compile(module, str(script), 'exec'), environment)
+
+    class Event:
+        def __init__(self, identity):
+            self.identity = identity
+        def GetId(self):
+            return self.identity
+        def GetEventObject(self):
+            pytest.fail('A destroy observer must not depend on the old Python wrapper.')
+        def Skip(self):
+            skipped.append(self.identity)
+
+    environment[observer_name](Event(-31993))  # A child event must not satisfy owner destruction.
+    assert not seen.is_set()
+    environment[observer_name](Event(-31994))  # Same native owner, different/dead Python peer.
+    assert seen.is_set() and skipped == [-31993, -31994]
+    seen.clear()
+    captured[0] = None
+    environment[observer_name](Event(None))
+    assert not seen.is_set() and skipped[-1] is None
+
+    # Both IDs are captured from the real owner before the corresponding bind.
+    main, = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'main']
+    owner_name = 'frame' if observer_name == 'frame_destroyed' else 'bootstrap'
+    bind, = [node for node in ast.walk(main) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Attribute) and node.func.attr == 'Bind'
+             and isinstance(node.func.value, ast.Name) and node.func.value.id == owner_name
+             and any(isinstance(arg, ast.Name) and arg.id == observer_name for arg in node.args)]
+    captured_assignment, = [node for node in ast.walk(main) if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Subscript) and isinstance(target.value, ast.Name)
+                and target.value.id == identity_name for target in node.targets)]
+    assert captured_assignment.lineno < bind.lineno
+    assert isinstance(captured_assignment.value, ast.Call)
+    assert ast.unparse(captured_assignment.value) == owner_name + '.GetId()'
+
+
+@pytest.mark.parametrize('missing', ['frame-event', 'frame-wrapper', 'bootstrap-event', 'bootstrap-wrapper', None])
+def test_native_v3_cleanup_requires_native_events_and_separately_deleted_wrappers(missing):
+    import ast
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    poll, = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == 'poll_cleanup']
+    module = ast.fix_missing_locations(ast.Module(body=[poll], type_ignores=[]))
+    pending, exits, failures, releases = [], [], [], []
+    destroyed, bootstrap_destroyed, loop_started, completed = (threading.Event() for _ in range(4))
+    loop_started.set()
+    if missing != 'frame-event':
+        destroyed.set()
+    if missing != 'bootstrap-event':
+        bootstrap_destroyed.set()
+
+    class Peer:
+        def __init__(self, alive):
+            self.alive = alive
+            self.executor = SimpleNamespace(_threads=())
+            self.progress_panel = SimpleNamespace(closed=True)
+        def __bool__(self):
+            return self.alive
+        def Destroy(self):
+            pytest.fail('Polling cannot replace the already requested native destruction.')
+
+    result = {'checks': []}
+    frame, bootstrap = Peer(missing == 'frame-wrapper'), Peer(missing == 'bootstrap-wrapper')
+    future = SimpleNamespace(done=lambda: True, result=lambda: releases.append('actual owned release'))
+    environment = dict(frame=frame, bootstrap=bootstrap, cleanup_executors=[],
+        cleanup_futures=[future], destroyed=destroyed, bootstrap_destroyed=bootstrap_destroyed,
+        loop_started=loop_started, completed=completed, bootstrap_closing=[True],
+        frame_destroy_id=[-31994], bootstrap_destroy_id=[-31995],
+        cleanup_deadline=[60.0], monotonic=lambda: 1.0, threading=threading,
+        selected_progress=None, failures=failures, gui_errors=[], result=result,
+        remember_failure=failures.append, app=SimpleNamespace(ExitMainLoop=lambda: exits.append(True)),
+        wx=SimpleNamespace(CallLater=lambda delay, callback: pending.append((delay, callback))))
+    exec(compile(module, str(script), 'exec'), environment)
+    environment['poll_cleanup']()
+    if missing is not None:
+        assert len(pending) == 1 and pending[0][0] == 25
+        assert not completed.is_set() and not exits and not releases and not failures
+        assert 'native_cleanup' not in result
+        # A missing native event/dead peer remains a genuine failure at the same deadline.
+        environment['monotonic'] = lambda: 60.0
+        pending.pop()[1]()
+        assert completed.is_set() and exits == [True] and len(failures) == 1
+        assert isinstance(failures[0], TimeoutError) and 'native_cleanup' not in result
+        assert not releases
+    else:
+        assert completed.is_set() and exits == [True] and not pending and not failures
+        assert releases == ['actual owned release']
+        assert result['native_cleanup']['destroy_event'] is True
+        assert result['native_cleanup']['bootstrap_destroy_event'] is True
+        assert result['native_cleanup']['frame_wrapper_deleted'] is True
+        assert result['native_cleanup']['bootstrap_wrapper_deleted'] is True
+        assert result['native_cleanup']['frame_destroy_native_id'] == -31994
+        assert result['native_cleanup']['bootstrap_destroy_native_id'] == -31995

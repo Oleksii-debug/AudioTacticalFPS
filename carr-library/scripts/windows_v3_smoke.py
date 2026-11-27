@@ -48,6 +48,7 @@ def main():
     frame = library = registry = service = selected_progress = None
     bootstrap = None
     destroyed, bootstrap_destroyed, loop_started = (threading.Event() for _ in range(3))
+    frame_destroy_id, bootstrap_destroy_id = [None], [None]
     bootstrap_closing = [False]
     child_progress, cleanup_futures, cleanup_executors = [], [], []
     failures, completed = [], threading.Event()
@@ -65,7 +66,7 @@ def main():
         failures.append((error, error.__traceback__))
 
     def bootstrap_closed(event):
-        if event.GetEventObject() is bootstrap:
+        if bootstrap_destroy_id[0] is not None and event.GetId() == bootstrap_destroy_id[0]:
             bootstrap_destroyed.set()
         event.Skip()
 
@@ -136,9 +137,10 @@ def main():
                            'loudness': report['result']['loudness'],
                            'distinct_voice_tokens': len({role.voice_id for role in project.roles})}
         frame = DesktopFrame(library)
+        frame_destroy_id[0] = frame.GetId()
         app.SetTopWindow(frame)
         def frame_destroyed(event):
-            if event.GetEventObject() is frame:
+            if frame_destroy_id[0] is not None and event.GetId() == frame_destroy_id[0]:
                 destroyed.set()
             event.Skip()
         frame.Bind(wx.EVT_WINDOW_DESTROY, frame_destroyed)
@@ -692,7 +694,7 @@ def main():
             workers = [thread for executor in executors for thread in executor._threads]
             voice_workers = [thread for thread in threading.enumerate()
                              if thread.name == 'progress-voice-cleanup']
-            waiting = ((frame is not None and not destroyed.is_set())
+            waiting = ((frame is not None and (not destroyed.is_set() or bool(frame)))
                        or any(not future.done() for future in cleanup_futures)
                        or any(thread.is_alive() for thread in workers + voice_workers))
             if waiting:
@@ -702,7 +704,7 @@ def main():
                 return
             # Keep a real top-level owner until all actual GUI/worker cleanup
             # has finished, then observe its native destruction before exiting.
-            if bootstrap is not None and not bootstrap_destroyed.is_set():
+            if bootstrap is not None and (not bootstrap_destroyed.is_set() or bool(bootstrap)):
                 if monotonic() >= cleanup_deadline[0]:
                     raise TimeoutError('Native event-loop bootstrap destruction did not finish.')
                 if not bootstrap_closing[0]:
@@ -711,6 +713,8 @@ def main():
                 wx.CallLater(25, poll_cleanup)
                 return
             assert loop_started.is_set() and bootstrap_destroyed.is_set()
+            assert frame is None or not bool(frame)
+            assert bootstrap is None or not bool(bootstrap)
             for future in cleanup_futures:
                 future.result()
             if frame is not None:
@@ -725,7 +729,11 @@ def main():
                 result['native_cleanup'] = {'status': 'PASS', 'destroy_event': destroyed.is_set(),
                     'private_worker_releases': len(cleanup_futures), 'voice_owner_released': True,
                     'scenario_started_in_main_loop': loop_started.is_set(),
-                    'bootstrap_destroy_event': bootstrap_destroyed.is_set()}
+                    'bootstrap_destroy_event': bootstrap_destroyed.is_set(),
+                    'frame_destroy_native_id': frame_destroy_id[0],
+                    'bootstrap_destroy_native_id': bootstrap_destroy_id[0],
+                    'frame_wrapper_deleted': frame is None or not bool(frame),
+                    'bootstrap_wrapper_deleted': bootstrap is None or not bool(bootstrap)}
         except BaseException as error:
             remember_failure(error)
         completed.set()
@@ -766,6 +774,7 @@ def main():
         # The real application frame is created by the queued scenario, so keep
         # a hidden native bootstrap owner alive before entering that first loop.
         bootstrap = wx.Frame(None, title='Native acceptance event-loop owner', size=(1, 1))
+        bootstrap_destroy_id[0] = bootstrap.GetId()
         bootstrap.Bind(wx.EVT_WINDOW_DESTROY, bootstrap_closed)
         app.SetTopWindow(bootstrap)
         assert bootstrap in wx.GetTopLevelWindows()
