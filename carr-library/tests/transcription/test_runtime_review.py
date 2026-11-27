@@ -190,6 +190,10 @@ def test_actual_child_runtime_drift_cannot_publish_or_resurrect_cache(tmp_path, 
     assert result['receipts'] == result['artifacts'] == []
     rejected = (path / 'rejected-execution.json').read_bytes()
     assert read_json(path / 'rejected-execution.json')['job'] == identity
+    # Listing a known rejected/closed attempt must not turn it into an orphan.
+    # Its veto still refuses old cache, while a fresh retained-input copy works.
+    observed = LibraryApp(peer.app.root).transcription(peer.workspace).get(identity)
+    assert observed['status'] == 'failed' and observed['recovery_review_required'] is False
     assert (path / 'input' / result['sources'][0]['filename']).read_bytes() == peer.source.read_bytes()
     peer.payloads['numpy'].write_bytes(original)
     service.configure(peer.python, peer.worker, peer.models, protocol=protocol)

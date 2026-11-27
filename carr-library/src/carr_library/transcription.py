@@ -695,11 +695,12 @@ class TranscriptionService:
                     or not re.fullmatch(r'[a-f0-9]{64}', item.get('sha256', ''))):
                 raise ValueError('Invalid retained transcription source identity.')
             names.add(name)
+        rejection = self._rejection(self._path(identity), identity)
         pending_review = self._pending_review(identity)
-        if pending_review is not None and not (
+        if rejection is None and pending_review is not None and not (
                 value['status'] == 'failed' and value.get('recovery_review_required') is False):
             value = {**value, 'status': 'running'}
-        if value['status'] == 'running':
+        if rejection is None and value['status'] == 'running':
             try:
                 with state_lock(self._path(identity), 'transcribe'):
                     current = read_json(self._path(identity) / 'job.json')
@@ -710,9 +711,9 @@ class TranscriptionService:
                         value = current
             except RuntimeError:
                 pass  # A live runner still owns the exact job lock.
-        if self._rejection(self._path(identity), identity) is not None:
+        if rejection is not None:
             value = {**value, 'status': 'failed', 'done': 0, 'receipts': [], 'artifacts': [],
-                     'execution_review_required': True,
+                     'execution_review_required': True, 'recovery_review_required': False,
                      'last_error': 'Rejected worker evidence is retained. Create a new reviewed job from its retained originals.'}
         return value
 
