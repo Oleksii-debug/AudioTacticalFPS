@@ -161,6 +161,7 @@ for index, source in enumerate(sources):
     records.append(record)
     status(len(records),0)
     if mode == 'stop-after-first':
+        (job/'fixture-first-complete').write_bytes(b'First source outputs are closed.\n')
         while not (job/'stop.flag').exists():
             time.sleep(.02)
         break
@@ -372,8 +373,7 @@ def test_v5_stop_preserves_cache_and_resume_inputs_then_completes(v5, tmp_path):
     mode(service, identity, 'stop-after-first')
     path = service._path(identity)
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return (path / 'fixture-first-complete').exists()
     stopped = service.run(identity, timeout=10, cancelled=cancelled)
     assert stopped['status'] == 'stopped' and stopped['artifacts'] == []
     assert len(list((path / 'input').iterdir())) == 2
@@ -458,3 +458,21 @@ def test_v5_cli_configure_create_run_export_share_the_persisted_profile(v5, tmp_
     assert len(service.list()) == 1 and invoke('show', identity)['status'] == 'completed'
     assert service.text(identity, result['sources'][0]['filename']) == 'Synthetic V5 fixture.\n'
     assert source.read_bytes() == original
+
+
+def test_deferred_status_is_read_only_after_the_actual_v5_child_exits(v5, deferred_status_probe):
+    _, _, service, source, _, _ = v5
+    identity = service.submit([source])
+    mode(service, identity, 'wait-before-results')
+    probe = deferred_status_probe(service, identity, release='fixture-release')
+
+    result = service.run(identity, timeout=10, progress=probe.progress)
+
+    assert probe.live and probe.reads
+    assert set(probe.public_reads) == {'verify', 'text'} and not probe.public_read_errors
+    assert len(probe.children) == 1 and probe.children[0].returncode == 0
+    assert result == service.get(identity) and result['status'] == 'completed', result['last_error']
+    assert result['done'] == 1 and len(result['artifacts']) == 6
+    assert probe.notices[-1] == (1, 1, 'completed')
+    assert service.verify(identity)['status'] == 'completed'
+    assert service.text(identity, result['sources'][0]['filename']) == 'Synthetic V5 fixture.\n'
