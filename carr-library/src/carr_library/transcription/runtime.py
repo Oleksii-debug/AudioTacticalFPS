@@ -183,6 +183,7 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
         if not entries or len(entries) > 65536:
             raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
         files = {}
+        recorded_paths = set()
         for relative in sorted(entries, key=str):
             stopped(cancel)
             label = str(relative)
@@ -196,9 +197,12 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
             if progress:
                 progress({'phase': 'Verifying installed ASR runtime files', 'status': 'running',
                           'current': name + ': ' + label, 'done': None, 'total': None, 'indeterminate': True})
-            path = local_path(Path(distribution.locate_file(relative)).resolve(strict=True), exists=True)
+            path = local_path(Path(distribution.locate_file(relative)), exists=True)
             if not any(path.is_relative_to(root.resolve()) for root in roots):
                 raise ValueError('An installed-file record escapes the explicitly selected Python environment.')
+            if path in recorded_paths:
+                raise ValueError('A selected distribution has duplicate resolved installed-file records.')
+            recorded_paths.add(path)
             identity = file_identity(path, cancel=cancel, maximum=MAX_RUNTIME_BYTES - total_bytes)
             total_bytes += identity['size']
             if total_bytes > MAX_RUNTIME_BYTES:
@@ -206,6 +210,10 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
             files[label] = identity
         if not files:
             raise ValueError('A selected distribution has an empty installed-file inventory.')
+        required = {local_path(distribution._path / filename, exists=True)
+                    for filename in ('METADATA', 'RECORD')}
+        if not required.issubset(recorded_paths):
+            raise ValueError('A selected distribution inventory omits METADATA or RECORD.')
         result[name] = {'version': distribution.version, 'file_count': len(files),
             'installed_files_sha256': sha256(json.dumps(files, ensure_ascii=False,
                 sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()}
