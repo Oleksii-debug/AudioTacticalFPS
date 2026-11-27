@@ -8,6 +8,7 @@ import shutil
 import signal
 import stat
 import subprocess
+import sys
 import threading
 import time
 
@@ -21,6 +22,20 @@ class ProcessResult:
     elapsed: float
     returncode: int = 0
     stopped: bool = False
+
+
+# The fixed bootstrap cannot open a device before lifetime admission. One raw
+# byte avoids consuming FFmpeg's later q command from the same owned pipe. EOF
+# before admission exits without starting the selected command. On Windows the
+# wrapper is attached to its kill-on-close Job before admission, so its eventual
+# FFmpeg child inherits that Job. No user-provided Python or shell is evaluated.
+_CAPTURE_BOOTSTRAP = '''import os, subprocess, sys
+if os.read(0, 1) != b"\\x01":
+    raise SystemExit(125)
+raise SystemExit(subprocess.call(sys.argv[1:], stdin=0, stdout=1, stderr=2,
+    shell=False, close_fds=True,
+    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0))
+'''
 
 
 def native_audio_environment(environment=None):
@@ -147,7 +162,12 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     overflow = threading.Event()
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
     latest = [None]
-    process = subprocess.Popen(args, stdin=subprocess.PIPE if stop_requested is not None else subprocess.DEVNULL,
+    command = args
+    if stop_requested is not None:
+        if not sys.executable or not Path(sys.executable).is_absolute():
+            raise AudioError('Capture admission requires the current isolated Python runtime.')
+        command = [sys.executable, '-I', '-B', '-c', _CAPTURE_BOOTSTRAP, *args]
+    process = subprocess.Popen(command, stdin=subprocess.PIPE if stop_requested is not None else subprocess.DEVNULL,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
         cwd=cwd, env=native_audio_environment(env), start_new_session=os.name == 'posix',
         creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
@@ -241,6 +261,12 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     try:
         if stop_requested is not None:
             release_lifetime = _capture_lifetime(process)
+            if not callable(release_lifetime):
+                raise AudioError('Capture lifetime admission did not provide an owned cleanup handle.')
+            if cancelled():
+                raise AudioCancelled('Audio capture cancelled before lifetime admission.')
+            process.stdin.write(b'\x01')
+            process.stdin.flush()
         for thread in threads:
             thread.start()
         while process.poll() is None:
