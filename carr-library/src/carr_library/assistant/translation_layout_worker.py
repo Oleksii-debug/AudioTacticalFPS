@@ -17,7 +17,7 @@ MAX_ARCHIVE = 64 * 1024 * 1024
 MAX_REQUEST = 16 * 1024 * 1024
 MAX_REPLY = 16 * 1024 * 1024
 MAX_CHARACTERS = 2_000_000
-MAX_UNITS = 64
+MAX_UNITS = 2048
 PROFILE = 'carr-docx-body-layout/1'
 NOTICE = (
     'Machine translation of body paragraphs and simple table cells. Paragraph, '
@@ -113,7 +113,7 @@ def describe(data):
         active = bool(paragraph.text.strip())
         selected += int(active)
         if selected > MAX_UNITS:
-            raise LayoutError('Choose a DOCX with at most 64 nonempty body or table paragraphs.')
+            raise LayoutError('Choose a DOCX with at most 2,048 nonempty body or table paragraphs.')
         rows.append({'ordinal': ordinal, 'locator': locator, 'text': paragraph.text,
                      'sha256': record['text_sha256'], 'selected': active, 'inline_mode': mode})
     if not selected:

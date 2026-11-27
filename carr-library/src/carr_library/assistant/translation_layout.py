@@ -17,7 +17,9 @@ import tempfile
 from uuid import uuid4
 
 from .models import canonical
-from .translation_documents import SelectedDocument, review_documents, prepare_documents
+from .translation_documents import (SelectedDocument, review_documents, prepare_documents,
+                                    MAX_DOCUMENTS)
+from .translation_partition import make_partition, partition_ranges, partition_chunk_groups
 from .translation_layout_worker import MAX_ARCHIVE, MAX_CHARACTERS, MAX_REPLY, MAX_REQUEST, MAX_UNITS, NOTICE, PROFILE
 from ..audio.models import AudioBudget, AudioCleanupPending
 from ..audio.process import run_process
@@ -96,6 +98,7 @@ class LayoutDocument:
     topic: str | None
     mapping_json: str
     selections: tuple
+    partition_json: str | None = None
 
     @property
     def mapping(self):
@@ -108,13 +111,80 @@ class LayoutDocument:
     def mapping_sha256(self):
         return _hash(self.mapping_json.encode('utf-8'))
 
+    @property
+    def source_partition(self):
+        if self.partition_json is None:
+            return None
+        if len(self.selections) != 1:
+            raise ValueError('A combined DOCX partition needs one complete retained source.')
+        expected = _combined_partition(self.mapping, self.selections[0], self.mapping_sha256)
+        if canonical(expected) != self.partition_json:
+            raise ValueError('The captured DOCX partition differs from its exact source mapping.')
+        return expected
+
+    @property
+    def source_partitions(self):
+        value = self.source_partition
+        return None if value is None else (value,)
+
     def summary(self):
         data = self.mapping
         return {'schema': PROFILE, 'title': self.title, 'workspace': self.workspace,
             'edition': self.edition, 'revision': self.revision,
             'source_sha256': self.asset_sha256, 'mapping_sha256': self.mapping_sha256,
             'paragraphs': data['selected'], 'characters': data['characters'],
-            'notice': NOTICE, 'quotation_authority': False}
+            'notice': NOTICE, 'quotation_authority': False,
+            **({'partitioned_jobs': 1, 'source_partition': self.source_partition}
+               if self.partition_json is not None else {})}
+
+
+def _combined_partition(mapping, selection, mapping_sha256):
+    if not isinstance(selection, SelectedDocument):
+        raise ValueError('Capture the complete unchanged DOCX range before partitioning it.')
+    document = selection.document
+    anchor = document.source_anchor
+    rows = mapping['records']
+    if (anchor is None or len(anchor['positions']) != len(rows)
+            or document.text != document.source_text
+            or document.source_text != '\n\n'.join(row['text'] for row in rows)):
+        raise ValueError('The combined DOCX source differs from its canonical reading range.')
+    boundaries, previous = [], 0
+    for row, position in zip(rows, anchor['positions']):
+        first, last = position['start'], position['end']
+        if (position['ordinal'] != row['ordinal']
+                or position['text_sha256'] != row['sha256']
+                or document.source_text[first:last] != row['text']):
+            raise ValueError('The DOCX partition source positions changed.')
+        for end in (first, last):
+            if end > previous:
+                boundaries.append(end)
+                previous = end
+    if previous < len(document.source_text):
+        boundaries.append(len(document.source_text))
+    return make_partition(document.source_text, PROFILE, mapping_sha256, boundaries)
+
+
+def _same_layout_anchor(actual, expected):
+    if (set(actual) != set(expected)
+            or any(actual[key] != expected[key] for key in actual if key != 'positions')
+            or len(actual['positions']) != len(expected['positions'])):
+        return False
+    return all(set(a) == set(b) and all(a[key] == b[key] for key in a
+                                      if key != 'text_verified_at_capture')
+               for a, b in zip(actual['positions'], expected['positions']))
+
+
+def _partition_job(service, layout, identity, *, cancelled, guard):
+    job = service.get(identity)
+    binding = service._binding(job)
+    selection = layout.selections[0]
+    if (binding is None or binding['topic'] != layout.topic
+            or job.get('source_partition') != layout.source_partition
+            or job['source_text'] != selection.document.source_text
+            or not _same_layout_anchor(binding['anchor'], selection.document.source_anchor)):
+        raise ValueError('The saved job differs from the exact reviewed DOCX source partition.')
+    service._source_context(job, cancelled=cancelled, guard=guard)
+    return job
 
 
 def _checked_desk(library, layout, *, cancelled, guard):
@@ -134,8 +204,18 @@ def _checked_desk(library, layout, *, cancelled, guard):
     for row, page in zip(mapping['records'], desk.pages):
         if page.kind != 'logical_segment' or page.ordinal != row['ordinal'] or page.text_sha256 != row['sha256']:
             raise ValueError('The DOCX mapping differs from its canonical source segments.')
+    if layout.partition_json is not None:
+        partition = layout.source_partition
+        selection = layout.selections[0]
+        anchor = selection.document.source_anchor
+        if (selection.topic != layout.topic or anchor['workspace'] != layout.workspace
+                or anchor['edition'] != layout.edition or anchor['revision'] != layout.revision
+                or anchor['asset_sha256'] != layout.asset_sha256):
+            raise ValueError('The combined DOCX source anchor changed.')
+        partition_ranges(selection.document.source_text, partition)
+        return desk, base
     rows = [row for row in mapping['records'] if row['selected']]
-    if len(rows) != len(layout.selections):
+    if len(rows) > MAX_DOCUMENTS or len(rows) != len(layout.selections):
         raise ValueError('The DOCX source selection is incomplete.')
     for row, selection in zip(rows, layout.selections):
         if (not isinstance(selection, SelectedDocument) or selection.topic != layout.topic
@@ -312,15 +392,22 @@ def capture_layout(library, workspace, edition, *, topic=None, cancelled=lambda:
         check_cancelled(stopped)
         if page.kind != 'logical_segment' or page.ordinal != row['ordinal'] or page.text_sha256 != row['sha256']:
             raise ValueError('The DOCX paragraph differs from its retained source segment.')
-        if row['selected']:
+        if row['selected'] and mapping['selected'] <= MAX_DOCUMENTS:
             source = read_source_range(desk, page.ordinal, page.ordinal,
                                        cancelled=base, guard=guard)
             if source.text != row['text']:
                 raise ValueError('The DOCX text differs from its current retained source.')
             selected.append(SelectedDocument(source.reading_document(), topic))
+    partition_json = None
+    if mapping['selected'] > MAX_DOCUMENTS:
+        source = read_source_range(desk, 1, len(desk.pages), cancelled=base, guard=guard,
+                                   max_characters=MAX_CHARACTERS)
+        selected = [SelectedDocument(source.reading_document(), topic)]
+        partition_json = canonical(_combined_partition(mapping, selected[0],
+            _hash(canonical(mapping).encode('utf-8'))))
     check_cancelled(stopped)
     return LayoutDocument(expected[0], expected[1], workspace, edition, desk.revision,
-        desk.identity.asset_sha256, desk.title, topic, canonical(mapping), tuple(selected))
+        desk.identity.asset_sha256, desk.title, topic, canonical(mapping), tuple(selected), partition_json)
 
 
 def review_layout(service, profile, layout, source, target, budget, *, glossary=None,
@@ -331,7 +418,8 @@ def review_layout(service, profile, layout, source, target, budget, *, glossary=
     if canonical(actual) != layout.mapping_json:
         raise ValueError('The DOCX mapping changed before translation review.')
     report = review_documents(service, profile, layout.selections, source, target, budget,
-        glossary=glossary, rate_per_million=rate_per_million, cancelled=stopped, guard=guard)
+        glossary=glossary, rate_per_million=rate_per_million, cancelled=stopped, guard=guard,
+        source_partitions=layout.source_partitions)
     payload = {'schema': 'carr-docx-translation-review/1', 'layout': layout.summary(),
                'documents': report, 'provider_calls_started': False}
     return {**payload, 'review_sha256': _hash(canonical(payload).encode('utf-8'))}
@@ -346,7 +434,8 @@ def prepare_layout(service, profile, layout, source, target, budget, *, approved
     desk, base = _checked_desk(service.library, layout, cancelled=cancelled, guard=guard)
     return prepare_documents(service, profile, layout.selections, source, target, budget,
         approved_review=review['documents']['review_sha256'], glossary=glossary,
-        rate_per_million=rate_per_million, cancelled=_source_cancel(desk, base), guard=guard)
+        rate_per_million=rate_per_million, cancelled=_source_cancel(desk, base), guard=guard,
+        source_partitions=layout.source_partitions)
 
 
 
@@ -362,6 +451,9 @@ def order_layout_jobs(service, layout, identities, *, cancelled=lambda: False, g
             or any(type(value) is not str for value in identities)
             or len(set(identities)) != len(identities)):
         raise ValueError('Explicitly choose one distinct saved job per selected DOCX paragraph.')
+    if layout.partition_json is not None:
+        _partition_job(service, layout, identities[0], cancelled=stopped, guard=guard)
+        return tuple(identities)
     rows = {row['ordinal']: (row, selection) for row, selection in zip(
         (row for row in layout.mapping['records'] if row['selected']), layout.selections)}
     ordered, settings = {}, None
@@ -401,6 +493,8 @@ def _completed(service, layout, identities, *, cancelled, guard):
             or any(type(identity) is not str for identity in identities)
             or len(set(identities)) != len(identities)):
         raise ValueError('Select exactly one distinct completed job for each DOCX paragraph in order.')
+    if layout.partition_json is not None:
+        return _completed_partition(service, layout, identities[0], cancelled=cancelled, guard=guard)
     replacements, receipts, settings = [], [], None
     for row, selection, identity in zip(
             (row for row in layout.mapping['records'] if row['selected']), layout.selections, identities):
@@ -432,6 +526,43 @@ def _completed(service, layout, identities, *, cancelled, guard):
     return replacements, receipts
 
 
+def _completed_partition(service, layout, identity, *, cancelled, guard):
+    from .translation import _assemble_translation
+    check_cancelled(cancelled)
+    guard()
+    job = _partition_job(service, layout, identity, cancelled=cancelled, guard=guard)
+    if job['status'] != 'complete' or len(job['receipts']) != len(job['chunks']):
+        raise ValueError('Finish every reviewed DOCX partition before formatted export.')
+    service._output_budget(job)
+    service._text_binding(job)
+    groups = partition_chunk_groups(job['source_text'], job['source_partition'])
+    ranges = partition_ranges(job['source_text'], job['source_partition'])
+    translated, index = {}, 0
+    for interval, group in zip(ranges, groups):
+        rows = job['receipts'][index:index + len(group)]
+        if len(rows) != len(group):
+            raise ValueError('The completed layout receipt inventory is incomplete.')
+        translated[interval] = (_assemble_translation(group, rows),
+                                tuple(range(index, index + len(group))))
+        index += len(group)
+    if index != len(job['chunks']) or index != len(job['receipts']):
+        raise ValueError('The completed layout receipt inventory changed.')
+    replacements, receipts = [], []
+    for row, position in zip(layout.mapping['records'],
+                             layout.selections[0].document.source_anchor['positions']):
+        if not row['selected']:
+            continue
+        key = (position['start'], position['end'])
+        if key not in translated:
+            raise ValueError('A source paragraph is not an exact approved layout partition.')
+        value, indices = translated[key]
+        replacements.append({'ordinal': row['ordinal'], 'source_sha256': row['sha256'], 'text': value})
+        receipts.append({'id': identity, 'ordinal': row['ordinal'], 'source_sha256': row['sha256'],
+                         'translation_sha256': _hash(value.encode('utf-8')),
+                         'receipt_indices': list(indices)})
+    return replacements, receipts
+
+
 def export_layout(service, layout, identities, destination, *, approval=None,
                   cancelled=lambda: False, guard=lambda: None, broker=None):
     desk, base = _checked_desk(service.library, layout, cancelled=cancelled, guard=guard)
@@ -440,7 +571,7 @@ def export_layout(service, layout, identities, destination, *, approval=None,
     if requested.suffix.lower() != '.docx':
         raise ValueError('Choose a new DOCX output filename.')
     # Sorted existing job locks preserve the ordinary per-job mutation boundary.
-    if (type(identities) not in (tuple, list) or not 1 <= len(identities) <= MAX_UNITS
+    if (type(identities) not in (tuple, list) or not 1 <= len(identities) <= MAX_DOCUMENTS
             or any(type(identity) is not str for identity in identities)
             or len(set(identities)) != len(identities)):
         raise ValueError('Select distinct existing DOCX paragraph jobs.')

@@ -1,0 +1,213 @@
+name: CARR next9 Word, partitioned DOCX and Google renewal preflight
+
+on:
+  push:
+    branches: ['carr/ci-next9-word-refresh-*']
+    paths: ['carr-library/**', '.github/workflows/carr-next9-word-refresh.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contracts:
+    name: Ubuntu complete Word, translation and editing source contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    concurrency:
+      group: carr-next9-word-refresh-source-${{ github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare existing pinned headless dependencies and Ubuntu codec
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          mkdir ci-next9-results
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+          python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          python -B -m pip check
+          python -I -B - <<'PY' | tee ci-next9-results/runtime.json
+          from hashlib import sha256
+          import json, os, platform, shutil, subprocess, sys
+          from pathlib import Path
+          root = Path.cwd().resolve()
+          def run(args):
+              return subprocess.run(args, check=True, stdin=subprocess.DEVNULL,
+                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30).stdout
+          head = run(['git', 'rev-parse', 'HEAD']).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          runtime = {}
+          for name in ('ffmpeg', 'ffprobe'):
+              path = Path(shutil.which(name) or '/missing').resolve(strict=True)
+              assert path == Path('/usr/bin/' + name).resolve(strict=True)
+              runtime[name] = {'sha256': sha256(path.read_bytes()).hexdigest(),
+                               'version': run([str(path), '-version']).splitlines()[0]}
+          filters = run(['/usr/bin/ffmpeg', '-hide_banner', '-filters'])
+          assert 'aeval' in filters and 'alimiter' in filters and 'loudnorm' in filters
+          result = {'status': 'PREPARED', 'head': head,
+              'tree': run(['git', 'rev-parse', 'HEAD^{tree}']).strip(),
+              'python': sys.version, 'platform': platform.platform(), 'runtime': runtime,
+              'packages': run(['dpkg-query', '-W', 'ffmpeg', 'libavfilter9']).splitlines(),
+              'qualification': 'Ubuntu source PCM only; not Windows installed, playback, acoustic, native-egress or release acceptance'}
+          print(json.dumps(result, indent=2))
+          PY
+      - name: Compile every current Python application and verification source
+        timeout-minutes: 2
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          root = Path.cwd()
+          inventory = {}
+          for folder in ('src', 'bootstrap', 'scripts', 'tests', 'packaging'):
+              for path in sorted((root / folder).rglob('*.py')):
+                  raw = path.read_bytes()
+                  compile(raw, str(path), 'exec', dont_inherit=True)
+                  inventory[path.relative_to(root).as_posix()] = sha256(raw).hexdigest()
+          assert inventory and 'src/carr_library/assistant/google_oauth.py' in inventory
+          report = {'status': 'PASS', 'python_files': len(inventory), 'source_sha256': inventory}
+          Path('ci-next9-results/python-syntax.json').write_text(
+              json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          print('Actual Python compile PASS:', len(inventory), 'files')
+          PY
+      - name: Require whole new suites and existing affected processing contracts
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          python -B scripts/ci_check.py --jobs 3 \
+            tests/audio/test_envelopes.py \
+            tests/studio/test_envelope_workflow.py \
+            tests/audio/test_dsp.py \
+            tests/audio/test_effect_presets.py \
+            tests/audio/test_audio_conversion.py \
+            tests/studio/test_project_effects.py \
+            tests/storage/test_backup_studio_effects.py \
+            tests/packaging/test_library_scale_benchmark.py \
+            tests/studio/test_clip_operations.py \
+            tests/studio/test_project_history.py \
+            tests/studio/test_clip_history_dialog.py \
+            tests/studio/test_clip_editing.py \
+            tests/studio/test_clip_dialog.py \
+            tests/studio/test_clip_restoration.py \
+            tests/studio/test_clip_cli.py \
+            tests/assistant/test_translation_layout.py \
+            tests/ui/test_translation_layout.py \
+            tests/assistant/test_translation_layout_cli.py \
+            tests/assistant/test_translation.py \
+            tests/assistant/test_translation_local.py \
+            tests/assistant/test_translation_documents.py \
+            tests/ui/test_translation_documents.py \
+            tests/assistant/test_translation_advanced_union.py \
+            tests/assistant/test_translation_advanced_source.py \
+            tests/speech/test_narration_receipt.py \
+            tests/academic_integration/test_word_records.py \
+            tests/academic_integration/test_word_bridge.py \
+            tests/academic_integration/test_word_worker.py \
+            tests/ui/test_word_citations.py \
+            tests/assistant/test_translation_partition.py \
+            tests/ui/test_save_all.py \
+            tests/assistant/test_google_oauth.py \
+            tests/ui/test_google_oauth.py \
+            tests/assistant/test_translation_v3.py \
+            tests/assistant/test_providers.py \
+            tests/ui/test_profile_project_exports.py \
+            tests/storage/test_backup_translation.py \
+            tests/citations/test_csl.py \
+            tests/citations/test_bibliography_workbench.py \
+            tests/academic_integration/test_documents.py \
+            tests/academic_integration/test_formatting.py \
+            tests/academic_integration/test_regeneration.py \
+            tests/academic_integration/test_citation_ui.py \
+            2>&1 | tee ci-next9-results/source-contracts.txt
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          root = Path('ci-next9-results')
+          raw = (root / 'source-contracts.txt').read_bytes()
+          lines = raw.decode('utf-8').splitlines()
+          expected = {
+              'tests/audio/test_envelopes.py': 64,
+              'tests/studio/test_envelope_workflow.py': 17,
+              'tests/packaging/test_library_scale_benchmark.py': 24,
+              'tests/studio/test_clip_operations.py': 59,
+              'tests/studio/test_project_history.py': 29,
+              'tests/studio/test_clip_history_dialog.py': 22,
+              'tests/assistant/test_translation_layout.py': 33,
+              'tests/ui/test_translation_layout.py': 23,
+              'tests/assistant/test_translation_layout_cli.py': 5,
+              'tests/speech/test_narration_receipt.py': 79,
+              'tests/academic_integration/test_word_records.py': 47,
+              'tests/academic_integration/test_word_bridge.py': 20,
+              'tests/academic_integration/test_word_worker.py': 17,
+              'tests/ui/test_word_citations.py': 17,
+              'tests/assistant/test_translation_partition.py': 26,
+              'tests/ui/test_save_all.py': 24,
+              'tests/assistant/test_google_oauth.py': 49,
+              'tests/ui/test_google_oauth.py': 15,
+          }
+          for name, count in expected.items():
+              assert lines.count(f'PASS: {name}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0') == 1, name
+          result = {'status': 'PASS', 'expected_new_whole_suites': expected,
+                    'all_whole_suites': 43, 'strict_fail_skip_xfail_xpass_policy': True,
+                    'log_sha256': sha256(raw).hexdigest(), 'qualification': 'Exact source only'}
+          (root / 'source-summary.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: next9-word-refresh-contracts-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-next9-results/
+          if-no-files-found: error
+
+  powershell-syntax:
+    name: Real YAML and PowerShell parser over current workflows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    concurrency:
+      group: carr-next9-word-refresh-parser-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Parse committed workflow bodies without execution
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path ci-next9-parser | Out-Null
+          & ./carr-library/scripts/check_workflow_powershell.ps1 -RepositoryRoot $PWD.Path -Output (Join-Path $PWD.Path 'ci-next9-parser/workflow-powershell.json')
+          if ($LASTEXITCODE -ne 0) { throw 'PowerShell parser command failed.' }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: next9-workflow-parser-${{ github.sha }}-${{ github.run_attempt }}
+          path: ci-next9-parser/
+          if-no-files-found: error

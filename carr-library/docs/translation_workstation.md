@@ -81,9 +81,12 @@ Choose `google-translation-v3` in the existing account editor. Enter:
   or ADC identity, plus its actual expiry with UTC offset. For example, the expiry
   field accepts `2026-11-27T15:30:00Z`; enter the real future time, not this example.
   The token is stored only in Windows Credential Manager, bound to the exact
-  endpoint. The application never reads ADC files, launches gcloud, discovers a
-  service account, refreshes tokens or falls back to an API key. Do not paste a
-  service-account JSON key or refresh token.
+  endpoint. This manual-token field never discovers ADC, launches gcloud or
+  renews the supplied token. Do not paste a service-account key or refresh token
+  into it. For an already authorized Google Desktop app refresh grant, select
+  the saved account and choose **Configure Google automatic token renewal**.
+  That separate explicit setup and its fixed official token exchange are
+  documented in [GOOGLE_OAUTH_RENEWAL.md](GOOGLE_OAUTH_RENEWAL.md).
 
 Google's official authentication guide distinguishes gcloud credentials from
 ADC. Obtain the access token using your already authorized setup outside this
@@ -228,7 +231,7 @@ joins without altering the saved provider receipts. This preserves tested
 plain-text joins; it is not a claim of page layout, table, footnote or formatted
 document fidelity.
 
-Automatic ADC discovery/token refresh, glossary creation, automatic chapter-title
+Automatic ADC discovery, service-account impersonation, glossary creation, automatic chapter-title
 interpretation, original rich-document layout preservation, local M2M100 inference,
 canonical-135 translation mapping and independent linguistic quality review
 remain separate work. No offline failure causes a silent remote fallback or

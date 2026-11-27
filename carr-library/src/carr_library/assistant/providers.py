@@ -286,6 +286,8 @@ class Gateway:
         self.mode = mode
         self.vault = vault or WindowsCredentialVault()
         self.ledger = UsageLedger(Path(directory) / 'usage')
+        from .google_oauth import GoogleTokenSession
+        self._google_tokens = GoogleTokenSession()
 
     def request(self, profile, operation, payload, *, task_id, data_class,
                 authorization=None, max_cost=None, operation_id=None, output=None,
@@ -351,8 +353,18 @@ class Gateway:
                 if not isinstance(secret, str) or not secret or any(c in secret for c in '\r\n\x00'):
                     raise ProviderError('The stored provider credential is invalid.')
                 if profile.adapter == 'google-translation-v3':
+                    def credential_guard():
+                        if cancelled() or monotonic() - started >= timeout:
+                            raise InterruptedError('Provider operation cancelled or timed out before transmission.')
+                        if self.mode == 'LOCAL_ONLY' or self.mode not in MODES:
+                            raise PermissionError('LOCAL ONLY blocks external token renewal and translation.')
+                        if authorization.expires_at <= time():
+                            raise PermissionError('The remote authorization expired before transmission.')
                     try:
-                        secret, expires_at = google_oauth_token(secret, profile.endpoint)
+                        secret = self._google_tokens.token(profile, secret,
+                            timeout=max(0.001, timeout - (monotonic() - started)),
+                            guard=credential_guard)
+                        credential_guard()
                     except ValueError as error:
                         raise ProviderError(str(error)) from None
                     headers['X-goog-user-project'] = google_v3_parent(profile.endpoint).split('/')[1]

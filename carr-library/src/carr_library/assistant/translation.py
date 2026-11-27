@@ -60,9 +60,14 @@ def split_text(value, limit=4500):
     return tuple(parts)
 
 
-def translation_chunks(value, *, preserve_paragraphs=False):
+def translation_chunks(value, *, preserve_paragraphs=False, source_partition=None):
     if type(preserve_paragraphs) is not bool:
         raise ValueError('Choose an explicit paragraph-preservation policy.')
+    if source_partition is not None:
+        if preserve_paragraphs:
+            raise ValueError('Choose one exact source partition policy.')
+        from .translation_partition import partition_chunks
+        return partition_chunks(value, source_partition)
     if not preserve_paragraphs:
         return split_text(value)
     from .translation_documents import paragraph_ranges
@@ -72,7 +77,8 @@ def translation_chunks(value, *, preserve_paragraphs=False):
 
 def job_chunks(job):
     return translation_chunks(job['source_text'],
-                              preserve_paragraphs=job.get('preserve_paragraphs', False))
+                              preserve_paragraphs=job.get('preserve_paragraphs', False),
+                              source_partition=job.get('source_partition'))
 
 def _hash(value):
     return sha256(value.encode('utf-8')).hexdigest()
@@ -89,12 +95,15 @@ def translation_payload(value, source, target, glossary=None):
 
 
 def translation_approval(profile, value, source, target, budget, *, glossary=None, source_bound=False,
-                         preserve_paragraphs=False):
+                         preserve_paragraphs=False, source_partition=None):
     """Called only after explicit review; bind every text/model/glossary request."""
     if type(source_bound) is not bool:
         raise ValueError('Choose an explicit source-bound or pasted-text approval.')
+    if source_partition is not None and not source_bound:
+        raise ValueError('A layout partition requires an unchanged retained source.')
     hashes = []
-    for chunk in translation_chunks(value, preserve_paragraphs=preserve_paragraphs):
+    for chunk in translation_chunks(value, preserve_paragraphs=preserve_paragraphs,
+                                    source_partition=source_partition):
         if chunk.strip():
             _, body, _ = _request(profile, 'translation.text', translation_payload(chunk, source, target, glossary))
             hashes.append(_hash(canonical(body)))
@@ -115,6 +124,8 @@ def _source_job_id(job):
     keys = ('source_binding', 'source_sha256', 'authorization', 'profile')
     if job.get('preserve_paragraphs') is True:
         keys += ('preserve_paragraphs',)
+    if 'source_partition' in job:
+        keys += ('source_partition',)
     payload = canonical({key: job[key] for key in keys})
     return uuid5(NAMESPACE_URL, 'urn:carr-library:translation/2:' + payload).hex
 
@@ -185,7 +196,7 @@ class TranslationService:
     def _binding(job):
         """Older pasted-text jobs stay unbound; source jobs cannot downgrade."""
         if job.get('kind') == 'translation/1':
-            if 'source_binding' in job or UUID(job['id']).version != 4:
+            if 'source_binding' in job or 'source_partition' in job or UUID(job['id']).version != 4:
                 raise ValueError('A source-bound translation cannot use the legacy job format.')
             return None
         value = job.get('source_binding')
@@ -202,6 +213,11 @@ class TranslationService:
                     not isinstance(value['topic'], str) or not value['topic'].strip()
                     or len(value['topic']) > 1024))):
             raise ValueError('The translation source binding is invalid.')
+        if 'source_partition' in job:
+            from .translation_partition import partition_ranges
+            partition_ranges(job['source_text'], job['source_partition'])
+            if job.get('preserve_paragraphs', False) is not False:
+                raise ValueError('A layout partition cannot also reinterpret paragraphs.')
         document = ReadingDocument(job['source_text'], title=job['title'],
                                    source_anchor=value['anchor'])
         anchor = document.source_anchor
@@ -348,10 +364,11 @@ class TranslationService:
         return rows
 
     def preview(self, profile, value, source, target, *, rate_per_million=None, glossary=None,
-                preserve_paragraphs=False):
+                preserve_paragraphs=False, source_partition=None):
         if profile.adapter not in ('google-translation-v2', 'google-translation-v3', 'libretranslate-local') or not profile.enabled:
             raise ValueError('Choose an enabled Google Basic v2, Advanced v3 or explicit local translation profile.')
-        parts = translation_chunks(value, preserve_paragraphs=preserve_paragraphs)
+        parts = translation_chunks(value, preserve_paragraphs=preserve_paragraphs,
+                                   source_partition=source_partition)
         first = next(part for part in parts if part.strip())
         selected = translation_payload(first, source, target, glossary)
         _request(profile, 'translation.text', selected)
@@ -382,15 +399,21 @@ class TranslationService:
             'preservation': ('ordered paragraph boundaries; original document layout is not retained'
                              if preserve_paragraphs else 'plain text derivative; document formatting is not retained'),
             **({'preserve_paragraphs': True} if preserve_paragraphs else {}),
+            **({'source_partition': source_partition} if source_partition is not None else {}),
             **({'runtime_qualification': 'local API declarations only; model identity, offline egress and quality require independent evidence'}
                if profile.local else {})}
 
     def submit(self, profile, value, source, target, *, title='Translation', authorization,
                per_call_cost, source_document=None, topic=None, glossary=None,
-               cancelled=lambda: False, guard=lambda: None, preserve_paragraphs=False):
+               cancelled=lambda: False, guard=lambda: None, preserve_paragraphs=False,
+               source_partition=None):
+        if source_partition is not None and source_document is None:
+            raise ValueError('A layout partition requires an unchanged retained source.')
         preview = self.preview(profile, value, source, target, glossary=glossary,
-                               preserve_paragraphs=preserve_paragraphs)
-        parts = translation_chunks(value, preserve_paragraphs=preserve_paragraphs)
+                               preserve_paragraphs=preserve_paragraphs,
+                               source_partition=source_partition)
+        parts = translation_chunks(value, preserve_paragraphs=preserve_paragraphs,
+                                   source_partition=source_partition)
         _, cost = _approved_requests(profile, parts, source, target, authorization, per_call_cost,
             data_class='selected-script' if source_document is not None else 'selected-excerpt', glossary=glossary)
         text(title, 'translation title', maximum=512)
@@ -402,6 +425,10 @@ class TranslationService:
             'authorization': asdict(authorization), 'per_call_cost': str(cost)}
         if preserve_paragraphs:
             job['preserve_paragraphs'] = True
+        if source_partition is not None:
+            # Copy the already validated primitive mapping into the saved job;
+            # a caller cannot later mutate the authority through this object.
+            job['source_partition'] = json.loads(canonical(source_partition))
         if source_document is not None:
             if (not isinstance(source_document, ReadingDocument) or self.library is None
                     or source_document.source_anchor is None

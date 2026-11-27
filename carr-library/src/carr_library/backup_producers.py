@@ -585,7 +585,7 @@ def _translation_job(value, identity):
     from .assistant.translation import TranslationService, job_chunks, _approved_requests
     fields(value, {'schema', 'kind', 'id', 'created', 'updated', 'status', 'profile', 'title',
         'source_text', 'source_sha256', 'source_language', 'target_language', 'chunks', 'receipts',
-        'authorization', 'per_call_cost'}, {'source_binding', 'glossary', 'preserve_paragraphs'})
+        'authorization', 'per_call_cost'}, {'source_binding', 'glossary', 'preserve_paragraphs', 'source_partition'})
     if (value['schema'] != 'carr-assistant-job/1'
             or value['kind'] not in ('translation/1', 'translation/2')
             or value['id'] != identity

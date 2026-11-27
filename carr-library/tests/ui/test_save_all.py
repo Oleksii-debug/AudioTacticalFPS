@@ -1,4 +1,5 @@
 """Real draft completion, failure and re-entry contracts for Save All."""
+import pytest
 from carr_library.ui.save_all import SaveCoordinator, SaveResult
 
 
@@ -269,3 +270,44 @@ def test_live_failed_registration_retains_its_own_focus():
     assert coordinator.save_all(summaries.append)
     assert summaries[0].remaining == (('Reader', 'failed'),)
     assert focused == ['reader']
+
+
+
+@pytest.mark.parametrize('first_mode,expected', [('none', ['second']), ('raises', ['second']), ('works', ['first'])])
+def test_focus_chooses_first_usable_live_failed_draft(first_mode, expected):
+    coordinator = SaveCoordinator()
+    focused, summaries = [], []
+    def unavailable():
+        raise RuntimeError('Focus target unavailable')
+    focus = {'none': None, 'raises': unavailable, 'works': lambda: focused.append('first')}[first_mode]
+    coordinator.register('first', 'First note', dirty=lambda: True,
+                         save=lambda done: done(SaveResult(False, 'first failed')), focus=focus)
+    coordinator.register('second', 'Second note', dirty=lambda: True,
+                         save=lambda done: done(SaveResult(False, 'second failed')),
+                         focus=lambda: focused.append('second'))
+    assert coordinator.save_all(summaries.append)
+    assert len(summaries) == 1 and not coordinator.busy
+    assert summaries[0].remaining == (('First note', 'first failed'), ('Second note', 'second failed'))
+    assert focused == expected
+
+
+def test_focus_skips_replaced_registration_and_unavailable_target():
+    coordinator = SaveCoordinator()
+    focused, summaries = [], []
+    coordinator.register('first', 'First note', dirty=lambda: True,
+                         save=lambda done: done(SaveResult(False, 'first failed')),
+                         focus=lambda: focused.append('stale'))
+    coordinator.register('second', 'Second note', dirty=lambda: True,
+                         save=lambda done: done(SaveResult(False, 'second failed')))
+    coordinator.register('third', 'Third note', dirty=lambda: True,
+                         save=lambda done: done(SaveResult(False, 'third failed')),
+                         focus=lambda: focused.append('third'))
+    def complete(summary):
+        summaries.append(summary)
+        coordinator.register('first', 'Replacement', dirty=lambda: False,
+                             save=lambda done: None, focus=lambda: focused.append('replacement'))
+    assert coordinator.save_all(complete)
+    assert len(summaries) == 1 and not coordinator.busy
+    assert summaries[0].remaining == (('First note', 'first failed'), ('Second note', 'second failed'),
+                                     ('Third note', 'third failed'))
+    assert focused == ['third']

@@ -10,6 +10,7 @@ from hashlib import sha256
 from html import escape
 from pathlib import Path
 from uuid import uuid4
+import json
 import re
 
 from .models import canonical, local_path, text
@@ -147,9 +148,29 @@ def _selections(values):
     return tuple(values)
 
 
+def _partition_policies(values, source_partitions):
+    if source_partitions is None:
+        return tuple(None for _ in values)
+    if (not isinstance(source_partitions, (tuple, list))
+            or len(source_partitions) != len(values)):
+        raise ValueError('Every selected source needs its exact reviewed partition policy.')
+    from .translation_partition import partition_ranges
+    result = []
+    for value, partition in zip(values, source_partitions):
+        if partition is not None:
+            partition_ranges(value.document.source_text, partition)
+            # Capture the exact primitive policy before any observer/guard can
+            # mutate the caller's mapping between review and authorization.
+            partition = json.loads(canonical(partition))
+        result.append(partition)
+    return tuple(result)
+
+
 def review_documents(service, profile, values, source, target, budget, *, glossary=None,
-                     rate_per_million=None, cancelled=lambda: False, guard=lambda: None):
+                     rate_per_million=None, cancelled=lambda: False, guard=lambda: None,
+                     source_partitions=None):
     values = _selections(values)
+    partitions = _partition_policies(values, source_partitions)
     guard()
     check_cancelled(cancelled)
     if service.library is None:
@@ -160,12 +181,14 @@ def review_documents(service, profile, values, source, target, budget, *, glossa
     if profile.local and bound != 0:
         raise ValueError('Choose a zero external cost bound for local translation.')
     rows = []
-    for value in values:
+    for value, partition in zip(values, partitions):
         guard()
         check_cancelled(cancelled)
         document = value.document
+        policy = ({'source_partition': partition} if partition is not None else {})
         preview = service.preview(profile, document.source_text, source, target,
-            glossary=glossary, rate_per_million=rate_per_million, preserve_paragraphs=True)
+            glossary=glossary, rate_per_million=rate_per_million,
+            preserve_paragraphs=partition is None, **policy)
         rows.append({'title': document.title, 'source_anchor': document.source_anchor,
                      'reading_positions': len(document.source_anchor['positions']),
                      'topic': value.topic, **preview})
@@ -189,25 +212,29 @@ def review_documents(service, profile, values, source, target, budget, *, glossa
 
 def prepare_documents(service, profile, values, source, target, budget, *, approved_review,
                       glossary=None, rate_per_million=None, cancelled=lambda: False,
-                      guard=lambda: None):
+                      guard=lambda: None, source_partitions=None):
     from .translation import translation_approval
     values = _selections(values)
+    partitions = _partition_policies(values, source_partitions)
     review = review_documents(service, profile, values, source, target, budget,
-        glossary=glossary, rate_per_million=rate_per_million, cancelled=cancelled, guard=guard)
+        glossary=glossary, rate_per_million=rate_per_million, cancelled=cancelled, guard=guard,
+        source_partitions=partitions)
     if type(approved_review) is not str or approved_review != review['review_sha256']:
         raise PermissionError('Review and explicitly approve this exact document batch and total budget.')
     jobs = []
     try:
-        for value, reviewed in zip(values, review['documents']):
+        for value, reviewed, partition in zip(values, review['documents'], partitions):
             guard()
             check_cancelled(cancelled)
             document = value.document
+            policy = ({'source_partition': partition} if partition is not None else {})
             authorization, cost = translation_approval(profile, document.source_text, source, target,
-                reviewed['allocated_budget'], glossary=glossary, source_bound=True, preserve_paragraphs=True)
+                reviewed['allocated_budget'], glossary=glossary, source_bound=True,
+                preserve_paragraphs=partition is None, **policy)
             identity = service.submit(profile, document.source_text, source, target,
                 title=document.title, authorization=authorization, per_call_cost=cost,
                 source_document=document, topic=value.topic, glossary=glossary,
-                preserve_paragraphs=True, cancelled=cancelled, guard=guard)
+                preserve_paragraphs=partition is None, cancelled=cancelled, guard=guard, **policy)
             jobs.append(identity)
     except Exception as error:
         if jobs:

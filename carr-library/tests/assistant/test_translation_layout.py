@@ -237,13 +237,13 @@ def test_mixed_hyperlink_fails_real_capture_before_jobs_or_translation(bound):
     assert not bound.service.jobs.identities() and len(bound.state['calls']) == before
 
 
-def test_actual_document_with_more_than64_nonempty_units_is_refused_before_job_creation(bound):
+def test_actual_document_with_more_than2048_nonempty_units_is_refused_before_job_creation(bound):
     path = bound.source.with_name('too-many.docx')
-    path.write_bytes(docx_bytes(paragraphs=65, rich=False))
+    path.write_bytes(docx_bytes(paragraphs=2049, rich=False))
     bound.app._import_file(bound.workspace, path, title='Larger explicit document',
         work_id='larger-work', edition_id='larger-edition')
     before = len(bound.state['calls'])
-    with pytest.raises(ValueError, match='at most 64'):
+    with pytest.raises(ValueError, match='at most 2,048'):
         capture_layout(bound.app, bound.workspace, 'larger-edition')
     assert not bound.service.jobs.identities() and len(bound.state['calls']) == before
 

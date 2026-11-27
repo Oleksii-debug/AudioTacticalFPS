@@ -61,6 +61,8 @@ USER_GUIDES = (
     "STUDIO_ENVELOPES.md",
     "STUDIO_CLIP_HISTORY.md",
     "FORMATTED_TRANSLATION.md",
+    "WORD_BRIDGE.md",
+    "WORD_BRIDGE_VALIDATION.md",
 )
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))

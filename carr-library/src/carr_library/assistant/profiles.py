@@ -74,9 +74,15 @@ def save_google_token(store, vault, profile, token, expires, *, current=None):
     """
     if profile.adapter != 'google-translation-v3':
         raise ValueError('Choose the Advanced v3 adapter before storing an OAuth token.')
+    record = google_oauth_credential(token, expires, profile.endpoint)
+    return _save_google_record(store, vault, profile, record, current=current)
+
+
+def _save_google_record(store, vault, profile, record, *, current=None, guard=lambda: None):
+    """Publish one explicitly reviewed vault credential through the existing store."""
     if current is not None and (current.id != profile.id or store.get(current.id) != current):
         raise ValueError('The selected account changed. Reopen it before explicitly replacing its OAuth credential.')
-    record = google_oauth_credential(token, expires, profile.endpoint)
+    guard()
     if current == profile and current.credential_ref:
         # Atomic CredWrite under the same exact nonsecret profile preserves the
         # approved job's identity. There is no subsequent profile write to fail.

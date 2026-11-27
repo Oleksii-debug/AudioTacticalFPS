@@ -37,7 +37,8 @@ def main():
     from carr_library.application import LibraryApp
     from carr_library import progress, durable_state
     from carr_library.assistant import (
-        profiles, providers, translation, translation_documents, translation_layout, translation_layout_worker)
+        profiles, providers, translation, translation_documents, translation_layout, translation_layout_worker,
+        translation_partition)
     from carr_library.ui import translation_documents as document_ui
     from carr_library.ui import translation_layout as layout_ui
     from carr_library.ui import desktop_app, worker_lifetime
@@ -48,7 +49,8 @@ def main():
 
     modules = (translation_layout, translation_layout_worker, translation_documents,
         translation, providers, profiles, document_ui, layout_ui, export_file,
-        reading_desk, durable_state, progress, desktop_app, worker_lifetime, process, broker)
+        reading_desk, durable_state, progress, desktop_app, worker_lifetime, process, broker,
+        translation_partition)
     checks, errors, calls, children, origins = [], [], [], [], {}
     ui_thread = threading.get_ident()
     def check(label, condition):

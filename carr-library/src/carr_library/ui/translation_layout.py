@@ -48,7 +48,7 @@ def show_translation_layout(frame):
     selected = field('Selected retained DOCX and paragraph jobs', proportion=1,
         style=wx.TE_MULTILINE | wx.TE_READONLY,
         value='Explicitly choose one retained DOCX from the current catalog page. '
-              'Up to 64 nonempty paragraphs, including simple table cells, and 2,000,000 source characters.')
+              'Up to 2,048 nonempty paragraphs and 2,000,000 source characters. Larger bodies use one source-bound job with exact paragraph partitions.')
     status = field('Formatted translation status and limitations', proportion=1,
         style=wx.TE_MULTILINE | wx.TE_READONLY, value=NOTICE)
     buttons, row = {}, wx.WrapSizer(wx.HORIZONTAL)
@@ -232,7 +232,9 @@ def show_translation_layout(frame):
                 if (anchor['workspace'] == document.workspace and anchor['edition'] == document.edition
                         and anchor['revision'] == document.revision
                         and anchor['asset_sha256'] == document.asset_sha256
-                        and len(anchor['positions']) == 1):
+                        and ((document.source_partition is None and len(anchor['positions']) == 1)
+                             or (document.source_partition is not None
+                                 and job.get('source_partition') == document.source_partition))):
                     candidates.append(job)
             return tuple(candidates)
         def accepted(rows):
@@ -241,7 +243,9 @@ def show_translation_layout(frame):
                 report('No matching source-bound paragraph jobs are saved for this exact DOCX revision.')
                 return
             chooser = wx.MultiChoiceDialog(dialog,
-                'Explicitly select one saved job per paragraph with the same profile and language settings.',
+                ('Select the one complete saved partition job for this larger DOCX.'
+                 if document.source_partition is not None else
+                 'Explicitly select one saved job per paragraph with the same profile and language settings.'),
                 'Saved DOCX paragraph jobs',
                 ['Position ' + str(item['source_binding']['anchor']['positions'][0]['ordinal'])
                  + '; ' + item['status'] + '; ' + item['source_language'] + ' → '

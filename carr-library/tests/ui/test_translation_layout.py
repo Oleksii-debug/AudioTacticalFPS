@@ -306,3 +306,38 @@ def test_existing_document_workstation_reaches_the_formatted_route_without_provi
         assert opened == [h.frame] and h.bound.state['calls'] == before and not h.queue
     h.plan = plan
     show_translation_documents(h.frame)
+
+
+def test_larger_docx_chooser_reuses_one_exact_saved_partition_job(screen):
+    import json
+    h = screen
+    path = h.bound.source.with_name('Larger selected DOCX.docx')
+    path.write_bytes(_document.docx_bytes(paragraphs=65, rich=False))
+    outcome = h.bound.app._import_file(h.bound.workspace, path, title='Explicit larger source',
+        work_id='large-ui-work', edition_id='large-ui-edition')
+    assert outcome['state'] == 'complete'
+    catalog = h.frame.book.GetPage(0)
+    catalog.rows = {'large-ui-edition': SimpleNamespace(
+        title='Explicit larger source', edition_id='large-ui-edition')}
+    def plan():
+        click('Choose retained DOCX')
+        drain()
+        h.named['DOCX source language; auto detects'].SetValue('en')
+        h.named['DOCX total approved USD budget; local service requires 0'].SetValue('0')
+        click('Preview DOCX translation')
+        drain()
+        h.answer = h.wx.YES
+        before = list(h.bound.state['calls'])
+        click('Approve and save DOCX jobs')
+        drain()
+        jobs = h.bound.service.list()
+        assert len(jobs) == 1 and 'source_partition' in jobs[0]
+        click('Choose saved paragraph jobs')
+        drain()
+        shown = json.loads(h.named['Selected retained DOCX and paragraph jobs'].GetValue())
+        assert shown['explicit_saved_jobs'] == [jobs[0]['id']]
+        assert shown['partitioned_jobs'] == 1 and shown['paragraphs'] == 65
+        assert h.bound.state['calls'] == before
+        assert h.named['Run / resume DOCX jobs'].enabled
+    h.plan = plan
+    view.show_translation_layout(h.frame)

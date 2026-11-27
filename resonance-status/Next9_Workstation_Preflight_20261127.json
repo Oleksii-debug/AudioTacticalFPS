@@ -1,0 +1,305 @@
+{
+  "schema": "resonance-source-preflight/1",
+  "status": "DRAFT_SOURCE_NOT_RUN",
+  "name": "Word, partitioned DOCX, Google renewal and existing editing contracts",
+  "base_commit": "5c9c9a0864160278a67cfa5fb14147c0298b5c62",
+  "base_tree": "a576809edf3a23274001fb12ed41d0e733fd3d1c",
+  "canonical_parent": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "records": [
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_partition.py",
+      "sha": "c16d50ac29e2a89edc5d498a833108f0116d395b",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation.py",
+      "sha": "29324c1891c4e1fc278f410af6221e50ae3f9b04",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_documents.py",
+      "sha": "c4b72384ddede9f7e9f20c1e175bc8c97b602b78",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout.py",
+      "sha": "8c87aca1b49e3ff22c2ff6d11903b45f1188190a",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/translation_layout_worker.py",
+      "sha": "6430dea3a6c56e30e33ab958df653e8472b1f85e",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_layout.py",
+      "sha": "7810e9e4a70e0b09f86e48093dcbe7e1f8f2e3ef",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_partition.py",
+      "sha": "2a8f09a620582288a23eef2ae6711f68f471f327",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_layout.py",
+      "sha": "4098d53def8821247f3fce2756c7f0da1443d2d3",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_layout.py",
+      "sha": "ce2773d284b973614a19440466ceeeb313402408",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_layout_smoke.py",
+      "sha": "d13a37cd5bf1626b602f487ab2b16bda71c01f27",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/docs/FORMATTED_TRANSLATION.md",
+      "sha": "14de811e7ce29ff2441c0eb2028261fbbf9c4798",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_records.py",
+      "sha": "8691e78ec4e2f5bc2c963e4c5056c918186ed110",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_native.py",
+      "sha": "dd4f85eae9f0b4ac373f84d1260c49d5f174692a",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_worker.py",
+      "sha": "1bfa3dd64d64e691ab82502d16fc16a0bf47d224",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/academic_integration/word_bridge.py",
+      "sha": "25dc2c34cc43ea42fd724235a68a33a092ffb9a8",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/word_fixtures.py",
+      "sha": "d1a4fda7e3b855fd789784672a7efc5f7d004727",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_word_records.py",
+      "sha": "eabe21cc425d105283c6e7e93333338552fe05d2",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_word_bridge.py",
+      "sha": "e671c0e984be3d875a86ffa57b1a1e03feb04a56",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/academic_integration/test_word_worker.py",
+      "sha": "75dfd2037108e9fe1a85cadff26a418212b3b709",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/word_citations_dialog.py",
+      "sha": "0f02c39331589a0e19ec7356d827af97703401fb",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/citation_styles_dialog.py",
+      "sha": "7e0d4cc204d1aff574de0963a2d8c847bd7d3a5a",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/ui/test_word_citations.py",
+      "sha": "71ae5ac1fec9aef6a8f5a706a075d001784918e5",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/scripts/windows_word_bridge_smoke.py",
+      "sha": "a922321f082dea1f725825371e375dd2cc8d6d61",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/scripts/windows_word_office_probe.py",
+      "sha": "7424f93899cc5693a74feae8c4dd48ffec7a8fa0",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/docs/WORD_BRIDGE.md",
+      "sha": "6a539032dfb33d1a72043beff56da5426c91f5cc",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/docs/WORD_BRIDGE_VALIDATION.md",
+      "sha": "5a8d1be83580f55ba4f8e9f7261c4b4ddb08e532",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/google_oauth.py",
+      "sha": "53bdc46a819c844ab1daf82c67f9ab3aa0371843",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/profiles.py",
+      "sha": "71073001c91791e4053e00a76238a50727d2371c",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/assistant/providers.py",
+      "sha": "5831d975bf2fb29c6aa666888a661380e12188fe",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/google_oauth.py",
+      "sha": "1a4e156bd758729b14bf818d94afc17a8d6afc86",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "sha": "bfccc8d15dfb40fda103ca79e21dccf2825d4abd",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/assistant/test_google_oauth.py",
+      "sha": "08f94018738b5f25dc4eb5721189acebcb489b88",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/ui/test_google_oauth.py",
+      "sha": "ac59e8efa2960b155fe21e1c04dbc5b9579d6b7b",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/docs/GOOGLE_OAUTH_RENEWAL.md",
+      "sha": "a69f336481d86eee99dace2ef4378c76a58b6229",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/docs/translation_workstation.md",
+      "sha": "a2fbd65e2b831074e672311581b8c4b980ab83ca",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_producers.py",
+      "sha": "90b0f4c9165225a0f1cf2e293ae6743de2a5fb1d",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/save_all.py",
+      "sha": "c109f48ccb561b25fc9f348dacc4688f734f2e6b",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/tests/ui/test_save_all.py",
+      "sha": "849fcdf2b0ad71d63be4a08ea1b044554f988881",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "sha": "bc1b701ccd6c2313a99602f1f3f9d4f151017206",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": ".github/workflows/carr-v3.yml",
+      "sha": "f0ae5cf0498b4bec3cc9169731c3a883beeab7e0",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/packaging/build_windows_bundle.py",
+      "sha": "9435313333fc7b1c0df4ff1863c840f26a461341",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "carr-library/scripts/check_workflow_powershell.ps1",
+      "sha": "63e0ff18828031f89b726175ea74f8c8310247fa",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": ".github/workflows/carr-next9-word-refresh.yml",
+      "sha": "d7c0e20d56aa2137bb9c7eb4d74c0ba919e46f6e",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/Next9_Word_Source_Manifest_20261127.json",
+      "sha": "afe604fa5ba1c739ff9894271764b65b30b2bb0b",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/Next9_Translation_Partition_Manifest_20261127.json",
+      "sha": "54018b48539ce43f4b523d7f56bee1fcbe5ae12f",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/Next9_Google_Renewal_Manifest_20261127.json",
+      "sha": "671da216bd134e2d2f7bacc64324c65076a7d4d0",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": "resonance-status/Next9_Workstation_Gates_Manifest_20261127.json",
+      "sha": "d10eb1c175d5b0d5cc0c8d7a7a9113a25d172ac1",
+      "mode": "100644",
+      "type": "blob"
+    }
+  ],
+  "workflow": ".github/workflows/carr-next9-word-refresh.yml",
+  "whole_source_modules": 43,
+  "source_gate": "Compile every Python file and strict complete pytest modules; no fail/skip/xfail/xpass accepted.",
+  "parser_gate": "Actual YAML and PowerShell parsing without executing workflow bodies.",
+  "fixtures": "Existing pinned Linux/source deps and official Ubuntu FFmpeg; no new dependency, no model or private assets.",
+  "qualification": "Diagnostic exact-head source only; native Windows, installed bundle, actual Word, live Google, NVDA and large corpus qualification are separate.",
+  "no_previous_pass_transfer": true,
+  "no_integration_ref_update": true,
+  "peer_review": {
+    "word": "ACCEPTED_STATIC_NOT_RUN",
+    "partition": "ACCEPTED_STATIC_NOT_RUN after mutable-policy snapshot correction",
+    "google_refresh": "ACCEPTED_STATIC_NOT_RUN after same-path library identity correction"
+  }
+}

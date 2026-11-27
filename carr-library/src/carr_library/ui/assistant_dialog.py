@@ -420,7 +420,8 @@ def show_assistant(frame, *, templates=False):
 def show_provider_settings(frame):
     import wx
     from ..assistant import ProfileStore, ProviderProfile, WindowsCredentialVault
-    from ..assistant.profiles import ADAPTERS, google_oauth_token, save_google_token
+    from ..assistant.profiles import ADAPTERS, save_google_token
+    from ..assistant.google_oauth import credential_summary
     store = ProfileStore(frame.library.root / 'state' / 'providers')
     vault = WindowsCredentialVault()
     dialog = wx.Dialog(frame, title='AI and API connections — optional', size=(760, 650),
@@ -566,11 +567,24 @@ def show_provider_settings(frame):
             if profile.credential_ref:
                 record = vault.get(profile.id, profile.credential_ref)
                 if profile.adapter == 'google-translation-v3':
-                    from datetime import datetime, timezone
-                    _, expiry = google_oauth_token(record, profile.endpoint)
-                    expiry_notice = ' OAuth expiry: ' + datetime.fromtimestamp(expiry, timezone.utc).isoformat() + '. No automatic refresh.'
+                    expiry_notice = ' ' + credential_summary(record, profile.endpoint)
                 del record
             status.ChangeValue('Local profile and credential configuration is valid. API connectivity, pricing and access were not tested.' + expiry_notice)
+        except Exception as exc:
+            status.ChangeValue(str(exc))
+        status.SetFocus()
+
+    def renew_google(event=None):
+        index = listing.GetSelection()
+        if not 0 <= index < len(rows):
+            return
+        try:
+            from .google_oauth import show_google_refresh
+            saved = show_google_refresh(dialog, frame, store, vault, rows[index])
+            if saved is not None:
+                refresh()
+                status.ChangeValue('Automatic Google renewal configured in Windows Credential Manager. '
+                    'No provider was contacted; later jobs still require their existing approval and budget.')
         except Exception as exc:
             status.ChangeValue(str(exc))
         status.SetFocus()
@@ -613,6 +627,10 @@ def show_provider_settings(frame):
         button.Bind(wx.EVT_BUTTON, handler)
         row.Add(button, 0, wx.ALL, 3)
     layout.Add(row)
+    renewal = wx.Button(dialog, label='Configure Google automatic token &renewal...')
+    renewal.SetName('Configure Google automatic token renewal')
+    renewal.Bind(wx.EVT_BUTTON, renew_google)
+    layout.Add(renewal, 0, wx.ALL, 5)
     layout.Add(dialog.CreateButtonSizer(wx.CLOSE), 0, wx.ALL, 5)
     dialog.SetEscapeId(wx.ID_CLOSE)
     dialog.Bind(wx.EVT_BUTTON, lambda event: dialog.EndModal(wx.ID_CLOSE), id=wx.ID_CLOSE)
