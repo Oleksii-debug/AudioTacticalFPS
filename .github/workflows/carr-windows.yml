@@ -394,6 +394,9 @@ jobs:
                             'tests/reader/test_export_publication_boundary.py',
                             'tests/ui/test_academic_export_handler.py',
                             'tests/speech/test_source.py',
+                            'tests/speech/test_session.py',
+                            'tests/audio/test_supplied_transcription.py',
+                            'tests/ingest/test_worker_publication_boundary.py',
                             'tests/storage/test_v3_state_backup.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -460,6 +463,7 @@ jobs:
             'tests/e2e/test_nested_search_clock_budget.py',
             'tests/ingest/test_application_atomic_gate.py',
             'tests/ingest/test_worker_isolated_launch.py',
+            'tests/ingest/test_worker_publication_boundary.py',
             'tests/ingest/test_application_atomic_docx_gate.py',
             'tests/e2e/test_semantic_fallback_status.py',
             'tests/e2e/test_source_file.py',
@@ -483,6 +487,10 @@ jobs:
             'tests/ui/test_catalog_tools_dialog.py',
             'tests/catalog/test_insights_budget.py',
             'tests/storage/test_v2_recovery.py',
+            'tests/storage/test_v3_state_backup.py',
+            'tests/speech/test_source.py',
+            'tests/speech/test_session.py',
+            'tests/audio/test_supplied_transcription.py',
             'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',
             'tests/reader/test_evidence_export.py',
