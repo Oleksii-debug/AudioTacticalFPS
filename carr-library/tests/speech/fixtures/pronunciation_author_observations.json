@@ -2,15 +2,15 @@
   "schema": 1,
   "source": {
     "repository": "Oleksii-debug/AudioTacticalFPS",
-    "commit": "ea8eff0f415d4352f6b66956ed9a118239e419c5",
-    "run_id": 46020971597,
-    "job_id": 140580221461,
-    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46020971597"
+    "commit": "822438759db212c1d32773a333f5a30b0734de43",
+    "run_id": 46027229611,
+    "job_id": 140601649766,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46027229611"
   },
   "selection": {
     "schema": 1,
     "official_url": "https://www.cross-plus-a.com/blb2txt.zip",
-    "downloaded_at": "2026-11-27T15:30:45.480366+00:00",
+    "downloaded_at": "2026-11-27T15:46:30.159902+00:00",
     "archive_sha256": "1e4954fb8a934a53d8228219fd457336e18fed1fb463b4f04c12e71346359e04",
     "archive_bytes": 6145731,
     "archive_member": "blb2txt.exe",
@@ -440,6 +440,83 @@
       "output": "C\r\n",
       "stdout": "",
       "stderr": ""
+    },
+    {
+      "case": "dic-replacement-doubled-literals",
+      "kind": "dic",
+      "input": "cat",
+      "dictionary": "﻿cat=**|$|==|##\r\n",
+      "exit_code": 0,
+      "output": "**|$|==|##\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-wildcard-order-first",
+      "kind": "dic",
+      "input": "scat",
+      "dictionary": "﻿*cat=X\r\nscat=Y\r\n",
+      "exit_code": 0,
+      "output": "Y\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-wildcard-order-last",
+      "kind": "dic",
+      "input": "scat",
+      "dictionary": "﻿scat=Y\r\n*cat=X\r\n",
+      "exit_code": 0,
+      "output": "Y\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-regex-boundary-0",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00031\u00030\u00030\u0003c.t\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN sTOKEN TOKENs TOKEN1 1TOKEN TOKEN_TOKEN _TOKEN TOKEN_ éTOKEN TOKENé αTOKEN TOKENα 猫TOKEN TOKEN猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-regex-boundary-1",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00031\u00031\u00030\u0003c.t\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN sTOKEN TOKENs TOKEN1 1TOKEN TOKEN_TOKEN _TOKEN TOKEN_ éTOKEN TOKENé αTOKEN TOKENα 猫TOKEN TOKEN猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-regex-boundary-2",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00031\u00032\u00030\u0003c.t\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN sTOKEN TOKENs TOKEN1 1TOKEN TOKEN_TOKEN _TOKEN TOKEN_ éTOKEN TOKENé αTOKEN TOKENα 猫TOKEN TOKEN猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-regex-boundary-3",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00031\u00033\u00030\u0003c.t\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN sTOKEN TOKENs TOKEN1 1TOKEN TOKEN_TOKEN _TOKEN TOKEN_ éTOKEN TOKENé αTOKEN TOKENα 猫TOKEN TOKEN猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
     }
-  ]
+  ],
+  "previous_source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "ea8eff0f415d4352f6b66956ed9a118239e419c5",
+    "run_id": 46020971597,
+    "job_id": 140580221461,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46020971597"
+  }
 }

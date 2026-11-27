@@ -255,14 +255,14 @@ _AUTHOR_REFUSALS = {
 
 
 def test_author_observation_identity_and_file_ending_are_explicit():
-    assert _AUTHOR['source']['commit'] == 'ea8eff0f415d4352f6b66956ed9a118239e419c5'
-    assert _AUTHOR['source']['run_id'] == 46020971597
+    assert _AUTHOR['source']['commit'] == '822438759db212c1d32773a333f5a30b0734de43'
+    assert _AUTHOR['source']['run_id'] == 46027229611
     assert _AUTHOR['selection']['archive_sha256'] == (
         '1e4954fb8a934a53d8228219fd457336e18fed1fb463b4f04c12e71346359e04')
     assert _AUTHOR['selection']['executable_sha256'] == (
         'e9985d73f18d6d6a3c3a4a47dc833aa5149e274e6cab3437db0c2490dceac0e1')
     assert _AUTHOR['selection']['archive_member'] == 'blb2txt.exe'
-    assert len(_AUTHOR['cases']) == 42
+    assert len(_AUTHOR['cases']) == 49
     baseline = _AUTHOR['cases'][0]
     assert baseline['case'] == 'baseline' and baseline['kind'] is None
     assert baseline['output'] == baseline['input'] + '\r\n'

@@ -1,4 +1,4 @@
-name: Dictionary import draft review
+name: Dictionary import author-observed review
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
-      - name: Install this exact draft and declared test dependencies
+      - name: Install this exact candidate and declared test dependencies
         run: python -m pip install ".[test]"
       - name: Compile the exact new source and native probe without executing it
         run: |
@@ -51,7 +51,7 @@ jobs:
               compile(path.read_text(encoding='utf-8'), str(path), 'exec')
           print('Exact source syntax compiled; Windows native execution is NOT_RUN.')
           PY
-      - name: Require current and draft source behavior plus actual POSIX races
+      - name: Require current and observed source behavior plus actual POSIX races
         run: |
           mkdir -p ci-dictionary-review
           python -B scripts/ci_check.py --diagnostics --jobs 2 \
@@ -103,14 +103,14 @@ jobs:
           failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
           skipped = sum(case.find('skipped') is not None for case in cases)
           print(json.dumps({'cases': len(cases), 'failed': failed, 'skipped': skipped, 'pytest_exit': int(status),
-              'dialect_equivalence': 'PENDING_AUTHOR_ORACLE', 'windows_native': 'NOT_RUN'}))
+              'author_observations': 49, 'unsupported_cases': 'EXPLICIT_REFUSAL', 'windows_native': 'NOT_RUN'}))
           assert status == 0 and cases and failed == skipped == 0
           PY
       - name: Upload only text qualification evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: dictionary-import-draft-${{ github.run_id }}
+          name: dictionary-import-review-${{ github.run_id }}
           path: carr-library/ci-dictionary-review/
           if-no-files-found: ignore
           retention-days: 7

@@ -278,8 +278,8 @@ def _bxd(rows, cancelled):
             _error('bxd', number, 'phoneme output is not a plain-text pronunciation rule; explicitly export reviewed text replacements.')
         if output != '0':
             _error('bxd', number, 'unrecognized BXD output mode; explicitly export plain-text replacements.')
-        if regex == '1' and boundary != '0':
-            _error('bxd', number, 'a nondefault regular-expression boundary mode requires explicit manual review.')
+        # The author's regex mode ignores the literal boundary selector; all
+        # four admitted values have the same observed regex matching behavior.
         if not pattern or len(pattern) > 1024 or len(replacement) > 4096:
             _error('bxd', number, 'a pattern or replacement exceeds the existing rule limit.')
         if enabled == '0':
