@@ -95,3 +95,58 @@ def test_portable_snapshot_roundtrip_unicode(tmp_path):
     assert {item['filename'] for item in entries} == set(names)
     for name in names:
         assert (restored / name).read_bytes() == (root / name).read_bytes()
+
+
+@pytest.mark.parametrize('operation', ('snapshot', 'restore'))
+def test_state_inventory_rejects_unreadable_subtree(tmp_path, monkeypatch, operation):
+    import os
+    from pathlib import Path
+    from carr_library.state_backup import restore_state
+
+    root = tmp_path / 'source'
+    blocked = root / 'drafts'
+    blocked.mkdir(parents=True)
+    (blocked / 'unsaved.json').write_bytes(b'x')
+    (root / 'settings.json').write_bytes(b'x')
+    target = tmp_path / 'target'
+    scandir = os.scandir
+
+    def denied(path):
+        if Path(path) == blocked:
+            raise PermissionError('synthetic unreadable state subtree')
+        return scandir(path)
+
+    # Inject at actual enumeration, not at the manifest validator. The same
+    # fixture works when CI runs with administrative filesystem permissions.
+    monkeypatch.setattr(os, 'scandir', denied)
+    with pytest.raises(PermissionError, match='unreadable state subtree'):
+        if operation == 'snapshot':
+            snapshot_state(root, target)
+        else:
+            # A malicious/incomplete manifest omits the unreadable subtree.
+            restore_state(root, target, [entry('settings.json')])
+    assert not target.exists()
+    assert (blocked / 'unsaved.json').read_bytes() == b'x'
+
+
+def test_state_restore_rejects_unlisted_file_before_scanning_later_subtree(tmp_path, monkeypatch):
+    import os
+    from pathlib import Path
+    from carr_library.state_backup import restore_state
+
+    root = tmp_path / 'source'
+    later = root / 'later'
+    later.mkdir(parents=True)
+    (root / 'unlisted.json').write_bytes(b'x')
+    (later / 'settings.json').write_bytes(b'x')
+    scandir = os.scandir
+
+    def observe(path):
+        if Path(path) == later:
+            raise AssertionError('Unexpected scan after unlisted file was found')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', observe)
+    with pytest.raises(ValueError, match='missing or unlisted'):
+        restore_state(root, tmp_path / 'target', [entry('later/settings.json')])
+    assert not (tmp_path / 'target').exists()
