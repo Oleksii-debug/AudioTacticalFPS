@@ -134,6 +134,8 @@ Completed execution evidence is recorded separately from static review:
 | 99dd564a588550882b536bfeaff82a075d509c1c; Actions 45944124653, job 140324823246 | Windows CPython 3.12.10, 3 suites | 37 passed, 80 failed, 0 skipped; unsupported source-install interpreter |
 | 719ef9cd093c8a2e6f18bf8cae94ff1b0f1cb875; Actions 45945169871 | Linux CPython 3.12.16, 13 suites | 387 passed, 0 failed, 0 skipped |
 | 719ef9cd093c8a2e6f18bf8cae94ff1b0f1cb875; Actions 45945169871, job 140328103997 | Windows CPython 3.11.9, 3 suites | 116 passed, 1 failed, 0 skipped; fixture-owned SQLite observation handle blocked original-library removal |
+| 1dbdc305d6cbd681d9ba90fdbaeab4161ce5b014; Actions 45947648645, job 140335926834 | Linux CPython 3.12.16, 13 suites | 387 passed, 0 failed, 0 skipped |
+| 1dbdc305d6cbd681d9ba90fdbaeab4161ce5b014; Actions 45947648645, job 140335927021 | Windows 2022 CPython 3.11.9 x64, 3 suites | All 117 passed, 0 failed, 0 skipped; isolated pinned dependency lock and pip check passed |
 
 The full Windows delivery proof uses the declared CPython 3.11 x64 runtime on
 Windows 2022, an isolated virtual environment and the product's hash-locked
@@ -141,8 +143,8 @@ windows-cp311.lock. That lock is copied exactly from reviewed 4c17d5c2, blob
 642acdbe65a41be87347eaa27843183dd70e8a34; it adds no new version decision.
 The application is installed without dependency resolution, pytest is pinned
 to 9.0.2, pip check remains mandatory, and all 117 assertions from the three
-Windows suites are retained. Its exact result remains pending in this
-checkpoint. The first 3.11 run reached all 117 cases. Its sole failure was
+Windows suites are retained. The exact 1dbdc305 rerun passed all 117 cases.
+The first 3.11 run reached all 117 cases. Its sole failure was
 Windows refusing to delete imports.sqlite while the test's own observation
 connection remained open. The test now closes that handle explicitly; no
 production reader, immutable fixture, assertion or ownership check changed.
@@ -186,8 +188,9 @@ passive restore, cancellation without child launch, explicit real-worker resume,
 unchanged original bytes, one sealed revision and the identical old SQLite
 receipt. Separate source, attempt and journal tampering cases retain the
 existing rejection boundary. Both interruptions and all three identity-tamper
-cases passed in the exact 1d0be886 and 14d1624 Linux runs listed above.
-Native Windows delivery-runtime qualification remains separate.
+cases passed in the exact 1d0be886 and 14d1624 Linux runs listed above, and
+in both exact 1dbdc305 Linux and Windows CPython 3.11 reruns. This native
+file/restore evidence remains separate from installed desktop acceptance.
 
 ## Desktop integration
 
