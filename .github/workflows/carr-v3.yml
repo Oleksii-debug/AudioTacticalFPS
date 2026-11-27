@@ -108,6 +108,7 @@ jobs:
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
                     'tests/storage/test_backup_schema_identity.py',
+                    'tests/storage/test_atomic_state_publication.py',
                     'tests/e2e/test_import_worker_publication.py',
                     'tests/ingest/test_import_replay_identity.py',
                     'tests/speech/test_reading.py',
