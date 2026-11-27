@@ -525,7 +525,8 @@ def _ignored(name):
     path = PurePosixPath(name)
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
-    if name in ('state/studio/.input-review.lock',
+    if name in ('state/assistant/.workflow-templates.lock',
+                'state/studio/.input-review.lock',
                 'state/studio/inputs/.selected-clip.lock',
                 'state/studio/recordings/.recording.lock',
                 'state/studio/effect-presets/.effect-presets.lock'):
