@@ -399,7 +399,7 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
                     return
 
                 def operation(report):
-                    player.close()
+                    player.stop()
                     return service.capture(device_id, title=requested_title, options=options,
                         cancelled=cancellation, stop_requested=stopped.is_set, progress=report,
                         retake_of=retake_of, monitor=monitor_enabled, monitor_device_id=monitor_device_id)

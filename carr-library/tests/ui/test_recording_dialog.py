@@ -569,3 +569,52 @@ def test_studio_recording_selection_cannot_cross_project_identity(tmp_path, monk
     view._refresh_text.assert_not_called()
     assert path.read_bytes() == original
     assert '[sound ' not in controller.script
+
+
+def test_saved_recording_can_be_previewed_with_real_wave_and_pcm_players_after_capture(view):
+    from carr_library.audio.player import WavePlayer
+    from carr_library.audio.playback import PCMPlayer
+
+    submitted = []
+    class Backend:
+        def __init__(self, info, device_id):
+            self.device = SimpleNamespace(id=0, name='Synthetic PCM output')
+        def submit(self, data):
+            submitted.append(data)
+            return len(submitted)
+        def completed(self, token): return True
+        def release(self, token): pass
+        def pause(self): pass
+        def resume(self): pass
+        def position(self): return None
+        def close(self): pass
+
+    player = WavePlayer(progress_hub=view.frame.progress_hub)
+    if player.native is not None:
+        player.native.close()
+    player.native = PCMPlayer(_backend_factory=Backend, progress_hub=view.frame.progress_hub)
+    # Replace only device I/O. Both real player lifecycles and the real
+    # capture/preview callbacks remain intact on every supported test OS.
+    view.values.update(player=player, progress=None)
+    view.handlers = handlers(view.values)
+    try:
+        ready(view)
+        view.handlers.start()
+        view.finish()
+        assert len(view.captures) == 1 and view.path.exists()
+        assert view.values['status'].value.startswith('Saved and verified.')
+        for attempt in range(2):
+            view.handlers.preview()
+            view.finish()
+            worker = player.native._thread
+            assert worker is not None, view.values['status'].value
+            worker.join(timeout=3)
+            assert not worker.is_alive()
+            state = player.status()
+            assert state.state == 'completed' and state.error is None
+            assert state.position_frames == state.total_frames == 240
+            view.handlers.stop_playback()
+        with wave.open(str(view.path), 'rb') as stream:
+            assert b''.join(submitted) == stream.readframes(240) * 2
+    finally:
+        player.close()
