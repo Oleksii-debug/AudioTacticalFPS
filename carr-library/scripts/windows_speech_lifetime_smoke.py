@@ -3,7 +3,6 @@
 This probe qualifies native lifetime/cancellation only. It does not synthesize
 a model voice, assess audio quality, or claim manual NVDA acceptance.
 """
-from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
@@ -100,8 +99,14 @@ def run_case(origin):
         finally:
             worker_done.set()
 
+    retire_deadline = time.monotonic() + 8
     def retire():
         if not started.is_set():
+            if time.monotonic() >= retire_deadline:
+                observations['uncaught'].append('The controlled source worker did not start.')
+                release.set()
+                parent.Destroy()
+                return
             wx.CallLater(10, retire)
             return
         if len(dialogs) != 1:
