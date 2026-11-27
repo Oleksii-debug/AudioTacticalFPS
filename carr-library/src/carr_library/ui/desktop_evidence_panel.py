@@ -90,14 +90,28 @@ class DesktopEvidencePanel(EvidencePanel):
             lambda error: self._failed(epoch,'Evidence unavailable. Check the library and original source.'))
         return True
 
-    def save_note(self,event=None):
+    def save_note(self,event=None, *, completed=None):
+        if completed is not None and not callable(completed):
+            raise ValueError('Save completion must be callable.')
+        reported = False
+        def finish(saved, message=''):
+            nonlocal reported
+            if completed is not None and not reported:
+                from carr_library.ui.save_all import SaveResult
+                reported = True
+                completed(SaveResult(saved, message))
+        if self.frame._closing:
+            finish(False, 'The library window closed; the note was not saved.')
+            return
         if self.frame.working:
             self.frame.report('An operation is already running. Wait or choose Cancel current operation.')
+            finish(False, 'A library operation is running; the note is retained.')
             return
         row = self._selected()
         if row is None or row != self.displayed:
             self.status.SetValue('Select the evidence whose note you want to save. Your draft is retained.')
             self.status.SetFocus()
+            finish(False, 'Select the evidence whose note you want to save.')
             return
         note = self.note.GetValue()
         self._evidence_epoch += 1
@@ -117,12 +131,20 @@ class DesktopEvidencePanel(EvidencePanel):
 
         def done(saved):
             if not self._current(epoch):
+                finish(False, 'The evidence view changed during saving; review its current note.')
                 return
             self.rows = tuple(saved if current.evidence_id == saved.evidence_id else current for current in self.rows)
             self.displayed = saved
             self.status.SetValue('Note saved.' if self.note.GetValue() == note else
                                  'Note saved. Your newer unsaved edits are retained.')
             self.note.SetFocus()
+            finish(True)
 
-        self.frame.run_job('Saving research note',save,done,
-            lambda error: self._failed(epoch,'Note not saved. Check the library and original source, then retry.'))
+        def failed(error):
+            self._failed(epoch,'Note not saved. Check the library and original source, then retry.')
+            finish(False, str(error))
+
+        try:
+            self.frame.run_job('Saving research note',save,done,failed)
+        except Exception as error:
+            failed(error)

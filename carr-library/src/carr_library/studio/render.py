@@ -72,6 +72,8 @@ def _output_name(title):
 
 class ProductionService:
     def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=()):
+        self._owns_voices = voices is None
+        self._closed = False
         self.root = local_path(directory)
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.projects = ProjectStore(self.root / 'projects')
@@ -85,17 +87,35 @@ class ProductionService:
 
     @property
     def voices(self):
+        self._check_open()
         if self._voices is None:
             from ..runtime_settings import voice_registry
             self._voices = voice_registry(self.root.parent)
         return self._voices
 
+    def _check_open(self):
+        if self._closed:
+            raise RuntimeError('The production service is closed.')
+
+    def close(self):
+        """Release a lazily owned registry after the caller's worker finishes."""
+        if self._closed:
+            return
+        self._closed = True
+        voices, self._voices = self._voices, None
+        if self._owns_voices and voices is not None:
+            close = getattr(voices, 'close', None)
+            if callable(close):
+                close()
+
     def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):
+        self._check_open()
         project = parse_script(text, title=title, voice_ids=voice_ids, mode=mode)
         self.projects.save(project)
         return project
 
     def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):
+        self._check_open()
         if format not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
             raise ValueError('Choose a supported local audio output format.')
         if type(stems) is not bool or not isinstance(project, Project):
@@ -165,7 +185,8 @@ class ProductionService:
                              input_roots=(self.cache, *self.input_roots))
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
-        from ..audio import Track, MusicSpec
+        self._check_open()
+        from ..audio import AudioCancelled, Track, MusicSpec
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
         with state_lock(job_root, 'render'):
@@ -260,7 +281,10 @@ class ProductionService:
                             voice_identity = json_safe(voice_data)
                             fingerprint = getattr(self.voices, 'fingerprint', None)
                             if callable(fingerprint):
-                                voice_identity['runtime_fingerprint'] = json_safe(fingerprint(role.voice_id))
+                                identity = (fingerprint(role.voice_id, cancelled=stopping)
+                                    if getattr(self.voices, 'cancellable_fingerprint', False)
+                                    else fingerprint(role.voice_id))
+                                voice_identity['runtime_fingerprint'] = json_safe(identity)
                             settings = SpeechSettings(rate=role.rate, volume=role.volume)
                             speech, info = node('speech', [line.text, voice_identity, asdict(settings)],
                                 lambda target, line=line, role=role, settings=settings:
@@ -449,8 +473,17 @@ class ProductionService:
                 self._save(state)
                 return state
             except BaseException as exc:
-                action = read_json(control).get('action') if control.exists() else None
-                state['status'] = 'cancelled' if action == 'cancel' else ('paused' if stopping() or isinstance(exc, InterruptedError) else 'failed')
+                # A stop request is not acknowledgement of cancellation. Keep
+                # a real render/publication error even if Pause arrived at the
+                # same time; only the runtimes' explicit interruption types can
+                # safely describe a resumable pause or cancellation.
+                state['status'] = 'failed'
+                if isinstance(exc, (InterruptedError, AudioCancelled)):
+                    try:
+                        action = read_json(control).get('action') if control.exists() else None
+                    except (ValueError, OSError):
+                        action = None
+                    state['status'] = 'cancelled' if action == 'cancel' else 'paused'
                 state['error'] = str(exc)[:2000]
                 self._save(state)
                 raise

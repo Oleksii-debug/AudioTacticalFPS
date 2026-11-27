@@ -37,12 +37,14 @@ def fixture(tmp_path, *, extra=(), machine=0x8664):
             archive.writestr('release/' + name, raw)
         for name, raw in extra:
             if isinstance(name, str):
-                # ZipInfo normalizes os.sep on Windows at construction time.
-                # Preserve hostile names literally on every platform.
-                member = zipfile.ZipInfo('fixture')
-                member.filename = member.orig_filename = name
-                name = member
-            archive.writestr(name, raw)
+                # Preserve deliberately unsafe separators on Windows; the
+                # ZIP constructor otherwise sanitizes the tested input.
+                info = zipfile.ZipInfo('synthetic-placeholder')
+                info.filename = info.orig_filename = name
+                info.compress_type = zipfile.ZIP_DEFLATED
+            else:
+                info = name
+            archive.writestr(info, raw)
     lock = {'schema': 1, 'target': 'win_amd64', 'engine': 'FFmpeg', 'engine_version': 'synthetic',
             'license': 'GPL-3.0-only', 'source': {'revision': 'synthetic'},
             'artifact': {'url': 'https://github.com/GyanD/codexffmpeg/releases/download/test/synthetic.zip',
@@ -99,7 +101,7 @@ def test_archive_and_selected_member_tampering_do_not_publish(tmp_path):
 def test_archive_paths_cannot_escape_even_with_a_matching_archive_hash(tmp_path, bad):
     path, cache, output, lock = fixture(tmp_path, extra=((bad, b'evil'),))
     with zipfile.ZipFile(cache / lock['artifact']['filename']) as archive:
-        assert archive.infolist()[-1].orig_filename == bad
+        assert bad in {info.orig_filename for info in archive.infolist()}
     with pytest.raises(ValueError, match='path'):
         audio.prepare(path, cache, output)
     assert not output.exists()
@@ -152,3 +154,17 @@ def test_directory_publication_never_replaces_existing_empty_directory(tmp_path)
         audio._publish_directory(staged, output)
     assert output.is_dir() and not list(output.iterdir())
     assert (staged / 'file').read_bytes() == b'new'
+
+
+def test_raw_zip_name_is_validated_before_platform_normalization(tmp_path, monkeypatch):
+    path, cache, output, lock = fixture(tmp_path, extra=((r'release\escape', b'evil'),))
+    original = zipfile.ZipFile.infolist
+    def windows_members(archive):
+        members = original(archive)
+        for member in members:
+            member.filename = member.orig_filename.replace(chr(92), '/')
+        return members
+    monkeypatch.setattr(zipfile.ZipFile, 'infolist', windows_members)
+    with pytest.raises(ValueError, match='path'):
+        audio.prepare(path, cache, output)
+    assert not output.exists()

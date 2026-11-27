@@ -21,6 +21,7 @@ import time
 from uuid import uuid4
 
 from .pipeline import Ingest, canonical
+from .retained_assets import SUFFIXES as MIME_SUFFIXES
 
 MAX_REQUEST = 64_000
 MAX_REPLY = 64_000
@@ -358,18 +359,205 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None):
+                timeout=120.0, request_id=None, _library=None):
     """Execute a new or resumed PDF/DOCX/EPUB request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
-                            request_id=request_id, new=new)
+                            request_id=request_id, new=new, library=_library)
+
+
+def _publication_watermark(app, workspace, *, metadata=None):
+    """Release the read snapshot before starting the native worker."""
+    from ..application import _SearchBudget
+    from ..catalog.membership import _identity
+
+    if metadata is not None and not isinstance(metadata, dict):
+        raise ValueError('Invalid import metadata.')
+    collections = () if metadata is None else metadata.get('collections')
+    if (metadata is not None and (not isinstance(collections, list) or len(collections) > 100
+            or any(not isinstance(item, str) for item in collections))):
+        raise ValueError('Invalid import collections.')
+    edition = None if metadata is None else _identity(metadata['edition_id'])
+    app._check_database_paths()
+    identity = app.database.stat()
+    with app.read(workspace, budget=_SearchBudget(5, lambda: False)) as db:
+        # Revision rows are append-only in the accepted schema. A scalar is
+        # bounded even after many metadata revisions of the same edition.
+        last = db.execute('SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0]
+        memberships = frozenset(item for item in collections if db.execute(
+            'SELECT 1 FROM catalog_membership WHERE workspace=? AND edition=? AND collection=?',
+            (workspace, edition, item)).fetchone())
+    if not os.path.samestat(identity, app.database.stat()):
+        raise ValueError('The library database changed before worker execution.')
+    return last if metadata is None else (last, identity, memberships)
+
+
+
+def _published_after_stop(app, initial, watermark, *, database_identity=None,
+                          previous_memberships=()):
+    """Recognize only a new, intact publication bound to this import request.
+
+    A stopped process may have committed before returning its stdout receipt.
+    An existing revision alone is not proof that this invocation completed.
+    A replay must have added a requested membership absent at the watermark.
+    This read never resumes parsing, changes a journal, or approves quotations.
+    """
+    from ..application import _SearchBudget
+    from ..catalog.membership import Catalog, _metadata
+    from ..catalog.read_views import get_edition
+
+    try:
+        request = load_request(app.root, initial['request_id'])
+        identity = ('version', 'request_id', 'data_dir', 'workspace', 'source',
+                    'metadata', 'config', 'expected_manifest')
+        if any(request.get(key) != initial.get(key) for key in identity):
+            return None
+        metadata = request['metadata']
+        digest = request.get('asset_sha256')
+        if (not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)
+                or not isinstance(metadata, dict) or set(metadata) != FIELDS
+                or not isinstance(metadata['collections'], list) or len(metadata['collections']) > 100
+                or any(not isinstance(item, str) for item in metadata['collections'])):
+            return None
+        workspace, edition = request['workspace'], metadata['edition_id']
+        app._check_database_paths()
+        current_identity = app.database.stat()
+        if database_identity is not None and not os.path.samestat(database_identity, current_identity):
+            return None
+        budget = _SearchBudget(5, lambda: False)
+        with app.read(workspace, budget=budget) as db:
+            rows = db.execute(
+                'SELECT r.id,r.rowid AS publication_row,length(CAST(r.config AS BLOB)) AS config_bytes,'
+                'a.revision AS active,e.work,c.mime,c.size '
+                'FROM revision r JOIN sealed s ON s.revision=r.id '
+                'JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset '
+                'JOIN catalog_asset c ON c.digest=e.asset '
+                'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition '
+                'WHERE r.workspace=? AND r.edition=? AND r.asset=? '
+                'AND (r.rowid>? OR r.id=a.revision) LIMIT 2',
+                (workspace, edition, digest, watermark)).fetchall()
+            if len(rows) != 1:
+                return None
+            row = rows[0]
+            if (row['publication_row'] <= watermark
+                    and set(metadata['collections']) <= set(previous_memberships)):
+                return None
+            if (row['work'] != metadata['work_id'] or row['active'] is None
+                    or row['mime'] not in MIME_SUFFIXES or type(row['size']) is not int
+                    or not 0 < row['size'] <= 64 * 1024 * 1024
+                    or not 0 < row['config_bytes'] <= 4 * 1024 * 1024):
+                return None
+            config = db.execute('SELECT config FROM revision WHERE id=?', (row['id'],)).fetchone()[0]
+            settings = json.loads(config)
+            if (not isinstance(settings, dict) or canonical(settings) != config
+                    or sha256(canonical([workspace, edition, digest, config])
+                              .encode('utf-8')).hexdigest() != row['id']):
+                return None
+            mime = row['mime']
+            if mime == 'application/pdf':
+                if (request.get('job') != row['id']
+                        or settings.get('adapter') != 'page_ocr-v1'
+                        or settings.get('kind') != 'physical_page'
+                        or settings.get('config') != request['config']):
+                    return None
+            else:
+                adapter = ('strict-utf8-v1' if mime == 'text/plain' else
+                           'python-docx-ordered-v1' if mime == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' else
+                           'epub-spine-v1')
+                if settings.get('adapter') != adapter or settings.get('kind') != 'logical_segment':
+                    return None
+                if mime != 'text/plain' and (not isinstance(settings.get('provenance'), dict)
+                        or settings['provenance'].get('asset_sha256') != digest):
+                    return None
+                if request.get('job') is not None and request['job'] != row['id']:
+                    return None
+            manifest = dict(sha256=digest, mime=mime, size=row['size'])
+            if request.get('expected_manifest') not in (None, manifest):
+                return None
+            title = _metadata(metadata['title']) or Path(request['source']).stem
+            authors = tuple(_metadata(value) for value in metadata['authors'])
+            catalog = Catalog(db, workspace)
+            view = get_edition(catalog, edition)
+            if (view.work_id, view.asset, view.title, view.authors, view.language,
+                    view.edition, view.volume) != (metadata['work_id'], digest, title, authors,
+                    metadata['language'], metadata['edition'], metadata['volume']):
+                return None
+            source_metadata = db.execute(
+                'SELECT author,title,volume,edition_label FROM source_metadata '
+                'WHERE workspace=? AND edition=? AND revision=?',
+                (workspace, edition, row['id'])).fetchone()
+            expected = ('; '.join(authors) or None, title or 'Unknown title',
+                        _metadata(metadata['volume']), _metadata(metadata['edition']))
+            if source_metadata is None or tuple(source_metadata) != expected:
+                return None
+            for collection in metadata['collections']:
+                catalog._active_collection(collection)
+                if not db.execute(
+                        'SELECT 1 FROM catalog_membership WHERE workspace=? AND edition=? AND collection=?',
+                        (workspace, edition, collection)).fetchone():
+                    return None
+            limit = 10000 if mime.endswith('wordprocessingml.document') else 1000
+            shape = db.execute('SELECT count(*),coalesce(sum(length(CAST(raw AS BLOB))),0) '
+                               'FROM page WHERE revision=?', (row['id'],)).fetchone()
+            if not 1 <= shape[0] <= limit or not 0 < shape[1] <= 64 * 1024 * 1024:
+                return None
+            budget.check()
+            original = app.assets.resolve(digest)
+            if original.suffix != MIME_SUFFIXES[mime] or original.stat().st_size != row['size']:
+                return None
+            budget.check()
+            count, text_bytes, nonempty = 0, 0, False
+            expected_text = None
+            if mime == 'text/plain':
+                from ..citations.text_attestation import CONFIG
+                raw_source = original.read_bytes()
+                if config != CONFIG or sha256(raw_source).hexdigest() != digest:
+                    return None
+                text = raw_source.decode('utf-8-sig', errors='strict')
+                if not text.strip() or re.search(r'[\x00-\x08\x0b\x0e-\x1f]', text):
+                    return None
+                expected_text = text.split('\f', limit)
+            for page in db.execute(
+                    'SELECT p.ordinal,p.physical,p.printed,p.verified,p.raw,p.digest,i.raw AS indexed '
+                    'FROM page p LEFT JOIN indexed i ON i.id=p.id '
+                    'WHERE p.revision=? ORDER BY p.ordinal', (row['id'],)):
+                count += 1
+                budget.check()
+                raw = page['raw']
+                if not isinstance(raw, str) or '\x00' in raw:
+                    return None
+                encoded = raw.encode('utf-8')
+                text_bytes += len(encoded)
+                if (count > limit or text_bytes > 64 * 1024 * 1024
+                        or page['ordinal'] != count
+                        or page['digest'] != sha256(encoded).hexdigest()
+                        or page['printed'] is not None or page['verified'] != 0
+                        or page['physical'] != (count if mime == 'application/pdf' else None)
+                        or (row['active'] == row['id'] and page['indexed'] != raw)):
+                    return None
+                if expected_text is not None and (count > len(expected_text) or raw != expected_text[count - 1]):
+                    return None
+                nonempty = nonempty or bool(raw.strip())
+            if not count or not nonempty or (expected_text is not None and count != len(expected_text)):
+                return None
+            budget.check()
+            if not os.path.samestat(current_identity, app.database.stat()):
+                return None
+            return dict(state='complete' if row['active'] == row['id'] else 'superseded',
+                        workspace=workspace, edition=edition, id=row['id'], asset=digest,
+                        completed=count, total=count, verified=mime == 'text/plain',
+                        recovered_publication=True)
+    except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
+        # An absent, ambiguous or damaged binding grants no completion authority.
+        return None
+
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
-                 timeout, request_id, new):
+                 timeout, request_id, new, library=None):
     if (not callable(cancelled) or type(timeout) not in (int, float)
             or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
         raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
@@ -382,15 +570,35 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
+    from ..application import LibraryApp
+    app = LibraryApp(root) if library is None else library
+    if not isinstance(app, LibraryApp) or app.root != Path(root).resolve():
+        raise ValueError('Import supervisor library identity changed.')
+    watermark, database_identity, previous_memberships = _publication_watermark(
+        app, workspace, metadata=record['metadata'])
+    started = False
+
+    def worker_started():
+        nonlocal started
+        started = True
+
     record_progress(root, request_id, state='running')
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'timeout': timeout}, timeout=timeout, cancelled=cancelled)
+                      'timeout': timeout}, timeout=timeout, cancelled=cancelled,
+                     on_started=worker_started)
+    if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
+        committed = _published_after_stop(app, record, watermark,
+            database_identity=database_identity, previous_memberships=previous_memberships)
+        if committed is not None:
+            result = dict(committed, worker_state=result['state'],
+                          message='The import was committed before the worker stopped. '
+                                  'Its saved source and publication have been verified.')
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result
 
 
-def _invoke(message, *, timeout, cancelled=lambda: False):
+def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     """One process supervisor for import and render operations."""
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
@@ -419,6 +627,8 @@ def _invoke(message, *, timeout, cancelled=lambda: False):
                                            stdin=input_stream, stdout=output, stderr=errors,
                                            env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
                                            **options)
+                if on_started is not None:
+                    on_started()
                 deadline = time.monotonic() + timeout
                 while process.poll() is None:
                     if cancelled():

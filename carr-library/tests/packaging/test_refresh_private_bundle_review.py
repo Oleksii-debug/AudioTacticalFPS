@@ -60,11 +60,12 @@ def _dependency(path, name='fixture-dependency', version='1.0'):
 def bundle(tmp_path, monkeypatch):
     monkeypatch.syspath_prepend(str(ROOT / 'packaging'))
     refresh = _load('review_refresh_private_bundle', ROOT / 'packaging/refresh_private_bundle.py')
-    verifier = _load('review_refresh_source_wheel', ROOT / 'packaging/source_wheel.py')
+    builder = _load('review_refresh_source_builder', ROOT / 'packaging/build_windows_bundle.py')
     repo = tmp_path / 'trusted-source'
     project = repo / 'carr-library'
     packaging = project / 'packaging'
     packaging.mkdir(parents=True)
+    (packaging / 'source_wheel.py').write_bytes((ROOT / 'packaging/source_wheel.py').read_bytes())
     (packaging / 'wheel-notices').mkdir()
     (packaging / 'wheel-notices' / 'SOURCES.json').write_text('{"synthetic-current-notices":true}\n')
     (project / 'docs').mkdir()
@@ -129,8 +130,8 @@ package-dir = {"" = "src"}
     raw = (json.dumps(manifest, sort_keys=True) + '\n').encode()
     (previous / 'bundle-manifest.json').write_bytes(raw)
     monkeypatch.setattr(refresh, 'HERE', packaging)
-    monkeypatch.setattr(refresh, 'verify_application_source',
-                        lambda candidate, expected: verifier.verify_application_wheel(candidate, repo, expected))
+    monkeypatch.setattr(builder, 'HERE', packaging)
+    monkeypatch.setattr(refresh, 'verify_application_source', builder.verify_application_source)
     return SimpleNamespace(module=refresh, source=previous, wheel=wheel, commit=commit, repo=repo, packaging=packaging,
         payload=payload, prefix=prefix, parent_hash=sha256(raw).hexdigest(), protected=protected,
         output=tmp_path / 'refreshed', lock=lock, sbom=sbom)
@@ -158,6 +159,7 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     manifest = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
     identity = json.loads((bundle.output / 'application-source.json').read_bytes())
     assert identity['source_commit'] == bundle.commit
+    assert manifest['source_tree'] == identity['source_tree'] == _git(bundle.repo, 'rev-parse', bundle.commit + '^{tree}')
     assert identity['wheel_sha256'] == sha256(bundle.wheel.read_bytes()).hexdigest()
     assert manifest['parent_manifest_sha256'] == bundle.parent_hash
     assert manifest['parent_source_commit'] == 'a' * 40

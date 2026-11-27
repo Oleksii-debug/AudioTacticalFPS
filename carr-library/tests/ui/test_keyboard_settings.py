@@ -2,6 +2,8 @@
 from itertools import count
 import json
 import os
+import sys
+from threading import Event
 from types import SimpleNamespace
 
 import pytest
@@ -94,6 +96,49 @@ def frame(tmp_path):
     ('ctrl+f24', 'Ctrl+F24'), ('', ''), ('   ', '')])
 def test_shortcut_normalization(raw, expected):
     assert normalize_shortcut(raw) == expected
+
+
+def test_save_all_uses_existing_menu_path_and_preserves_custom_shortcuts(frame, wx, monkeypatch):
+    from carr_library.ui.save_actions import install_save_actions
+    from carr_library.ui.save_all import SaveResult
+    frame.menu_bar.menus.pop(0)
+    frame.menu_bar.Insert = lambda index, menu, label: frame.menu_bar.menus.insert(index, (label, menu))
+    frame.working = frame._closing = False
+    frame.cancel_event = Event()
+    dirty, completions, timers = [True], [], []
+    frame._dirty = lambda: dirty[0]
+    frame._restore_note_focus = lambda: None
+    frame.evidence = SimpleNamespace(save_note=lambda *, completed: completions.append(completed))
+    class Timer:
+        def __init__(self, owner):
+            self.identity = next(_ids)
+            timers.append(self)
+        def GetId(self): return self.identity
+        def Start(self, interval): self.interval = interval
+    wx.Timer, wx.EVT_TIMER, wx.ID_EXIT = Timer, 'timer', 9999
+    wx.Window = SimpleNamespace(FindFocus=lambda: None)
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    install_save_actions(frame)
+    commands = capture_commands(frame.menu_bar)
+    save_all = next(command for command in commands if command.action == 'file/save all')
+    assert save_all.default == ''
+    assert next(command for command in commands if command.action == 'file/save').default == 'Ctrl+S'
+    controller = KeyboardSettings(frame, wx_module=wx)
+    controller.apply({'file/save all': 'Ctrl+Shift+9'})
+    profile = frame.library.root / 'state/ui/shortcuts.json'
+    before = profile.read_bytes()
+    frame.cancel_event.set()  # A previous cancelled job does not cancel a new save.
+    frame.bindings[save_all.menu_id](None)
+    assert len(completions) == 1 and frame._save_coordinator.busy
+    assert not frame.cancel_event.is_set()
+    assert not any('All 1' in report for report in frame.reports)
+    frame.bindings[save_all.menu_id](None)
+    assert len(completions) == 1
+    dirty[0] = False
+    completions[0](SaveResult(True))
+    assert frame.reports[-1] == 'All 1 open drafts saved.'
+    assert not frame._save_coordinator.busy and profile.read_bytes() == before
+    assert timers[0].interval == 3000  # Canonical recovery autosave is retained.
 
 
 @pytest.mark.parametrize('raw', ['Insert', 'Ctrl+Insert', 'Shift+Insert', 'Caps Lock', 'NVDA+F9',

@@ -2,20 +2,55 @@
 from pathlib import Path
 
 from ..durable_state import atomic_json, read_json
+from .save_all import SaveCoordinator, SaveResult
 
 
 def install_save_actions(frame):
     import wx
     menu = wx.Menu()
+    coordinator = frame._save_coordinator = SaveCoordinator()
+
+    def save_note(completed):
+        panel = frame.evidence
+        if panel is None or not frame._dirty():
+            completed(SaveResult(True))
+        else:
+            panel.save_note(completed=completed)
+
+    coordinator.register('research.note', 'Research note', dirty=frame._dirty,
+                         save=save_note, focus=frame._restore_note_focus)
 
     def save(event=None):
+        if frame._closing:
+            return
         if frame.working:
             frame.report('A library operation is running. Your editable draft remains available; save when it completes.')
             return
         if frame._dirty():
-            frame.evidence.save_note()
+            def completed(result):
+                if not frame._closing:
+                    frame.report(('Research note saved. Newer unsaved edits are retained.' if frame._dirty()
+                                  else 'Research note saved.') if result.saved else
+                                 'Note not saved: ' + result.message)
+            save_note(completed)
         else:
             frame.report('All committed library changes are saved. Reading and studio windows save their own editable projects with Ctrl+S.')
+
+    def save_all(event=None):
+        if frame._closing:
+            return False
+        if frame.working:
+            frame.report('A library operation is running. Your drafts are retained; save when it completes.')
+            return False
+        if coordinator.busy:
+            frame.report('Save All is already waiting for a durable save result.')
+            return False
+        frame.cancel_event.clear()
+        def completed(summary):
+            if not frame._closing:
+                frame.report(summary.message())
+        return coordinator.save_all(completed,
+            cancelled=lambda: frame._closing or frame.cancel_event.is_set())
 
     def recover(event=None):
         path = frame.library.root / 'state' / 'recovery' / 'research-note.json'
@@ -31,7 +66,7 @@ def install_save_actions(frame):
         except Exception as exc:
             frame.report(f'Could not recover the draft: {exc}')
 
-    for title, handler in [('&Save\tCtrl+S', save), ('Save &all', save),
+    for title, handler in [('&Save\tCtrl+S', save), ('Save &all', save_all),
                             ('Recover research-note draft...', recover)]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)

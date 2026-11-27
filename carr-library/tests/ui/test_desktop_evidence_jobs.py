@@ -214,3 +214,55 @@ def test_newer_draft_is_not_replaced_by_an_earlier_refresh(evidence):
     complete(snapshot)
     assert current.note.value == 'A newer draft'
     assert 'newer unsaved note' in current.status.value
+
+
+@pytest.mark.parametrize('newer_edit', [False, True])
+def test_save_all_waits_for_actual_note_commit_and_checks_newer_edits(evidence, newer_edit):
+    from carr_library.ui.save_all import SaveCoordinator
+    current, app, _ = evidence
+    coordinator = SaveCoordinator()
+    coordinator.register('note', 'Research note', dirty=current._dirty,
+                         save=lambda completed: current.save_note(completed=completed))
+    current.note.SetValue('Snapshot requested by Save All')
+    summaries = []
+    assert coordinator.save_all(summaries.append)
+    assert coordinator.busy and not summaries
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Saved note'
+    if newer_edit:
+        current.note.SetValue('A newer unsaved draft')
+    assert execute(current)
+    assert app.evidence(current.workspace, current.topic)[0].note == 'Snapshot requested by Save All'
+    assert len(summaries) == 1 and summaries[0].saved == ('Research note',)
+    assert summaries[0].complete is not newer_edit
+    assert not coordinator.busy
+    assert current.note.GetValue() == ('A newer unsaved draft' if newer_edit else 'Snapshot requested by Save All')
+
+
+@pytest.mark.parametrize('failure', ['cancel', 'commit', 'view'])
+def test_save_all_note_failure_always_releases_coordinator_and_retains_draft(evidence, failure):
+    from carr_library.ui.save_all import SaveCoordinator
+    current, app, _ = evidence
+    if failure == 'commit':
+        transaction = current.transaction
+        @contextmanager
+        def rejected():
+            with transaction() as service:
+                yield service
+                raise RuntimeError('Synthetic rejected note commit')
+        current.transaction = rejected
+    coordinator = SaveCoordinator()
+    coordinator.register('note', 'Research note', dirty=current._dirty,
+                         save=lambda completed: current.save_note(completed=completed))
+    current.note.SetValue('Keep this unsaved draft')
+    summaries = []
+    coordinator.save_all(summaries.append)
+    if failure == 'cancel':
+        current.frame.cancel_event.set()
+    if failure == 'view':
+        current.frame.active = ('another-library', 'another-topic')
+    execute(current)
+    assert len(summaries) == 1 and not summaries[0].complete
+    assert not summaries[0].saved and not coordinator.busy
+    assert current.note.GetValue() == 'Keep this unsaved draft'
+    if failure != 'view':
+        assert app.evidence(current.workspace, current.topic)[0].note == 'Saved note'

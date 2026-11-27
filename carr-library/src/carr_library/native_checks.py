@@ -50,19 +50,56 @@ def _manifest(root):
         raise ValueError('The installation manifest changed while being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
+    optional = {'source_commit', 'source_tree', 'bundled_native_runtime',
+                'bundled_native_launcher', 'native_launcher_sha256', 'native_launcher_source_commit',
+                'bundled_audio', 'bundled_citation_runtime', 'use_scope',
+                'parent_source_commit', 'parent_manifest_sha256'}
     if (type(value) is not dict or not required <= value.keys()
-            or value.keys() - required - {'source_commit', 'bundled_native_runtime'}
+            or value.keys() - required - optional
             or type(value['schema']) is not int or value['schema'] != 1
             or value['target'] != TARGET
             or any(type(value[name]) is not bool
                    for name in ('bundled_python', 'bundled_model', 'bundled_ocr'))
             or type(value['files']) is not dict or not 1 <= len(value['files']) <= MAX_FILES):
         raise ValueError('Unsupported installation manifest or optional-component flags.')
-    if ('bundled_native_runtime' in value and type(value['bundled_native_runtime']) is not bool):
-        raise ValueError('The bundled_native_runtime installation flag must be a boolean.')
+    for flag in ('bundled_native_runtime', 'bundled_native_launcher', 'bundled_audio',
+                 'bundled_citation_runtime'):
+        if flag in value and type(value[flag]) is not bool:
+            raise ValueError(f'The {flag} installation flag must be a boolean.')
     if ('source_commit' in value and (not isinstance(value['source_commit'], str)
             or not re.fullmatch('[0-9a-f]{40}', value['source_commit']))):
         raise ValueError('Invalid installation source commit.')
+    # A legacy commit-only manifest stays valid.
+    if ('source_tree' in value and ('source_commit' not in value
+            or not isinstance(value['source_tree'], str)
+            or not re.fullmatch('[0-9a-f]{40}', value['source_tree']))):
+        raise ValueError('Invalid installation source tree.')
+    if 'use_scope' in value and value['use_scope'] != 'private-personal-installation':
+        raise ValueError('Invalid private installation use scope.')
+    parent_fields = {'parent_source_commit', 'parent_manifest_sha256'}
+    if parent_fields.intersection(value):
+        if (not parent_fields <= value.keys() or 'source_commit' not in value
+                or value.get('use_scope') != 'private-personal-installation'
+                or not isinstance(value['parent_source_commit'], str)
+                or not re.fullmatch('[0-9a-f]{40}', value['parent_source_commit'])
+                or not isinstance(value['parent_manifest_sha256'], str)
+                or not re.fullmatch('[0-9a-f]{64}', value['parent_manifest_sha256'])):
+            raise ValueError('Invalid parent installation identity.')
+    native_fields = {'native_launcher_source_commit', 'native_launcher_sha256'}
+    launcher_names = {'ResearchLibrary.exe', 'native-launcher-build.json'}
+    launcher_folds = {name.casefold() for name in launcher_names}
+    declared_launcher = {name for name in value['files']
+                         if isinstance(name, str) and name.casefold() in launcher_folds}
+    if value.get('bundled_native_launcher') is True:
+        if (not value['bundled_python'] or 'source_tree' not in value
+                or not native_fields <= value.keys() or declared_launcher != launcher_names
+                or value['native_launcher_source_commit'] != value.get('source_commit')
+                or not isinstance(value['native_launcher_sha256'], str)
+                or not re.fullmatch('[0-9a-f]{64}', value['native_launcher_sha256'])
+                or value['native_launcher_sha256'] != value['files']['ResearchLibrary.exe']):
+            raise ValueError('Invalid native launcher installation identity.')
+    elif native_fields.intersection(value) or declared_launcher:
+        raise ValueError('Unannounced native launcher installation identity.')
     folded = set()
     for name, digest in value['files'].items():
         if not isinstance(name, str):

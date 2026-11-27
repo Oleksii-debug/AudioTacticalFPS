@@ -7,12 +7,16 @@ from uuid import uuid4
 
 from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
+from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
 
 
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
                        source_guard=lambda: None, recovery_slot='manual'):
     import wx
+    from .save_all import SaveResult, coordinator_for
+
+    coordinator = coordinator_for(parent)
 
     dialog = wx.Dialog(parent, title='Voice reader and reading copy', size=(900, 800),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
@@ -25,9 +29,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         progress.register_player(player)
     document = ReadingDocument(text, title=title)
     registry = None
+    owned_registries = set()
     voices = ()
     alive = True
     busy = False
+    playback_generation = 0
     save_path = None
     last_audio = None
     source_loaded = source_loader is None
@@ -70,6 +76,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     controls.Add(volume, 0, wx.ALL, 6)
     reload_button = wx.Button(dialog, label='Reload &voices')
     controls.Add(reload_button, 0, wx.ALL, 6)
+    progress_voice = wx.Button(dialog, label='Use voice for progress...')
+    progress_voice.SetName('Use selected local voice for progress')
+    controls.Add(progress_voice, 0, wx.ALL, 6)
     layout.Add(controls, 0, wx.EXPAND)
     editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
                       value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
@@ -84,14 +93,16 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     for control in (read, cursor, pause, stop, export_audio):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
-    row = wx.BoxSizer(wx.HORIZONTAL)
+    row = wx.WrapSizer(wx.HORIZONTAL)
     open_button = wx.Button(dialog, label='&Open text / project')
     save_button = wx.Button(dialog, label='&Save reading copy')
     save_as = wx.Button(dialog, label='Save &as')
+    save_all_button = wx.Button(dialog, label='Save all open drafts')
+    save_all_button.Enable(coordinator is not None)
     undo = wx.Button(dialog, label='&Undo reading edit')
     redo = wx.Button(dialog, label='R&edo reading edit')
     original = wx.Button(dialog, label='Original and &diff')
-    for control in (open_button, save_button, save_as, undo, redo, original):
+    for control in (open_button, save_button, save_as, save_all_button, undo, redo, original):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -121,6 +132,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             volume.SetValue(100)
         for button in (read, cursor, export_audio):
             button.Enable(bool(current) and not busy)
+        progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
@@ -148,17 +160,49 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             capabilities()
         executor.submit(work).add_done_callback(lambda future: wx.CallAfter(finish, future))
 
+    def select_progress_voice(event=None):
+        selected = voice_choice.GetSelection()
+        if progress is None or not 0 <= selected < len(voices):
+            return
+        library_root = Path(parent.library.root)
+        voice_id = voices[selected].id
+
+        def activated(provider):
+            try:
+                progress.set_speech_provider(provider, root=library_root)
+            except Exception:
+                provider.close()
+                raise
+            progress.settings_dialog()
+            report(f'Progress voice selected for this session: {provider.label}. '
+                   f'Sound mode: {progress.preferences.mode}.')
+
+        run(lambda: activate_progress_voice(library_root, voice_id), activated)
+
+    def start_playback(action):
+        generation = playback_generation
+        play_when_quiet((progress,), action, schedule=wx.CallLater,
+            alive=lambda: alive and generation == playback_generation,
+            on_error=lambda exc: report(f'Playback did not start. {exc}', focus=True))
+
     def reload(event=None):
         def discover_configured():
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
                 from ..runtime_settings import voice_registry
-                return voice_registry(Path(library_root) / 'state')
-            return VoiceRegistry.discover()
+                found = voice_registry(Path(library_root) / 'state', cancelled=cancel.is_set)
+            else:
+                found = VoiceRegistry.discover(cancelled=cancel.is_set)
+            owned_registries.add(found)
+            return found
 
         def loaded(value):
             nonlocal registry, voices, document, source_loaded
+            previous = registry
             registry, source = value
+            if previous is not None and previous is not registry:
+                previous.close()
+                owned_registries.discard(previous)
             voices = registry.voices()
             if source is not None:
                 source_guard()
@@ -183,8 +227,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             else:
                 report('No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
-        run(lambda: (discover_configured(),
-                     source_loader(cancel.is_set) if not source_loaded else None), loaded)
+        def load():
+            source = source_loader(cancel.is_set) if not source_loaded else None
+            return discover_configured(), source
+        run(load, loaded)
 
     def sync_document():
         document.set_text(editor.GetValue())
@@ -224,7 +270,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         return selected or editor.GetValue()
 
     def speak(event=None, *, from_cursor=False, destination=None):
-        nonlocal last_audio
+        nonlocal last_audio, playback_generation
         try:
             if registry is None or not voices:
                 raise ValueError('Choose an installed local voice first.')
@@ -232,6 +278,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             content = selected_text(from_cursor)
             voice = voices[voice_choice.GetSelection()]
             settings = SpeechSettings(rate=rate.GetValue(), volume=volume.GetValue())
+            playback_generation += 1
             player.stop()
             if progress is not None:
                 progress.refresh_audio_state()
@@ -241,11 +288,13 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 nonlocal last_audio
                 last_audio = result.path
                 if destination is None:
-                    player.play(result.path)
-                    if progress is not None:
-                        progress.refresh_audio_state()
-                    report(f'Playing {result.duration_seconds:.1f} seconds. F7 pauses or resumes; F8 stops. '
-                           'Word highlighting is unavailable for this voice.')
+                    if cancel.is_set():
+                        return
+                    def playing():
+                        player.play(result.path)
+                        report(f'Playing {result.duration_seconds:.1f} seconds. F7 pauses or resumes; F8 stops. '
+                               'Word highlighting is unavailable for this voice.')
+                    start_playback(playing)
                 else:
                     report(f'WAV saved: {result.path}. Duration {result.duration_seconds:.1f} seconds; '
                            f'{result.sample_rate} Hz; {result.channels} channels.', focus=True)
@@ -264,7 +313,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def pause_audio(event=None):
         try:
             if player.state == 'paused':
-                player.resume()
+                def resumed():
+                    player.resume()
+                    report(f'Playback {player.state}; {player.position_seconds:.1f} seconds.')
+                start_playback(resumed)
+                return
             else:
                 player.pause()
             if progress is not None:
@@ -274,6 +327,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(str(exc), focus=True)
 
     def stop_audio(event=None):
+        nonlocal playback_generation
+        playback_generation += 1
         cancel.set()
         try:
             player.stop()
@@ -290,15 +345,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             with wx.TextEntryDialog(dialog, f'Seconds from 0 to {player.duration_seconds:.1f}',
                                     'Seek playback', str(round(player.position_seconds, 1))) as entry:
                 if entry.ShowModal() == wx.ID_OK:
-                    player.seek(float(entry.GetValue()))
-                    report(f'Playback at {player.position_seconds:.1f} seconds.'
-                           + (' Position is approximate on this playback backend.' if player.position_is_approximate else ''))
+                    seconds = float(entry.GetValue())
+                    def sought():
+                        player.seek(seconds)
+                        report(f'Playback at {player.position_seconds:.1f} seconds.'
+                               + (' Position is approximate on this playback backend.' if player.position_is_approximate else ''))
+                    start_playback(sought)
         except Exception as exc:
             report(str(exc), focus=True)
 
     def save_project(event=None, *, choose=False):
         nonlocal save_path
         try:
+            source_guard()
             sync_document()
             if not choose and save_path is None and draft_store is not None:
                 save_recovery(force=True)
@@ -315,6 +374,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     selected = Path(chooser.GetPath())
             else:
                 selected = save_path
+            # A modal chooser can outlive the source's current authorization.
+            source_guard()
             document.save(selected)
             save_path = selected
             save_recovery(force=True)
@@ -360,6 +421,18 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report('Reading copy opened. Original text is retained separately; no quotation was approved.')
         except Exception as exc:
             report(str(exc), focus=True)
+
+    def save_all(event=None):
+        if busy:
+            report('Speech is running; stop it before saving the open drafts.', focus=True)
+            return False
+        if coordinator is None:
+            return False
+        if not coordinator.save_all(lambda summary: report(summary.message(), focus=True),
+                                    cancelled=lambda: not alive):
+            report('Save All is already waiting for a durable save result.', focus=True)
+            return False
+        return True
 
     def history(event=None, *, forward=False):
         try:
@@ -414,10 +487,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(f'The reading copy is still open. {exc}', focus=True)
 
-    for control, handler in ((reload_button, reload), (read, speak),
+    for control, handler in ((reload_button, reload), (progress_voice, select_progress_voice), (read, speak),
         (cursor, lambda event: speak(from_cursor=True)), (pause, pause_audio), (stop, stop_audio),
         (export_audio, save_audio), (save_button, save_project),
-        (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
+        (save_as, lambda event: save_project(choose=True)), (save_all_button, save_all), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (cleanup, clean), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
@@ -433,6 +506,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     dialog.SetAcceleratorTable(wx.AcceleratorTable(accelerators))
     autosave_timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, autosave_timer)
+    def unsaved():
+        if not alive or not source_loaded:
+            return False
+        sync_document()
+        return document.dirty and bool(document.source_text or document.text or document.can_undo)
+    def save_registered(completed):
+        if busy or not alive:
+            completed(SaveResult(False, 'Speech is running or the reader closed; its draft is retained.'))
+        else:
+            completed(SaveResult(save_project() is True, 'The reading copy was not saved.'))
+    unregister = (coordinator.register('reading.' + str(id(dialog)), 'Voice reading copy',
+                    dirty=unsaved, save=save_registered, focus=editor.SetFocus)
+                  if coordinator is not None else lambda: None)
     try:
         capabilities()
         reload()
@@ -440,21 +526,71 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         editor.SetFocus()
         dialog.ShowModal()
     finally:
-        autosave_timer.Stop()
+        unregister()
         alive = False
         cancel.set()
+        silence_confirmed = False
+        worker_finished = False
+        notices = []
         try:
-            player.close()
-        except (OSError, RuntimeError) as exc:
-            parent.report(f'Playback device reported a close error: {exc}')
-        finally:
+            try:
+                autosave_timer.Stop()
+            except (OSError, RuntimeError) as exc:
+                notices.append(f'Reading-draft timer could not be stopped: {exc}')
+            try:
+                player.close()
+                silence_confirmed = True
+            except (OSError, RuntimeError) as exc:
+                notices.append(f'Playback device reported a close error: {exc}')
             if progress is not None:
-                progress.unregister_player(player)
-        # Wait only for the bounded worker cancellation path before deleting its
-        # output directory. The UI never destroys a still-running worker's files.
-        executor.shutdown(wait=True, cancel_futures=True)
-        audio_files.cleanup()
-        dialog.Destroy()
+                try:
+                    progress.unregister_player(player, silence_confirmed=silence_confirmed)
+                except Exception as exc:
+                    notices.append(f'Playback progress feedback could not be refreshed: {exc}')
+            # Never remove a worker's output while it may still be writing it.
+            try:
+                executor.shutdown(wait=True, cancel_futures=True)
+                worker_finished = True
+            except (OSError, RuntimeError) as exc:
+                notices.append(f'The reading worker has not confirmed shutdown: {exc}')
+            if worker_finished:
+                for owned in owned_registries:
+                    try:
+                        owned.close()
+                    except (OSError, RuntimeError) as exc:
+                        notices.append(f'The voice engine reported a close error: {exc}')
+            else:
+                # Keep engine ownership while an uncertain worker may use it.
+                retained_engines = getattr(parent, '_reader_engines_retained', None)
+                if not isinstance(retained_engines, list):
+                    retained_engines = []
+                    parent._reader_engines_retained = retained_engines
+                retained_engines.extend(owned_registries)
+            removed = False
+            if silence_confirmed and worker_finished:
+                try:
+                    audio_files.cleanup()
+                    removed = True
+                except (OSError, RuntimeError) as exc:
+                    notices.append(f'Temporary reading audio could not be removed: {exc}')
+            if not removed:
+                # A failed MCI close can leave its WAV open. Keep its private
+                # directory alive with the application instead of deleting an
+                # uncertain transport's input or losing its cleanup handle.
+                retained = getattr(parent, '_reader_playback_retained', None)
+                if not isinstance(retained, list):
+                    retained = []
+                    parent._reader_playback_retained = retained
+                retained.append((player, audio_files))
+                notices.append('Temporary playback audio is retained until the device and worker are confirmed closed.')
+            if notices:
+                try:
+                    parent.report(' '.join(notices))
+                except Exception:
+                    # A detached parent reporter must not keep the modal open.
+                    pass
+        finally:
+            dialog.Destroy()
 
 
 def install_speech_actions(frame):
