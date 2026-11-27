@@ -138,6 +138,14 @@ def inspect(args):
             self.verified_health_calls += 1
             return not self.reject
     host = RejectOneVerifiedHealth(installer.verify, validate, timeout=1800)
+    system_helper = host._powershell()
+    helper_info = system_helper.lstat()
+    helper_identity = {'selection': 'GetSystemDirectoryW/fixed-WindowsPowerShell-v1.0',
+        'path': str(system_helper), 'device': helper_info.st_dev, 'inode': helper_info.st_ino,
+        'bytes': helper_info.st_size, 'mtime_ns': helper_info.st_mtime_ns,
+        'mode': helper_info.st_mode, 'attributes': getattr(helper_info, 'st_file_attributes', 0),
+        'links': helper_info.st_nlink}
+    print(json.dumps({'system_helper_preflight': helper_identity}, sort_keys=True), flush=True)
     try:
         existing = host._registration()
     except FileNotFoundError:
@@ -325,8 +333,8 @@ def inspect(args):
         git_executable = shutil.which('git')
         if not git_executable:
             raise RuntimeError('The current B Git object database requires the installed CI Git executable.')
-        system = Path(os.environ['SystemRoot']) / 'System32'
-        shell = system / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
+        shell = host._powershell()
+        system = shell.parents[2]
         qualification_environment = dict(host.environment(), CI='true', OS='Windows_NT',
             PATH=os.pathsep.join((str(Path(git_executable).parent), str(system))))
         code, _ = run_owned([shell, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
@@ -373,6 +381,7 @@ def inspect(args):
             raise AssertionError('The owned synthetic Windows vault anchor was not removed after success.')
         return {'schema': 1, 'status': 'passed', 'checks': checks,
             'previous_source': args.previous_source, 'candidate_source': args.candidate_source,
+            'system_helper': helper_identity,
             'previous_setup_sha256': args.previous_setup_sha256,
             'candidate_setup_sha256': args.candidate_setup_sha256,
             'previous_manifest_sha256': args.previous_manifest_sha256,

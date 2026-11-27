@@ -2321,6 +2321,14 @@
       "test_punctuation_control_is_disabled_during_current_request": 2,
       "test_prepared_request_keeps_its_captured_punctuation_setting": 1,
       "test_ui_does_not_silently_admit_punctuation_for_an_unsupported_voice": 1
+    },
+    "tests.security.test_standard_system_helper": {
+      "test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+      "test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+      "test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+      "test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3,
+      "test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+      "test_redirected_system_helper_parent_is_refused": 1
     }
   },
   "installed": {
@@ -4574,6 +4582,14 @@
       "test_punctuation_control_is_disabled_during_current_request": 2,
       "test_prepared_request_keeps_its_captured_punctuation_setting": 1,
       "test_ui_does_not_silently_admit_punctuation_for_an_unsupported_voice": 1
+    },
+    "tests.security.test_standard_system_helper": {
+      "test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+      "test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+      "test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+      "test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3,
+      "test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+      "test_redirected_system_helper_parent_is_refused": 1
     }
   },
   "native_trust": [

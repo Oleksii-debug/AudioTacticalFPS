@@ -12,6 +12,7 @@ from hashlib import sha256
 import os
 from pathlib import Path
 import re
+import stat
 import subprocess
 import tempfile
 import time
@@ -283,8 +284,16 @@ class WindowsStandardHost:
         size = api.GetSystemDirectoryW(buffer, len(buffer))
         if not 0 < size < len(buffer):
             raise TrustError('The trusted Windows system directory is unavailable.')
-        path = directory(buffer.value) / 'WindowsPowerShell' / 'v1.0' / 'powershell.exe'
-        file_info(path)
+        # This fixed, OS-owned helper is not an update payload or private state.
+        # Windows servicing may retain legitimate hardlinks to system binaries.
+        # All ancestor and leaf redirection checks remain mandatory; file_info
+        # keeps its stricter single-link contract for every application file.
+        parent = directory(directory(buffer.value) / 'WindowsPowerShell' / 'v1.0')
+        path = parent / 'powershell.exe'
+        info = path.lstat()
+        if (not stat.S_ISREG(info.st_mode) or stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400 or info.st_nlink < 1):
+            raise TrustError('The fixed Windows system helper is linked or redirected.')
         return path
 
     def _shortcut_target(self, shortcut, root):
