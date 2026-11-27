@@ -693,14 +693,16 @@ def test_advanced_rejects_nonstring_detected_language_before_receipt(tmp_path, t
     assert row['status'] == 'uncertain' and row['output_sha256'] is None
 
 
+@pytest.mark.parametrize('glossary', [None, GLOSSARY])
 @pytest.mark.parametrize('action', ['export', 'resume'])
 @pytest.mark.parametrize('mutation', ['text-and-local-hash', 'detected-language', 'missing-job-digest', 'missing-ledger-digest'])
-def test_advanced_decoded_translation_receipt_is_independently_bound(tmp_path, transport, action, mutation):
+def test_advanced_decoded_translation_receipt_is_independently_bound(tmp_path, transport, action, mutation, glossary):
     from carr_library.assistant.state import atomic_json
     service, p, _ = ready(tmp_path, transport)
     source = 'Synthetic selected text.'
-    approval, cost = translation_approval(p, source, 'auto', 'uk', '1', glossary=GLOSSARY)
-    identity = service.submit(p, source, 'auto', 'uk', authorization=approval, per_call_cost=cost, glossary=GLOSSARY)
+    source_language = 'en' if glossary else 'auto'
+    approval, cost = translation_approval(p, source, source_language, 'uk', '1', glossary=glossary)
+    identity = service.submit(p, source, source_language, 'uk', authorization=approval, per_call_cost=cost, glossary=glossary)
     assert service.resume(identity)['status'] == 'complete'
     job = service.jobs.load(identity)
     receipt = job['receipts'][0]
@@ -734,13 +736,15 @@ def test_advanced_decoded_translation_receipt_is_independently_bound(tmp_path, t
     assert len(transport['calls']) == count
 
 
+@pytest.mark.parametrize('glossary', [None, GLOSSARY])
 @pytest.mark.parametrize('legacy', [False, True])
-def test_advanced_export_labels_decoded_integrity_without_rebilling_or_inventing_legacy_evidence(tmp_path, transport, legacy):
+def test_advanced_export_labels_decoded_integrity_without_rebilling_or_inventing_legacy_evidence(tmp_path, transport, legacy, glossary):
     from carr_library.assistant.state import atomic_json
     service, p, vault = ready(tmp_path, transport)
     source = 'Synthetic selected text.'
-    approval, cost = translation_approval(p, source, 'auto', 'uk', '1', glossary=GLOSSARY)
-    identity = service.submit(p, source, 'auto', 'uk', authorization=approval, per_call_cost=cost, glossary=GLOSSARY)
+    source_language = 'en' if glossary else 'auto'
+    approval, cost = translation_approval(p, source, source_language, 'uk', '1', glossary=glossary)
+    identity = service.submit(p, source, source_language, 'uk', authorization=approval, per_call_cost=cost, glossary=glossary)
     assert service.resume(identity)['status'] == 'complete'
     job = service.jobs.load(identity)
     receipt = job['receipts'][0]
