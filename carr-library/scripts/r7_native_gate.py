@@ -46,6 +46,13 @@ def main():
             return records
 
         before = identities()
+        source_fixtures = {}
+        for field, relative in config.get("source_digest_fields", {}).items():
+            selected = Path(relative)
+            path = (root / selected).resolve(strict=True)
+            if selected.is_absolute() or ".." in selected.parts or not path.is_relative_to(root):
+                raise ValueError("A native fixture must remain in the exact source checkout.")
+            source_fixtures[field] = (path, sha256(path.read_bytes()).hexdigest())
         probe = root / config["probe"]
         digest = sha256(probe.read_bytes()).hexdigest()
         timeout = config.get("subprocess_timeout_seconds")
@@ -81,6 +88,9 @@ def main():
             raise ValueError("Native probe returned a nonzero result.")
         if identities() != before or sha256(probe.read_bytes()).hexdigest() != digest:
             raise ValueError("Probe or installed source changed during native execution.")
+        if any(sha256(path.read_bytes()).hexdigest() != expected
+               for path, expected in source_fixtures.values()):
+            raise ValueError("A source-bound native fixture changed during execution.")
         reports = [json.loads(line) for line in output.getvalue().splitlines()
                    if line.lstrip().startswith("{")]
         reports = [item for item in reports if item.get("status") in ("PASS", "FAIL", "NOT_RUN")]
@@ -126,6 +136,10 @@ def main():
             for part in field.split("."):
                 value = value[part]
             return value
+
+        for field, (path, expected) in source_fixtures.items():
+            if metric(field) != expected:
+                raise ValueError("Native fixture receipt differs from exact source: " + field)
 
         for left, right in config.get("equal_fields", []):
             a, b = metric(left), metric(right)

@@ -24,8 +24,8 @@ from .audio.model_manifest import LocalModelManifest, ModelManifestError, _read_
 
 MAX_SETTINGS_BYTES = 512 * 1024
 MAX_PROFILES = 100
-ENGINES = frozenset(('piper', 'dordiai-voices', 'musicgen', 'ace-step', 'fluidsynth', 'supplied-whisper'))
-SPEECH_ENGINES = frozenset(('piper', 'dordiai-voices'))
+ENGINES = frozenset(('piper', 'dordiai-voices', 'musicgen', 'ace-step', 'fluidsynth', 'supplied-whisper', 'local-voice-helper'))
+SPEECH_ENGINES = frozenset(('piper', 'dordiai-voices', 'local-voice-helper'))
 MUSIC_ENGINES = frozenset(('musicgen', 'ace-step', 'fluidsynth'))
 PROFILE_ID = re.compile(r'[0-9a-f]{32}')
 SHA256 = re.compile(r'[0-9a-f]{64}')
@@ -221,6 +221,11 @@ class EngineProfileStore:
             adapter = PiperEngine(manifest.asset(executable), manifest.path)
             if adapter.manifest.manifest_sha256 != manifest.manifest_sha256:
                 raise ModelManifestError('The local engine manifest changed during admission.')
+        if manifest.engine == 'local-voice-helper':
+            from .audio.local_voice_helper import LocalVoiceHelperEngine
+            adapter = LocalVoiceHelperEngine(manifest.path)
+            if adapter.manifest.manifest_sha256 != manifest.manifest_sha256:
+                raise ModelManifestError('The local helper manifest changed during admission.')
         _cancel(cancelled)
         self._root()
         return ReviewedEngine(manifest, report['files'], report['bytes'])
@@ -315,16 +320,20 @@ class _ProfileSpeechEngine:
         if self._adapter is None:
             from .audio.engines import DordiaiVoicesEngine, PiperEngine
             manifest = reviewed.manifest
-            self._adapter = (PiperEngine(manifest.asset(manifest.settings['executable']), manifest.path)
-                             if self.engine == 'piper' else DordiaiVoicesEngine(manifest.path))
+            if self.engine == 'local-voice-helper':
+                from .audio.local_voice_helper import LocalVoiceHelperEngine
+                self._adapter = LocalVoiceHelperEngine(manifest.path)
+            else:
+                self._adapter = (PiperEngine(manifest.asset(manifest.settings['executable']), manifest.path)
+                                 if self.engine == 'piper' else DordiaiVoicesEngine(manifest.path))
         if self._adapter.manifest.manifest_sha256 != reviewed.manifest.manifest_sha256:
             raise ModelManifestError('The local speech profile changed; refresh the voice catalogue.')
         return self._adapter
 
-    def _original_voice(self, voice):
+    def _original_voice(self, voice, *, engine_id=None):
         if type(voice) is not str or not voice.startswith(self.id + ':'):
             raise ValueError('Choose a voice from this registered local engine.')
-        return self.engine + ':' + voice[len(self.id) + 1:]
+        return (self.engine if engine_id is None else engine_id) + ':' + voice[len(self.id) + 1:]
 
     def voices(self, *, cancelled=lambda: False):
         adapter = self._admit(cancelled)
@@ -335,12 +344,12 @@ class _ProfileSpeechEngine:
 
     def cache_identity(self, voice, *, cancelled=lambda: False):
         adapter = self._admit(cancelled)
-        return {**adapter.cache_identity(self._original_voice(voice), cancelled=cancelled),
+        return {**adapter.cache_identity(self._original_voice(voice, engine_id=adapter.id if self.engine == 'local-voice-helper' else self.engine), cancelled=cancelled),
                 'local_profile_id': self.profile_id}
 
     def synthesize(self, text, output, *, voice, cancelled=lambda: False, **settings):
         adapter = self._admit(cancelled)
-        return adapter.synthesize(text, output, voice=self._original_voice(voice),
+        return adapter.synthesize(text, output, voice=self._original_voice(voice, engine_id=adapter.id if self.engine == 'local-voice-helper' else self.engine),
                                   cancelled=cancelled, **settings)
 
 

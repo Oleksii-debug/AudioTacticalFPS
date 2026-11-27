@@ -1172,5 +1172,107 @@
         "restored_archive_sha256"
       ]
     ]
+  },
+  "local-voice-helper": {
+    "probe": "scripts/windows_local_voice_helper_smoke.py",
+    "arguments": [
+      "--native"
+    ],
+    "subprocess_timeout_seconds": 270,
+    "modules": [
+      "carr_library.audio.local_voice_helper",
+      "carr_library.runtime_settings",
+      "carr_library.audio.model_manifest",
+      "carr_library.audio.engines",
+      "carr_library.audio.windows_process",
+      "carr_library.audio.jobs",
+      "carr_library.ui.engine_settings",
+      "carr_library.ui.transcription_v43_dialog",
+      "carr_library.library_backup"
+    ],
+    "probe_modules": [
+      "carr_library.audio.local_voice_helper",
+      "carr_library.runtime_settings",
+      "carr_library.audio.model_manifest",
+      "carr_library.audio.engines",
+      "carr_library.audio.windows_process",
+      "carr_library.audio.jobs",
+      "carr_library.ui.engine_settings",
+      "carr_library.ui.transcription_v43_dialog",
+      "carr_library.library_backup"
+    ],
+    "checks": {
+      "actual Windows local profile controls": 1,
+      "public pinned helper pack has complete executable and script identity": 1,
+      "old helper declarations remain passive before explicit review": 1,
+      "manifest review launches no helper process": 1,
+      "native review exposes exact helper protocol engine and manifest hash": 1,
+      "native reviewed registration is enabled and names are accessible": 1,
+      "native Save owns the existing supervised operation": 1,
+      "native Save persists the exact reviewed pin and Unicode name": 1,
+      "native registration never invokes the executable": 1,
+      "explicit registration preserves exact schema1 raw history": 1,
+      "native selected helper can be rechecked disabled or removed": 1,
+      "native disable keeps the reviewed runtime and saved identity": 1,
+      "native enable retains the same explicit profile identity": 1,
+      "native Close settles registration workers without executing speech": 1,
+      "passive registry construction never discovers unselected helper code": 1,
+      "actual helper catalogue uses the current registered voice namespace": 1,
+      "actual helper catalogue retains Unicode language license and finite controls": 1,
+      "actual helper cache is bound to the reviewed manifest and profile": 1,
+      "actual helper output is verified bounded PCM16": 1,
+      "actual JSON stdin retains exact literal text and selected controls": 1,
+      "accepted helper output leaves no temporary speech stage": 1,
+      "reopened explicit profile retains exact saved voice and cache identity": 1,
+      "occupied output refuses execution and preserves exact bytes": 1,
+      "disabled captured profile cannot execute or publish": 1,
+      "actual cancellation settles its owned child before returning": 1,
+      "actual cancellation publishes no output and removes private PCM": 1,
+      "every actual helper uses the fixed isolated Python argv": 1,
+      "reviewed executable script and inventory remain unchanged": 1,
+      "complete backup restores no active machine executable registration": 1,
+      "passive restored library supports full rebackup": 1,
+      "all helper process owners are settled at final acceptance": 1
+    },
+    "fields": {
+      "schema": 1,
+      "status": "PASS",
+      "installed_mode": true,
+      "isolated": true,
+      "native_controls": "EXECUTED",
+      "synthetic_helper_execution": "EXECUTED",
+      "native_vendor_execution": "NOT_RUN",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "speech_quality": "NOT_CLAIMED",
+      "all_children_settled": true
+    },
+    "exact_metrics": {
+      "sample_rate": 16000,
+      "frames": 512
+    },
+    "positive_metrics": [
+      "actual_processes",
+      "fixture.files",
+      "fixture.bytes"
+    ],
+    "digest_fields": [
+      "output_sha256",
+      "retained_schema1_sha256",
+      "fixture_source_sha256",
+      "fixture.manifest_sha256",
+      "fixture.fixture_script_sha256",
+      "fixture.selected_python_sha256",
+      "fixture.host_python_sha256"
+    ],
+    "equal_fields": [
+      [
+        "fixture",
+        "fixture_after"
+      ]
+    ],
+    "source_digest_fields": {
+      "fixture_source_sha256": "scripts/local_voice_contract_fixture.py"
+    }
   }
 }

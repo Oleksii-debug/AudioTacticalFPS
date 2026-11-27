@@ -223,7 +223,7 @@ class LocalModelManifest:
         if set(raw) - known:
             raise ModelManifestError('Unsupported model manifest fields.')
         actual_engine = _text(raw.get('engine'), 'engine')
-        if actual_engine not in {'musicgen', 'piper', 'dordiai-voices', 'ace-step', 'fluidsynth', 'supplied-whisper', 'hunspell', 'reading-preparation'}:
+        if actual_engine not in {'musicgen', 'piper', 'dordiai-voices', 'ace-step', 'fluidsynth', 'supplied-whisper', 'hunspell', 'reading-preparation', 'local-voice-helper'}:
             raise ModelManifestError('Unsupported local model engine.')
         if engine is not None and actual_engine != engine:
             raise ModelManifestError('The model manifest belongs to another engine.')
@@ -284,6 +284,8 @@ class LocalModelManifest:
             raise ModelManifestError('Review the exact ACE-Step checkpoints and installed code before execution.')
         if self.engine in {'hunspell', 'reading-preparation'} and not self.trusted_weights:
             raise ModelManifestError('Review the exact optional reading-preparation code and dictionary assets before execution.')
+        if self.engine == 'local-voice-helper' and not self.trusted_weights:
+            raise ModelManifestError('Review the exact local voice-helper executable and script before execution.')
         if self.engine == 'supplied-whisper' and not self.trusted_weights:
             raise ModelManifestError('Review the supplied transcription worker, interpreter and exact local model before execution.')
         if self.engine == 'musicgen':

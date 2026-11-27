@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "status": "AUTHORED_NOT_RUN",
+  "base": "43f6908c82982630c85e6b72ebf7b940dfb06b45",
+  "core_commit": "aacccad8ecab35f949ccf1caada368bf34036901",
+  "canonical_reference": "e3cf74c243d4ef930b526b5648ca9003c0900057",
+  "canonical_path": "carr-library/src/carr_library/speech/runtime.py",
+  "changed_product_paths": [
+    "carr-library/src/carr_library/audio/local_voice_helper.py",
+    "carr-library/src/carr_library/audio/model_manifest.py",
+    "carr-library/src/carr_library/runtime_settings.py"
+  ],
+  "test_cases": 111,
+  "native_checks": 31,
+  "process_owner": "Existing audio.engines._run/_start_process/_stop; WindowsJobProcess",
+  "source_review": {
+    "reviewer": "independent payload composition peer",
+    "status": "GO",
+    "scope": "Selected launch/PCM manifest boundaries; additive profile IDs/factories",
+    "runtime_claim": false
+  },
+  "preserved": [
+    "schema1 raw executable history",
+    "Piper and Dordiai IDs/wrappers",
+    "current TrustController render admission",
+    "current ResourceBroker callers",
+    "machine-local registration exclusion from portable backup"
+  ],
+  "limitations": [
+    "No actual vendor/native-executable inference",
+    "No acoustic quality, physical playback or NVDA claim",
+    "Canonical warm Dordiai performance remains unqualified; no parallel owner introduced"
+  ]
+}
