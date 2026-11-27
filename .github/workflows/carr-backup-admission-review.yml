@@ -1,0 +1,101 @@
+name: Retained backup and ASR admission integration
+on:
+  push:
+    branches: [carr/backup-admission-review-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-backup-admission-review.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: backup-admission-review-${{ github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  review:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: carr-library
+        shell: bash
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the exact selected source
+        run: python -m pip install ".[test,sync]"
+      - name: Require source backup and ASR admission regressions
+        run: |
+          mkdir -p ci-backup-admission
+          python scripts/ci_check.py --jobs 3 --diagnostics tests/storage/test_v3_state_backup.py tests/storage/test_transcription_backup.py tests/storage/test_transcription_backup_convergence.py tests/storage/test_complete_pending_backup.py tests/storage/test_pending_backup.py tests/transcription/test_runtime_inventory.py tests/transcription/test_runtime_inventory_posix.py tests/transcription/test_runtime_admission.py tests/transcription/test_admission_boundaries.py 2>&1 | tee ci-backup-admission/source.txt
+      - name: Require the same installed modules and actual backup and ASR admission
+        if: "!cancelled()"
+        run: |
+          mkdir -p ci-backup-admission
+          python -I -B -X utf8 - <<'PY' 2>&1 | tee ci-backup-admission/installed.txt
+          from hashlib import sha256
+          import importlib
+          import json
+          from pathlib import Path
+          import socket
+          import sysconfig
+          import tempfile
+          import xml.etree.ElementTree as ET
+          import pytest
+          root = Path.cwd()
+          installed = Path(sysconfig.get_path('purelib')).resolve()
+          names = ('carr_library.backup_sidecars', 'carr_library.library_backup',
+                   'carr_library.backup_transcription', 'carr_library.transcription.service',
+                   'carr_library.transcription.runtime', 'carr_library.pending_backup')
+          def inventory():
+              result = {}
+              for name in names:
+                  module = importlib.import_module(name)
+                  actual = Path(module.__file__).resolve()
+                  expected = root / 'src' / Path(*name.split('.')).with_suffix('.py')
+                  assert actual.is_relative_to(installed) and not actual.is_relative_to(root / 'src'), name
+                  digest = sha256(actual.read_bytes()).hexdigest()
+                  assert digest == sha256(expected.read_bytes()).hexdigest(), name
+                  result[name] = {'path': str(actual), 'sha256': digest}
+              return result
+          before = inventory()
+          def offline(*args, **kwargs):
+              raise OSError('Network access is disabled in these synthetic backup/admission tests.')
+          socket.socket.connect = socket.socket.connect_ex = socket.create_connection = offline
+          suites = ["tests/storage/test_v3_state_backup.py","tests/storage/test_transcription_backup.py","tests/storage/test_transcription_backup_convergence.py","tests/storage/test_complete_pending_backup.py","tests/storage/test_pending_backup.py","tests/transcription/test_runtime_inventory.py","tests/transcription/test_runtime_inventory_posix.py","tests/transcription/test_runtime_admission.py","tests/transcription/test_admission_boundaries.py"]
+          with tempfile.TemporaryDirectory(prefix='carr-backup-admission-') as temporary:
+              report = Path(temporary) / 'junit.xml'
+              status = pytest.main(['-q', '-o', 'pythonpath=', '-o', 'addopts=',
+                  '-o', 'xfail_strict=true', '--junitxml', str(report),
+                  '--basetemp', str(Path(temporary) / 'pytest'), *suites])
+              cases = list(ET.parse(report).iter('testcase'))
+              assert status == 0 and cases, status
+              assert all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped'))
+                         for case in cases), 'Every selected installed case must pass without a skip.'
+              assert inventory() == before
+              print(json.dumps({'status': 'PASS', 'installed_cases': len(cases), 'origins': before}))
+          PY
+      - name: Preserve exact identity
+        if: always()
+        run: |
+          mkdir -p ci-backup-admission
+          git rev-parse HEAD > ci-backup-admission/commit.txt
+          python -m pip freeze > ci-backup-admission/packages.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: backup-admission-${{ matrix.os }}-${{ github.sha }}
+          path: carr-library/ci-backup-admission
+          if-no-files-found: error

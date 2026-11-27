@@ -21,7 +21,7 @@ from ..audio.transcription import (TranscriptionService as LegacyTranscriptionSe
     _run_owned_worker, _retained_admission)
 from ..audio.process import publish_file
 from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
-                             read_json, regular, state_lock, sync_directory)
+                             read_json, regular, state_lock, sync_directory, MAX_JSON_BYTES, _unique)
 from ..research.export_file import write_binary_export
 from .models import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, encoded_outputs,
                      fingerprint, settings as validate_settings, validated_result,
@@ -151,6 +151,42 @@ def _published_identity(path):
     if _stamp(path.lstat()) != _stamp(before):
         raise ValueError('The published export changed during verification.')
     return {'sha256': digest.hexdigest(), 'size': size}
+
+
+def _export_payload(path, record, *, cancel=None, maximum=MAX_RESULT_BYTES,
+                    changed_message='A saved transcript changed before export; no changed bytes were published.'):
+    """Capture only the bounded bytes authenticated by the saved result."""
+    stopped(cancel)
+    size = record['size']
+    if type(size) is not int or not 0 <= size <= maximum:
+        raise ValueError('The transcript export exceeds its byte budget.')
+    try:
+        # The shared selected-file reader holds one checked regular descriptor,
+        # refuses links and bounds concurrent growth by captured length + one.
+        payload = read_file_bytes(path, cancel=cancel, maximum=max(1, size))
+    except ValueError as error:
+        raise ValueError(changed_message) from error
+    stopped(cancel)
+    if len(payload) != size or sha256(payload).hexdigest() != record['sha256']:
+        raise ValueError(changed_message)
+    return payload
+
+
+def _verified_json(path, digest, *, cancel=None,
+                   changed_message='A saved transcript changed before export; no changed bytes were published.'):
+    """Parse the same bounded snapshot whose digest was checked."""
+    raw = read_file_bytes(path, cancel=cancel, maximum=MAX_JSON_BYTES)
+    if sha256(raw).hexdigest() != digest:
+        raise ValueError(changed_message)
+    return _decode_json(raw, cancel=cancel)
+
+
+def _decode_json(payload, *, cancel=None):
+    stopped(cancel)
+    value = json.loads(payload.decode('utf-8'), object_pairs_hook=_unique,
+                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+    stopped(cancel)
+    return value
 
 
 class TranscriptionService:
@@ -543,11 +579,10 @@ class TranscriptionService:
     def _receipt(self, state, result, *, cancel=None):
         root = self._job_root(state['id'])
         path = local_path(root / result['receipt'], root=root, exists=True)
-        raw = read_file_bytes(path, cancel=cancel, maximum=32 * 1024**2)
-        if sha256(raw).hexdigest() != result['sha256']:
-            raise ValueError('The saved transcript receipt changed.')
-        receipt = json.loads(raw.decode('utf-8'))
-        if receipt.get('schema') != 'resonance-transcription-result/1' or receipt.get('source_id') != result['source_id']:
+        receipt = _verified_json(path, result['sha256'], cancel=cancel,
+                                 changed_message='The saved transcript receipt changed.')
+        if (not isinstance(receipt, dict) or receipt.get('schema') != 'resonance-transcription-result/1'
+                or receipt.get('source_id') != result['source_id']):
             raise ValueError('Invalid saved transcript receipt.')
         source = next((x for x in state['sources'] if x['id'] == result['source_id']), None)
         if source is None or receipt['provenance']['source_sha256'] != source['sha256']:
@@ -639,7 +674,10 @@ class TranscriptionService:
             return
         admitted = False
         for marker in self._checkpoints(cache_root, cancel=cancel):
-            checkpoint = read_json(marker)
+            marker_raw = read_file_bytes(marker, cancel=cancel, maximum=MAX_JSON_BYTES)
+            checkpoint = _decode_json(marker_raw, cancel=cancel)
+            if not isinstance(checkpoint, dict):
+                raise ValueError('The worker returned an invalid checkpoint.')
             identity = checkpoint.get('identity', {})
             source = sources.get(identity.get('source', {}).get('path'))
             if source is None or source['id'] in accepted:
@@ -669,7 +707,7 @@ class TranscriptionService:
             if ({'sha256': sha256(meta_raw).hexdigest(), 'size': len(meta_raw)} != checkpoint['meta']
                     or {'sha256': sha256(text_raw).hexdigest(), 'size': len(text_raw)} != checkpoint['text']):
                 raise ValueError('The worker checkpoint changed while reading its captured content.')
-            meta = json.loads(meta_raw.decode('utf-8'))
+            meta = _decode_json(meta_raw, cancel=cancel)
             stopped(cancel)
             result = validated_result(meta, text_raw.decode('utf-8'))
             stopped(cancel)
@@ -683,7 +721,7 @@ class TranscriptionService:
                           'worker_sha256': profile['worker_identity']['sha256'],
                           'python_sha256': profile['python_identity']['sha256'],
                           'runtime_identity_sha256': fingerprint(runtime),
-                          'worker_checkpoint_sha256': file_identity(marker, cancel=cancel, maximum=32 * 1024**2)['sha256'],
+                          'worker_checkpoint_sha256': sha256(marker_raw).hexdigest(),
                           'settings': state['settings'], 'effective_settings': effective,
                           'translation_target': 'en' if expected_settings['task'] == 'translate' else None,
                           'diarization': False}
@@ -718,12 +756,39 @@ class TranscriptionService:
                 state.update(status='interrupted', recovery_review_required=True)
                 self._save(state)
                 raise RuntimeError('The prior runner did not close; confirm its worker stopped before resuming.')
-            for result in state['results']:
-                self._receipt(state, result, cancel=cancel)
+            if state.get('recovery_review_required') and not state.get('restored') and state['status'] != 'complete':
+                raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
+
+            def action():
+                selected = self._control(identity)
+                if selected == 'run' and cancel is not None and cancel():
+                    atomic_json(job_root / 'control.json', {'action': 'cancel'}, replace=True)
+                    selected = 'cancel'
+                return selected
+
+            # Historical receipts are read before any worker or resource lease
+            # starts. A stop must interrupt their existing chunked hash reader.
+            try:
+                for result in state['results']:
+                    self._receipt(state, result, cancel=lambda: action() != 'run')
+                stopped(lambda: action() != 'run')
+            except InterruptedError:
+                selected = action()
+                if selected == 'run' or state['status'] == 'complete':
+                    # Do not return an unverified completed result or downgrade
+                    # its durable committed status because this read was stopped.
+                    raise
+                state['status'] = 'paused' if selected == 'pause' else 'cancelled'
+                state['error'] = 'Completed verified files are retained; resume restarts only unfinished sources.'
+                self._save(state)
+                if progress:
+                    progress({'phase': 'Transcript job ' + state['status'],
+                              'status': state['status'], 'done': state['done'],
+                              'total': state['total'], 'current': state.get('current', ''),
+                              'indeterminate': False})
+                return state
             if state['status'] == 'complete':
                 return state
-            if state.get('recovery_review_required') and not state.get('restored'):
-                raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
             profile = self._profile(state['profile_id'])
             previous_results = list(state['results'])
             if state.get('worker_cache_rejected'):
@@ -748,13 +813,6 @@ class TranscriptionService:
                 if progress and key != last_report:
                     progress(event)
                     last_report = key
-
-            def action():
-                selected = self._control(identity)
-                if selected == 'run' and cancel is not None and cancel():
-                    atomic_json(job_root / 'control.json', {'action': 'cancel'}, replace=True)
-                    selected = 'cancel'
-                return selected
 
             def poll():
                 nonlocal stop_started, last_admit
@@ -906,6 +964,24 @@ class TranscriptionService:
             report('Transcript job ' + state['status'], terminal=True)
             return state
 
+    def _read_edit(self, state, source_id, *, cancel=None):
+        stopped(cancel)
+        record = state.get('edits', {}).get(source_id)
+        if record is None:
+            raise FileNotFoundError('No edited reading copy exists for this transcript.')
+        root = self._job_root(state['id'])
+        path = local_path(root / record['path'], root=root, exists=True)
+        # Old edit records have a digest but no size. Bound the read by
+        # the actual stat and the existing JSON budget, then decode only
+        # the very bytes that matched the saved digest.
+        value = _verified_json(path, record['sha256'], cancel=cancel)
+        if (not isinstance(value, dict) or value.get('id') != record['id']
+                or value.get('source_id') != source_id or value.get('edited') is not True
+                or not isinstance(value.get('text'), str) or not isinstance(value.get('provenance'), dict)):
+            raise ValueError('Invalid saved edited reading copy.')
+        stopped(cancel)
+        return value
+
     def read_transcript(self, identity, source_id=None, *, edited=False, cancel=None):
         stopped(cancel)
         state = self._load(identity)
@@ -920,14 +996,7 @@ class TranscriptionService:
         self._verify_source(state, source, cancel=cancel)
         receipt = self._receipt(state, result, cancel=cancel)
         if edited:
-            record = state.get('edits', {}).get(source_id)
-            if record is None:
-                raise FileNotFoundError('No edited reading copy exists for this transcript.')
-            path = local_path(self._job_root(identity) / record['path'], root=self._job_root(identity), exists=True)
-            raw = read_file_bytes(path, cancel=cancel, maximum=MAX_RESULT_BYTES)
-            if sha256(raw).hexdigest() != record['sha256']:
-                raise ValueError('The saved edited reading copy changed.')
-            return json.loads(raw.decode('utf-8'))
+            return self._read_edit(state, source_id, cancel=cancel)
         return {'text': receipt['result']['text'], 'source_id': source_id, 'edited': False,
                 'provenance': receipt['provenance'], 'segments': receipt['result']['segments'],
                 'language': receipt['result']['language'], 'duration': receipt['result']['duration']}
@@ -963,16 +1032,18 @@ class TranscriptionService:
         files, warnings = [], []
         for result in state['results']:
             stopped(cancel)
-            receipt = self._receipt(state, result)
+            receipt = self._receipt(state, result, cancel=cancel)
             source = next(source for source in state['sources'] if source['id'] == result['source_id'])
             self._verify_source(state, source, cancel=cancel)
             for name in selected:
                 if name not in receipt['files']:
                     raise ValueError('This format was not requested for the job; create a reviewed export plan first.')
                 record = receipt['files'][name]
-                path = self._job_root(identity) / record['path']
+                root = self._job_root(identity)
+                path = local_path(root / record['path'], root=root, exists=True)
+                payload = _export_payload(path, record, cancel=cancel)
                 target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}.{name}"
-                published = write_binary_export(target, path.read_bytes(), private_root=self.library_root,
+                published = write_binary_export(target, payload, private_root=self.library_root,
                                                 cancelled=cancel or (lambda: False), require_absent=True)
                 if _published_identity(published.path) != {'sha256': record['sha256'], 'size': record['size']}:
                     raise OSError('An exported transcript failed byte verification.')
@@ -981,7 +1052,7 @@ class TranscriptionService:
                 if published.cleanup_warning:
                     warnings.append(published.cleanup_warning)
             if include_edits and result['source_id'] in state.get('edits', {}):
-                edited = self.read_transcript(identity, result['source_id'], edited=True)
+                edited = self._read_edit(state, result['source_id'], cancel=cancel)
                 payload = edited['text'].encode('utf-8')
                 target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}-edited.txt"
                 saved = write_binary_export(target, payload, private_root=self.library_root,
