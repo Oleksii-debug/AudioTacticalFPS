@@ -10,6 +10,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic,sleep
 import traceback
+import wave
 
 
 def main():
@@ -22,18 +23,33 @@ def main():
     audio=activate_bundled_audio_runtime()
     import wx
     from carr_library.application import LibraryApp
-    from carr_library.audio.director import ProductionDirector
     from carr_library.audio.render import probe_audio
     from carr_library.ui.audio_studio import StudioController,StudioDialog,prepare_reading_studio
     from carr_library.reader.reading_desk import ReadingDesk
     from carr_library.ui.desktop_app import DesktopFrame
     from carr_library.ui.local_assistant import AssistantDialog
     errors,checks=[],[]
-    gui=wx.App(False)
+    native_generate={}
+    class ProbeApp(wx.App):
+        def OnExceptionInMainLoop(self):
+            errors.append(traceback.format_exc())
+            return True
+    gui=ProbeApp(False)
+    original_dialogs={name:getattr(wx,name) for name in
+                      ('DirDialog','FileDialog','MessageDialog','TextEntryDialog',
+                       'SingleChoiceDialog','MessageBox')}
+    def unexpected_dialog(*args,**kwargs):
+        message='Unexpected modal dialog in unattended native acceptance.'
+        errors.append(message)
+        raise AssertionError(message)
+    for name in original_dialogs:
+        setattr(wx,name,unexpected_dialog)
 
-    def pump(predicate,timeout=90):
+    def pump(predicate,timeout=90,check_errors=True):
         deadline=monotonic()+timeout
         while not predicate():
+            if check_errors and errors:
+                raise AssertionError('\n'.join(errors))
             if monotonic()>deadline:
                 raise TimeoutError('The native workflow did not finish before its deadline.')
             gui.Yield()
@@ -48,7 +64,7 @@ def main():
                 errors.append(traceback.format_exc())
                 form.cancelled.set()
                 try:
-                    pump(lambda:not form.busy,20)
+                    pump(lambda:not form.busy,20,check_errors=False)
                 except Exception:
                     pass
                 form.dirty=False
@@ -98,18 +114,88 @@ def main():
                         form.pan.SetSelection(index if index<2 else 2)
                         form.apply_voice()
                     assert len(controller.project.roles)==3
-                    director=ProductionDirector(library.root,registry=controller.registry)
-                    form.start(lambda:director.render(controller.project.id,root/'actual output',
-                        cancelled=form.cancelled.is_set,progress=form.progress))
-                    assert form.busy and not form.script.IsEnabled() and form.stop.IsEnabled()
-                    pump(lambda:not form.busy)
-                    assert form.result and form.result['state']=='complete',form.status.GetValue()
-                    assert probe_audio(form.result['master']).duration_seconds>1
-                    assert form.script.GetValue()==script and controller.store.load(controller.project.id).script_sha256==expected
-                    assert (Path(form.result['output_dir'])/'narration.srt').is_file()
-                    assert form.script.IsEnabled() and not form.stop.IsEnabled()
+                    saved_project=controller.store.load(controller.project.id).to_dict()
+                    output_parent=root/'chosen native output'
+                    output_parent.mkdir()
+                    choices=[]
+                    decisions=iter((wx.ID_OK,wx.ID_CANCEL))
+
+                    class SelectedDirectory(original_dialogs['DirDialog']):
+                        """Supply only the chooser decision; production stays real."""
+                        def __init__(self,parent,message,*args,**kwargs):
+                            assert parent is form.dialog
+                            assert message=='Choose the parent folder for a new audio output folder'
+                            super().__init__(parent,message,*args,**kwargs)
+                            self.SetPath(str(output_parent))
+                            assert Path(self.GetPath()).samefile(output_parent)
+
+                        def ShowModal(self):
+                            decision=next(decisions)
+                            choices.append(decision)
+                            return decision
+
+                    wx.DirDialog=SelectedDirectory
+                    try:
+                        generate=next(button for button in form.buttons
+                                      if button.GetLabel().replace('&','')=='Generate audio')
+                        assert generate.AcceptsFocusFromKeyboard()
+                        assert not list(output_parent.iterdir()) and form.result is None
+                        event=wx.CommandEvent(wx.EVT_BUTTON.typeId,generate.GetId())
+                        event.SetEventObject(generate)
+                        assert generate.GetEventHandler().ProcessEvent(event)
+                        assert choices==[wx.ID_OK]
+                        assert form.busy and not form.script.IsEnabled() and form.stop.IsEnabled()
+                        pump(lambda:not form.busy)
+                        assert form.result and form.result['state']=='complete',form.status.GetValue()
+                        master=Path(form.result['master'])
+                        output=Path(form.result['output_dir'])
+                        assert output.parent.samefile(output_parent) and master.parent.samefile(output)
+                        assert len(list(output_parent.iterdir()))==1
+                        info=probe_audio(master)
+                        assert info.duration_seconds>1 and info.frames>0
+                        with wave.open(str(master),'rb') as pcm:
+                            assert pcm.getcomptype()=='NONE' and pcm.getsampwidth()==2
+                            assert pcm.getnframes()==info.frames
+                            assert pcm.getframerate()==info.sample_rate
+                            assert pcm.getnchannels()==info.channels
+                            nonzero=False
+                            read_frames=0
+                            while block:=pcm.readframes(8192):
+                                nonzero=nonzero or any(block)
+                                read_frames+=len(block)//(pcm.getsampwidth()*pcm.getnchannels())
+                        assert nonzero and read_frames==info.frames
+                        assert form.status.GetValue().startswith('Audio completed.')
+                        assert form.status.GetName() and form.status.AcceptsFocusFromKeyboard()
+                        pump(lambda:wx.Window.FindFocus()==form.status,timeout=5)
+                        assert form.script.IsEnabled() and not form.stop.IsEnabled()
+                        assert (output/'narration.srt').is_file()
+                        assert form.script.GetValue()==script
+                        assert controller.store.load(controller.project.id).to_dict()==saved_project
+
+                        # Ctrl+Enter reaches the same real Generate handler. Cancel
+                        # its chooser without starting a second production.
+                        completed=form.result
+                        before_output=tuple(sorted(path.name for path in output_parent.iterdir()))
+                        event=wx.CommandEvent(wx.EVT_MENU.typeId,int(form._ids[1]))
+                        event.SetEventObject(form.dialog)
+                        assert form.dialog.GetEventHandler().ProcessEvent(event)
+                        assert choices==[wx.ID_OK,wx.ID_CANCEL]
+                        assert not form.busy and form.result is completed
+                        assert tuple(sorted(path.name for path in output_parent.iterdir()))==before_output
+                        assert controller.store.load(controller.project.id).to_dict()==saved_project
+                        assert not errors
+                        native_generate.update(status='PASS',button_event='PASS',
+                            accelerator_cancel='PASS',selected_output_parent='PASS',
+                            frames=info.frames,sample_rate=info.sample_rate,channels=info.channels,
+                            duration_seconds=info.duration_seconds,nonzero_pcm=True,
+                            completed_accessible_status=True,source_unchanged=True,
+                            unexpected_dialog_or_callback_errors=0)
+                    finally:
+                        wx.DirDialog=unexpected_dialog
                     checks.extend(['named native studio controls','unsaved draft recovery','Ctrl+S handler saves a revision',
-                                   'three native voice assignments','background speech and music production',
+                                   'three native voice assignments','Generate button dispatches actual production',
+                                   'Ctrl+Enter chooser cancellation','completed named status receives focus',
+                                   'background speech and music production',
                                    'actual chapter/subtitle/stem files','original script unchanged'])
                 modal(StudioDialog(frame,controller),studio)
 
@@ -148,10 +234,12 @@ def main():
             finally:
                 frame.Close()
                 gui.Yield()
-        print(json.dumps({'status':'PASS','checks':checks,'nvda':'NOT_RUN',
+        print(json.dumps({'status':'PASS','checks':checks,'native_generate':native_generate,'nvda':'NOT_RUN',
                           'audible_playback':'NOT_CLAIMED','external_services':'NOT_USED'},ensure_ascii=False))
         return 0
     finally:
+        for name,implementation in original_dialogs.items():
+            setattr(wx,name,implementation)
         if audio is not None:
             audio.close()
         if native is not None:
