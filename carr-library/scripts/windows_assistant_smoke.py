@@ -241,7 +241,12 @@ def main():
     from carr_library.native_runtime import activate_bundled_runtime
     from carr_library.audio_runtime import activate_bundled_audio_runtime
     native_handle = activate_bundled_runtime(bundle_root=bundle)
-    assert native_handle is not None and activate_bundled_audio_runtime(bundle_root=bundle)
+    assert native_handle is not None
+    audio_tools = activate_bundled_audio_runtime(bundle_root=bundle)
+    if manifest.get('bundled_audio_runtime', False):
+        assert audio_tools
+    else:
+        assert audio_tools is None
     import wx
     source = Path(__file__).resolve().parents[1] / 'src' / 'carr_library'
     hashes = {}
@@ -258,6 +263,7 @@ def main():
             raise ValueError('Acceptance source changed during execution.')
     result.update(status='PASS', windows_execution='PASS', installed_modules='PASS',
                   source_commit=manifest['source_commit'], source_tree=manifest['source_tree'],
+                  bundled_audio_runtime=bool(audio_tools),
                   source_hashes=hashes, manual_nvda='NOT_RUN', paid_api='NOT_RUN')
     print(json.dumps(result, ensure_ascii=False, allow_nan=False))
     return 0
