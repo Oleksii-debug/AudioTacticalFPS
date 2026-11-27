@@ -49,3 +49,17 @@ A narrow source review of the still-unexecuted final full-bundle step found two 
 The candidate changes only `.github/workflows/carr-windows.yml`; exact inverse reconstruction verifies that all other workflow bytes are unchanged. The composed follow-up also appends this evidence note. Application and test source, dependency locks, production profiles, suite selections, installed-origin checks, numeric-loopback restrictions, firewall boundaries and time limits are unchanged.
 
 At preparation of this follow-up, its full installed/native bundle and standard-setup execution remain NOT_RUN. Require the complete MAIN run on the composed follow-up source. The already completed exact 78b Fast results retain their actual source and artifact identities.
+
+## Trust idle-renewal observation fixture
+
+The automatic [4b Trust Windows run 46061873348 / job 140717824702](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46061873348/job/140717824702) recorded 216 PASS, 1 FAIL and no skips in its 11 required source suites. The only failure was `tests/security/test_idle_renewal.py::test_actual_idle_host_renews_without_clicks_and_stays_off_until_explicit_opt_in`: the direct read for sequence 3 encountered the valid nonblocking `.trust.lock` held by the next periodic host tick. The native vault/UI steps did not run. The Linux source lane independently passed all 217 cases.
+
+Failure artifact: [15229660527](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46061873348/artifacts/15229660527), 9,543 bytes, SHA-256 `239bdade6ff3b4d591523cd8235550b46426ca165546b8b4260c2b76364ab799`.
+
+`RefreshWorker.running` is a point-in-time observation. The still-active host checks every 20 ms and may acquire the lock for `store.current()` after the preceding worker observation. The store's existing context-managed release remains intact; this failure does not establish a leaked lock.
+
+Reviewed candidate `823216ec0463fb12cfb5c2c5d46ad6a22678e490`, based on exact 4b, changes only this test. A small snapshot observer uses the existing two-second `wait_until`, checks the worker state, and retries only `BusyError`. It returns the first successfully read grant; it does not wait for a desired sequence. The direct sequence 2/3 and exactly-two-request assertions remain, as do disabled-by-default operation, explicit idle opt-in, background-thread identity, no additional UI action, live cadence and shutdown assertions. Other errors propagate.
+
+At preparation this fixture correction is NOT_RUN and requires actual new Trust source execution on both operating systems, plus the Windows vault/native steps. Application code, locks, the host/worker lifecycle, build inputs and all workflows remain unchanged.
+
+The MAIN workflow has no security-test selector and its reviewed full source log contains no idle-renewal fixture. The selected complete 4b MAIN execution therefore retains its unchanged product, build, workflow and selected test inputs. Its eventual result must remain labeled 4b; the corrected Trust result must identify its own actual source. No later head is credited with an unexecuted whole-package PASS.
