@@ -136,7 +136,6 @@ def show_transcription(frame):
         if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
             report('Спочатку завершіть поточну операцію програми.')
             return
-        task = None
         busy = True
         cancel.clear()
         controls()
@@ -151,20 +150,14 @@ def show_transcription(frame):
                     report(exc)
         def failed(error):
             nonlocal busy
-            from ..transcription_host import fail_progress
-            fail_progress(task, error)
             busy = False
             controls()
             report(error)
-        from ..progress import ProgressHub
-        from ..transcription_host import observe_operation
-        hub = getattr(frame, 'progress_hub', None)
-        if hub is None:
-            frame.progress_hub = hub = ProgressHub()
-        task = hub.start(label, unit='files')
+        # The desktop runner binds one shared reporter. The service's existing
+        # current_progress callback updates it; this dialog creates no second task.
         try:
-            accepted = frame.run_job(label, lambda: observe_operation(task, operation),
-                                     done=done, failed=failed)
+            accepted = frame.run_job(label, operation, done=done, failed=failed,
+                                     progress_unit='files')
         except Exception as error:
             failed(error)
             return False

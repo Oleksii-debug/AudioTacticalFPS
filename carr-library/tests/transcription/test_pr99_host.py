@@ -294,50 +294,78 @@ def callbacks(frame, controls, cancel, report):
     return namespace['callbacks'](frame, controls, cancel, report)
 
 
+def _current_progress_host():
+    # Load only the shared test boundary. Its job methods are AST-extracted from
+    # the actually imported source/installed host, not copied implementation.
+    path = Path(__file__).parents[1] / 'ui' / 'test_progress_view.py'
+    spec = importlib.util.spec_from_file_location('asr_current_progress_host', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 @pytest.mark.parametrize('failure_mode', ['failed-callback', 'raised'])
-def test_native_submission_failure_closes_progress_and_preserves_error(failure_mode):
+def test_native_submission_failure_closes_progress_and_preserves_error(failure_mode, monkeypatch):
     from threading import Event
-    from types import SimpleNamespace
     from unittest.mock import Mock
+    helper = _current_progress_host()
+    frame, callbacks = helper._host_frame()
     error = RuntimeError('Synthetic executor submission failure.')
     operation, completed, report, controls = Mock(), Mock(), Mock(), Mock()
-    def run_job(label, task, done, failed):
-        if failure_mode == 'raised':
-            raise error
-        failed(error)
-        return None  # Exact current DesktopFrame contract, not False.
-    frame = SimpleNamespace(working=False, _closing=False, run_job=run_job)
-    begin, is_busy = _transcription_native_callbacks(frame, controls, Event(), report)
-    assert begin('Transcription', operation, completed) is False
-    assert is_busy() is False
-    event, = frame.progress_hub.snapshot()
-    assert event.state == 'failed' and event.terminal
-    report.assert_called_once_with(error)
-    operation.assert_not_called()
-    completed.assert_not_called()
+    def rejected(*args, **kwargs):
+        raise error
+    if failure_mode == 'raised':
+        monkeypatch.setattr(frame, 'run_job', rejected)  # Rejected before host admission.
+    else:
+        monkeypatch.setattr(frame.executor, 'submit', rejected)  # Actual host callback/None contract.
+    try:
+        begin, is_busy = _transcription_native_callbacks(frame, controls, Event(), report)
+        assert begin('Transcription', operation, completed) is False
+        assert is_busy() is False
+        hub = getattr(frame, 'progress_hub', None)
+        events = hub.snapshot() if hub is not None else ()
+        assert len(events) == (1 if failure_mode == 'failed-callback' else 0)
+        assert all(event.state == 'failed' and event.terminal for event in events)
+        report.assert_called_once_with(error)
+        operation.assert_not_called()
+        completed.assert_not_called()
+        assert not callbacks
+    finally:
+        frame.executor.shutdown(wait=True, cancel_futures=True)
 
 
 def test_late_native_failed_callback_preserves_verified_actual_result(prepared):
     from threading import Event
-    from types import SimpleNamespace
     from unittest.mock import Mock
     from carr_library.progress import current_progress
-    from carr_library.transcription_host import require_completed
+    from carr_library.transcription_host import require_completed, report_progress
     service, original = prepared[2:4]
     identity = service.submit([original])
     error = RuntimeError('Synthetic detached UI callback after committed output.')
     completed, report = Mock(), Mock()
-    def run_job(label, operation, done, failed):
-        result = operation()
-        done(result)
-        failed(error)
-        return None
-    frame = SimpleNamespace(working=False, _closing=False, run_job=run_job)
-    begin, is_busy = _transcription_native_callbacks(frame, Mock(), Event(), report)
-    begin('Transcription', lambda: require_completed(service.run(identity, timeout=30)), completed)
-    assert is_busy() is False and current_progress() is None
-    event, = frame.progress_hub.snapshot()
-    assert event.state == 'complete' and event.verified
-    assert service.verify(identity)['status'] == 'completed'
-    completed.assert_called_once_with(service.get(identity))
-    report.assert_called_once_with(error)
+    helper = _current_progress_host()
+    frame, callbacks = helper._host_frame()
+    original_runner = frame.run_job
+    late = []
+    def run_job(label, operation, done, failed, **kwargs):
+        late.append(failed)
+        return original_runner(label, operation, done, failed, **kwargs)
+    frame.run_job = run_job
+    def operation():
+        reporter = current_progress()
+        assert reporter is not None
+        return require_completed(service.run(identity, timeout=30,
+            progress=lambda done, total, phase: report_progress(reporter, done, total, phase)))
+    try:
+        begin, is_busy = _transcription_native_callbacks(frame, Mock(), Event(), report)
+        begin('Transcription', operation, completed)
+        helper._drain(frame, callbacks)
+        late[0](error)
+        assert is_busy() is False and current_progress() is None
+        event, = frame.progress_hub.snapshot()  # One actual operation, no ASR-owned duplicate.
+        assert event.state == 'complete' and event.verified and event.unit == 'files'
+        assert service.verify(identity)['status'] == 'completed'
+        completed.assert_called_once_with(service.get(identity))
+        report.assert_called_once_with(error)
+    finally:
+        frame.executor.shutdown(wait=True, cancel_futures=True)
