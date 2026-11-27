@@ -153,6 +153,24 @@ jobs:
             $env:CARR_OCR_DIR = $previousOcr
           }
 
+      - name: Require Windows OCR script models and reviewed publication boundaries early
+        timeout-minutes: 4
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+            & $env:CARR_PYTHON scripts/ci_check.py tests/extract/test_ocr_languages.py tests/extract/test_ocr_runtime.py tests/e2e/test_pdf_review_cancellation.py tests/packaging/test_delivery_archive.py 2>&1 | Tee-Object 'ci-results/windows-regression-boundaries.txt'
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
+          }
+
       - name: Prepare the sealed local FFmpeg runtime before audio regressions
         timeout-minutes: 8
         run: |
@@ -188,6 +206,7 @@ jobs:
             'tests/ui/test_audio_playback_controls.py',
             'tests/audio/test_audio_boundaries.py',
             'tests/audio/test_audio_signal_measurements.py',
+            'tests/audio/test_extended_effects.py',
             'tests/audio/test_narration_plan.py',
             'tests/audio/test_windows_fsync.py',
             'tests/e2e/test_provider_transport_contract.py',
@@ -354,6 +373,11 @@ jobs:
             'tests/ingest/test_terminal_replay_registration.py',
             'tests/reader/test_narration.py',
             'tests/ui/test_narration_editor.py',
+            'tests/ui/test_save_all.py',
+            'tests/ui/test_save_all_current_drafts.py',
+            'tests/ui/test_shared_progress.py',
+            'tests/ui/test_operation_progress.py',
+            'tests/e2e/test_import_progress.py',
             'tests/ui/test_productivity.py',
             'tests/storage/test_backup_reading_state.py',
             'tests/storage/test_backup_source_binding_review.py',
@@ -372,6 +396,7 @@ jobs:
             'tests/packaging/test_delivery_archive.py',
             'tests/audio/test_audio_backup.py',
             'tests/storage/test_backup_unified_audio.py',
+            'tests/storage/test_backup_content_revalidation.py',
             'tests/citations/test_csl_contexts.py',
             'tests/ui/test_citation_styles_jobs.py',
             'tests/reader/test_export_no_clobber.py',
@@ -400,7 +425,7 @@ jobs:
             'tests/storage/test_transcription_backup.py',
             'tests/transcription/test_v5_worker_profile.py',
             'tests/ui/test_progress_view.py',
-            'tests/ui/test_shared_progress.py'
+            'tests/e2e/test_import_worker_publication.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -642,6 +667,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B tests/audio/native_playback_probe.py 2>&1 | Tee-Object 'ci-results/full-bundle-native-playback.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B tests/ui/native_save_all_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-save-all.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_audio_effects_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-audio-effects.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_progress_smoke.py --native 2>&1 | Tee-Object 'ci-results/full-bundle-native-progress.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Remove-Item Env:CARR_FFMPEG -ErrorAction SilentlyContinue
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; from carr_library.audio.runtime import resolve_ffmpeg; from pathlib import Path; assert resolve_ffmpeg().samefile(Path(sys.prefix).parent/'audio-runtime/ffmpeg.exe'); runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_audio_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-audio-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -675,7 +706,7 @@ jobs:
           # the same native-runtime and outbound-firewall acceptance boundary.
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_shared_progress_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-progress-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B -c "import json,pathlib,sys; from collections import Counter; lines=pathlib.Path('ci-results/full-bundle-progress-native.txt').read_text(encoding='utf-8').splitlines(); starts=[i for i,line in enumerate(lines) if line.startswith('{')]; assert starts; report=json.loads('\n'.join(lines[starts[-1]:])); required=['installed exact source: carr_library.progress','installed exact source: carr_library.progress_audio','installed exact source: carr_library.ui.progress_view','installed exact source: carr_library.ui.desktop_app','current desktop opens','same shared hub and named native gauge','notification default is Off without an audio thread','actual background operation starts with one reporter','cancel control receives native focus','actual measured progress displays 25 percent','timed update 1 preserves focus','cancel control receives native focus','actual measured progress displays 50 percent','timed update 2 preserves focus','UIA observer completes while GUI stays responsive','native UIA exposes named read-only progress range and 50 percent','OS injects configured query shortcut','busy-time semantic query focuses current progress','OS injects configured mute shortcut','busy-time mute persists without stopping work','cancel control receives native focus','actual measured progress displays 75 percent','timed update 3 preserves focus','cancel control receives native focus','actual measured progress displays 99 percent','timed update 4 preserves focus','99 does not claim publication','verified publication reaches native 100','UIA observer completes while GUI stays responsive','UIA confirms 100 only after committed success','unknown work is visibly indeterminate','cancel focus is ready','OS injects cancel button Space','cancelled work stays distinct from completion','real output commits before late cancellation','late cancel focus is ready','OS injects late cancellation request','late cancellation reaches the current operation','accepted committed result survives late request','native settings controls expose accessible names','native settings save exact preferences','default-off probe never starts notification audio','native destruction closes progress lifecycle']; assert report['status']=='PASS' and Counter(report['checks'])==Counter(required) and report['actual_native_keys'] is True and report['native_UIA_range'] is True and report['nvda']=='NOT_RUN' and report['audio_listening']=='NOT_RUN'; manifest=json.loads((pathlib.Path(sys.argv[1])/'bundle-manifest.json').read_text(encoding='utf-8')); assert manifest['source_commit']==sys.argv[2]; report.update(source_commit=sys.argv[2],source_tree=sys.argv[3],installed_package=True); print(json.dumps(report,sort_keys=True))" $bundle $sourceCommit $sourceTree | Tee-Object 'ci-results/full-bundle-progress-proof.json'
+          & $installedPython -I -B -c "import json,pathlib,sys; from collections import Counter; lines=pathlib.Path('ci-results/full-bundle-progress-native.txt').read_text(encoding='utf-8').splitlines(); starts=[i for i,line in enumerate(lines) if line.startswith('{')]; assert starts; report=json.loads('\n'.join(lines[starts[-1]:])); required=['installed exact source: carr_library.progress','installed exact source: carr_library.progress_audio','installed exact source: carr_library.ui.progress_view','installed exact source: carr_library.ui.operation_progress','installed exact source: carr_library.ui.desktop_app','current desktop opens','same shared hub and named native gauge','notification default is Off without an audio thread','actual background operation starts with one reporter','cancel control receives native focus','actual measured progress displays 25 percent','timed update 1 preserves focus','cancel control receives native focus','actual measured progress displays 50 percent','timed update 2 preserves focus','UIA observer completes while GUI stays responsive','native UIA exposes named read-only progress range and 50 percent','OS injects configured query shortcut','busy-time semantic query focuses current progress','OS injects configured mute shortcut','busy-time mute persists without stopping work','cancel control receives native focus','actual measured progress displays 75 percent','timed update 3 preserves focus','cancel control receives native focus','actual measured progress displays 99 percent','timed update 4 preserves focus','99 does not claim publication','verified publication reaches native 100','UIA observer completes while GUI stays responsive','UIA confirms 100 only after committed success','unknown work is visibly indeterminate','cancel focus is ready','OS injects cancel button Space','cancelled work stays distinct from completion','real output commits before late cancellation','late cancel focus is ready','OS injects late cancellation request','late cancellation reaches the current operation','accepted committed result survives late request','native settings controls expose accessible names','native settings save exact preferences','default-off probe never starts notification audio','native destruction closes progress lifecycle']; assert report['status']=='PASS' and Counter(report['checks'])==Counter(required) and report['actual_native_keys'] is True and report['native_UIA_range'] is True and report['nvda']=='NOT_RUN' and report['audio_listening']=='NOT_RUN'; manifest=json.loads((pathlib.Path(sys.argv[1])/'bundle-manifest.json').read_text(encoding='utf-8')); assert manifest['source_commit']==sys.argv[2]; report.update(source_commit=sys.argv[2],source_tree=sys.argv[3],installed_package=True); print(json.dumps(report,sort_keys=True))" $bundle $sourceCommit $sourceTree | Tee-Object 'ci-results/full-bundle-progress-proof.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
@@ -700,13 +731,13 @@ jobs:
           import carr_library.transcription, carr_library.transcription_host
           import carr_library.transcription_backup, carr_library.transcription_cli
           import carr_library.durable_state, carr_library.ui.transcription_dialog
-          import carr_library.progress, carr_library.progress_audio, carr_library.ui.progress_view
+          import carr_library.progress, carr_library.progress_audio, carr_library.ui.progress_view, carr_library.ui.operation_progress
           for component in (carr_library.acquisition.service, carr_library.acquisition.transport,
                             carr_library.acquisition.providers, carr_library.ui.acquisition_dialog,
                             carr_library.transcription, carr_library.transcription_host,
                             carr_library.transcription_backup, carr_library.transcription_cli,
                             carr_library.durable_state, carr_library.ui.transcription_dialog,
-                            carr_library.progress, carr_library.progress_audio, carr_library.ui.progress_view):
+                            carr_library.progress, carr_library.progress_audio, carr_library.ui.progress_view, carr_library.ui.operation_progress):
               assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
@@ -784,7 +815,14 @@ jobs:
               'tests/ingest/test_batch_scan.py',
               'tests/audio/test_playback.py',
               'tests/audio/test_player.py',
-              'tests/ui/test_audio_playback_controls.py']
+              'tests/ui/test_audio_playback_controls.py',
+              'tests/audio/test_extended_effects.py',
+              'tests/ui/test_save_all.py',
+              'tests/ui/test_save_all_current_drafts.py',
+              'tests/ui/test_operation_progress.py',
+              'tests/e2e/test_import_progress.py',
+              'tests/storage/test_backup_content_revalidation.py',
+              'tests/e2e/test_import_worker_publication.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
@@ -903,7 +941,7 @@ jobs:
       - name: Require contextual commands and recovery regressions
         id: keyboard-regressions
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_save_all.py tests/ui/test_save_all_current_drafts.py tests/ui/test_desktop_evidence_jobs.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise actual native Main keyboard settings and command dispatch
@@ -925,6 +963,19 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native Save All and completion-aware close
+        if: ${{ !cancelled() && steps.keyboard-regressions.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_save_all_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-save-all.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise measured native progress and accessible status queries
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_progress_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve actual keyboard and recovery evidence

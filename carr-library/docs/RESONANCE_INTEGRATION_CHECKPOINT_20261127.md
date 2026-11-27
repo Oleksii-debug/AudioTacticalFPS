@@ -1,4 +1,84 @@
-# Verified integration checkpoint — 27 November 2026
+# Resonance integration checkpoint — 27 November 2026
+
+## Current composition and evidence boundaries
+
+This continuation reconciles the owner branch through
+`2f011f8999eed0ecb2fdbfe987b3364c832b4f85` with the supplied-worker profiles,
+passive backup validation, request-bound import publication recovery and the
+single shared native progress controller. Component source review is complete;
+the composed Windows and installed-bundle gates must run against the published
+head. Historical results below are not transferred to that new head.
+
+The selected implementation includes:
+
+- Explicit `receipts-v1` and `whisper-v5-manifest-v1` profiles through the current
+  transcription service, isolated process host, immutable receipts, edit
+  revisions and bounded file/folder intake.
+- Typed passive backup validation for both profiles, including saved partial
+  edits after resume/Stop, without reading or executing external models.
+- One native `OperationProgress` controller and notification worker. The
+  `progress_view` compatibility name aliases that same object and the shared
+  hub remains stable when the library root changes.
+- Actual worker/Future results determine completion. Late Stop and presentation
+  failures cannot undo or hide a committed result in Desktop or Audio Studio.
+- Existing completion-aware Save All, extended Studio effects and captured
+  export approvals. The transcript editor's Save All participation is tracked
+  separately until its final composition and tests are recorded.
+- Import recovery requires an immutable database publication receipt bound to
+  the exact request and attempt. A newer watermark from another import is not
+  sufficient. Database schema V5 is distinct from retained backup formats 1–5.
+- Native snapshot confirmation retains real owned-window/UIA/receipt checks
+  through the successor password dialog; OCR keeps strict model identifiers
+  while accepting the native Windows report's script separators.
+- Isolated test replays load the exact trusted sibling watchdog. The separate
+  bibliography workflow uses its existing two-worker runner within unchanged
+  deadlines.
+
+The final workflow preserves the preceding selectors and currently requires
+227 unique source suites, 79 installed contents selectors plus the original
+14 positional installed suites, the original native gates, the 12-check
+transcription protocol probe and the 44-check shared-progress probe. These
+are required gates, not counts of completed acceptance tests.
+
+## Exact preceding CBA Windows result
+
+Source head `cba0b1404a817c05a59f7b5eef8deb000491a87f`, tree
+`1dd59df44c4c3c915e0b2003e43a3d030e34dd47`. The main run's generated merge
+commit `f65fec60812fc21e57fdcc46c393f5a60676c593` has the same exact tree.
+
+| Workflow | Observed result | Consequence |
+| --- | --- | --- |
+| Main, run 45931122504 | 214 of 217 strict source suites passed; 5,341 passing and four failing cases, no skips in that selection | Copied watchdog fixture, explicit PATH OCR fixture isolation and portable orientation fixture require the corrected run; downstream installed gates did not run |
+| Keyboard/recovery, same run | 231 source cases passed; installed native Main 35, Reader 23 and draft 14 checks passed | Evidence applies to the CBA tree |
+| Audio, run 45931122529 | 609 passing cases, one failed case, two fixture errors and seven explicitly skipped cases; job later cancelled at its deadline | Oversized parametrized test IDs and the same-size mutation check require correction; installed replay did not run |
+| Bibliography, run 45931122516 | 23 completed suites / 959 passing cases and 108 native citation checks, then the unchanged aggregate step deadline | Entire job did not pass; the bounded two-worker continuation requires its own result |
+| Snapshot, run 45931122513 | 284 source cases passed; isolated installed replay failed to load its sibling watchdog | Native confirmation acceptance did not run |
+
+The CBA audio job also completed the real native Studio/SAPI/FFmpeg/vault
+16-check probe, all 15 process-ownership cases, and 1/3/10-hour synthetic PCM
+processing. The physical player reported UNAVAILABLE because the runner had no
+output device; this is not listening or audible playback acceptance.
+
+## Remaining implementation and qualification
+
+The current source does not implement microphone capture/retakes/live
+monitoring, live Word field insertion/editing, or the complete signed
+end-user installer, repair, uninstall, update and entitlement lifecycle.
+Those are implementation gaps and must not be relabeled as completed or merely
+manual tests. Signing certificates, authorized distribution/service inputs
+and owner runtime/model rights are separate required inputs.
+
+Actual private ASR and local model inference, owner-engine compatibility,
+language and long-form quality, physical listening, and manual Windows/NVDA
+acceptance remain separate qualification work. Public synthetic workers prove
+protocol/recovery behavior and do not qualify neural recognition or voices.
+No final installer or complete V3 release is claimed.
+
+## Historical owner checkpoint
+
+The following record was retained from the owner composition. Its earlier
+component counts overlap; they must not be added to the current counts or used
+as acceptance of a different source tree.
 
 This checkpoint composes the already reviewed source changes on top of
 `587559f403b0c7a164b7e496bcd6975506bbe881`. It is not a final installer

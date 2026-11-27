@@ -48,8 +48,10 @@ links, changed inputs and exceeded limits before publishing a job.
   the actual executor operation. The transcription dialog updates that same
   reporter through `current_progress`; it creates no second task. Context is
   restored on every exit.
-- The native progress view observes the existing `ProgressHub` and uses
-  `NotificationWorker`. Measured worker counts remain distinct from verified
+- The sole native controller, `OperationProgress`, observes the existing
+  `ProgressHub` and uses one `NotificationWorker`. `frame.progress_view` is an
+  alias of that same controller. The hub survives a library-root change so
+  active media suppression remains valid. Measured worker counts remain distinct from verified
   receipt counts. Unmeasured work stays indeterminate. Only an accepted
   completed result reaches 100.
 - Observer failure, eviction or a detached UI cannot retry or reverse a saved
@@ -123,7 +125,7 @@ reconfiguration and the actual folder action/intake/result counts. Picker
 answers are controlled synthetic inputs; those picker interactions are not
 claimed as manual keyboard acceptance.
 
-The progress probe requires 43 recorded checks: actual installed module bytes,
+The progress probe requires 44 recorded checks: actual installed module bytes,
 native controls, operating-system key dispatch, focus preservation, measured
 25/50/75/99 values, UIA range/value at 50 and verified 100, cancellation, a real
 committed file surviving a late cancellation request, persisted settings and

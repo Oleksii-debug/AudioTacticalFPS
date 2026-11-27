@@ -923,3 +923,143 @@ def test_native_uia_transport_failure_remains_bounded_and_cannot_pass(confirmati
     diagnostic = confirmation_probe.json.loads(output)
     assert diagnostic['stage'] == stage and diagnostic['returncode'] == 1
     assert private.decode() not in output and len(output) < 1024
+
+
+def test_native_successor_password_does_not_accept_pending_confirmation(confirmation_probe):
+    confirmation = ('Synthetic confirmation', None)
+    responses = [confirmation, ('Snapshot password', 'synthetic-password')]
+    dialog = object()
+    answer = Mock()
+    find = Mock(return_value=dialog)
+    assert confirmation_probe.answer_successor_password(
+        responses, confirmation_gone=True, find_dialog=find, answer=answer)
+    assert responses == [confirmation]  # The UIA completion receipt is still required.
+    find.assert_called_once_with('Snapshot password')
+    answer.assert_called_once_with(dialog, 'synthetic-password')
+
+
+@pytest.mark.parametrize('case', ['still-visible', 'no-successor', 'other-dialog', 'not-open'])
+def test_native_successor_password_requires_closed_confirmation_and_exact_owned_dialog(
+        confirmation_probe, case):
+    responses = [('Synthetic confirmation', None), ('Snapshot password', 'synthetic-password')]
+    if case == 'no-successor':
+        responses.pop()
+    elif case == 'other-dialog':
+        responses[1] = ('Unrelated dialog', 'synthetic-password')
+    before = list(responses)
+    answer = Mock()
+    find = Mock(return_value=None if case == 'not-open' else object())
+    assert not confirmation_probe.answer_successor_password(
+        responses, confirmation_gone=case != 'still-visible', find_dialog=find, answer=answer)
+    assert responses == before
+    answer.assert_not_called()
+
+
+def test_native_successor_password_failure_preserves_pending_response(confirmation_probe):
+    responses = [('Synthetic confirmation', None), ('Snapshot password', 'synthetic-password')]
+    before = list(responses)
+    with pytest.raises(RuntimeError, match='field rejected'):
+        confirmation_probe.answer_successor_password(
+            responses, confirmation_gone=True, find_dialog=lambda _: object(),
+            answer=Mock(side_effect=RuntimeError('field rejected')))
+    assert responses == before
+
+
+def test_native_confirmation_successor_requires_original_hwnd_to_disappear(
+        confirmation_probe, monkeypatch):
+    confirmation, operation, _ = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    assert not confirmation.pending_dialog_is_gone(99, 'Synthetic confirmation', accept=True)
+    confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    operation.request = dict(hwnd=101)
+    confirmation.api.IsWindow.return_value = True
+    assert not confirmation.pending_dialog_is_gone(99, 'Synthetic confirmation', accept=True)
+    confirmation.api.IsWindow.return_value = False
+    assert confirmation.pending_dialog_is_gone(99, 'Synthetic confirmation', accept=True)
+    confirmation.api.IsWindow.assert_called_with(101)
+
+
+def _native_dismiss_function(probe, namespace):
+    import ast
+    source = Path(probe.__file__).read_text(encoding='utf-8')
+    tree = ast.parse(source)
+    function = next(node for node in ast.walk(tree)
+                    if isinstance(node, ast.FunctionDef) and node.name == 'dismiss_one_modal')
+    module = ast.Module(body=[function], type_ignores=[])
+    exec(compile(module, str(probe.__file__), 'exec'), namespace)
+    return namespace['dismiss_one_modal']
+
+
+def test_native_failed_cleanup_does_not_retarget_pending_no_to_other_title(confirmation_probe):
+    from types import SimpleNamespace
+    windows = SimpleNamespace(pending=None)
+    calls = []
+
+    def reply(owner, title, *, accept):
+        calls.append((owner, title, accept))
+        if windows.pending is None:
+            windows.pending = (object(), (owner, title, accept))
+            return False
+        assert windows.pending[1] == (owner, title, accept)
+        windows.pending = None
+        return True
+
+    windows.reply = reply
+    windows.dismiss = lambda owner, titles: confirmation_probe.WindowsConfirmations.dismiss(
+        windows, owner, titles)
+    namespace = dict(wx=SimpleNamespace(GetTopLevelWindows=lambda: [], Dialog=type('Dialog', (), {})),
+                     windows=windows, native=SimpleNamespace(_window_alive=True,
+                     window=SimpleNamespace(GetHandle=lambda: 99)),
+                     frame=object(), confirmation_titles=('Publish', 'Restore'),
+                     descendant=lambda *_: True)
+    dismiss = _native_dismiss_function(confirmation_probe, namespace)
+    assert dismiss() is True
+    assert calls == [(99, 'Publish', False)]
+    assert dismiss() is True  # The existing controller reports its completed No action.
+    assert windows.pending is None
+    assert calls == [(99, 'Publish', False), (99, 'Publish', False)]
+
+
+def test_native_failed_cleanup_releases_wx_successor_before_polling_uia(confirmation_probe):
+    from types import SimpleNamespace
+    frame = object()
+
+    class Dialog:
+        def IsModal(self): return True
+        def GetParent(self): return frame
+        def EndModal(self, value): self.answer = value
+
+    dialog = Dialog()
+    windows = SimpleNamespace(dismiss=Mock(side_effect=AssertionError('UIA still waits for password')))
+    namespace = dict(wx=SimpleNamespace(GetTopLevelWindows=lambda: [dialog], Dialog=Dialog, ID_CANCEL=7),
+                     windows=windows, native=SimpleNamespace(_window_alive=True,
+                     window=SimpleNamespace(GetHandle=lambda: 99)),
+                     frame=frame, confirmation_titles=('Publish', 'Restore'),
+                     descendant=lambda *_: True)
+    dismiss = _native_dismiss_function(confirmation_probe, namespace)
+    assert dismiss() is True and dialog.answer == 7
+    windows.dismiss.assert_not_called()
+
+
+@pytest.mark.parametrize(('owner', 'title', 'accept'), [
+    (98, 'Synthetic confirmation', True),
+    (99, 'Other confirmation', True),
+    (99, 'Synthetic confirmation', False),
+])
+def test_native_successor_never_consumes_response_for_another_pending_confirmation(
+        confirmation_probe, monkeypatch, owner, title, accept):
+    confirmation, operation, _ = _native_confirmation_tree(confirmation_probe, monkeypatch)
+    confirmation.reply(99, 'Synthetic confirmation', accept=True)
+    operation.request = dict(hwnd=101)
+    confirmation.api.IsWindow.return_value = False
+    responses = [('Synthetic confirmation', None), ('Snapshot password', 'synthetic-password')]
+    before = list(responses)
+    answer = Mock()
+    find = Mock()
+    with pytest.raises(AssertionError, match='different owned confirmation'):
+        confirmation_probe.answer_successor_password(
+            responses, confirmation_gone=confirmation.pending_dialog_is_gone(
+                owner, title, accept=accept), find_dialog=find, answer=answer)
+    assert responses == before
+    find.assert_not_called()
+    answer.assert_not_called()
+    confirmation.api.IsWindow.assert_not_called()

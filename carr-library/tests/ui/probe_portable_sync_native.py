@@ -290,6 +290,23 @@ class AccessibleAnswer:
         return True
 
 
+def answer_successor_password(responses, *, confirmation_gone, find_dialog, answer):
+    """Keep the real successor modal moving while UIA Invoke is still returning.
+
+    Some providers block Invoke until the next modal is dismissed. The original
+    confirmation remains pending until its own successful native receipt arrives.
+    """
+    if (not confirmation_gone or len(responses) < 2
+            or responses[1][0] != 'Snapshot password'):
+        return False
+    dialog = find_dialog('Snapshot password')
+    if dialog is None:
+        return False
+    answer(dialog, responses[1][1])
+    responses.pop(1)
+    return True
+
+
 class WindowsConfirmations:
     """Click only this process's owned native message/task dialog buttons.
 
@@ -312,6 +329,7 @@ class WindowsConfirmations:
             'GetClassNameW': ([wintypes.HWND, wintypes.LPWSTR, ctypes.c_int], ctypes.c_int),
             'GetWindow': ([wintypes.HWND, wintypes.UINT], wintypes.HWND),
             'GetDlgCtrlID': ([wintypes.HWND], ctypes.c_int),
+            'IsWindow': ([wintypes.HWND], wintypes.BOOL),
             'IsWindowVisible': ([wintypes.HWND], wintypes.BOOL),
             'IsWindowEnabled': ([wintypes.HWND], wintypes.BOOL),
             'SetActiveWindow': ([wintypes.HWND], wintypes.HWND),
@@ -348,6 +366,14 @@ class WindowsConfirmations:
             if complete or self.pending is not None:
                 return True
         return False
+
+    def pending_dialog_is_gone(self, owner, title, *, accept):
+        if self.pending is None:
+            return False
+        operation, previous_key = self.pending
+        if previous_key != (owner, title, accept):
+            raise AssertionError('A different owned confirmation operation is still pending')
+        return not bool(self.api.IsWindow(operation.request['hwnd']))
 
     def reply(self, owner, title, *, accept):
         key = (owner, title, accept)
@@ -520,10 +546,22 @@ def run_native(source=None, *, encrypted=False):
                 current = current.GetParent()
             return False
 
+        def owned_wx_dialog(title):
+            return next((window for window in wx.GetTopLevelWindows()
+                         if isinstance(window, wx.Dialog) and window.IsModal()
+                         and window.GetTitle() == title and descendant(window, native.window)), None)
+
+        def answer_password(dialog, password):
+            fields = [child for child in dialog.GetChildren() if isinstance(child, wx.TextCtrl)]
+            check('password entry uses named native masked controls', bool(fields) and all(
+                field.GetWindowStyleFlag() & wx.TE_PASSWORD and field.GetName() for field in fields))
+            for field in fields:
+                field.SetValue(password or '')
+            dialog.EndModal(wx.ID_OK)
+
         def dismiss_one_modal():
-            if windows is not None and native is not None and native._window_alive:
-                if windows.dismiss(native.window.GetHandle(), confirmation_titles):
-                    return True
+            # A successor wx modal may keep the genuine UIA Invoke waiting.
+            # Release the owned child before polling or changing its confirmation.
             modals = []
             for window in wx.GetTopLevelWindows():
                 try:
@@ -538,6 +576,9 @@ def run_native(source=None, *, encrypted=False):
             if modals:
                 max(modals, key=lambda item: item[0])[1].EndModal(wx.ID_CANCEL)
                 return True
+            if windows is not None and native is not None and native._window_alive:
+                if windows.dismiss(native.window.GetHandle(), confirmation_titles):
+                    return True
             return False
 
         def answer_modals(responses):
@@ -550,6 +591,10 @@ def run_native(source=None, *, encrypted=False):
                 try:
                     title, password = responses[0]
                     if windows is not None and title in confirmation_titles:
+                        answer_successor_password(
+                            responses, confirmation_gone=windows.pending_dialog_is_gone(
+                                native.window.GetHandle(), title, accept=True),
+                            find_dialog=owned_wx_dialog, answer=answer_password)
                         if windows.reply(native.window.GetHandle(), title, accept=True):
                             responses.pop(0)
                             if responses:
@@ -559,21 +604,14 @@ def run_native(source=None, *, encrypted=False):
                         else:
                             timers.append(wx.CallLater(20, answer))
                         return
-                    dialog = next((window for window in wx.GetTopLevelWindows()
-                        if isinstance(window, wx.Dialog) and window.IsModal()
-                        and window.GetTitle() == title and descendant(window, native.window)), None)
+                    dialog = owned_wx_dialog(title)
                     if dialog is None:
                         if monotonic() >= deadline:
                             raise AssertionError('Expected native dialog was not shown: ' + title)
                         timers.append(wx.CallLater(20, answer))
                         return
                     if title == 'Snapshot password':
-                        fields = [child for child in dialog.GetChildren() if isinstance(child, wx.TextCtrl)]
-                        check('password entry uses named native masked controls', bool(fields) and all(
-                            field.GetWindowStyleFlag() & wx.TE_PASSWORD and field.GetName() for field in fields))
-                        for field in fields:
-                            field.SetValue(password or '')
-                        dialog.EndModal(wx.ID_OK)
+                        answer_password(dialog, password)
                     else:
                         dialog.EndModal(wx.ID_YES)
                     responses.pop(0)
@@ -582,6 +620,14 @@ def run_native(source=None, *, encrypted=False):
                 except BaseException as error:
                     errors.append(type(error).__name__ + ': native modal interaction failed')
                     print(json.dumps(dict(status='FAIL', error=errors[-1], nvda='NOT_RUN')), flush=True)
+                    # Only this already-failed standalone synthetic probe can be
+                    # terminated; production windows and results are not involved.
+                    def abort_failed_modal():
+                        Event().wait(5)
+                        if not state['finished']:
+                            print('FAIL: native confirmation could not be released after failure', flush=True)
+                            os._exit(1)
+                    Thread(target=abort_failed_modal, name='failed-modal-watchdog', daemon=True).start()
                     if windows is not None:
                         try:
                             windows.close()

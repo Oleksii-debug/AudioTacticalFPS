@@ -302,7 +302,8 @@ def test_real_self_check_retains_native_windows_script_inventory(native_bundle, 
             return subprocess.CompletedProcess(result.args, result.returncode, stdout, result.stderr)
         return result
 
-    monkeypatch.setattr(ocr_languages, 'sys', SimpleNamespace(platform='win32'), raising=False)
+    monkeypatch.setattr(ocr_languages, 'os',
+                        SimpleNamespace(name='nt', path=ocr_languages.os.path))
     monkeypatch.setattr(ocr_process, 'run_ocr', native_windows_report)
     result = runtime.check_runtime()
     assert listings and b'script\\EnglishFixture' in listings[0].splitlines()
@@ -363,9 +364,13 @@ def test_portable_native_orientation_uses_existing_cli_without_wrapper(native_bu
             'Documents are preserved in their original form.\n'
             'The source provides evidence for each statement.\n'
             'Different authors may use the same expression.')
-    # Pillow's embedded font keeps the real orientation fixture identical across hosts.
-    font = ImageFont.load_default(size=48)
-    picture = Image.new('RGB', (1800, 1150), 'white')
+    # Pillow's embedded font has the same reviewed package identity on each
+    # platform; the native OCR gate must not depend on a host-installed font.
+    # Provide enough independent character observations for OSD's unchanged
+    # confidence threshold; a short sample can legitimately stay uncertain.
+    text = '\n'.join([text] * 4)
+    font = ImageFont.load_default(size=42)
+    picture = Image.new('RGB', (2000, 2790), 'white')
     ImageDraw.Draw(picture).multiline_text((60, 60), text, fill='black', spacing=24, font=font)
     pdf = tmp_path / 'rotated.pdf'
     picture.rotate(90, expand=True).save(pdf, resolution=240)

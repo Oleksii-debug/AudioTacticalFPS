@@ -1,6 +1,6 @@
 # Supplied Whisper Transcribe — integration review
 
-Review date: 2026-11-27. Status: PRIVATE_V5_CORRECTNESS_CANDIDATE_INDEPENDENTLY_TESTED; supplied-worker integration/runtime/Windows/NVDA/model-quality acceptance remains separate. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
+Review date: 2026-11-27. Status: PUBLIC_WORKER_PROFILES_SOURCE_INTEGRATED; PRIVATE_V5_CORRECTNESS_CANDIDATE_INDEPENDENTLY_TESTED. Exact composed runtime, Windows/NVDA and model-quality acceptance remain separate. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
 
 ## Follow-up: supplied V5 correctness candidate
 
@@ -42,18 +42,31 @@ TXT, phrases, words, SRT, VTT, JSON, aggregate corruption and receipt-write
 failure. The private deliverable retains the exact baseline, corrected files,
 patch, portable tests, JUnit evidence and per-file hashes.
 
-The legacy job-directory entry point and status keys remain compatible with
-the supplied V5. Its new `result_manifest.json` is **not yet the public
-application's per-file receipt protocol**. Reconcile it with the existing
-supplied-worker integration in PR140; do not introduce another ASR queue or
-claim that this PR99-based candidate has already integrated transcription.
-Package-version receipts explicitly say
-`package_versions_only_not_a_qualified_runtime_pack`. Blocking native inference
-still needs the existing application supervisor's bounded stop/termination
-policy. Exact runtime/model inventory, rights, real inference, language quality,
-word alignment/diarization and Windows/NVDA acceptance remain unqualified here.
+The current public adapter now reuses PR140 at
+`ebb5539b763a0733574f7e248be474902ebf723c` for both explicit profiles:
+`receipts-v1` and `whisper-v5-manifest-v1`. The V5 adapter validates
+`result_manifest.json`, wrapper/model/source identities, actual retry settings
+and every requested artifact before admitting them into the existing per-file
+receipt, edit, export and typed-backup lifecycle. Recursive folder intake uses
+the existing bounded scanner. The current desktop, CLI, process supervisor,
+shared progress and recovery services are retained.
 
-## Source and boundary
+This is source integration, not a claim that a different private repair or
+runtime has been qualified. Package-version receipts still explicitly say
+`package_versions_only_not_a_qualified_runtime_pack`. The existing application
+supervisor supplies bounded stop/termination. Exact composed source and installed
+Windows tests remain required; public synthetic workers do not establish real
+neural inference, language quality, timing accuracy or diarization. The current
+bindings and named acceptance cases are in
+[Transcription host integration](TRANSCRIPTION_HOST_INTEGRATION.md).
+
+Exact runtime/model inventory, rights, actual private inference, language quality
+and manual Windows/NVDA acceptance retain their separate evidence requirements.
+
+## Initial V4.3 source review and boundary
+
+The observations below describe the initially supplied snapshot. The current
+adapter integration is described above and in the linked host contract.
 
 The initially supplied implementation identifies itself as V4.3. That source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected; its immutable identity is now recorded above. A qualified dependency lock is still required before runtime adoption. No redistributed source snapshot is created by this public review.
 
