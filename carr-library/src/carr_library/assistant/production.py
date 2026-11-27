@@ -2,12 +2,12 @@
 from dataclasses import replace
 from pathlib import Path
 import re
-import shutil
 
 from ..audio.engines import _invoke
 from ..audio.jobs import regular_file, sha256_file
 from ..audio.models import ProductionPlan
 from ..audio.production import parse_script, plan_narration, render_project
+from ..audio.runtime import resolve_ffmpeg
 from .models import local_path
 
 
@@ -24,7 +24,7 @@ class LocalProduction:
     def _registry(self):
         if self.registry is None:
             from ..runtime_settings import configured_voice_registry
-            self.registry = configured_voice_registry(self.private_root, ffmpeg=self.ffmpeg)
+            self.registry = configured_voice_registry(self.private_root, ffmpeg=resolve_ffmpeg(self.ffmpeg))
         return self.registry
 
     def voices(self, *, cancelled=None):
@@ -72,7 +72,7 @@ class LocalProduction:
         project = local_path(root / ('audio-' + identity), must_exist=False)
         if project.is_relative_to(self.private_root) or self.private_root.is_relative_to(project):
             raise PermissionError('Choose an audio destination outside the private library.')
-        binary = self.ffmpeg or (Path(shutil.which('ffmpeg')) if shutil.which('ffmpeg') else None)
+        binary = resolve_ffmpeg(self.ffmpeg)
         if binary is None:
             raise ValueError('Install or configure the reviewed local FFmpeg runtime before production.')
         options = {}
