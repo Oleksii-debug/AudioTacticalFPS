@@ -1110,7 +1110,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
 
     def backup(self, event):
-        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of completed libraries; unfinished imports are excluded')
+        dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of all libraries and resumable imports')
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -1121,8 +1121,9 @@ class DesktopFrame(WorkspaceFrame):
         destination = parent / ('ResearchLibrary-backup-' + datetime.now().strftime('%Y%m%d-%H%M%S'))
         def done(checksum):
             show_text(self, 'Backup complete', f'Backup folder: {destination}\n\n'
-                'All completed libraries, original files, saved evidence, notes, tags, and searches are included. '
-                'Unfinished imports and their pending reviews are excluded.\n\n'
+                'Libraries, original files, saved evidence, notes, tags, searches, and saved application state are included. '
+                'Resumable imports include their required source files and pending reviews. '
+                'Keep externally saved audio outputs separately.\n\n'
                 f'Keep this checksum separately; it is needed to verify a restore:\n{checksum}')
         self.run_job('Backing up all libraries', lambda: self.library.backup(destination), done)
 
@@ -1212,8 +1213,8 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
+            'Backups include libraries, saved application state, and resumable imports with their source files and pending reviews.\n'
+            'The Reading menu also provides separate export and import actions for reading positions and bookmarks.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):
