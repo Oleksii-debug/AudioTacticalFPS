@@ -44,7 +44,13 @@ def classify(data, suffix):
     head = data[:262]
     if Exe().match(head) or head.startswith(b"\x7fELF"):
         raise IntakeError("executable not accepted by this adapter")
-    from ..extract.document_formats import FORMAT_BY_SUFFIX, classify_extended
+    from ..extract.document_formats import (FORMAT_BY_SUFFIX, classify_extended,
+        RASTER_BY_SUFFIX, raster_format)
+    raster = raster_format(data)
+    if raster is not None or suffix.lower() in RASTER_BY_SUFFIX:
+        if raster is None or RASTER_BY_SUFFIX.get(suffix.lower()) != raster:
+            raise IntakeError('unsupported or mismatched raster image extension')
+        return raster.mime
     if suffix.lower() in FORMAT_BY_SUFFIX:
         try:
             return classify_extended(data, suffix.lower())

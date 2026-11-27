@@ -73,10 +73,13 @@ def language_selection(codes, available, *, max_models=8):
     return '+'.join(codes)
 
 
-def save_preset(path, name, codes, *, available=None, dpi=300, orientation=False):
-    from .page_ocr import Config
-    config = Config(languages=language_selection(codes, available or installed_languages()),
-                    dpi=dpi, orientation=orientation)
+def save_preset(path, name, codes, *, available=None, dpi=300, orientation=False,
+                automatic_languages=None):
+    from .page_ocr import Config, ExtendedConfig
+    options = dict(languages=language_selection(codes, available or installed_languages()),
+                   dpi=dpi, orientation=orientation)
+    config = (Config(**options) if automatic_languages is None else
+              ExtendedConfig(**options, automatic_languages=automatic_languages))
     if not isinstance(name, str) or not name.strip() or len(name) > 256:
         raise ValueError('Enter a preset name.')
     path = local_path(path)
@@ -84,6 +87,9 @@ def save_preset(path, name, codes, *, available=None, dpi=300, orientation=False
     if set(presets) != {'schema', 'presets'} or presets['schema'] != 1 or not isinstance(presets['presets'], dict):
         raise ValueError('Unsupported OCR preset file.')
     presets['presets'][name] = vars(config)
+    from .ocr_languages import validate_presets_bytes
+    from ..durable_state import encode
+    validate_presets_bytes(encode(presets))
     atomic_json(path, presets, replace=path.exists())
     return config
 

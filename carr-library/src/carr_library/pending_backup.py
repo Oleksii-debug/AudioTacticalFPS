@@ -187,11 +187,13 @@ def _manifest(value):
 
 
 def _config(value):
-    if not isinstance(value, dict) or set(value) != set(asdict(Config())):
-        raise ValueError('Invalid pending extraction configuration.')
+    from .extract.page_ocr import config_from_dict
+    try:
+        config_from_dict(value)
+    except (TypeError, KeyError, ValueError) as exc:
+        raise ValueError('Invalid pending extraction configuration.') from exc
     if any(type(value[key]) is not int for key in ('dpi', 'timeout', 'max_pixels')):
         raise ValueError('Invalid pending extraction resource limits.')
-    Config(**value)
 
 
 def _catalog(path):
