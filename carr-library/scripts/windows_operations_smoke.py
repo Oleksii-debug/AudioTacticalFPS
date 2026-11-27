@@ -230,8 +230,9 @@ def main():
                 check('native child destruction does not dispose its parent controller',
                       not detached.controller.closed)
                 detached_state['before'] = detached.controller.status
+                detached_state['native_id'] = detached.GetId()
                 def destroyed(event):
-                    if event.GetEventObject() is detached:
+                    if event.GetId() == detached_state['native_id']:
                         detached_state['destroyed'] = True
                     event.Skip()
                 def late():
@@ -243,8 +244,10 @@ def main():
                 wx.CallAfter(late)
                 advance('destroyed')
             elif name == 'destroyed':
-                if not detached_state.get('destroyed') or not detached_state.get('late'):
+                if not detached_state.get('destroyed') or not detached_state.get('late') or bool(detached):
                     return
+                check('matching native task-view event and original wrapper deletion are both observed',
+                      detached_state['destroyed'] and not bool(detached))
                 check('queued callback cannot touch a destroyed native view',
                       detached.controller.status == detached_state['before'])
                 check('job identity and original queued result survive every task-view action',

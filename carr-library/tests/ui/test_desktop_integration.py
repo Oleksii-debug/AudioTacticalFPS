@@ -349,3 +349,79 @@ def test_tray_uses_semantic_actions_and_uncertain_removal_is_visible_and_retryab
     assert e.owner.tray is None and icon.destroyed
     e.owner.wx = e.wx
     e.owner.close()
+
+
+def test_native_probe_observes_frame_id_before_deleted_python_wrapper():
+    import ast
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_desktop_integration_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    observer, = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.FunctionDef) and node.name == 'frame_destroyed']
+    module = ast.fix_missing_locations(ast.Module(body=[observer], type_ignores=[]))
+    destroyed, skipped = [], []
+    environment = dict(native_frame_id=-31994, destroyed=destroyed)
+    exec(compile(module, str(script), 'exec'), environment)
+
+    class Event:
+        def __init__(self, identity): self.identity = identity
+        def GetId(self): return self.identity
+        def GetEventObject(self):
+            pytest.fail('Deleted native owner identity must not depend on its Python wrapper.')
+        def Skip(self): skipped.append(self.identity)
+
+    environment['frame_destroyed'](Event(-31993))
+    assert not destroyed
+    environment['frame_destroyed'](Event(-31994))
+    assert destroyed == [True] and skipped == [-31993, -31994]
+    assignment, = [node for node in ast.walk(tree) if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == 'native_frame_id' for target in node.targets)]
+    bind, = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute) and node.func.attr == 'Bind'
+        and any(isinstance(arg, ast.Name) and arg.id == 'frame_destroyed' for arg in node.args)]
+    assert assignment.lineno < bind.lineno and ast.unparse(assignment.value) == 'frame.GetId()'
+
+
+@pytest.mark.parametrize('event_seen, peer_alive', [(False, False), (False, True), (True, True), (True, False)])
+def test_native_probe_close_wait_requires_both_event_and_dead_original_peer(event_seen, peer_alive):
+    import ast
+    from pathlib import Path
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_desktop_integration_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    functions = [node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+                 and node.name in ('frame_is_destroyed', 'pump')]
+    assert {node.name for node in functions} == {'frame_is_destroyed', 'pump'}
+    module = ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[]))
+    clock, yields = [0.0], []
+
+    class Peer:
+        def __bool__(self): return peer_alive
+        def Close(self): pytest.fail('Observation cannot force Close.')
+        def Destroy(self): pytest.fail('Observation cannot force Destroy.')
+
+    def sleep(seconds):
+        assert seconds == .01
+        clock[0] += seconds
+
+    environment = dict(frame=Peer(), destroyed=[True] if event_seen else [], errors=[],
+        app=SimpleNamespace(Yield=lambda: yields.append(True)),
+        time=SimpleNamespace(monotonic=lambda: clock[0], sleep=sleep))
+    exec(compile(module, str(script), 'exec'), environment)
+    predicate = environment['frame_is_destroyed']
+    assert predicate() is (event_seen and not peer_alive)
+    if event_seen and not peer_alive:
+        environment['pump'](predicate, 'owned native close')
+        assert not yields and clock[0] == 0
+    else:
+        with pytest.raises(TimeoutError, match='owned native close'):
+            environment['pump'](predicate, 'owned native close')
+        assert 12 <= clock[0] < 12.02 and yields
+    labels = {'Native DesktopFrame did not acknowledge destruction.', 'Failure-path desktop cleanup did not destroy the frame.'}
+    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+             and isinstance(node.func, ast.Name) and node.func.id == 'pump'
+             and len(node.args) > 1 and isinstance(node.args[1], ast.Constant)
+             and node.args[1].value in labels]
+    assert len(calls) == 2
+    assert all(isinstance(call.args[0], ast.Name) and call.args[0].id == 'frame_is_destroyed' for call in calls)

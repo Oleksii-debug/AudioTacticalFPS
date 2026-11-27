@@ -150,8 +150,14 @@ def main():
         frame.active = (workspace, None)  # Explicit synthetic owner scope for this acceptance.
         outside = OutsideWindow()
         controller = frame.desktop_integration
-        frame.Bind(wx.EVT_WINDOW_DESTROY,
-                   lambda event: (destroyed.append(True) if event.GetEventObject() is frame else None, event.Skip()))
+        native_frame_id = frame.GetId()
+        def frame_destroyed(event):
+            if event.GetId() == native_frame_id:
+                destroyed.append(True)
+            event.Skip()
+        def frame_is_destroyed():
+            return bool(destroyed) and not bool(frame)
+        frame.Bind(wx.EVT_WINDOW_DESTROY, frame_destroyed)
 
         def settings_driver():
             try:
@@ -333,7 +339,7 @@ def main():
                 controller.set_tray(False)
                 check('tray disable leaves the window reachable', frame.IsShown() and controller.tray is None)
                 frame.Close()
-                pump(lambda: bool(destroyed), 'Native DesktopFrame did not acknowledge destruction.')
+                pump(frame_is_destroyed, 'Native DesktopFrame did not acknowledge destruction.')
                 check('close owns all timer and native-key cleanup',
                       controller.closed and not controller.hotkeys._registered and controller.watch.pending is None)
                 pump(lambda: all(future.done() for future in futures), 'Reader owned cleanup did not finish.', timeout=30)
@@ -357,14 +363,17 @@ def main():
                 raise RuntimeError('\n'.join(errors))
         finally:
             worker_cleanup.close_after_worker = original_cleanup
-            if not destroyed:
-                controller.close()
-                frame.Close()
-                pump(lambda: bool(destroyed), 'Failure-path desktop cleanup did not destroy the frame.', allow_errors=True)
+            if not frame_is_destroyed():
+                if not destroyed and bool(frame):
+                    controller.close()
+                    frame.Close()
+                pump(frame_is_destroyed, 'Failure-path desktop cleanup did not destroy the frame.', allow_errors=True)
             outside.Destroy()
             pump(lambda: all(future.done() for future in futures), 'Failure-path reader cleanup did not finish.',
                  timeout=30, allow_errors=True)
-    print(json.dumps({'status': 'PASS', 'checks': checks, 'nvda': 'NOT_RUN',
+    print(json.dumps({'status': 'PASS', 'checks': checks,
+        'native_frame_id': native_frame_id, 'native_destroy_event': bool(destroyed),
+        'native_wrapper_deleted': not bool(frame), 'nvda': 'NOT_RUN',
                       'speech_audio': 'NOT_RUN', 'synthetic_owned_player': 'EXECUTED',
                       'native_windows': 'EXECUTED'}, ensure_ascii=False))
 
