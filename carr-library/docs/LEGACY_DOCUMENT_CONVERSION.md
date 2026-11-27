@@ -1,11 +1,17 @@
 # Selected legacy document reading
 
-Authoring status: **implemented, native qualification NOT_RUN**. No new legacy
-format is advertised as available yet. conversion/legacy.py keeps
-QUALIFIED_SUFFIXES empty. The desktop adds a chooser only for a format whose
-exact source-bound native fixture result is subsequently recorded and reviewed.
-The explicit legacy_preview=True API is for this controlled fixture evaluation;
-selecting a binary alone cannot promote an untested format.
+DjVu embedded-text reading is **qualified on Windows** for the pinned DjVuLibre
+3.5.30-2 MSYS2 UCRT64 build. Actual run 46018252073 at source
+00ed188039d045232f72f7a34472c5c22ef8aad8 passed all 162 then-declared portable
+boundaries and all four real DjVu fixtures in both source and installed mode.
+Only `.djvu` is in QUALIFIED_SUFFIXES. The installed tool must still be selected
+explicitly and its complete current component identity must pass inspection.
+
+calibre and CHM remain unqualified while their observed native failures are
+being diagnosed. The explicit legacy_preview=True API is restricted to that
+controlled fixture evaluation; selecting a binary alone cannot promote an
+untested format. Missing DjVu text layers, indirect/shared references, OCR,
+printed pagination and quotation verification are outside this qualification.
 
 ## Implemented scope
 
@@ -79,8 +85,11 @@ https://djvu.sourceforge.net/doc/man/djvutxt.html
 
 .github/workflows/carr-legacy-converters.yml has independent Windows jobs for
 calibre, DjVuLibre and CHM. Each builds an exact source-bound wheel, verifies all
-installed Python bytes and runs under -I. Each requires the existing 81 plus
-new 54 portable boundary cases from both source and installed wheel.
+installed Python bytes and runs under -I. The current oracle requires 163
+portable boundary cases from both source and installed wheel: the 162 exercised
+by the recorded DjVu run plus the explicit qualified-selection regression.
+The current DjVu native fixtures use the ordinary service admission path, with
+legacy_preview=False; that successor gate must still pass on its own exact head.
 
 The separate real-tool populations also run from source and installed wheel:
 
@@ -117,7 +126,8 @@ packaging/legacy-conversion-runtimes.json records exact immutable releases.
  ed51d57f1af30d963a1651ed71faae7ddf8824a3c685acd19203cea73335a641 and a 4 MiB
  download ceiling. This is explicitly an MSYS2 build. Its dependency DLLs are
  copied only after verifying the existing complete OCR manifest/lock closure.
- Actual native loading still has to pass; provider metadata is not execution.
+ Actual source and installed native loading passed in run 46018252073;
+ provider metadata alone is not execution evidence.
  https://packages.msys2.org/packages/mingw-w64-ucrt-x86_64-djvulibre
  https://djvu.sourceforge.net/
 

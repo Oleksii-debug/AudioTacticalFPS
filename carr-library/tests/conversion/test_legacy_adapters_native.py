@@ -92,7 +92,7 @@ def convert(tmp_path, source, kind, *, budget=None, cancelled=lambda: False):
     output = tmp_path / 'reading-output'
     output.mkdir()
     result = ConversionService(output, input_roots=(source,), budget=budget,
-        legacy_preview=True, **{kind: selected(kind)}).extract(source, 'reading.txt', cancelled=cancelled)
+        legacy_preview=kind != 'djvu', **{kind: selected(kind)}).extract(source, 'reading.txt', cancelled=cancelled)
     return result
 
 
