@@ -261,3 +261,46 @@ def test_direct_admission_cannot_override_the_active_tool_authority(authority):
         # This identity rule never locks out the tool's protected data.
         assert admit_new_operation(other, 'data.save').sequence == 0
     assert admit_new_operation(other, 'audio.render').sequence == 0
+
+
+@pytest.mark.parametrize('existing', ['unconfigured', 'same', 'different'])
+def test_provided_real_v43_dialog_service_retains_the_host_authority(
+        authority, tmp_path, monkeypatch, existing):
+    from carr_library.transcription_service import TranscriptionService
+    from carr_library.ui.transcription_v43_dialog import TranscriptionDialog
+    app = LibraryApp(tmp_path / 'dialog-library', trust_controller=authority.controller)
+    frame = SimpleNamespace(library=app, trust_controller=authority.controller)
+    selected = (None if existing == 'unconfigured' else
+                authority.controller if existing == 'same' else TrustController())
+    service = TranscriptionService(app.root, trust_controller=selected)
+    reached = []
+    class NativeBoundaryReached(Exception):
+        pass
+    def native_dialog(*args, **kwargs):
+        reached.append(True)
+        raise NativeBoundaryReached
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(
+        Dialog=native_dialog, DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2))
+    if existing == 'different':
+        with pytest.raises(ValueError, match='authority'):
+            TranscriptionDialog(frame, service=service)
+        assert reached == [] and service.trust_controller is selected
+    else:
+        with pytest.raises(NativeBoundaryReached):
+            TranscriptionDialog(frame, service=service)
+        assert reached == [True] and service.trust_controller is authority.controller
+
+
+def test_private_dialog_keeps_its_existing_explicit_test_service_seam(tmp_path, monkeypatch):
+    from carr_library.ui.transcription_v43_dialog import TranscriptionDialog
+    frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path))
+    service = SimpleNamespace(library_root=tmp_path)
+    class NativeBoundaryReached(Exception):
+        pass
+    def native_dialog(*args, **kwargs):
+        raise NativeBoundaryReached
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(
+        Dialog=native_dialog, DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2))
+    with pytest.raises(NativeBoundaryReached):
+        TranscriptionDialog(frame, service=service)
+    assert not hasattr(service, 'trust_controller')

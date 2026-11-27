@@ -237,10 +237,23 @@ class TranscriptionDialog:
         import wx
         self.wx, self.frame = wx, frame
         self.root = Path(frame.library.root).absolute()
-        self.service = service or TranscriptionService(self.root,
-            trust_controller=getattr(frame.library, 'trust_controller', None))
+        from ..security.admission import checked_controller
+        configured = checked_controller(getattr(frame.library, 'trust_controller', None))
+        host = checked_controller(getattr(frame, 'trust_controller', None))
+        if host is not None and configured is not None and host is not configured:
+            raise ValueError('The desktop and library must retain the same authority.')
+        configured = host if host is not None else configured
+        self.service = service if service is not None else TranscriptionService(self.root,
+            **({'trust_controller': configured} if configured is not None else {}))
         if Path(self.service.library_root).absolute() != self.root:
             raise ValueError('Transcription must belong to the selected library.')
+        if configured is not None:
+            if not isinstance(self.service, TranscriptionService):
+                raise TypeError('A configured host must use its current transcription service.')
+            current = checked_controller(self.service.trust_controller)
+            if current is not None and current is not configured:
+                raise ValueError('Transcription must retain its host authority.')
+            self.service.trust_controller = configured
         self.sources, self.manifest_path, self.current_job = (), '', None
         self.runtime_profile = None
         self.definition, self.summary, self.rows = None, None, ()
