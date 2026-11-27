@@ -219,6 +219,27 @@ def _runtime_lease(selection):
         yield
 
 
+def _missing_transient_entry(path):
+    """Confirm disappearance without turning unsafe/denied paths into absence.
+
+    The native child may remove a profile directory between enumeration and
+    the existing checked_directory guard. That guard reports missing paths as
+    ValueError, so verify absence through an unfollowed ancestor walk before
+    ignoring only that entry. The private stage root is checked separately.
+    """
+    path = Path(path)
+    for candidate in (*reversed(path.parents), path):
+        try:
+            info = candidate.lstat()
+        except FileNotFoundError:
+            return True
+        if (stat.S_ISLNK(info.st_mode)
+                or getattr(info, 'st_file_attributes', 0) & 0x400
+                or (candidate != path and not stat.S_ISDIR(info.st_mode))):
+            return False
+    return False
+
+
 def _stage_usage(stage, maximum, deadline):
     """Bound profile, intermediates and transient files without following links."""
     from .adapters import _remaining
@@ -252,6 +273,9 @@ def _stage_usage(stage, maximum, deadline):
                         # The owned native child can remove its transient files.
                         # Permission, enumeration and unsafe-path failures stay errors.
                         continue
+                    except ValueError:
+                        if not _missing_transient_entry(entry.path):
+                            raise
         except FileNotFoundError:
             if directory == root:
                 raise
