@@ -438,11 +438,27 @@ class AcquisitionService:
                                          state, message, info.sha256)
             else:
                 edition_id = uuid4().hex
-                imported = self.app.import_file(workspace, path, title=preview.metadata.title,
-                    authors=preview.metadata.authors, language=preview.metadata.language or None,
-                    volume=preview.metadata.volume or None, edition_id=edition_id,
-                    collections=() if collection is None else (collection,), cancelled=cancelled)
+                # Use the existing batch/import request's immutable manifest.
+                # The public download folder can change before the worker reads it.
+                # Do not bind provider provenance to different bytes at that path.
+                from ..extract.page_ocr import Config
+                from ..ingest.worker import prepare_request
+                metadata = dict(title=preview.metadata.title, authors=preview.metadata.authors,
+                    language=preview.metadata.language or None, edition=None,
+                    volume=preview.metadata.volume or None, edition_id=edition_id, work_id=None,
+                    collections=() if collection is None else (collection,))
+                request = prepare_request(self.app.root, workspace, path, metadata, Config(),
+                    expected_manifest=dict(sha256=info.sha256, mime='application/pdf', size=info.size))
+                imported = self.app.resume_import(workspace, request['request_id'], cancelled=cancelled)
                 state = imported['state']
+                if state == 'failed':
+                    # The planned-source check can fail after publication. Do
+                    # not record source provenance for an unverified local file
+                    # or create a new, unbound import on retry.
+                    return AcquisitionResult(path, receipt_path, None, None, state,
+                        'Import did not finish. Review the existing hash-bound request in Import Center. '
+                        'If the local PDF changed, restore the exact bytes matching the provenance receipt '
+                        'before resuming; do not start another import of changed bytes.', info.sha256)
                 if state == 'complete':
                     # The import service has already committed the original and
                     # membership. Later cancellation or reference rollback
@@ -472,7 +488,8 @@ class AcquisitionService:
                     info.sha256)
             return AcquisitionResult(path, receipt_path, None, None, 'downloaded',
                 'The PDF and provenance were saved, but import or reference linking did not finish. '
-                'Use Import Center to review or retry this local file; no redownload is needed.', info.sha256)
+                'Review any existing request in Import Center and verify the local PDF against '
+                'its provenance receipt before retrying; do not re-import changed bytes.', info.sha256)
 
 
 _SERVICE_LOCK = Lock()
