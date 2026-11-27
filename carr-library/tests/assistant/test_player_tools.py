@@ -266,6 +266,7 @@ def test_actual_source_core_status_pause_and_stop_share_one_owner(owner):
     original = e.app.assets.resolve(e.desk.identity.asset_sha256).read_bytes()
     receipt = status(e)
     assert receipt['state'] == 'playing' and receipt['busy'] is True
+    assert receipt['edition'] == e.desk.identity.edition_id == e.book['edition']
     assert receipt['asset_sha256'] == e.desk.identity.asset_sha256
     assert receipt['revision'] == e.desk.revision
     assert receipt['source_text_sha256'] == sha256(e.raw.encode('utf-8')).hexdigest()

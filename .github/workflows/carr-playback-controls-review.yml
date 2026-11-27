@@ -102,7 +102,7 @@ jobs:
             tests/audio/test_process_scratch.py \
             tests/assistant/test_player_tools.py 2>&1 | tee ci-playback-controls/source.txt
       - name: Require POSIX listening descriptor boundaries without skips
-        if: runner.os == 'Linux'
+        if: "!cancelled() && runner.os == 'Linux' && steps.install.outcome == 'success'"
         run: |
           python scripts/ci_check.py --diagnostics --jobs 1 \
             tests/speech/test_listening_posix.py 2>&1 | tee ci-playback-controls/source-posix.txt

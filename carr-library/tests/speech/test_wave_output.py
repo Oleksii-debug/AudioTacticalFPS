@@ -400,7 +400,8 @@ def test_actual_pcm_extremes_scale_without_overflow_and_preserve_input(width, va
     (b'x' * (native._MAX_BLOCK_BYTES + 4), 2, 2),
     (b'\x00', 2, 2), (b'\x00' * 4, 5, 2), (b'\x00' * 4, 2, 3),
     (bytearray(4), 2, 2), (b'\x00' * 4, True, 2),
-])
+], ids=['over-budget', 'unaligned', 'unsupported-width', 'unsupported-channels',
+        'mutable-input', 'boolean-width'])
 def test_pcm_processing_rejects_unbounded_or_misaligned_input(data, width, channels):
     with pytest.raises(ValueError, match='bounded'):
         native._pcm_levels(data, width=width, channels=channels, levels=native.PlaybackLevels(50))

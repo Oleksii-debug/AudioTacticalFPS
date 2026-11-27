@@ -131,8 +131,13 @@ def test_original_timeline_maps_native_position_seek_repeat_and_resume(reader):
     navigation.set_range(.6, 2.4)
     navigation.enable_repeat(True)
     driver.mode, driver.position = 'playing', 1200
+    before_tick = len(driver.commands)
     navigation.tick()
-    assert driver.commands[-1] == f'play {player._alias} from 300'
+    # The controller observes native state after the explicit restart. Keep the
+    # exact single transport request while allowing those required observations.
+    starts = [command for command in driver.commands[before_tick:]
+              if command.startswith(('play ', 'resume '))]
+    assert starts == [f'play {player._alias} from 300']
     assert navigation.repeat and navigation.a == .6 and navigation.b == 2.4
     player.stop()
     navigation.invalidate()
