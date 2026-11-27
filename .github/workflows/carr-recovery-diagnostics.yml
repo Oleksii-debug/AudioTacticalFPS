@@ -1,0 +1,31 @@
+name: Read retained native failure evidence
+on:
+  push:
+    branches: [carr/recovery-diagnostics-f749-20261127]
+    paths: ['.github/workflows/carr-recovery-diagnostics.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  retained_evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read the exact retained synthetic bibliography report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh api repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15168401595/zip > evidence.zip
+          python - <<'PY'
+          import hashlib, json, pathlib, zipfile
+          raw = pathlib.Path('evidence.zip').read_bytes()
+          assert len(raw) < 1000000
+          assert hashlib.sha256(raw).hexdigest() == 'c981cb476e703936b58151cda972d58882c0e435ecdfdb8046f8c0b16dd02490'
+          with zipfile.ZipFile('evidence.zip') as archive:
+              assert len(archive.infolist()) < 100
+              for info in archive.infolist():
+                  if info.filename.endswith('.json'):
+                      assert info.file_size < 1000000
+                      print(json.dumps({'artifact_member': info.filename, 'evidence': json.loads(archive.read(info))}, ensure_ascii=False))
+          PY
