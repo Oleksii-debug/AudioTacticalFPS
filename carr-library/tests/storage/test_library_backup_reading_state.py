@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from carr_library.application import LibraryApp
-from carr_library import library_backup
+from carr_library import backup_sidecars, library_backup
 from carr_library.ingest.writer_guard import WriterBusy, exclusive_writer
 from carr_library.library_backup import create_backup, restore_backup, verify_backup, INCOMPLETE
 from carr_library.reader.reading_desk import ReadingDesk
@@ -37,6 +37,20 @@ def read_manifest(folder):
     return json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
 
 
+def reading_entry(manifest):
+    return next(entry for entry in manifest['sidecars'] if entry['filename'] == FILENAME)
+
+
+def legacy_reading_manifest(folder):
+    document = read_manifest(folder)
+    assert document['version'] == 4
+    entries = document.pop('sidecars')
+    assert not entries or (len(entries) == 1 and entries[0]['filename'] == FILENAME)
+    document.pop('generated_audio_included')
+    document.update(version=3, reading_state=entries[0] if entries else None)
+    return document
+
+
 def write_manifest(folder, document):
     raw = (json.dumps(document, ensure_ascii=False, sort_keys=True) + '\n').encode('utf-8')
     (folder / 'manifest.json').write_bytes(raw)
@@ -47,8 +61,7 @@ def seal_reading_bytes(folder, raw):
     """A valid outer digest cannot legitimize invalid or foreign saved places."""
     (folder / FILENAME).write_bytes(raw)
     manifest = read_manifest(folder)
-    manifest['reading_state'] = dict(filename=FILENAME, size_bytes=len(raw),
-                                    sha256=sha256(raw).hexdigest())
+    reading_entry(manifest).update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
     return write_manifest(folder, manifest)
 
 
@@ -59,8 +72,8 @@ def test_application_backup_restores_exact_bookmarks_and_resume_for_both_librari
     folder = tmp_path / 'backup'
     digest = app.backup(folder)
     manifest = read_manifest(folder)
-    assert manifest['version'] == 3
-    assert manifest['reading_state'] == dict(filename=FILENAME, size_bytes=len(raw),
+    assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
+    assert reading_entry(manifest) == dict(filename=FILENAME, size_bytes=len(raw),
                                              sha256=sha256(raw).hexdigest())
     assert (folder / FILENAME).read_bytes() == raw
     assert {path.name for path in folder.iterdir()} == {
@@ -134,7 +147,7 @@ def test_absent_state_is_explicit_and_unrelated_sidecars_are_not_copied(tmp_path
         (app.root / name).write_text('SYNTHETIC DO NOT COPY', encoding='utf-8')
     folder = tmp_path / 'backup'
     digest = app.backup(folder)
-    assert read_manifest(folder)['reading_state'] is None
+    assert read_manifest(folder)['sidecars'] == []
     assert {path.name for path in folder.iterdir()} == {'manifest.json', 'library.sqlite', 'originals'}
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
     state = ReadingState(restored.root)
@@ -175,7 +188,7 @@ def test_saved_location_must_match_the_exact_copied_database(
     else:
         path.write_bytes(raw)
         operation = lambda: create_backup(app, destination)
-    with pytest.raises(ValueError, match='location disagrees'):
+    with pytest.raises(ValueError, match='exact saved source'):
         operation()
     assert not destination.exists()
     assert path.read_bytes() == raw
@@ -281,9 +294,9 @@ def test_incomplete_tampered_or_unexpected_state_never_publishes_restore(
     else:
         manifest = read_manifest(folder)
         if damage == 'wrong_size':
-            manifest['reading_state']['size_bytes'] += 1
+            reading_entry(manifest)['size_bytes'] += 1
         else:
-            manifest['reading_state']['sha256'] = '0' * 64
+            reading_entry(manifest)['sha256'] = '0' * 64
         digest = write_manifest(folder, manifest)
     destination = tmp_path / 'rejected'
     with pytest.raises(ValueError):
@@ -296,14 +309,19 @@ def test_incomplete_tampered_or_unexpected_state_never_publishes_restore(
     ('filename', 'reading-state.json:secret'), ('filename', 'api-keys.json'),
     ('size_bytes', True), ('size_bytes', 0), ('sha256', 'not-a-digest'),
 ])
-def test_reading_manifest_is_an_exact_allowlist(reading_library, tmp_path, field, value):
+@pytest.mark.parametrize('version', [3, 4])
+def test_reading_manifest_is_an_exact_allowlist(reading_library, tmp_path, field, value, version):
     app, *_ = reading_library
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = read_manifest(folder)
-    manifest['reading_state'][field] = value
+    if version == 3:
+        manifest = legacy_reading_manifest(folder)
+        manifest['reading_state'][field] = value
+    else:
+        reading_entry(manifest)[field] = value
     digest = write_manifest(folder, manifest)
-    with pytest.raises(ValueError, match='invalid reading-state manifest'):
+    with pytest.raises(ValueError, match='manifest|filename|validated backup adapter'):
         restore_backup(folder, tmp_path / 'rejected', digest)
     assert not (tmp_path / 'rejected').exists()
 
@@ -313,7 +331,7 @@ def test_v3_reading_presence_must_be_explicit(reading_library, tmp_path, change)
     app, *_ = reading_library
     folder = tmp_path / 'backup'
     create_backup(app, folder)
-    manifest = read_manifest(folder)
+    manifest = legacy_reading_manifest(folder)
     if change == 'missing_descriptor':
         del manifest['reading_state']
     else:
@@ -376,7 +394,7 @@ def test_reading_snapshot_and_database_share_the_existing_writer_guard(
         with pytest.raises(WriterBusy):
             create_backup(app, tmp_path / 'blocked')
     assert not (tmp_path / 'blocked').exists()
-    original = library_backup.copy_catalog_assets
+    original = library_backup._copy_originals
     observed = []
 
     def while_snapshot_locked(*args, **kwargs):
@@ -387,7 +405,7 @@ def test_reading_snapshot_and_database_share_the_existing_writer_guard(
         observed.append(True)
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(library_backup, 'copy_catalog_assets', while_snapshot_locked)
+    monkeypatch.setattr(library_backup, '_copy_originals', while_snapshot_locked)
     create_backup(app, tmp_path / 'backup')
     assert observed == [True]
 
@@ -423,14 +441,14 @@ def test_staging_disk_failure_does_not_publish_a_partial_destination(
     if phase == 'restore':
         digest = create_backup(app, folder)
     raw = (app.root / FILENAME).read_bytes()
-    original = library_backup._sync_file
+    original = backup_sidecars._write
 
-    def full_disk(path, data):
-        if path.name == FILENAME:
+    def full_disk(stage, name, data):
+        if name == FILENAME:
             raise OSError(ENOSPC, 'synthetic disk full')
-        return original(path, data)
+        return original(stage, name, data)
 
-    monkeypatch.setattr(library_backup, '_sync_file', full_disk)
+    monkeypatch.setattr(backup_sidecars, '_write', full_disk)
     with pytest.raises(OSError, match='disk full'):
         if phase == 'restore':
             restore_backup(folder, tmp_path / 'rejected', digest)
@@ -470,7 +488,8 @@ def test_legacy_backup_restores_without_fabricating_reading_state(
     create_backup(app, folder)
     manifest = read_manifest(folder)
     manifest['version'] = version
-    del manifest['reading_state']
+    del manifest['sidecars']
+    del manifest['generated_audio_included']
     if version == 1:
         del manifest['schema_fingerprint']
     (folder / FILENAME).unlink()
@@ -492,10 +511,28 @@ def test_legacy_manifest_cannot_smuggle_an_unbound_reading_file(
     create_backup(app, folder)
     manifest = read_manifest(folder)
     manifest['version'] = version
-    del manifest['reading_state']
+    del manifest['sidecars']
+    del manifest['generated_audio_included']
     if version == 1:
         del manifest['schema_fingerprint']
     digest = write_manifest(folder, manifest)
-    with pytest.raises(ValueError, match='unexpected reading-state'):
+    with pytest.raises(ValueError, match='unexpected files.*reading-state'):
         restore_backup(folder, tmp_path / 'rejected', digest)
     assert not (tmp_path / 'rejected').exists()
+
+
+def test_exact_v3_reading_shape_remains_read_only_compatible(reading_library, tmp_path):
+    app, _, _, pages, _ = reading_library
+    folder = tmp_path / 'legacy-v3'
+    create_backup(app, folder)
+    manifest = legacy_reading_manifest(folder)
+    checksum = write_manifest(folder, manifest)
+    before = {p.relative_to(folder): (p.read_bytes(), p.stat().st_mtime_ns)
+              for p in folder.rglob('*') if p.is_file()}
+    assert verify_backup(folder, checksum) == manifest
+    restored = restore_backup(folder, tmp_path / 'restored', checksum)
+    state = ReadingState(restored)
+    for page in pages:
+        assert state.resume(page.location.workspace, page.location.edition) == page.location
+    assert {p.relative_to(folder): (p.read_bytes(), p.stat().st_mtime_ns)
+            for p in folder.rglob('*') if p.is_file()} == before

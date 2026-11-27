@@ -573,6 +573,8 @@ class DesktopFrame(WorkspaceFrame):
         install_assistant_actions(self)
         install_save_actions(self)
         install_library_assistant_actions(self)
+        from .translation_dialog import install_translation_actions
+        install_translation_actions(self)
         from .document_conversion import install_conversion_actions
         from .language_matrix import install_language_actions
         install_conversion_actions(self)
@@ -730,7 +732,7 @@ class DesktopFrame(WorkspaceFrame):
             except Exception as error:
                 # Optional observation cannot reverse an already committed
                 # operation or invoke its failure handler after successful done.
-                result = {'succeeded': 'completed', 'failed': 'failed', 'cancelled': 'cancelled'}[state]
+                result = {'succeeded': 'completed', 'failed': 'failed', 'cancelled': 'cancelled', 'paused': 'needs attention'}[state]
                 warning = f'{title}: {result}. Progress reporting is unavailable: {error}'
                 if task is not None:
                     try:
@@ -782,9 +784,24 @@ class DesktopFrame(WorkspaceFrame):
                 try:
                     result = future.result()
                     cancellation_arrived = self.cancel_event.is_set()
-                    self.report(title + ': complete.')
+                    from ..progress import operation_outcome
+                    outcome = operation_outcome(result)
+                    status = getattr(self, 'status', None)
+                    before = status.GetValue() if status is not None else None
+                    # Result callbacks may still validate or publish an artifact
+                    # and own the selected source control and detailed status.
                     if done is not None:
                         done(result)
+                    if self._closing:
+                        return
+                    if not self.working and (status is None or status.GetValue() == before):
+                        label = {'succeeded': 'complete', 'paused': 'needs attention',
+                                 'cancelled': 'cancelled', 'failed': 'failed'}[outcome]
+                        message = title + ': ' + label + '.'
+                        if done is None:
+                            self.report(message)
+                        elif status is not None:
+                            status.SetValue(message)
                 except Exception as exc:
                     from concurrent.futures import CancelledError
                     cancelled = isinstance(exc, (InterruptedError, CancelledError))
@@ -793,8 +810,10 @@ class DesktopFrame(WorkspaceFrame):
                     if failed is not None:
                         failed(exc)
                 else:
-                    finish_progress('succeeded',
-                        'Work completed before cancellation could stop it.' if cancellation_arrived else '')
+                    finish_progress(outcome,
+                        'Work completed before cancellation could stop it.'
+                        if cancellation_arrived and outcome == 'succeeded' else
+                        ('Work needs attention; completed portions were retained.' if outcome == 'paused' else ''))
             wx.CallAfter(apply)
         future.add_done_callback(finish)
 

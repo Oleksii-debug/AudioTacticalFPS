@@ -2,14 +2,47 @@
 from hashlib import sha256
 import json
 import os
+import wave
 from pathlib import Path
 
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.assistant import AssistantService, Plan, Scope, Step
+from carr_library.assistant.profiles import ProfileStore, ProviderProfile
+from carr_library.runtime_settings import load_settings, save_settings
+from carr_library.speech import ReadingDocument, Voice
+from carr_library.speech.session import ReaderDraftStore, ReaderResume
+from carr_library.studio.render import ProductionService
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
 from carr_library.state_backup import snapshot_state, validate_state
+
+
+class InventoryOnly:
+    def voices(self):
+        return (Voice('test:inventory', 'Inventory fixture', 'test', 'en'),)
+
+
+def generated_cache(state):
+    key = sha256(b'synthetic completed PCM fixture').hexdigest()
+    path = state / 'studio/cache' / (key + '-0123456789.wav')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), 'wb') as stream:
+        stream.setnchannels(1)
+        stream.setsampwidth(2)
+        stream.setframerate(8000)
+        stream.writeframes(b'\0\0' * 800)
+    atomic_json(path.with_name(key + '.json'), {
+        'schema': 1, 'key': key, 'file': path.name, 'sha256': sha256(path.read_bytes()).hexdigest(),
+        'duration': .1, 'sample_rate': 8000, 'channels': 1})
+    return path
+
+
+def resign(folder, manifest):
+    raw = (json.dumps(manifest, sort_keys=True, separators=(',', ':')) + '\n').encode()
+    (folder / 'manifest.json').write_bytes(raw)
+    return sha256(raw).hexdigest()
 
 
 @pytest.fixture
@@ -23,37 +56,54 @@ def populated(tmp_path):
     hit, = app.search(first, 'Точний')
     app.save_hit(first, topic, hit.ref, hit.revision, 'Separate private note')
     state = app.root / 'state'
-    values = {
-        'speech/settings.json': {'voice': 'installed-voice', 'rate': 1.0},
-        'speech/documents/читання.json': {'original': 'Точний текст', 'reading': 'Точний текст.'},
-        'studio/projects/project.json': {'schema': 1, 'roles': ['Narrator'], 'revision': 3},
-        'studio/jobs/job-1/job.json': {'status': 'paused', 'completed_chunks': ['first']},
-        'assistant/job.json': {'status': 'paused', 'plan': {'library': first}},
-        'providers/account.profile.json': {'credential_ref': 'carr/provider/account/' + 'a' * 32},
-    }
-    for name, value in values.items():
-        atomic_json(state / name, value)
-    cache = state / 'studio/cache/chunk.wav'
-    cache.parent.mkdir(parents=True)
-    cache.write_bytes(b'synthetic-generated-audio-cache')
+    # Use the selected primary producers rather than arbitrary JSON that no
+    # installed reader could validate or reopen.
+    save_settings(state, load_settings(state))
+    reader = ReaderDraftStore(app.root)
+    document = ReadingDocument('Точний текст')
+    document.replace(0, len(document.text), 'Точний текст.')
+    reader.save(ReaderResume(document, 'test:inventory', cursor=3))
+    profiles = ProfileStore(state / 'providers')
+    profiles.save(ProviderProfile('account', 'Synthetic account reference', 'openai-compatible',
+        'https://example.invalid/v1', 'fixture-model',
+        credential_ref='carr/provider/account/' + 'a' * 32))
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    studio = ProductionService(state / 'studio', voices=InventoryOnly())
+    project = studio.create('Narrator: Preserve a queued production.', voice_ids=('test:inventory',))
+    studio.request_pause(studio.submit(project, outputs))
+    assistant = AssistantService(app)
+    plan = Plan(Scope(workspace_id=first, output_root=outputs), (Step('library.list'),))
+    assistant_job = assistant.submit(plan)
+    assert assistant.run(assistant_job).status == 'complete'
+    assistant.pause(assistant_job)
+    values = {p.relative_to(state).as_posix(): read_json(p)
+              for p in state.rglob('*.json')}
+    generated_cache(state)
     (state / 'studio/.render.lock').write_bytes(b'')
     (state / 'studio/.pending-edit').write_bytes(b'not committed')
-    (state / 'speech/recovery.tmp').write_bytes(b'not committed')
+    (state / 'speech/.pending-recovery.tmp').write_bytes(b'not committed')
     return app, first, second, topic, values
 
 
-def test_backup_restores_exact_state_sources_and_evidence_without_cache(populated, tmp_path):
+@pytest.mark.parametrize('version', [3, 4])
+def test_backup_restores_exact_state_sources_and_evidence_without_cache(populated, tmp_path, version):
     app, first, second, topic, values = populated
     before = app.evidence(first, topic)[0]
     original_files = {p.name: p.read_bytes() for p in app.assets_dir.iterdir()}
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text())
-    assert manifest['version'] == 3 and manifest['generated_audio_included'] is False
-    assert {entry['filename'] for entry in manifest['state']} == set(values)
-    for entry in manifest['state']:
-        raw = (folder / 'state' / entry['filename']).read_bytes()
+    assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
+    assert {entry['filename'] for entry in manifest['sidecars']} == {'state/' + name for name in values}
+    for entry in manifest['sidecars']:
+        raw = (folder / entry['filename']).read_bytes()
         assert len(raw) == entry['size_bytes'] and sha256(raw).hexdigest() == entry['sha256']
+    if version == 3:
+        manifest['version'] = 3
+        manifest['state'] = [{**entry, 'filename': entry['filename'].removeprefix('state/')}
+                             for entry in manifest.pop('sidecars')]
+        digest = resign(folder, manifest)
     destination = restore_backup(folder, tmp_path / 'restored', digest)
     recovered = LibraryApp(destination)
     assert {w.id for w in recovered.workspaces()} == {first, second}
@@ -74,7 +124,9 @@ def test_optional_generated_cache_roundtrips_exactly(populated, tmp_path):
     manifest = json.loads((folder / 'manifest.json').read_text())
     assert manifest['generated_audio_included'] is True
     destination = restore_backup(folder, tmp_path / 'restored-with-cache', digest)
-    assert (destination / 'state/studio/cache/chunk.wav').read_bytes() == b'synthetic-generated-audio-cache'
+    original = app.root / 'state/studio/cache'
+    assert {p.name: p.read_bytes() for p in (destination / 'state/studio/cache').iterdir()} == {
+        p.name: p.read_bytes() for p in original.iterdir()}
 
 
 @pytest.mark.parametrize('damage', ['corrupt', 'missing', 'unlisted', 'missing-state-directory', 'wrong-manifest'])
@@ -82,7 +134,7 @@ def test_corrupt_state_never_publishes_usable_restore(populated, tmp_path, damag
     app, first, second, topic, _ = populated
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
-    state_file = folder / 'state/speech/settings.json'
+    state_file = folder / 'state/audio/engines.json'
     if damage == 'corrupt':
         raw = bytearray(state_file.read_bytes())
         raw[-2] ^= 1
@@ -96,7 +148,7 @@ def test_corrupt_state_never_publishes_usable_restore(populated, tmp_path, damag
         shutil.rmtree(folder / 'state')
     else:
         manifest = json.loads((folder / 'manifest.json').read_text())
-        manifest['state'][0]['size_bytes'] += 1
+        manifest['sidecars'][0]['size_bytes'] += 1
         raw = json.dumps(manifest).encode()
         (folder / 'manifest.json').write_bytes(raw)
         digest = sha256(raw).hexdigest()
@@ -155,7 +207,7 @@ def test_dangling_state_root_is_not_silently_omitted(tmp_path):
 def test_active_state_database_requires_consistent_adapter(populated, tmp_path):
     app, *_ = populated
     (app.root / 'state/active.sqlite').write_bytes(b'not a snapshot')
-    with pytest.raises(ValueError, match='snapshot adapter'):
+    with pytest.raises(ValueError, match='(?:snapshot|backup) adapter'):
         create_backup(app, tmp_path / 'backup')
 
 
@@ -222,6 +274,11 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     app.add_text(workspace, 'Source', 'Legacy source stays readable.')
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup)
+    manifest = json.loads((backup / 'manifest.json').read_text())
+    assert manifest['version'] == 4 and manifest['sidecars'] == []
+    manifest['version'] = 2
+    del manifest['sidecars'], manifest['generated_audio_included']
+    digest = resign(backup, manifest)
     assert json.loads((backup / 'manifest.json').read_text())['version'] == 2
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
     assert restored.search(workspace, 'Legacy')[0].quote == 'Legacy'

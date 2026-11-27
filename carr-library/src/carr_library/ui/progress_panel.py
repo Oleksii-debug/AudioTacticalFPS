@@ -158,6 +158,8 @@ class NativeProgressPanel:
             task.cancelled(message)
         elif state == 'failed':
             task.fail(message)
+        elif state == 'paused':
+            task.pause(message)
         else:
             raise ValueError('Unknown terminal operation state.')
         self.refresh()

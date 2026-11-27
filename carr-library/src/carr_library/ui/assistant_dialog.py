@@ -241,19 +241,28 @@ def show_provider_settings(frame):
             return control
         name = field('Account name', current.name if current else '')
         box.Add(wx.StaticText(form, label='Adapter'), 0, wx.ALL, 4)
-        adapter = wx.Choice(form, choices=['openai-compatible', 'elevenlabs'])
-        adapter.SetSelection(1 if current and current.adapter == 'elevenlabs' else 0)
+        adapter = wx.Choice(form, choices=['openai-compatible', 'elevenlabs', 'google-translation-v2'])
+        adapter.SetStringSelection(current.adapter if current else 'openai-compatible')
         box.Add(adapter, 0, wx.EXPAND | wx.ALL, 4)
         endpoint = field('Official endpoint or explicitly chosen loopback service', current.endpoint if current else 'http://127.0.0.1:8080/v1')
         model = field('Model ID', current.model if current else 'local-model')
         voice = field('Voice ID; blank for language models', current.voice or '' if current else '')
-        capability = field('Capabilities, comma separated: llm.chat, speech.synthesize, music.compose, sfx.generate',
+        capability = field('Capabilities: llm.chat, speech.synthesize, music.compose, sfx.generate, translation.text, translation.languages',
                            ','.join(current.capabilities) if current else 'llm.chat')
         secret = field('New API key; leave empty to keep existing key', password=True)
         local = wx.CheckBox(form, label='This is a local loopback service')
         local.SetValue(current.local if current else True)
         enabled = wx.CheckBox(form, label='Enable this profile for explicitly authorized jobs')
         enabled.SetValue(current.enabled if current else False)
+        def adapter_defaults(event):
+            if adapter.GetStringSelection() == 'google-translation-v2':
+                endpoint.ChangeValue('https://translation.googleapis.com/language/translate/v2')
+                model.ChangeValue('nmt')
+                capability.ChangeValue('translation.text,translation.languages')
+                voice.ChangeValue('')
+                local.SetValue(False)
+            event.Skip()
+        adapter.Bind(wx.EVT_CHOICE, adapter_defaults)
         box.Add(local, 0, wx.ALL, 4)
         box.Add(enabled, 0, wx.ALL, 4)
         box.Add(form.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 5)

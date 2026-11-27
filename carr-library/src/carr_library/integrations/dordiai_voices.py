@@ -328,8 +328,17 @@ class DordiaiVoicesAdapter:
                 rows.append((name, None))
         return tuple(rows)
 
-    def _probe(self, refresh: bool = False) -> dict:
+    def _probe(self, refresh: bool = False, *,
+               cancelled: Event | Callable[[], bool] | None = None) -> dict:
+        def check_cancelled() -> None:
+            requested = (bool(cancelled()) if callable(cancelled)
+                         else cancelled is not None and cancelled.is_set())
+            if requested:
+                raise DordiaiCancelled("dordiai-voices discovery was cancelled")
+
+        check_cancelled()
         with self._state:
+            check_cancelled()
             if self._closed:
                 raise DordiaiUnavailable("The dordiai-voices adapter is closed")
             epoch = self._epoch()
@@ -344,14 +353,28 @@ class DordiaiVoicesAdapter:
             self._inventory_epoch = None
             self._validate_installation()
             helper = Path(__file__).with_name("_dordiai_probe.py").resolve()
+            check_cancelled()
+            deadline = monotonic() + min(self.request_timeout, 60.0)
             child = _JsonLinesProcess([str(self.python), "-I", "-B", "-u", str(helper), str(self.runtime)], self.runtime)
             try:
-                inventory = child.receive(min(self.request_timeout, 60.0))
+                while True:
+                    check_cancelled()
+                    remaining = deadline - monotonic()
+                    if remaining <= 0:
+                        raise DordiaiTimeout("dordiai-voices discovery exceeded the configured deadline")
+                    try:
+                        inventory = child.receive(min(remaining, 0.05))
+                    except DordiaiTimeout:
+                        continue
+                    check_cancelled()
+                    break
             finally:
                 child.close()
+            check_cancelled()
             self._validate_inventory(inventory)
             if epoch != self._epoch():
                 raise DordiaiUnavailable("dordiai-voices packages changed during discovery; retry")
+            check_cancelled()
             self._inventory, self._inventory_epoch = inventory, epoch
             return inventory
 
@@ -382,18 +405,19 @@ class DordiaiVoicesAdapter:
                 raise DordiaiProtocolError("Invalid dordiai-voices voice inventory")
             ids.add(voice["id"])
 
-    def voices(self, refresh: bool = False) -> tuple[DordiaiVoice, ...]:
+    def voices(self, refresh: bool = False, *,
+               cancelled: Event | Callable[[], bool] | None = None) -> tuple[DordiaiVoice, ...]:
         """Only structurally available installed voices; no fixed catalogue."""
         return tuple(DordiaiVoice(v["id"], v["name"], tuple(v["languages"]), tuple(v["styles"]))
-                     for v in self._probe(refresh)["voices"] if v["languages"])
+                     for v in self._probe(refresh, cancelled=cancelled)["voices"] if v["languages"])
 
-    def capabilities(self) -> DordiaiCapabilities:
-        inventory = self._probe()
+    def capabilities(self, *, cancelled: Event | Callable[[], bool] | None = None) -> DordiaiCapabilities:
+        inventory = self._probe(cancelled=cancelled)
         return DordiaiCapabilities(inventory.get("engine_version"), inventory["worker_sha256"])
 
-    def language_statuses(self) -> tuple[dict, ...]:
+    def language_statuses(self, *, cancelled: Event | Callable[[], bool] | None = None) -> tuple[dict, ...]:
         """Copy of installed-resource status, including missing/partial entries."""
-        return tuple(dict(row) for row in self._probe()["languages"])
+        return tuple(dict(row) for row in self._probe(cancelled=cancelled)["languages"])
 
     def _start_worker(self) -> _JsonLinesProcess:
         with self._state:
@@ -464,7 +488,7 @@ class DordiaiVoicesAdapter:
                                              else cancelled is not None and cancelled.is_set())
 
         try:
-            inventory = self._probe()
+            inventory = self._probe(cancelled=cancellation_requested)
             voice = next((row for row in inventory["voices"] if row["id"] == voice_id), None)
             selected = next((row for row in inventory["languages"] if row["code"] == language), None)
             if voice is None or language not in voice["languages"] or selected is None or not selected["resources_present"]:

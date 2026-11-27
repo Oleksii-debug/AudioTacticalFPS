@@ -94,21 +94,21 @@ def _selected_audio_tools(settings):
                  else bundled[name] for name in ('ffmpeg', 'ffprobe'))
 
 
-def voice_registry(state_root):
+def voice_registry(state_root, *, cancelled=lambda: False):
     from .speech import VoiceRegistry, PiperProvider, LocalHelperProvider
     value = load_settings(state_root)
     ffmpeg, _ffprobe = _selected_audio_tools(value)
-    registry = VoiceRegistry.discover(ffmpeg=ffmpeg)
+    registry = VoiceRegistry.discover(ffmpeg=ffmpeg, cancelled=cancelled)
     try:
         from .integrations.dordiai_speech import install_dordiai_provider
-        install_dordiai_provider(registry, value['dordiai'])
+        install_dordiai_provider(registry, value['dordiai'], cancelled=cancelled)
         for item in value['piper']:
             if set(item) != {'executable', 'models'}:
                 raise ValueError('Invalid Piper configuration fields.')
-            registry.add_provider(PiperProvider(item['executable'], item['models']))
+            registry.add_provider(PiperProvider(item['executable'], item['models']), cancelled=cancelled)
         for item in value['voice_helpers']:
             if item.get('enabled') is True:
-                registry.add_provider(LocalHelperProvider(**item))
+                registry.add_provider(LocalHelperProvider(**item), cancelled=cancelled)
         return registry
     except BaseException:
         registry.close()

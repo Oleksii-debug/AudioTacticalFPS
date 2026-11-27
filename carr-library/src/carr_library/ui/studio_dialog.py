@@ -8,6 +8,7 @@ import threading
 from ..durable_state import atomic_json, atomic_bytes, read_json
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
+from ..progress import ProgressError, ProgressState, bind_progress, operation_outcome
 
 SCRIPT_HELP = '''Write ordinary prose for one narrator, or use named speaking roles:
 Narrator [center]: The team enters the archive.
@@ -115,6 +116,25 @@ def show_studio(frame):
             if focus:
                 status.SetFocus()
 
+    # Reuse the same native observer and state contract as the main window.
+    # Its modal view keeps query/mute controls reachable while Studio is busy.
+    from .progress_panel import NativeProgressPanel
+    dialog.library, dialog.host, dialog.layout = frame.library, dialog, layout
+    dialog.report = lambda message: report(message, True)
+    dialog.working = False
+    parent_progress = getattr(frame, 'progress_panel', None)
+    dialog.progress_speech_provider = getattr(parent_progress, 'speech_provider', None)
+    dialog.progress_media_busy = lambda: (
+        getattr(getattr(dialog, '_audio_player', None), 'state', 'stopped') == 'playing')
+    progress = NativeProgressPanel(dialog)
+    if parent_progress is not None:
+        progress.hub = parent_progress.hub
+    layout.Detach(progress.panel)
+    layout.Insert(layout.GetItemCount() - 2, progress.panel, 0, wx.EXPAND | wx.ALL, 6)
+    progress.gauge.SetName('Audio Studio operation progress')
+    progress.text.SetName('Audio Studio current progress and phase')
+    progress.query_button.SetName('Query Audio Studio progress')
+
     def selected_voices():
         selected = voice_choice.GetSelection()
         if 0 <= selected < len(voices):
@@ -131,27 +151,78 @@ def show_studio(frame):
         title.Enable(not busy)
         voice_choice.Enable(not busy)
 
-    def run(operation, complete):
+    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):
         nonlocal busy
         if busy:
             return
         busy = True
+        dialog.working = True
         cancel.clear()
         controls()
-        future = executor.submit(operation)
+        task = progress.begin(phase)
+
+        def measured(message):
+            description = ' '.join(str(message).split())[:512] or phase
+            # Phase receipts do not provide a measured overall total.
+            # Updates queued before cancellation must not resurrect a task.
+            if not cancel.is_set() and task.snapshot().state == ProgressState.RUNNING:
+                try:
+                    task.update(phase=description)
+                except ProgressError:
+                    if not cancel.is_set():
+                        raise
+            wx.CallAfter(report, description)
+
+        def execute():
+            with bind_progress(task):
+                return operation(measured) if with_progress else operation()
+
         def finish(done):
             def apply():
                 nonlocal busy
-                if not alive:
-                    return
                 busy = False
-                controls()
+                dialog.working = False
+                if alive:
+                    controls()
                 try:
-                    complete(done.result())
+                    result = done.result()
                 except Exception as exc:
-                    report(str(exc), True)
+                    outcome = 'paused' if isinstance(exc, InterruptedError) else 'failed'
+                    if with_progress and current_job is not None:
+                        try:
+                            outcome = operation_outcome(service.get(current_job))
+                        except (ValueError, OSError, RuntimeError):
+                            pass
+                    progress.finish(task, outcome, phase + ': ' + outcome)
+                    if alive:
+                        report(str(exc), True)
+                    return
+                outcome = operation_outcome(result)
+                try:
+                    # A paused/partial receipt must never announce completion.
+                    if alive and outcome == 'succeeded':
+                        complete(result)
+                    elif alive:
+                        report(phase + ': ' + outcome + '. Saved work is retained.', True)
+                    progress.finish(task, outcome, phase + ': ' + outcome)
+                except Exception as exc:
+                    progress.reporting_unavailable(task, outcome,
+                        'Work returned ' + outcome + '; progress display failed: ' + str(exc))
+                    if alive:
+                        report(str(exc), True)
             wx.CallAfter(apply)
+
+        try:
+            future = executor.submit(execute)
+        except Exception as exc:
+            busy = False
+            dialog.working = False
+            controls()
+            progress.finish(task, 'failed', 'Could not start ' + phase)
+            report(str(exc), True)
+            return
         future.add_done_callback(finish)
+        return future
 
     def save(event=None):
         nonlocal draft_dirty, saved_signature
@@ -296,10 +367,10 @@ def show_studio(frame):
             finally:
                 chooser.Destroy()
         identity = current_job
-        run(lambda: service.run(identity, cancelled=cancel.is_set,
-                progress=lambda text: wx.CallAfter(report, text)),
+        run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
             lambda result: report('Production complete. ' + result['destination'] +
-                '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True))
+                '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True),
+            phase='Rendering audio production', with_progress=True)
 
     def jobs(event=None):
         nonlocal current_job
@@ -356,7 +427,13 @@ def show_studio(frame):
             service.request_pause(current_job)
         timer.Stop()
         if getattr(dialog, '_audio_player', None):
-            dialog._audio_player.stop()
+            try:
+                dialog._audio_player.close()
+            except (OSError, RuntimeError) as exc:
+                report(f'Playback device reported a close error: {exc}')
+        if busy:
+            progress.request_cancel()
+        progress.close()
         alive = False
         from .worker_cleanup import close_after_worker
         close_after_worker(executor, service)
@@ -423,7 +500,7 @@ def show_studio(frame):
     unregister = (coordinator.register('studio.' + str(id(controller)), 'Audio Studio project',
                     dirty=unsaved, save=save_registered, focus=editor.SetFocus)
                   if coordinator is not None else lambda: None)
-    run(lambda: service.voices.voices(), loaded)
+    run(lambda: service.voices.voices(), loaded, phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:

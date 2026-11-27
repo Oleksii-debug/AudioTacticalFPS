@@ -117,15 +117,22 @@ def split_utterances(text, *, maximum=2400):
 
 class VoiceRegistry:
     """A registry only of actually enumerated voices; no imaginary catalog."""
-    def __init__(self, providers=()):
+    def __init__(self, providers=(), *, cancelled=lambda: False):
         self._providers = list(providers)
         self._voices = {}
         self._owners = {}
         self.notices = []
-        self.reload()
+        self._cancelled = cancelled
+        try:
+            self.reload()
+        except BaseException:
+            self.close()
+            raise
 
     @classmethod
-    def discover(cls, *, include_flite=True, ffmpeg=None, include_powershell=False, dordiai=None):
+    def discover(cls, *, include_flite=True, ffmpeg=None, include_powershell=False, dordiai=None,
+                 cancelled=lambda: False):
+        check_cancelled(cancelled)
         providers = []
         if os.name == 'nt':
             providers.append(NativeSapiProvider())
@@ -141,21 +148,25 @@ class VoiceRegistry:
         flite_executable = ffmpeg or shutil.which('ffmpeg')
         if include_flite and flite_executable:
             providers.append(FliteProvider(flite_executable))
-        registry = cls(providers)
+        registry = cls(providers, cancelled=cancelled)
         try:
             if dordiai is not None:
                 from ..integrations.dordiai_speech import install_dordiai_provider
-                install_dordiai_provider(registry, dordiai)
+                install_dordiai_provider(registry, dordiai, cancelled=cancelled)
             return registry
         except BaseException:
             registry.close()
             raise
 
-    def reload(self):
+    def reload(self, *, cancelled=None):
+        if cancelled is not None:
+            self._cancelled = cancelled
         entries, owners, notices = {}, {}, []
         for provider in self._providers:
+            check_cancelled(self._cancelled)
             try:
-                values = provider.voices()
+                values = (provider.voices(cancelled=self._cancelled)
+                          if getattr(provider, 'cancellable_discovery', False) else provider.voices())
                 if len(values) > 10000:
                     raise ValueError('The voice provider returned too many voices.')
                 candidate = {}
@@ -167,12 +178,20 @@ class VoiceRegistry:
                 owners.update({key: provider for key in candidate})
             except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
                 notices.append(f'{provider.name}: {exc}')
+        check_cancelled(self._cancelled)
         self._voices, self._owners, self.notices = entries, owners, notices
         return self.voices()
 
-    def add_provider(self, provider):
+    def add_provider(self, provider, *, cancelled=None):
         self._providers.append(provider)
-        return self.reload()
+        try:
+            return self.reload(cancelled=cancelled)
+        except BaseException:
+            self._providers.remove(provider)
+            close = getattr(provider, 'close', None)
+            if callable(close):
+                close()
+            raise
 
     def voices(self):
         return tuple(self._voices.values())
@@ -304,6 +323,7 @@ class VoiceRegistry:
 
 class SapiProvider:
     name = 'Installed SAPI 5'
+    cancellable_discovery = True
 
     def __init__(self, executable, *, architecture='64'):
         if architecture not in ('32', '64'):
@@ -328,8 +348,8 @@ class SapiProvider:
             raise ValueError('Invalid SAPI response.')
         return value
 
-    def voices(self):
-        result = self._request({'operation': 'voices'})
+    def voices(self, *, cancelled=lambda: False):
+        result = self._request({'operation': 'voices'}, cancelled=cancelled)
         if not isinstance(result.get('voices'), list):
             raise ValueError('Invalid SAPI voice list.')
         voices, tokens = [], {}

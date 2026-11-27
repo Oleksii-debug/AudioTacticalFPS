@@ -170,3 +170,58 @@ def test_progress_observer_failure_cannot_turn_a_successful_job_into_business_fa
     assert frame.progress_panel.active_task.snapshot().percent != 100
     assert frame.progress_panel.active_task.snapshot().state == 'unavailable'
     assert frame.progress_panel.hub.snapshots(active_only=True) == ()
+
+
+@pytest.mark.parametrize('payload, expected', [
+    ({'status': 'paused', 'completed': 1, 'total': 2}, 'paused'),
+    ({'state': 'quarantined'}, 'paused'),
+    ({'rows': [{'state': 'complete'}, {'state': 'failed'}]}, 'failed'),
+    ({'status': 'cancelled'}, 'cancelled'),
+])
+def test_returned_job_receipt_never_claims_success_for_incomplete_work(host, payload, expected):
+    frame, callbacks = host
+    done = Mock()
+    frame.run_job('Reported task outcome', lambda: payload, done)
+    finish(callbacks)
+    done.assert_called_once_with(payload)
+    snapshot = frame.progress_panel.active_task.snapshot()
+    assert snapshot.state == expected
+    assert snapshot.percent != 100
+
+
+def test_typed_assistant_report_preserves_failed_state(host):
+    from carr_library.assistant.models import JobReport
+    frame, callbacks = host
+    payload = JobReport('synthetic', 'failed', 0, 1, (), 'Synthetic failure')
+    frame.run_job('Assistant outcome', lambda: payload, Mock())
+    finish(callbacks)
+    assert frame.progress_panel.active_task.snapshot().state == 'failed'
+    assert frame.progress_panel.active_task.snapshot().percent != 100
+
+
+def test_callback_failure_never_announces_generic_completion(host):
+    frame, callbacks = host
+    def rejected(result):
+        assert not any('complete.' in call.args[0] for call in frame.report.call_args_list)
+        raise ValueError('Final publication validation failed')
+    frame.run_job('Publication', lambda: 'staged result', rejected)
+    finish(callbacks)
+    assert frame.progress_panel.active_task.snapshot().state == 'failed'
+    assert not any('complete.' in call.args[0] for call in frame.report.call_args_list)
+
+
+def test_result_callback_owns_focus_and_detailed_status(host):
+    frame, callbacks = host
+    messages = ['Operation in progress']
+    frame.status.GetValue.side_effect = lambda: messages[-1]
+    selected_source = Mock()
+    def selected(result):
+        messages.append('Verified source page selected')
+        selected_source.SetFocus()
+    frame.run_job('Open source', lambda: 'verified page', selected)
+    frame.report.reset_mock()
+    finish(callbacks)
+    selected_source.SetFocus.assert_called_once_with()
+    frame.report.assert_not_called()
+    frame.status.SetValue.assert_not_called()
+    assert frame.progress_panel.active_task.snapshot().state == 'succeeded'

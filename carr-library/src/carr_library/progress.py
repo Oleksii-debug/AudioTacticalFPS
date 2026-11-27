@@ -238,8 +238,8 @@ class ProgressTask:
     def pause(self, message=''):
         message = _text(message, 'Pause message', 1000)
         with self._hub._lock:
-            if self._value.state != ProgressState.RUNNING:
-                raise ProgressError('Only a running task can be paused.')
+            if self._value.state not in (ProgressState.RUNNING, ProgressState.CANCELLING):
+                raise ProgressError('Only running or cancelling work can report a pause.')
             return self._publish(state=ProgressState.PAUSED, message=message, eta_seconds=None)
 
     def resume(self, message=''):
@@ -303,3 +303,50 @@ def bind_progress(task):
         yield task
     finally:
         _CURRENT_PROGRESS.reset(token)
+
+
+def operation_outcome(result):
+    """Combine actual job/batch receipts without treating partial work as done.
+
+    Plain values and rows without status fields remain ordinary successful
+    return values. An explicit unknown status requires attention. Only typed
+    status fields are inspected; user text in search results is never a state.
+    """
+    from .assistant.models import JobReport
+    complete = {'complete', 'completed', 'succeeded', 'success', 'ok', 'passed', 'pass',
+                'ready', 'verified', 'saved', 'exported', 'duplicate', 'excluded'}
+    failure = {'failed', 'error', 'timed_out', 'timeout', 'corrupt', 'invalid'}
+    cancelled = {'cancelled', 'canceled', 'aborted'}
+    rank = {'succeeded': 0, 'paused': 1, 'cancelled': 2, 'failed': 3}
+    outcome, pending, inspected = 'succeeded', [result], 0
+    while pending:
+        item = pending.pop()
+        inspected += 1
+        if inspected > 100_000:
+            raise ValueError('Operation result exceeds the progress receipt limit.')
+        if isinstance(item, JobReport):
+            item = {'status': item.status, 'results': item.results}
+        if isinstance(item, (list, tuple)):
+            if len(pending) + len(item) + inspected > 100_000:
+                raise ValueError('Operation result exceeds the progress receipt limit.')
+            pending.extend(item)
+            continue
+        if not isinstance(item, dict):
+            continue
+        for key in ('status', 'state'):
+            state = item.get(key)
+            if state is None:
+                continue
+            if not isinstance(state, str):
+                current = 'paused'
+            else:
+                state = state.casefold()
+                current = ('failed' if state in failure else 'cancelled' if state in cancelled
+                           else 'succeeded' if state in complete else 'paused')
+            if rank[current] > rank[outcome]:
+                outcome = current
+        for key in ('rows', 'results'):
+            if isinstance(item.get(key), (list, tuple)):
+                pending.append(item[key])
+    return outcome
+

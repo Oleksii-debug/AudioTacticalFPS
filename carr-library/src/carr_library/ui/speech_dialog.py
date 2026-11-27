@@ -151,9 +151,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
                 from ..runtime_settings import voice_registry
-                found = voice_registry(Path(library_root) / 'state')
+                found = voice_registry(Path(library_root) / 'state', cancelled=cancel.is_set)
             else:
-                found = VoiceRegistry.discover()
+                found = VoiceRegistry.discover(cancelled=cancel.is_set)
             owned_registries.add(found)
             return found
 
@@ -454,13 +454,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         autosave_timer.Stop()
         alive = False
         cancel.set()
-        player.close()
-        # Wait only for the bounded worker cancellation path before deleting its
-        # output directory. The UI never destroys a still-running worker's files.
-        executor.shutdown(wait=True, cancel_futures=True)
-        for owned in owned_registries:
-            owned.close()
-        audio_files.cleanup()
+        try:
+            player.close()
+        except (OSError, RuntimeError) as exc:
+            parent.report(f'Playback device reported a close error: {exc}')
+        # The serial worker releases its registries and temporary output only
+        # after active synthesis/discovery exits; closing the UI never waits.
+        class ReaderResources:
+            def close(self):
+                try:
+                    for owned in owned_registries:
+                        owned.close()
+                finally:
+                    audio_files.cleanup()
+        from .worker_cleanup import close_after_worker
+        close_after_worker(executor, ReaderResources())
         dialog.Destroy()
 
 

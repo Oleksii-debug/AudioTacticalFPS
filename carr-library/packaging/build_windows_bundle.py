@@ -26,6 +26,8 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 
 TARGET = "Windows x64 / CPython 3.11"
+# Exact unsigned candidate independently built and executed on Windows; no override.
+NATIVE_LAUNCHER_SHA256 = "5ba9218a329f8d002539bd57f73d91170125f5ec91c78d49ff85ca6c74443cec"
 HERE = Path(__file__).resolve().parent
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
@@ -106,9 +108,26 @@ def verify_application_source(wheel, source_commit):
     return verifier.verify_application_wheel(wheel, HERE.parent.parent, source_commit)
 
 
+def verify_dependency_closure(selected):
+    """Check the exact Windows dependency graph without invoking a resolver."""
+    environment = default_environment()
+    environment.update(os_name="nt", sys_platform="win32", platform_system="Windows",
+                       platform_machine="AMD64", python_version="3.11",
+                       python_full_version="3.11.0", implementation_name="cpython",
+                       platform_python_implementation="CPython", extra="")
+    for _path, _version, metadata in selected.values():
+        for raw in metadata.get_all("Requires-Dist", []):
+            req = Requirement(raw)
+            if req.marker and not req.marker.evaluate(environment):
+                continue
+            dependency = selected.get(canonicalize_name(req.name))
+            if req.url or dependency is None or dependency[1] not in req.specifier:
+                raise ValueError(f"unsatisfied Windows dependency: {req}")
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None):
+                 ocr_source_archive=None, native_launcher=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
@@ -116,6 +135,10 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         raise ValueError("source commit must be a full lowercase Git SHA")
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
+    if native_launcher is not None:
+        native_launcher = regular(Path(native_launcher))
+        if sha256(native_launcher) != NATIVE_LAUNCHER_SHA256:
+            raise ValueError("Native launcher differs from the exact Windows-tested executable")
     pins = read_lock(lock)
     if sbom is not None:
         sbom = regular(Path(sbom))
@@ -208,19 +231,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
 
     # Validate active Windows requirements from every wheel. Pip performs the
     # actual offline resolution again at install time; this is a build preflight.
-    environment = default_environment()
-    environment.update(os_name="nt", sys_platform="win32", platform_system="Windows",
-                       platform_machine="AMD64", python_version="3.11",
-                       python_full_version="3.11.0", implementation_name="cpython",
-                       platform_python_implementation="CPython", extra="")
-    for _path, _version, metadata in selected.values():
-        for raw in metadata.get_all("Requires-Dist", []):
-            req = Requirement(raw)
-            if req.marker and not req.marker.evaluate(environment):
-                continue
-            dependency = selected.get(canonicalize_name(req.name))
-            if req.url or dependency is None or dependency[1] not in req.specifier:
-                raise ValueError(f"unsatisfied Windows dependency: {req}")
+    verify_dependency_closure(selected)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="carr-bundle-", dir=output.parent) as scratch:
@@ -289,8 +300,14 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(HERE / name), staged / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if native_launcher is not None:
+            destination = staged / "ResearchLibrary.exe"
+            shutil.copyfile(regular(native_launcher), destination)
+            if sha256(destination) != NATIVE_LAUNCHER_SHA256:
+                raise ValueError("Native launcher changed during bundle assembly")
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
@@ -327,10 +344,13 @@ def main():
                         help="Verified portable Windows Tesseract runtime and language models")
     parser.add_argument("--ocr-source-archive", type=Path,
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
+    parser.add_argument("--native-launcher", type=Path,
+                        help="Optional exact Windows-tested ResearchLibrary.exe; its SHA256 is source-pinned")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
-                                  args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive)))
+                                  args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
+                                  args.native_launcher)))
 
 
 if __name__ == "__main__":

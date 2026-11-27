@@ -97,8 +97,6 @@ packages = [
   "carr_library.studio",
   "carr_library.assistant",
   "carr_library.conversion",
-  "carr_library.integrations",
-  "carr_library.language_qualification",
   "bootstrap",
   "bootstrap.vendor",
   "bootstrap.vendor.cairn_extractors",

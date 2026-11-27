@@ -52,8 +52,9 @@ def test_voice_discovery_receives_the_same_verified_ffmpeg(tmp_path, monkeypatch
         calls.append(kwargs)
         return marker
     monkeypatch.setattr(VoiceRegistry, 'discover', classmethod(discover))
-    assert runtime_settings.voice_registry(tmp_path / 'state') is marker
-    assert calls == [{'ffmpeg': bundled['ffmpeg']}]
+    stop = lambda: False
+    assert runtime_settings.voice_registry(tmp_path / 'state', cancelled=stop) is marker
+    assert calls == [{'ffmpeg': bundled['ffmpeg'], 'cancelled': stop}]
 
 
 @pytest.mark.parametrize('operation', ['audio', 'voices'])

@@ -119,9 +119,8 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
     backup_sidecars._check_cancelled(cancelled)
     if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 1):
         raise RestoreError('backup byte budget must be a positive integer')
-    if type(include_generated) is not bool or include_generated:
-        raise RestoreError('Generated audio needs its producer\'s typed backup adapter; '
-                           'use its project export before requesting complete library backup.')
+    if type(include_generated) is not bool:
+        raise RestoreError('Generated-audio inclusion must be an explicit boolean.')
     destination = _destination(destination, app.root)
     with exclusive_writer(app.root):
         _plain(app.database)
@@ -142,13 +141,14 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                                           max_bytes=asset_budget, cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 total = size + sum(entry.size for entry in entries)
-                state_budget = backup_sidecars.MAX_BYTES if max_bytes is None else max_bytes - total
+                state_budget = (backup_sidecars.MAX_BYTES + (backup_sidecars.backup_generated.MAX_BYTES
+                    if include_generated else 0)) if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
-                    max_bytes=state_budget, cancelled=cancelled)
+                    max_bytes=state_budget, include_generated=include_generated, cancelled=cancelled)
             manifest = dict(version=4, kind='carr-library', schema_version=4,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
-                assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=False)
+                assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=include_generated)
             backup_sidecars.normalize_manifest(manifest)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
