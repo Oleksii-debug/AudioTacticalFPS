@@ -26,6 +26,8 @@ class SaveSummary:
         prefix = f'{len(self.saved)} drafts saved. '
         if self.cancelled:
             prefix += 'Save All cancelled. '
+        if not self.remaining:
+            return prefix + 'No unsaved drafts remain.'
         return prefix + 'Unsaved changes remain: ' + '; '.join(
             f'{label}: {reason}' for label, reason in self.remaining)
 
@@ -103,7 +105,10 @@ class SaveCoordinator:
                 if dirty and key not in failures:
                     failures[key] = (participant.label, 'newer or unsaved edits are retained')
             self.busy = False
-            summary = SaveSummary(tuple(saved), tuple(failures.values()), stopped)
+            # A late stop cannot undo already confirmed durable writes.
+            # Keep cancellation when work remains or no write was confirmed.
+            summary = SaveSummary(tuple(saved), tuple(failures.values()),
+                                  stopped and (bool(failures) or not saved))
             completed(summary)
             if failures:
                 key = next(iter(failures))
