@@ -82,6 +82,7 @@ def dialog(monkeypatch):
     player.clear_ab_loop = lambda: actions.append(('clear-ab',))
     fixture.player, fixture.actions, fixture.deferred = player, actions, deferred
     fixture.widgets, fixture.subscriptions = widgets, subscriptions
+    fixture.subscribe = subscriptions.append
     def execute(action, *, audible=False):
         if audible:
             deferred.append(action)
@@ -90,7 +91,7 @@ def dialog(monkeypatch):
     def show():
         return show_reader_playback(object(), player, execute=execute,
             stop=lambda: actions.append(('stop',)), pause=lambda: actions.append(('pause',)),
-            subscribe=subscriptions.append, prepare_listening=fixture.prepare_listening)
+            subscribe=fixture.subscribe, prepare_listening=fixture.prepare_listening)
     fixture.show = show
     def find(name):
         # A StaticText label and its explicitly named TextCtrl are distinct
@@ -386,3 +387,41 @@ def test_invalid_listening_speed_is_rejected_before_stop_or_worker_submission(li
     dialog.driver = drive
     dialog.show()
     assert not dialog.actions and not dialog.requests
+
+
+
+@pytest.mark.parametrize('boundary', ['cancel', 'unsubscribe'])
+def test_listening_close_destroys_native_dialog_when_cleanup_callback_raises(listening_dialog, boundary):
+    view = listening_dialog
+    prepare = view.prepare_listening
+    subscribed = view.subscribe
+
+    def prepare_with_failure(request, completed, failed, *, active):
+        cancel = prepare(request, completed, failed, active=active)
+        def cancelled():
+            cancel()
+            if boundary == 'cancel':
+                raise RuntimeError('Cancellation callback failed after signalling.')
+        return cancelled
+
+    def subscribe(callback):
+        subscribed(callback)
+        if callback is None and boundary == 'unsubscribe':
+            raise RuntimeError('Unsubscribe callback failed after detaching.')
+
+    view.prepare_listening, view.subscribe = prepare_with_failure, subscribe
+    view.driver = lambda _window: view.press('Stop and prepare listening speed and pitch without autoplay')
+    with pytest.raises(RuntimeError, match='callback failed'):
+        view.show()
+    request, completed, failed, active, cancelled = view.requests[0]
+    assert cancelled.is_set() and not active()
+    assert view.cancellations == [request.token]
+    assert callable(view.subscriptions[0]) and view.subscriptions[-1] is None
+    native_dialogs = [widget for widget in view.widgets if hasattr(widget, 'ShowModal')]
+    assert len(native_dialogs) == 1 and native_dialogs[0].destroyed
+    for widget in view.widgets:
+        widget.destroyed = True
+    view.subscriptions[0]()
+    completed()
+    failed(RuntimeError('Late completion after cleanup failure.'))
+    assert view.actions == [('stop',)] and not view.deferred

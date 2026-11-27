@@ -281,7 +281,11 @@ def show_reader_playback(parent, player, *, execute, stop, pause, subscribe, pre
         dialog.ShowModal()
     finally:
         alive = False
-        if preparing and callable(cancel_preparation):
-            cancel_preparation()
-        subscribe(None)
-        dialog.Destroy()
+        try:
+            if preparing and callable(cancel_preparation):
+                cancel_preparation()
+        finally:
+            try:
+                subscribe(None)
+            finally:
+                dialog.Destroy()
