@@ -483,7 +483,9 @@ class AssistantService:
                 if self._transcription_binding(scope, args, workspace, cancelled=cancelled) != binding:
                     raise ValueError('The approved transcription source, runtime or model changed.')
                 job = service.run(child_id, cancelled=cancelled, progress=progress,
-                                  timeout=max(.05, scope.max_seconds))
+                                  timeout=max(.05, scope.max_seconds),
+                                  expected_configuration=engine,
+                                  expected_model_identity=binding.get('model_identity'))
                 if job['status'] == 'stopped':
                     raise InterruptedError('Transcription stopped; its retained job will resume.')
                 if job['status'] != 'completed':

@@ -925,8 +925,11 @@ class TranscriptionService:
             raise ValueError('Worker completion counters do not match verified receipts.')
         return accepted, artifacts
 
-    def run(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400):
+    def run(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400,
+            expected_configuration=None, expected_model_identity=None):
         finite(timeout, 'Transcription time allowance', .05, 365 * 86400)
+        if expected_model_identity is not None and expected_configuration is None:
+            raise ValueError('An approved model identity requires its approved runtime configuration.')
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with retained_state_lock(path, 'transcribe'), ExitStack() as reservations:
@@ -935,10 +938,14 @@ class TranscriptionService:
                 self._verify_result(identity, cancelled=cancelled)
                 return job
             config = self.configuration(verify=True)
+            if expected_configuration is not None and config != expected_configuration:
+                raise ValueError('The transcription runtime differs from the approved configuration.')
             if config['protocol'] != job['protocol']:
                 raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
             self._sources(path, job, cancelled)
             reviewed_model = self._admission_model(config, job, cancelled)
+            if expected_configuration is not None and reviewed_model != expected_model_identity:
+                raise ValueError('The transcription model differs from the approved identity.')
             from .operations import ResourceCancelled, ResourceError
             try:
                 broker = self._admission_broker(cancelled)
@@ -1206,9 +1213,19 @@ class TranscriptionService:
             destination = local_path(destination)
             if os.path.lexists(destination) or destination.is_relative_to(self.app.root):
                 raise ValueError('Choose a new export folder outside the library data directory.')
-            regular(local_path(destination.parent, exists=True), directory=True)
-            temporary = destination.parent / ('.pending-' + uuid4().hex)
+            parent = local_path(destination.parent, exists=True)
+            info = regular(parent, directory=True)
+            parent_identity = (info.st_dev, info.st_ino)
+            temporary = parent / ('.pending-' + uuid4().hex)
             temporary.mkdir(mode=0o700)
+            info = regular(temporary, directory=True)
+            temporary_identity = (info.st_dev, info.st_ino)
+            def same_directory(path, identity):
+                try:
+                    current = regular(local_path(path, exists=True), directory=True)
+                    return (current.st_dev, current.st_ino) == identity
+                except (OSError, ValueError):
+                    return False
             try:
                 exported, inventory, used = [], [], 0
                 edits = self.edits(identity)
@@ -1252,9 +1269,18 @@ class TranscriptionService:
                 self._authorize()
                 if cancelled():
                     raise AudioCancelled('Transcription export was cancelled.')
+                if (not same_directory(parent, parent_identity)
+                        or not same_directory(temporary, temporary_identity)
+                        or local_path(destination) != destination):
+                    raise ValueError('The selected transcription export directory changed; its original staging is retained.')
+                if os.path.lexists(destination):
+                    raise FileExistsError('The transcription export destination appeared before publication.')
                 os.rename(temporary, destination)
                 sync_directory(destination.parent)
             finally:
-                if temporary.exists():
+                # Never clean an unrelated replacement directory after a
+                # callback or another actor moved the selected parent route.
+                if (same_directory(parent, parent_identity)
+                        and same_directory(temporary, temporary_identity)):
                     shutil.rmtree(temporary)
             return destination

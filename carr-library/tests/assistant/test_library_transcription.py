@@ -268,14 +268,9 @@ def test_workspace_archival_rejects_the_saved_default_job(prepared, monkeypatch)
     assert not (outputs / 'Approved transcript').exists()
 
 
+@pytest.mark.parametrize('prepared', [transcription.V5_PROTOCOL], indirect=True)
 def test_selected_v5_model_is_bound_before_any_worker(prepared, monkeypatch):
     app, workspace, native, service, source, outputs, plan, worker, models = prepared
-    if native.configuration()['protocol'] != transcription.V5_PROTOCOL:
-        # The receipt profile delegates model identity to its verified worker;
-        # it has no pre-admission model claim. Still exercise its complete path.
-        identity = service.submit(plan)
-        assert checkpoint(service, identity)['library_transcription']['model_identity'] is None
-        return
     identity = service.submit(plan)
     target = models / 'small' / 'model.bin'
     raw = target.read_bytes()
@@ -337,3 +332,81 @@ def test_actual_child_cancellation_retains_one_job_for_explicit_resume(tmp_path,
     assert checkpoint(service, identity)['transcription_job'] == child_id
     assert native.verify(child_id)['status'] == 'completed'
     assert len(native.list()) == 1
+
+
+def test_runtime_switch_at_actual_runner_entry_is_rejected_before_child(prepared, monkeypatch, tmp_path):
+    app, workspace, native, service, source, outputs, plan, worker, models = prepared
+    identity = service.submit(plan)
+    original = transcription.TranscriptionService.run
+    replacement = tmp_path / 'different-runtime'
+    replacement.mkdir()
+    replacement_worker = replacement / 'worker.py'
+    replacement_worker.write_text(worker.read_text(encoding='utf-8') + '\n# Changed approved source.\n',
+                                  encoding='utf-8')
+    for name in ('local_models.py', 'transcript_features.py'):
+        if (worker.parent / name).exists():
+            (replacement / name).write_bytes((worker.parent / name).read_bytes())
+    def changed(self, child_id, **kwargs):
+        config = self.configuration()
+        self.configure(config['python'], replacement_worker, models, protocol=config['protocol'])
+        return original(self, child_id, **kwargs)
+    monkeypatch.setattr(transcription.TranscriptionService, 'run', changed)
+    monkeypatch.setattr(transcription, 'run_process', no_worker)
+    report = service.run(identity)
+    assert report.status == 'failed' and 'approved configuration' in report.message, report
+    child = native.get(checkpoint(service, identity)['transcription_job'])
+    assert child['status'] == 'ready' and child['run_context'] is None
+    assert not (outputs / 'Approved transcript').exists()
+
+
+@pytest.mark.parametrize('prepared', [transcription.V5_PROTOCOL], indirect=True)
+def test_model_switch_at_actual_runner_entry_is_rejected_before_child(prepared, monkeypatch):
+    app, workspace, native, service, source, outputs, plan, worker, models = prepared
+    identity = service.submit(plan)
+    original = transcription.TranscriptionService.run
+    def changed(self, child_id, **kwargs):
+        target = models / 'small' / 'model.bin'
+        raw = target.read_bytes()
+        target.write_bytes(bytes((raw[0] ^ 1,)) + raw[1:])
+        return original(self, child_id, **kwargs)
+    monkeypatch.setattr(transcription.TranscriptionService, 'run', changed)
+    monkeypatch.setattr(transcription, 'run_process', no_worker)
+    report = service.run(identity)
+    assert report.status == 'failed' and 'approved identity' in report.message, report
+    child = native.get(checkpoint(service, identity)['transcription_job'])
+    assert child['status'] == 'ready' and child['run_context'] is None
+    assert not (outputs / 'Approved transcript').exists()
+
+
+@pytest.mark.parametrize('change', ('new-empty-target', 'replaced-parent'))
+def test_export_checkpoint_cannot_redirect_or_replace_a_new_destination(prepared, monkeypatch, change):
+    app, workspace, native, service, source, outputs, plan, worker, models = prepared
+    identity = service.submit(plan)
+    destination, moved = outputs / 'Approved transcript', outputs.with_name('moved-output')
+    save = service.store.save
+    changed = False
+    owner_inode = None
+    def checkpoint_then_change(record):
+        nonlocal changed, owner_inode
+        save(record)
+        if not changed and record['steps'][0]['intent'].get('transcription_export'):
+            changed = True
+            if change == 'new-empty-target':
+                destination.mkdir()
+                owner_inode = destination.stat().st_ino
+            else:
+                outputs.rename(moved)
+                outputs.mkdir()
+    monkeypatch.setattr(service.store, 'save', checkpoint_then_change)
+    report = service.run(identity)
+    assert changed and report.completed == 0, report
+    assert report.status == ('attention' if change == 'new-empty-target' else 'failed'), report
+    assert native.verify(checkpoint(service, identity)['transcription_job'])['status'] == 'completed'
+    if change == 'new-empty-target':
+        assert destination.is_dir() and not list(destination.iterdir())
+        assert destination.stat().st_ino == owner_inode
+        assert not list(outputs.glob('.pending-*'))
+    else:
+        assert not list(outputs.iterdir())
+        assert not (moved / destination.name).exists()
+        assert len(list(moved.glob('.pending-*'))) == 1
