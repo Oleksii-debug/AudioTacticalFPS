@@ -3,7 +3,6 @@
 The existing scoped panels and wx data-view grid supply the main workflows.
 Long operations run outside the UI thread; focus returns to readable status.
 """
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from pathlib import Path
 import threading
@@ -20,6 +19,7 @@ from ..research.saved_topic_query import SavedTopicQueries
 from ..research.topic_tree import TopicTree
 from ..reader.context import open_context
 from .workspace_shell import WorkspaceFrame
+from .worker_lifetime import DesktopExecutor
 from .export_destination import confirm_export_destination
 from .scope_bindings import ScopeServices, scope_labels
 from .paged_search_panel import PagedSearchPanel
@@ -519,7 +519,7 @@ class DesktopFrame(WorkspaceFrame):
         self.library = library
         self.trust_controller = trust_controller
         self.remember_data_dir = remember_data_dir
-        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
+        self.executor = DesktopExecutor()
         self.cancel_event = threading.Event()
         self.working = False
         self._closing = False
@@ -726,6 +726,10 @@ class DesktopFrame(WorkspaceFrame):
     def report(self, text):
         self.status.SetValue(text)
         self.status.SetFocus()
+
+    def register_worker_cleanup(self, callback):
+        """Keep an idempotent owned-resource release on the shared worker."""
+        return self.executor.register_cleanup(callback)
 
     def run_job(self, title, operation, done=None, failed=None, *, with_progress=False):
         from concurrent.futures import CancelledError

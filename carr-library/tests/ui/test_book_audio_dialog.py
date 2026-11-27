@@ -14,7 +14,7 @@ from carr_library.ui import book_audio_dialog as ui
 
 @pytest.fixture
 def handlers(tmp_path, monkeypatch):
-    state = {'widgets': [], 'queue': [], 'approvals': [], 'reports': [], 'end': []}
+    state = {'widgets': [], 'queue': [], 'approvals': [], 'reports': [], 'end': [], 'owner_cleanups': []}
     ui_thread = threading.get_ident()
 
     class Widget:
@@ -78,6 +78,13 @@ def handlers(tmp_path, monkeypatch):
         state['queue'].append((title, operation, done, failed))
         return True
     frame.run_job = run_job
+    def register_cleanup(callback):
+        state['owner_cleanups'].append(callback)
+        def unregister():
+            if callback in state['owner_cleanups']:
+                state['owner_cleanups'].remove(callback)
+        return unregister
+    frame.register_worker_cleanup = register_cleanup
     output = tmp_path / 'outputs'
     output.mkdir()
     def find(name):
@@ -297,7 +304,7 @@ def test_idle_owned_cleanup_still_uses_the_existing_desktop_worker(handlers, mon
         e.complete()
         close()
         assert len(closes) == 1 and e.service._closed.is_set()
-        assert not e.state['queue']
+        assert not e.state['queue'] and not e.state['owner_cleanups']
     finally:
         monkeypatch.setattr(e.service, 'close', original)
 
@@ -350,6 +357,7 @@ def test_forced_owner_close_releases_active_owned_service_without_ui_callbacks(h
         assert callbacks == [] and not e.state['queue']
         assert closes == ([thread.ident] if owned else [])
         assert e.service._closed.is_set() is owned
+        assert not e.state['owner_cleanups']
         close()
         close()
         assert len(closes) == int(owned)
@@ -358,5 +366,69 @@ def test_forced_owner_close_releases_active_owned_service_without_ui_callbacks(h
         release.set()
         if thread is not None:
             thread.join(10)
+        e.frame.working = False
+        monkeypatch.setattr(e.service, 'close', original_close)
+
+
+@pytest.mark.parametrize('cleanup_state', ['queued', 'active'])
+def test_book_cleanup_survives_actual_executor_shutdown(handlers, monkeypatch, cleanup_state):
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    e = handlers
+    e.close()
+    e.state['widgets'].clear()
+    monkeypatch.setattr(ui, 'BookAudioService', lambda *args: e.service)
+    executor = DesktopExecutor()
+    entered, release = threading.Event(), threading.Event()
+    cleanup_entered, finish_cleanup = threading.Event(), threading.Event()
+    closes, ordinary, future_callbacks = [], [], []
+    original_close = e.service.close
+    def occupied():
+        entered.set()
+        assert release.wait(5)
+    def close_service():
+        closes.append(threading.get_ident())
+        assert closes[-1] != e.ui_thread
+        cleanup_entered.set()
+        assert finish_cleanup.wait(5)
+        original_close()
+    monkeypatch.setattr(e.service, 'close', close_service)
+    e.frame.register_worker_cleanup = executor.register_cleanup
+    def run_job(title, operation, done=None, failed=None):
+        e.frame.working = True
+        future = executor.submit(operation)
+        future.add_done_callback(lambda finished: future_callbacks.append(finished)
+                                 if not e.frame._closing else None)
+    e.frame.run_job = run_job
+    try:
+        blocker = executor.submit(occupied)
+        assert entered.wait(5)
+        _, close = ui.create_book_audio_dialog(e.frame, wx_module=e.wx)
+        if cleanup_state == 'active':
+            release.set()
+            blocker.result(5)
+        close()
+        if cleanup_state == 'active':
+            assert cleanup_entered.wait(5)
+        # Simulate a pre-existing direct metadata-dialog submission too. It
+        # must remain ordinary work even while an owner's release is pending.
+        pending_save = executor.submit(lambda: ordinary.append('saved'))
+        assert len(closes) == int(cleanup_state == 'active')
+        e.frame._closing = True
+        e.frame.cancel_event.set()
+        executor.shutdown(wait=False, cancel_futures=True)
+        assert pending_save.cancelled() and not ordinary
+        assert len(closes) == int(cleanup_state == 'active')
+        finish_cleanup.set()
+        release.set()
+        blocker.result(5)
+        executor.shutdown(wait=True, cancel_futures=True)
+        assert len(closes) == 1 and closes[0] != e.ui_thread
+        assert not ordinary and not future_callbacks and e.service._closed.is_set()
+        close()
+        assert len(closes) == 1
+    finally:
+        release.set()
+        finish_cleanup.set()
+        executor.shutdown(wait=True, cancel_futures=True)
         e.frame.working = False
         monkeypatch.setattr(e.service, 'close', original_close)

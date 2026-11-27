@@ -890,3 +890,38 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
         'a', f'topic-{index}', 'hit', 'revision',
         authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
     chooser.return_value.Destroy.assert_called_once()
+
+
+def test_forced_desktop_close_keeps_registered_cleanup_but_cancels_all_ordinary_submissions(classes):
+    from carr_library.ui.worker_lifetime import DesktopExecutor
+    f = frame(classes)
+    f.executor = DesktopExecutor()
+    entered, release = threading.Event(), threading.Event()
+    closes, ordinary = [], []
+    ui_thread = threading.get_ident()
+    def hold():
+        entered.set()
+        assert release.wait(5)
+    unregister = f.register_worker_cleanup(lambda: closes.append(threading.get_ident()))
+    running = f.executor.submit(hold)
+    try:
+        assert entered.wait(5)
+        # A metadata editor can submit directly, outside run_job.
+        direct = f.executor.submit(lambda: ordinary.append('direct save'))
+        done = Mock()
+        f.run_job('Queued source operation', lambda: ordinary.append('run_job save'), done=done)
+        f.on_close(close_event(False))
+        assert f._closing and f.cancel_event.is_set()
+        assert direct.cancelled() and not running.done()
+        assert closes == [] and ordinary == [] and classes[1] == []
+        release.set()
+        running.result(5)
+        f.executor.shutdown(wait=True, cancel_futures=True)
+        f.on_close(close_event(False))
+        assert len(closes) == 1 and closes[0] != ui_thread
+        assert ordinary == [] and classes[1] == []
+        done.assert_not_called()
+    finally:
+        release.set()
+        unregister()
+        f.executor.shutdown(wait=True, cancel_futures=True)

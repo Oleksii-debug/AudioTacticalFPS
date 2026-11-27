@@ -74,6 +74,7 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
     locked_plan, voices = False, ()
     cleanup_started = False
     cleanup_lock = threading.Lock()
+    unregister_cleanup = lambda: None
     cancel = threading.Event()
 
     def field(label, cls=wx.TextCtrl, proportion=0, **kwargs):
@@ -168,7 +169,13 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None):
             if cleanup_started:
                 return
             cleanup_started = True
-        service.close()
+        try:
+            service.close()
+        finally:
+            unregister_cleanup()
+
+    if owned:
+        unregister_cleanup = frame.register_worker_cleanup(cleanup_owned)
 
     def queue_cleanup():
         if not owned or cleanup_started:
