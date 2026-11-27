@@ -3,6 +3,8 @@
 Reuse already acquired locked dependencies/models, verify the new application
 against its exact Git commit, and copy explicit local audio/citation runtimes.
 No downloads, installers, public release, or changes to the original bundle.
+Local audio assemblies remain available; transfer ZIPs require the canonical
+audio distribution gate and cannot include the currently unreviewed packs.
 """
 import argparse
 import hashlib
@@ -24,7 +26,7 @@ from prepare_windows_audio import load_lock, regular, local, _pe64
 from create_delivery import (_read_manifest, _manifest, _name, _file, _stream, _check,
                              _directories, _unchanged_directories, _stamp, _identity,
                              _verify_archive, _publish, PREFIX, MANIFEST, SOURCES,
-                             MAX_FILE, MAX_TOTAL)
+                             MAX_FILE, MAX_TOTAL, _require_transferable_audio_inventory)
 
 HERE = Path(__file__).resolve().parent
 
@@ -236,6 +238,7 @@ def refresh_archive(source, wheel, output, source_commit, *, parent_manifest_sha
     payloads, manifest, raw = _plan(source, wheel, source_commit,
         parent_manifest_sha256=parent_manifest_sha256, audio=audio, citations=citations,
         extra_wheelhouse=extra_wheelhouse, cancelled=cancelled)
+    _require_transferable_audio_inventory(manifest)
     if max(payload.size for payload in payloads.values()) > MAX_FILE or sum(
             payload.size for payload in payloads.values()) + len(raw) > MAX_TOTAL:
         raise ValueError('Refreshed bundle exceeds the reviewed delivery ZIP size limit.')

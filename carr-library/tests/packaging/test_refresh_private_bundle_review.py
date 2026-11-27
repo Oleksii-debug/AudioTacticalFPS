@@ -459,18 +459,75 @@ def _native_fixtures(bundle, tmp_path):
     return audio, citations
 
 
-def test_direct_archive_verifies_pinned_audio_and_node_bytes_without_execution(bundle, tmp_path):
+def test_local_refresh_keeps_pinned_audio_but_transfer_archive_rejects_it(bundle, monkeypatch, tmp_path):
     audio, citations = _native_fixtures(bundle, tmp_path)
-    report = _archive_refresh(bundle, audio=audio, citations=citations)
+    _refresh(bundle, audio=audio, citations=citations)
+    manifest = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    assert manifest['bundled_audio'] is True and manifest['bundled_citation_runtime'] is True
+    for name, path in [('audio/bin/ffmpeg.exe', audio / 'bin/ffmpeg.exe'),
+                       ('citation-runtime/node.exe', citations / 'node.exe')]:
+        assert (bundle.output / name).read_bytes() == path.read_bytes()
+        assert manifest['files'][name] == sha256(path.read_bytes()).hexdigest()
+    original = (bundle.source / 'bundle-manifest.json').read_bytes()
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('Uncleared audio must be refused before transfer staging or payload copying.')
+
+    monkeypatch.setattr(bundle.module._Payload, 'write', forbidden)
+    monkeypatch.setattr(bundle.module.tempfile, 'mkstemp', forbidden)
+    with pytest.raises(ValueError, match='Audio runtime distribution clearance'):
+        _archive_refresh(bundle, audio=audio, citations=citations)
+    assert (bundle.source / 'bundle-manifest.json').read_bytes() == original
+    assert (bundle.output / 'audio/bin/ffmpeg.exe').read_bytes() == (audio / 'bin/ffmpeg.exe').read_bytes()
+    assert not bundle.output.with_suffix('.zip').exists()
+    assert not list(bundle.output.parent.glob('.private-archive-*'))
+
+
+def test_direct_archive_keeps_pinned_node_without_audio(bundle, tmp_path):
+    _, citations = _native_fixtures(bundle, tmp_path)
+    report = _archive_refresh(bundle, citations=citations)
     with ZipFile(bundle.output.with_suffix('.zip')) as archive:
         raw = archive.read(bundle.module.PREFIX + 'bundle-manifest.json')
         manifest = json.loads(raw)
-        assert manifest['bundled_audio'] is True and manifest['bundled_citation_runtime'] is True
-        for name, path in [('audio/bin/ffmpeg.exe', audio / 'bin/ffmpeg.exe'),
-                           ('citation-runtime/node.exe', citations / 'node.exe')]:
-            assert archive.read(bundle.module.PREFIX + name) == path.read_bytes()
-            assert manifest['files'][name] == sha256(path.read_bytes()).hexdigest()
+        assert manifest['bundled_audio'] is False and manifest['bundled_citation_runtime'] is True
+        assert not any(name.startswith(('audio/', 'audio-runtime/')) for name in manifest['files'])
+        name = 'citation-runtime/node.exe'
+        assert archive.read(bundle.module.PREFIX + name) == (citations / 'node.exe').read_bytes()
+        assert manifest['files'][name] == sha256((citations / 'node.exe').read_bytes()).hexdigest()
     assert report['native_execution'] == 'NOT_RUN'
+
+
+@pytest.mark.parametrize('flags,name', [
+    ({}, 'audio-runtime/bin/ffmpeg.exe'),
+    ({'bundled_audio': False, 'bundled_audio_runtime': False}, 'audio-runtime/bin/ffplay.exe'),
+    ({'bundled_audio': False, 'bundled_audio_runtime': False,
+      'public_distribution_clearance': True}, 'AUDIO-RUNTIME/provenance/source-lock.json'),
+    ({'bundled_audio': False, 'bundled_audio_runtime': False}, 'AuDiO/bin/ffprobe.exe'),
+])
+def test_direct_archive_rejects_retained_audio_inventory_despite_absence_flags(
+        bundle, monkeypatch, flags, name):
+    payload = b'Synthetic retained local-only runtime payload.'
+    selected = bundle.source / name
+    selected.parent.mkdir(parents=True, exist_ok=True)
+    selected.write_bytes(payload)
+    path = bundle.source / 'bundle-manifest.json'
+    manifest = json.loads(path.read_bytes())
+    manifest.update(flags)
+    manifest['files'][name] = sha256(payload).hexdigest()
+    raw = (json.dumps(manifest, sort_keys=True) + '\n').encode('utf-8')
+    path.write_bytes(raw)
+    bundle.parent_hash = sha256(raw).hexdigest()
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail('Retained local-only audio must be rejected before transfer output is created.')
+
+    monkeypatch.setattr(bundle.module._Payload, 'write', forbidden)
+    monkeypatch.setattr(bundle.module.tempfile, 'mkstemp', forbidden)
+    with pytest.raises(ValueError, match='Audio runtime distribution clearance'):
+        _archive_refresh(bundle)
+    assert path.read_bytes() == raw and selected.read_bytes() == payload
+    assert not bundle.output.with_suffix('.zip').exists()
+    assert not list(bundle.output.parent.glob('.private-archive-*'))
 
 
 @pytest.mark.parametrize('component', ['audio', 'node'])

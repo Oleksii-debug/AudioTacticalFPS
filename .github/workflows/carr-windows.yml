@@ -606,6 +606,7 @@ jobs:
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_delivery_archive.py',
             'tests/reader/test_context.py',
             'tests/reader/test_topic_tree.py',
             'tests/ui/test_federated_labels.py',
