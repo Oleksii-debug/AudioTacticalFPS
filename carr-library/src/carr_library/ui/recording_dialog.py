@@ -160,7 +160,9 @@ def show_recording(frame, *, on_selected=None, project_id=None, window_parent=No
         if expected_generation != generation:
             return
         release_when_stopped()
-        if alive and closing:
+        # The host suppresses a stale-library result callback. Settle this
+        # owned modal here as well, after actual worker/cleanup completion.
+        if alive and (closing or not current()):
             if cleanup_owner is None or cleanup_owner.quiescent:
                 dialog.EndModal(wx.ID_CANCEL)
 
