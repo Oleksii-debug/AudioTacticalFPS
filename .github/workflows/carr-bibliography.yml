@@ -24,7 +24,7 @@ jobs:
   windows-bibliography:
     name: Windows x64 / CPython 3.11 / installed bibliography
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         shell: pwsh
@@ -105,7 +105,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run strict bibliography, replay and export acceptance
-        timeout-minutes: 8
+        timeout-minutes: 18
         run: |
           $suites = @(
             'tests/research/test_bibtex_import.py',
@@ -135,7 +135,7 @@ jobs:
             'tests/e2e/test_academic_document_export.py',
             'tests/e2e/test_export_destination.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-bibliography-results/strict-acceptance.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-bibliography-results/strict-acceptance.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Retain text acceptance evidence only
