@@ -583,21 +583,18 @@ def test_export_handler_binds_actual_controller_publication_to_confirmation(
     target.write_bytes(original_bytes)
     ui = native_handlers
     ui.wx.FD_SAVE, ui.wx.FD_OVERWRITE_PROMPT = 4, 8
-    ui.wx.ID_YES, ui.wx.ID_NO = 10, 11
+    ui.wx.YES, ui.wx.NO = 10, 11
     ui.wx.YES_NO, ui.wx.NO_DEFAULT, ui.wx.ICON_QUESTION = 16, 32, 64
     chooser = Mock()
     chooser.ShowModal.return_value = ui.wx.ID_OK
     chooser.GetPath.return_value = str(target)
     ui.wx.FileDialog = Mock(return_value=chooser)
-    question = Mock()
-
-    def answer_question():
+    def answer_question(message, caption, style, parent):
         if competing:
             target.write_bytes(competing_bytes)
-        return ui.wx.ID_YES if answer == 'yes' else ui.wx.ID_NO
+        return ui.wx.YES if answer == 'yes' else ui.wx.NO
 
-    question.ShowModal.side_effect = answer_question
-    ui.wx.MessageDialog = Mock(return_value=question)
+    ui.wx.MessageBox = Mock(side_effect=answer_question)
     window = ui.make('academic', controller)
     window.controller = controller
     window._export_options = Mock(return_value=(FORMATS[0], None, False))
@@ -606,18 +603,18 @@ def test_export_handler_binds_actual_controller_publication_to_confirmation(
     window.on_export()
 
     assert ui.wx.FileDialog.call_args.kwargs['style'] == ui.wx.FD_SAVE
-    parent, message, caption, style = ui.wx.MessageDialog.call_args.args
+    ui.wx.MessageBox.assert_called_once()
+    message, caption, style, parent = ui.wx.MessageBox.call_args.args
     assert parent is window and target.name in message and caption == 'Replace academic bibliography'
     assert style == ui.wx.YES_NO | ui.wx.NO_DEFAULT | ui.wx.ICON_QUESTION
     chooser.Destroy.assert_called_once()
-    question.Destroy.assert_called_once()
     if answer == 'no':
         actual_render.assert_not_called()
         assert target.read_bytes() == original_bytes
     elif competing:
         actual_render.assert_called_once()
         assert target.read_bytes() == competing_bytes
-        assert 'Bibliography not exported:' in window.status.value
+        assert 'Bibliography export:' in window.status.value
         assert 'destination changed' in window.status.value
     else:
         actual_render.assert_called_once()

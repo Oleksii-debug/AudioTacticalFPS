@@ -47,7 +47,9 @@ jobs:
             tests/assistant/test_workflow_templates_cli.py \
             tests/assistant/test_workflow_template_editor.py \
             tests/assistant/test_planning_handlers.py \
-            tests/ui/test_studio_keyboard_registration.py
+            tests/ui/test_studio_keyboard_registration.py \
+            tests/ui/test_academic_library_dialog.py \
+            tests/reader/test_binary_file_export.py
       - name: Require portable source identity without replacing native OCR gates
         run: |
           set -euo pipefail
