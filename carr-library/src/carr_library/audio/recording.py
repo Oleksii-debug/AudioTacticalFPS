@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 import re
 import shutil
-from tempfile import mkdtemp
+from tempfile import TemporaryFile, mkdtemp
 import threading
 import time
 from uuid import uuid4
@@ -320,7 +320,9 @@ class RecordingService:
         budget = AudioBudget(timeout=options.max_seconds + 20, max_output_bytes=options.max_bytes,
                              max_log_bytes=512 * 1024, max_staging_files=4, threads=1)
         controlled = pause_requested is not None or monitor_output is not None
-        needed = options.max_seconds * options.sample_rate * options.channels * 2 * (2 if controlled else 1)
+        # Controlled assembly keeps one verified segment snapshot in addition
+        # to the captured segments and their new joined output.
+        needed = options.max_seconds * options.sample_rate * options.channels * 2 * (3 if controlled else 1)
         if shutil.disk_usage(self.root).free < needed + budget.reserve_disk_bytes + (MAX_RECORDING_SEGMENTS * 4096 if controlled else 0):
             raise AudioError('There is not enough free space for the selected recording allowance.')
 
@@ -532,7 +534,7 @@ class RecordingService:
 
     @staticmethod
     def _join_segments(parts, staged, options, cancelled):
-        """Stream unchanged sample frames, with a hash for every final range."""
+        """Stream verified private sample frames, with a hash for each range."""
         ranges, position = [], 0
         width = options.channels * 2
         stamp = lambda info: (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
@@ -540,28 +542,56 @@ class RecordingService:
             with wave.open(output, 'wb') as writer:
                 writer.setparams((options.channels, 2, options.sample_rate, 0, 'NONE', 'PCM'))
                 for path, audio, ended_by in parts:
-                    # The identity interval must cover both verification and
-                    # copying; a post-hash replacement cannot acquire a fresh
-                    # baseline and mint a new retained-frame receipt.
                     before = regular(path)
+                    size = audio['size_bytes']
+                    if not 44 <= size <= options.max_bytes or before.st_size != size:
+                        raise ValueError('A completed recording segment changed before assembly.')
                     if _digest(path, cancelled) != audio['sha256']:
                         raise ValueError('A completed recording segment changed before assembly.')
-                    digest, remaining = sha256(), audio['frames']
-                    with Path(path).open('rb') as source, wave.open(source, 'rb') as reader:
-                        while remaining:
-                            if cancelled():
-                                raise AudioCancelled('Recording assembly cancelled; no take was published.')
-                            if shutil.disk_usage(staged.parent).free < 32 * 1024 * 1024:
-                                raise AudioError('Recording assembly stopped to preserve its disk reserve.')
-                            count = min(remaining, 32768)
-                            data = reader.readframes(count)
-                            if len(data) != count * width:
-                                raise ValueError('A completed recording segment is truncated.')
-                            digest.update(data)
-                            writer.writeframesraw(data)
-                            remaining -= count
-                        after = os.fstat(source.fileno())
-                    if stamp(before) != stamp(after) or stamp(before) != stamp(regular(path)):
+                    # Windows timestamps can remain equal after a same-size
+                    # write. Bind the PCM reader to the exact captured bytes,
+                    # not a reopened source that merely has the same stamp.
+                    with TemporaryFile(dir=staged.parent, prefix='.segment-snapshot-') as snapshot:
+                        copied, remaining_bytes = sha256(), size
+                        with Path(path).open('rb') as source:
+                            while remaining_bytes:
+                                if cancelled():
+                                    raise AudioCancelled('Recording assembly cancelled; no take was published.')
+                                block = source.read(min(remaining_bytes, 1024 * 1024))
+                                if not block:
+                                    raise ValueError('A recording segment changed during assembly.')
+                                if shutil.disk_usage(staged.parent).free < 32 * 1024 * 1024 + len(block):
+                                    raise AudioError('Recording assembly stopped to preserve its disk reserve.')
+                                copied.update(block)
+                                snapshot.write(block)
+                                remaining_bytes -= len(block)
+                            if source.read(1):
+                                raise ValueError('A recording segment changed during assembly.')
+                            after = os.fstat(source.fileno())
+                        if (copied.hexdigest() != audio['sha256'] or stamp(before) != stamp(after)
+                                or stamp(before) != stamp(regular(path))):
+                            raise ValueError('A recording segment changed during assembly.')
+                        snapshot.seek(0)
+                        digest, remaining = sha256(), audio['frames']
+                        with wave.open(snapshot, 'rb') as reader:
+                            if (reader.getcomptype() != 'NONE' or reader.getsampwidth() != 2
+                                    or reader.getframerate() != options.sample_rate
+                                    or reader.getnchannels() != options.channels
+                                    or reader.getnframes() != audio['frames']):
+                                raise ValueError('A completed recording segment has changed PCM parameters.')
+                            while remaining:
+                                if cancelled():
+                                    raise AudioCancelled('Recording assembly cancelled; no take was published.')
+                                if shutil.disk_usage(staged.parent).free < 32 * 1024 * 1024:
+                                    raise AudioError('Recording assembly stopped to preserve its disk reserve.')
+                                count = min(remaining, 32768)
+                                data = reader.readframes(count)
+                                if len(data) != count * width:
+                                    raise ValueError('A completed recording segment is truncated.')
+                                digest.update(data)
+                                writer.writeframesraw(data)
+                                remaining -= count
+                    if stamp(before) != stamp(regular(path)):
                         raise ValueError('A recording segment changed during assembly.')
                     ranges.append({'start_frame': position, 'frames': audio['frames'],
                                    'pcm_sha256': digest.hexdigest(), 'ended_by': ended_by})
