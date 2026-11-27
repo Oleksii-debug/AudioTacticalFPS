@@ -914,14 +914,16 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         # before publication reconciliation. A late stop cannot undo a commit.
         return _settle_request(root, request_id, identity, result)
 
-    if profile is None:
-        return execute(cancelled)
+    from ..catalog.intake import MAX_BYTES
     from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
     broker = ResourceBroker.for_app(root)
-    # Same existing broker; declared source/checkpoint/catalog/scratch capacity.
-    # This is finite admission, not measured RSS or an OS memory sandbox.
+    # Every isolated document parser shares admission with the other heavy
+    # operations. Legacy requests keep their existing 64 MiB source allowance;
+    # only an explicit streamed profile can increase it.
+    # This is declared capacity, not measured RSS or an OS memory sandbox.
+    maximum_bytes = profile.maximum_bytes if profile is not None else MAX_BYTES
     request = ResourceRequest(cpu_slots=1, memory_bytes=512 * 1024**2,
-        disk_bytes=10 * profile.maximum_bytes + 128 * 1024**2,
+        disk_bytes=10 * maximum_bytes + 128 * 1024**2,
         disk_path=Path(root).resolve())
     try:
         with broker.reserve(request, operation_id='document:' + request_id,

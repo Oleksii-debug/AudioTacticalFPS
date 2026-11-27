@@ -1,0 +1,68 @@
+name: CARR ordinary document admission verification
+on:
+  push:
+    branches: [carr/document-admission-evaluation-20261127]
+    paths: ['carr-library/**', '.github/workflows/carr-document-admission-evaluation.yml']
+permissions:
+  contents: read
+concurrency:
+  group: carr-document-admission-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  ordinary-documents:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact application and parser test prerequisites
+        id: install
+        run: |
+          New-Item -ItemType Directory -Force ci-document-results | Out-Null
+          git rev-parse HEAD | Set-Content ci-document-results/tested-commit.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install . 'pytest==9.0.2' 'reportlab==4.4.9'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require source admission publication and replay boundaries
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          python -B scripts/ci_check.py --jobs 2 tests/ingest/test_streamed_admission.py tests/e2e/test_import_worker_publication.py tests/ingest/test_application_atomic_docx_gate.py tests/ingest/test_import_replay_identity.py tests/ingest/test_terminal_replay_registration.py 2>&1 | Tee-Object ci-document-results/source.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require installed admission publication and replay boundaries
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          python -I -B -c "from pathlib import Path; import carr_library; path=Path(carr_library.__file__).resolve(); assert not path.is_relative_to(Path('src').resolve()), path; print(path)"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-document-results/installed.xml tests/ingest/test_streamed_admission.py tests/e2e/test_import_worker_publication.py tests/ingest/test_application_atomic_docx_gate.py tests/ingest/test_import_replay_identity.py tests/ingest/test_terminal_replay_registration.py 2>&1 | Tee-Object ci-document-results/installed.txt
+          $testExit = $LASTEXITCODE
+          python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('ci-document-results/installed.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('INSTALLED_CASES_PASS',len(cases))"
+          if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+      - name: Retain public synthetic source and installed evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-document-admission-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-document-results/
+          if-no-files-found: error
+          retention-days: 7
