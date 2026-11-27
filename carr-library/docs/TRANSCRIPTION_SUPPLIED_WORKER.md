@@ -119,7 +119,11 @@ The helper is implemented in `audio/supplied_runtime_manifest.py` and covered by
   reloads the model between files; persistent batch model reuse and measured
   book-length throughput are not qualified by this increment.
   The cooperating runtime lock is scoped to this application state directory and
-  selected runtime identity; it is not a global CPU/GPU broker across all engines.
+  selected runtime identity. Shared cooperative resource admission additionally
+  coordinates this canonical service, studio production and isolated imports.
+  It reserves declared CPU/RAM/disk and configured device allowances; it does
+  not measure model peaks or enforce OS-wide limits on other engines. See
+  `runtime_resources.md` for the participating boundaries and policy.
 - The host checks actual worker done/failed counts, selected language/settings,
   source identity, timestamp order and every requested export. Worker exit zero
   or its textual completion status alone cannot pass. TXT/SRT/VTT and a bounded

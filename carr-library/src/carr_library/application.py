@@ -510,6 +510,10 @@ class LibraryApp:
                     edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
         """Isolate PDF/DOCX/EPUB parsing; retain the exact TXT path inline."""
         from .extract.page_ocr import Config
+        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+            raise ValueError('invalid authors')
+        if not isinstance(collections, (tuple, list)) or len(collections) > 100:
+            raise ValueError('invalid collections')
         path = Path(path).absolute()
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),

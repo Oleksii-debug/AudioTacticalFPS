@@ -293,6 +293,9 @@ def main():
         transcription_probe = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tests' / 'ui' / 'native_transcription_smoke.py'))
         result['transcription'] = transcription_probe['run_native_transcription'](frame, root / 'native-asr')
         result['checks'].append('native transcription controls, synthetic worker, pause/cancel/resume and reader handoff')
+        operations_probe = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tests' / 'ui' / 'native_operations_smoke.py'))
+        result['operations'] = operations_probe['run_native_operations'](frame, root / 'native-operations')
+        result['checks'].append('native tasks, responsive initialization, durable resource policy and actual dialog destruction')
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'

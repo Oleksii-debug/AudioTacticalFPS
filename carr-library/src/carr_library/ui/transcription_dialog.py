@@ -579,10 +579,13 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
     return TranscriptionDialog()
 
 
-def show_transcription(frame):
+def show_transcription(frame, *, job_id=None):
     dialog = create_transcription_dialog(frame)
     try:
         dialog.CentreOnParent()
+        if job_id is not None:
+            dialog.pages.SetSelection(1)
+            wx.CallAfter(dialog.controller.inspect, job_id)
         dialog.ShowModal()
     finally:
         dialog.controller.dispose()

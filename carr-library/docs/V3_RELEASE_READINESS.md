@@ -14,6 +14,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
 | Reading and voices | Source-preserving reading derivatives, portable edition/revision/asset lineage, explicit detached-draft recovery, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real source/backup/restart tests preserve original bytes and never infer identity from equal text; earlier Windows SAPI PCM and local Flite evidence remains specific to its tested build; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
+| Shared operations | Native Tasks and resources view and CLI over the existing import, Studio, ASR and assistant stores; cooperating CPU/RAM/disk/device reservations and cancellable admission | Canonical ASR, actual isolated imports, process ownership and controller regressions are required by the exact portable/native/installed gates; hardware capacity and hard-crash orphan management remain separate |
 | Documents and citations | Bounded BibTeX/RIS import, selected-field metadata review, isolated conversion, local citeproc-js styles/locales and editable DOCX regeneration with citation provenance | Actual parser, local processor, cancellation/rollback, generated-document and overwrite-confirmation regressions; no live Word add-in |
 | Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings, projects and discoverable reader drafts; catalog v5 records immutable request/attempt publication receipts in the import transaction | Real process interruption, competing imports, exact v3/v4/v5 schema validation, rollback, portable-name validation and restore tests; externally exported audio and OS credential secrets are separate |
 | Exports | Selected-file approval binds file identity and bytes; new files publish without replacement; completed exports retain success if only temporary cleanup fails | Actual competing creates, equal-size content edits, moved destinations, cancellation and bounded-read tests; existing files above the 64 MiB overwrite-check limit require a new filename |
@@ -22,7 +23,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
-| Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
+| Delivery preparation | Reviewed native ResearchLibrary.exe in the existing sealed bundle, exact-source wheels, pinned dependency/SBOM closure and parent-manifest binding | Portable C and builder regressions; required Windows gates bind actual process and installed-executable checks to the sealed SHA256. Publisher signing and standard installer acceptance remain open |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
 
 The native V3 acceptance script performs installed SAPI synthesis, scene
@@ -57,8 +58,11 @@ bundled in the public repository. See [the updated source review](TRANSCRIPTION_
 and [the exact adapter contract](TRANSCRIPTION_SUPPLIED_WORKER.md).
 
 Current integration is tracked in [PR143](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/143).
-Its Windows source and installed-package workflows select the new transcription,
-reader recovery, import-publication and export regressions. Read the checks for
+Its Windows source and installed-package workflows select the transcription,
+reader recovery, import-publication, export and shared-resource regressions.
+Native launcher acceptance runs on its exact built bytes; the complete installed
+bundle also opens the native Tasks and resources view. A final unchanged-bundle
+check remains mandatory after all installed tests, including real crash fixtures. Read the checks for
 the exact final head: a predecessor's passing run does not qualify a later tree.
 
 The complete-backup format remains v4. Catalog schema v5 adds only import
