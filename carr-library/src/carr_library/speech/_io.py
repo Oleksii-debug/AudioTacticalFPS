@@ -114,7 +114,7 @@ def _sync_directory(parent):
 
 
 @contextmanager
-def new_output(destination, *, cancelled=lambda: False):
+def new_output(destination, *, cancelled=lambda: False, before_publish=None):
     """Stage beside the target and publish with an atomic no-clobber link.
 
     No placeholder is ever published. Filesystems lacking hard-link support
@@ -136,6 +136,9 @@ def new_output(destination, *, cancelled=lambda: False):
         # Windows requires a writable descriptor to flush the completed staging file.
         with staged.open('r+b') as stream:
             os.fsync(stream.fileno())
+        check_cancelled(cancelled)
+        if before_publish is not None:
+            before_publish(staged)
         check_cancelled(cancelled)
         os.link(staged, target)
         # Remove the staging name before readers validate the final inode.

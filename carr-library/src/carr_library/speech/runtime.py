@@ -274,7 +274,8 @@ class VoiceRegistry:
             identity['provider_fingerprint'] = provider_fingerprint(voice_id)
         return sha256(json.dumps(identity, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
 
-    def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False):
+    def synthesize(self, text, voice_id, destination, *, settings=None, cancelled=lambda: False,
+                   before_publish=None):
         text_value(text)
         options = settings or SpeechSettings()
         if not isinstance(options, SpeechSettings):
@@ -291,7 +292,16 @@ class VoiceRegistry:
         provider = self._owners[voice_id]
         count, frames, params = 0, 0, None
         target = Path(destination).absolute()
-        with new_output(target, cancelled=cancelled) as staged:
+        def attest_publication(staged):
+            if before_publish is not None:
+                before_publish(staged)
+                # The source check may take time; do not publish bytes that no
+                # longer match the measured rendering receipt.
+                if digest(staged) != checksum:
+                    raise ValueError('The staged speech changed during publication validation.')
+
+        with new_output(target, cancelled=cancelled,
+                        before_publish=attest_publication if before_publish is not None else None) as staged:
             with wave.open(str(staged), 'wb') as combined:
                 # A first-chunk cancellation must preserve its original error,
                 # not be replaced by Wave_write.close complaining about unset

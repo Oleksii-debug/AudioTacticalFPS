@@ -67,7 +67,8 @@ def reader_ui(tmp_path, monkeypatch):
     main = get_ident()
     state = SimpleNamespace(controls=[], queue=[], jobs=[], requests=[], played=[], closed=[],
         paths=[], chunks=[], clipboard='Independent clipboard text.', clipboard_reads=0, clipboard_opens=0,
-        clipboard_closes=0, clipboard_hook=lambda: None, scenario=lambda env: None,
+        clipboard_closes=0, clipboard_hook=lambda: None, render_hook=lambda: None,
+        scenario=lambda env: None,
         dictionary_scenario=lambda env: None, notices=[])
     state.parent = SimpleNamespace(library=app, _closing=False, report=state.notices.append)
     state.app, state.source, state.raw, state.tmp_path = app, source, raw, tmp_path
@@ -221,6 +222,7 @@ def reader_ui(tmp_path, monkeypatch):
             with wave.open(str(destination), 'wb') as output:
                 output.setnchannels(1); output.setsampwidth(2); output.setframerate(8000)
                 output.writeframes(b'\0\0' * 800)
+            state.render_hook()
         def close(self): state.closed.append(True)
     monkeypatch.setattr('carr_library.runtime_settings.voice_registry',
                         lambda *args, **kwargs: VoiceRegistry([Provider()]))
@@ -437,6 +439,31 @@ def test_completed_synthesis_rechecks_current_source_before_late_playback(reader
                 tree.archive(e.topic)
         e.drain()
         assert not e.played
+    reader_ui.run(scenario)
+
+
+@pytest.mark.parametrize('changed', [False, True])
+def test_saved_wav_rechecks_source_before_publication(reader_ui, changed):
+    def scenario(e):
+        destination = e.tmp_path / 'narrated.wav'
+        e.paths.append(destination)
+        if changed:
+            def revoke():
+                with e.app.topic_transaction(e.workspace) as tree:
+                    tree.archive(e.topic)
+            e.render_hook = revoke
+        button = next(c for c in e.controls if c.label == 'Save &WAV' and not c.destroyed)
+        button.handlers['button'](None)
+        future = e.complete()
+        assert e.chunks, 'The source change must happen during actual synthesis.'
+        if changed:
+            assert future.exception() is not None
+            assert not destination.exists()
+        else:
+            assert future.exception() is None
+            with wave.open(str(destination), 'rb') as result:
+                assert result.getnframes() > 0
+        assert not list(e.tmp_path.glob('.speech-*'))
     reader_ui.run(scenario)
 
 

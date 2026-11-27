@@ -633,8 +633,30 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             report(('Rendering an explicit clipboard snapshot; it is not part of this reading copy. '
                     if mode == 'clipboard' else 'Rendering locally. Original text is unchanged. ')
                    + 'F8 cancels.')
-            run(lambda: registry.synthesize(content, voice.id, output,
-                                            settings=settings, cancelled=cancel.is_set), rendered)
+            # Capture the exact requested copy on the UI thread. The
+            # worker must not query native editor controls during publication.
+            if destination is not None:
+                bound_document = document
+                snapshot = document.to_dict()
+
+                def attest_source(_staged):
+                    check_current()
+                    if document is not bound_document or document.to_dict() != snapshot:
+                        raise ValueError('The reading copy changed during WAV export.')
+                    if source_loader is not None:
+                        fresh = source_loader(cancel.is_set).reading_document()
+                        if (fresh.source_text != bound_document.source_text
+                                or fresh.source_anchor != bound_document.source_anchor):
+                            raise ValueError('The retained narration source changed during WAV export.')
+                    check_current()
+                    if document is not bound_document or document.to_dict() != snapshot:
+                        raise ValueError('The reading copy changed during WAV export.')
+
+                run(lambda: registry.synthesize(content, voice.id, output,
+                    settings=settings, cancelled=cancel.is_set, before_publish=attest_source), rendered)
+            else:
+                run(lambda: registry.synthesize(content, voice.id, output,
+                                                settings=settings, cancelled=cancel.is_set), rendered)
         except Exception as exc:
             report(str(exc), focus=True)
 
