@@ -19,7 +19,7 @@ TRANSLATION = re.compile(r'state/translation/jobs/([0-9a-f]{32})(\.control)?\.js
 LANGUAGES = re.compile(r'state/translation/languages-(' + ID + r')\.json\Z')
 ASSISTANT = re.compile(r'state/assistant/([0-9a-f]{32})(\.control)?\.json\Z')
 STUDIO = re.compile(r'state/studio/jobs/(' + ID + r')/(job|control|project|timeline)\.json\Z')
-SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt)\Z')
+SUBTITLE = re.compile(r'state/studio/jobs/(' + ID + r')/script\.(srt|vtt|lrc)\Z')
 
 
 MEDIA_RECORD = re.compile(r'state/studio/(?:recordings/[0-9a-f]{32}\.(?:json|wav)|publications/[0-9a-f]{32}\.json|backup-inputs\.json)\Z')
@@ -142,10 +142,17 @@ def artifacts(values):
 
 def _resource_plan(value):
     from .operations.models import ResourceRequest
-    if (type(value) is not dict or value.get('schema') != 1 or 'request' not in value
+    if (type(value) is not dict or type(value.get('schema')) is not int
+            or value['schema'] != 1 or 'request' not in value
             or len(value) > 10):
         raise ValueError('Invalid saved resource estimate.')
     ResourceRequest.from_dict(value['request'])
+    # Retained estimates are passive absolute declarations, not permission to
+    # resolve a relative disk against whichever directory performs restoration.
+    if value['request']['disk_path'] is not None:
+        path(value['request']['disk_path'])
+    for directory, _ in value['request']['additional_disks']:
+        path(directory)
     for key, item in value.items():
         if key not in ('schema', 'request'):
             text(key, 80)
@@ -190,13 +197,16 @@ def _studio_job(value, identity):
     fields(value, {'schema', 'id', 'status', 'project', 'fingerprint', 'destination',
                    'format', 'stems', 'nodes', 'artifacts', 'progress', 'created',
                    'updated', 'error', 'runtime'}, {'result', 'recovery', 'resource_plan',
-                                                    'resource_cleanup_notice', 'total_disk_bytes'})
+                                                    'resource_cleanup_notice', 'total_disk_bytes', 'warnings', 'artifact_version'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['id'] != identity:
         raise ValueError('Invalid production job identity.')
+    artifact_version = value.get('artifact_version', 1)
+    if type(artifact_version) is not int or artifact_version not in (1, 2):
+        raise ValueError('Unsupported production artifact version.')
     project = Project.from_dict(value['project'])
     if value['fingerprint'] != project.fingerprint:
         raise ValueError('Production project fingerprint changed.')
-    if value['status'] not in ('pending', 'queued', 'running', 'paused', 'cancelled', 'failed', 'complete', 'waiting-input'):
+    if value['status'] not in ('pending', 'queued', 'running', 'paused', 'cancelled', 'attention', 'failed', 'complete', 'waiting-input'):
         raise ValueError('Invalid production status.')
     if value['format'] not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
         raise ValueError('Invalid production output format.')
@@ -211,6 +221,11 @@ def _studio_job(value, identity):
         _resource_plan(value['resource_plan'])
     if 'resource_cleanup_notice' in value:
         text(value['resource_cleanup_notice'], 8192)
+    if 'warnings' in value:
+        if type(value['warnings']) is not list or len(value['warnings']) > 1000:
+            raise ValueError('Invalid bounded production warning list.')
+        for warning in value['warnings']:
+            text(warning, 1800)
     if 'recovery' in value:
         _studio_recovery(value['recovery'])
     if 'total_disk_bytes' in value:
@@ -402,7 +417,7 @@ def _translation_languages(value, identity):
     for row in rows:
         fields(row, {'language', 'name', 'source', 'target'} if advanced else {'language', 'name'})
         _translation_language(row['language'])
-        text(row['name'], 1000)
+        text(row['name'], 512 if advanced else 1000, empty=advanced)
         if advanced and (type(row['source']) is not bool or type(row['target']) is not bool):
             raise ValueError('Invalid provider-declared language directions.')
         if row['language'] in seen:
@@ -516,8 +531,10 @@ def _translation_job(db, value, identity):
             digest(row['response_sha256'])
             if profile.adapter == 'google-translation-v3':
                 glossary = {'glossary': value['glossary'], 'ignoreCase': False} if value.get('glossary') else None
+                reported_glossary = row.get('glossary_config')
                 if (row.get('reported_model') != google_v3_parent(profile.endpoint) + '/models/' + profile.model
-                        or row.get('glossary_config') != glossary):
+                        or reported_glossary != glossary
+                        or (glossary is not None and reported_glossary['ignoreCase'] is not False)):
                     raise ValueError('Advanced translation provenance changed.')
         elif (row['response_sha256'] is not None or row['text'] != chunks[index]
               or row['detected_source'] is not None):

@@ -7,6 +7,7 @@ from pathlib import Path
 import stat
 import sys
 import tempfile
+import time
 
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
@@ -243,6 +244,26 @@ def _replace_state_file(source, destination, staged):
         os.replace(source, destination)
 
 
+def _replace_state(source, destination, staged):
+    """Retry only transient Windows sharing denials against the same stage.
+
+    Each attempt still uses the existing identity-checked native replacement.
+    Its successful commit and descriptor-close semantics remain unchanged.
+    The total retry delay is bounded to 0.63 seconds; there is no unlink,
+    copy fallback, read-only override or new staging file.
+    """
+    delays = iter((0.01, 0.02, 0.04, 0.08, 0.16, 0.32))
+    while True:
+        try:
+            _replace_state_file(source, destination, staged)
+            return
+        except PermissionError as exc:
+            delay = next(delays, None)
+            if getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
+                raise
+            time.sleep(delay)
+
+
 def atomic_bytes(path, raw, *, replace=False):
     path = local_path(path)
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -260,7 +281,7 @@ def atomic_bytes(path, raw, *, replace=False):
             os.fsync(stream.fileno())
             staged = os.fstat(stream.fileno())
         if replace:
-            _replace_state_file(temporary, path, staged)
+            _replace_state(temporary, path, staged)
         elif os.name == 'nt':
             # Windows rename refuses an existing destination and leaves no
             # second hard link if the process exits immediately after success.
