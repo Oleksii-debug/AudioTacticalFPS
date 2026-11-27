@@ -1,0 +1,114 @@
+name: Resonance one-time CI audio endpoint evaluation
+
+# An isolated test-first experiment, not the application's recurring CI or
+# installer. This branch is created once for the 2026-11-27 evaluation.
+on:
+  push:
+    branches: [carr/ci-endpoint-evaluation-20261127]
+    paths:
+      - carr-library/scripts/ci_audio_endpoint*
+      - carr-library/tests/ci_endpoint/**
+      - .github/workflows/carr-audio-endpoint-evaluation.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-one-time-endpoint-evaluation-20261127
+  cancel-in-progress: false
+
+jobs:
+  endpoint-evaluation:
+    name: Normal Windows signing policy / actual WinMM and MCI
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact evaluation commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the exact application source and pinned desktop dependencies
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-endpoint-evaluation-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Start existing audio services without changing startup policy
+        timeout-minutes: 2
+        run: |
+          $evidence = @()
+          foreach ($serviceName in @('AudioEndpointBuilder', 'Audiosrv')) {
+            $service = Get-Service -Name $serviceName -ErrorAction Stop
+            $before = $service.Status.ToString()
+            try {
+              if ($service.Status -eq 'Stopped') {
+                $service.Start()
+              } elseif ($service.Status -notin @('Running', 'StartPending')) {
+                throw "Unsupported service state: $serviceName $before"
+              }
+              $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(20))
+            } finally {
+              $service.Refresh()
+              $evidence += @{ name=$serviceName; before=$before; after=$service.Status.ToString(); start_type=$service.StartType.ToString() }
+              $service.Dispose()
+              @{ services=$evidence; startup_policy_changed=$false } | ConvertTo-Json -Depth 5 | Set-Content 'ci-results/audio-services.json'
+            }
+          }
+
+      - name: Evaluate the exact signed driver under normal Windows policy
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/ci_audio_endpoint.py --receipt ci-results/endpoint-evaluation.json 2>&1 | Tee-Object 'ci-results/endpoint-evaluation.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the unchanged installed reader through actual Windows MCI
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_reader_controls_smoke.py --report ci-results/reader-controls.json 2>&1 | Tee-Object 'ci-results/reader-controls.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain only evaluation receipts and source identity
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-one-time-audio-endpoint-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: warn
+          retention-days: 7
+
+# The isolated hosted VM is discarded by GitHub after this job. The helper
+# reports retained/partial driver state explicitly; closing SetupAPI handles
+# is not reported as uninstalling the device or driver package. No binary from
+# this evaluation is uploaded or included in the application delivery.
