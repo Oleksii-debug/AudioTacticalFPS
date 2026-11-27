@@ -609,6 +609,7 @@ class DesktopFrame(WorkspaceFrame):
             ('Edit selected book metadata\tCtrl+Shift+M',self.edit_metadata),
             ('Library tools\tCtrl+Shift+L', lambda e: show_catalog_tools(self)),
             ('Back up all libraries', self.backup), ('Restore backup to a new folder', self.restore_backup),
+            ('Incremental library snapshots…', self.incremental_snapshots),
             ('Exit\tAlt+F4', lambda e: self.Close())]),
             ('&Research', [('Export active topic\tCtrl+E', self.export_topic),
                 ('Search saved research\tCtrl+Shift+F', lambda event: search_saved_research(self, event)),
@@ -1264,6 +1265,10 @@ class DesktopFrame(WorkspaceFrame):
                 workspace, topic, query.id, cancelled=self.cancel_event.is_set), done)
         except Exception as exc:
             self.report(str(exc))
+
+    def incremental_snapshots(self, event=None):
+        from .incremental_backup import show_snapshot_dialog
+        show_snapshot_dialog(self, event)
 
     def backup(self, event):
         dialog = wx.DirDialog(self, 'Choose a parent folder for a backup of libraries and retained import jobs')

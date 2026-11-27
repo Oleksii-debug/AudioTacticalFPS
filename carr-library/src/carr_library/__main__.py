@@ -74,6 +74,9 @@ def main(argv=None, *, trust_controller=None):
     if arguments and arguments[0] == 'transcribe':
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))
+    if arguments and arguments[0] == 'snapshots':
+        from .incremental_cli import main as snapshots_main
+        return snapshots_main(arguments[1:])
     if arguments and arguments[0] == 'sync':
         from .sync.cli import main as sync_main
         return sync_main(arguments[1:])

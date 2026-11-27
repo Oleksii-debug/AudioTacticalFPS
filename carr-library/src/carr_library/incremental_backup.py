@@ -58,12 +58,20 @@ class SnapshotReceipt:
     reused_bytes: int
     cleanup_warning: str | None = None
 
+    @property
+    def status(self):
+        return 'complete'
+
 
 @dataclass(frozen=True)
 class RestoreReceipt:
     path: Path
     snapshot: SnapshotInfo
     cleanup_warning: str | None = None
+
+    @property
+    def status(self):
+        return 'complete'
 
 
 def _check(cancelled):
@@ -461,7 +469,8 @@ def create_snapshot(app, repository, *, max_files=MAX_FILES, max_bytes=DEFAULT_M
                 if receipt is None:
                     raise
                 receipt = replace(receipt, cleanup_warning=(
-                    'The snapshot was saved. Its private staging folder still needs cleanup; '
+                    ((receipt.cleanup_warning + ' ') if receipt.cleanup_warning else '')
+                    + 'The snapshot was saved. Its private staging folder still needs cleanup; '
                     'do not repeat the completed save.'))
     return receipt
 
