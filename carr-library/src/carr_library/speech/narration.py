@@ -166,10 +166,11 @@ class NarrationSelection:
 def select_narration(document, first=0, last=None, *, cancelled=lambda: False):
     """Project exact kept slices; inserted gap separators have no source claim."""
     check_cancelled(cancelled)
+    signature = document._text_signature()
     text = document.text
     last = len(text) if last is None else last
     document._range(first, last)
-    signature, value = document._text_signature(), document.narration_policy
+    value = document.narration_policy
     removed, skipped = [], []
     if value is not None:
         value = validate_policy(value)

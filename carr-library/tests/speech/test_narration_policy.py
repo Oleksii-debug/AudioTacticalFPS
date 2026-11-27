@@ -3,7 +3,7 @@ from copy import deepcopy
 from hashlib import sha256
 import shutil
 import subprocess
-from threading import Event
+from threading import Event, Thread, get_ident
 
 import pytest
 
@@ -218,3 +218,39 @@ def test_actual_source_recovery_backup_delete_restore_preserves_policy_and_not_q
     assert restored_app.assets.resolve(imported['asset']).read_bytes() == original.encode()
     fresh.set_narration_read('footnote', True)
     assert fresh.narration_selection().text == source.text
+
+
+def test_edit_between_snapshot_text_and_policy_cannot_bind_old_text_to_new_revision(monkeypatch):
+    doc = ReadingDocument('First unchanged text.')
+    observed, release = Event(), Event()
+    identity, result = [], []
+    original = ReadingDocument.text.fget
+
+    def text(self):
+        value = original(self)
+        if identity and get_ident() == identity[0] and not observed.is_set():
+            observed.set()
+            assert release.wait(5)
+        return value
+
+    monkeypatch.setattr(ReadingDocument, 'text', property(text))
+    def project():
+        identity.append(get_ident())
+        try:
+            result.append(doc.narration_selection())
+        except BaseException as exc:
+            result.append(exc)
+
+    worker = Thread(target=project)
+    worker.start()
+    try:
+        assert observed.wait(5)
+        # Same length keeps range validation from hiding the snapshot-order race.
+        doc.replace(0, 5, 'Other')
+    finally:
+        release.set()
+        worker.join(5)
+    assert not worker.is_alive() and len(result) == 1
+    assert isinstance(result[0], ValueError), result
+    assert 'changed' in str(result[0])
+    assert doc.text == 'Other unchanged text.' and doc.source_text == 'First unchanged text.'

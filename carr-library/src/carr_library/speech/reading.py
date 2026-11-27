@@ -252,12 +252,19 @@ class ReadingDocument:
     def narration_policy_sha256(self):
         return self._narration_policy_sha256
 
+    @property
+    def narration_skips_enabled(self):
+        return bool(self._narration_policy and self._narration_policy['skip'])
+
     def set_narration_policy(self, value, *, expected_signature=None):
+        """Commit on the document owner; worker previews use private copies."""
         from .narration import check_current_regions, policy_digest, validate_policy
         if expected_signature is not None and self._signature() != expected_signature:
             raise ValueError('The reading text or Read/Skip policy changed. Review it again.')
         checked = validate_policy(value) if value is not None else None
         check_current_regions(checked, self.text)
+        if expected_signature is not None and self._signature() != expected_signature:
+            raise ValueError('The reading text or Read/Skip policy changed. Review it again.')
         self._narration_policy = checked
         self._narration_policy_sha256 = policy_digest(checked)
 
