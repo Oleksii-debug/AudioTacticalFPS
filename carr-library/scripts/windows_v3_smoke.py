@@ -140,7 +140,7 @@ def main():
                 ('DirDialog', 'FileDialog', 'MessageDialog', 'TextEntryDialog',
                  'SingleChoiceDialog', 'MessageBox')}
             active, controls, completed_state = [None], {}, {}
-            decisions = iter((wx.ID_OK, wx.ID_CANCEL))
+            decisions = iter((wx.ID_OK, wx.ID_CANCEL, wx.ID_OK, wx.ID_CANCEL))
             choices = []
             deadline = monotonic() + 150
 
@@ -152,7 +152,7 @@ def main():
             class SelectedDirectory(original_dialogs['DirDialog']):
                 def __init__(self, parent, message, *args, **kwargs):
                     assert parent is active[0]
-                    assert message == 'Choose the parent folder for new audio outputs'
+                    assert message == 'Choose the parent folder for new audio outputs' or 'NEW production job' in message
                     super().__init__(parent, message, *args, **kwargs)
                     self.SetPath(str(destination))
                     assert Path(self.GetPath()).samefile(destination)
@@ -212,13 +212,14 @@ def main():
                     title=named('Project title', wx.TextCtrl),
                     voices=named('Default voice', wx.Choice),
                     format=named('Final audio format', wx.Choice),
+                    stems=named('Export separate speaker and music stems', wx.CheckBox),
                     status=named('Production and save status', wx.TextCtrl),
                     render=button('Render / resume (F6)'), pause=button('Pause (F8)'),
-                    close=button('Close'), preview=button('Listen to output'))
+                    close=button('Close'), preview=button('Listen to output'), jobs=button('Saved jobs'))
                 if not controls['render'].IsEnabled() or not controls['voices'].GetCount():
                     later(ready)
                     return
-                for key in ('editor', 'title', 'voices', 'format', 'status', 'render'):
+                for key in ('editor', 'title', 'voices', 'format', 'stems', 'status', 'render'):
                     assert controls[key].GetName() and controls[key].AcceptsFocusFromKeyboard()
                 selected = controls['voices'].FindString(voice.name + '; ' + voice.language)
                 assert selected != wx.NOT_FOUND, 'The verified installed SAPI voice is absent from the native choice.'
@@ -231,6 +232,7 @@ def main():
                 assert choices == [wx.ID_OK]
                 assert controls['pause'].IsEnabled()
                 assert not controls['editor'].IsEnabled() and not controls['render'].IsEnabled()
+                assert not controls['format'].IsEnabled() and not controls['stems'].IsEnabled()
                 later(completed)
 
             def completed():
@@ -280,21 +282,69 @@ def main():
                 row = completed_state['row']
                 assert service.get(row['id']) == row
                 assert {item['id'] for item in service.jobs()} == previous_jobs | {row['id']}
+                # Changing options must not silently reuse the previous job.
+                assert controls['format'].SetStringSelection('wav')
+                controls['stems'].SetValue(False)
+                click(controls['render'])
+                assert choices == [wx.ID_OK, wx.ID_CANCEL]
+                assert not controls['pause'].IsEnabled()
+                assert controls['format'].GetStringSelection() == 'flac' and controls['stems'].GetValue()
+                assert 'Previous job and its output settings retained' in controls['status'].GetValue()
+                assert service.get(row['id']) == row and len(list(destination.iterdir())) == 1
+                assert controls['format'].SetStringSelection('wav')
+                controls['stems'].SetValue(False)
+                click(controls['render'])
+                assert choices == [wx.ID_OK, wx.ID_CANCEL, wx.ID_OK]
+                assert not controls['format'].IsEnabled() and not controls['stems'].IsEnabled()
+                later(changed_output_completed)
+
+            def changed_output_completed():
+                if controls['pause'].IsEnabled() or not controls['render'].IsEnabled():
+                    later(changed_output_completed)
+                    return
+                assert controls['status'].GetValue().startswith('Production complete.')
+                row = completed_state['row']
+                assert service.get(row['id']) == row
+                new_rows = [item for item in service.jobs()
+                            if item['id'] not in previous_jobs | {row['id']}]
+                assert len(new_rows) == 1
+                new = new_rows[0]
+                assert new['status'] == 'complete' and new['format'] == 'wav' and not new['stems']
+                assert (Path(new['destination']) / 'master.wav').is_file()
+                assert not (Path(new['destination']) / 'stems').exists()
+                assert len(list(destination.iterdir())) == 2
+                # Select the original durable job using the same native dialog
+                # handler; the test supplies only its synthetic selection.
+                class SelectedJob(original_dialogs['SingleChoiceDialog']):
+                    def __init__(self, parent, message, caption, entries, *args, **kwargs):
+                        super().__init__(parent, message, caption, entries, *args, **kwargs)
+                        self.SetSelection(next(i for i, job in enumerate(service.jobs()) if job['id'] == row['id']))
+                    def ShowModal(self):
+                        return wx.ID_OK
+                wx.SingleChoiceDialog = SelectedJob
+                try:
+                    click(controls['jobs'])
+                finally:
+                    wx.SingleChoiceDialog = unexpected_dialog
+                assert controls['format'].GetStringSelection() == 'flac' and controls['stems'].GetValue()
+                assert 'Final format: flac; separate stems: Yes' in controls['status'].GetValue()
+                assert wx.Window.FindFocus() is controls['status']
                 # Editing back to the same exact script opens the chooser for a
                 # new render. Declining it must not create another output/job.
                 controls['editor'].SetValue(native_script + ' ')
                 controls['editor'].SetValue(native_script)
                 click(controls['render'])
-                assert choices == [wx.ID_OK, wx.ID_CANCEL]
+                assert choices == [wx.ID_OK, wx.ID_CANCEL, wx.ID_OK, wx.ID_CANCEL]
                 assert not controls['pause'].IsEnabled() and controls['render'].IsEnabled()
-                assert {item['id'] for item in service.jobs()} == previous_jobs | {row['id']}
-                assert len(list(destination.iterdir())) == 1
+                assert {item['id'] for item in service.jobs()} == previous_jobs | {row['id'], new['id']}
+                assert len(list(destination.iterdir())) == 2
                 assert service.projects.load(row['project']['id']).to_dict() == completed_state['project']
                 assert controls['editor'].GetValue() == native_script
                 assert ReadingDesk(library, workspace, imported['edition']).page(1) == retained_before
                 assert not gui_errors
                 result['native_render'] = dict(status='PASS', button_event='PASS',
                     completed_job_resume='PASS', chooser_cancellation='PASS',
+                    changed_output_settings='PASS', saved_job_settings='PASS',
                     selected_output_parent='PASS', frames=completed_state['frames'],
                     sample_rate=completed_state['sample_rate'], channels=completed_state['channels'],
                     peak_pcm16=completed_state['peak'], completed_accessible_status=True,
