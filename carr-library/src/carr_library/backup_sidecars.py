@@ -6,7 +6,7 @@ state fail visibly, rather than dropping user data or copying arbitrary JSON.
 Database-bound locations retain their exact historical source identities.
 """
 from contextlib import ExitStack, nullcontext
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from hashlib import sha256
 from importlib import import_module
 import json
@@ -19,7 +19,7 @@ import stat
 from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
-from . import backup_producers, backup_generated, backup_current
+from . import backup_producers, backup_generated, backup_current, backup_transcription
 from .durable_state import state_lock, _open_json_file
 from .state_backup import validate_portable_paths
 
@@ -48,7 +48,9 @@ def portable_name(value):
     path = PurePosixPath(value)
     reserved = {'con', 'prn', 'aux', 'nul', *(f'com{i}' for i in range(1, 10)),
                 *(f'lpt{i}' for i in range(1, 10))}
-    if (path.is_absolute() or str(path) != value or len(path.parts) > 8
+    maximum_depth = 12 if value.startswith(('state/transcription/profiles/',
+                                            'state/transcription/jobs/')) else 8
+    if (path.is_absolute() or str(path) != value or len(path.parts) > maximum_depth
             or any(p in ('.', '..') or p.endswith((' ', '.'))
                    or p.split('.')[0].casefold() in reserved for p in path.parts)):
         raise RestoreError('invalid portable sidecar filename')
@@ -82,6 +84,8 @@ def sidecar_limit(name):
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
     if maximum := backup_current.limit(name):
+        return maximum
+    if maximum := backup_transcription.limit(name):
         return maximum
     if maximum := backup_generated.limit(name):
         return maximum
@@ -263,7 +267,7 @@ def _validate_engine_settings(value):
 
 def validate_sidecar(db, name, raw):
     maximum = sidecar_limit(name)
-    minimum = 0 if backup_current.empty_allowed(name) else 1
+    minimum = 0 if (backup_current.empty_allowed(name) or backup_transcription.allows_empty(name)) else 1
     if type(raw) is not bytes or not minimum <= len(raw) <= maximum:
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     try:
@@ -295,6 +299,8 @@ def validate_sidecar(db, name, raw):
             _validate_engine_settings(_json(raw))
         elif backup_current.limit(name) is not None:
             backup_current.validate(db, name, raw)
+        elif backup_transcription.limit(name) is not None:
+            return backup_transcription.validate(name, raw)
         elif name.startswith(backup_generated.PREFIX):
             backup_generated.validate_receipt(name, _json(raw))
         elif backup_producers.SUBTITLE.fullmatch(name):
@@ -373,7 +379,7 @@ def normalize_manifest(manifest):
         for value in manifest['state']:
             if type(value) is not dict or not isinstance(value.get('filename'), str):
                 raise RestoreError('invalid legacy state entry')
-            portable_name(value['filename'])
+            portable_name('state/' + value['filename'])
             entries.append({**value, 'filename': 'state/' + value['filename']})
         roots = frozenset({'state'})
         if version >= 4:
@@ -398,7 +404,7 @@ def normalize_manifest(manifest):
         raise RestoreError('invalid library manifest fields')
     if type(entries) is not list or len(entries) > MAX_FILES:
         raise RestoreError('invalid sidecar manifest')
-    names, portable_paths, total, generated_total, current_total, copied = set(), {}, 0, 0, 0, []
+    names, portable_paths, total, generated_total, current_total, input_total, copied = set(), {}, 0, 0, 0, 0, []
     for entry in entries:
         if (type(entry) is not dict or set(entry) != {'filename', 'size_bytes', 'sha256'}
                 or type(entry['filename']) is not str or type(entry['size_bytes']) is not int
@@ -407,7 +413,8 @@ def normalize_manifest(manifest):
         if entry['filename'].startswith(backup_generated.PREFIX) and not generated:
             raise RestoreError('Generated audio requires explicit manifest inclusion.')
         maximum = sidecar_limit(entry['filename'])
-        minimum = 0 if backup_current.empty_allowed(entry['filename']) else 1
+        minimum = 0 if (backup_current.empty_allowed(entry['filename'])
+                        or backup_transcription.allows_empty(entry['filename'])) else 1
         if not minimum <= entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
             raise RestoreError('invalid sidecar size or duplicate filename')
         names.add(entry['filename'].casefold())
@@ -419,13 +426,16 @@ def normalize_manifest(manifest):
             previous = portable_paths.setdefault(name.casefold(), name)
             if previous != name:
                 raise RestoreError('sidecar paths collide on a case-insensitive filesystem')
-        if backup_generated.is_media(entry['filename']):
+        if backup_transcription.is_input(entry['filename']):
+            input_total += entry['size_bytes']
+        elif backup_generated.is_media(entry['filename']):
             generated_total += entry['size_bytes']
         elif backup_current.is_media(entry['filename']):
             current_total += entry['size_bytes']
         else:
             total += entry['size_bytes']
-        if total > MAX_BYTES or generated_total > backup_generated.MAX_BYTES or current_total > backup_current.MAX_BYTES:
+        if (total > MAX_BYTES or generated_total > backup_generated.MAX_BYTES
+                or current_total > backup_current.MAX_BYTES or input_total > backup_transcription.MAX_INPUT_BYTES):
             raise RestoreError('sidecar manifest byte limit')
         copied.append(dict(entry))
     validate_portable_paths(entry['filename'] for entry in copied)
@@ -539,7 +549,9 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False, include_
                 info = entry.stat(follow_symlinks=False)
                 if stat.S_ISDIR(info.st_mode):
                     _plain(path, directory=True)
-                    if (_ignored(relative) or relative == 'state/studio/cache' and not include_generated
+                    if (_ignored(relative)
+                            or not include_generated and (relative == 'state/studio/cache'
+                                or backup_transcription.is_cache_directory(relative))
                             or not wanted_directory(relative)):
                         continue
                     pending.append(relative)
@@ -612,7 +624,8 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, c
         # The recording service retains this exact lock during uncertain native
         # cleanup. A full backup must not accept its staged PCM as completed data.
         lock = state_lock(root / 'state', 'studio-recording')
-    with lock:
+    from .backup_document_batches import capture_lock
+    with lock, capture_lock(root / 'state'):
         return _snapshot_locked(db, root, stage, max_bytes=max_bytes,
             include_generated=include_generated, cancelled=cancelled,
             authorized_workspaces=authorized_workspaces)
@@ -629,26 +642,30 @@ def _snapshot_locked(db, root, stage, *, max_bytes, include_generated, cancelled
         include_paths.update(name for name in ('reading-state.json', 'live-reading-state.json'))
     before = _capture(root, include_generated=include_generated, cancelled=cancelled, include_paths=include_paths)
     _collection_budgets((name, identity[4]) for name, identity in before[0].items())
-    entries, total, metadata_bytes, generated_bytes, current_bytes, receipts = [], 0, 0, 0, 0, {}
+    entries, total, metadata_bytes, generated_bytes, current_bytes, input_bytes, receipts = [], 0, 0, 0, 0, 0, {}
     for name in sorted(before[0]):
         _check_cancelled(cancelled)
         total += before[0][name][4]
-        if backup_generated.is_media(name):
+        if backup_transcription.is_input(name):
+            input_bytes += before[0][name][4]
+        elif backup_generated.is_media(name):
             generated_bytes += before[0][name][4]
         elif backup_current.is_media(name):
             current_bytes += before[0][name][4]
         else:
             metadata_bytes += before[0][name][4]
         if (total > max_bytes or metadata_bytes > MAX_BYTES or generated_bytes > backup_generated.MAX_BYTES
-                or current_bytes > backup_current.MAX_BYTES):
+                or current_bytes > backup_current.MAX_BYTES or input_bytes > backup_transcription.MAX_INPUT_BYTES):
             raise RestoreError('sidecar snapshot byte limit')
-        if backup_generated.is_media(name) or backup_current.is_media(name):
+        if (backup_generated.is_media(name) or backup_current.is_media(name)
+                or backup_transcription.is_input(name)):
             size, checksum, header = _stream_file(root / name, destination=stage / name,
                 maximum=sidecar_limit(name), cancelled=cancelled)
             if backup_generated.is_media(name):
                 backup_generated.validate_container(name, header, size)
         else:
-            raw = read_regular(root / name, sidecar_limit(name), empty=backup_current.empty_allowed(name))
+            raw = read_regular(root / name, sidecar_limit(name),
+                               empty=backup_current.empty_allowed(name) or backup_transcription.allows_empty(name))
             validate_sidecar(db, name, raw)
             _write(stage, name, raw)
             size, checksum = len(raw), sha256(raw).hexdigest()
@@ -672,7 +689,7 @@ def _snapshot_locked(db, root, stage, *, max_bytes, include_generated, cancelled
     for entry in original_entries:
         name = entry['filename']
         _stream_file(root / name, expected=entry, maximum=sidecar_limit(name), cancelled=cancelled,
-                     empty=backup_current.empty_allowed(name))
+                     empty=backup_current.empty_allowed(name) or backup_transcription.allows_empty(name))
     if _capture(root, include_generated=include_generated, cancelled=cancelled, include_paths=include_paths) != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
     _check_cancelled(cancelled)
@@ -711,13 +728,15 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
     for entry in inventory.entries:
         _check_cancelled(cancelled)
         name = entry['filename']
-        if backup_generated.is_media(name) or backup_current.is_media(name):
+        if (backup_generated.is_media(name) or backup_current.is_media(name)
+                or backup_transcription.is_input(name)):
             size, checksum, header = _stream_file(source / name, destination=stage / name,
                 expected=entry, maximum=sidecar_limit(name), cancelled=cancelled)
             if backup_generated.is_media(name):
                 backup_generated.validate_container(name, header, size)
         else:
-            raw = read_regular(source / name, sidecar_limit(name), empty=backup_current.empty_allowed(name))
+            raw = read_regular(source / name, sidecar_limit(name),
+                               empty=backup_current.empty_allowed(name) or backup_transcription.allows_empty(name))
             if len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']:
                 raise RestoreError('sidecar digest or size disagrees with the backup manifest: ' + name)
             validate_sidecar(db, name, raw)
@@ -732,6 +751,13 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
 
 
 def project_restored(db, stage, destination, inventory, *, cancelled):
+    # Canonical ASR revokes only its profile/UUID records while the verified
+    # full hashes remain available. The existing projection then handles its
+    # independent hash64 jobs and Studio inputs, retaining their exact codecs.
+    if any(backup_transcription.limit(entry['filename']) is not None for entry in inventory.entries):
+        entries = backup_transcription.prepare_restored_inventory(
+            stage, destination, inventory.entries, cancelled=cancelled)
+        inventory = replace(inventory, entries=entries)
     return backup_current.project_restored(db, stage, destination, inventory, cancelled=cancelled)
 
 

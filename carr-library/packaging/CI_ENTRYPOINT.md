@@ -1,23 +1,88 @@
-# Provider-neutral CI entrypoint (candidate, not an active workflow)
+# Required CI entrypoint and exact-build evidence
 
-This is a small wrapper around the existing pytest dependency in PR #17. No new test engine or package manager. Run only on reviewed code and synthetic fixtures, in a disposable checkout with no private data, tokens, or production credentials. The runner is not a security sandbox for arbitrary Python tests.
+The active root workflows are `carr-v3.yml`, `carr-windows.yml`,
+`carr-native-launcher.yml` and `carr-bibliography.yml`.
+They run reviewed repository code on disposable Linux/Windows runners with
+read-only repository permissions and pinned Actions. Component review workflows
+provide additional diagnostic evidence; a component PASS does not replace an
+integrated required gate.
 
-From carr-library in the already provisioned, trusted test environment:
+## Strict suite execution
 
-    python scripts/ci_check.py tests/packaging/test_ci_check.py
+From `carr-library` in the provisioned test environment:
 
-After the coordinator integrates the prototype and other suites, explicitly enumerate the required suite paths (e.g. bootstrap/test_universal_library.py, bootstrap/test_external_reuse.py, tests/packaging). Do not substitute a smaller suite for a required gate. A missing suite, zero tests, skips/xfail, test error or failure returns nonzero. Optional platform-only tests belong in separately declared jobs; report NOT_RUN for the missing platform rather than treating this command as Windows/NVDA evidence. Pytest autoload and inherited pytest options are disabled; any additional test plugin must be deliberately configured and reviewed. Do not run on an untrusted PR checkout with credentials.
+```text
+python scripts/ci_check.py --jobs 3 tests/packaging/test_ci_check.py
+```
 
-Upstream reuse: pytest 9.0.2, MIT, official tag resolved to https://github.com/pytest-dev/pytest/tree/3d10b5148e03eb82b3ee29181dbdc73cf82699e2 ; LICENSE read at exact commit. Reuses the locally installed pytest CLI and its JUnit XML output (https://docs.pytest.org/en/9.0.x/reference/exit-codes.html). No third-party source copied; no claim of wheel-byte provenance or complete lock. PR #17 at 4c2ee5ba43a778a2b160325cfe48678eeab213d3 already declares pytest and imports MIT cairnsearch; all eight manifest files incl LICENSE were rechecked at upstream eb5bf13605343e75e3aaf6ce0d8d2ecef8748d93 and match exactly. Leave those sources unchanged.
+Pass explicit test files or pytest node IDs. The wrapper rejects missing or
+out-of-tree selectors, empty suites, test errors/failures, skips, XFAIL and XPASS.
+It disables inherited pytest options and plugin autoload, retains the actual
+child return status and JUnit verdict, and requires cleanup of temporary test
+data. Each suite owns a bounded subprocess and its descendants; concurrent
+execution keeps independent results and never hides another failed suite.
+A completed PID/readiness handoff is atomic so timeout cleanup cannot consume
+a partially written owner record.
 
-Linux Python 3.13.5, pytest 9.0.2, pluggy 1.6.0: the command above returned exit 0, 7 passed, 0 failed/skipped, 12.78s. Regression tests actually invoke pytest on passing, failing, empty, skipped and missing suites, path escape, and inherited collect-only option; Unicode/space temporary paths. Windows and external CI NOT_RUN. This is not a claim that any production PR's complete test matrix passes.
+The wrapper's Python socket guards and telemetry opt-outs are an offline test
+policy. They do not claim to isolate arbitrary native code. Native installed
+acceptance separately installs verified Windows outbound rules for the actual
+runtime executables, verifies active profiles/rules/application filters and
+restores the previous settings in `finally`.
 
-CI activation blocker: GitHub Actions requires a root .github/workflows directory (https://docs.github.com/en/actions/tutorials/create-an-example-workflow). Root modifications are outside the authorized scope. No workflow, repository settings, or statuses changed. Minimal exception, if separately approved: one root .github/workflows/carr-library-ci.yml scoped to pull_request base carr-library, read-only contents permission, pinned reviewed actions, ephemeral Linux/Windows runners, no secrets, no publishing, explicit required tests and hash-locked wheels. Alternative: an explicitly authorized external CI runner reporting checks at exact PR head. Neither route is currently active.
+Tests which intentionally use a synthetic local HTTP peer carry
+`requires_loopback`. Their explicit source/installed gate runs before runtime
+egress denial; they must not be put inside `ci_check.py`'s socket-denied child.
+Actual-provider access, model startup/download and paid calls are not part of
+that synthetic loopback test.
 
-Security dependency blocker: PR #17 requirements-external.txt currently excludes pypdf 7.x (pypdf>=5,<7), while CARR-SEC-003 proposes 7.1.1. This mismatch must be resolved by the prototype/extraction owner before a common lock is generated. PyPI publisher commit f0174823a10baf2a6bf387470c2ecb29f8637ab4, BSD-3-Clause, wheel SHA256 04c5680d4b4cfa04ab505b09393fc949860c34a4dad6565284d11a2f5c3ce8b1 (https://pypi.org/project/pypdf/7.1.1/#files). Download attempt failed locally; upgrade install and compatibility tests NOT_RUN. Do not ship the old 5.9.0 synthetic-only pin. Complete dependency lock, SBOM, clean installer and external CI remain open.
+## Platform selection
 
-## 2026-11-26 regression correction (CARR-01 independent finding on PR #33)
+Required portable selectors contain only scenarios supported on that platform.
+Real Windows widgets, Credential Manager, SAPI and User32 probes run on native
+Windows. Real FIFO/symlink and fork boundaries run on POSIX. Unsupported native
+cases are not counted as portable passes.
 
-Explicit `xfail(strict=False)` can yield XPASS with pytest exit 0, and JUnit records it as a passing testcase. The wrapper now invokes the existing native pytest API in the isolated subprocess with a `pytest_runtest_logreport` hook observing `wasxfail`; any actual XFAIL/XPASS yields nonzero (existing failure codes preserved). The XML counter is explicitly labeled junit_passed; it is not the acceptance decision. An inactive conditional xfail marker remains a genuine pass. No new dependency. Upstream MIT implementation inspected at https://github.com/pytest-dev/pytest/blob/3d10b5148e03eb82b3ee29181dbdc73cf82699e2/src/_pytest/skipping.py .
+The focused integration workflow provisions actual FFmpeg/ffprobe before
+effects/conversion acceptance and preserves their identities. Its Windows gate
+runs each selected native probe even when an independent source suite fails,
+provided the exact source, desktop and audio prerequisites installed correctly.
+A failure remains a failure; collecting another independent verdict cannot
+make the workflow green.
 
-Reproduced against exact old executable blob b0897720de641a636ca799746905b7a1d5c6689e: expanded suite 9 passed, 2 failed (explicit non-strict XPASS and mixed pass/XPASS), exit 1, 20.93s. After correction: `python -m pytest -q tests/packaging/test_ci_check.py` 11 passed, exit 0, 19.84s; `python scripts/ci_check.py tests/packaging/test_ci_check.py` 11 passed, exit 0, 20.34s. Linux Python 3.13.5 / pytest 9.0.2 / pluggy 1.6.0. Tested blobs: scripts/ci_check.py a9743a4f90bbd1f5ec9b26d3c69007274bdde770 and tests/packaging/test_ci_check.py c8b6b6dc0a9507315e2a1b9b657120bb77dd8a71. Windows/actual CI NOT_RUN; independent exact-head review pending. No changes outside carr-library or release status.
+## Installed source and publication
+
+The full Windows gate builds and verifies the source wheel, installs the sealed
+bundle in a separate path and compares installed module hashes with the exact
+event commit. Source imports cannot substitute for an installed module.
+Artifacts retain the source/tree identity, dependency/runtime identities,
+native reports, required suite results and the tested public application wheel.
+Private models, recordings, credentials and user documents are not uploaded.
+
+The two launcher jobs exercise MSVC and the pinned Zig toolchain on Windows.
+They must correspond to the same delivered source commit as the application.
+The installed standard-installer gate separately checks repair/uninstall and
+retention of user-owned data.
+
+## Citation, translation and local proposals
+
+Citation generation uses the pinned quickjs-ng dependency and the retained
+historical citeproc-js/styles. The independently pinned sort-macro adaptation
+has a separate `runtime_adapter` receipt identity and attribution; unchanged
+historical receipts remain readable. The exact original/adapted comparison and
+seven-style tests retain the same memory/time/output budgets.
+
+Advanced translation uses the existing gateway, vault, approved account scope,
+cost ledger and derivative receipts. Its native probe deliberately uses
+synthetic HTTPS with actual installed controls and a temporary Windows vault
+entry. Local proposal tests use synthetic loopback replies followed by the
+actual typed plan review. These checks do not qualify paid-provider billing,
+a private model's output quality, acoustic behavior or human NVDA operation.
+
+## Reading results
+
+Use the Actions run and artifact bound to the candidate commit. Do not transfer
+an older run's PASS to a reconstructed tree, a different dependency pack or a
+new installer. `V3_RELEASE_READINESS.md` records implementation boundaries and
+the gate inventory. Physical Windows11/NVDA, actual devices/voices/models,
+multilingual quality and signed distribution remain separate verdicts.

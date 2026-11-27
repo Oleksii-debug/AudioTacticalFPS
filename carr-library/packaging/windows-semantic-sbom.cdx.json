@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "version": 4,
+  "version": 5,
   "serialNumber": "urn:uuid:c0a01d9e-f9a9-47ef-87cd-48907b46d55b",
   "metadata": {
     "timestamp": "2026-11-26T17:54:24.006257631Z",
@@ -14,9 +14,9 @@
     ],
     "component": {
       "type": "library",
-      "bom-ref": "universal-research-library-runtime-1@0.2.0.dev1",
+      "bom-ref": "universal-research-library-runtime-1@0.3.0.dev1",
       "name": "universal-research-library-runtime",
-      "version": "0.2.0.dev1",
+      "version": "0.3.0.dev1",
       "properties": [
         {
           "name": "uv:package:is_project_root",
@@ -28,6 +28,14 @@
       {
         "name": "carr:reviewed-bibtex-addition",
         "value": "bibtexparser 2.1.0 and pylatexenc 2.11; exact inspected wheel identities; 2026-11-27"
+      },
+      {
+        "name": "carr:source-version-reconciliation",
+        "value": "2026-11-27: application component identity matches pyproject.toml 0.3.0.dev1; existing pinned dependency identities retained."
+      },
+      {
+        "name": "carr:citation-runtime-adaptation",
+        "value": "citeproc-js sort-macro patch adffcfa3189ed21cbdb5272a74a8edbf817ac326; patch SHA256 eb383f9b2dcea13af17cb18582f664befbcbfaef02b07649f9188d4dfdf668ff; separate runtime_adapter receipt identity and SORT-MACRO-CACHE-NOTICE.txt; original processor/styles unchanged."
       }
     ]
   },
@@ -984,7 +992,7 @@
       ]
     },
     {
-      "ref": "universal-research-library-runtime-1@0.2.0.dev1",
+      "ref": "universal-research-library-runtime-1@0.3.0.dev1",
       "dependsOn": [
         "annotated-doc-2@0.0.7",
         "annotated-types-3@0.8.0",

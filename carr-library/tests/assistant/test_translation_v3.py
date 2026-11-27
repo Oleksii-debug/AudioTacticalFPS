@@ -451,7 +451,13 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
             self.value, self.name, self.label, self.choices = value, '', label, choices
             self.enabled, self.selection, self.bindings, self.focused = True, -1, {}, False
+            self.parent, self.live, self.modal = parent, True, False
+            self.native_id = len(state['widgets']) + 1000
             state['widgets'].append(self)
+        def __bool__(self): return self.live
+        def GetId(self):
+            assert self.live
+            return self.native_id
         def SetName(self, name): self.name = name
         def SetSelection(self, value): self.selection = value
         def GetSelection(self): return self.selection
@@ -463,17 +469,32 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         def SetFocus(self): self.focused = True
         def Bind(self, event, callback): self.bindings[event] = callback
         def SetSizer(self, sizer): pass
-        def EndModal(self, result): pass
-        def Destroy(self): pass
+        def EndModal(self, result): self.modal = False
+        def IsModal(self): return self.modal
+        def Destroy(self):
+            assert self.live
+            for child in state['widgets']:
+                if child.parent is self and child.live:
+                    Widget.Destroy(child)
+            self.live = False
+            event = SimpleNamespace(GetId=lambda: self.native_id, Skip=lambda: None)
+            peer = self
+            while isinstance(peer, Widget):
+                if wx.EVT_WINDOW_DESTROY in peer.bindings:
+                    peer.bindings[wx.EVT_WINDOW_DESTROY](event)
+                peer = peer.parent
+            return True
         def ShowModal(self):
+            self.modal = True
             state['scenario']()
+            self.modal = False
             return 1
     class Sizer:
         def __init__(self, *args, **kwargs): pass
         def Add(self, *args, **kwargs): pass
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate((
         'DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'ALL', 'EXPAND',
-        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE'))})
+        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE', 'EVT_WINDOW_DESTROY'))})
     for name in ('Dialog', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Widget)
     wx.BoxSizer = Sizer

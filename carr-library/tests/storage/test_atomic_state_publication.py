@@ -118,7 +118,7 @@ def test_unrelated_publication_error_is_not_retried(tmp_path, monkeypatch):
 def test_windows_retry_budget_reuses_one_complete_stage(tmp_path, monkeypatch, winerror):
     destination = tmp_path / 'control.json'
     state.atomic_json(destination, {'command': 'run'})
-    original, attempts, delays = destination.read_bytes(), [], []
+    original, attempts, native_attempts, delays = destination.read_bytes(), [], [], []
 
     def denied(source, target):
         attempts.append((source, target))
@@ -128,11 +128,21 @@ def test_windows_retry_budget_reuses_one_complete_stage(tmp_path, monkeypatch, w
         error.winerror = winerror
         raise error
 
+    def native_denied(source, target):
+        native_attempts.append((source, target))
+        assert Path(target).read_bytes() == original
+        assert state.read_json(source) == {'command': 'pause'}
+        error = PermissionError('Synthetic persistent native Windows access error')
+        error.winerror = winerror
+        raise error
+
     monkeypatch.setattr(state.os, 'replace', denied)
+    monkeypatch.setattr(state, '_replace_open_state', native_denied)
     monkeypatch.setattr(state.time, 'sleep', delays.append)
     with pytest.raises(PermissionError):
         state.atomic_json(destination, {'command': 'pause'}, replace=True)
     assert len(attempts) == 7 and len(set(attempts)) == 1
+    assert native_attempts == (attempts if os.name == 'nt' and winerror == 5 else [])
     assert delays == [0.01, 0.02, 0.04, 0.08, 0.16, 0.32]
     assert sum(delays) == pytest.approx(0.63)
     assert destination.read_bytes() == original

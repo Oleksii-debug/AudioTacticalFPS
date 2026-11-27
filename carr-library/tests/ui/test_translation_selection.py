@@ -60,57 +60,123 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
     """Exercise actual bound UI handlers and stores; this is not native wx evidence."""
     ui = SimpleNamespace(fields={}, buttons={}, jobs=[], gateways=[], choice_labels=[],
                          choice_result=1, chooser_count=0, focus=None, scenario=None,
-                         directory=tmp_path / 'exports', directory_hook=lambda: None)
+                         directory=tmp_path / 'exports', directory_hook=lambda: None,
+                         choice_hook=lambda: None, peers=[], forbidden=[], destroyed_ids=[],
+                         dialog=None, thread_id=threading.get_ident())
     ui.directory.mkdir()
 
     class Control:
         def __init__(self, *args, value='', choices=(), label='', **kwargs):
             self.value, self.choices, self.label = value, tuple(choices), label
             self.selection, self.enabled, self.handler = -1, True, None
+            self.parent = args[0] if args and isinstance(args[0], Control) else None
+            self.children, self.handlers, self.live = [], {}, True
+            self.native_id = len(ui.peers) + 100
+            ui.peers.append(self)
+            if self.parent is not None:
+                self.parent.children.append(self)
+
+        def __bool__(self):
+            return self.live
+
+        def native(self, method):
+            if threading.get_ident() != ui.thread_id:
+                ui.forbidden.append((self.native_id, 'worker:' + method))
+                raise RuntimeError('Translation native access left the UI thread.')
+            if not self.live:
+                ui.forbidden.append((self.native_id, method))
+                raise RuntimeError('Native method on a deleted translation peer: ' + method)
+
+        def GetId(self):
+            self.native('GetId')
+            return self.native_id
 
         def SetName(self, name):
+            self.native('SetName')
             ui.fields[name] = self
 
         def GetValue(self):
+            self.native('GetValue')
             return self.value
 
         def SetEditable(self, editable):
+            self.native('SetEditable')
             self.editable = editable
 
         def ChangeValue(self, value):
+            self.native('ChangeValue')
             self.value = value
 
         def GetSelection(self):
+            self.native('GetSelection')
             return self.selection
 
         def SetSelection(self, index):
+            self.native('SetSelection')
             self.selection = index
 
         def Enable(self, enabled=True):
+            self.native('Enable')
             self.enabled = enabled
 
         def Disable(self):
             self.Enable(False)
 
         def SetFocus(self):
+            self.native('SetFocus')
             ui.focus = self
 
         def Bind(self, event, handler):
-            self.handler = handler
+            self.native('Bind')
+            self.handlers[event] = handler
+            if event == 'button':
+                self.handler = handler
 
         def SetSizer(self, layout):
-            pass
+            self.native('SetSizer')
+
+        def _native_destroy(self):
+            """Native-parent deletion bypasses the Python Destroy override."""
+            if not self.live:
+                return False
+            for child in tuple(self.children):
+                child._native_destroy()
+            self.live = False
+            ui.destroyed_ids.append(self.native_id)
+            event = SimpleNamespace(GetId=lambda: self.native_id, Skip=lambda: None,
+                GetEventObject=lambda: SimpleNamespace(GetId=lambda: self.native_id))
+            peer = self
+            while peer is not None:
+                handler = peer.handlers.get('destroy')
+                if handler is not None:
+                    handler(event)
+                peer = peer.parent
+            return True
 
         def Destroy(self):
-            pass
+            self.native('Destroy')
+            return self._native_destroy()
 
     class Dialog(Control):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.modal = False
+            ui.dialog = self
+
         def ShowModal(self):
+            self.native('ShowModal')
+            self.modal = True
             ui.scenario(ui)
+            self.modal = False
             return 2
 
+        def IsModal(self):
+            self.native('IsModal')
+            return self.modal
+
         def EndModal(self, result):
-            pass
+            self.native('EndModal')
+            self.modal = False
 
     class Button(Control):
         def __init__(self, *args, **kwargs):
@@ -118,6 +184,7 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
             ui.buttons[self.label.replace('&', '')] = self
 
         def click(self):
+            self.native('click')
             assert self.enabled, 'The test attempted a disabled native action.'
             self.handler(None)
 
@@ -128,6 +195,8 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
             self.selection = 0
 
         def ShowModal(self):
+            self.native('ShowModal')
+            ui.choice_hook()
             return ui.choice_result
 
     class DirectoryDialog(Control):
@@ -136,10 +205,12 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
             ui.chooser_count += 1
 
         def ShowModal(self):
+            self.native('ShowModal')
             ui.directory_hook()
             return 1
 
         def GetPath(self):
+            self.native('GetPath')
             return str(ui.directory)
 
     wx = SimpleNamespace(Dialog=Dialog, TextCtrl=Control, Choice=Control, StaticText=Control,
@@ -148,7 +219,9 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
         CallAfter=lambda callback, *args: callback(*args), MessageBox=lambda *a, **k: 1,
         ID_OK=1, ID_CLOSE=2, YES=1, YES_NO=4, NO_DEFAULT=8,
         VERTICAL=1, HORIZONTAL=2, ALL=4, EXPAND=8, TE_MULTILINE=16, TE_READONLY=32,
-        DEFAULT_DIALOG_STYLE=64, RESIZE_BORDER=128, EVT_BUTTON='button', EVT_CLOSE='close')
+        DEFAULT_DIALOG_STYLE=64, RESIZE_BORDER=128, EVT_BUTTON='button', EVT_CLOSE='close',
+        EVT_WINDOW_DESTROY='destroy')
+    ui.wx, ui.Control = wx, Control
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(workspace, 'TranslationService', lambda root, **kwargs: saved.service)
     # Use the real current-account catalog: visible snapshots cannot stand in
@@ -178,7 +251,6 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
     ui.frame = SimpleNamespace(library=SimpleNamespace(root=tmp_path / 'library'),
         working=False, _closing=False, cancel_event=threading.Event(), run_job=run_job)
     return ui
-
 
 def visible(ui):
     return {key: ui.fields[name] for key, name in {

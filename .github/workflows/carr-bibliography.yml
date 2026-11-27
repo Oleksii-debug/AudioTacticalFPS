@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-bibliography.yml
   push:
-    branches: [carr-library, 'carr/v3-academic-interchange-*', carr/unified-publication-24-20261127]
+    branches: [carr-library, 'carr/v3-academic-interchange-*', carr/unified-publication-24-20261127, carr/canonical-complete-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-bibliography.yml
@@ -124,6 +124,7 @@ jobs:
             'tests/ingest/test_import_replay_identity.py',
             'tests/ingest/test_txt_replay_registration.py',
             'tests/reader/test_export_no_clobber.py',
+            'tests/reader/test_export_reconciliation.py',
             'tests/reader/test_file_export.py',
             'tests/reader/test_binary_file_export.py',
             'tests/reader/test_academic_documents.py',

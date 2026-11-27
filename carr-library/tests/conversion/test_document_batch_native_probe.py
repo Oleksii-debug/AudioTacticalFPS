@@ -22,7 +22,7 @@ def test_native_probe_uses_actual_installer_registry_identity_and_registered_men
     spec = importlib.util.spec_from_file_location('carr_batch_known_keyboard_fixture', path)
     fixture = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(fixture)
-    wx = fixture.wx.__wrapped__()
+    wx = fixture.wx.__wrapped__(monkeypatch)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     opened = []
     monkeypatch.setattr(document_batch, 'show_document_batches', lambda frame: opened.append(frame))

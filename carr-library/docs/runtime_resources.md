@@ -320,3 +320,15 @@ Primary implementation evidence is the installed pinned filelock source
 (`filelock/_unix.py`, `_windows.py`, `_api.py`), the existing
 `ingest/writer_guard.py`, `durable_state.py`, canonical job stores and
 `audio/process.py`. The broker does not introduce another lock library.
+
+## Converged transcription profile compatibility
+
+The public `transcription.service` coordinator recognizes both retained
+`state/transcription/<hash64>` jobs and canonical profile/UUID jobs under
+`state/transcription/profiles` and `state/transcription/jobs`. Their exact
+path and record grammar choose the decoder; a shared schema label never changes
+an older record into another job type. The historical `audio.transcription`
+entrypoint delegates to the same owned isolated runner and resource broker.
+Showing either codec in Tasks and resources reads bounded metadata, not every
+audio/transcript byte. Explicit resume revalidates its own retained artifacts
+and reviewed local runtime before native admission.

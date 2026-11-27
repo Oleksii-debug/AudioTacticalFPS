@@ -9,6 +9,7 @@ from carr_library.ui.library_assistant import install_library_assistant_actions
 from carr_library.ui.operations_dialog import install_operations_actions
 from carr_library.ui.speech_dialog import install_speech_actions
 from carr_library.ui.studio_dialog import install_studio_actions
+from carr_library.ui.transcription_dialog import install_transcription_actions
 from carr_library.ui.builtin_keyboard_commands import builtin_commands
 from carr_library.ui.command_registry import CommandRegistry
 from carr_library.keyboard_preferences import KeymapStore
@@ -33,6 +34,8 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch,
 
         def Append(self, identity, label):
             item = Item(label)
+            if int(identity) != -1:
+                item.identifier = int(identity)
             self.items.append(item)
             return item
 
@@ -58,8 +61,11 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch,
         def IsEnabledTop(self, index):
             return True
 
-    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(Menu=Menu, ID_ANY=-1, EVT_MENU='menu',
-        AcceleratorTable=tuple, CallAfter=lambda callback: callback()))
+    # Actual installer imports declare ClipDialog; this menu-only fixture must
+    # provide a subclassable native base even though it never opens a dialog.
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(Menu=Menu, Dialog=type('MenuOnlyDialog', (), {}),
+        ID_ANY=-1, EVT_MENU='menu',
+        AcceleratorTable=tuple, NewIdRef=lambda: next(identifiers), CallAfter=lambda callback: callback()))
     monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
                         lambda key, identifier: (0, key, identifier))
     frame = SimpleNamespace(Bind=Mock(), menu_bar=MenuBar(), library=SimpleNamespace(root=tmp_path),
@@ -92,10 +98,20 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch,
     for (_, item), call in zip(pending, frame.Bind.call_args_list):
         assert call.args[2] is item
 
+    install_transcription_actions(frame)
+    pending = frame._pending_keyboard_commands
+    assert [spec.command_id for spec, _ in pending][-2:] == ['audio.transcription_panel', 'tools.transcription']
+    assert pending[-2][1].GetId() != pending[-1][1].GetId()
+    assert frame.Bind.call_args_list[-2].kwargs['id'] == pending[-2][1].GetId()
+    assert frame.Bind.call_args_list[-1].args[2] is pending[-1][1]
+    registry = CommandRegistry((*builtin_commands(), *(spec for spec, _ in pending)))
+
     # A saved canonical voice binding must survive actual menu capture, rather
     # than being dropped or renamed to a generated caption-hash identity.
-    saved = {'voice.reader': 'Ctrl+Shift+V', 'voice.book': 'Ctrl+Shift+R',
-             'operations.tasks': 'Ctrl+Alt+F12'}
+    saved = {'voice.reader': 'Ctrl+Alt+Shift+F8', 'voice.book': 'Ctrl+Alt+Shift+F9',
+             'operations.tasks': 'Ctrl+Alt+F12',
+             'audio.transcription_panel': 'Ctrl+Alt+Shift+F6',
+             'tools.transcription': 'Ctrl+Alt+Shift+F7'}
     path = tmp_path / 'keyboard-shortcuts.json'
     KeymapStore(path).save(saved, registry)
     before = path.read_bytes()
@@ -104,6 +120,8 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch,
     assert manager.shortcut('voice.reader') == saved['voice.reader']
     assert manager.shortcut('voice.book') == saved['voice.book']
     assert manager.shortcut('operations.tasks') == saved['operations.tasks']
+    assert manager.shortcut('audio.transcription_panel') == saved['audio.transcription_panel']
+    assert manager.shortcut('tools.transcription') == saved['tools.transcription']
     assert manager.shortcut('audio.studio') == 'Ctrl+Alt+A'
     assert set(spec.command_id for spec, _ in pending) <= set(manager.bindings)
     assert len({binding.item.GetId() for binding in manager.bindings.values()}) == len(manager.bindings)

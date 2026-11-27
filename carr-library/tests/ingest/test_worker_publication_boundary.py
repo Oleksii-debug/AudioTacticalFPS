@@ -365,7 +365,7 @@ def test_pdf_resume_attempt_rejects_a_replaced_frozen_job_or_config(
         assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
 
 
-@pytest.mark.parametrize('binding', ('job', 'configuration'))
+@pytest.mark.parametrize('binding', ('job', 'missing-job', 'null-job', 'configuration'))
 def test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt(
         tmp_path, monkeypatch, binding):
     app = LibraryApp(tmp_path / 'library')
@@ -381,12 +381,26 @@ def test_pdf_reconciliation_rechecks_config_against_a_valid_captured_attempt(
     assert recovered['state'] == 'complete' and recovered['id'] == result['id']
     request = worker.load_request(app.root, result['request_id'])
     assert request['job'] == result['id']
+    original_request = json.loads(json.dumps(request))
+    original_source = source.read_bytes()
+    with app.read(workspace) as db:
+        receipt = tuple(db.execute('SELECT * FROM import_publication').fetchone())
     if binding == 'job':
         request['job'] = 'f' * 64 if request['job'] != 'f' * 64 else 'e' * 64
+    elif binding == 'missing-job':
+        del request['job']
+    elif binding == 'null-job':
+        request['job'] = None
     else:
         request['config']['dpi'] += 1
     worker._store(app.root, result['request_id'], request)
     assert worker._published_after_stop(app, initial, attempt) is None
+    assert source.read_bytes() == original_source
+    with app.read(workspace) as db:
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+    worker._store(app.root, result['request_id'], original_request)
+    assert worker._published_after_stop(app, initial, attempt)['id'] == result['id']
 
 
 @pytest.mark.parametrize('boundary', (None, 0))

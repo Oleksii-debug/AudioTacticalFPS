@@ -112,19 +112,48 @@ jobs:
             tests/e2e/test_import_worker_publication.py \
             tests/conversion/test_conversion.py \
             tests/conversion/test_conversion_publication.py \
-            tests/conversion/test_document_batches.py \
             tests/conversion/test_document_splitting.py \
-            tests/conversion/test_document_batches_ownership.py \
             tests/conversion/test_document_cli.py \
             tests/ui/test_document_batch_handlers.py \
             tests/conversion/test_document_batch_native_probe.py \
+            tests/transcription/test_service.py \
+            tests/transcription/test_admission_boundaries.py \
+            tests/transcription/test_runtime_admission.py \
+            tests/transcription/test_protocol_fixture.py \
+            tests/transcription/test_restore.py \
+            tests/transcription/test_convergence.py \
+            tests/transcription/test_runtime_inventory.py \
+            tests/ui/test_transcription_dialog.py \
+            tests/ui/test_transcription_workstation.py \
+            tests/ui/test_platform_modal_lifecycle.py \
+            tests/audio/test_supplied_transcription.py \
+            tests/audio/test_hardened_transcription_protocol.py \
+            tests/audio/test_supplied_runtime_manifest.py \
+            tests/audio/test_transcription_settings.py \
+            tests/audio/test_cleanup_ownership.py \
+            tests/assistant/test_supplied_transcription.py \
+            tests/operations/test_facade.py \
+            tests/operations/test_canonical_asr_admission.py \
+            tests/storage/test_backup_transcription.py \
+            tests/storage/test_transcription_backup.py \
+            tests/storage/test_transcription_backup_convergence.py \
+            tests/storage/test_document_batches_backup.py \
+            tests/ui/test_studio_progress_isolation.py \
+            tests/ui/test_operation_progress.py \
+            tests/assistant/test_translation.py \
+            tests/ui/test_translation_selection.py \
+            tests/ui/test_translation_lifetime.py \
+            tests/e2e/test_transcription_cli.py \
             tests/packaging/test_ci_check.py 2>&1 | tee ci-output-review/boundaries.txt
+      - name: Diagnose required document batch completion
+        if: "!cancelled() && steps.source-runtime.outcome == 'success'"
+        run: python scripts/ci_check.py --diagnostics --jobs 2 tests/conversion/test_document_batches.py tests/conversion/test_document_batches_ownership.py 2>&1 | tee ci-output-review/document-batch-diagnostics.txt
       - name: Require Windows acquisition and actual native lookup
         if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success'"
-        run: python scripts/ci_check.py tests/ui/test_native_acquisition.py 2>&1 | tee ci-output-review/native-acquisition-boundaries.txt
+        run: python scripts/ci_check.py --jobs 3 tests/ui/test_native_acquisition.py tests/transcription/test_protocol_fixture_windows.py tests/e2e/test_export_destination.py 2>&1 | tee ci-output-review/native-acquisition-boundaries.txt
       - name: Require real POSIX snapshot race refusal
         if: "!cancelled() && runner.os == 'Linux' && steps.source-runtime.outcome == 'success'"
-        run: python scripts/ci_check.py --jobs 3 tests/storage/test_json_snapshot_posix.py tests/operations/test_resources_posix.py tests/conversion/test_document_batches_posix.py 2>&1 | tee ci-output-review/posix-snapshots.txt
+        run: python scripts/ci_check.py --jobs 3 tests/storage/test_json_snapshot_posix.py tests/operations/test_resources_posix.py tests/conversion/test_document_batches_posix.py tests/transcription/test_runtime_inventory_posix.py 2>&1 | tee ci-output-review/posix-snapshots.txt
       - name: Require installed native feature workflows with egress blocked
         if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success'"
         shell: pwsh
@@ -167,7 +196,11 @@ jobs:
               @{ name='native-save-timer'; script='scripts/windows_save_timer_smoke.py'; arguments=@('--output', 'ci-output-review/native-save-timer.json') },
               @{ name='native-effect-chain'; script='scripts/windows_effect_chain_smoke.py'; arguments=@('--audio-evidence', 'ci-output-review/external-test-audio-binding.json') },
               @{ name='native-reader-session'; script='scripts/windows_reader_session_smoke.py'; arguments=@('--output', 'ci-output-review/native-reader-session.json') },
-              @{ name='native-document-batch'; script='scripts/windows_document_batch_smoke.py'; arguments=@() }
+              @{ name='native-document-batch'; script='scripts/windows_document_batch_smoke.py'; arguments=@() },
+              @{ name='native-translation'; script='scripts/windows_translation_v3_smoke.py'; arguments=@() },
+              @{ name='native-transcription'; script='tests/ui/native_transcription_smoke.py'; arguments=@() },
+              @{ name='native-platform'; script='scripts/windows_platform_tools_smoke.py'; arguments=@() },
+              @{ name='native-recorded-epub'; script='scripts/windows_epub_reading_smoke.py'; arguments=@('--audio-evidence', 'ci-output-review/external-test-audio-binding.json') }
             )
             $failures = @()
             foreach ($probe in $probes) {

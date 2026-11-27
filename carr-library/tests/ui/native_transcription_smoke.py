@@ -170,7 +170,9 @@ def run_native_transcription(frame, directory, *, source=False):
                 assert dialog.jobs.GetName() == 'Saved transcription jobs'
                 assert dialog.results.GetName() == 'Completed transcription results'
                 assert dialog.status.GetName() == 'Transcription status (Ctrl+Alt+G)'
-                assert dialog.pages.GetPageCount() == 2
+                assert dialog.pages.GetPageCount() == 3
+                assert dialog.profile_view.GetName() == 'Local transcription workstation'
+                assert dialog.profile_view.pages.GetPageCount() == 3
                 assert dialog.GetSizer().GetMinSize().width <= dialog.GetClientSize().width
                 assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
                 assert not dialog.pause_button.IsEnabled()
