@@ -218,7 +218,8 @@ def show_studio(frame):
                 (('render', '&Render / resume (F6)'), ('pause', '&Pause (F8)'), ('jobs', 'Saved &jobs'),
                  ('preview', 'Listen to &output'), ('close', '&Close')),
                 (('preview_part', 'Listen to scene or &line'), ('stop_playback', 'Stop playback'),
-                 ('progress_voice', 'Use voice for progress...'))):
+                 ('progress_voice', 'Use voice for progress...')),
+                (('voice_corpus', 'Review local voice corpus...'),)):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
@@ -270,7 +271,7 @@ def show_studio(frame):
         return ()
 
     def controls():
-        for name in ('render', 'open', 'roles', 'jobs'):
+        for name in ('render', 'open', 'roles', 'jobs', 'voice_corpus'):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
         for name in ('preview', 'preview_part'):
@@ -668,6 +669,47 @@ def show_studio(frame):
         except Exception as exc:
             report(str(exc), True)
 
+    def voice_corpus(event=None):
+        if busy:
+            return
+        review = wx.FileDialog(dialog, 'Choose the VoiceWorkshop review.json file',
+                               wildcard='JSON files (*.json)|*.json',
+                               style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        try:
+            if review.ShowModal() != wx.ID_OK:
+                return
+            review_path = Path(review.GetPath())
+        finally:
+            review.Destroy()
+        root = wx.DirDialog(dialog, 'Choose the local folder containing all reviewed WAV clips',
+                            defaultPath=str(review_path.parent), style=wx.DD_DIR_MUST_EXIST)
+        try:
+            if root.ShowModal() != wx.ID_OK:
+                return
+            audio_root = Path(root.GetPath())
+        finally:
+            root.Destroy()
+        name = wx.TextEntryDialog(dialog, 'Enter the verified speaker label used in the review.',
+                                  'Voice corpus speaker')
+        try:
+            if name.ShowModal() != wx.ID_OK:
+                return
+            speaker = name.GetValue()
+        finally:
+            name.Destroy()
+        from ..integrations.voiceworkshop_review import audit_voiceworkshop_review
+
+        def reviewed(result):
+            sessions = result['sessions']
+            lines = [f'Session {index}: {item["clips"]} clips; {item["seconds"]:.1f} seconds.'
+                     for index, item in enumerate(sessions, 1)]
+            report(f'{result["reviewed_unique_clips"]} verified WAV clips across {len(sessions)} sessions. '
+                   f'Total {result["total_seconds"] / 60:.2f} minutes. '
+                   f'{result["unapproved_rows"]} pending rows; {result["duplicates_within_sessions"]} duplicates.\n'
+                   + '\n'.join(lines) + '\nNo training was started.', True)
+        run(lambda: audit_voiceworkshop_review(review_path, audio_root, speaker, cancelled=cancel.is_set),
+            reviewed, phase='Reviewing local voice corpus')
+
     def master_to_play():
         if current_job is None:
             raise ValueError('Choose a completed production job first.')
@@ -795,7 +837,7 @@ def show_studio(frame):
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
                            'preview': preview, 'preview_part': preview_part, 'stop_playback': stop_playback,
                            'help': help_text, 'close': close,
-                           'progress_voice': select_progress_voice}.items():
+                           'progress_voice': select_progress_voice, 'voice_corpus': voice_corpus}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)
     bindings = []
     for modifiers, key, callback in [(wx.ACCEL_CTRL, ord('S'), save),

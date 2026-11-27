@@ -70,3 +70,10 @@ def test_unsafe_or_unqualified_review_is_rejected(reviewed, problem, match):
     review.write_text(json.dumps(rows), encoding='utf-8')
     with pytest.raises(ValueError, match=match):
         audit_voiceworkshop_review(review, root, 'Owner')
+
+
+def test_voice_corpus_cancellation_stops_before_reading_private_data(tmp_path):
+    missing_review = tmp_path / 'unread.json'
+    with pytest.raises(InterruptedError, match='cancelled'):
+        audit_voiceworkshop_review(missing_review, tmp_path, 'Owner', cancelled=lambda: True)
+    assert not missing_review.exists()

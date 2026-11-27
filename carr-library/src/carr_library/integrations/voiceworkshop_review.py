@@ -17,12 +17,14 @@ def _identifier(value):
     return unicodedata.normalize('NFC', value.strip())
 
 
-def audit_voiceworkshop_review(review, audio_root, speaker):
+def audit_voiceworkshop_review(review, audio_root, speaker, *, cancelled=lambda: False):
     """Check one speaker, session/source separation and actual WAV lengths.
 
     VoiceWorkshop still prepares clips, exports training rows and runs adaptation.
     The report contains no paths, transcripts, speaker name or per-clip audio hashes.
     """
+    if cancelled():
+        raise InterruptedError('Voice corpus review cancelled.')
     speaker_key = _identifier(speaker).casefold()
     root = local_path(audio_root, exists=True)
     regular(root, directory=True)
@@ -34,6 +36,8 @@ def audit_voiceworkshop_review(review, audio_root, speaker):
     sessions = {}
     ignored = duplicates = audio_bytes = 0
     for index, row in enumerate(rows, 1):
+        if cancelled():
+            raise InterruptedError('Voice corpus review cancelled.')
         if not isinstance(row, dict):
             raise ValueError(f'Review row {index} must be an object.')
         if not all(row.get(key) is True for key in ('speaker_verified', 'text_verified', 'clean_verified')):
@@ -73,7 +77,7 @@ def audit_voiceworkshop_review(review, audio_root, speaker):
                     raise ValueError(f'Review row {index} must be a 1–30 second supported PCM WAV.')
         except (wave.Error, EOFError) as exc:
             raise ValueError(f'Review row {index} could not be read as PCM WAV.') from exc
-        checksum = digest_file(path)
+        checksum = digest_file(path, cancelled=cancelled)
         after = regular(path)
         if (before.st_ino, before.st_size, before.st_mtime_ns) != (after.st_ino, after.st_size, after.st_mtime_ns):
             raise ValueError(f'The WAV for review row {index} changed during preflight.')
@@ -87,6 +91,8 @@ def audit_voiceworkshop_review(review, audio_root, speaker):
         counts[0] += 1
         counts[1] += frames / rate
 
+    if cancelled():
+        raise InterruptedError('Voice corpus review cancelled.')
     if len(sessions) < 2:
         raise ValueError('At least two independent recording sessions with reviewed clips are required.')
     return {
