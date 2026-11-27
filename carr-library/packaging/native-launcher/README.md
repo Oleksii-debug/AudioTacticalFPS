@@ -82,12 +82,20 @@ C compiler using `-std=c11 -Wall -Wextra -Werror test_launcher_core.c`.
 
 ## Minimal private bundle hook
 
-The assembler may copy **only** the verified `ResearchLibrary.exe` into the bundle
-root before generating the bundle checksum manifest. Keep the existing offline
-installer, runtime, wheelhouse and data locations. Never include `windows_child_probe.exe`,
-test outputs, compiler files or caches in the product. No shared bundle-builder
-changes are required by this source addition. A Start-menu shortcut may target the
-same fixed root entry when the existing installer gains that separate feature.
+The common assembler accepts `--launcher-dir` together with a bundled Python
+runtime and `--source-commit`. It checks the PE, build receipt, binary digest and
+every declared C/resource source digest against that exact Git commit. Only
+`ResearchLibrary.exe` and its build receipt enter the final checksum inventory.
+The existing offline installer, runtime, wheelhouse and research-data locations
+are preserved. The installer rejects incomplete or unannounced launch entries.
+No probe executable, compiler, cache or test output is copied into the product.
+
+The integrated Windows gate builds with installed MSVC, exercises the native
+process contract, seals this exact binary and runs the installed application's
+self-test and runtime checks through the EXE. Runtime firewall coverage includes
+the native entry and its Python/audio/OCR/SAPI workers. This new combined gate is
+separate from the previously passed standalone native launcher tests. A Start-menu
+shortcut may target the same root entry when the installer gains that feature.
 
 Do not commit or attach the native binary to the public repository or public CI
 artifacts. The current build is an **unsigned private candidate**. A real owner-held

@@ -130,10 +130,6 @@ def main():
                     user.GetWindowThreadProcessId.restype = wintypes.DWORD
                     user.GetWindow.argtypes = (wintypes.HWND, wintypes.UINT)
                     user.GetWindow.restype = wintypes.HWND
-                    user.GetDlgItem.argtypes = (wintypes.HWND, ctypes.c_int)
-                    user.GetDlgItem.restype = wintypes.HWND
-                    user.IsWindowEnabled.argtypes = (wintypes.HWND,)
-                    user.IsWindowEnabled.restype = wintypes.BOOL
                     user.SendMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
                     user.SendMessageW.restype = ctypes.c_ssize_t
                     native = user.FindWindowW(None, 'Remove selected connection?')
@@ -142,9 +138,11 @@ def main():
                     user.GetWindowThreadProcessId(native, ctypes.byref(owner_pid))
                     assert owner_pid.value == os.getpid()
                     assert user.GetWindow(native, 4) == settings.dialog.GetHandle()  # GW_OWNER
-                    button = user.GetDlgItem(native, 6)  # Win32 IDYES
-                    assert button and user.IsWindowEnabled(button)
-                    user.SendMessageW(button, 0x00F5, 0, 0)  # BM_CLICK
+                    # Task dialogs may use windowless buttons. Use their
+                    # documented TDM_CLICK_BUTTON message (WM_USER + 102),
+                    # not a guessed child HWND or wx's generic modal API.
+                    # learn.microsoft.com/windows/win32/controls/tdm-click-button
+                    user.SendMessageW(native, 0x0400 + 102, 6, 0)  # IDYES
                     return
                 dialogs = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.MessageDialog) and window.GetTitle() == 'Remove selected connection?']

@@ -20,6 +20,7 @@ from filelock import FileLock, Timeout
 
 from .ingest.bundle import _unique_object
 from .ingest.restore import RestoreError
+from .ingest.retained_assets import SUFFIXES
 
 
 DIRECTORY = 'sidecars'
@@ -31,11 +32,14 @@ MAX_JOURNAL_BYTES = 512 * 1024**2
 _ID = r'[A-Za-z0-9][A-Za-z0-9_-]{0,79}'
 _HASH = r'[0-9a-f]{64}'
 _REQUEST = r'[0-9a-f]{32}'
+_RETAINED_SUFFIXES = '|'.join(sorted({re.escape(suffix.removeprefix('.'))
+                                     for suffix in SUFFIXES.values()}))
 _PATHS = (
     r'reading-state\.json', r'connections\.json', r'imports\.sqlite',
+    r'keyboard-shortcuts\.json', r'evidence-drafts\.json',
     rf'import-batches/{_REQUEST}\.json',
     rf'import-requests/(?:reviews/)?{_REQUEST}\.json',
-    rf'pending-originals/{_HASH}\.(?:txt|pdf|epub|docx)',
+    rf'pending-originals/{_HASH}\.(?:{_RETAINED_SUFFIXES})',
     rf'studio/projects/{_ID}/(?:project|draft)\.json',
     rf'studio/projects/{_ID}/revisions/[0-9]{{8,}}\.json',
     rf'studio/projects/{_ID}/cache/{_HASH}\.(?:json|wav)',
@@ -68,16 +72,21 @@ def _path(value):
     return PurePosixPath(value)
 
 
-def _read_json(path):
+def _read_bytes(path, maximum):
     before = _plain(path)
-    if not 0 < before.st_size <= MAX_JSON_BYTES:
+    if not 0 < before.st_size <= maximum:
         raise RestoreError('sidecar JSON size limit')
     with Path(path).open('rb') as stream:
         if _identity(os.fstat(stream.fileno())) != _identity(before):
             raise RestoreError('sidecar changed while opening')
-        raw = stream.read(MAX_JSON_BYTES + 1)
+        raw = stream.read(maximum + 1)
     if len(raw) != before.st_size or _identity(_plain(path)) != _identity(before):
         raise RestoreError('sidecar changed while reading')
+    return raw
+
+
+def _read_json(path):
+    raw = _read_bytes(path, MAX_JSON_BYTES)
     try:
         return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object,
             parse_constant=lambda _: (_ for _ in ()).throw(RestoreError('invalid JSON number')))
@@ -179,6 +188,15 @@ def _walk(root, *, exclude_temporary=False):
 def state_locks(root):
     """Fail visibly if another accepted state publication currently owns a lock."""
     with ExitStack() as stack:
+        # Acquire before the first settings file is created, too. Keymap writes
+        # use this lock instead of the library writer lock held by the caller.
+        keyboard_lock = root / 'keyboard-shortcuts.json.lock'
+        if os.path.lexists(keyboard_lock):
+            _plain(keyboard_lock)
+        try:
+            stack.enter_context(FileLock(keyboard_lock, mode=0o600).acquire(timeout=0))
+        except Timeout as exc:
+            raise RestoreError('keyboard settings are busy; retry the backup') from exc
         for name in ('studio', 'assistant'):
             directory = root / name
             if os.path.lexists(directory):
@@ -317,7 +335,13 @@ def _verify_tree(stage, manifest):
         path = actual[row['path']]
         if _file_record(path, row['path']) != row:
             raise RestoreError('sidecar digest mismatch')
-        if path.suffix == '.json':
+        if row['path'] == 'keyboard-shortcuts.json':
+            from .keyboard_preferences import MAX_BYTES as limit, validate_keymap
+            validate_keymap(_read_bytes(path, limit))
+        elif row['path'] == 'evidence-drafts.json':
+            from .evidence_drafts import MAX_BYTES as limit, validate_evidence_drafts
+            validate_evidence_drafts(_read_bytes(path, limit))
+        elif path.suffix == '.json':
             value = _read_json(path)
             _validate_json(row['path'], value, manifest['source_root'])
             if '/cache/' in row['path']:
@@ -341,7 +365,8 @@ def snapshot(app, stage, registered_assets):
     """Return None for a legacy-shaped library; otherwise seal all accepted state."""
     root, target = app.root, stage / DIRECTORY
     selected = []
-    for name in ('reading-state.json', 'connections.json'):
+    for name in ('reading-state.json', 'connections.json',
+                 'keyboard-shortcuts.json', 'evidence-drafts.json'):
         path = root / name
         if os.path.lexists(path):
             selected.append((name, path))

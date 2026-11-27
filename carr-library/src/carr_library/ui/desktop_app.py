@@ -35,6 +35,7 @@ from .catalog_insights_actions import install_catalog_insights_actions
 from .ebook_actions import install_ebook_actions
 from .federated_search import install_federated_search_actions
 from .query_manager import install_query_manager_actions
+from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 def text_dialog(parent, title, label, value='', *, multiline=False):
@@ -529,7 +530,9 @@ class DesktopFrame(WorkspaceFrame):
                 ('Refresh libraries and topics\tF5', self.refresh_scopes)]),
             ('&Academic', [('Academic library...\tCtrl+Shift+B', self.open_academic_library),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
-            ('&Help', [('Keyboard guide\tF1', self.help), ('Check this installation', self.check_installation)])]
+            ('&Help', [('Keyboard guide\tF1', self.help),
+                ('Document formats', lambda event: show_text(self, 'Document formats', supported_formats_text())),
+                ('Check this installation', self.check_installation)])]
         for label, actions in menus:
             menu = wx.Menu()
             for title, handler in actions:
@@ -562,6 +565,8 @@ class DesktopFrame(WorkspaceFrame):
         install_local_assistant(self)
         from .provider_settings import install_provider_settings
         install_provider_settings(self)
+        from .keyboard_settings import install_keyboard_settings
+        install_keyboard_settings(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -736,6 +741,8 @@ class DesktopFrame(WorkspaceFrame):
             self.remember_data_dir(candidate.root)
         self._drop()
         self.library = candidate
+        if getattr(self, 'keyboard_commands', None) is not None:
+            self.keyboard_commands.change_root(candidate.root)
         self.list_scopes = candidate.list_scopes
         self.refresh_scopes()
         if self.scopes:
@@ -826,7 +833,7 @@ class DesktopFrame(WorkspaceFrame):
             self.report(str(exc))
             return
         dialog = wx.FileDialog(self, 'Import locally owned books',
-            wildcard='Supported books (*.txt;*.pdf;*.docx;*.epub)|*.txt;*.pdf;*.docx;*.epub',
+            wildcard=file_dialog_wildcard(),
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST | wx.FD_MULTIPLE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
@@ -1143,11 +1150,15 @@ class DesktopFrame(WorkspaceFrame):
         add_selected_book_reference(self)
 
     def help(self, event):
+        if getattr(self, 'keyboard_commands', None) is not None:
+            show_text(self, 'Keyboard guide', self.keyboard_commands.help_text())
+            return
         show_text(self, 'Keyboard guide',
             'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
             'Library, Import Center opens folder scans, duplicate checks and saved import queues.\n'
+            'Help, Document formats explains supported text, ebook, email, presentation and spreadsheet formats and their limits.\n'
             'Ctrl+R opens the selected book with page or segment resume, bookmarks and reading history.\n'
             'Ctrl+Shift+R opens EPUB section navigation with chapter titles and separate image descriptions.\n'
             'Ctrl+Shift+O opens contents, headings, chapter search and an extraction report for the selected EPUB.\n'
@@ -1190,8 +1201,8 @@ class DesktopFrame(WorkspaceFrame):
             'DOCX and EPUB extraction remains unverified. Reading or bookmarking does not approve quotations.\n'
             'The Source menu records or withdraws an independent review of the selected PDF page.\n'
             'For quarantined OCR imports, use Library, Review pending imported page; each page needs explicit independent comparison.\n'
-            'Backups include completed libraries. Unfinished imports and pending reviews are excluded.\n'
-            'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
+            'Complete backups include reading positions, bookmarks, keyboard shortcuts, recoverable note drafts, and accepted import, Studio and assistant state.\n'
+            'Recovery drafts still require freshly authorized matching evidence before they can be offered in the editor.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
     def on_close(self, event):
