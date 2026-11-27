@@ -282,6 +282,9 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
             super().__init__(frame, title='Tasks and resources', size=(900, 740),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self._native_id = self.GetId()
+            # Native indices belong to the rows actually displayed, never the
+            # controller's newly arrived replacement inventory.
+            self._displayed_jobs = ()
             self.controller = controller_factory(frame, changed=self.render, dispatch=wx.CallAfter)
             self._shown_policy = None
             outer = wx.BoxSizer(wx.VERTICAL)
@@ -353,7 +356,7 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
 
         def selection(self):
             index = self.listing.GetSelection()
-            rows = self.controller.jobs
+            rows = self._displayed_jobs
             return rows[index] if 0 <= index < len(rows) else None
 
         def selected(self, event=None):
@@ -376,15 +379,16 @@ def create_operations_dialog(frame, *, controller_factory=OperationsController):
                 return
             current = self.selection()
             selected = current.key if current else None
-            rows = self.controller.jobs
+            rows = tuple(self.controller.jobs)
             self.listing.Set([f'{row.kind}: {row.id}; {row.status}; '
                 + (f'{row.completed} of {row.total} {row.unit}' if row.total is not None and row.completed is not None
                    else f'{row.completed} {row.unit}; total unknown' if row.completed is not None
                    else f'progress unknown ({row.unit})')
                 + ('; live reservation' if row.live is True else '; live state unknown')
                 for row in rows])
-            if rows:
-                self.listing.SetSelection(next((i for i, row in enumerate(rows) if row.key == selected), 0))
+            self._displayed_jobs = rows
+            # A vanished selection does not grant control of its former neighbor.
+            self.listing.SetSelection(next((i for i, row in enumerate(rows) if row.key == selected), wx.NOT_FOUND))
             policy = self.controller.policy
             if policy is not None and policy.to_dict() != self._shown_policy:
                 self._shown_policy = policy.to_dict()

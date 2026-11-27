@@ -150,6 +150,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     from carr_library.ui.document_conversion import install_conversion_actions
     from carr_library.ui.engine_settings import install_engine_settings_actions
     from carr_library.ui.operations_dialog import install_operations_actions
+    from carr_library.ui.reading_import import install_reading_import_actions
     real_installers = {
         'install_audio_studio_actions': Mock(wraps=install_audio_studio_actions),
         'install_api_connection_actions': Mock(wraps=install_api_connection_actions),
@@ -158,6 +159,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_conversion_actions': Mock(wraps=install_conversion_actions),
         'install_engine_settings_actions': Mock(wraps=install_engine_settings_actions),
         'install_operations_actions': Mock(wraps=install_operations_actions),
+        'install_reading_import_actions': Mock(wraps=install_reading_import_actions),
     }
     env.update(real_installers)
     monkeypatch.setitem(sys.modules, 'wx', env['wx'])
@@ -180,15 +182,20 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert labels.count('Reading conversion formats and limits...') == 1
     assert labels.count('Local engine &profiles...') == 1
     assert labels.count('Tasks and &resources...') == 1
+    assert labels.count('Import earlier reading-copy history...') == 1
+    assert labels.count('Open retained reading-copy history...') == 1
     assert {spec.command_id for spec, _ in value._pending_keyboard_commands} >= {
         'translation.text', 'conversion.documents', 'conversion.formats',
-        'engines.local', 'operations.tasks'}
+        'engines.local', 'operations.tasks',
+        'reading.import_legacy_copy', 'reading.open_legacy_history'}
     assert 'Documents' not in menus
     tools_labels = {item.title for item in menus['&Tools'].items if item.title is not None}
     assert tools_labels == {'Local assistant...\tCtrl+Alt+J', 'Translate selected te&xt...',
                             'Convert documents to reading text...',
                             'Reading conversion formats and limits...',
-                            'Local engine &profiles...', 'Tasks and &resources...'}
+                            'Local engine &profiles...', 'Tasks and &resources...',
+                            'Import earlier reading-copy history...',
+                            'Open retained reading-copy history...'}
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'DOI lookup and open-access sources...' in labels
     assert 'Document formats' in labels
@@ -314,7 +321,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('translation_dialog', 'install_translation_actions'),
                 ('document_conversion', 'install_conversion_actions'),
                 ('engine_settings', 'install_engine_settings_actions'),
-                ('operations_dialog', 'install_operations_actions')):
+                ('operations_dialog', 'install_operations_actions'),
+                ('reading_import', 'install_reading_import_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
                 if hasattr(module, 'wx'):
@@ -347,7 +355,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'library.portable_snapshots' in keyboard.bindings
         assert 'audio.language_evidence' in keyboard.bindings
         for command in ('translation.text', 'conversion.documents', 'conversion.formats',
-                        'engines.local', 'operations.tasks'):
+                        'engines.local', 'operations.tasks',
+                        'reading.import_legacy_copy', 'reading.open_legacy_history'):
             assert command in keyboard.bindings
         assert bindings.get('Tools/Local assistant') == 'Ctrl+Alt+J'
         assert 'Options/Keyboard shortcuts' in bindings
@@ -367,7 +376,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         tools = value.menu_bar.GetMenu(value.menu_bar.FindMenu('Tools'))
         tool_items = {item.GetId() for item in tools.GetMenuItems() if not item.IsSeparator()}
         for command in ('translation.text', 'conversion.documents', 'conversion.formats',
-                        'engines.local', 'operations.tasks'):
+                        'engines.local', 'operations.tasks',
+                        'reading.import_legacy_copy', 'reading.open_legacy_history'):
             assert keyboard.bindings[command].item.GetId() in tool_items
         assert not hasattr(value, 'keyboard_actions')
     finally:

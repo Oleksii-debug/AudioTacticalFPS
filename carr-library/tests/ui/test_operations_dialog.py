@@ -247,3 +247,77 @@ def test_explicit_control_stays_requested_if_optional_refresh_fails(tmp_path, mo
     frame.finish()
     assert len(receipts) == 1 and view.status.startswith('Cancel requested.')
     assert 'when it stops' in view.status
+
+
+def _native_selection_methods():
+    """Run the installed dialog methods against only the native-list boundary."""
+    import ast
+    from pathlib import Path
+    from carr_library.ui import operations_dialog
+    source = Path(operations_dialog.__file__)
+    tree = ast.parse(source.read_text(encoding='utf-8'))
+    factory = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                   and node.name == 'create_operations_dialog')
+    dialog = next(node for node in factory.body if isinstance(node, ast.ClassDef)
+                  and node.name == 'OperationsDialog')
+    methods = [node for node in dialog.body if isinstance(node, ast.FunctionDef)
+               and node.name in ('selection', 'selected', 'render_controls', 'render', 'control')]
+    result = ast.ClassDef(name='NativePolicy', bases=[], keywords=[], body=methods, decorator_list=[])
+    from dataclasses import asdict
+    from types import SimpleNamespace
+    import json
+    namespace = {'asdict': asdict, 'json': json, 'wx': SimpleNamespace(NOT_FOUND=-1)}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[result], type_ignores=[])),
+                 str(source), 'exec'), namespace)
+    return namespace['NativePolicy']
+
+
+@pytest.mark.parametrize('change', ['insert', 'reorder', 'remove', 'same-id-other-kind', 'initial'])
+def test_refresh_preserves_exact_displayed_operation_or_clears_selection(change):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from carr_library.operations import OperationView
+
+    def row(digit, kind='asr'):
+        return OperationView(kind, digit * 32, None, 'running', 0, 1, '', '',
+                             ('pause', 'cancel'), 'transcription-jobs/' + digit * 32 + '/job.json')
+
+    class NativeList:
+        def __init__(self, selected):
+            self.index = selected
+        def GetSelection(self):
+            return self.index
+        def Set(self, labels):
+            self.labels, self.index = tuple(labels), -1
+        def SetSelection(self, index):
+            self.index = index
+        def Enable(self, enabled):
+            self.enabled = enabled
+
+    first, chosen, last, inserted = row('1'), row('2'), row('3'), row('4')
+    old = (first, chosen, last) if change != 'initial' else ()
+    new = {'insert': (inserted, first, chosen, last),
+           'reorder': (last, first, chosen),
+           'remove': (first, last),
+           'same-id-other-kind': (first, row('2', 'assistant'), last),
+           'initial': (first, chosen, last)}[change]
+    native = _native_selection_methods()()
+    policy = ResourceLimits(cpu_slots=1)
+    native._displayed_jobs, native._shown_policy = old, policy.to_dict()
+    native.listing = NativeList(1 if old else -1)
+    native.controller = SimpleNamespace(jobs=new, policy=policy, closed=False, close_pending=False,
+                                       busy=False, snapshot=None, status='Updated', control=Mock())
+    for name in ('detail', 'cpu', 'memory', 'disk', 'free', 'gpu', 'maximum', 'reservations', 'status'):
+        setattr(native, name, Mock())
+    native.buttons = {key: Mock() for key in ('refresh', 'pause', 'cancel', 'save')}
+    native.render()
+    if change in ('insert', 'reorder'):
+        assert native.selection().key == chosen.key
+        native.control('cancel')
+        native.controller.control.assert_called_once_with(chosen.key, 'cancel')
+    else:
+        assert native.listing.GetSelection() == -1 and native.selection() is None
+        native.control('cancel')
+        native.controller.control.assert_not_called()
+        native.buttons['cancel'].Enable.assert_called_with(False)
+        native.detail.ChangeValue.assert_called_with('')

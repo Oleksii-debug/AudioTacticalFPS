@@ -22,6 +22,7 @@ from uuid import uuid4
 from ..ingest.writer_guard import _private_root, _regular_if_present, exclusive_writer
 from ..research.export_file import write_export
 from .reading_state import ReadingLocation, _file_identity, _location, _text, _timestamp, _unique
+from .legacy_reading import LegacyReadingOrigin, decode_origin
 
 
 DIRECTORY = 'narration-projects'
@@ -153,6 +154,7 @@ class NarrationProject:
     cursor: int
     rules: tuple[PronunciationRule, ...] = ()
     original_path: str | None = None
+    legacy_origin: LegacyReadingOrigin | None = None
 
     def __post_init__(self):
         if not isinstance(self.id, str) or not _ID.fullmatch(self.id):
@@ -162,6 +164,11 @@ class NarrationProject:
         if self.original_sha256 != text_digest(self.original_text):
             raise ValueError('Original reading text does not match its content digest.')
         _original_path(self.original_path)
+        if self.legacy_origin is not None:
+            if (type(self.legacy_origin) is not LegacyReadingOrigin
+                    or decode_origin(asdict(self.legacy_origin), self.original_text) != self.legacy_origin
+                    or self.source_location is not None):
+                raise ValueError('Invalid or mixed imported reading-copy source identity.')
         if self.source_location is not None and self.original_path is not None:
             raise ValueError('A reading copy cannot replace its library source with an external file.')
         if self.source_location is not None:
@@ -188,7 +195,23 @@ class NarrationProject:
         return self.revisions[self.cursor].text
 
     @property
+    def workspace(self):
+        if self.source_location is not None:
+            return self.source_location.workspace
+        anchor = None if self.legacy_origin is None else self.legacy_origin.source_anchor
+        return None if anchor is None else anchor.workspace
+
+    @property
     def provenance(self):
+        if self.legacy_origin is not None:
+            origin = self.legacy_origin
+            anchor = origin.source_anchor
+            source = ('Independent archived reading history.' if anchor is None else
+                      f'Source edition {anchor.edition}, revision {anchor.revision}, '
+                      f'{len(anchor.positions)} exact source positions.')
+            return (f'Imported historical reading revision {origin.selected_revision}. {source} '
+                    f'Complete compact history: {origin.archive_sha256}. '
+                    'Edits remain derivatives; archived positions never grant quotation authority.')
         if self.source_location is None:
             if self.original_path is not None:
                 return (f'Reading copy imported from {self.original_path}. '
@@ -200,11 +223,12 @@ class NarrationProject:
                 'Edited text is not a verified quotation. The original source stays unchanged.')
 
 
-def new_project(original_text='', *, title='Reading copy', source_location=None, original_path=None):
+def new_project(original_text='', *, title='Reading copy', source_location=None, original_path=None,
+                legacy_origin=None):
     text = _body(original_text)
     first = Revision(0, text, 'Original text', _now())
     return NarrationProject(uuid4().hex, title, text, text_digest(text), source_location,
-                            (first,), 0, original_path=original_path)
+                            (first,), 0, original_path=original_path, legacy_origin=legacy_origin)
 
 
 def revise(project, text, *, label='Edited reading text'):
@@ -463,6 +487,22 @@ def source_spans(project):
     for the middle, even if it happens to contain unchanged smaller phrases.
     """
     old, new = project.original_text, project.current_text
+    if project.legacy_origin is not None:
+        # A canonical edit may rewrite exactly the same characters. Do not
+        # infer recovered exactness by matching those words to the original.
+        # The complete, explicit legacy offset map remains in its archive.
+        if project.revisions[project.cursor].number != 0:
+            return (('derived', 0, len(old), 0, len(new)),) if old or new else ()
+        anchor = project.legacy_origin.source_anchor
+        if anchor is not None:
+            spans, cursor = [], 0
+            for row in anchor.positions:
+                if row.start > cursor:
+                    spans.append(('derived', cursor, row.start, cursor, row.start))
+                if row.end > row.start:
+                    spans.append(('unchanged', row.start, row.end, row.start, row.end))
+                cursor = row.end
+            return tuple(spans)
     prefix = 0
     while prefix < min(len(old), len(new)) and old[prefix] == new[prefix]:
         prefix += 1
@@ -483,7 +523,7 @@ def comparison_text(project):
     lines = [project.provenance, f'Original SHA256: {project.original_sha256}',
              f'Reading revision: {project.revisions[project.cursor].number}',
              'Offsets are Unicode characters, starting from zero.']
-    if project.current_text == project.original_text:
+    if project.current_text == project.original_text and project.legacy_origin is None:
         lines.append('The reading copy is identical to the original text.')
     else:
         for kind, a, b, c, d in source_spans(project):
@@ -496,8 +536,11 @@ def encode_project(project):
     if type(project) is not NarrationProject:
         raise ValueError('A validated reading project is required.')
     advanced = any(rule.voice_id or rule.regex or rule.ignore_case or rule.language_scope for rule in project.rules)
-    value = dict(kind='carr-reading-copy', version=3 if advanced else 2, **asdict(project))
-    if not advanced:
+    version = 4 if project.legacy_origin is not None else (3 if advanced else 2)
+    value = dict(kind='carr-reading-copy', version=version, **asdict(project))
+    if project.legacy_origin is None:
+        value.pop('legacy_origin')
+    if version == 2:
         value['rules'] = [dict(written=rule.written, spoken=rule.spoken, language=rule.language)
                           for rule in project.rules]
     raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
@@ -513,10 +556,12 @@ def decode_project(raw):
         value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique)
         fields = {'kind', 'version', 'id', 'title', 'original_text', 'original_sha256',
                   'source_location', 'revisions', 'cursor', 'rules'}
-        if type(value) is dict and value.get('version') in (2, 3):
+        if type(value) is dict and value.get('version') in (2, 3, 4):
             fields.add('original_path')
+        if type(value) is dict and value.get('version') == 4:
+            fields.add('legacy_origin')
         if (type(value) is not dict or set(value) != fields or value['kind'] != 'carr-reading-copy'
-                or type(value['version']) is not int or value['version'] not in (1, 2, 3)
+                or type(value['version']) is not int or value['version'] not in (1, 2, 3, 4)
                 or type(value['revisions']) is not list or len(value['revisions']) > MAX_HISTORY
                 or type(value['rules']) is not list or len(value['rules']) > MAX_RULES):
             raise ValueError('Unsupported reading-project format.')
@@ -528,10 +573,12 @@ def decode_project(raw):
                 raise ValueError('Legacy reading rules cannot contain unversioned pattern or scope fields.')
         elif any(type(row) is not dict or set(row) != {'written', 'spoken', 'language', 'voice_id',
                  'regex', 'ignore_case', 'language_scope'} for row in value['rules']):
-            raise ValueError('Version 3 reading rules require their complete scoped fields.')
+            raise ValueError('Version 3/4 reading rules require their complete scoped fields.')
         rules = tuple(PronunciationRule(**row) for row in value['rules'])
         return NarrationProject(value['id'], value['title'], value['original_text'], value['original_sha256'],
-                                location, revisions, value['cursor'], rules, value.get('original_path'))
+                                location, revisions, value['cursor'], rules, value.get('original_path'),
+                                decode_origin(value['legacy_origin'], value['original_text'])
+                                if value['version'] == 4 else None)
     except (UnicodeError, TypeError, KeyError, RecursionError, ValueError) as exc:
         raise ValueError(f'The reading project is invalid; existing files were kept. {exc}') from exc
 
@@ -598,6 +645,17 @@ def snapshot_narration_files(root):
     return result
 
 
+def _validate_retained_origin(root, project):
+    if project.legacy_origin is None:
+        return
+    from .legacy_reading import LegacyReadingStore
+    origin = project.legacy_origin
+    snapshot = LegacyReadingStore(root).load(origin.archive_sha256,
+                                             revision=origin.selected_revision)
+    if snapshot.source_text != project.original_text or snapshot.origin != origin:
+        raise ValueError('The reading project does not match its complete retained source history.')
+
+
 class NarrationStore:
     def __init__(self, root):
         self.root = _private_root(root)
@@ -610,7 +668,9 @@ class NarrationStore:
     def load(self, project_id, *, draft=False):
         path = self._path(project_id, draft)
         raw = _read_bytes(path)
-        return validate_narration_payload(path.name, raw), sha256(raw).hexdigest()
+        project = validate_narration_payload(path.name, raw)
+        _validate_retained_origin(self.root, project)
+        return project, sha256(raw).hexdigest()
 
     def save(self, project, *, expected_digest=None, draft=False):
         raw = encode_project(project)
@@ -618,6 +678,7 @@ class NarrationStore:
                 or not re.fullmatch('[0-9a-f]{64}', expected_digest)):
             raise ValueError('Invalid reading-project save lease.')
         with exclusive_writer(self.root):
+            _validate_retained_origin(self.root, project)
             path = self._path(project.id, draft, create=True)
             protect_original_path(project.original_path, path)
             try:
@@ -629,8 +690,8 @@ class NarrationStore:
                 raise ValueError('This reading copy changed elsewhere. Reopen it or save a new copy.')
             if previous is not None:
                 prior = validate_narration_payload(path.name, previous)
-                if (prior.original_text, prior.source_location, prior.original_path) != (
-                        project.original_text, project.source_location, project.original_path):
+                if (prior.original_text, prior.source_location, prior.original_path, prior.legacy_origin) != (
+                        project.original_text, project.source_location, project.original_path, project.legacy_origin):
                     raise ValueError('The original source of a reading project cannot be replaced.')
             temporary = None
             try:
@@ -678,8 +739,8 @@ class NarrationStore:
         projects = {}
         for filename, raw in files.items():
             project = validate_narration_payload(filename, raw)
-            if workspace is not None and project.source_location is not None:
-                if project.source_location.workspace != workspace:
+            if workspace is not None and project.workspace is not None:
+                if project.workspace != workspace:
                     continue
             row = projects.setdefault(project.id, {'project': project, 'saved': False, 'draft': False})
             is_draft = filename.endswith('.draft.json')
@@ -720,12 +781,15 @@ def reading_project_reference(project, *, saved_digest):
     raw = encode_project(project)
     if saved_digest != sha256(raw).hexdigest():
         raise ValueError('Save this exact reading revision before preparing Audio Studio.')
-    return dict(kind=READING_REFERENCE_KIND, project_id=project.id,
+    reference = dict(kind=READING_REFERENCE_KIND, project_id=project.id,
                 revision=project.revisions[project.cursor].number,
                 project_sha256=saved_digest, original_sha256=project.original_sha256,
                 reading_sha256=text_digest(project.current_text),
                 source_location=None if project.source_location is None else asdict(project.source_location),
                 original_path=project.original_path)
+    if project.legacy_origin is not None:
+        reference['legacy_origin'] = asdict(project.legacy_origin)
+    return reference
 
 
 def validate_reading_project_reference(value, *, original_text, source_id):
@@ -737,6 +801,8 @@ def validate_reading_project_reference(value, *, original_text, source_id):
     """
     fields = {'kind', 'project_id', 'revision', 'project_sha256', 'original_sha256',
               'reading_sha256', 'source_location', 'original_path'}
+    if type(value) is dict and 'legacy_origin' in value:
+        fields.add('legacy_origin')
     if (type(value) is not dict or set(value) != fields or value['kind'] != READING_REFERENCE_KIND
             or not isinstance(value['project_id'], str) or not _ID.fullmatch(value['project_id'])
             or type(value['revision']) is not int or value['revision'] < 0):
@@ -751,4 +817,8 @@ def validate_reading_project_reference(value, *, original_text, source_id):
     location = None if value['source_location'] is None else _location(value['source_location'])
     if location is not None and (location.text_sha256 != value['original_sha256'] or value['original_path'] is not None):
         raise ValueError('The reading-copy source location does not match its original.')
+    if 'legacy_origin' in value:
+        decode_origin(value['legacy_origin'], original_text)
+        if location is not None:
+            raise ValueError('A saved reading copy cannot mix two source identity formats.')
     return value
