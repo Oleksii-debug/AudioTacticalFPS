@@ -177,6 +177,45 @@ def _engine(path):
         raise ValueError('Invalid passive transcription engine configuration.')
 
 
+def _historical_artifacts(service, path, job, recognition, members, cancelled):
+    """Recheck one edit's retained receipt without changing the saved job.
+
+    An explicit resume may select another worker. The old receipt is still
+    anchored by the edit's recognition hash, source seal and original TXT seal;
+    its model/runtime identities and complete export profile must validate too.
+    """
+    name = 'receipts/' + recognition + '.result.json'
+    receipt_path = path / name
+    if receipt_path not in members:
+        raise ValueError('Transcript edit lost its original source binding: retained receipt is missing.')
+    try:
+        receipt = read_json(receipt_path)
+        identity = receipt['identity']
+        if identity['sha256'] != recognition:
+            raise ValueError('The retained receipt differs from the edit recognition identity.')
+        source, runtime = identity['source'], identity['runtime']
+        context = {'input_root': source['root'],
+                   'worker_sha256': runtime['worker_sha256'],
+                   'python_sha256': runtime['executable']['sha256']}
+        if (not isinstance(context['input_root'], str) or not context['input_root']
+                or '\0' in context['input_root']
+                or any(not isinstance(context[key], str)
+                       or not re.fullmatch('[a-f0-9]{64}', context[key])
+                       for key in ('worker_sha256', 'python_sha256'))):
+            raise ValueError('Invalid retained receipt execution identity.')
+        status = {'run_id': receipt['run_id'], 'receipts': [name],
+                  'done': 1, 'failed': len(job['sources']) - 1, 'total': len(job['sources'])}
+        # This is a passive validation view, never _save or a promotion of the
+        # stopped job's completion counters. _receipts checks actual media and
+        # every required artifact against the immutable source/settings seals.
+        _, artifacts = service._receipts(path, {**job, 'run_context': context}, status, cancelled)
+        return artifacts
+    except AudioCancelled as exc:
+        raise InterruptedError('Transcription backup validation cancelled.') from exc
+    except (KeyError, TypeError, AttributeError, ValueError, OSError) as exc:
+        raise ValueError('Transcript edit lost its original source binding: retained receipt or output is invalid.') from exc
+
+
 def validate_state_tree(db, root, *, cancelled=lambda: False):
     """Validate saved scopes and seals passively against the copied catalog.
 
@@ -223,7 +262,7 @@ def validate_state_tree(db, root, *, cancelled=lambda: False):
             raise ValueError('Stop transcription before making a complete backup.')
         try:
             service._sources(path, job, cancelled)
-            if job['status'] in ('completed', 'partial'):
+            if job['status'] in ('completed', 'partial') or job.get('artifacts'):
                 service.verify(job['id'], cancelled=cancelled)
         except AudioCancelled as exc:
             raise InterruptedError('Transcription backup validation cancelled.') from exc
@@ -232,16 +271,25 @@ def validate_state_tree(db, root, *, cancelled=lambda: False):
             if member.suffix == '.json':
                 read_json(member)
         sources = {item['filename']: item for item in job['sources']}
+        history, member_set = {}, set(members)
         for edit in service.edits(job['id']):
             _check(cancelled)
             source = sources.get(edit.get('source'))
-            artifact = next((row for row in job['artifacts']
-                if row['source'] == edit.get('source') and row['format'] == 'txt'), None)
+            recognition, original_text = edit.get('recognition_identity'), edit.get('original_text_sha256')
             if (type(edit.get('version')) is not int or edit['version'] != 1 or source is None
                     or edit.get('source_sha256') != source['sha256']
-                    or artifact is None
-                    or edit.get('recognition_identity') != artifact['recognition_identity']
-                    or edit.get('original_text_sha256') != artifact['sha256']
+                    or any(not isinstance(value, str) or not re.fullmatch('[a-f0-9]{64}', value)
+                           for value in (recognition, original_text))
                     or not isinstance(edit.get('text'), str)
                     or len(edit['text'].encode('utf-8')) > MAX_TEXT_BYTES or '\0' in edit['text']):
+                raise ValueError('Transcript edit lost its original source binding.')
+            def matches(row):
+                return (row['source'] == edit['source'] and row['format'] == 'txt'
+                        and row['recognition_identity'] == recognition and row['sha256'] == original_text)
+            if any(matches(row) for row in job['artifacts']):
+                continue
+            if recognition not in history:
+                history[recognition] = _historical_artifacts(
+                    service, path, job, recognition, member_set, cancelled)
+            if not any(matches(row) for row in history[recognition]):
                 raise ValueError('Transcript edit lost its original source binding.')

@@ -4,6 +4,7 @@ No inference runtime is executed. The existing subprocess bridge suite covers
 worker execution; these cases exercise the actual typed library backup boundary.
 """
 from hashlib import sha256
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -276,3 +277,110 @@ def test_shared_portable_relative_preserves_existing_backup_boundary(name):
         portable_relative(name)
     with pytest.raises(ValueError, match='invalid audio-project artifact path'):
         library_backup._portable_relative(name)
+
+# Reuse the public synthetic protocol fixture already required by the feature;
+# this is neither a model download nor copied private recognition code.
+_protocol_spec = importlib.util.spec_from_file_location('asr_backup_protocol_fixture',
+    Path(__file__).resolve().parents[1] / 'transcription' / 'test_supplied_worker_bridge.py')
+_protocol = importlib.util.module_from_spec(_protocol_spec)
+_protocol_spec.loader.exec_module(_protocol)
+protocol_prepared = _protocol.prepared
+
+_STOP_WORKER = r'''
+import json, os, pathlib, sys, time, uuid
+job = pathlib.Path(sys.argv[sys.argv.index('--job-dir') + 1])
+status = {'run_id': uuid.uuid4().hex, 'state': 'running', 'result_state': 'running',
+          'done': 0, 'total': len(list((job / 'input').iterdir())), 'failed': 0, 'receipts': []}
+def publish():
+    temporary = job / 'temporary' / 'status.json'
+    temporary.write_text(json.dumps(status), encoding='utf-8')
+    os.replace(temporary, job / 'job_status.json')
+publish()
+while not (job / 'stop.flag').exists():
+    time.sleep(.01)
+status.update(state='stopped', result_state='stopped')
+publish()
+raise SystemExit(2)
+'''
+
+
+@pytest.fixture
+def stopped_history(protocol_prepared, tmp_path):
+    app, workspace, service, original, configure = protocol_prepared
+    second = tmp_path / 'second-retained.wav'
+    second.write_bytes(original.read_bytes())
+    configure('partial')
+    identity = service.submit([original, second])
+    partial = service.run(identity, timeout=30)
+    assert partial['status'] == 'partial' and partial['done'] == 1
+    source = partial['sources'][0]['filename']
+    revision = service.save_edit(identity, source, 'Правка часткового результату.')
+    configuration = service.configuration()
+    worker = tmp_path / 'cooperative-stop-worker.py'
+    worker.write_text(_STOP_WORKER, encoding='utf-8')
+    service.configure(configuration['python'], worker, configuration['models_dir'])
+    path = service._path(identity)
+    def cancelled():
+        try:
+            status = read_json(path / 'job_status.json')
+        except (OSError, ValueError):
+            return False
+        return status.get('run_id') != partial['worker_run_id']
+    stopped = service.run(identity, cancelled=cancelled, timeout=10)
+    assert stopped['status'] == 'stopped'
+    assert stopped['done'] == 0 and stopped['receipts'] == [] and stopped['artifacts'] == []
+    assert service.edits(identity)[0]['id'] == revision
+    return app, workspace, service, identity, partial, revision
+
+
+def test_partial_edit_then_actual_resume_and_stop_roundtrips_without_promoting_results(stopped_history, tmp_path):
+    app, workspace, service, identity, partial, revision = stopped_history
+    before = _names(app)
+    backup = tmp_path / 'backup'
+    digest = library_backup.create_backup(app, backup)
+    target = library_backup.restore_backup(backup, tmp_path / 'restored', digest)
+    assert {name: (target / name).read_bytes() for name in before} == before
+    recovered = TranscriptionService(LibraryApp(target), workspace)
+    job = recovered.get(identity)
+    assert job['status'] == 'stopped' and job['done'] == 0
+    assert job['receipts'] == [] and job['artifacts'] == []
+    edit, = recovered.edits(identity)
+    assert edit['id'] == revision and edit['text'] == 'Правка часткового результату.'
+    assert edit['recognition_identity'] == next(row['recognition_identity']
+        for row in partial['artifacts'] if row['format'] == 'txt')
+    # Full backup inspection also exercises the historical receipt path without
+    # needing the original executable or interpreting stopped files as exports.
+    Path(recovered.configuration()['worker']).unlink()
+    library_backup.verify_backup(backup, digest)
+    assert recovered.get(identity) == job
+
+
+@pytest.mark.parametrize('damage', ['txt', 'source', 'receipt', 'missing-receipt', 'missing-txt'])
+def test_historical_edit_requires_retained_receipt_original_media_and_exact_text(stopped_history, tmp_path, damage):
+    app, _, service, identity, partial, _ = stopped_history
+    path = service._path(identity)
+    artifact = next(row for row in partial['artifacts'] if row['format'] == 'txt')
+    text = path / 'results' / artifact['path']
+    receipt = path / partial['receipts'][0]
+    if damage == 'txt':
+        text.write_text('Changed after the retained edit.\n', encoding='utf-8')
+    elif damage == 'source':
+        original = path / 'input' / artifact['source']
+        raw = bytearray(original.read_bytes())
+        raw[-1] ^= 1
+        original.write_bytes(raw)
+    elif damage == 'receipt':
+        value = read_json(receipt)
+        value['identity']['runtime']['worker_sha256'] = '0' * 64
+        atomic_json(receipt, value, replace=True)
+    elif damage == 'missing-receipt':
+        receipt.unlink()
+    else:
+        text.unlink()
+    destination = tmp_path / 'backup'
+    with pytest.raises(ValueError):
+        library_backup.create_backup(app, destination)
+    assert not destination.exists()
+    job = service.get(identity)
+    assert job['status'] == 'stopped' and job['done'] == 0
+    assert job['receipts'] == [] and job['artifacts'] == []
