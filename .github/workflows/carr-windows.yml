@@ -191,6 +191,12 @@ jobs:
           & $env:CARR_PYTHON -I -B tests/ui/native_document_formats_smoke.py --native 2>&1 | Tee-Object 'ci-results/installed-document-formats.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed academic comparison before long suites
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_academic_comparison_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/installed-academic-comparison.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare the exact test font for real OCR fixtures
         timeout-minutes: 2
         run: |
@@ -648,10 +654,17 @@ jobs:
             @{ Script='tests/ui/native_evidence_drafts_smoke.py'; Args=@('--native'); Output='native-evidence-drafts.txt' },
             @{ Script='scripts/windows_citation_styles_smoke.py'; Args=@(); Output='native-citation-styles.txt' }
           )
+          # Each native scenario runs in a fresh process.
+          # Retain every failure while collecting the independent later evidence.
+          $failedNativeGates = @()
           foreach ($gate in $nativeGates) {
             $arguments = @($gate.Args)
             & $installedPython -I -B -c $runNative $bundle (Resolve-Path $gate.Script).Path @arguments 2>&1 | Tee-Object (Join-Path 'ci-results' $gate.Output)
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $nativeExitCode = $LASTEXITCODE
+            if ($nativeExitCode -ne 0) {
+              $failedNativeGates += "$($gate.Script) (exit $nativeExitCode)"
+              Write-Warning "Required native scenario failed: $($gate.Script) (exit $nativeExitCode)"
+            }
           }
           Copy-Item -LiteralPath 'ci-results/core-bundle-native.txt' -Destination 'ci-results/native-desktop.txt'
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -869,6 +882,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($failedNativeGates.Count -ne 0) {
+            throw ('Required native scenarios failed: ' + ($failedNativeGates -join '; '))
+          }
           } finally {
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
