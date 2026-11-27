@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27T16:01:17Z",
+  "evidence_source": "Returned completed exact GitHub Actions job logs.",
+  "unique_test_count": "Selections overlap; do not add as unique coverage.",
+  "tested_commit": "e09b572759131ba94d57a6491f6a3935194ba302",
+  "tested_tree": "e8820515c24cd0fa36109bae769fbdbd19ab15ef",
+  "status": "PASS",
+  "run_id": 46025186706,
+  "job_id": 140594648385,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46025186706/job/140594648385",
+  "origin": "Actual installed wxMSW with per-module source digest and installed-origin checks.",
+  "reports": [
+    {
+      "result": "PASS",
+      "checks": [
+        "exact source: carr_library.assistant.templates",
+        "installed origin: carr_library.assistant.templates",
+        "exact source: carr_library.assistant.template_bindings",
+        "installed origin: carr_library.assistant.template_bindings",
+        "exact source: carr_library.assistant.planner",
+        "installed origin: carr_library.assistant.planner",
+        "exact source: carr_library.ui.workflow_templates",
+        "installed origin: carr_library.ui.workflow_templates",
+        "exact source: carr_library.ui.assistant_dialog",
+        "installed origin: carr_library.ui.assistant_dialog",
+        "actual wxMSW controls",
+        "macro registered once with no default key",
+        "actual semantic key dispatched",
+        "macro opens empty fresh value review",
+        "loaded macro retains no folder approvals and no Run approval",
+        "separate native Preview validates both explicit items without executing",
+        "native project editor strips stored source references",
+        "native typed project settings accepted",
+        "project reuse has fresh identity and no old source claim",
+        "project and template controls execute no job"
+      ],
+      "errors": [],
+      "source_sha256": {
+        "carr_library.assistant.templates": "ecf5415cca47f08cf45a4169bd871607e5951ac8306cf0f8f2e9b6d1de744563",
+        "carr_library.assistant.template_bindings": "3806f6b955e5adc157ce8cd3600a458bb98d7c3ca09423c6d3d1d79dbbbb8e47",
+        "carr_library.assistant.planner": "7abf582aa26dfb77d26179b2cf34e496e28cf97d8b7f5c586de4b9eb7bd92d07",
+        "carr_library.ui.workflow_templates": "bfef366d489c6a0fc9205e92a24cf9af5341b10fa3c51fd0f1bc551c2e4ef7de",
+        "carr_library.ui.assistant_dialog": "123b1e23394f56964c26f6bb75585d91cd056d5451e17a095bd2b83a8fc750ef"
+      },
+      "manual_nvda": "NOT_RUN",
+      "acoustic_quality": "NOT_RUN"
+    },
+    {
+      "checks": 40,
+      "file_choices": "controlled temporary paths only",
+      "installed_modules": {
+        "carr_library.research.academic_library": "7aee1a60841902e41ed100425470995be1cd50b2142c139b2d3d9de6ecca0d32",
+        "carr_library.research.bibtex_import": "1aa6ba1a25a52ff5df759464de629f30544ee1caa52948a3735fc626d9a19379",
+        "carr_library.research.export_file": "da9912404ed7a8e57ba4e4f7c16454c3d21d67c1fbe57070b3c64d291d5c7747",
+        "carr_library.ui.academic_library_dialog": "0bc2d54ded5abd5077a8b5280fca523214f8881ddcf2156e912fa52c4dd7542d"
+      },
+      "installer": "NOT_RUN",
+      "manual_keyboard": "NOT_RUN",
+      "native_bibtex_import": "PASS",
+      "native_export_options": "PASS",
+      "native_file_pickers": "NOT_RUN",
+      "native_keyboard": "PASS",
+      "native_overwrite_accessible_focus": "NOT_RUN",
+      "native_overwrite_confirmation": "PASS",
+      "nvda": "NOT_RUN",
+      "platform": "Windows-10-10.0.20348-SP0",
+      "python": "3.11.9",
+      "result": "PASS",
+      "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+    }
+  ],
+  "artifact": {
+    "id": 15213980295,
+    "sha256": "a10cbe22a75264c2faa242cadb4e8d2fa47117804c8f0b27924f5f63f0ec0b08"
+  },
+  "qualification": {
+    "native_file_pickers": "NOT_RUN",
+    "human_nvda": "NOT_RUN",
+    "acoustic_quality": "NOT_RUN",
+    "complete_installed_bundle": "NOT_ESTABLISHED_BY_THIS_COMPONENT_JOB"
+  }
+}

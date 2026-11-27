@@ -79,7 +79,7 @@ jobs:
             tests/search/test_advanced_search.py \
             tests/search/test_federated_advanced.py \
             tests/search/test_federated.py \
-            tests/search/test_search_paging.py \
+            tests/search/test_search_paging.py tests/search/test_semantic_cache.py tests/search/test_retrieval_evaluation.py \
             tests/search/test_federated_independent.py \
             tests/search/test_literal_long_source.py \
             tests/search/test_literal_unicode_memory.py \

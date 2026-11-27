@@ -58,7 +58,8 @@ jobs:
             tests/speech/test_reading_tabs.py \
             tests/ui/test_reader_tabs.py \
             tests/ui/test_reader_navigation.py \
-            tests/ui/test_reader_voice_recovery.py
+            tests/ui/test_reader_voice_recovery.py \
+            tests/ui/test_native_reading_presentation_driver.py
   native-reading-content-controls:
     runs-on: windows-2022
     timeout-minutes: 10

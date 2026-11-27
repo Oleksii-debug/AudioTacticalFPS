@@ -166,3 +166,58 @@ the latter requires its actual Windows probe. Existing strict gates retain all
 old suites and add the two narration suites plus relevant reading/source/session
 preservation. A focused exact-head Windows job exercises the extended existing
 reader keyboard/restart probe; no substitute GUI implementation is introduced.
+
+## Concurrent reviewed source retained after e8d
+
+The shared branch advanced without replacing e8d:3e4ce53a adds explicit cache
+isolation and non-executable local-model clarifications;fb2d8976 centralizes strict
+JSON decoding for typed plans, profiles and existing jobs/controls;5604f19d reuses
+the production MiniLM retrieval evaluator, bounded synthetic UK/EN/SK fixture and
+existing installed-firewall gate. Their exact five/four/four-path commits were
+independently reviewed. No competing store, plan executor, cache owner or search
+implementation was introduced. Full-tree comparison confirms unrelated candidate
+files were preserved. The evaluator reports NOT_DECIDED quality and does not
+establish independent held-out gold or broad language qualification.
+
+The new core/provider/cache/schema tests are included in current strict source
+gates. The actual corrected reading component passes227 cases on3e4. Earlier
+e09 installed native evidence confirms20 template and40 bibliography-interchange
+checks;fb2 bibliography passes1154 Windows source cases and69 installed native
+checks. Their exact records do not substitute for the current candidate gates.
+
+Reviewed follow-ups03ab and1704 change only observed acceptance fixtures: a real
+isolated standard-library ASR peer avoids repeatedly inspecting unrelated installed
+packages, and the native bookmark driver verifies returned editor focus once before
+focusing the next command. All original assertions, runtime inspections and gate
+budgets remain. New execution is still required for these exact corrections.
+
+## Canonical PR196 optional transcription-cache reconciliation
+
+Canonical main advances froma333f072 to
+`a44fac04072389caa40e0d6e799b13797712f797` through PR196. The exact
+four-path decision is the reviewed flat-adapter component
+`30479967d36ca3b4440c19470d7e32fe6207c87e`. The main commit is retained
+as integration ancestry; no old package-shaped transcription service replaces
+the current workspace-bound service.
+
+| Canonical changed path | Main blob | Current reconciliation |
+| --- | --- | --- |
+| `docs/PRIMARY_STATE_BACKUP.md` | `5f45fcaeae604dbcce8f9977e26babdfee71862b` | Adapt descriptions to actual current source/media limits, passive configuration and explicit unsupported recognition-cache inclusion. Preserve the established incremental-backup contract separately. |
+| `src/carr_library/backup_sidecars.py` | `e77dca0b919687d9a8e10c1ba86c817ec01662ca` | Reject cache entries contradicting false/absent inclusion before payload reads. Default capture omits only the exact owned cache directories after native directory safety checks. Explicit inclusion cannot admit an untyped ASR cache. |
+| `src/carr_library/backup_transcription.py` | `5a82ac28c21dd11eed47f1d809c522a74a611d74` | Add narrow classifiers for current flat job `logs/cache` and `logs/cache_v5`. Existing accepted source, receipts, V5 result/manifests, per-kind limits, collection verification and trust revocation remain unchanged. |
+| `tests/storage/test_transcription_backup.py` | `730c2b0c4f784957fd41c579f69708a1ba936fcc` | Retain the earlier intentional deletion of this incompatible package-shaped suite. Port its128 inclusion/layout/manifest cases into current `test_backup_transcription.py`, plus actual default-cache omission/restore, forged manifest no-read and wrong-kind native directory cases. Keep all15 original test bodies. |
+
+The final test file includes the independently reviewed03ab isolated-peer
+fixture once. Expected suite cardinality is161, including real filesystem and
+synthetic V5 worker cases; this number is not execution evidence. A true
+`include_generated` flag still refuses optional ASR cache payloads because
+this flat producer has no typed cache admission schema. Default backup retains
+required inputs and accepted outputs; another producer's worker-history cache
+layout is not silently treated as compatible. New execution is pending on the
+composed candidate.
+
+The test-only successor `617965a1796f9794af483b758a7858cb435eb359`
+retains all161 scenarios and guards both Path.open and the actual os.open sidecar
+reader during the new cache-omission/refusal checks. Those guards end before
+legitimate source-directory cleanup. Independent production and test reviews
+approve the final source; no new runtime result is inferred from that review.

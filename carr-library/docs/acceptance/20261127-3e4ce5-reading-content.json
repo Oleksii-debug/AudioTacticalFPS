@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27T16:01:17Z",
+  "evidence_source": "Returned completed exact GitHub Actions job logs.",
+  "unique_test_count": "Selections overlap; do not add as unique coverage.",
+  "tested_commit": "3e4ce53af1a251d3e795585219ec7a5258c3664f",
+  "tested_tree": "9cfa595fe351d61be46a1d97870f1a82c3ead682",
+  "status": "PASS",
+  "run_id": 46026916752,
+  "job_id": 140600583194,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46026916752/job/140600583194",
+  "suite_origin": "Checkout source; real serial workers and synthetic PCM, not native GUI execution.",
+  "suites": [
+    {
+      "suite": "tests/speech/test_narration_policy.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_tools.py",
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reading_narration.py",
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_focus_hook.py",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading.py",
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_session.py",
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_reading_tabs.py",
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/speech/test_source.py",
+      "passed": 37,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_tabs.py",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_navigation.py",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/ui/test_reader_voice_recovery.py",
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 227,
+    "failed": 0,
+    "skipped": 0
+  },
+  "qualification": {
+    "native_probe": "Separate. Historical e09 driver failed an obsolete focus assertion; correction1704 requires actual Windows execution.",
+    "private_voice_quality": "NOT_RUN",
+    "manual_nvda": "NOT_RUN"
+  }
+}

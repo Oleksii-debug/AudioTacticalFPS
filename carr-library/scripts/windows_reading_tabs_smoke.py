@@ -211,6 +211,10 @@ def _native():
                 check('native bookmark navigation restores cursor and reader focus',
                       reader_module.native_insertion_offset(editor, editor.GetValue()) == evidence['bookmark_cursor']
                       and wx.Window.FindFocus() is editor)
+                advance('bookmark_focus_verified')
+            elif stage[0] == 'bookmark_focus_verified':
+                # key() may first focus this next button and yield. Do not
+                # demand the previous editor focus again on the following tick.
                 key(named('Reading bookmarks and paragraph tools', reader), wx.WXK_SPACE, 'split_tools_open')
             elif stage[0] == 'paragraph_closed':
                 undo = next(item for item in reader.GetChildren() if isinstance(item, wx.Button)

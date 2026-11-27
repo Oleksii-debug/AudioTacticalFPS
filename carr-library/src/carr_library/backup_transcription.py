@@ -141,6 +141,23 @@ def allow_empty(name):
         member[0] == 'input' or member[0] == 'result' and not member[3].endswith('.json'))
 
 
+
+def is_cache_directory(name):
+    """Recognize only optional logs caches owned by this flat job layout.
+
+    This is an omission boundary, not an admission schema. Accepted results and
+    V5 manifests remain required even when their payload records cache identity.
+    """
+    match = _JOB.fullmatch(name) if type(name) is str else None
+    return bool(match and match[3] in ('logs/cache', 'logs/cache_v5'))
+
+
+def is_cache_file(name):
+    """Identify optional cache entries without reading or accepting their data."""
+    match = _JOB.fullmatch(name) if type(name) is str else None
+    return bool(match and match[3].startswith(('logs/cache/', 'logs/cache_v5/')))
+
+
 def ignored(name):
     """Only transient ownership/commands, never arbitrary worker files or caches."""
     if name == PREFIX + '.engine.lock':

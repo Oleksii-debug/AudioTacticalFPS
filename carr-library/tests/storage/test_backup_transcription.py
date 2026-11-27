@@ -5,14 +5,15 @@ model, decode recordings, use the network, or establish acoustic qualification.
 """
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import runpy
 import shutil
-import sys
+import venv
 
 import pytest
 
-from carr_library import backup_transcription, transcription
+from carr_library import backup_sidecars, backup_transcription, transcription
 from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import restore_backup
@@ -73,7 +74,20 @@ def factory(tmp_path):
             model.mkdir()
             for name in ('model.bin', 'config.json', 'tokenizer.json'):
                 (model / name).write_bytes(('Synthetic model identity only: ' + name).encode())
-        service.configure(Path(sys.executable).absolute(), worker, models, protocol=protocol)
+        # These real child peers use only the standard library. Select a real
+        # isolated interpreter so each required inspection seals that runtime,
+        # rather than repeatedly hashing unrelated application-site packages.
+        # Operational-base/native-file and per-boundary verification stay real.
+        environment = tmp_path / 'selected-python'
+        venv.EnvBuilder(with_pip=False, system_site_packages=False,
+                        symlinks=os.name != 'nt').create(environment)
+        python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+        configured = service.configure(python, worker, models, protocol=protocol)
+        inventory = configured['runtime_inventory']
+        assert inventory['python_executable'] == str(python.absolute())
+        assert inventory['python_configuration']
+        assert all(row == {'present': False}
+                   for row in inventory['runtime_distributions'].values())
         originals = []
         for index in range(count):
             original = tmp_path / ('original-' + str(index) + '.wav')
@@ -346,3 +360,217 @@ def test_ready_job_needs_no_engine_and_collection_cancel_never_publishes(factory
                                                   cancelled=cancelled)
     assert calls == 3
     assert service.get(identity) == job
+
+
+@pytest.mark.parametrize('cache_root', ['cache', 'cache_v5'])
+@pytest.mark.parametrize('suffix', ['cache.json', 'receipt.json', 'json', 'txt'])
+@pytest.mark.parametrize('layout', ['', '33/', 'verified-v1/', 'verified-v1/33/'])
+@pytest.mark.parametrize('shape', ['v3-implicit', 'v3-state', 'v4-sidecars', 'v5-state'])
+def test_manifest_requires_explicit_optional_cache_inclusion(
+        cache_root, suffix, layout, shape):
+    scope, job, source, run, key = 'a' * 64, 'b' * 32, 'c' * 32, 'd' * 32, 'e' * 64
+    root = f'state/transcription/{scope}/jobs/{job}/'
+    cache = root + f'logs/{cache_root}/{layout}{key}.{suffix}'
+    result = root + f'results/runs/{run}/Whisper_V5/{job}/'
+    retained = [
+        root + f'input/001-{source}.wav',
+        root + f'receipts/{key}.result.json',
+        result + 'input/source.txt',
+        result + 'result_manifest.json',
+        root + f'edits/{source}.json',
+        root + 'job_config.json',
+    ]
+    assert all(not backup_transcription.is_cache_file(name) for name in retained)
+    assert backup_transcription.is_cache_file(cache)
+    assert backup_transcription.limit(cache) is None  # Recognition is not admission.
+    legacy = shape in ('v3-state', 'v5-state')
+    field = 'state' if legacy else 'sidecars'
+    entries = [dict(filename=name[6:] if legacy else name,
+                    size_bytes=0 if name == cache and suffix == 'txt' else 1,
+                    sha256='f' * 64) for name in [*retained, cache]]
+    manifest = dict(version={'v3-implicit': 3, 'v3-state': 3,
+                             'v4-sidecars': 4, 'v5-state': 5}[shape],
+                    kind='carr-library', schema_version=5, schema_fingerprint='1' * 64,
+                    database={}, assets=[])
+    manifest[field] = entries
+    extra = set()
+    if shape == 'v5-state':
+        manifest['pending'] = None
+        manifest['reading_state'] = dict(filename='reading-state.json',
+                                        size_bytes=1, sha256='f' * 64)
+        extra.add('reading-state.json')
+    if shape != 'v3-implicit':
+        manifest['generated_audio_included'] = False
+    with pytest.raises(ValueError, match='Transcription cache requires explicit manifest inclusion'):
+        backup_sidecars.normalize_manifest(manifest)
+    manifest[field] = entries[:-1]
+    inventory = backup_sidecars.normalize_manifest(manifest)
+    assert inventory.generated_audio_included is False
+    assert {row['filename'] for row in inventory.entries} == set(retained) | extra
+    if shape != 'v3-implicit':
+        manifest[field] = entries
+        manifest['generated_audio_included'] = True
+        with pytest.raises(ValueError, match='Optional transcription cache inclusion is not supported'):
+            backup_sidecars.normalize_manifest(manifest)
+
+
+@pytest.mark.parametrize('tail', [
+    'logs/cache-other/data.json', 'logs/cache_v5_extra/data.json',
+    'worker/logs/cache/data.json', 'worker-history/' + 'c' * 32 + '-' + 'd' * 32 + '/logs/cache/data.json',
+    'results/cache/data.json', 'receipts/cache.json', 'edits/cache.json',
+])
+def test_only_exact_flat_job_cache_roots_are_optional(tail):
+    root = 'state/transcription/' + 'a' * 64 + '/jobs/' + 'b' * 32 + '/'
+    assert not backup_transcription.is_cache_file(root + tail)
+    assert not backup_transcription.is_cache_directory(root + tail)
+    assert not backup_transcription.is_cache_file(
+        'state/transcription/jobs/' + 'b' * 32 + '/logs/cache/data.json')
+    assert not backup_transcription.is_cache_directory(
+        'state/transcription/' + 'a' * 63 + '/jobs/' + 'b' * 32 + '/logs/cache')
+    for cache in ('logs/cache', 'logs/cache_v5'):
+        assert backup_transcription.is_cache_directory(root + cache)
+        assert not backup_transcription.is_cache_directory(root + cache + '/child')
+
+
+def test_actual_v5_cache_is_optional_but_all_receipts_and_manifests_restore(
+        factory, tmp_path, monkeypatch):
+    app, workspace, service, identity, originals, runtime, models = factory(V5)
+    result = service.run(identity, timeout=30)
+    assert result['status'] == 'completed', result['last_error']
+    path = service._path(identity)
+    cache = path / 'logs' / 'cache_v5'
+    assert (cache / 'synthetic-retained.txt').read_text(encoding='utf-8') == 'Synthetic cache; no inference.'
+    other_cache = path / 'logs' / 'cache'
+    other_cache.mkdir()
+    (other_cache / 'unparsed-private-cache.bin').write_bytes(b'Optional unparsed recognition cache.')
+    for name in ('fixture-mode.json', 'fixture-runs.json'):
+        (path / name).unlink(missing_ok=True)
+    source = result['sources'][0]['filename']
+    text = service.text(identity, source)
+    revision = service.save_edit(identity, source, 'Separate retained edit.')
+    expected = {name: raw for name, raw in _files(app.root).items()
+                if not backup_transcription.is_cache_file(name)}
+    real_open, real_descriptor_open = Path.open, os.open
+    def forbid_cache_read(self, *args, **kwargs):
+        if self.is_relative_to(cache) or self.is_relative_to(other_cache):
+            raise AssertionError('An optional recognition-cache payload was opened.')
+        return real_open(self, *args, **kwargs)
+    def forbid_cache_descriptor(path, *args, **kwargs):
+        candidate = Path(os.fsdecode(path))
+        if candidate.is_relative_to(cache) or candidate.is_relative_to(other_cache):
+            raise AssertionError('An optional recognition-cache descriptor was opened.')
+        return real_descriptor_open(path, *args, **kwargs)
+    # Guard both actual payload readers during backup, then release the guards
+    # before shutil.rmtree may legitimately open directories for cleanup.
+    with monkeypatch.context() as reads:
+        reads.setattr(Path, 'open', forbid_cache_read)
+        reads.setattr(os, 'open', forbid_cache_descriptor)
+        with pytest.raises(ValueError, match='Optional transcription cache inclusion is not supported'):
+            app.backup(tmp_path / 'unsupported-cache-inclusion', include_generated=True)
+        assert not (tmp_path / 'unsupported-cache-inclusion').exists()
+
+        backup = tmp_path / 'cache-omitted'
+        checksum = app.backup(backup)
+    manifest = read_json(backup / 'manifest.json')
+    assert manifest['generated_audio_included'] is False
+    names = {row['filename'] for row in manifest['sidecars']}
+    assert set(expected) <= names
+    assert all(not backup_transcription.is_cache_file(name) for name in names)
+    relative = path.relative_to(app.root).as_posix() + '/'
+    assert all(relative + name in names for name in result['receipts'])
+    assert relative + 'results/' + result['run_context']['result_directory'] + '/result_manifest.json' in names
+    assert all(relative + 'results/' + row['path'] in names for row in result['artifacts'])
+    for original in originals:
+        original.unlink()
+    shutil.rmtree(runtime)
+    shutil.rmtree(models)
+    shutil.rmtree(app.root)
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Restored retained data attempted execution or external runtime inspection.')
+    for name in ('run_process', '_python_runtime', '_v5_model', '_v5_file'):
+        monkeypatch.setattr(transcription, name, forbidden)
+    restored = restore_backup(backup, tmp_path / 'cache-restored', expected_manifest_sha256=checksum)
+    actual = _files(restored)
+    assert set(actual) == set(expected)
+    for name, raw in expected.items():
+        if name == 'state/transcription/engine.json':
+            assert json.loads(actual[name]) == {**json.loads(raw), 'execution_review_required': True}
+        elif '/transcription/profiles/' in name:
+            assert json.loads(actual[name]) == {**json.loads(raw), 'trusted': False, 'restored': True}
+        elif name.endswith('/job.json'):
+            assert json.loads(actual[name]) == {**json.loads(raw), 'execution_review_required': True}
+        else:
+            assert actual[name] == raw
+    recovered = LibraryApp(restored).transcription(workspace)
+    accepted = recovered.verify(identity)
+    assert accepted['status'] == 'completed' and accepted['receipts'] == result['receipts']
+    assert accepted['artifacts'] == result['artifacts']
+    assert recovered.text(identity, source) == text
+    assert recovered.edits(identity)[0]['id'] == revision
+    assert recovered.run(identity, timeout=30)['status'] == 'completed'
+    assert not (recovered._path(identity) / 'logs' / 'cache_v5').exists()
+    assert not (recovered._path(identity) / 'logs' / 'cache').exists()
+
+
+@pytest.mark.parametrize('cache_root', ['cache', 'cache_v5'])
+@pytest.mark.parametrize('flag', [False, None, True])
+def test_actual_restore_rejects_optional_cache_manifest_before_payload_reads(
+        factory, tmp_path, monkeypatch, cache_root, flag):
+    app, _, service, identity, _, _, _ = factory()
+    backup = tmp_path / 'backup'
+    app.backup(backup)
+    manifest = read_json(backup / 'manifest.json')
+    name = (service._path(identity).relative_to(app.root).as_posix()
+            + f'/logs/{cache_root}/' + 'a' * 64 + '.cache.json')
+    payload = backup / name
+    payload.parent.mkdir(parents=True)
+    raw = b'{"optional":"cache; never accepted as a transcript"}'
+    payload.write_bytes(raw)
+    manifest['sidecars'].append(dict(filename=name, size_bytes=len(raw), sha256=sha256(raw).hexdigest()))
+    if flag is None:
+        manifest['version'] = 3
+        manifest.pop('generated_audio_included')
+        manifest.pop('pending', None)
+    else:
+        manifest['generated_audio_included'] = flag
+    checksum = _resign(backup, manifest)
+    real_open, real_descriptor_open = Path.open, os.open
+    def forbidden(self, *args, **kwargs):
+        if self.is_relative_to(backup) and self != backup / 'manifest.json':
+            raise AssertionError('Restore opened payload bytes before refusing the cache declaration.')
+        return real_open(self, *args, **kwargs)
+    def forbidden_descriptor(path, *args, **kwargs):
+        candidate = Path(os.fsdecode(path))
+        if candidate.is_relative_to(backup) and candidate != backup / 'manifest.json':
+            raise AssertionError('Restore opened a payload descriptor before refusing the cache declaration.')
+        return real_descriptor_open(path, *args, **kwargs)
+    message = ('Optional transcription cache inclusion is not supported' if flag is True
+               else 'Transcription cache requires explicit manifest inclusion')
+    destination = tmp_path / 'never-published'
+    with monkeypatch.context() as reads:
+        reads.setattr(Path, 'open', forbidden)
+        reads.setattr(os, 'open', forbidden_descriptor)
+        with pytest.raises(ValueError, match=message):
+            restore_backup(backup, destination, expected_manifest_sha256=checksum)
+    assert not destination.exists()
+    with real_open(payload, 'rb') as stream:
+        assert stream.read() == raw
+
+
+@pytest.mark.parametrize('cache_root', ['cache', 'cache_v5'])
+@pytest.mark.parametrize('kind', ['regular', 'hardlink'])
+def test_optional_cache_root_must_be_a_checked_native_directory(
+        tmp_path, cache_root, kind):
+    root = tmp_path / 'library'
+    cache = (root / 'state' / 'transcription' / ('a' * 64)
+             / 'jobs' / ('b' * 32) / 'logs' / cache_root)
+    cache.parent.mkdir(parents=True)
+    if kind == 'hardlink':
+        source = tmp_path / 'linked-original'
+        source.write_bytes(b'A cache root is not a linked file.')
+        os.link(source, cache)
+    else:
+        cache.write_bytes(b'A cache root is not a regular file.')
+    with pytest.raises(ValueError, match='regular|hard links|adapter'):
+        backup_sidecars._capture(root, include_generated=False)
+    assert cache.read_bytes().startswith(b'A cache root is not')

@@ -6,24 +6,29 @@ Resonance / «Резонанс», by Sceneria Innovative Technologies, retains t
 
 The selected completion branch is `carr/canonical-completion-2aa-20261127`, reviewed
 through [PR152](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/152). Canonical
-changes through `a333f0723df107aa60b60b8ee2c5ba9f85b25475` are reconciled in
+changes through `a44fac04072389caa40e0d6e799b13797712f797` are reconciled in
 [the convergence ledger](CANONICAL_CONVERGENCE_20261127.md).
 
-The most recent completed source selection is **e09b5727**, tree
-**e8820515c24cd0fa36109bae769fbdbd19ab15ef**, which includes the final
-Read/Skip product source and both earlier fixture corrections.
+The latest completed passing records include **e8d2077** for the full expanded
+source selection, **3e4ce53a** for reading-content controls, **e09b5727** for
+installed native templates/interchange, and **fb2d8976** for bibliography.
+Their exact source identities and limitations are retained separately below.
+The current source also preserves the independently reviewed concurrent cache,
+strict-JSON and retrieval-evaluator changes through5604. Those changes and the
+new native-driver/isolated-peer corrections require the composed candidate gates.
 
-| Exacte09 checkpoint | Result | Evidence and scope |
+| Completed exact checkpoint | Result | Evidence and scope |
 | --- | --- | --- |
-| Expanded reading, source, audio, recovery and assistant composition | **2056 passed; 2 JUnit failure entries; 0 skipped; 90 suites** | [Record](acceptance/20261127-e09b57-expanded-reader.json). Both failure entries belong to one new cancellation test and its teardown: a fixture accidentally invoked its constructor-only opener instead of the real modal cleanup wrapper. Corrected component9c777626 retains the actual wrapper and every assertion, with no product change. |
-| Automatic OCR/raster composition | **133 passed; 0 failed; 0 skipped; 8 suites** | [Record](acceptance/20261127-e09b57-automatic-ocr.json). Exacte09 source/tree with actual detector and Tesseract fixtures. |
+| e8d expanded reading, source, audio, recovery and assistant composition | **2057 passed; 0 failed; 0 skipped; 90 suites** | [Record](acceptance/20261127-e8d207-expanded-reader.json). Checkout source. This includes the corrected actual modal-cleanup fixture and all previous import, source, publication and recovery assertions. |
+| 3e4 reading-content component | **227 passed; 0 failed; 0 skipped; 11 suites** | [Record](acceptance/20261127-3e4ce5-reading-content.json). Real serial workers, synthetic PCM publication, Unicode selection, policy revocation and passive recovery; the native Windows probe is a separate job. |
+| e09 installed templates and bibliography interchange | **20 template and40 interchange checks passed** | [Record](acceptance/20261127-e09b57-native-templates-bibliography.json). Actual installed wxMSW, exact module origins/digests, real keyboard/confirmation, competing-file preservation and source/evidence invariants. |
+| fb2 Windows bibliography | **1154 source cases; 0 failed; 0 skipped; 27 suites**, plus **69 installed native checks** | [Record](acceptance/20261127-fb2d89-bibliography.json). Source-suite and installed-native origins are recorded separately; neither establishes the complete final platform. |
+| e09 automatic OCR/raster composition | **133 passed; 0 failed; 0 skipped; 8 suites** | [Record](acceptance/20261127-e09b57-automatic-ocr.json). Actual detector and Tesseract fixtures; broad multilingual quality remains separate. |
 
-On e09 the new narration core passed23 cases; the other28 narration UI cases,
-49 reading-copy cases,37 source cases, five session cases and the corrected
-50 legacy/supervisor cases also passed. These are checkout-source tests.
-The new native reading controls and complete installed candidate have their
-own gates. The9c fixture correction requires execution before the source
-selection can be called passing.
+The earlier [e09 failed source record](acceptance/20261127-e09b57-expanded-reader.json)
+is retained:2056 passed and two JUnit entries from one modal-wrapper fixture and
+its teardown. The fixture-only9c correction subsequently passes in full one8d
+and3e4. Source passing is not a claim that the remaining native probe ran.
 
 The preceding integrated checkpoint **391beff3**, tree
 **908accd8e5f306138b80443d51e30381cbcbf1a1**, is recorded below by job;
@@ -65,8 +70,9 @@ The actual b024 and391 full Windows jobs stopped at the bibliography interchange
 its observer still overrode `export_to`, while the real dialog now uses
 receipt-bearing `export_result`. Component1450ac10 corrects only that observer
 and adds two real-controller/writer regressions; real keyboard, confirmation,
-competing-save refusal and content assertions remain. Its updated native probe
-must pass on the composed source.
+competing-save refusal and content assertions remain. Its corrected native probe subsequently passes40 installed checks on exacte09
+([record](acceptance/20261127-e09b57-native-templates-bibliography.json)); the final
+composed candidate still has its own required gate.
 
 Earlier failures remain in [962fd8](acceptance/20261127-962fd8-expanded-reader.json),
 [c8cbc5](acceptance/20261127-c8cbc5-expanded-reader.json),
@@ -79,10 +85,14 @@ fixture and all28 reconciliation fixtures subsequently pass on391.
 
 The historical [dc477 Windows lifetime record](acceptance/20261127-dc477-windows-lifetime.json)
 contains262 filesystem,26 native-source and26 installed passing cases.
-The f249 installed V3 recovery selection reached its10-minute step deadline;
-the current gate retains that budget and adds bounded per-case durations and
-thread diagnostics. A partial or timed-out run is never a pass. Full native
-and installed-bundle gates remain required on the final candidate.
+The f249 andb024 installed V3 recovery selections reached their10-minute step
+deadline. The [b024 diagnostic](acceptance/20261127-b0245f-v3-recovery-diagnostic.json)
+records15 passing ASR backup cases taking439.114 seconds; the last import case
+had only begun when the whole step expired. The reviewed03ab fixture selects a
+real isolated standard-library peer instead of repeatedly reviewing unrelated
+application packages. Every runtime boundary and the600-second gate remain;
+new actual Windows timing is required. A partial or timed-out run is never a pass.
+Full native and installed-bundle gates remain required on the final candidate.
 
 The authoring executor became unavailable during this session. Later source
 was preserved through immutable Git objects and expected-head updates.
@@ -122,8 +132,9 @@ The updated specification remains the authority. Source implementation and execu
 | V3-20 named workflows and batch presets | Componentbe707b10 adds the passive typed catalogue, native save/load/delete, fresh Preview/Run and the existing semantic keyboard registry; spoken-equivalent names cannot create ambiguous choices | Components78d1291/b6059349/8a1a5d2 now add explicit typed parameters and bounded per-item overrides, project capture with fresh IDs and cleared source claims, one semantic review command per template, native authoring and a capture/preview CLI. All91 template/planning/command cases passed in the391 composition;20 actual installed native checks also passed there. The final composed source retains its own gate. See [named workflows](ASSISTANT_TEMPLATES.md). |
 | V3-01 image intake and automatic OCR language selection | Rastera9a75e89 and automatic-language componenta5ab8240 are composed on the existing OCR pipeline. Manual remains default; the pinned offline detector classifies without restricting its language inventory, then selects from at most 8 reviewed installed models. Up to 12 bounded paragraph alternatives keep independent raw text, TSV, pixel origins and uncertainty; no concatenated or approved quotation is fabricated | The 34 portable raster cases passed on c8cbc5. The 133-case b0245fe composed OCR job passed actual detector English/Ukrainian/Slovak samples, English Tesseract PDF/PNG/JPEG/TIFF, passive preset/restore and manual-override checks. Native Windows keyboard and multilingual OCR quality remain separate. See [automatic OCR](AUTOMATIC_OCR_LANGUAGES.md). |
 | V3-04 audio metadata and cover art | Component427e810f with reviewed cleanup78c7c1bc and fixture correctioncca1e0ac adds MP3/FLAC/M4A/M4B tag and local cover review through the current AudioRuntime. It preserves encoded audio packets and measured chapters in a separate no-clobber output with exact publication receipts. Passive saved choices/artwork participate in typed backup; restoration requires fresh explicit source/output review | All129 cases in seven metadata/cleanup/publication/hash/passive-backup/UI suites passed in b024, together with existing process/DSP/conversion selections. Successor73516f52 binds saved-artwork export to the exact pre-picker review and adds two record-replacement regressions; all131 metadata cases passed on391. Native/installed probes retain their own gate. See [metadata and artwork](AUDIO_METADATA_COVER.md). |
+| Current optional ASR cache boundary | Canonical PR196 is adapted through30479967 to the current flat source/receipt/V5 format. Default backup omits only exact owned recognition-cache directories; false/absent manifest flags reject cache payloads before opening them | All required source audio, accepted outputs, receipts, manifests and edits remain mandatory and staged validation precedes trust revocation. Explicit true inclusion of untyped ASR cache payloads is unsupported and refuses; no generic cache parser or foreign worker-history compatibility is claimed. The161-case current suite includes the15 unchanged scenarios,128 manifest cases and actual cache/restore/refusal cases. Fresh execution is pending. |
 | Legacy import defaults | Componente6e0461f preserves historical seven-field OCR configuration bytes while recognizing absent automatic-language selection as strict False only at the prepared-request and fresh committed-reply boundaries. New child requests retain an old batch's validated wire; runtime hashes, receipts and passive backup comparisons remain exact |24 actual-child, unprepared/prepared, deleted-original, lost-reply, full-backup and refusal cases plus26 supervisor cases passed on the installed exact7a component. All source/installed selections include the corrected ae1 fixtures; the final composition requires its own run. |
-| V3-02 reviewed Read/Skip categories | Reviewed component11f374a4 adds bounded explicit footnote/table/math/code/heading/other regions, category Read/Skip and whole/selection/cursor preview through existing ReadingDocument/Reading Tools. It preserves originals/history, exact source mapping, optional v4 passive recovery and old wire formats | Two independent reviews approved exact-policy adoption, native Destroy cleanup, pre-publication and deferred-play checks, truthful completed-WAV receipts and zero invented filtered timing. All23 new core and28 other UI cases passed one09. A fixture-only modal-wrapper correction9c addresses its sole failed test/teardown; that correction and the extended actual keyboard/restart probe still require their own successful gates. No automatic semantic classification is claimed. See [reading tools](READING_TOOLS.md). |
+| V3-02 reviewed Read/Skip categories | Reviewed component11f374a4 adds bounded explicit footnote/table/math/code/heading/other regions, category Read/Skip and whole/selection/cursor preview through existing ReadingDocument/Reading Tools. It preserves originals/history, exact source mapping, optional v4 passive recovery and old wire formats | Two independent reviews approved exact-policy adoption, native Destroy cleanup, pre-publication and deferred-play checks, truthful completed-WAV receipts and zero invented filtered timing. All227 cases in the11-suite reading component passed on3e4, including the9c modal-wrapper correction. Actuale09 native execution exposed a driver retry bug after a successful bookmark-focus check; reviewed1704 preserves the original assertion and separates next-command dispatch into its own stage. That driver correction and its three portable regressions require fresh actual execution. No automatic semantic classification is claimed. See [reading tools](READING_TOOLS.md). |
 
 The actual malformed-package RECORD and runtime-drift ASR cases passed in2fb Linux source gates. The actual export regressions for mismatched approval before destination opening now all pass in dc477. Historical evidence is never copied to a new tree.
 
