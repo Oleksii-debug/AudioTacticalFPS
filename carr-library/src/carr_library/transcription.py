@@ -19,6 +19,7 @@ from .audio.models import AudioBudget, AudioCancelled, AudioError, finite
 from .audio.process import run_process
 from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
                             read_json, regular, state_lock, sync_directory)
+from .ingest.writer_guard import exclusive_writer
 from .state_backup import relative_name
 
 MAX_FILES = 64
@@ -137,6 +138,17 @@ def _identifier(value):
 
 def _stamp(value):
     return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
+
+
+def _interpreter(value):
+    # A virtual environment commonly links its Python entry to the base binary.
+    # Verify that binary, but retain the entry so the existing site bootstrap
+    # selects the explicitly configured environment's packages.
+    selected = Path(value).absolute()
+    selected = local_path(selected.parent.resolve(strict=True), exists=True) / selected.name
+    target = local_path(selected.resolve(strict=True), exists=True)
+    regular(target)
+    return selected, target
 
 
 def _copy(source, destination, *, maximum, cancelled):
@@ -365,18 +377,17 @@ class TranscriptionService:
     def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL):
         self._authorize()
         protocol = _protocol(protocol)
-        python = local_path(Path(python).resolve(strict=True), exists=True)
+        python, executable = _interpreter(python)
         worker = local_path(worker, exists=True)
         models_dir = local_path(models_dir, exists=True)
         regular(models_dir, directory=True)
-        regular(python)
         regular(worker)
         if worker.suffix.lower() != '.py' or regular(worker).st_size > 4 * 1024**2:
             raise ValueError('Select the reviewed local Whisper worker Python file.')
         if models_dir.is_relative_to(self.app.root):
             raise ValueError('Keep model/runtime assets outside the backed-up library data directory.')
         value = {'version': 1, 'protocol': protocol, 'python': str(python), 'worker': str(worker),
-                 'models_dir': str(models_dir), 'python_sha256': digest_file(python),
+                  'models_dir': str(models_dir), 'python_sha256': digest_file(executable),
                  'worker_sha256': digest_file(worker),
                  'network': 'local-files-only; Python network calls denied',
                  'inference_qualified': False}
@@ -407,8 +418,9 @@ class TranscriptionService:
                     or hashes['worker.py'] != value.get('worker_sha256')):
                 raise ValueError('Whisper V5 requires all three reviewed source identities.')
         if verify:
-            for key in ('python', 'worker'):
-                if digest_file(local_path(value[key], exists=True)) != value[key + '_sha256']:
+            _, executable = _interpreter(value['python'])
+            for key, path in (('python', executable), ('worker', local_path(value['worker'], exists=True))):
+                if digest_file(path) != value[key + '_sha256']:
                     raise ValueError('The configured transcription runtime changed; select and review it again.')
             regular(local_path(value['models_dir'], exists=True), directory=True)
             if value['protocol'] == V5_PROTOCOL and self._wrapper_sources(Path(value['worker'])) != value['wrapper_sources_sha256']:
@@ -1060,7 +1072,11 @@ class TranscriptionService:
                      'kind': 'user-edited derivative; source and timed recognition remain unchanged'}
             if cancelled():
                 raise AudioCancelled('Saving the transcript edit was cancelled.')
-            atomic_json(path / 'edits' / (revision + '.json'), value)
+            # Serialize only publication with archival. Receipt/media hashing
+            # above never holds the application writer or a write transaction.
+            with exclusive_writer(self.app.root):
+                self._authorize()
+                atomic_json(path / 'edits' / (revision + '.json'), value)
             return revision
 
     def edits(self, identity):

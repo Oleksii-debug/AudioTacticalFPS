@@ -191,3 +191,48 @@ def test_configured_model_assets_are_not_claimed_as_verified_inference(tmp_path)
     with pytest.raises(AudioUnavailable, match='runtime_code_files'):
         runtime.render_music(MusicSpec(duration=1, engine='musicgen'), 'never.wav')
     assert not (tmp_path / 'never.wav').exists()
+
+
+def test_changed_reviewed_manifest_requires_explicit_reconfiguration(tmp_path):
+    from types import SimpleNamespace
+    from carr_library.audio.music import configure_model, probe_model
+
+    config, data = model_fixture(tmp_path)
+    runtime = SimpleNamespace(music_models={}, music_model_status={})
+    configure_model(runtime, config)
+    status = runtime.music_model_status['musicgen']
+    # Simulate previously recorded evidence; no real inference is asserted.
+    status.update(runtime_probed=True, runtime_code_verified=True, inference_tested=True)
+    changed = b'new synthetic checkpoint'
+    (config.directory / 'state_dict.bin').write_bytes(changed)
+    data['files']['state_dict.bin'] = hashlib.sha256(changed).hexdigest()
+    config.manifest.write_text(json.dumps(data), encoding='utf-8')
+    assert validate_model(config)['files'] == data['files']
+    with pytest.raises(ValueError, match='manifest changed'):
+        probe_model(runtime, 'musicgen')
+    assert not any(status.values())
+    configure_model(runtime, config)
+    assert runtime.music_model_status['musicgen']['assets_verified']
+    assert not runtime.music_model_status['musicgen']['inference_tested']
+
+
+def test_failed_reprobe_invalidates_previous_music_inference_evidence(tmp_path):
+    from types import SimpleNamespace
+    from carr_library.audio.music import configure_model, probe_model
+
+    config, _ = model_fixture(tmp_path)
+    runtime = SimpleNamespace(music_models={}, music_model_status={})
+    configure_model(runtime, config)
+    status = runtime.music_model_status['musicgen']
+    status.update(runtime_probed=True, runtime_code_verified=True, inference_tested=True)
+    # Asset identity is unchanged, but the code inventory cannot be verified.
+    with pytest.raises(AudioUnavailable, match='runtime_code_files'):
+        probe_model(runtime, 'musicgen')
+    assert status['assets_verified']
+    assert not status['runtime_probed']
+    assert not status['runtime_code_verified']
+    assert not status['inference_tested']
+    (config.directory / 'state_dict.bin').write_bytes(b'corrupt')
+    with pytest.raises(ValueError, match='SHA256'):
+        probe_model(runtime, 'musicgen')
+    assert not any(status.values())

@@ -189,7 +189,8 @@ def test_stop_after_actual_child_commit_reports_durable_completion(app, tmp_path
         result = app.import_file(workspace, source, **arguments)
     assert result['state'] == 'complete', result
     assert result['verified'] is (kind == 'txt')
-    assert 'before its worker stopped' in result['message']
+    assert result['publication_recovered'] is True
+    assert type(result) is dict
     request = load_request(app.root, result['request_id'])
     assert request['state'] == 'complete' and request['result'] == result
     source.unlink()
@@ -249,7 +250,8 @@ def test_reconciliation_rejects_mismatched_request_identity(app, tmp_path, chang
         request['metadata'][field] = 'different-identity'
     _store(app.root, result['request_id'], request)
     try:
-        recovered = completed_request(app.root, workspace, result['request_id'])
+        recovered = completed_request(app.root, workspace, result['request_id'],
+                                  attempt=request['attempt'])
     except ValueError:
         recovered = None
     assert recovered is None
@@ -267,28 +269,37 @@ def test_reconciliation_rejects_changed_retained_bytes(app, tmp_path):
     data = retained.read_bytes()
     retained.write_bytes(data[:-1] + bytes([data[-1] ^ 1]))
     with pytest.raises(ValueError, match='digest changed'):
-        completed_request(app.root, workspace, result['request_id'])
+        completed_request(app.root, workspace, result['request_id'],
+                                  attempt=request['attempt'])
 
 
 def test_reconciliation_budget_leaves_interrupted_request_resumable(app, tmp_path, monkeypatch):
     from types import SimpleNamespace
-    from carr_library.ingest import publication, worker
+    from carr_library.ingest import publication
     source = _reply_test_source(tmp_path, 'pdf')
     workspace = app.create_workspace('Bounded reconciliation')
-    first = app.import_file(workspace, source)
-    request = load_request(app.root, first['request_id'])
-    request['state'] = 'running'
-    request.pop('result')
-    _store(app.root, first['request_id'], request)
-    moments = iter([0.0, 2.0])
-    monkeypatch.setattr(publication, 'time', SimpleNamespace(monotonic=lambda: next(moments)))
-    monkeypatch.setattr(worker, '_invoke', lambda *args, **kwargs: {
-        'state': 'cancelled', 'message': 'Import worker stopped.'})
-    result = app.resume_import(workspace, first['request_id'])
+
+    def committed():
+        with app.read(workspace) as db:
+            return bool(db.execute('SELECT count(*) FROM import_publication').fetchone()[0])
+
+    with monkeypatch.context() as patch:
+        _intercept_worker_reply(patch)
+        moments = iter([0.0, 2.0])
+        patch.setattr(publication, 'time', SimpleNamespace(monotonic=lambda: next(moments)))
+        result = app.import_file(workspace, source, cancelled=committed, timeout=20)
     assert result['state'] == 'cancelled'
     assert 'resume to check it' in result['message']
     assert 'TimeoutError, carr_library.ingest.publication:' in result['message']
-    assert load_request(app.root, first['request_id'])['state'] == 'cancelled'
+    request = load_request(app.root, result['request_id'])
+    assert request['state'] == 'cancelled' and request['result'] == result
+    candidate = request['publication_candidate']
+    with app.read(workspace) as db:
+        assert tuple(db.execute('SELECT request_id,attempt FROM import_publication').fetchone()) == (
+            result['request_id'], candidate['attempt'])
+    source.unlink()
+    resumed = app.resume_import(workspace, result['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == candidate['revision']
     assert len(app.browse(workspace)) == 1
 
 
@@ -325,7 +336,7 @@ def test_reconciliation_failure_preserves_recovery_without_disclosing_exception_
         patch.setattr(worker, '_invoke', lambda *args, **kwargs: {
             'state': 'cancelled', 'message': 'Import worker stopped.'})
         result = app.resume_import(workspace, first['request_id'])
-    assert result['state'] == 'cancelled'
+    assert result['state'] == 'failed'
     assert all(part in result['message'] for part in expected)
     assert private_detail not in result['message'] and str(source) not in result['message']
     assert 'resume to check it' in result['message']
@@ -344,15 +355,17 @@ def test_busy_writer_does_not_delay_stopped_request_reconciliation(app, tmp_path
     source = _reply_test_source(tmp_path, 'pdf')
     workspace = app.create_workspace('Concurrent writer')
     result = app.import_file(workspace, source)
+    request = load_request(app.root, result['request_id'])
     with exclusive_writer(app.root):
         start = monotonic()
         with pytest.raises(ValueError, match='another library writer'):
-            completed_request(app.root, workspace, result['request_id'])
+            completed_request(app.root, workspace, result['request_id'],
+                                  attempt=request['attempt'])
         assert monotonic() - start < 1
 
 
 @pytest.mark.parametrize('change', ['job', 'checkpoint'])
-def test_text_worker_reconciliation_requires_its_exact_journal(app, tmp_path, change):
+def test_text_worker_receipt_binds_request_without_requiring_journal_commit(app, tmp_path, change):
     from hashlib import sha256
     from carr_library.extract.page_ocr import Config
     from carr_library.ingest.pipeline import canonical
@@ -381,12 +394,54 @@ def test_text_worker_reconciliation_requires_its_exact_journal(app, tmp_path, ch
                 (raw, sha256(raw.encode('utf-8')).hexdigest(), result['id']))
     _store(app.root, result['request_id'], request)
     try:
-        recovered = completed_request(app.root, workspace, result['request_id'])
+        recovered = completed_request(app.root, workspace, result['request_id'],
+                                  attempt=request['attempt'])
     except ValueError:
         recovered = None
-    assert recovered is None
+    if change == 'job':
+        assert recovered is None
+    else:
+        # The immutable catalog receipt already commits the exact source pages.
+        # Its validity does not depend on a later journal commit or checkpoint.
+        assert recovered['state'] == 'complete' and recovered['id'] == result['id']
+        assert recovered['publication_recovered'] is True and recovered['verified'] is True
     assert load_request(app.root, result['request_id']) == request
     assert len(app.browse(workspace)) == 1
+
+
+def test_receipt_recovery_opens_only_readonly_catalog_and_never_constructs_app(
+        app, tmp_path, monkeypatch):
+    from carr_library.ingest import publication
+    from carr_library.storage.revisions import Storage
+    source = _reply_test_source(tmp_path, 'pdf')
+    workspace = app.create_workspace('Read-only reconciliation')
+    result = app.import_file(workspace, source)
+    request = load_request(app.root, result['request_id'])
+    request_path = app.root / 'import-requests' / (result['request_id'] + '.json')
+    before = {path: path.read_bytes() for path in (
+        app.database, request_path, app.root / 'imports.sqlite')}
+    connect = sqlite3.connect
+    opened = []
+
+    def readonly(database, *args, **kwargs):
+        if str(database) != ':memory:':
+            opened.append(database)
+            assert database == app.database.as_uri() + '?mode=ro'
+            assert kwargs.get('uri') is True and kwargs.get('timeout') == 0
+        return connect(database, *args, **kwargs)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Receipt recovery must not initialize an application or writable storage.')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(publication.sqlite3, 'connect', readonly)
+        patch.setattr(LibraryApp, '__init__', forbidden)
+        patch.setattr(Storage, '__init__', forbidden)
+        recovered = publication.completed_request(app.root, workspace, result['request_id'],
+                                                  attempt=request['attempt'])
+    assert recovered['state'] == 'complete' and recovered['publication_recovered'] is True
+    assert opened == [app.database.as_uri() + '?mode=ro']
+    assert all(path.read_bytes() == data for path, data in before.items())
 
 
 def test_resume_rejects_changed_runtime_configuration(app, tmp_path):

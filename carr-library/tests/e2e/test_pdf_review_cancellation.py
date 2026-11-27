@@ -109,7 +109,7 @@ def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
                 and '-c' in command
                 and "runpy.run_module('carr_library.ingest.worker'" in command[command.index('-c') + 1]):
             return original(command, *args, **kwargs)
-        child = original([sys.executable, '-I', '-c', 'import time; time.sleep(30)'],
+        child = original([sys.executable, '-I', '-B', '-c', 'import time; time.sleep(30)'],
                          *args, **kwargs)
         children.append(child)
         return child

@@ -103,7 +103,7 @@ jobs:
       - name: Verify bibliography import and publication boundaries
         timeout-minutes: 5
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py tests/ui/test_profile_project_exports.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py tests/ui/test_profile_project_exports.py tests/ui/test_academic_actions.py tests/packaging/test_ci_check.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed BibTeX import and real overwrite confirmation
@@ -408,6 +408,10 @@ jobs:
           # the same offline firewall rules remain active.
           & $python -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_transcription_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-transcription-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Separate native-launch integrity from later test-owned child processes.
+          # Keep the final seal check as an independent required delivery gate.
+          & $bundledPython -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged before installed workflow tests')" $bundle | Tee-Object 'ci-results/full-bundle-pretest-seal.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
@@ -452,18 +456,22 @@ jobs:
               'tests/ui/test_progress_job_review.py',
               'tests/transcription/test_supplied_worker_bridge.py',
               'tests/transcription/test_v5_worker_profile.py',
+              'tests/transcription/test_runtime_interpreter.py',
               'tests/ui/test_studio_progress_isolation.py',
               'tests/ui/test_progress_media_quiet.py',
               'tests/ui/test_progress_voice_actions.py',
               'tests/storage/test_progress_preferences_backup.py',
               'tests/ingest/test_import_replay_identity.py',
               'tests/ingest/test_initial_publication_completion.py',
+              'tests/e2e/test_import_worker_publication.py',
+              'tests/packaging/test_worker_bytecode.py',
               'tests/catalog/test_ris_apply.py',
               'tests/research/test_bibtex_import.py',
               'tests/reader/test_export_no_clobber.py',
               'tests/ui/test_export_destination.py',
               'tests/storage/test_durable_state_publication.py',
               'tests/ui/test_profile_project_exports.py',
+              'tests/ui/test_academic_actions.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -639,6 +647,7 @@ jobs:
             'tests/citations/test_pdf_mapping_contradiction.py',
             'tests/storage/test_research_schema.py',
             'tests/packaging/test_source_wheel.py',
+            'tests/packaging/test_native_checks.py',
             'tests/packaging/test_ci_check.py',
             'tests/catalog/test_application_metadata_integrity.py',
             'tests/storage/test_finish_workspace_integrity.py',
@@ -662,12 +671,15 @@ jobs:
             'tests/ui/test_progress_job_review.py',
             'tests/transcription/test_supplied_worker_bridge.py',
             'tests/transcription/test_v5_worker_profile.py',
+            'tests/transcription/test_runtime_interpreter.py',
             'tests/ui/test_studio_progress_isolation.py',
             'tests/ui/test_progress_media_quiet.py',
             'tests/ui/test_progress_voice_actions.py',
             'tests/storage/test_progress_preferences_backup.py',
             'tests/ingest/test_import_replay_identity.py',
             'tests/ingest/test_initial_publication_completion.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/packaging/test_worker_bytecode.py',
             'tests/catalog/test_ris_apply.py',
             'tests/research/test_bibtex_import.py',
             'tests/reader/test_export_no_clobber.py',
