@@ -72,25 +72,31 @@ The unchanged supplied repaired V5 worker and both helpers were also executed th
 
 The launch uses isolated Python startup, the existing site-path bootstrap, a minimal environment, offline library settings, blocked Python network/child-command events and Python writes confined to the job. This is not an operating-system sandbox for arbitrary native libraries. Only a reviewed explicitly selected local runtime should be configured.
 
-## Windows live status publication
+## Windows status and progress
 
-The host can briefly hold a JSON snapshot open while the selected worker publishes
-the next generation. Windows can refuse that replacement even when the reader
-allows delete sharing. The bridge therefore installs a narrowly scoped publisher
-shim in its existing audited bootstrap: on Windows only, an `os.replace` call
-with its default signature is eligible only when its destination is exactly this
-job's `job_status.json` and its source is in the same job directory.
+While a recognition child is alive, the Windows host leaves the worker's
+`job_status.json` closed. Windows can refuse replacing an open destination,
+including a reader that permits delete sharing. The host therefore shows
+indeterminate recognition progress and waits for its existing process supervisor
+to finish or terminate the child before opening and verifying the final status.
+Other platforms retain live worker progress. Accepted file counts and success
+still come from the existing receipt and artifact verification.
 
-Only native sharing/access refusals with Windows error 5, 32 or 33 are retried.
-The monotonic deadline is half a second, with waits of at most 10 milliseconds.
-Every attempt still passes through the existing write audit and native replace
-operation. A persistent refusal raises the original error; unrelated paths,
-additional arguments, other errors and non-Windows platforms keep their ordinary
-behavior. The host's existing `atomic_bytes(..., replace=True)` publisher uses
-the same bounded Windows refusal policy. Create-only publication remains unchanged.
+Stop continues to publish the existing stop flag, preserves retained input and
+completed worker files, and leaves unfinished results unverified until an
+explicit resume. Public verification and transcript reading use the same
+existing per-job lock as recognition, so a competing read cannot open live
+worker status or race a replacement of the verified output.
 
-This changes the public bridge and state publisher, not the selected private
-worker's source or identity. It does not qualify a speech model or acoustic
-quality. Native acceptance must distinguish a transient reader that closes from
-a reader that remains open through the entire deadline; indefinite-open
-replacement is not promised.
+The Windows resource monitor reads regular-file metadata supplied by directory
+enumeration while the child is alive; it keeps fresh directory/reparse checks
+and a final fresh file check after the child exits. Byte, file-count, timeout and
+cancellation budgets remain enforced.
+
+The private application-state publisher separately retries native Windows
+sharing/access refusals for at most half a second. A persistent refusal remains
+an error, and create-only publication is unchanged. The selected worker's
+source, `os.replace`, and recognition implementation are not patched.
+
+These controls concern process, file and receipt integrity. They do not qualify
+a speech model, acoustic quality, diarization or Windows/NVDA accessibility.

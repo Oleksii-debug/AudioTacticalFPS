@@ -21,6 +21,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
+| Local transcription | Shared LibraryApp service, native job list and configuration, file/folder intake, stop/resume, verified results, separate edits and new-folder export; receipts-v1 and V5 manifest profiles | Actual child-process protocol and backup/restore tests use synthetic recognition results. The installed native probe checks module origin, exact source hashes and named controls; exact-build execution evidence and acoustic qualification remain separate |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
 
@@ -48,9 +49,17 @@ The following cannot be labelled DONE by passing the current core tests:
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper implementation is integrated through the existing library,
-job and process services, with explicit legacy receipts and supplied V5 manifest
-profiles. The repaired private V4.3 worker completed real Linux CPU inference
+The supplied-worker transcription integration uses one shared application service,
+workspace authorization and state/transcription job store. Users explicitly select
+the compatible local interpreter, worker, model directory and protocol. Existing
+receipts-v1 jobs retain their profile when a V5 worker is configured. Stop preserves
+completed files for verified resume; an interrupted file starts again. Recognition
+receipts and original media remain separate from user edit revisions and exports.
+No ASR worker, model or acoustic qualification is bundled or inferred from synthetic
+protocol tests. See [the transcription guide](TRANSCRIPTION.md) and
+[the original source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+
+The repaired private V4.3 worker completed real Linux CPU inference
 through the normal application service and isolated child bootstrap on the exact
 source recorded in [the actual qualification](TRANSCRIPTION_ACTUAL_QUALIFICATION_20261127.md).
 One short English sample does not establish Windows acoustic operation, V5

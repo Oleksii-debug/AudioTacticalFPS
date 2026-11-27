@@ -1,8 +1,10 @@
 """Real wx controls and shared child-process flow; synthetic ASR protocol only."""
 import importlib.util
+from hashlib import sha256
 import json
 from pathlib import Path
 import sys
+import sysconfig
 from tempfile import TemporaryDirectory
 import time
 import traceback
@@ -15,6 +17,22 @@ from carr_library.ui.desktop_app import DesktopFrame
 from carr_library.ui.transcription_dialog import show_transcription
 
 source_root = Path(__file__).resolve().parents[1]
+assert sys.flags.isolated and sys.dont_write_bytecode, 'Run this installed probe with -I -B.'
+purelib = Path(sysconfig.get_path('purelib')).resolve()
+installed_modules = {}
+for name, relative in {
+    'carr_library.application': 'application.py',
+    'carr_library.transcription': 'transcription.py',
+    'carr_library.ui.desktop_app': 'ui/desktop_app.py',
+    'carr_library.ui.transcription_dialog': 'ui/transcription_dialog.py',
+}.items():
+    module = importlib.import_module(name)
+    actual = Path(module.__file__).resolve()
+    assert actual.is_relative_to(purelib), (name, str(actual), str(purelib))
+    expected = source_root / 'src' / 'carr_library' / relative
+    digest = sha256(actual.read_bytes()).hexdigest()
+    assert digest == sha256(expected.read_bytes()).hexdigest(), name + ' differs from the checked-out source'
+    installed_modules[name] = {'relative_path': relative, 'sha256': digest}
 spec = importlib.util.spec_from_file_location('transcription_protocol_fixture',
     source_root / 'tests' / 'transcription' / 'test_supplied_worker_bridge.py')
 fixture = importlib.util.module_from_spec(spec)
@@ -55,6 +73,20 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         def GetPath(self): return str(recordings)
     frame = DesktopFrame(library)
     frame.Show()
+    progress_calls = []
+    shared_run_job = frame.run_job
+    def observed_run_job(label, operation, *args, **kwargs):
+        if label == 'Локальна транскрипція Whisper':
+            assert kwargs.get('with_progress') is True, 'Transcription must use the shared bound reporter.'
+            def measured(progress):
+                assert callable(progress)
+                def record(done, total, phase):
+                    progress(done, total, phase)
+                    progress_calls.append((done, total, phase))
+                return operation(record)
+            return shared_run_job(label, measured, *args, **kwargs)
+        return shared_run_job(label, operation, *args, **kwargs)
+    frame.run_job = observed_run_job
     failures, state = [], {'phase': 0, 'finished': False, 'job': None}
     started = time.monotonic()
     def click(control):
@@ -79,11 +111,15 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 class ProfileAnswer(wx.SingleChoiceDialog):
                     def ShowModal(self):
                         self.SetSelection(index)
-                        accept = self.FindWindow(wx.ID_OK)
-                        assert accept is not None, 'Missing native profile confirmation button.'
-                        wx.CallAfter(click, accept)
-                        result = super().ShowModal()
-                        assert result == wx.ID_OK, 'Native profile choice was not accepted.'
+                        button = self.FindWindow(wx.ID_OK)
+                        assert button is not None, 'Native profile chooser has no OK button.'
+                        wx.CallAfter(click, button)
+                        timeout = wx.CallLater(5000, self.EndModal, wx.ID_CANCEL)
+                        try:
+                            result = super().ShowModal()
+                        finally:
+                            timeout.Stop()
+                        assert result == wx.ID_OK, 'Native profile chooser did not accept the selection.'
                         assert self.GetSelection() == index
                         expected = ('receipts-v1', 'whisper-v5-manifest-v1')[index]
                         assert self.GetStringSelection().startswith(expected)
@@ -143,6 +179,10 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
             elif state['phase'] == 1 and not frame.working:
                 job = service.verify(state['job'])
                 assert job['status'] == 'completed' and len(job['artifacts']) == 6
+                assert progress_calls and progress_calls[-1] == (1, 1, 'completed')
+                measured = [done for done, _, _ in progress_calls if done is not None]
+                assert measured == sorted(measured)
+                assert all((done is None) == (total is None) for done, total, _ in progress_calls)
                 editor = find('Текст: редагування зберігається окремою версією')
                 assert editor.IsEnabled() and 'Український' in editor.GetValue()
                 editor.SetFocus()
@@ -182,7 +222,9 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         frame.executor.shutdown(wait=True, cancel_futures=True)
         frame.Destroy()
         desktop.Yield()
-print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
+print(json.dumps({'status':'PASS', 'installed_package':True, 'installed_modules':installed_modules,
+    'checks':['installed purelib origin and exact source hashes','actual named wx controls','shared background operation',
+    'token-bound measured progress callback',
     'actual native profile choice and configure action','V5 three-source binding','explicit legacy reconfiguration',
     'actual named folder action','background folder intake','relative source and exclusion count',
     'actual isolated child protocol','six verified formats','separate edit revision','original unchanged'],

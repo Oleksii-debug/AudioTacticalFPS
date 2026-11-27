@@ -19,6 +19,7 @@ from .audio.models import AudioBudget, AudioCancelled, AudioError, finite
 from .audio.process import run_process
 from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
                             read_json, regular, state_lock, sync_directory)
+from .ingest.writer_guard import exclusive_writer
 from .state_backup import relative_name
 
 MAX_FILES = 64
@@ -33,6 +34,10 @@ V5_RECOGNITION_KEYS = ('task', 'language', 'multilingual', 'model', 'model_path'
                        'model_cache_dir', 'device', 'compute_type', 'beam_size',
                        'vad_filter', 'condition_on_previous_text')
 V5_PROVENANCE = 'package_versions_only_not_a_qualified_runtime_pack'
+# CPython's Windows os.replace uses MoveFileExW: an open destination cannot be
+# replaced even when the reader grants FILE_SHARE_DELETE. Keep worker-owned
+# status closed until run_process has waited for exit or termination.
+_READ_LIVE_WORKER_STATUS = os.name != 'nt'
 MEDIA_SUFFIXES = frozenset(('.wav', '.flac', '.mp3', '.m4a', '.mp4', '.mkv',
                            '.webm', '.ogg', '.opus', '.aac', '.wma', '.aiff',
                            '.aif', '.m4b', '.mov', '.avi'))
@@ -57,6 +62,17 @@ def _protocol(value):
     if value not in PROTOCOLS:
         raise ValueError('Unsupported transcription worker protocol; select an explicit supported profile.')
     return value
+
+
+def _python_paths(value):
+    # A POSIX venv normally links its Python executable to the base runtime.
+    # Keep the selected launch path for _SITE_BOOTSTRAP's package discovery,
+    # while the executable bytes retain the same strict identity checks.
+    selected = Path(value).absolute()
+    selected = local_path(selected.parent.resolve(strict=True), exists=True) / selected.name
+    executable = local_path(selected.resolve(strict=True), exists=True)
+    regular(executable)
+    return selected, executable
 
 
 def settings(value=None, *, protocol=RECEIPTS_PROTOCOL):
@@ -312,39 +328,9 @@ def _word_subtitles(words, *, vtt):
 # Python-visible network, child commands and writes; they are not an OS sandbox
 # for arbitrary native libraries. The worker must also require offline assets.
 _WORKER_BOOTSTRAP = r'''
-import os, pathlib, runpy, sys, time
+import os, pathlib, runpy, sys
 job = pathlib.Path(sys.argv[2]).resolve(strict=True)
 worker = pathlib.Path(sys.argv[1]).resolve(strict=True)
-def _install_status_replace(directory):
-    # MoveFileEx cannot replace an open destination, including a delete-shared
-    # reader. Give only this worker's live status publication a short bounded
-    # opportunity to finish after the host closes its JSON snapshot.
-    if os.name != 'nt':
-        return
-    native = os.replace
-    clock, sleep = time.monotonic, time.sleep
-    folder = os.path.normcase(os.path.abspath(os.fsdecode(directory)))
-    status = os.path.join(folder, 'job_status.json')
-    def replace(source, destination, *args, **kwargs):
-        if args or kwargs:
-            return native(source, destination, *args, **kwargs)
-        try:
-            source_name = os.path.normcase(os.path.abspath(os.fsdecode(source)))
-            target_name = os.path.normcase(os.path.abspath(os.fsdecode(destination)))
-        except (TypeError, ValueError, OSError):
-            return native(source, destination)
-        if target_name != status or os.path.dirname(source_name) != folder:
-            return native(source, destination)
-        deadline = clock() + .5
-        while True:
-            try:
-                return native(source, destination)
-            except PermissionError as error:
-                remaining = deadline - clock()
-                if getattr(error, 'winerror', None) not in (5, 32, 33) or remaining <= 0:
-                    raise
-                sleep(min(.01, remaining))
-    os.replace = replace
 def writable(value):
     if isinstance(value, int):
         return
@@ -369,7 +355,6 @@ def audit(event, args):
         writable(args[1])
 sys.dont_write_bytecode = True
 sys.addaudithook(audit)
-_install_status_replace(job)
 if len(sys.argv) > 3 and sys.argv[3] == 'whisper-v5-manifest-v1':
     sys.path.insert(0, str(worker.parent))
 sys.argv = [str(worker), '--job-dir', str(job)]
@@ -393,18 +378,17 @@ class TranscriptionService:
     def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL):
         self._authorize()
         protocol = _protocol(protocol)
-        python = local_path(Path(python).resolve(strict=True), exists=True)
+        python, executable = _python_paths(python)
         worker = local_path(worker, exists=True)
         models_dir = local_path(models_dir, exists=True)
         regular(models_dir, directory=True)
-        regular(python)
         regular(worker)
         if worker.suffix.lower() != '.py' or regular(worker).st_size > 4 * 1024**2:
             raise ValueError('Select the reviewed local Whisper worker Python file.')
         if models_dir.is_relative_to(self.app.root):
             raise ValueError('Keep model/runtime assets outside the backed-up library data directory.')
         value = {'version': 1, 'protocol': protocol, 'python': str(python), 'worker': str(worker),
-                 'models_dir': str(models_dir), 'python_sha256': digest_file(python),
+                 'models_dir': str(models_dir), 'python_sha256': digest_file(executable),
                  'worker_sha256': digest_file(worker),
                  'network': 'local-files-only; Python network calls denied',
                  'inference_qualified': False}
@@ -436,7 +420,9 @@ class TranscriptionService:
                 raise ValueError('Whisper V5 requires all three reviewed source identities.')
         if verify:
             for key in ('python', 'worker'):
-                if digest_file(local_path(value[key], exists=True)) != value[key + '_sha256']:
+                path = (_python_paths(value[key])[1] if key == 'python'
+                        else local_path(value[key], exists=True))
+                if digest_file(path) != value[key + '_sha256']:
                     raise ValueError('The configured transcription runtime changed; select and review it again.')
             regular(local_path(value['models_dir'], exists=True), directory=True)
             if value['protocol'] == V5_PROTOCOL and self._wrapper_sources(Path(value['worker'])) != value['wrapper_sources_sha256']:
@@ -893,7 +879,7 @@ class TranscriptionService:
         with state_lock(path, 'transcribe'):
             job = self.get(identity)
             if job['status'] == 'completed':
-                self.verify(identity, cancelled=cancelled)
+                self._verify_locked(identity, cancelled=cancelled)
                 return job
             config = self.configuration(verify=True)
             if config['protocol'] != job['protocol']:
@@ -960,7 +946,7 @@ class TranscriptionService:
                     reported_done = max(reported_done, done)
                 if observer_available:
                     try:
-                        progress(reported_done, total, phase)
+                        progress(reported_done if total is not None else None, total, phase)
                     except Exception:
                         # A detached UI must not kill the worker or reverse a
                         # durable result. Disable only this optional observer.
@@ -971,14 +957,18 @@ class TranscriptionService:
                 if cancelled() and stop_at is None:
                     atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
                     stop_at = now
-                if observer_available and now - notice_at >= .5 and prior.exists():
-                    notice_at = now
-                    try:
-                        current = read_json(prior)
-                        notify(current.get('done', 0), len(job['sources']),
-                               str(current.get('state', 'running'))[:200])
-                    except (ValueError, OSError):
-                        pass
+                if observer_available and now - notice_at >= .5:
+                    if not _READ_LIVE_WORKER_STATUS:
+                        notice_at = now
+                        notify(None, None, 'running')
+                    elif prior.exists():
+                        notice_at = now
+                        try:
+                            current = read_json(prior)
+                            notify(current.get('done', 0), len(job['sources']),
+                                   str(current.get('state', 'running'))[:200])
+                        except (ValueError, OSError):
+                            pass
                 return stop_at is not None and now - stop_at >= 3
             failure = None
             from .audio.music import _SITE_BOOTSTRAP
@@ -993,6 +983,8 @@ class TranscriptionService:
                         max_staging_files=10000))
             except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
                 failure = exc
+            # The process runner waits for the child, including forced cleanup,
+            # before returning. Only now may Windows open its final status.
             # A stop must not trigger a second potentially multi-gigabyte read.
             # Keep worker cache/receipts on disk for the next explicit resume;
             # do not present these unverified files as completed exports yet.
@@ -1030,7 +1022,16 @@ class TranscriptionService:
             return job
 
     def verify(self, identity, *, cancelled=lambda: False):
+        self._authorize()
+        path = local_path(self._path(identity), exists=True)
+        regular(path, directory=True)
+        with state_lock(path, 'transcribe'):
+            return self._verify_locked(identity, cancelled=cancelled)
+
+    def _verify_locked(self, identity, *, cancelled=lambda: False):
         path, job = self._path(identity), self.get(identity)
+        if job['status'] == 'running':
+            raise ValueError('This transcription run has not finished; resume it before verifying results.')
         status = read_json(path / ('host_status.json' if job['protocol'] == V5_PROTOCOL else 'job_status.json'))
         if status.get('run_id') != job.get('worker_run_id'):
             raise ValueError('The recognized transcript no longer belongs to the saved run.')
@@ -1040,14 +1041,18 @@ class TranscriptionService:
         return job
 
     def text(self, identity, source, *, cancelled=lambda: False):
-        job = self.verify(identity, cancelled=cancelled)
-        row = next((x for x in job['artifacts'] if x['source'] == source and x['format'] == 'txt'), None)
-        if row is None:
-            raise ValueError('No verified text export exists for this selected source.')
-        path = self._path(identity) / 'results' / relative_name(row['path'])
-        if regular(path).st_size > MAX_TEXT_BYTES:
-            raise ValueError('The transcript exceeds the editor size allowance.')
-        return path.read_text(encoding='utf-8-sig')
+        self._authorize()
+        path = local_path(self._path(identity), exists=True)
+        regular(path, directory=True)
+        with state_lock(path, 'transcribe'):
+            job = self._verify_locked(identity, cancelled=cancelled)
+            row = next((x for x in job['artifacts'] if x['source'] == source and x['format'] == 'txt'), None)
+            if row is None:
+                raise ValueError('No verified text export exists for this selected source.')
+            target = path / 'results' / relative_name(row['path'])
+            if regular(target).st_size > MAX_TEXT_BYTES:
+                raise ValueError('The transcript exceeds the editor size allowance.')
+            return target.read_text(encoding='utf-8-sig')
 
     def save_edit(self, identity, source, text, *, cancelled=lambda: False):
         if not isinstance(text, str) or len(text.encode('utf-8')) > MAX_TEXT_BYTES or '\0' in text:
@@ -1055,7 +1060,7 @@ class TranscriptionService:
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
-            job = self.verify(identity, cancelled=cancelled)
+            job = self._verify_locked(identity, cancelled=cancelled)
             artifact = next((x for x in job['artifacts'] if x['source'] == source and x['format'] == 'txt'), None)
             if artifact is None:
                 raise ValueError('Choose a verified original transcript before editing.')
@@ -1069,7 +1074,11 @@ class TranscriptionService:
                      'kind': 'user-edited derivative; source and timed recognition remain unchanged'}
             if cancelled():
                 raise AudioCancelled('Saving the transcript edit was cancelled.')
-            atomic_json(path / 'edits' / (revision + '.json'), value)
+            # Serialize only publication with archival. Receipt/media hashing
+            # above never holds the application writer or a write transaction.
+            with exclusive_writer(self.app.root):
+                self._authorize()
+                atomic_json(path / 'edits' / (revision + '.json'), value)
             return revision
 
     def edits(self, identity):
@@ -1092,7 +1101,7 @@ class TranscriptionService:
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
-            job = self.verify(identity, cancelled=cancelled)
+            job = self._verify_locked(identity, cancelled=cancelled)
             destination = local_path(destination)
             if os.path.lexists(destination) or destination.is_relative_to(self.app.root):
                 raise ValueError('Choose a new export folder outside the library data directory.')

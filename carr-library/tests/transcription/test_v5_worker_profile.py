@@ -14,7 +14,7 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, read_json
-from carr_library.library_backup import restore_backup
+from carr_library.library_backup import MANIFEST, restore_backup
 
 
 PROTOCOL = 'whisper-v5-manifest-v1'
@@ -161,6 +161,7 @@ for index, source in enumerate(sources):
     records.append(record)
     status(len(records),0)
     if mode == 'stop-after-first':
+        (job/'fixture-first-complete').write_bytes(b'First source outputs are closed.\n')
         while not (job/'stop.flag').exists():
             time.sleep(.02)
         break
@@ -372,8 +373,7 @@ def test_v5_stop_preserves_cache_and_resume_inputs_then_completes(v5, tmp_path):
     mode(service, identity, 'stop-after-first')
     path = service._path(identity)
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return (path / 'fixture-first-complete').exists()
     stopped = service.run(identity, timeout=10, cancelled=cancelled)
     assert stopped['status'] == 'stopped' and stopped['artifacts'] == []
     assert len(list((path / 'input').iterdir())) == 2
@@ -383,10 +383,20 @@ def test_v5_stop_preserves_cache_and_resume_inputs_then_completes(v5, tmp_path):
 
 
 def test_v5_completed_results_restore_and_remain_readable_without_engine(v5, tmp_path):
-    app, workspace, service, _, runtime, _ = v5
+    app, workspace, service, original, runtime, _ = v5
     identity, result = run(v5)
     assert result['status'] == 'completed', result['last_error']
+    source = result['sources'][0]['filename']
+    retained = service._path(identity) / 'input' / source
+    original_bytes = original.read_bytes()
+    relative = retained.relative_to(app.root / 'state').as_posix()
     checksum = app.backup(tmp_path / 'backup')
+    manifest = read_json(tmp_path / 'backup' / MANIFEST)
+    assert manifest['generated_audio_included'] is False
+    entry, = [item for item in manifest['state'] if item['filename'] == relative]
+    assert entry['size_bytes'] == len(original_bytes)
+    assert entry['sha256'] == sha256(original_bytes).hexdigest()
+    assert (tmp_path / 'backup' / 'state' / relative).read_bytes() == original_bytes
     for name in ('worker.py','local_models.py','transcript_features.py'):
         (runtime / name).unlink()
     restore_backup(tmp_path / 'backup', tmp_path / 'restored', expected_manifest_sha256=checksum)
@@ -394,6 +404,8 @@ def test_v5_completed_results_restore_and_remain_readable_without_engine(v5, tmp
     assert recovered.text(identity, result['sources'][0]['filename']) == 'Synthetic V5 fixture.\n'
     assert recovered.run(identity, timeout=10)['status'] == 'completed'
     recovered.export(identity, tmp_path / 'restored-export')
+    assert (recovered._path(identity) / 'input' / source).read_bytes() == original_bytes
+    assert original.read_bytes() == original_bytes
 
 
 def test_old_receipts_job_keeps_its_protocol_after_v5_is_configured(v5, tmp_path):
@@ -417,11 +429,9 @@ def test_old_receipts_job_keeps_its_protocol_after_v5_is_configured(v5, tmp_path
 def test_v5_cli_configure_create_run_export_share_the_persisted_profile(v5, tmp_path):
     app, workspace, service, source, runtime, models = v5
     original = source.read_bytes()
-    command = [sys.executable, '-B', '-X', 'utf8', '-m', 'carr_library', 'transcribe',
-               '--data-dir', str(app.root), '--workspace', workspace]
+    invoke_cli = runpy.run_path(str(Path(__file__).with_name('test_supplied_worker_bridge.py')))['invoke_cli']
     def invoke(*arguments, expected=0):
-        result = subprocess.run([*command, *map(str, arguments)], capture_output=True,
-                                text=True, encoding='utf-8', timeout=30)
+        result = invoke_cli('--data-dir', app.root, '--workspace', workspace, *arguments)
         assert result.returncode == expected, result.stdout + result.stderr
         return json.loads(result.stdout) if expected == 0 else result
 
@@ -448,3 +458,21 @@ def test_v5_cli_configure_create_run_export_share_the_persisted_profile(v5, tmp_
     assert len(service.list()) == 1 and invoke('show', identity)['status'] == 'completed'
     assert service.text(identity, result['sources'][0]['filename']) == 'Synthetic V5 fixture.\n'
     assert source.read_bytes() == original
+
+
+def test_deferred_status_is_read_only_after_the_actual_v5_child_exits(v5, deferred_status_probe):
+    _, _, service, source, _, _ = v5
+    identity = service.submit([source])
+    mode(service, identity, 'wait-before-results')
+    probe = deferred_status_probe(service, identity, release='fixture-release')
+
+    result = service.run(identity, timeout=10, progress=probe.progress)
+
+    assert probe.live and probe.reads
+    assert set(probe.public_reads) == {'verify', 'text'} and not probe.public_read_errors
+    assert len(probe.children) == 1 and probe.children[0].returncode == 0
+    assert result == service.get(identity) and result['status'] == 'completed', result['last_error']
+    assert result['done'] == 1 and len(result['artifacts']) == 6
+    assert probe.notices[-1] == (1, 1, 'completed')
+    assert service.verify(identity)['status'] == 'completed'
+    assert service.text(identity, result['sources'][0]['filename']) == 'Synthetic V5 fixture.\n'

@@ -5,6 +5,7 @@ after linking still leaves its second name; this suite records that limitation
 and never presents the Windows rename contract as a Linux execution result.
 """
 from hashlib import sha256
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import subprocess
@@ -189,6 +190,77 @@ publish()
     assert durable_state.atomic_bytes(target, published, replace=True) == target
     assert target.read_bytes() == published and target.stat().st_nlink == 1
     assert not list(tmp_path.glob('.pending-*'))
+
+
+def test_json_reader_keeps_generation_and_obeys_native_replacement_lifetime(tmp_path, monkeypatch):
+    target = tmp_path / 'Стан завдання.json'
+    before, after = {'state': 'running', 'done': 0}, {'state': 'completed', 'done': 1}
+    durable_state.atomic_json(target, before)
+    original = durable_state._open_json_file
+    replaced = []
+
+    @contextmanager
+    def replace_while_open(path):
+        with original(path) as stream:
+            assert not os.get_inheritable(stream.fileno())
+            if os.name == 'nt':
+                with pytest.raises(PermissionError) as error:
+                    durable_state.atomic_json(target, after, replace=True)
+                assert error.value.winerror in (5, 32, 33)
+                replaced.append(False)
+            else:
+                durable_state.atomic_json(target, after, replace=True)
+                replaced.append(True)
+            yield stream
+
+    with monkeypatch.context() as scoped:
+        scoped.setattr(durable_state, '_open_json_file', replace_while_open)
+        assert durable_state.read_json(target) == before
+    assert replaced == [os.name != 'nt']
+    assert not list(tmp_path.glob('.pending-*'))
+    durable_state.atomic_json(target, after, replace=True)
+    assert durable_state.read_json(target) == after
+    assert not list(tmp_path.glob('.pending-*'))
+
+
+@pytest.mark.parametrize('raw', [
+    b'{"state":"running","state":"completed"}',
+    b'{"done":NaN}', b'{"done":Infinity}', b'{"state":', b'\xff',
+], ids=['duplicate-key', 'nan', 'infinite', 'truncated', 'invalid-utf8'])
+def test_json_reader_keeps_strict_parsing_and_closes_after_failure(tmp_path, raw):
+    target = tmp_path / 'status.json'
+    target.write_bytes(raw)
+    with pytest.raises((ValueError, UnicodeError)):
+        durable_state.read_json(target)
+    durable_state.atomic_json(target, {'state': 'recovered'}, replace=True)
+    assert durable_state.read_json(target) == {'state': 'recovered'}
+
+
+@pytest.mark.parametrize('grow_after_check', [False, True])
+def test_json_reader_preserves_initial_and_concurrent_size_bounds(tmp_path, monkeypatch, grow_after_check):
+    target = tmp_path / 'status.json'
+    target.write_bytes(b'{}')
+    monkeypatch.setattr(durable_state, 'MAX_JSON_BYTES', 64)
+    oversized = b'{"message":"' + b'x' * 64 + b'"}'
+    if grow_after_check:
+        original = durable_state._open_json_file
+        def growing(path):
+            target.write_bytes(oversized)
+            return original(path)
+        monkeypatch.setattr(durable_state, '_open_json_file', growing)
+    else:
+        target.write_bytes(oversized)
+    with pytest.raises(ValueError, match='JSON budget'):
+        durable_state.read_json(target)
+
+
+def test_json_reader_rejects_a_real_hard_link_before_opening(tmp_path):
+    original, linked = tmp_path / 'original.json', tmp_path / 'linked.json'
+    original.write_bytes(b'{"state":"running"}')
+    os.link(original, linked)
+    with pytest.raises(ValueError, match='without links'):
+        durable_state.read_json(linked)
+    assert original.read_bytes() == linked.read_bytes() == b'{"state":"running"}'
 
 
 def test_atomic_replacement_finishes_after_a_real_snapshot_reader_closes(tmp_path, monkeypatch):

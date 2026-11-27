@@ -137,7 +137,7 @@ def show_transcription(frame):
             ids = [item['id'] for item in rows]
             jobs.SetSelection(ids.index(select) if select in ids else 0)
         load_job()
-    def begin(label, operation, complete, *, allow_dirty=False):
+    def begin(label, operation, complete, *, allow_dirty=False, with_progress=False):
         nonlocal busy
         if busy or (not allow_dirty and not can_replace()):
             return
@@ -161,7 +161,8 @@ def show_transcription(frame):
             busy = False
             controls()
             report(error)
-        if frame.run_job(label, operation, done=done, failed=failed) is False:
+        if frame.run_job(label, operation, done=done, failed=failed,
+                         with_progress=with_progress) is False:
             busy = False
             controls()
     def cancelled():
@@ -242,16 +243,18 @@ def show_transcription(frame):
         if identity is None:
             report('Спочатку додайте записи або оберіть збережене завдання.')
             return
-        def operation():
-            progress = getattr(frame, 'operation_progress', None)
-            token = progress.event.token if progress is not None else None
+        def operation(progress):
             def advanced(done, total, phase):
-                if progress is not None:
-                    progress.update(done, total, phase, token=token)
-                wx.CallAfter(report, f'{done}/{total}: {phase}. Кількість файлів повідомляє рушій; '
-                            'підтверджені результати показані у стані завдання.')
+                progress(done, total, phase)
+                if total is None:
+                    wx.CallAfter(report, 'Триває розпізнавання. Результати буде перевірено після завершення; '
+                                'зупинка залишається доступною.')
+                else:
+                    wx.CallAfter(report, f'{done}/{total}: {phase}. Кількість файлів повідомляє рушій; '
+                                'підтверджені результати показані у стані завдання.')
             return service.run(identity, cancelled=cancelled, progress=advanced)
-        begin('Локальна транскрипція Whisper', operation, lambda result: refresh(identity))
+        begin('Локальна транскрипція Whisper', operation, lambda result: refresh(identity),
+              with_progress=True)
     def save(event):
         if current is None or selected_source is None or not selected_ready:
             return

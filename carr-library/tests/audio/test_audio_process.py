@@ -114,3 +114,110 @@ def test_audio_publication_flushes_a_writable_handle(tmp_path, monkeypatch):
     monkeypatch.setattr(os, 'fsync', require_write_access)
     publish_file(staged, target)
     assert flushed and target.read_bytes() == staged.read_bytes() == b'Exact unchanged audio bytes'
+
+
+@pytest.fixture
+def windows_watch_processes(monkeypatch):
+    from carr_library.audio import process as runner
+
+    assert getattr(runner, '_USE_WINDOWS_CACHED_FILE_STATS', os.name == 'nt') == (os.name == 'nt')
+    monkeypatch.setattr(runner, '_USE_WINDOWS_CACHED_FILE_STATS', True, raising=False)
+    children = []
+    original = runner.subprocess.Popen
+
+    def spawn(*args, **kwargs):
+        child = original(*args, **kwargs)
+        children.append(child)
+        return child
+
+    monkeypatch.setattr(runner.subprocess, 'Popen', spawn)
+    return children
+
+
+def test_windows_watch_never_lstats_live_status_but_checks_it_fresh_after_exit(
+        tmp_path, monkeypatch, windows_watch_processes):
+    stage = tmp_path / 'worker'
+    stage.mkdir()
+    status, release = stage / 'job_status.json', tmp_path / 'release-worker'
+    original = Path.lstat
+    live_directories, final_files = [], []
+
+    def observed(path, *args, **kwargs):
+        live = windows_watch_processes and windows_watch_processes[-1].poll() is None
+        if path == status:
+            assert not live, 'The budget watcher opened changing worker status on Windows.'
+            final_files.append(path)
+        if path == stage and live:
+            live_directories.append(path)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'lstat', observed)
+    notices = []
+
+    def release_after_budget_check(value):
+        notices.append(value)
+        release.write_bytes(b'Continue the real synthetic worker.')
+
+    code = f'''
+import os, time
+from pathlib import Path
+root, release = Path({str(stage)!r}), Path({str(release)!r})
+status = root / 'job_status.json'
+status.write_bytes(b'initial')
+print('out_time_us=1000', flush=True)
+deadline = time.monotonic() + 4
+while not release.exists():
+    if time.monotonic() >= deadline:
+        raise RuntimeError('The real parent did not observe worker progress.')
+    time.sleep(.005)
+for index in range(50):
+    temporary = root / 'status.pending'
+    temporary.write_bytes(('generation-' + str(index)).encode('ascii'))
+    os.replace(temporary, status)
+    time.sleep(.01)
+'''
+    execute(code, watch=(stage,), progress=release_after_budget_check,
+            budget=AudioBudget(timeout=8))
+
+    assert notices == [.001]
+    assert live_directories and final_files
+    assert len(windows_watch_processes) == 1 and windows_watch_processes[0].returncode == 0
+    assert status.read_bytes() == b'generation-49'
+
+
+def test_windows_cached_watch_detects_actual_growth_while_child_keeps_file_open(
+        tmp_path, windows_watch_processes):
+    stage = tmp_path / 'worker'
+    stage.mkdir()
+    output, finished = stage / 'open-output', tmp_path / 'finished'
+    code = f'''
+import time
+from pathlib import Path
+output = open({str(output)!r}, 'wb', buffering=0)
+output.write(b'x' * 200000)
+time.sleep(10)
+output.close()
+Path({str(finished)!r}).write_bytes(b'Normal completion')
+'''
+    with pytest.raises(AudioError, match='disk budget'):
+        execute(code, watch=(stage,), budget=AudioBudget(timeout=2, max_output_bytes=4096))
+
+    assert len(windows_watch_processes) == 1 and windows_watch_processes[0].poll() is not None
+    assert not finished.exists()
+    assert output.stat().st_size == 200000
+
+
+@pytest.mark.parametrize('limits, count, size, message', [
+    ({'max_output_bytes': 4096}, 2, 3000, 'disk budget'),
+    ({'max_staging_files': 2}, 5, 1, 'staging file budget'),
+])
+def test_windows_cached_watch_preserves_staging_budgets(
+        tmp_path, windows_watch_processes, limits, count, size, message):
+    stage = tmp_path / 'worker'
+    stage.mkdir()
+    code = (f'from pathlib import Path; import time; root=Path({str(stage)!r}); '
+            f'[(root/str(index)).write_bytes(b"x"*{size}) for index in range({count})]; '
+            'time.sleep(10)')
+    with pytest.raises(AudioError, match=message):
+        execute(code, budget=AudioBudget(timeout=2, **limits), watch=(stage,))
+    assert windows_watch_processes and all(child.poll() is not None for child in windows_watch_processes)

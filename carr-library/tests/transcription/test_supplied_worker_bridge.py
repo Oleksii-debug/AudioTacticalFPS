@@ -15,9 +15,57 @@ import pytest
 
 from carr_library.application import LibraryApp
 from carr_library.durable_state import read_json, atomic_json
-from carr_library.library_backup import restore_backup
+from carr_library.library_backup import MANIFEST, restore_backup
 from carr_library.transcription import TranscriptionService, settings
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
+
+
+def invoke_cli(*arguments, timeout=30, check=False):
+    """Run the real CLI from the parent's exact package, including sealed installs."""
+    import carr_library
+
+    package = Path(carr_library.__file__).resolve().parent
+    modules = {
+        'carr_library': '__init__.py',
+        'carr_library.__main__': '__main__.py',
+        'carr_library.application': 'application.py',
+        'carr_library.transcription': 'transcription.py',
+        'carr_library.transcription_cli': 'transcription_cli.py',
+    }
+    expected = {name: {'path': relative, 'sha256': sha256((package / relative).read_bytes()).hexdigest()}
+                for name, relative in modules.items()}
+    bootstrap = r'''
+import hashlib, importlib, json, pathlib, sys
+package = pathlib.Path(sys.argv[1]).resolve()
+expected = json.loads(sys.argv[2])
+sys.path.insert(0, str(package.parent))
+verified = {}
+for name, row in expected.items():
+    module = importlib.import_module(name)
+    actual = pathlib.Path(module.__file__).resolve()
+    assert actual == package / row['path'], (name, str(actual), row)
+    digest = hashlib.sha256(actual.read_bytes()).hexdigest()
+    assert digest == row['sha256'], (name, digest, row)
+    verified[name] = row
+assert sys.flags.isolated and sys.dont_write_bytecode
+sys.stderr.write('CARR_TEST_CLI_ORIGIN=' + json.dumps(dict(package=str(package), modules=verified)) + '\n')
+from carr_library.__main__ import main
+raise SystemExit(main(sys.argv[3:]))
+'''
+    environment = dict(os.environ)
+    for name in ('PYTHONPATH', 'PYTHONHOME'):
+        environment.pop(name, None)
+    result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap,
+        str(package), json.dumps(expected), 'transcribe', *map(str, arguments)],
+        capture_output=True, text=True, encoding='utf-8', timeout=timeout, env=environment)
+    lines = result.stderr.splitlines(keepends=True)
+    proofs = [line for line in lines if line.startswith('CARR_TEST_CLI_ORIGIN=')]
+    assert len(proofs) == 1, result.stdout + result.stderr
+    assert json.loads(proofs[0].split('=', 1)[1]) == {'package': str(package), 'modules': expected}
+    result.stderr = ''.join(line for line in lines if line not in proofs)
+    if check:
+        result.check_returncode()
+    return result
 
 
 SYNTHETIC_WORKER = r'''
@@ -308,10 +356,9 @@ def test_create_folder_cli_uses_the_same_retained_job_and_exclusion_counts(prepa
     (folder / 'nested').mkdir(parents=True)
     (folder / 'nested' / 'clip.mp4').write_bytes(b'Synthetic video container placeholder.')
     (folder / 'notes.txt').write_text('Excluded nonmedia sidecar.')
-    created = subprocess.run([sys.executable, '-B', '-X', 'utf8', '-m', 'carr_library', 'transcribe',
-        '--data-dir', str(app.root), '--workspace', workspace, 'create-folder', str(folder),
-        '--title', 'CLI folder', '--language', 'uk', '--no-word-timestamps'],
-        check=True, capture_output=True, text=True, encoding='utf-8')
+    created = invoke_cli('--data-dir', app.root, '--workspace', workspace,
+        'create-folder', folder, '--title', 'CLI folder', '--language', 'uk',
+        '--no-word-timestamps', check=True)
     result = json.loads(created.stdout)
     assert result['files'] == 1 and result['excluded_files'] == 1
     job = service.get(result['id'])
@@ -475,8 +522,19 @@ def test_restore_rebinds_retained_paths_without_modifying_recognition_receipts(p
     identity, result = completed(prepared)
     source = result['sources'][0]['filename']
     revision = service.save_edit(identity, source, 'A retained user edit.')
+    retained = service._path(identity) / 'input' / source
+    original_bytes = original.read_bytes()
+    relative = retained.relative_to(app.root / 'state').as_posix()
+    receipts = {path.name: path.read_bytes() for path in (service._path(identity) / 'receipts').glob('*.json')}
+    assert receipts
     backup = tmp_path / 'backup'
     expected = app.backup(backup)
+    manifest = read_json(backup / MANIFEST)
+    assert manifest['generated_audio_included'] is False
+    entry, = [item for item in manifest['state'] if item['filename'] == relative]
+    assert entry['size_bytes'] == len(original_bytes)
+    assert entry['sha256'] == sha256(original_bytes).hexdigest()
+    assert (backup / 'state' / relative).read_bytes() == original_bytes
     restored = tmp_path / 'restored'
     restore_backup(backup, restored, expected_manifest_sha256=expected)
     recovered = LibraryApp(restored).transcription(workspace)
@@ -484,6 +542,9 @@ def test_restore_rebinds_retained_paths_without_modifying_recognition_receipts(p
     assert recovered.edits(identity)[0]['id'] == revision
     assert recovered.text(identity, source) == service.text(identity, source)
     recovered.export(identity, tmp_path / 'restored-export')
+    assert (recovered._path(identity) / 'input' / source).read_bytes() == original_bytes
+    assert {path.name: path.read_bytes() for path in (recovered._path(identity) / 'receipts').glob('*.json')} == receipts
+    assert original.read_bytes() == original_bytes
 
 
 def test_scope_archive_and_unknown_job_do_not_create_junk(prepared):
@@ -497,6 +558,63 @@ def test_scope_archive_and_unknown_job_do_not_create_junk(prepared):
     assert not service._path(missing).exists()
     other = app.create_workspace('Unrelated library')
     assert app.transcription(other).list() == ()
+    app.archive_workspace(workspace)
+    with pytest.raises(ValueError, match='archived'):
+        service.get(identity)
+
+
+def test_edit_rechecks_workspace_after_receipt_verification(prepared, monkeypatch):
+    app, workspace, service, original, _ = prepared
+    identity, result = completed(prepared)
+    source = result['sources'][0]['filename']
+    retained = service.save_edit(identity, source, 'Previously saved correction.')
+    directory = service._path(identity)
+    saved_edit = directory / 'edits' / (retained + '.json')
+    original_edit = saved_edit.read_bytes()
+    original_job = (directory / 'job.json').read_bytes()
+    original_media = original.read_bytes()
+    verify = service._verify_locked
+
+    def archive_after_verification(*args, **kwargs):
+        verified = verify(*args, **kwargs)
+        app.archive_workspace(workspace)
+        return verified
+
+    monkeypatch.setattr(service, '_verify_locked', archive_after_verification)
+    with pytest.raises(ValueError, match='archived'):
+        service.save_edit(identity, source, 'Must not be published after archival.')
+
+    assert list((directory / 'edits').iterdir()) == [saved_edit]
+    assert saved_edit.read_bytes() == original_edit
+    assert (directory / 'job.json').read_bytes() == original_job
+    assert original.read_bytes() == original_media
+
+def test_edit_publication_excludes_concurrent_workspace_archival(prepared, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from carr_library import transcription
+    from carr_library.ingest.writer_guard import WriterBusy
+
+    app, workspace, service, _, _ = prepared
+    identity, result = completed(prepared)
+    source = result['sources'][0]['filename']
+    publish = transcription.atomic_json
+    attempts = []
+
+    def publish_while_archive_attempts(path, value, **kwargs):
+        if path.parent.name == 'edits':
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                competing = pool.submit(app.archive_workspace, workspace)
+                with pytest.raises(WriterBusy):
+                    competing.result(timeout=5)
+            attempts.append(path)
+        return publish(path, value, **kwargs)
+
+    monkeypatch.setattr(transcription, 'atomic_json', publish_while_archive_attempts)
+    revision = service.save_edit(identity, source, 'An authorized published correction.')
+    assert attempts == [service._path(identity) / 'edits' / (revision + '.json')]
+    assert service.edits(identity)[0]['id'] == revision
+    assert service.verify(identity)['status'] == 'completed'
+    # The guard ends with publication; archival is not permanently blocked.
     app.archive_workspace(workspace)
     with pytest.raises(ValueError, match='archived'):
         service.get(identity)
@@ -524,14 +642,12 @@ def test_invalid_settings_fail_before_job_creation(prepared, options):
 
 def test_cli_and_application_share_one_durable_job_service(prepared, tmp_path):
     app, workspace, service, original, _ = prepared
-    created = subprocess.run([sys.executable, '-B', '-X', 'utf8', '-m', 'carr_library', 'transcribe',
-        '--data-dir', str(app.root), '--workspace', workspace, 'create', str(original)],
-        check=True, capture_output=True, text=True, encoding='utf-8')
+    created = invoke_cli('--data-dir', app.root, '--workspace', workspace,
+        'create', original, check=True)
     identity = json.loads(created.stdout)['id']
     assert service.get(identity)['status'] == 'ready'
-    completed_job = subprocess.run([sys.executable, '-B', '-X', 'utf8', '-m', 'carr_library', 'transcribe',
-        '--data-dir', str(app.root), '--workspace', workspace, 'run', identity, '--timeout', '30'],
-        capture_output=True, text=True, encoding='utf-8')
+    completed_job = invoke_cli('--data-dir', app.root, '--workspace', workspace,
+        'run', identity, '--timeout', '30')
     assert completed_job.returncode == 0, completed_job.stdout + '\n' + completed_job.stderr
     assert service.verify(identity)['status'] == 'completed'
 
@@ -547,8 +663,7 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
         raise AssertionError('Stop must defer verification until explicit resume.')
     monkeypatch.setattr(service, '_receipts', must_not_rehash)
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return bool(list((path / 'receipts').glob('*.result.json')))
     stopped = service.run(identity, timeout=30, cancelled=cancelled)
     assert stopped['status'] == 'stopped'
     assert stopped['artifacts'] == [] and stopped['done'] == 0
@@ -559,26 +674,6 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
     monkeypatch.undo()
     configure('complete')
     assert service.run(identity, timeout=30)['status'] == 'completed'
-
-
-def test_rechecking_completed_job_observes_stop_without_changing_saved_result(prepared, monkeypatch):
-    from threading import Event
-    from carr_library.audio.models import AudioCancelled
-    identity, completed_job = completed(prepared)
-    service = prepared[2]
-    before = (service._path(identity) / 'job.json').read_bytes()
-    stop = Event()
-    verify_sources = service._sources
-    def stop_after_first_source_check(path, job, cancelled):
-        value = verify_sources(path, job, cancelled)
-        stop.set()
-        return value
-    monkeypatch.setattr(service, '_sources', stop_after_first_source_check)
-    with pytest.raises(AudioCancelled):
-        service.run(identity, cancelled=stop.is_set)
-    assert service.get(identity)['status'] == 'completed'
-    assert service.get(identity)['artifacts'] == completed_job['artifacts']
-    assert (service._path(identity) / 'job.json').read_bytes() == before
 
 
 def test_progress_observer_failure_during_actual_child_does_not_kill_recognition(prepared):
@@ -627,8 +722,7 @@ def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(
     notices = []
 
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return bool(list((path / 'receipts').glob('*.result.json')))
 
     def broken(done, total, phase):
         if phase == 'stopped':
@@ -657,7 +751,7 @@ def test_progress_observer_failure_preserves_real_child_or_receipt_failure(prepa
 
     result = service.run(identity, timeout=1, progress=broken)
     assert result == service.get(identity) and result['status'] == 'failed'
-    assert error in result['last_error'], result['last_error']
+    assert error in result['last_error']
     assert 'observer' not in result['last_error'] and result['artifacts'] == []
 
 
@@ -681,9 +775,8 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
             raise
 
     def cancelled():
-        status = path / 'job_status.json'
-        return (any(done == 1 for done, _, _ in calls) and status.exists()
-                and read_json(status).get('done') == 1)
+        return (bool(list((path / 'receipts').glob('*.result.json')))
+                and (os.name == 'nt' or any(done == 1 for done, _, _ in calls)))
 
     result = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)
     durable, worker = service.get(identity), read_json(path / 'job_status.json')
@@ -694,13 +787,17 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     assert len(saved) == 1 and read_json(saved[0])['run_id'] == worker['run_id']
     assert len(list((path / 'results').rglob('*.*'))) == 6
     assert len(list((path / 'input').iterdir())) == 2
-    measured = [done for done, total, _ in calls]
-    assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
+    measured = [done for done, total, _ in calls if done is not None]
     assert measured == sorted(measured), f'Progress regressed: {calls!r}; {observer_errors!r}'
-    assert calls[-1] == (1, 2, 'stopped')
+    if os.name == 'nt':
+        assert calls[:-1] and all(done is None and total is None for done, total, _ in calls[:-1])
+        assert calls[-1] == (0, 2, 'stopped')
+    else:
+        assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
+        assert calls[-1] == (1, 2, 'stopped')
     assert observer_errors == []
     assert operation_outcome(result) == 'cancelled'
-    assert all(event.percent < 100 for event in events)
+    assert all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.transition('cancelled', 'Stopped; saved files await verification').percent < 100
 
 
@@ -719,120 +816,120 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     partial = service.run(identity, timeout=30, progress=progress)
     assert partial['status'] == 'partial' and partial['done'] == 1, partial
     assert operation_outcome(partial) == 'paused'
-    assert events and all(event.percent < 100 for event in events)
+    assert events and all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.transition(operation_outcome(partial), 'Review remaining input').percent < 100
 
     configure('complete')
     tracker.start('Resuming retained inputs', 2)
     completed = service.run(identity, timeout=30, progress=progress)
-    assert completed['status'] == 'completed' and completed['done'] == 2, completed
+    assert completed['status'] == 'completed' and completed['done'] == 2
     assert operation_outcome(completed) == 'succeeded'
-    assert all(event.percent < 100 for event in events)
+    assert all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.event.percent == 99
     assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100
 
 
-def _status_replace_policy(native, platform='nt'):
-    """Execute the actual bootstrap installer with isolated OS/clock bindings."""
-    import ast
-    import ntpath
-    from types import SimpleNamespace
-    from carr_library.transcription import _WORKER_BOOTSTRAP
-
-    clock = {'now': 0.0, 'sleeps': []}
-    def sleep(delay):
-        clock['sleeps'].append(delay)
-        clock['now'] += delay
-    local_os = SimpleNamespace(name=platform, path=ntpath, fsdecode=os.fsdecode, replace=native)
-    local_time = SimpleNamespace(monotonic=lambda: clock['now'], sleep=sleep)
-    function = next(node for node in ast.parse(_WORKER_BOOTSTRAP).body
-                    if isinstance(node, ast.FunctionDef) and node.name == '_install_status_replace')
-    namespace = {'os': local_os, 'time': local_time}
-    exec(compile(ast.Module(body=[function], type_ignores=[]), '<actual-status-installer>', 'exec'), namespace)
-    namespace['_install_status_replace'](r'C:\jobs\selected')
-    return local_os.replace, clock
-
-
-def _native_status_refusal(code):
-    error = PermissionError('Synthetic native replacement refusal')
-    error.winerror = code
-    return error
+def test_rechecking_completed_job_observes_stop_without_changing_saved_result(prepared, monkeypatch):
+    from threading import Event
+    from carr_library.audio.models import AudioCancelled
+    identity, completed_job = completed(prepared)
+    service = prepared[2]
+    before = (service._path(identity) / 'job.json').read_bytes()
+    stop = Event()
+    verify_sources = service._sources
+    def stop_after_first_source_check(path, job, cancelled):
+        value = verify_sources(path, job, cancelled)
+        stop.set()
+        return value
+    monkeypatch.setattr(service, '_sources', stop_after_first_source_check)
+    with pytest.raises(AudioCancelled):
+        service.run(identity, cancelled=stop.is_set)
+    assert service.get(identity)['status'] == 'completed'
+    assert service.get(identity)['artifacts'] == completed_job['artifacts']
+    assert (service._path(identity) / 'job.json').read_bytes() == before
 
 
-@pytest.mark.parametrize('code', [5, 32, 33])
-def test_status_publication_retries_only_transient_native_refusals(code):
-    calls = []
-    error = _native_status_refusal(code)
-    def native(*args, **kwargs):
-        calls.append((args, kwargs))
-        if len(calls) == 1:
-            raise error
-        return 'published'
-    replace, clock = _status_replace_policy(native)
-    args = (r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json')
-    assert replace(*args) == 'published'
-    assert calls == [(args, {}), (args, {})]
-    assert clock['sleeps'] == [.01]
+def test_deferred_status_is_read_only_after_the_actual_legacy_child_exits(prepared, deferred_status_probe):
+    _, _, service, original, configure = prepared
+    configure('progress-wait')
+    identity = service.submit([original])
+    probe = deferred_status_probe(service, identity, release='progress-observed')
+
+    result = service.run(identity, timeout=10, progress=probe.progress)
+
+    assert probe.live and probe.reads
+    assert set(probe.public_reads) == {'verify', 'text'} and not probe.public_read_errors
+    assert len(probe.children) == 1 and probe.children[0].returncode == 0
+    assert result == service.get(identity) and result['status'] == 'completed', result['last_error']
+    assert result['done'] == 1 and len(result['artifacts']) == 6
+    assert probe.notices[-1] == (1, 1, 'completed')
+    assert service.verify(identity)['status'] == 'completed'
+    assert 'Український' in service.text(identity, result['sources'][0]['filename'])
 
 
-@pytest.mark.parametrize('source,destination,extra,options', [
-    (r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\other.json', (), {}),
-    (r'C:\jobs\selected\nested\status.tmp', r'C:\jobs\selected\job_status.json', (), {}),
-    (r'C:\elsewhere\status.tmp', r'C:\jobs\selected\job_status.json', (), {}),
-    (r'C:\jobs\selected\status.tmp', r'C:\jobs\other\job_status.json', (), {}),
-    (r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json', (), {'dst_dir_fd': None}),
-    (r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json', (None,), {}),
-])
-def test_status_publication_leaves_other_paths_and_signatures_native(source, destination, extra, options):
-    calls = []
-    error = _native_status_refusal(5)
-    def native(*args, **kwargs):
-        calls.append((args, kwargs))
-        raise error
-    replace, clock = _status_replace_policy(native)
-    arguments = (source, destination, *extra)
-    with pytest.raises(PermissionError) as caught:
-        replace(*arguments, **options)
-    assert caught.value is error
-    assert calls == [(arguments, options)]
-    assert clock['sleeps'] == []
+def test_deferred_status_is_read_only_after_timeout_terminates_the_actual_child(prepared, deferred_status_probe):
+    _, _, service, original, configure = prepared
+    configure('timeout')
+    identity = service.submit([original])
+    probe = deferred_status_probe(service, identity)
+
+    result = service.run(identity, timeout=1, progress=probe.progress)
+
+    assert probe.live and probe.reads
+    assert set(probe.public_reads) == {'verify', 'text'} and not probe.public_read_errors
+    assert len(probe.children) == 1 and probe.children[0].poll() is not None
+    assert result == service.get(identity) and result['status'] == 'failed'
+    assert 'time allowance' in result['last_error'] and result['artifacts'] == []
 
 
-@pytest.mark.parametrize('error', [
-    PermissionError('The write audit denied this operation.'),
-    _native_status_refusal(87),
-    FileNotFoundError('Source disappeared.'),
-    KeyboardInterrupt(),
-])
-def test_status_publication_propagates_other_errors_and_cancellation_immediately(error):
-    calls = []
-    def native(*args):
-        calls.append(args)
-        raise error
-    replace, clock = _status_replace_policy(native)
-    with pytest.raises(type(error)) as caught:
-        replace(r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json')
-    assert caught.value is error and len(calls) == 1
-    assert clock['sleeps'] == []
+def test_deferred_stop_preserves_results_without_reading_live_status_and_resumes(prepared, deferred_status_probe):
+    _, _, service, original, configure = prepared
+    configure('pause-once')
+    identity = service.submit([original])
+    probe = deferred_status_probe(service, identity, stop_on_progress=True)
+
+    stopped = service.run(identity, timeout=10, cancelled=probe.stop.is_set, progress=probe.progress)
+
+    assert probe.live and not probe.reads
+    assert set(probe.public_reads) == {'verify', 'text'} and not probe.public_read_errors
+    assert len(probe.children) == 1 and probe.children[0].poll() is not None
+    assert stopped == service.get(identity) and stopped['status'] == 'stopped'
+    assert stopped['done'] == 0 and stopped['artifacts'] == []
+    assert (service._path(identity) / 'input' / stopped['sources'][0]['filename']).read_bytes() == original.read_bytes()
+    configure('complete')
+    resumed = service.run(identity, timeout=10)
+    assert resumed['status'] == 'completed' and resumed['done'] == 1, resumed['last_error']
+    assert len(probe.children) == 2 and probe.reads
+    assert all(child.poll() is not None for child in probe.children)
 
 
-def test_status_publication_permanent_native_lock_keeps_error_and_half_second_bound():
-    calls = []
-    error = _native_status_refusal(5)
-    def native(*args):
-        calls.append(args)
-        raise error
-    replace, clock = _status_replace_policy(native)
-    with pytest.raises(PermissionError) as caught:
-        replace(r'C:\jobs\selected\status.tmp', r'C:\jobs\selected\job_status.json')
-    assert caught.value is error
-    assert clock['now'] == pytest.approx(.5)
-    assert 2 <= len(calls) <= 52
-    assert clock['sleeps'] and all(0 < delay <= .01 for delay in clock['sleeps'])
+def test_text_keeps_same_job_locked_through_actual_output_read(prepared, tmp_path, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
 
+    _, _, service, original, configure = prepared
+    configure('partial')
+    second = tmp_path / 'second-locked-read.wav'
+    second.write_bytes(b'Second retained synthetic input.')
+    identity = service.submit([original, second])
+    result = service.run(identity, timeout=10)
+    assert result['status'] == 'partial' and result['done'] == 1, result['last_error']
+    artifact = next(item for item in result['artifacts'] if item['format'] == 'txt')
+    target = service._path(identity) / 'results' / artifact['path']
+    original_read = Path.read_text
+    refused = []
 
-def test_status_publication_posix_keeps_the_native_callable():
-    def native(*args, **kwargs):
-        return args, kwargs
-    replace, clock = _status_replace_policy(native, platform='posix')
-    assert replace is native and clock['sleeps'] == []
+    def read_with_competing_resume(path, *args, **kwargs):
+        if path == target:
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                competing = pool.submit(service.run, identity, timeout=10)
+                with pytest.raises(RuntimeError, match='already being changed'):
+                    competing.result(timeout=5)
+            refused.append(path)
+        return original_read(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'read_text', read_with_competing_resume)
+    assert 'Український' in service.text(identity, artifact['source'])
+    assert refused == [target]
+    configure('complete')
+    resumed = service.run(identity, timeout=10)
+    assert resumed['status'] == 'completed' and resumed['done'] == 2, resumed['last_error']

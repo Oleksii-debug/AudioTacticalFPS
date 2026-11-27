@@ -69,7 +69,7 @@ def bundle(tmp_path, monkeypatch):
     (packaging / 'wheel-notices' / 'SOURCES.json').write_text('{"synthetic-current-notices":true}\n')
     (project / 'docs').mkdir()
     for name in ('RUNNING.md', 'START_UK.txt', 'START_V3_UK.txt', *refresh.BUNDLE_GUIDES):
-        (project / 'docs' / name).write_text('Synthetic current guidance: ' + name + '\n')
+        (project / 'docs' / name).write_bytes(('Synthetic current guidance: ' + name + '\n').encode('utf-8'))
     (project / 'docs' / 'RUNNING.md').write_bytes(
         b'[Search](ACADEMIC_SEARCH.md)\n[Insights](ACADEMIC_CATALOG_INSIGHTS.md)\n'
         b'[NVDA](ACADEMIC_SEARCH_NVDA.md)\n[Source](../src/example.py)\n'
@@ -208,6 +208,35 @@ def test_wrong_recorded_parent_hash_fails_before_publication(bundle):
     with pytest.raises(ValueError, match='recorded SHA256'):
         _refresh(bundle)
     assert not bundle.output.exists()
+
+
+@pytest.mark.parametrize('parent_tree', [None, 'b' * 40])
+def test_refreshed_source_tree_comes_from_exact_verified_commit(bundle, parent_tree):
+    previous = bundle.source / 'bundle-manifest.json'
+    parent = json.loads(previous.read_bytes())
+    if parent_tree is not None:
+        parent['source_tree'] = parent_tree
+    raw = (json.dumps(parent, sort_keys=True) + '\n').encode()
+    previous.write_bytes(raw)
+    bundle.parent_hash = sha256(raw).hexdigest()
+
+    _refresh(bundle)
+
+    current = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    identity = json.loads((bundle.output / 'application-source.json').read_bytes())
+    expected = _git(bundle.repo, 'rev-parse', bundle.commit + '^{tree}')
+    assert current['source_tree'] == expected
+    assert identity['source_tree'] == expected
+    assert current['parent_source_commit'] == parent['source_commit']
+    assert current['parent_manifest_sha256'] == bundle.parent_hash
+    assert previous.read_bytes() == raw
+
+
+def test_actual_refresh_manifest_is_accepted_by_installation_diagnostic(bundle):
+    _refresh(bundle)
+    diagnostic = _load('review_refresh_native_checks', ROOT / 'src/carr_library/native_checks.py')
+    expected = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    assert diagnostic._manifest(bundle.output) == expected
 
 
 def test_manifest_is_never_reopened_after_verification_for_copy_paths(bundle, monkeypatch, tmp_path):

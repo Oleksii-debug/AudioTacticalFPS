@@ -107,7 +107,9 @@ def test_unchanged_existing_destination_still_publishes_exact_bytes(export_case,
 
 def observe_target_reads(monkeypatch, target):
     """Observe actual file reads without substituting their contents or digest."""
-    original_open = Path.open
+    original_open = export_file.os.fdopen
+    info = target.stat()
+    identity = info.st_dev, info.st_ino
     reads = []
 
     class Reader:
@@ -130,11 +132,12 @@ def observe_target_reads(monkeypatch, target):
             reads.append((size, len(value)))
             return value
 
-    def open_file(path, mode='r', *args, **kwargs):
-        stream = original_open(path, mode, *args, **kwargs)
-        return Reader(stream) if path == target and mode == 'rb' else stream
+    def open_file(descriptor, mode='r', *args, **kwargs):
+        stream = original_open(descriptor, mode, *args, **kwargs)
+        opened = export_file.os.fstat(descriptor)
+        return Reader(stream) if (opened.st_dev, opened.st_ino) == identity and mode == 'rb' else stream
 
-    monkeypatch.setattr(Path, 'open', open_file)
+    monkeypatch.setattr(export_file.os, 'fdopen', open_file)
     return reads
 
 
@@ -176,14 +179,14 @@ def test_oversized_existing_destination_is_rejected_before_payload_read(tmp_path
     target = tmp_path / 'too-large.bin'
     with target.open('wb') as stream:
         stream.truncate(64 * MIB + 1)
-    original_open = Path.open
+    original_open = export_file.os.open
 
     def forbid_payload_read(path, *args, **kwargs):
-        if path == target:
+        if Path(path) == target:
             pytest.fail('An oversized destination must be rejected before opening its payload.')
         return original_open(path, *args, **kwargs)
 
-    monkeypatch.setattr(Path, 'open', forbid_payload_read)
+    monkeypatch.setattr(export_file.os, 'open', forbid_payload_read)
     with pytest.raises(ValueError, match='64 MiB|verification budget'):
         if operation == 'capture':
             export_file.capture_export_destination(target, private_root=tmp_path / 'private')

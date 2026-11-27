@@ -1,12 +1,15 @@
 """Check installed canonical BibTeX import and safe export on native Windows.
 
-Only file-picker paths are controlled. The academic window, import review,
+Before academic dialogs, the real desktop host shows its persistent citation
+credit and closes through its normal lifecycle. Only file-picker paths are
+controlled. The academic window, import review,
 export options, overwrite question, keyboard input and filesystem operations
 are real. This does not exercise citation-style rendering or claim NVDA,
 manual keyboard use, native pickers or accessible overwrite-button focus.
 Run with the installed interpreter: python -I -B scripts/windows_bibliography_interchange_smoke.py.
 """
 from collections import deque
+import faulthandler
 from hashlib import sha256
 from importlib.metadata import version
 import json
@@ -46,14 +49,19 @@ def main():
         }), flush=True)
         return 77
 
+    faulthandler.enable(file=sys.stderr, all_threads=True)
+    print(json.dumps({'native_process_started': os.getpid(),
+                      'faulthandler_enabled': faulthandler.is_enabled()}), flush=True)
     from carr_library.native_runtime import activate_bundled_runtime
     activate_bundled_runtime()
     import ctypes
     from ctypes import wintypes
     import wx
     from carr_library.application import LibraryApp
+    from carr_library.academic_integration import citation_attribution, formatting
     from carr_library.research import academic_library, bibtex_import, export_file
     from carr_library.ui import academic_library_dialog as ui
+    from carr_library.ui import desktop_app, save_actions, workspace_shell
 
     checks, failures, network_attempts = [], [], []
     failure_exit = [None]
@@ -168,6 +176,9 @@ def main():
                 raise TimeoutError(explanation)
             yield 20
 
+    def key_marker(phase, code, shift):
+        print(json.dumps({'native_key_phase': phase, 'key': code, 'shift': shift}), flush=True)
+
     def key(code, *, shift=False):
         diagnostics('before native key ' + str(code))
         if shift and not simulator.KeyDown(wx.WXK_SHIFT):
@@ -175,15 +186,19 @@ def main():
         try:
             if not simulator.KeyDown(code):
                 raise AssertionError('Native key-down was rejected.')
+            key_marker('after-KeyDown', code, shift)
             try:
                 yield 40
             finally:
+                key_marker('before-KeyUp', code, shift)
                 if not simulator.KeyUp(code):
                     raise AssertionError('Native key-up was rejected.')
+                key_marker('after-KeyUp', code, shift)
         finally:
             if shift:
                 simulator.KeyUp(wx.WXK_SHIFT)
         yield 80
+        key_marker('continuation', code, shift)
 
     def focus(control):
         top = wx.GetTopLevelParent(control)
@@ -219,7 +234,8 @@ def main():
             self.export_attempts.append({'path': str(destination), 'format': options.get('format', 'text')})
             return super().export_to(destination, **options)
 
-    modules = (ui, academic_library, bibtex_import, export_file)
+    modules = (ui, academic_library, bibtex_import, export_file,
+               desktop_app, save_actions, workspace_shell, formatting)
     installed = Path(sysconfig.get_path('purelib')).resolve()
     check('isolated installed CPython 3.11 x64 is running',
           sys.flags.isolated == 1 and sys.version_info[:2] == (3, 11)
@@ -231,7 +247,7 @@ def main():
           and all(version(name) == expected for name, expected in (
               ('wxPython', '4.2.4'), ('bibtexparser', '2.1.0'), ('pylatexenc', '2.11'))))
 
-    frame = academic = None
+    frame = academic = startup = None
     original_picker = wx.FileDialog
     original_message_dialog = wx.MessageDialog
     with TemporaryDirectory(prefix='research-interchange-native-') as temporary:
@@ -244,8 +260,41 @@ def main():
             completed, next_tick = [], [None]
 
             def scenarios():
-                nonlocal academic
+                nonlocal academic, startup
                 library = LibraryApp(root / 'private library')
+                startup = desktop_app.DesktopFrame(library)
+                startup.Show()
+                startup.Raise()
+                startup.Layout()
+                startup.host.Layout()
+                yield 40
+                credit = startup.citation_attribution
+                yield from until(lambda: startup.IsShownOnScreen() and credit.IsShownOnScreen(),
+                                 'The real startup citation attribution did not become visible.')
+                check('real desktop startup shows the citation credit before academic dialogs',
+                      gui.GetMainLoop() is not None and academic is None
+                      and startup.host.GetClientRect().Contains(credit.GetRect()))
+                attribution = citation_attribution()
+                check('startup credit has the complete canonical text and accessible name',
+                      isinstance(credit, wx.StaticText)
+                      and ' '.join(credit.GetLabel().split()) == ' '.join(attribution.split())
+                      and credit.GetName() == 'Citation processor attribution. ' + attribution.replace('\n', ' '))
+                check('startup citation credit does not take keyboard focus',
+                      not credit.AcceptsFocusFromKeyboard() and wx.Window.FindFocus() is not credit)
+                startup_executor, startup_cancel = startup.executor, startup.cancel_event
+                startup_timer = startup._draft_save_timer
+                startup_interval = startup_timer.GetInterval()
+                check('startup draft autosave uses a running native three-second timer',
+                      startup_timer.IsRunning() and startup_interval == 3000)
+                startup.Close()
+                yield from until(lambda: not startup, 'The startup host did not close normally.')
+                check('startup host closes its executor without ending the interchange event loop',
+                      startup_executor._shutdown and startup_cancel.is_set()
+                      and gui.GetMainLoop() is not None and frame.IsShown())
+                check('closing the startup host stops its native draft timer before owner deletion',
+                      not startup_timer.IsRunning())
+                former_timer_deadline = monotonic() + startup_interval / 1000 + .1
+                startup = None
                 workspace = library.create_workspace('Synthetic native interchange')
                 other_workspace = library.create_workspace('Separate native interchange')
                 controller = ObservedController(library, workspace)
@@ -435,6 +484,10 @@ def main():
                 yield from key(wx.WXK_ESCAPE)
                 yield from until(lambda: not academic.IsShown(), 'Escape did not close the actual academic window.')
                 check('real Escape closes the academic window', True)
+                yield from until(lambda: monotonic() >= former_timer_deadline,
+                                 'The native loop did not continue beyond the former draft timer interval.')
+                check('native event loop remains usable past the destroyed owner timer deadline',
+                      gui.GetMainLoop() is not None and not startup_timer.IsRunning())
                 check('all interchange operations stayed offline', not network_attempts)
                 print(json.dumps({
                     'result': 'PASS', 'checks': len(checks), 'python': platform.python_version(),
@@ -442,6 +495,8 @@ def main():
                     'installed_modules': {module.__name__: sha256(Path(module.__file__).read_bytes()).hexdigest()
                                           for module in modules},
                     'native_keyboard': 'PASS', 'native_bibtex_import': 'PASS',
+                    'native_startup_citation_attribution': 'PASS',
+                    'native_startup_draft_timer_shutdown': 'PASS',
                     'native_export_options': 'PASS', 'native_overwrite_confirmation': 'PASS',
                     'file_choices': 'controlled temporary paths only',
                     'native_overwrite_accessible_focus': 'NOT_RUN', 'manual_keyboard': 'NOT_RUN',
@@ -477,6 +532,8 @@ def main():
                 raise RuntimeError('The native loop stopped before all interchange scenarios completed.')
         finally:
             wx.FileDialog = original_picker
+            if startup:
+                startup.Close(force=True)
             if academic is not None:
                 academic.Destroy()
             if frame is not None:
@@ -489,9 +546,16 @@ def main():
 
 if __name__ == '__main__':
     try:
-        raise SystemExit(main())
+        exit_code = main()
     except Exception:
         print(json.dumps({'result': 'FAIL', 'error': traceback.format_exc(),
                           'native_overwrite_accessible_focus': 'NOT_RUN',
                           'native_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN'}), flush=True)
         raise SystemExit(1)
+    except BaseException:
+        print(json.dumps({'result': 'FAIL', 'native_process_exit': 'unexpected BaseException',
+                          'error': traceback.format_exc()}), flush=True)
+        raise
+    else:
+        print(json.dumps({'native_process_exit': 'main returned', 'exit_code': exit_code}), flush=True)
+        raise SystemExit(exit_code)

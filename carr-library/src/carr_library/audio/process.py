@@ -14,6 +14,12 @@ import time
 from .models import AudioBudget, AudioCancelled, AudioError
 
 
+# On Windows, Path.lstat opens a share-denying handle. While a worker may
+# replace its files, use regular-file metadata already returned by scandir.
+# The mandatory check after child exit always uses fresh lstat again.
+_USE_WINDOWS_CACHED_FILE_STATS = os.name == 'nt'
+
+
 @dataclass(frozen=True)
 class ProcessResult:
     stdout: bytes
@@ -117,11 +123,12 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         if time.monotonic() - started > budget.timeout:
             raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
         total, count = 0, 0
-        pending = list(watched)
+        cache_files = _USE_WINDOWS_CACHED_FILE_STATS and process.poll() is None
+        pending = [(path, None) for path in watched]
         while pending:
-            path = pending.pop()
+            path, cached_info = pending.pop()
             try:
-                info = path.lstat()
+                info = path.lstat() if cached_info is None else cached_info
             except FileNotFoundError:
                 continue
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
@@ -132,7 +139,19 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                         count += 1
                         if count > budget.max_staging_files:
                             raise AudioError('Audio worker exceeded its staging file budget.')
-                        pending.append(Path(entry.path))
+                        cached_info = None
+                        if cache_files:
+                            try:
+                                candidate = entry.stat(follow_symlinks=False)
+                            except FileNotFoundError:
+                                continue
+                            if (stat.S_ISREG(candidate.st_mode)
+                                    and not getattr(candidate, 'st_file_attributes', 0) & 0x400):
+                                cached_info = candidate
+                        # Roots, directories and unsafe entry types keep the
+                        # existing fresh checks; no directory is followed on
+                        # the strength of an earlier enumeration alone.
+                        pending.append((Path(entry.path), cached_info))
                 continue
             if not stat.S_ISREG(info.st_mode):
                 raise AudioError('Audio worker output is not a regular file.')

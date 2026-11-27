@@ -13,47 +13,9 @@ import stat
 from tempfile import NamedTemporaryFile
 
 
-# Match the largest bounded research-matrix output. Larger existing files
-# require a new destination instead of an unbounded foreground inspection.
+# Preserve the integrated desktop policy: inspect at most the largest research
+# matrix export before asking the user to replace an existing destination.
 MAX_DESTINATION_BYTES = 64 * 1024 * 1024
-
-
-def _content_digest(path, expected, *, cancelled=lambda: False):
-    """Read one stable existing destination in bounded, cancellable blocks."""
-    if expected is None:
-        return None
-    if not callable(cancelled):
-        raise ValueError('An export cancellation callback is required.')
-
-    def check():
-        if cancelled():
-            raise TimeoutError('Export cancelled; the destination was not changed.')
-
-    check()
-    before = path.lstat()
-    if _file_state(before) != expected:
-        raise ValueError('The export destination changed. Choose the destination again.')
-    if before.st_size > MAX_DESTINATION_BYTES:
-        raise ValueError('The existing export exceeds the 64 MiB verification budget; choose a new filename.')
-    digest, count = sha256(), 0
-    with path.open('rb') as stream:
-        if _file_state(os.fstat(stream.fileno())) != expected:
-            raise ValueError('The export destination changed. Choose the destination again.')
-        while True:
-            check()
-            block = stream.read(min(1024 * 1024, before.st_size + 1 - count))
-            if not block:
-                break
-            count += len(block)
-            if count > before.st_size:
-                raise ValueError('The export destination changed. Choose the destination again.')
-            digest.update(block)
-        if _file_state(os.fstat(stream.fileno())) != expected:
-            raise ValueError('The export destination changed. Choose the destination again.')
-    check()
-    if count != before.st_size or _file_state(path.lstat()) != expected:
-        raise ValueError('The export destination changed. Choose the destination again.')
-    return digest.hexdigest()
 
 
 def _filename(name):
@@ -84,7 +46,7 @@ def _file_state(info):
             info.st_mtime_ns, info.st_ctime_ns)
 
 
-def _destination(path, private_root):
+def _inspect_destination(path, private_root):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -124,6 +86,50 @@ def _destination(path, private_root):
     return target, _identity(parent.stat()), state
 
 
+def _destination(path, private_root, check_cancelled=lambda: None):
+    snapshot = _inspect_destination(path, private_root)
+    target, parent_identity, state = snapshot
+    if state is None:
+        return snapshot
+    if state[3] > MAX_DESTINATION_BYTES:
+        raise ValueError('The existing export exceeds the 64 MiB verification budget; choose a new filename.')
+
+    check_cancelled()
+    # Guard before opening, then bind the descriptor before reading any bytes.
+    # Nonblocking/no-follow opens also reject a raced-in FIFO or final symlink
+    # on platforms exposing these flags. Existing paths are already validated.
+    flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0)
+             | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_NOFOLLOW', 0))
+    descriptor = os.open(target, flags)
+    try:
+        with os.fdopen(descriptor, 'rb', buffering=0, closefd=False) as source:
+            opened = os.fstat(descriptor)
+            if (_file_state(opened) != state
+                    or _inspect_destination(path, private_root) != snapshot):
+                raise ValueError('The export destination changed. Choose the destination again.')
+            # Read the complete captured length with constant memory and one
+            # extra byte solely to detect growth; never accept a sampled or
+            # truncated digest.
+            digest, remaining = sha256(), opened.st_size
+            while remaining:
+                check_cancelled()
+                block = source.read(min(1024 * 1024, remaining))
+                if not block:
+                    raise ValueError('The export destination changed. Choose the destination again.')
+                digest.update(block)
+                remaining -= len(block)
+            check_cancelled()
+            if source.read(1):
+                raise ValueError('The export destination changed. Choose the destination again.')
+            check_cancelled()
+            if (_file_state(os.fstat(descriptor)) != state
+                    or _inspect_destination(path, private_root) != snapshot):
+                raise ValueError('The export destination changed. Choose the destination again.')
+    finally:
+        os.close(descriptor)
+    return target, parent_identity, (*state, digest.hexdigest())
+
+
 @dataclass(frozen=True)
 class ExportDestination:
     """One destination state captured before caller-side overwrite approval."""
@@ -132,7 +138,10 @@ class ExportDestination:
     target: Path
     parent_identity: tuple
     state: tuple | None
-    content_sha256: str | None
+
+    @property
+    def content_sha256(self):
+        return self.state[-1] if self.state is not None else None
 
     @property
     def require_absent(self):
@@ -153,18 +162,23 @@ def capture_export_destination(path, *, private_root, cancelled=lambda: False):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
-    binds approval to the selected path, parent directory and existing file
-    state and content across queued work and rendering; it grants no permission
-    itself. Existing destinations are inspected up to 64 MiB in 1 MiB blocks.
+    binds approval to the selected path, parent directory and complete existing
+    file contents across queued work and rendering; it grants no permission
+    itself. Existing destinations up to 64 MiB are streamed in full with
+    constant-memory reads, bounded to their captured size. Larger files require
+    a new destination; cancellation is checked between read blocks.
     """
     if not callable(cancelled):
         raise ValueError('An export cancellation callback is required.')
-    if cancelled():
-        raise TimeoutError('Export cancelled; the destination was not changed.')
+
+    def check_cancelled():
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+
+    check_cancelled()
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, state = _destination(requested, private)
-    content_digest = _content_digest(target, state, cancelled=cancelled)
-    return ExportDestination(requested, private, target, parent_identity, state, content_digest)
+    target, parent_identity, state = _destination(requested, private, check_cancelled)
+    return ExportDestination(requested, private, target, parent_identity, state)
 
 
 def write_export(path, content, *, private_root, cancelled=lambda: False,
@@ -211,7 +225,7 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
 
     check_cancelled()
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, previous = _destination(requested, private)
+    target, parent_identity, previous = _destination(requested, private, check_cancelled)
     # A caller approving ordinary replacement cannot approve a file that did
     # not exist at this snapshot. Protect every existing caller from a last-
     # moment competing create, even without the new explicit policy argument.
@@ -226,9 +240,6 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         require_absent = require_absent or approval.require_absent
     if require_absent and previous is not None:
         raise FileExistsError('The export destination already exists; replacement was not authorized.')
-    previous_digest = _content_digest(target, previous, cancelled=cancelled)
-    if approval is not None and approval.content_sha256 != previous_digest:
-        raise ValueError('The export destination changed. Choose the destination again.')
     temporary = None
     try:
         check_cancelled()
@@ -240,11 +251,9 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             os.fsync(output.fileno())
 
         check_cancelled()
-        checked_target, checked_parent, current = _destination(requested, private)
+        checked_target, checked_parent, current = _destination(requested, private, check_cancelled)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
-            raise ValueError('The export destination changed. Choose the destination again.')
-        if _content_digest(target, current, cancelled=cancelled) != previous_digest:
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
         if require_absent:
