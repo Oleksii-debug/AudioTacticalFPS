@@ -99,15 +99,28 @@ def test_original_hardlinks_and_foreign_relative_paths_are_rejected(tmp_path):
 
 
 def test_parser_cannot_request_whole_source_or_oversized_read(tmp_path):
+    from pypdf.generic import NumberObject
     path = write_pdf(tmp_path / 'source.pdf', 32)
     asset = FileAsset.capture(path)
     with asset.open() as stream:
         assert stream.read(5) == b'%PDF-'
-        for size in (-1, MAX_READ_BYTES + 1):
+        assert stream.seek(NumberObject(0), NumberObject(0)) == 0
+        assert stream.read(NumberObject(5)) == b'%PDF-'
+        assert stream.seek(NumberObject(-5), NumberObject(1)) == 0
+        for size in (-1, MAX_READ_BYTES + 1, NumberObject(-1),
+                     NumberObject(MAX_READ_BYTES + 1), True, False, 5.0):
             with pytest.raises(IntakeError, match='bounded'):
                 stream.read(size)
-        with pytest.raises(IntakeError, match='outside'):
-            stream.seek(asset.size + 1)
+            assert stream.tell() == 0
+        for offset, whence in ((True, 0), (False, 0), (0.0, 0),
+                               (0, True), (0, False), (0, 0.0), (0, 3)):
+            with pytest.raises(IntakeError, match='Invalid'):
+                stream.seek(offset, whence)
+            assert stream.tell() == 0
+        for offset in (asset.size + 1, NumberObject(asset.size + 1)):
+            with pytest.raises(IntakeError, match='outside'):
+                stream.seek(offset)
+            assert stream.tell() == 0
 
 
 def test_copy_cancellation_after_actual_bytes_removes_only_its_partial(tmp_path):

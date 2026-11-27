@@ -77,7 +77,11 @@ class _BoundedReader:
 
     def seek(self, offset, whence=0):
         _cancel(self.cancelled)
-        if type(offset) is not int or whence not in (0, 1, 2):
+        if (not isinstance(offset, int) or isinstance(offset, bool)
+                or not isinstance(whence, int) or isinstance(whence, bool)):
+            raise IntakeError('Invalid PDF parser seek.')
+        offset, whence = int(offset), int(whence)
+        if whence not in (0, 1, 2):
             raise IntakeError('Invalid PDF parser seek.')
         position = offset + (self.tell() if whence == 1 else self.size if whence == 2 else 0)
         if not 0 <= position <= self.size:
@@ -86,7 +90,10 @@ class _BoundedReader:
 
     def read(self, size=-1):
         _cancel(self.cancelled)
-        if type(size) is not int or not 0 <= size <= MAX_READ_BYTES:
+        if not isinstance(size, int) or isinstance(size, bool):
+            raise IntakeError('PDF parser request exceeds its bounded stream allowance.')
+        size = int(size)
+        if not 0 <= size <= MAX_READ_BYTES:
             raise IntakeError('PDF parser request exceeds its bounded stream allowance.')
         return self.stream.read(min(size, self.size - self.tell()))
 
