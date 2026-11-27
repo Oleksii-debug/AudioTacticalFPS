@@ -18,9 +18,98 @@ import time
 
 from defusedxml import ElementTree
 
-from ..audio.jobs import checked_directory, file_identity, regular_file, verified_reader
+from ..durable_state import local_path, regular
 from ..extract.document_formats import extract_document
 from .models import ConversionError, ConversionUnavailable
+
+
+def checked_directory(value):
+    path = Path(value).absolute()
+    if any(':' in part for part in path.parts[1:]):
+        raise ConversionError('Selected conversion paths cannot contain alternate streams.')
+    path = local_path(path, exists=True)
+    regular(path, directory=True)
+    if os.name == 'nt':
+        import ctypes
+        from ctypes import wintypes
+        drive = ctypes.WinDLL('kernel32', use_last_error=True).GetDriveTypeW
+        drive.argtypes, drive.restype = (wintypes.LPCWSTR,), wintypes.UINT
+        if drive(path.anchor) == 4:
+            raise ConversionError('Select a local conversion installation, without mapped network drives.')
+    return path
+
+
+def regular_file(value):
+    path = Path(value)
+    checked_directory(path.parent)
+    if ':' in path.name:
+        raise ConversionError('Selected conversion files cannot contain alternate streams.')
+    return regular(path)
+
+
+def file_identity(info):
+    return (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns,
+            info.st_ctime_ns, info.st_nlink)
+
+
+def _open_payload_file(path):
+    """Bind a real regular file; Windows holds readers without writer sharing."""
+    if os.name != 'nt':
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NONBLOCK', 0)
+                             | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_CLOEXEC', 0))
+    else:
+        import ctypes
+        from ctypes import wintypes
+        import msvcrt
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        create, close = kernel.CreateFileW, kernel.CloseHandle
+        create.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+                           ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+        create.restype = wintypes.HANDLE
+        close.argtypes, close.restype = (wintypes.HANDLE,), wintypes.BOOL
+        # GENERIC_READ; FILE_SHARE_READ only; OPEN_EXISTING; OPEN_REPARSE_POINT.
+        handle = create(str(path), 0x80000000, 0x1, None, 3, 0x00200000, None)
+        if handle == ctypes.c_void_p(-1).value:
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            descriptor = msvcrt.open_osfhandle(handle,
+                os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+        except BaseException:
+            close(handle)
+            raise
+    try:
+        os.set_inheritable(descriptor, False)
+        return os.fdopen(descriptor, 'rb')
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+@contextmanager
+def verified_reader(value, *, expected_identity=None):
+    """Use current local-path guards and keep the exact admitted handle alive."""
+    path = Path(value)
+    parent = checked_directory(path.parent)
+    parent_info = regular(parent, directory=True)
+    parent_identity = parent_info.st_dev, parent_info.st_ino
+    before = file_identity(regular_file(path))
+    if expected_identity is not None and before != expected_identity:
+        raise ConversionError('A selected conversion file changed after review.')
+    with _open_payload_file(path) as stream:
+        opened = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+                or getattr(opened, 'st_file_attributes', 0) & 0x400
+                or file_identity(opened) != before):
+            raise ConversionError('A selected conversion file changed while opening.')
+        observed = regular(checked_directory(parent), directory=True)
+        if (observed.st_dev, observed.st_ino) != parent_identity:
+            raise ConversionError('The selected conversion parent changed while opening.')
+        yield stream
+        observed = regular(checked_directory(parent), directory=True)
+        if (file_identity(os.fstat(stream.fileno())) != before
+                or file_identity(regular_file(path)) != before
+                or (observed.st_dev, observed.st_ino) != parent_identity):
+            raise ConversionError('A selected conversion file changed while being read.')
 
 
 FILTERS = {

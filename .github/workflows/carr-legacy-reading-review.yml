@@ -41,6 +41,19 @@ jobs:
           python-version: '3.11'
       - name: Install exact source and declared tests
         run: python -m pip install ".[test]"
+      - name: Prepare actual Linux regression audio runtime
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg tesseract-ocr tesseract-ocr-eng
+      - name: Prepare pinned Windows regression audio runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $audio = Join-Path $env:RUNNER_TEMP 'carr-legacy-regression-audio'
+          python packaging/prepare_windows_audio.py --cache (Join-Path $env:RUNNER_TEMP 'carr-audio-cache') --output $audio --download
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $audio 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Require current publication and archive boundaries
         run: |
           mkdir -p ci-legacy-reading

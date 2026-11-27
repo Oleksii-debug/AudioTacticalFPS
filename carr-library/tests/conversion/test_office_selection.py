@@ -175,3 +175,55 @@ def test_profile_is_per_operation_and_disables_active_content_and_external_updat
     assert not values[scripting, 'SecureURL']
     assert values['/org.openoffice.Office.Calc/Content/Update', 'Link'] == '1'
 
+
+
+def test_real_selected_reader_prevents_or_detects_same_size_mutation(tmp_path):
+    path = tmp_path / 'selected-component.bin'
+    original = b'first verified component'
+    path.write_bytes(original)
+    expected = office.file_identity(office.regular_file(path))
+    if os.name == 'nt':
+        with office.verified_reader(path, expected_identity=expected) as stream:
+            with pytest.raises(OSError):
+                path.write_bytes(b'other verified component')
+            assert stream.read() == original
+        assert path.read_bytes() == original
+    else:
+        with pytest.raises(ConversionError, match='changed'):
+            with office.verified_reader(path, expected_identity=expected):
+                path.write_bytes(b'other verified component')
+
+
+def test_actual_open_race_refuses_fifo_or_link_before_reading_with_finite_child(tmp_path):
+    import subprocess
+    import sys
+    program = r"""
+import os
+from pathlib import Path
+import sys
+from carr_library.conversion import office
+root = Path(sys.argv[1])
+path, target = root / 'selected.bin', root / 'foreign.bin'
+path.write_bytes(b'approved')
+target.write_bytes(b'foreign!')
+original = office._open_payload_file
+def swapped(selected):
+    path.unlink()
+    if os.name == 'nt':
+        os.link(target, path)
+    else:
+        os.mkfifo(path)
+    return original(selected)
+office._open_payload_file = swapped
+try:
+    with office.verified_reader(path) as stream:
+        stream.read()
+except (ValueError, RuntimeError, OSError):
+    assert target.read_bytes() == b'foreign!'
+    print('refused-before-consumption')
+else:
+    raise AssertionError('A substituted special/linked file was admitted.')
+"""
+    result = subprocess.run([sys.executable, '-I', '-B', '-c', program, str(tmp_path)],
+        capture_output=True, text=True, timeout=10, check=True)
+    assert result.stdout.strip() == 'refused-before-consumption'
