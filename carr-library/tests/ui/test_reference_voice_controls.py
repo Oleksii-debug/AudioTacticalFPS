@@ -30,16 +30,18 @@ def controller():
     value = object.__new__(VoicePackageDialog)
     value.closed, value.busy, value.review = False, False, None
     value.destroyed, value._window_id = False, 31
+    value.generation = 0
     value.removal_review = None
     value.cancelled = threading.Event()
     for name in ('backend', 'models', 'reference_model', 'references', 'profile', 'version',
                  'supported', 'rights', 'configure_button', 'inspect_button', 'versions_button',
                  'review_button', 'apply_button', 'stop_button', 'status', 'export_rights',
-                 'create_reference_button',
+                 'create_reference_button', 'protected_inspect_button',
+                 'protected_export_button', 'protected_export_rights',
                  'export_button', 'removal_mode', 'removal_confirmation',
                  'removal_review_button', 'removal_apply_button'):
         setattr(value, name, Control())
-    value.rights.value = value.export_rights.value = False
+    value.rights.value = value.export_rights.value = value.protected_export_rights.value = False
     value.removal_mode.value = 0
     value.revision = 4
     return value
@@ -71,10 +73,13 @@ def test_apply_requires_explicit_rights_and_captures_exact_review_before_worker(
 def test_editing_selected_runtime_or_version_invalidates_review_and_consent():
     form = controller()
     form.review, form.rights.value = object(), True
+    form.protected_export_rights.value = True
     skipped = []
     form.invalidate(SimpleNamespace(Skip=lambda: skipped.append(True)))
     assert form.review is None and form.rights.value is False
     assert form.apply_button.enabled is False and skipped == [True]
+    assert form.generation == 1 and form.protected_export_rights.value is False
+    assert form.protected_export_button.enabled is False
 
 
 def test_loaded_configuration_and_new_review_never_preselect_consent_or_production_languages():

@@ -138,7 +138,7 @@ def run_native(report, phase):
                     field.SetFocus()
                     check('native password field accepts keyboard focus',
                           pump(lambda: wx.Window.FindFocus() is field, timeout=3))
-                    check('native password text keys were delivered', simulator.Text(password))
+                    check('native password text keys were delivered', simulator.Text(password.encode('ascii')))
                     if not pump(lambda: field.GetValue() == password, timeout=3):
                         raise AssertionError('Native password input was not received exactly.')
                 password_entries.append(count)

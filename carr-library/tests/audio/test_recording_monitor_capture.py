@@ -198,9 +198,11 @@ def test_removed_output_fails_before_a_capture_child_can_start(capture, monkeypa
 
 
 @pytest.mark.parametrize('wrapped', [False, True], ids=['direct-owner', 'masked-owner'])
+@pytest.mark.parametrize('first', ['monitor', 'process'], ids=['monitor-first', 'process-first'])
 def test_capture_locks_and_private_stage_wait_for_both_process_and_monitor(
-        capture, monkeypatch, wrapped):
+        capture, monkeypatch, wrapped, first):
     from filelock import FileLock, Timeout
+    from carr_library.operations import ResourceBroker
     child_done, driver_done = threading.Event(), threading.Event()
     process_owner = CleanupOwner(child_done.is_set)
     owners, stages = [], []
@@ -233,16 +235,30 @@ def test_capture_locks_and_private_stage_wait_for_both_process_and_monitor(
         with pytest.raises(AudioCleanupPending) as caught:
             capture.service.capture(capture.device.id, options=capture.options, monitor_output=DEVICE)
         owner = caught.value.cleanup_owner
-        assert owner is owners[0] and owner is not process_owner
+        assert len(owners) == 1 and owner is not process_owner
+        # capture joins every causal owner, including the original process
+        # error below the monitor's combined error. Its public join need not
+        # be the monitor's private token, but must retain both exact owners.
+        assert set(recording._pending_owners(caught.value)) == {owner, owners[0], process_owner}
+        assert not owner.quiescent and not owners[0].quiescent and not process_owner.quiescent
         assert caught.value.recording_reservation.owner is owner
         assert stages[0].is_file() and recording._CAPTURE.locked()
         lock = FileLock(capture.service.root / '.recording.lock', timeout=0)
         with pytest.raises(Timeout):
             lock.acquire()
-        driver_done.set()
+        broker = ResourceBroker.for_app(capture.app.root)
+        assert len(broker.snapshot()['leases']) == 1
+        first_done, last_done = ((driver_done, child_done) if first == 'monitor'
+                                 else (child_done, driver_done))
+        first_done.set()
         assert owner.close() is False and stages[0].is_file() and recording._CAPTURE.locked()
-        child_done.set()
+        assert not owner.quiescent and len(broker.snapshot()['leases']) == 1
+        with pytest.raises(Timeout):
+            lock.acquire()
+        last_done.set()
         assert owner.close() is True and not stages[0].exists() and not recording._CAPTURE.locked()
+        assert owner.quiescent and owners[0].quiescent and process_owner.quiescent
+        assert broker.snapshot()['leases'] == []
         with lock:
             assert lock.is_locked
         assert not list(capture.service.root.glob('*.wav'))

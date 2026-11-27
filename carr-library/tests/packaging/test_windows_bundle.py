@@ -58,6 +58,29 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
 
+    def test_current_transfer_guides_are_exact_sealed_bytes_without_audio_runtime(self):
+        self.build()
+        manifest = json.loads((self.output / "bundle-manifest.json").read_text(encoding="utf-8"))
+        self.assertIs(manifest["bundled_audio"], False)
+        self.assertFalse((self.output / "audio").exists())
+        self.assertFalse((self.output / "audio-runtime").exists())
+        for name in ("LOCAL_AUDIO_RUNTIME_SETUP.md", "LARGE_SOURCE_PROFILES.md",
+                     "SEARCH_PAGINATION.md", "SOURCE_WINDOW_PAGINATION.md",
+                     "PROTECTED_VOICE_PACKAGES.md", "recording.md", "recording_monitoring.md",
+                     "PORTABLE_SNAPSHOTS.md", "SYNC_DEPENDENCIES.md"):
+            with self.subTest(guide=name):
+                expected = (ROOT / "docs" / name).read_bytes()
+                actual = self.output / "guides" / name
+                self.assertEqual(actual.read_bytes(), expected)
+                self.assertEqual(manifest["files"]["guides/" + name],
+                                 hashlib.sha256(expected).hexdigest())
+        # The linked monitoring instructions are ordinary sealed payload:
+        # editing them after assembly must fail the real installer verifier.
+        installer.verify(self.output)
+        (self.output / "guides" / "recording_monitoring.md").write_bytes(b"changed guide")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
+
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"
         path.write_text(json.dumps({

@@ -369,3 +369,177 @@ def test_batch_keeps_batch_book_and_scene_locks_during_pending_native_cleanup(
         assert accepted == {path: sha256(Path(path).read_bytes()).hexdigest() for path in accepted}
         assert original == tuple(e.app.assets.resolve(item['asset']).read_bytes() for item in e.imported)
         assert not e.production.broker.snapshot()['leases']
+
+
+def test_nested_batch_stop_checks_poll_after_completed_control_read(batch, monkeypatch):
+    """Real rendering keeps source guards; nested polls do not reread per entry."""
+    from carr_library.studio import book_batch as batch_module
+
+    e = batch
+    _, ready = prepare(e)
+    clock, controls, observed = [100.0], [], []
+    read = batch_module.read_json
+    def charged_read(path, *args, **kwargs):
+        value = read(path, *args, **kwargs)
+        if Path(path).name.endswith('.active.json'):
+            controls.append(value['token'])
+            # Model the observed slow control-file operation without sleeping
+            # or changing clocks used by the actual native process supervisor.
+            clock[0] += 1.0
+        return value
+    monkeypatch.setattr(batch_module, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(batch_module, 'read_json', charged_read)
+    synthesize = e.voices.synthesize
+    def checked_synthesis(text, voice_id, destination, *, settings, cancelled):
+        before = len(controls)
+        for _ in range(1000):
+            assert cancelled() is False
+        assert len(controls) == before
+        clock[0] += batch_module.CONTROL_POLL_SECONDS / 2
+        assert cancelled() is False and len(controls) == before
+        clock[0] += batch_module.CONTROL_POLL_SECONDS
+        assert cancelled() is False and len(controls) == before + 1
+        for _ in range(32):
+            assert cancelled() is False
+        assert len(controls) == before + 1
+        observed.append(True)
+        return synthesize(text, voice_id, destination, settings=settings, cancelled=cancelled)
+    monkeypatch.setattr(e.voices, 'synthesize', checked_synthesis)
+    result = e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint)
+    assert result['status'] == 'complete' and observed == [True] * 3
+    assert len(e.voices.calls) == 3
+    assert len(set(controls)) == 1
+    assert not e.production.broker.snapshot()['leases']
+
+
+def test_in_memory_batch_cancel_is_immediate_inside_control_poll_window(batch, monkeypatch):
+    from carr_library.studio import book_batch as batch_module
+
+    e = batch
+    _, ready = prepare(e)
+    monkeypatch.setattr(batch_module, 'monotonic', lambda: 100.0)
+    read, controls = batch_module.read_json, []
+    def observed_read(path, *args, **kwargs):
+        if Path(path).name.endswith('.active.json'):
+            controls.append(Path(path))
+        return read(path, *args, **kwargs)
+    monkeypatch.setattr(batch_module, 'read_json', observed_read)
+    stop, actual_pcm = threading.Event(), []
+    synthesize = e.voices.synthesize
+    def checked_synthesis(text, voice_id, destination, *, settings, cancelled):
+        def stop_after_pcm():
+            assert Path(destination).is_file() and Path(destination).stat().st_size > 44
+            actual_pcm.append(True)
+            before = len(controls)
+            stop.set()
+            assert cancelled() is True
+            assert len(controls) == before  # No filesystem poll delays local withdrawal.
+        e.voices.after_write = stop_after_pcm
+        return synthesize(text, voice_id, destination, settings=settings, cancelled=cancelled)
+    monkeypatch.setattr(e.voices, 'synthesize', checked_synthesis)
+    result = e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint,
+                          cancelled=stop.is_set, cancel_action=lambda: 'cancel')
+    assert result['status'] == 'cancelled' and actual_pcm == [True]
+    assert len(e.voices.calls) == 1
+    assert e.production.get(e.plans[0].job_id(1))['status'] == 'cancelled'
+    assert all(not list(output.iterdir()) for output in e.outputs)
+    assert not e.production.broker.snapshot()['leases']
+
+
+@pytest.mark.parametrize('action', ['pause', 'cancel'])
+def test_external_batch_signal_is_forced_before_publication_inside_poll_window(batch, monkeypatch, action):
+    from carr_library.studio import book_batch as batch_module
+
+    e = batch
+    _, ready = prepare(e)
+    # Poll time cannot advance: the real source/publication boundary must force
+    # validation, independently of the periodic cross-process stop check.
+    monkeypatch.setattr(batch_module, 'monotonic', lambda: 100.0)
+    requests = []
+    def after_actual_pcm():
+        requests.append(e.groups.request_stop(e.selected.id, action))
+    e.voices.after_write = after_actual_pcm
+    result = e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint)
+    assert result['status'] == ('paused' if action == 'pause' else 'cancelled')
+    assert len(requests) == len(e.voices.calls) == 1
+    assert all(not list(output.iterdir()) for output in e.outputs)
+    assert e.production.get(e.plans[1].job_id(1))['status'] == 'pending'
+    assert not e.production.broker.snapshot()['leases']
+
+
+@pytest.mark.parametrize('field', ['token', 'fingerprint'])
+def test_changed_batch_control_is_not_cached_through_source_publication(batch, monkeypatch, field):
+    from carr_library.studio import book_batch as batch_module
+
+    e = batch
+    _, ready = prepare(e)
+    monkeypatch.setattr(batch_module, 'monotonic', lambda: 100.0)
+    changed = []
+    def after_actual_pcm():
+        root, path = e.groups._controls(e.selected)
+        value = read_json(path)
+        value[field] = ('f' if value[field][0] != 'f' else 'e') * len(value[field])
+        atomic_json(path, value, replace=True)
+        changed.append(True)
+    e.voices.after_write = after_actual_pcm
+    with pytest.raises(ValueError, match='active book batch control identity changed'):
+        e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint)
+    assert changed == [True] and len(e.voices.calls) == 1
+    assert all(not list(output.iterdir()) for output in e.outputs)
+    assert e.production.get(e.plans[1].job_id(1))['status'] == 'pending'
+    assert not e.production.broker.snapshot()['leases']
+
+
+def test_slow_completed_disk_accounting_is_not_repeated_by_every_native_poll(batch, monkeypatch):
+    from carr_library.studio import render
+
+    e = batch
+    _, ready = prepare(e)
+    clock, scans, observed = [100.0], [], []
+    actual_time, retained_bytes = render.time, render._retained_bytes
+    monkeypatch.setattr(render, 'time', SimpleNamespace(time=actual_time.time,
+                                                       monotonic=lambda: clock[0]))
+    def measured_scan(roots, cancelled):
+        value = retained_bytes(roots, cancelled)
+        scans.append(value)
+        clock[0] += .5  # An actual completed scan taking longer than its poll interval.
+        return value
+    monkeypatch.setattr(render, '_retained_bytes', measured_scan)
+    synthesize = e.voices.synthesize
+    def checked_synthesis(text, voice_id, destination, *, settings, cancelled):
+        before = len(scans)
+        assert before
+        for _ in range(1000):
+            assert cancelled() is False
+        assert len(scans) == before
+        observed.append(True)
+        return synthesize(text, voice_id, destination, settings=settings, cancelled=cancelled)
+    monkeypatch.setattr(e.voices, 'synthesize', checked_synthesis)
+    result = e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint)
+    assert result['status'] == 'complete' and observed == [True] * 3
+    assert len(scans) > len(observed)  # Mandatory force checks still run.
+    assert len(e.voices.calls) == 3
+    assert not e.production.broker.snapshot()['leases']
+
+
+def test_forced_disk_accounting_still_rejects_growth_inside_poll_window(batch, monkeypatch):
+    from carr_library.audio import AudioError
+    from carr_library.studio import render
+
+    e = batch
+    _, ready = prepare(e)
+    actual_time = render.time
+    monkeypatch.setattr(render, 'time', SimpleNamespace(time=actual_time.time,
+                                                       monotonic=lambda: 100.0))
+    e.production.total_disk_bytes = 2 * 1024 * 1024
+    ballast = e.production.root / 'actual-retained-growth.bin'
+    def after_actual_pcm():
+        ballast.write_bytes(b'x' * e.production.total_disk_bytes)
+    e.voices.after_write = after_actual_pcm
+    with pytest.raises(AudioError, match='total production disk budget'):
+        e.groups.run(e.selected.id, e.outputs, approval=ready.fingerprint)
+    assert ballast.stat().st_size == e.production.total_disk_bytes
+    assert len(e.voices.calls) == 1
+    assert all(not list(output.iterdir()) for output in e.outputs)
+    assert e.production.get(e.plans[1].job_id(1))['status'] == 'pending'
+    assert not e.production.broker.snapshot()['leases']
