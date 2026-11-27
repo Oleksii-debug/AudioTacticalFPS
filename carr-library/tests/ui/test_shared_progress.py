@@ -348,5 +348,104 @@ class EarconTests(unittest.TestCase):
             self.assertFalse(worker._thread.is_alive())
 
 
+class NotificationPlaybackTests(unittest.TestCase):
+    @staticmethod
+    def recording(path):
+        with wave.open(str(path), 'wb') as output:
+            output.setparams((1, 2, 8000, 0, 'NONE', 'PCM'))
+            output.writeframes(b'\0\0' * 800)
+        return path
+
+    def test_actual_pcm_starting_worker_is_not_closed_before_its_device_opens(self):
+        from types import SimpleNamespace
+        from carr_library.audio.player import WavePlayer
+        from carr_library.audio.playback import PCMPlayer, OutputDevice
+        from carr_library import progress_audio
+        opened, release_open, resumed, finished, closed = (threading.Event() for _ in range(5))
+        observed, waited, close_requested = (threading.Event() for _ in range(3))
+        errors = []
+        def factory(info, device_id):
+            opened.set()
+            if not release_open.wait(3):
+                raise RuntimeError('Synthetic backend-open gate timed out.')
+            return SimpleNamespace(
+                device=OutputDevice(0, 'Synthetic notification output', 1, False),
+                submit=lambda data: object(), completed=lambda token: finished.is_set(),
+                release=lambda token: None, pause=lambda: None, resume=resumed.set,
+                position=lambda: 0, close=closed.set)
+        player = WavePlayer()
+        player.native = PCMPlayer(_backend_factory=factory)
+        original_close = player.close
+        def closing():
+            close_requested.set()
+            observed.set()
+            original_close()
+        player.close = closing
+        def wait_for_start(seconds):
+            waited.set()
+            observed.set()
+            time.sleep(seconds)
+        with TemporaryDirectory() as directory:
+            path = self.recording(Path(directory) / 'notification-starting.wav')
+            original = path.read_bytes()
+            def notify():
+                try:
+                    progress_audio.LocalNotificationOutput._play(path, lambda: False)
+                except BaseException as error:
+                    errors.append(error)
+            thread = threading.Thread(target=notify, name='notification-starting-regression', daemon=True)
+            with patch('carr_library.audio.player.WavePlayer', return_value=player), \
+                    patch.object(progress_audio, 'time', SimpleNamespace(sleep=wait_for_start)):
+                try:
+                    thread.start()
+                    self.assertTrue(opened.wait(3))
+                    self.assertTrue(observed.wait(3))
+                    self.assertTrue(waited.is_set(), 'Starting playback must be awaited, not closed.')
+                    self.assertFalse(close_requested.is_set())
+                    release_open.set()
+                    self.assertTrue(resumed.wait(3))
+                    finished.set()
+                    thread.join(3)
+                    self.assertFalse(thread.is_alive())
+                    self.assertEqual(errors, [])
+                    self.assertTrue(closed.is_set())
+                    self.assertEqual(path.read_bytes(), original)
+                finally:
+                    release_open.set()
+                    finished.set()
+                    if thread.ident is not None:
+                        thread.join(3)
+                    player.close()
+
+    def test_actual_unavailable_pcm_is_reported_unless_notification_was_cancelled(self):
+        from carr_library.audio.player import WavePlayer
+        from carr_library.audio.playback import PCMPlayer, PlaybackUnavailable
+        from carr_library.progress_audio import LocalNotificationOutput
+        for stop in (False, True):
+            with self.subTest(cancelled=stop), TemporaryDirectory() as directory:
+                cancelled = threading.Event()
+                entered = []
+                def factory(info, device_id):
+                    entered.append(True)
+                    if stop:
+                        cancelled.set()
+                    raise PlaybackUnavailable('Synthetic notification device unavailable.')
+                player = WavePlayer()
+                player.native = PCMPlayer(_backend_factory=factory)
+                path = self.recording(Path(directory) / 'notification-unavailable.wav')
+                with patch('carr_library.audio.player.WavePlayer', return_value=player):
+                    try:
+                        if stop:
+                            LocalNotificationOutput._play(path, cancelled.is_set)
+                        else:
+                            with self.assertRaisesRegex(RuntimeError, 'audio device'):
+                                LocalNotificationOutput._play(path, cancelled.is_set)
+                        self.assertEqual(entered, [True])
+                        self.assertEqual(player.status().state, 'unavailable')
+                        self.assertFalse(player.native._thread.is_alive())
+                    finally:
+                        player.close()
+
+
 if __name__ == '__main__':
     unittest.main()
