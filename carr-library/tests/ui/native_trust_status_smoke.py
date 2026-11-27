@@ -215,6 +215,8 @@ def main(argv=None):
                     print('TRACE: Requesting native polling owner Close.', flush=True)
                     poll_frame.Close()
                     print('TRACE: Native polling owner Close returned; phase=' + host.status.phase, flush=True)
+                    check('Accepted native Close stops the polling timer before owner destruction',
+                          host.status.phase == 'stopped' and not timer.IsRunning())
                     yield (lambda: host.status.phase == 'stopped', 8,
                            lambda: 'Native owner destruction did not stop polling: phase=' + host.status.phase)
                 check('Native owner destruction stops the metadata worker', not host._thread.is_alive())

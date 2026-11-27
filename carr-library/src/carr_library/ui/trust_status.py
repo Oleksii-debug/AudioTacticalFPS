@@ -186,15 +186,27 @@ def install_trust_actions(frame):
     frame.trust_client_timer = timer
     if controller.refresh is not None:
         frame.trust_renewal_timer = timer
+    closed = False
     def idle(event=None):
+        if closed:
+            return
         available = not getattr(frame, 'working', False) and not getattr(frame, '_closing', False)
         for host in hosts:
             host.set_idle(available)
+    def close_clients():
+        nonlocal closed
+        if closed:
+            return
+        # Stop the native timer while its owner is still alive. A window-destroy
+        # notification is only a fallback, not the normal timer admission gate.
+        closed = True
+        timer.Stop()
+        for host in hosts:
+            host.close()
+    frame.close_trust_clients = close_clients
     def close(event):
         if event.GetEventObject() is frame:
-            timer.Stop()
-            for host in hosts:
-                host.close()
+            close_clients()
         event.Skip()
     frame.Bind(wx.EVT_TIMER, idle, timer)
     frame.Bind(wx.EVT_WINDOW_DESTROY, close)

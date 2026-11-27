@@ -1359,5 +1359,8 @@ class DesktopFrame(WorkspaceFrame):
         if not event.GetVeto():
             self._closing = True
             self.cancel_event.set()
+            close_trust_clients = getattr(self, 'close_trust_clients', None)
+            if close_trust_clients is not None:
+                close_trust_clients()
             self.executor.shutdown(wait=False, cancel_futures=True)
 
