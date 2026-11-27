@@ -6,6 +6,7 @@ supervisor still run. No fake child receipt stands in for a publication.
 """
 from copy import deepcopy
 from time import monotonic
+from types import SimpleNamespace
 import sys
 
 import pytest
@@ -148,12 +149,38 @@ def test_fresh_committed_import_survives_lost_child_reply(tmp_path, monkeypatch,
     marker = tmp_path / 'committed'
     _child_barrier(monkeypatch, marker,
                    'crash_after_commit' if stop == 'crash' else 'after_commit')
+    timed_out = []
+    if stop == 'timeout':
+        original_invoke, real_clock = worker._invoke, worker.time
+        def expire_after_actual_commit(message, **options):
+            # Keep the real supervisor and native child. Advance only this
+            # module's deadline clock after the actual SQLite commit barrier;
+            # cold PDF startup must not turn this into a pre-commit timeout.
+            # The original real-wall-clock bound below remains unchanged.
+            if 'data_dir' not in message:
+                return original_invoke(message, **options)
+            clock = {'reads': 0, 'advanced': False}
+            def deadline_clock():
+                now = real_clock.monotonic()
+                clock['reads'] += 1
+                if clock['reads'] > 1 and marker.exists():
+                    clock['advanced'] = True
+                return now + (options['timeout'] + 1 if clock['advanced'] else 0)
+            with monkeypatch.context() as patch:
+                patch.setattr(worker, 'time',
+                              SimpleNamespace(monotonic=deadline_clock, sleep=real_clock.sleep))
+                result = original_invoke(message, **options)
+            timed_out.append((result['state'], clock['advanced'], marker.exists()))
+            return result
+        monkeypatch.setattr(worker, '_invoke', expire_after_actual_commit)
     started = monotonic()
     result = app.import_file(workspace, source, title='Exact original', authors=('Synthetic author',),
-        collections=(collection,), timeout=3 if stop == 'timeout' else 15,
+        collections=(collection,), timeout=15,
         cancelled=(lambda: marker.exists()) if stop == 'cancel' else (lambda: False))
     assert marker.exists(), result
     assert monotonic() - started < 12
+    if stop == 'timeout':
+        assert timed_out == [('timed_out', True, True)]
     assert result['state'] == 'complete', result
     assert result['isolated'] and result['verified'] is False
     persisted = worker.load_request(app.root, result['request_id'])

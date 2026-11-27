@@ -426,3 +426,74 @@ def test_retained_input_hash_stops_after_first_real_chunk_without_starting_runti
         service.close()
         voices.close()
     assert registry_closes == [True]
+
+
+@pytest.mark.parametrize(('action', 'expected'), [('pause', 'paused'), ('cancel', 'cancelled')])
+def test_visible_control_during_writer_cleanup_keeps_exact_requested_outcome(
+        tmp_path, monkeypatch, action, expected):
+    """A real native publication barrier, not a substituted job receipt."""
+    from carr_library import durable_state
+    output = tmp_path / 'out'
+    output.mkdir()
+    broker = ResourceBroker.for_app(tmp_path, limits=ResourceLimits(cpu_slots=1))
+    engines = []
+    runtime = SimpleNamespace(budget=AudioBudget(threads=1), music_models={},
+                              capabilities=lambda: engines.append(True))
+    service = ProductionService(tmp_path / 'state/studio', voices=VoiceRegistry([]), broker=broker,
+                                runtime_factory=lambda *_args, **_kwargs: runtime)
+    job = service.submit(service.create('[Pause: 0.2]'), output)
+    control = service.jobs_root / job / 'control.json'
+    queued, published, finish_writer = threading.Event(), threading.Event(), threading.Event()
+    errors, writer_errors = [], []
+
+    def after_publication(function):
+        def publish(source, destination, *args, **kwargs):
+            result = function(source, destination, *args, **kwargs)
+            if Path(destination) == control:
+                published.set()
+                assert finish_writer.wait(5), 'The control publication barrier was not released.'
+            return result
+        return publish
+
+    # Both the original create-only path and the corrected atomic replacement
+    # use actual OS publication. Hold the writer after visibility, before its
+    # staging cleanup/return, while the other real thread acknowledges the stop.
+    monkeypatch.setattr(durable_state.os, 'link', after_publication(durable_state.os.link))
+    monkeypatch.setattr(durable_state.os, 'rename', after_publication(durable_state.os.rename))
+    monkeypatch.setattr(durable_state, 'replace_file', after_publication(durable_state.replace_file))
+    def work():
+        try:
+            service.run(job, progress=lambda _: queued.set())
+        except BaseException as error:
+            errors.append(error)
+    def stop():
+        try:
+            (service.request_pause if action == 'pause' else service.cancel)(job)
+        except BaseException as error:
+            writer_errors.append(error)
+
+    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='occupied', timeout=0):
+        worker = threading.Thread(target=work)
+        writer = threading.Thread(target=stop)
+        worker.start()
+        try:
+            assert queued.wait(3)
+            assert service.get(job)['status'] == 'queued'
+            writer.start()
+            assert published.wait(3)
+            worker.join(3)
+            assert not worker.is_alive()
+            assert len(errors) == 1 and isinstance(errors[0], InterruptedError)
+            assert service.get(job)['status'] == expected
+            assert durable_state.read_json(control) == {'action': action}
+            assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['occupied']
+            assert not engines and not list(output.iterdir())
+        finally:
+            finish_writer.set()
+            if writer.ident is not None:
+                writer.join(3)
+            if worker.is_alive():
+                service.cancel(job)
+            worker.join(3)
+    assert not writer_errors and not worker.is_alive() and not writer.is_alive()
+    assert not broker.snapshot()['leases']

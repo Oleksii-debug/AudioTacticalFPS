@@ -73,7 +73,12 @@ def test_schema_three_roundtrip_preserves_typed_order_and_all_bypass_values():
 def test_saved_effect_edits_share_project_cas_and_history(tmp_path, scope):
     service = ProductionService(tmp_path / 'library/state/studio', voices=VoiceRegistry([]))
     editor = ClipEditor(tmp_path / 'library', service=service)
-    before = service.projects.save(Project.from_dict(legacy(2)))
+    require_audio()
+    source = write_tone(tmp_path / 'selected.wav')
+    source_bytes = source.read_bytes()
+    value = legacy(2)
+    value['scenes'][0]['cues'][0]['path'] = str(source)
+    before = service.projects.save(Project.from_dict(value))
     args = {'scene_id': 'scene', 'clip_id': 'cue', 'role_id': 'voice'}
     changed = editor.set_effects(before, scope, (Effect('gain', gain_db=-6),), **args)
     assert changed.schema == 3 and changed.revision == 2
@@ -86,6 +91,7 @@ def test_saved_effect_edits_share_project_cas_and_history(tmp_path, scope):
     redone = editor.history(undone, forward=True)
     assert redone.revision == 4
     assert replace(redone, revision=changed.revision) == changed
+    assert source.read_bytes() == source_bytes
     service.close()
 
 

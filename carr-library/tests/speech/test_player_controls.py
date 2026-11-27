@@ -235,6 +235,11 @@ def test_posix_paused_seek_does_not_spawn_or_signal_a_new_player_before_resume(p
     signals, launches, stopped = [], [], []
     monkeypatch.setattr(implementation, 'os', SimpleNamespace(
         name='posix', kill=lambda *args: signals.append(args)))
+    # Exercise the POSIX branch on either host; Windows' signal module does
+    # not expose these constants, and no real OS signal is sent by this test.
+    stop_signal, continue_signal = object(), object()
+    monkeypatch.setattr(implementation, 'signal',
+                        SimpleNamespace(SIGSTOP=stop_signal, SIGCONT=continue_signal))
     player._executable = '/selected/ffplay'
     def launch(args, **options):
         process = SimpleNamespace(pid=100 + len(launches), returncode=None, poll=lambda: None)
@@ -248,6 +253,7 @@ def test_posix_paused_seek_does_not_spawn_or_signal_a_new_player_before_resume(p
     player.seek(.5)
     assert len(launches) == 1 and stopped == [first]
     assert len(signals) == 1 and player.state == 'paused'
+    assert signals == [(first.pid, stop_signal)]
     player.resume()
     assert len(launches) == 2
     assert launches[-1][0][launches[-1][0].index('-ss') + 1] == '0.5'

@@ -370,13 +370,14 @@ class ProductionService:
 
     def request_pause(self, job_id):
         self.get(job_id)
-        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'pause'},
-                    replace=(self.jobs_root / job_id / 'control.json').exists())
+        # A mutable control must appear as one complete single-link snapshot.
+        # The create-only link/unlink path briefly exposes nlink=2 on POSIX,
+        # which a safe reader correctly rejects while classifying this stop.
+        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'pause'}, replace=True)
 
     def cancel(self, job_id):
         self.get(job_id)
-        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'cancel'},
-                    replace=(self.jobs_root / job_id / 'control.json').exists())
+        atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'cancel'}, replace=True)
 
     def _runtime(self, *, reviewed_roots=()):
         if self.runtime_factory is not None:
