@@ -51,6 +51,12 @@ if MODE == 'network':
     socket.create_connection(('127.0.0.1', 9))
 if MODE == 'outside-write':
     (pathlib.Path(cfg['models_dir']) / 'forbidden.txt').write_text('not allowed')
+if MODE == 'status-outside-source':
+    os.replace(pathlib.Path(cfg['models_dir']) / 'guarded.json', job / 'job_status.json')
+if MODE == 'status-outside-target':
+    temp = job / 'status.tmp'
+    temp.write_text('Unapproved replacement.', encoding='utf-8')
+    os.replace(temp, pathlib.Path(cfg['models_dir']) / 'guarded.json')
 if MODE == 'child-command':
     subprocess.run([sys.executable, '-c', 'raise SystemExit(0)'], check=True)
 if MODE == 'timeout':
@@ -419,6 +425,22 @@ def test_actual_child_guards_fail_closed(prepared, mode):
     assert not (original.parent / 'models' / 'forbidden.txt').exists()
 
 
+@pytest.mark.parametrize('mode', ['status-outside-source', 'status-outside-target'])
+def test_status_publication_keeps_actual_child_writes_inside_its_job(prepared, mode):
+    _, _, service, original, configure = prepared
+    guarded = original.parent / 'models' / 'guarded.json'
+    guarded.write_bytes(b'External state must remain unchanged.')
+    retained = original.read_bytes()
+    configure(mode)
+    identity = service.submit([original])
+    result = service.run(identity, timeout=10)
+    assert result['status'] == 'failed' and result['artifacts'] == []
+    assert 'Transcription writes must remain inside its private job' in result['last_error']
+    assert guarded.read_bytes() == b'External state must remain unchanged.'
+    assert original.read_bytes() == retained
+    assert read_json(service._path(identity) / 'job_status.json')['done'] == 0
+
+
 @pytest.mark.parametrize('mode', ['missing-output', 'metadata-mismatch', 'escape'])
 def test_worker_success_alone_does_not_publish_incomplete_results(prepared, mode):
     _, _, service, original, configure = prepared
@@ -642,7 +664,7 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
     monkeypatch.setattr(service, '_receipts', must_not_rehash)
     def cancelled():
         status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return status.exists() and read_json(status, shared_replace=True).get('done') == 1
     stopped = service.run(identity, timeout=30, cancelled=cancelled)
     assert stopped['status'] == 'stopped'
     assert stopped['artifacts'] == [] and stopped['done'] == 0
@@ -702,7 +724,7 @@ def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(
 
     def cancelled():
         status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return status.exists() and read_json(status, shared_replace=True).get('done') == 1
 
     def broken(done, total, phase):
         if phase == 'stopped':
@@ -757,7 +779,7 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     def cancelled():
         status = path / 'job_status.json'
         return (any(done == 1 for done, _, _ in calls) and status.exists()
-                and read_json(status).get('done') == 1)
+                and read_json(status, shared_replace=True).get('done') == 1)
 
     result = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)
     durable, worker = service.get(identity), read_json(path / 'job_status.json')

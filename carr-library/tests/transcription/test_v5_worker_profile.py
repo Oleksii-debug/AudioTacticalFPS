@@ -377,7 +377,7 @@ def test_v5_stop_preserves_cache_and_resume_inputs_then_completes(v5, tmp_path):
     path = service._path(identity)
     def cancelled():
         status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return status.exists() and read_json(status, shared_replace=True).get('done') == 1
     stopped = service.run(identity, timeout=10, cancelled=cancelled)
     assert stopped['status'] == 'stopped' and stopped['artifacts'] == []
     assert len(list((path / 'input').iterdir())) == 2
@@ -457,7 +457,11 @@ def test_v5_cli_configure_create_run_export_share_the_persisted_profile(v5, tmp_
 @pytest.mark.parametrize('protocol', ['receipts-v1', PROTOCOL])
 def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_path, monkeypatch, protocol):
     """Keep the host's old snapshot open until the real child replaces its name."""
-    _, _, service, source, _, models = v5
+    _, _, _, source, runtime, models = v5
+    # A non-BMP character also checks the native rename's UTF-16 byte count.
+    app = LibraryApp(tmp_path / 'Бібліотека-🎧')
+    service = app.transcription(app.create_workspace('Synthetic live status'))
+    service.configure(Path(sys.executable).resolve(), runtime / 'worker.py', models, protocol=PROTOCOL)
     if protocol == 'receipts-v1':
         legacy = runpy.run_path(str(Path(__file__).with_name('test_supplied_worker_bridge.py')))
         worker = tmp_path / 'legacy-progress-worker.py'
