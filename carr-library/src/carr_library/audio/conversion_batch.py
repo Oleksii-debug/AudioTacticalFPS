@@ -50,6 +50,7 @@ def _identity(path, *, maximum, cancelled=lambda: False):
     with _open_json_file(path) as stream:
         if _stamp(os.fstat(stream.fileno())) != _stamp(before):
             raise ValueError('A selected audio file changed while opening.')
+        local_path(path, exists=True)
         while True:
             if cancelled():
                 raise AudioCancelled('Audio batch verification was cancelled.')
@@ -62,7 +63,7 @@ def _identity(path, *, maximum, cancelled=lambda: False):
             digest.update(block)
         if _stamp(os.fstat(stream.fileno())) != _stamp(before):
             raise ValueError('A selected audio file changed during verification.')
-    if count != before.st_size or _stamp(regular(path)) != _stamp(before):
+    if count != before.st_size or _stamp(regular(local_path(path, exists=True))) != _stamp(before):
         raise ValueError('A selected audio file changed during verification.')
     return {'size_bytes': count, 'sha256': digest.hexdigest(), 'stamp': _stamp(before)}
 

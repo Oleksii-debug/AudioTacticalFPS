@@ -355,13 +355,18 @@ class AssistantService:
                         raise RuntimeError('Tool returned an invalid result.')
                     # Cancellation after a locally committed publication cannot
                     # erase its receipt or cause the same output to run again.
-                    committed = ((step.tool in local_tools.PUBLICATION_TOOLS
-                                  and checkpoint['intent'].get('publication_committed') is True)
+                    committed_transcript = step.tool == 'audio.transcribe'
+                    committed = (committed_transcript
+                                 or (step.tool in local_tools.PUBLICATION_TOOLS
+                                     and checkpoint['intent'].get('publication_committed') is True)
                                  or (step.tool == 'player.control'
                                      and checkpoint['intent'].get('player_dispatch_complete') is True))
                     if step.tool in (local_tools.RULES | player_tools.RULES) and not committed and stopped():
                         raise InterruptedError('Local assistant operation stopped before result acceptance.')
-                    result['artifacts'] = self._artifacts(result, plan.scope, (lambda: False) if committed else stopped)
+                    artifacts = self._artifacts(result, plan.scope, (lambda: False) if committed else stopped)
+                    if committed_transcript and artifacts != checkpoint['intent'].get('transcript_artifacts'):
+                        raise ValueError('Completed transcript artifacts differ from their prepared publication receipt.')
+                    result['artifacts'] = artifacts
                     checkpoint['result'] = result
                     checkpoint['status'] = 'complete'
                     persist()
