@@ -67,6 +67,9 @@ def inputs(tmp_path, monkeypatch):
     payload['LICENSE.txt'] = b'Synthetic-only license fixture.\n'
     lock = {'schema': 1, 'package_id': runtime.PACKAGE_ID, 'target': 'Windows x64',
             'version': 'synthetic-test-only', 'executables': runtime.TOOLS,
+            'use_scope': 'private-owner-local-installation',
+            'review': {'public_distribution_clearance': False,
+                       'third_party_complete_source_bundle': False},
             'archive_files': {name: {'size': len(raw), 'sha256': digest(raw)} for name, raw in payload.items()},
             'extra_files': {}}
     raw = encode(lock)
