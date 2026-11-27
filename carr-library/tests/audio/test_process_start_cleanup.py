@@ -28,7 +28,7 @@ def test_pipe_reader_start_failure_stops_real_child(tmp_path, monkeypatch, faile
     monkeypatch.setattr(threading.Thread, 'start', start)
     try:
         with pytest.raises(RuntimeError, match='reader startup failure'):
-            process.run_process([str(Path(sys.executable).absolute()), '-I', '-c',
+            process.run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-c',
                                  'import time; time.sleep(30)'])
         assert len(children) == 1 and children[0].poll() is not None
         assert all(not reader.is_alive() for reader in readers)
