@@ -376,6 +376,7 @@ jobs:
             'tests/ingest/test_worker_publication_boundary.py',
             'tests/e2e/test_import_files_cancellation.py',
             'tests/reader/test_export_publication_boundary.py',
+            'tests/reader/test_export_content_identity.py',
             'tests/ingest/test_import_replay_identity.py',
             'tests/reader/test_export_no_clobber.py',
             'tests/ui/test_citation_styles_jobs.py',
@@ -669,7 +670,7 @@ jobs:
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           $env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
           $runInstalledTests = @'
-          import ctypes, json, os, pathlib, sys
+          import ctypes, importlib.util, json, os, pathlib, sys
           from ctypes import wintypes
           import carr_library
           from carr_library.native_runtime import activate_bundled_runtime
@@ -690,6 +691,19 @@ jobs:
               assert pathlib.Path(component.__file__).resolve().is_relative_to(root / '.venv')
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
+          # Importlib collection does not add sibling test folders to sys.path.
+          # Load only the two shared synthetic fixtures by their exact paths;
+          # application imports must continue to resolve to the installed wheel.
+          fixture_root = pathlib.Path('tests/integrations').resolve(strict=True)
+          for fixture_name in ('test_dordiai_voices', 'test_dordiai_speech'):
+              fixture_path = fixture_root / (fixture_name + '.py')
+              spec = importlib.util.spec_from_file_location(fixture_name, fixture_path)
+              fixture_module = importlib.util.module_from_spec(spec)
+              sys.modules[fixture_name] = fixture_module
+              spec.loader.exec_module(fixture_module)
+          for module_name in ('carr_library.integrations.dordiai_voices',
+                              'carr_library.integrations.dordiai_speech'):
+              assert pathlib.Path(sys.modules[module_name].__file__).resolve().is_relative_to(root / '.venv')
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = ['tests/reader/test_ebook_contents.py',
@@ -711,6 +725,7 @@ jobs:
                             'tests/ingest/test_worker_publication_boundary.py',
                             'tests/e2e/test_import_files_cancellation.py',
                             'tests/reader/test_export_publication_boundary.py',
+                            'tests/reader/test_export_content_identity.py',
                             'tests/speech/test_source.py',
                             'tests/audio/test_bundled_runtime_settings.py',
                             'tests/studio/test_studio_controller.py',
