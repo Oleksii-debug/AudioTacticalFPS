@@ -220,8 +220,15 @@ the original installation when its retained previous directory is missing.
 The Windows adapter uses the existing owned-process runner with bounded native
 attempts and diagnostics. If native cleanup remains unconfirmed, it waits off
 the desktop thread while retaining the caller's transaction/idle ownership;
-rollback cannot retarget a live installer. That wait can remain pending until
-the existing cleanup owner confirms quiescence. A concrete supervisor outside
+rollback cannot retarget a live installer. Catchable interruptions during that
+wait are retained: the same cleanup owner must first confirm quiescence, then the
+first interruption is re-raised and the update remains unaccepted. Repeated
+interruptions cannot release the update, idle or library-writer locks early.
+An interrupted activation may therefore leave its version 1 journal unfinished
+until a later explicit recovery, after the child has stopped. This does not
+provide containment after an abrupt process kill or machine loss.
+The wait can remain pending until the existing cleanup owner confirms quiescence.
+A concrete supervisor outside
 the program directory must prevent new work, retain ownership through shutdown,
 run the transaction and restart the accepted installation. This host is not
 provided by the backend or by its synthetic idle fixture. Actual installed

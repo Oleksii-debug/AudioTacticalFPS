@@ -552,3 +552,173 @@ def test_failed_move_terminal_journal_error_preserves_strict_restart_recovery(se
         transaction.recover()
     assert transaction.journal.read_bytes() == raw
     assert_preserved(setup_update)
+
+
+@pytest.mark.parametrize('first', ['keyboard-interrupt', 'system-exit'])
+def test_interrupted_native_cleanup_retains_all_transaction_locks_until_quiescent(
+        setup_update, monkeypatch, first):
+    import signal
+    import subprocess
+    import sys
+    import threading
+    from carr_library.audio import process as capture_process
+    from carr_library.audio.cleanup import pending_cleanup
+    from carr_library.security import installation
+    from carr_library.security._files import BusyError, locked
+    from .conftest import installer_verify
+
+    app, *_, package, transaction, anchor, adapter = setup_update
+    permit_cleanup, waiting_again, returned = (threading.Event() for _ in range(3))
+    held, observed, interruptions, failures = {}, {}, [], []
+    main_thread = threading.current_thread()
+
+    @contextmanager
+    def actual_idle():
+        with locked(transaction.work, '.review-idle.lock'):
+            yield
+
+    transaction.idle_lease = actual_idle
+    probe_source = r'''
+import json
+from pathlib import Path
+import sys
+sys.path.insert(0, sys.argv[1])
+from carr_library.security._files import BusyError, locked
+from carr_library.ingest.writer_guard import WriterBusy, exclusive_writer
+work, data = Path(sys.argv[2]), Path(sys.argv[3])
+result = {}
+for name, acquire in (
+    ('update', lambda: locked(work, '.update.lock')),
+    ('idle', lambda: locked(work, '.review-idle.lock')),
+    ('writer', lambda: exclusive_writer(data)),
+):
+    try:
+        with acquire():
+            result[name] = 'acquired'
+    except (BusyError, WriterBusy):
+        result[name] = 'busy'
+print(json.dumps(result), flush=True)
+'''
+
+    def probe_locks():
+        result = subprocess.run(
+            [sys.executable, '-I', '-B', '-c', probe_source,
+             str(Path(installation.__file__).resolve().parents[2]),
+             str(transaction.work), str(app.root)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=10, check=True)
+        return json.loads(result.stdout)
+
+    def inspect_while_waiting():
+        try:
+            assert waiting_again.wait(10), 'The updater did not retain its interrupted wait.'
+            assert not returned.is_set(), 'The interrupted updater released its caller.'
+            child, pending = held['child'], held['pending']
+            assert child.poll() is None and not pending.cleanup_owner.quiescent
+            before = transaction.journal.read_bytes()
+            record = json.loads(before)
+            assert record['phase'] == 'new-active'
+            assert (transaction.installed / 'version.txt').read_bytes() == b'B'
+            assert (transaction.installed.parent / record['previous'] / 'version.txt').read_bytes() == b'A'
+            assert (transaction.work / record['backup'] / 'manifest.json').is_file()
+            assert probe_locks() == {'update': 'busy', 'idle': 'busy', 'writer': 'busy'}
+            with pytest.raises(BusyError):
+                transaction.recover()
+            assert transaction.journal.read_bytes() == before
+            assert anchor.load().sequence == 1
+            assert child.poll() is None and not pending.cleanup_owner.quiescent
+            observed['guarded_while_live'] = True
+        except BaseException as error:
+            failures.append(error)
+        finally:
+            permit_cleanup.set()
+
+    def pending_runner(arguments, **options):
+        child = subprocess.Popen(
+            [sys.executable, '-I', '-B', '-c',
+             "import time; print('ready', flush=True); time.sleep(60)"],
+            cwd=options['cwd'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        held['child'] = child
+        assert child.stdout.readline() == b'ready\n'
+
+        def close_when_permitted():
+            if not permit_cleanup.is_set():
+                return False
+            if child.poll() is None:
+                child.terminate()
+            child.wait(timeout=5)
+            child.stdout.close()
+            child.stderr.close()
+            return True
+
+        pending = pending_cleanup(close_when_permitted, message='Controlled pending native owner')
+        held['pending'] = pending
+        event = pending.cleanup_owner.quiescent_event
+        real_wait = event.wait
+        held['real_wait'] = real_wait
+
+        def interrupted_wait(timeout=None):
+            if threading.current_thread() is main_thread:
+                number = len(interruptions)
+                if number < 2:
+                    # POSIX exercises a real SIGINT at the wait boundary.
+                    # Windows exercises catchable Python interruption only;
+                    # this test does not claim native console-signal behavior.
+                    keyboard = (first == 'keyboard-interrupt') == (number == 0)
+                    try:
+                        if keyboard:
+                            if os.name == 'posix':
+                                os.kill(os.getpid(), signal.SIGINT)
+                                raise AssertionError('SIGINT did not interrupt the main thread.')
+                            raise KeyboardInterrupt('Controlled Python interruption')
+                        raise SystemExit(23)
+                    except BaseException as error:
+                        interruptions.append(error)
+                        raise
+                waiting_again.set()
+            return real_wait(timeout)
+
+        monkeypatch.setattr(event, 'wait', interrupted_wait)
+        observer = threading.Thread(target=inspect_while_waiting, name='update-lock-probe')
+        held['observer'] = observer
+        observer.start()
+        raise pending
+
+    native = installation.WindowsBundleAdapter(installer_verify())
+    adapter.activate = lambda root, release: native._run_owned(
+        [sys.executable, '-I', '-B'], root=root, timeout=1)
+    monkeypatch.setattr(capture_process, 'run_process', pending_runner)
+    expected = KeyboardInterrupt if first == 'keyboard-interrupt' else SystemExit
+    try:
+        with pytest.raises(expected) as caught:
+            transaction.apply(package)
+    finally:
+        returned.set()
+        waiting_again.set()
+        permit_cleanup.set()
+        if 'observer' in held:
+            held['observer'].join(15)
+        if 'pending' in held:
+            assert held['real_wait'](10), 'The actual retained child did not stop.'
+        elif 'child' in held:
+            child = held['child']
+            if child.poll() is None:
+                child.terminate()
+            child.wait(timeout=5)
+            child.stdout.close()
+            child.stderr.close()
+
+    assert not held['observer'].is_alive()
+    if failures:
+        raise failures[0]
+    assert observed == {'guarded_while_live': True}
+    assert len(interruptions) == 2 and caught.value is interruptions[0]
+    assert held['pending'].cleanup_owner.quiescent
+    assert held['child'].poll() is not None
+    assert held['child'].stdout.closed and held['child'].stderr.closed
+    assert probe_locks() == {'update': 'acquired', 'idle': 'acquired', 'writer': 'acquired'}
+    assert json.loads(transaction.journal.read_bytes())['phase'] == 'new-active'
+    assert anchor.load().sequence == 1 and adapter.checked == 0
+    assert transaction.recover() == 'rolled-back'
+    assert (transaction.installed / 'version.txt').read_bytes() == b'A'
+    assert anchor.load().sequence == 1
+    assert_preserved(setup_update)
