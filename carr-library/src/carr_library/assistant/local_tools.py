@@ -290,14 +290,18 @@ def _export(app, workspace, scope, args, intent, persist, cancelled):
     receipt = writer(target, content, private_root=app.root, require_absent=True, cancelled=stop)
     intent['publication_committed'] = True
     persist()
-    return {'artifacts': [str(target)], 'source_sha256': fingerprint,
+    return {'artifacts': [{'path': str(target), 'size': len(raw), 'sha256': sha256(raw).hexdigest()}],
+        'source_sha256': fingerprint,
         'selected_evidence': args['evidence_ids'], 'topic': args['topic'],
         'publication_committed': True, 'cleanup_warning': receipt.cleanup_warning,
         'notice': 'Existing authenticated quotations exported; the assistant created no evidence or approval.'}
 
 
 def _convert(app, workspace, scope, args, intent, persist, cancelled, progress, identity):
-    from ..audio.conversion_batch import AudioConversionBatch, _options
+    from ..audio.conversion_batch import AudioConversionBatch, _options, MANIFEST
+    from ..durable_state import encode
+    if intent.get('publication_committed') is True:
+        raise PermissionError('This conversion was published but not accepted. Review its retained outputs; it is never repeated or adopted from a changed manifest.')
     destination = scope.output(args['name'])
     if destination.is_relative_to(app.root):
         raise PermissionError('Audio conversion cannot write into private library data.')
@@ -338,11 +342,17 @@ def _convert(app, workspace, scope, args, intent, persist, cancelled, progress, 
             if result['status'] in ('cancelled', 'timed_out') or cancelled():
                 raise InterruptedError('Audio conversion stopped; explicit resume reuses verified per-file receipts.')
             raise RuntimeError('Audio conversion needs attention in its selected manifest; completed files are retained.')
+        # The completed result is the exact value durably encoded by the
+        # producer. Mutable output paths cannot create replacement identities.
+        artifacts = [{'path': row['candidate']['path'], 'size': row['candidate']['size'],
+                      'sha256': row['candidate']['sha256']} for row in result['items']]
+        manifest = encode(result)
+        artifacts.append({'path': str(destination / MANIFEST), 'size': len(manifest),
+                          'sha256': sha256(manifest).hexdigest()})
         intent['publication_committed'] = True
         persist()
         return {'status': 'complete', 'directory': str(destination), 'conversion_plan_sha256': reviewed['id'],
-            'artifacts': [str(destination / row['output']) for row in result['items']]
-                         + [str(destination / 'conversion-manifest.json')],
+            'artifacts': artifacts,
             'publication_committed': True, 'warning': result['warning'],
             'notice': 'Existing local conversion runtime and resource broker; originals remain unchanged.'}
 
