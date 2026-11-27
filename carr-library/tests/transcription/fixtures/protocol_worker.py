@@ -22,7 +22,18 @@ def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + '.tmp')
     temporary.write_bytes(raw(value))
-    os.replace(temporary, path)
+    # Match durable_state's bounded Windows reader/replace collision policy.
+    # Keep the one complete stage; never unlink or truncate the old status.
+    delays = iter((0.01, 0.02, 0.04, 0.08, 0.16, 0.32))
+    while True:
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError as exc:
+            delay = next(delays, None)
+            if getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
+                raise
+            time.sleep(delay)
 
 
 def runtime():

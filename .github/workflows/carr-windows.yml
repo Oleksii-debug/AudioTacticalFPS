@@ -473,6 +473,15 @@ jobs:
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
 
+      - name: Preserve failed installed-bundle diagnostics before remaining source checks
+        if: ${{ !cancelled() && steps.complete_bundle.outcome == 'failure' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-installed-bundle-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: carr-library/ci-results/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Make the verified installed application wheel available for private assembly
         if: ${{ !cancelled() && steps.complete_bundle.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
