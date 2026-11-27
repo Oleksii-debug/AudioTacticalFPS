@@ -143,3 +143,35 @@ def test_real_same_size_mutation_during_read_is_still_rejected(tmp_path, monkeyp
     monkeypatch.setattr(Path, "open", selected_open)
     with pytest.raises(ValueError, match="changed during verification"):
         proof.checked_file(target, 1024)
+
+
+def test_wheel_selects_root_metadata_and_retains_vendored_notices(tmp_path):
+    import hashlib
+    import zipfile
+    wheel = tmp_path / "synthetic-1.0-py3-none-any.whl"
+    notice = b"Purpose-written synthetic notice."
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("synthetic-1.0.dist-info/METADATA",
+                         "Name: synthetic\nVersion: 1.0\nLicense: MIT\n")
+        archive.writestr("synthetic/_vendor/child-2.0.dist-info/METADATA",
+                         "Name: child\nVersion: 2.0\n")
+        archive.writestr("synthetic/_vendor/child-2.0.dist-info/LICENSE", notice)
+    metadata, _, notices, declaration, _ = proof.wheel_metadata(wheel)
+    assert metadata["Name"] == "synthetic" and metadata["Version"] == "1.0"
+    assert declaration == "MIT"
+    assert notices == {"synthetic/_vendor/child-2.0.dist-info/LICENSE": {
+        "sha256": hashlib.sha256(notice).hexdigest(), "size_bytes": len(notice)}}
+
+
+@pytest.mark.parametrize("roots", [0, 2])
+def test_wheel_refuses_missing_or_ambiguous_root_metadata(tmp_path, roots):
+    import zipfile
+    wheel = tmp_path / "ambiguous.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr("package/_vendor/child-1.0.dist-info/METADATA",
+                         "Name: child\nVersion: 1.0\n")
+        for index in range(roots):
+            archive.writestr(f"root{index}-1.0.dist-info/METADATA",
+                             f"Name: root{index}\nVersion: 1.0\n")
+    with pytest.raises(ValueError, match="one root metadata record"):
+        proof.wheel_metadata(wheel)

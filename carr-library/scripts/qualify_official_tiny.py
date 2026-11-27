@@ -219,9 +219,17 @@ def wheel_metadata(path):
             if (parts.is_absolute() or ".." in parts.parts or "\\" in name or ":" in name
                     or any(ord(char) < 32 for char in name)):
                 raise ValueError("Unsafe wheel member.")
-        selected = [name for name in names if name.endswith(".dist-info/METADATA")]
-        if len(selected) != 1 or archive.getinfo(selected[0]).file_size > 2 * 1024**2:
-            raise ValueError("A wheel must contain one bounded metadata record.")
+        # A wheel's own metadata is at its root. Vendored libraries may carry
+        # nested .dist-info/METADATA; those remain covered by the wheel hash and
+        # notice inventory but are not separately installed distributions.
+        selected = [name for name in names
+                    if len(PurePosixPath(name).parts) == 2
+                    and name.endswith(".dist-info/METADATA")]
+        if len(selected) != 1:
+            raise ValueError("A wheel must contain one root metadata record: "
+                             + path.name + "; observed=" + str(len(selected)))
+        if archive.getinfo(selected[0]).file_size > 2 * 1024**2:
+            raise ValueError("The wheel metadata exceeds its byte budget: " + path.name)
         raw = archive.read(selected[0])
         metadata = email.parser.BytesParser().parsebytes(raw)
         notices = {}
