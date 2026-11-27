@@ -5,7 +5,7 @@ on:
     branches: [carr-library, carr/v3-local-studio-20261126-a4f9]
     paths: [carr-library/**, .github/workflows/carr-sync.yml]
   push:
-    branches: [carr-library, carr/v3-local-studio-20261126-a4f9]
+    branches: [carr-library, carr/v3-local-studio-20261126-a4f9, 'carr/v3-acceptance-*']
     paths: [carr-library/**, .github/workflows/carr-sync.yml]
   workflow_dispatch:
 
