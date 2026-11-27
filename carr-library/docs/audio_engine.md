@@ -79,6 +79,53 @@ Dynamic loudness normalization is followed by actual output measurement.
 Requested targets and measured values are distinct. Very short, silent or
 strongly constrained signals need not reach a selected integrated target.
 
+## Ordered effects and saved presets in the desktop
+
+Open **Audio Studio → Convert audio and apply effects**, select a local source,
+then set its range and output sample rate, channel count, PCM bit depth and
+encoding bitrate. Opus requires an explicit 48000 Hz selection. Lossy bitrate
+applies to MP3, AAC, Opus and WMA; Ogg Vorbis uses the adapter's existing quality
+setting. A codec can reject an unsupported rate or depth before publication.
+
+**Edit ordered effect chain and presets** checks the installed FFmpeg filters
+in the existing background worker, then opens native keyboard-accessible
+controls. Effects run from top to bottom. Select a row to edit its numeric
+parameters and units, enable or bypass it, remove it, or move it one position.
+Undo/redo retains the last 32 editing changes in this dialog. Reset restores
+the selected effect's default numeric controls at the chosen sample rate.
+The chain has a 32-effect allowance. Unsupported enabled effects and invalid
+numeric values are refused; bypass never hides invalid values.
+
+Applying an ordered chain makes the basic gain/speed/cleanup controls inactive.
+**Use basic effect controls** explicitly returns to those controls. The
+selected source, output settings and immutable chain are captured before the
+conversion is queued. A library-folder change requires reopening the dialog.
+Audio is rendered only after selecting a new output filename; neither opening
+the chain editor nor loading a preset starts playback or changes source audio.
+
+The built-in presets are Dry audio, Narration cleanup and Podcast loudness.
+**Save chain as a new preset** writes a separately named preset; **Load effect
+preset** replaces only the editable chain and can be undone. Saving is an
+explicit persistent action: cancelling the surrounding editor does not delete
+a preset that was already saved. Presets retain ordered controls, bypass
+states, sample rate, identity and revision. Loading at another sample rate
+revalidates every frequency against that rate.
+
+User presets are bounded JSON settings under
+`state/studio/effect-presets/<identity>.json`, with at most 256 presets and
+64 KiB per record. They contain no commands, filter expressions, file inputs,
+plugins or executable locations. A stale reviewed preset cannot overwrite a
+newer version through the store API. Complete library backups include these
+settings even when generated audio is excluded; restored presets are
+revalidated before use.
+
+`tests/audio/test_effect_presets.py` covers actual signal order and bypass
+with FFmpeg, non-overwrite review, invalid saved values and a full library
+backup/restore. `scripts/windows_effect_chain_smoke.py` exercises native
+keyboard actions, numeric/preset dialogs and the existing asynchronous audio
+conversion. These new gates need evidence from the exact candidate revision;
+their presence alone is not a completed Windows/NVDA or listening assessment.
+
 ## Local music and sound effects
 
 The default `procedural` engine produces real PCM using a deterministic note
