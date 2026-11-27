@@ -220,7 +220,7 @@ def test_native_owner_timer_admits_configured_polling_without_a_renewal_provider
     bar = SimpleNamespace(GetMenuCount=lambda: 1, GetMenuLabel=lambda index: '&Help',
                           GetMenu=lambda index: menu)
     bindings = {}
-    frame = SimpleNamespace(trust_controller=controller, working=True, _closing=False,
+    frame = SimpleNamespace(trust_controller=controller, working=True, _closing=False, GetId=lambda: 712,
         GetMenuBar=lambda: bar, Bind=lambda event, callback, *args: bindings.__setitem__(event, callback))
     try:
         ui.install_trust_actions(frame)
@@ -234,11 +234,19 @@ def test_native_owner_timer_admits_configured_polling_without_a_renewal_provider
         wait_for(lambda: controller.update_poll.status.phase == 'available')
         assert 'Automatic checks do not download' in controller.status_text()
         skipped = []
-        bindings['destroy'](SimpleNamespace(GetEventObject=lambda: frame, Skip=lambda: skipped.append(True)))
-        assert skipped and not timers[0].running and controller.update_poll.status.phase == 'stopped'
+        # A child has its own ID and must not stop the owner's live scheduler.
+        bindings['destroy'](SimpleNamespace(GetId=lambda: 713, GetEventObject=lambda: object(),
+                                           Skip=lambda: skipped.append(True)))
+        assert skipped == [True] and timers[0].running
+        assert controller.update_poll.status.phase == 'available'
+        # Native destruction can expose a wrapper distinct from the Python
+        # subclass. Use the ID captured while the owning window was alive.
+        bindings['destroy'](SimpleNamespace(GetId=lambda: 712, GetEventObject=lambda: object(),
+                                           Skip=lambda: skipped.append(True)))
+        assert skipped == [True, True] and not timers[0].running and controller.update_poll.status.phase == 'stopped'
         assert not controller.update_poll._thread.is_alive() and not list(client.downloads.iterdir())
         bindings['timer']()  # A queued timer after destruction cannot restart idle work.
-        bindings['destroy'](SimpleNamespace(GetEventObject=lambda: frame, Skip=lambda: None))
+        bindings['destroy'](SimpleNamespace(GetId=lambda: 712, GetEventObject=lambda: object(), Skip=lambda: None))
         assert controller.update_poll.status.phase == 'stopped' and not timers[0].running
     finally:
         controller.update_poll.close()

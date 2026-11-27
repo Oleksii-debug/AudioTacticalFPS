@@ -193,6 +193,9 @@ def install_trust_actions(frame):
     frame.trust_client_timer = timer
     if controller.refresh is not None:
         frame.trust_renewal_timer = timer
+    # Capture native identity before destruction; wx can expose a different
+    # wrapper after the Python frame subclass has begun to tear down.
+    owner_id = frame.GetId()
     closed = False
     def idle(event=None):
         if closed:
@@ -202,7 +205,7 @@ def install_trust_actions(frame):
             host.set_idle(available)
     def close(event):
         nonlocal closed
-        if event.GetEventObject() is frame and not closed:
+        if event.GetId() == owner_id and not closed:
             closed = True
             timer.Stop()
             for host in hosts:

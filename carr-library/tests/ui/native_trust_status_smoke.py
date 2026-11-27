@@ -43,16 +43,19 @@ def main(argv=None):
     def trace(phase, **details):
         diagnostic['phase'] = phase
         print('DIAG: ' + json.dumps({'phase': phase, **details}, sort_keys=True), flush=True)
-    class ProbeApp(wx.App):
-        def OnExceptionInMainLoop(self):
-            failure = sys.exc_info()[1] or RuntimeError('Unhandled native event-loop exception')
-            diagnostic['callback_error'] = failure
-            trace('event-loop-exception', exception=type(failure).__name__, detail=str(failure))
-            traceback.print_exc()
-            return False
     faulthandler.enable(all_threads=True)
-    app = ProbeApp(False)
+    app = wx.App(False)
     app.SetExitOnFrameDelete(False)
+    original_exception_hook = sys.excepthook
+    def callback_exception(kind, failure, tb):
+        # wxPython 4.2.3 forwards Python callback errors to sys.excepthook;
+        # its C++ OnExceptionInMainLoop is not a Python override point.
+        if diagnostic['callback_error'] is None:
+            diagnostic['callback_error'] = failure
+        trace('native-callback-exception', exception=kind.__name__, detail=str(failure))
+        traceback.print_exception(kind, failure, tb)
+        app.ExitMainLoop()
+    sys.excepthook = callback_exception
     checks = []
     def check(name, condition):
         if not condition:
@@ -304,11 +307,14 @@ def main(argv=None):
     # Establish the shown owner before entering wx's event loop. Windows
     # can otherwise exit MainLoop before the queued first-frame callback.
     advance()
-    if not state['finished']:
-        trace('main-loop-enter')
-        app.MainLoop()
-        trace('main-loop-returned', finished=state['finished'])
-    watchdog.Stop()
+    try:
+        if not state['finished']:
+            trace('main-loop-enter')
+            app.MainLoop()
+            trace('main-loop-returned', finished=state['finished'])
+    finally:
+        sys.excepthook = original_exception_hook
+        watchdog.Stop()
     if diagnostic['callback_error'] is not None and state['error'] is None:
         state['error'] = diagnostic['callback_error']
     if not state['finished']:
