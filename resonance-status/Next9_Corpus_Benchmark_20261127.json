@@ -1,0 +1,114 @@
+{
+  "schema": "resonance-library-corpus-benchmark-candidate/1",
+  "status": "DRAFT_NOT_RUN",
+  "base_commit": "b359ca64f5c09fd971dfb8e4991a949a9cea488f",
+  "base_tree": "16d76684369ba3c56b84bb6a9317d2e0ec287e87",
+  "specifications": [
+    {
+      "path": "docs/UNIVERSAL_SCOPE_V3_FINALIZATION.md",
+      "sha": "db8adbdc483a03c262885928c7ed214ca70bbaa7"
+    },
+    {
+      "path": "docs/UNIVERSAL_SCOPE_V3_AUDIO_AGENT.md",
+      "sha": "d0b2761dd22b33233b311d4800230fb47f5d3d8b"
+    }
+  ],
+  "requirement": "V3-07 actual 1000/10000/50000 retained books, real source/result traversal, import/search/read/restart timing and integrity; explicit measurement workflow only",
+  "files": [
+    {
+      "path": "carr-library/scripts/benchmark_library_scale.py",
+      "sha": "6a1022e30240ab5e580d16c7f1b07cf23751ba37",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/tests/packaging/test_library_scale_benchmark.py",
+      "sha": "0ac6d300cce9ede680b0ffcc5da2f6dbb3e1da17",
+      "preimage": null
+    },
+    {
+      "path": "carr-library/docs/LIBRARY_SCALE_BENCHMARK.md",
+      "sha": "e3b6c72d99232d7209b47de8da098bc1f498abfc",
+      "preimage": null
+    }
+  ],
+  "dependencies": [
+    {
+      "path": "carr-library/scripts/benchmark_semantic_cache.py",
+      "sha": "898b05e37b5a50c018567e35c44ef71f1393535d",
+      "usage": "Unchanged portable peak_rss_bytes/rss_method functions only; historical cache-row claims not transferred"
+    }
+  ],
+  "actual_production_apis": [
+    "LibraryApp.add_text",
+    "LibraryApp.browse (500-edition keyset pages)",
+    "LibraryApp.search_page (existing source/result cursor bounds)",
+    "LibraryApp.copy (source-bound quote samples)",
+    "ReadingDesk",
+    "RetainedAssets.resolve",
+    "durable_state.atomic_json(create-only)"
+  ],
+  "no_application_mutations": true,
+  "no_workflow_edits": true,
+  "no_refs_changed": true,
+  "source_readback": "BYTE_EXACT",
+  "source_parse": "NOT_RUN",
+  "tests": {
+    "module": "tests/packaging/test_library_scale_benchmark.py",
+    "static_expected_cases": 24,
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "native": "NOT_REQUIRED_FOR_NON_GUI_HARNESS",
+    "required_cases": [
+      "test_real_imports_source_and_result_cursors_reading_and_cancel_recover",
+      "test_actual_cli_runs_three_owned_processes_and_binds_parent_import",
+      "test_real_cli_budget_stop_is_partial_and_remaining_scale_is_not_run",
+      "test_actual_child_refuses_origin_tamper_before_creating_corpus",
+      "test_configuration_replacement_after_precheck_cannot_change_measured_work"
+    ],
+    "selection": "Add the whole module to existing source and installed gates. Both scripts must be available at checkout-relative scripts paths; existing application/wheel origins remain independently enforced.",
+    "child_origin": "--expected-application-origin matches the actually imported parent application.py. Source mode is used only when that actual path is under this checkout/src; installed mode does not inject repository source.",
+    "module_origins": [
+      "carr_library.application",
+      "carr_library.search.paging",
+      "carr_library.reader.reading_desk",
+      "carr_library.catalog.read_views",
+      "carr_library.storage.revisions",
+      "carr_library.durable_state"
+    ]
+  },
+  "large_runs": {
+    "status": "NOT_RUN",
+    "default_sizes": [
+      1000,
+      10000,
+      50000
+    ],
+    "segments_per_book": 20,
+    "utf8_bytes_per_segment": 2048,
+    "largest_actual_segments_if_completed": 1000000,
+    "largest_source_utf8_bytes_if_completed": 2048950000,
+    "native_gui": "NOT_RUN",
+    "real_world_mixed_formats": "NOT_MEASURED",
+    "semantic_quality": "NOT_MEASURED"
+  },
+  "integrity": [
+    "No direct SQL population",
+    "Actual retained files rehashed before/after",
+    "Canonical database bytes unchanged by search/reading",
+    "Exact no-loss/no-duplicate source/result traversal",
+    "Excluded workspace has same query and cannot enter results",
+    "Real cancellation preserves completed source-action handles",
+    "Fresh owned build/measure/restart processes with source/hash/PID checks",
+    "Original output is not overwritten; no pruning",
+    "PARTIAL budgets preserve actual work and mark later sizes NOT_RUN"
+  ],
+  "budget_notice": "Disk checks are measured checkpoints at phase boundaries and every64imports, not a filesystem quota; per-phase timeout is cooperative plus direct-interpreter outer timeout.",
+  "audit_blob": "30befda2d7a8704c7855597ae7f5bf62f8d0d293",
+  "review_correction": {
+    "finding": "Preliminary hash and separately opened JSON could read different valid configurations.",
+    "resolution": "Expected configuration SHA256 is checked against the exact bounded raw JSON snapshot that is decoded.",
+    "regression": "Actual same-size os.replace changes segment_bytes128→192 immediately after precheck; child refuses before canonical library creation."
+  },
+  "static_review": "Prior boundaries accepted; narrow actual SearchResult display/ordinal correction handed off for read-only acknowledgement. NOT_RUN.",
+  "ordinal_correction": "SearchResult.page is display text, not an ordinal. Traversal uses the same returned handle's canonical _Selection.ordinal, checking workspace/edition/revision equality; existing real corpus regression also asserts actual display/ordinal types. Source authentication remains production search + whole retained bytes + sampled copy."
+}

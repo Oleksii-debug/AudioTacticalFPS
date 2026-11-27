@@ -3,6 +3,7 @@ from ..audio.dsp import effect_controls
 from ..audio.effect_presets import (EffectChainSession, EffectPresetStore,
                                    PresetSaveCommittedError, builtin_presets, default_effect)
 from ..audio.models import Effect
+from ..audio.envelopes import ENVELOPE_KINDS, ENVELOPE_NOTICE, read_envelope
 
 
 def _number(value):
@@ -10,6 +11,13 @@ def _number(value):
 
 
 def effect_label(effect):
+    if effect.kind in ENVELOPE_KINDS:
+        curve = read_envelope(effect, 192000)
+        points = ', '.join(f'{_number(effect.parameters.get("time_" + str(index + 1), index))}s: {_number(value)}'
+                           for index, value in enumerate(curve.values))
+        return (f'{effect.kind.replace("_", " ")}; '
+                f'{"enabled" if effect.enabled else "bypassed"}; '
+                f'{"hold" if curve.interpolation else "linear"}; {points}')
     controls = ', '.join(f'{key}={_number(value)}' for key, value in effect.parameters.items())
     return f'{effect.kind}; {"enabled" if effect.enabled else "bypassed"}; {controls or "default controls"}'
 
@@ -26,6 +34,10 @@ def edit_effect(parent, effect, *, sample_rate, guard=lambda: None):
     layout = wx.BoxSizer(wx.VERTICAL)
     definitions = effect_controls()[effect.kind]
     controls = {}
+    if effect.kind in ENVELOPE_KINDS:
+        notice = wx.StaticText(panel, label=ENVELOPE_NOTICE)
+        notice.Wrap(570)
+        layout.Add(notice, 0, wx.EXPAND | wx.ALL, 8)
     for name, definition in definitions.items():
         maximum = definition['maximum']
         label = (f"{name.replace('_', ' ')} ({definition['unit']}); "

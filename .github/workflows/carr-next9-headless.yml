@@ -1,0 +1,214 @@
+name: CARR next9 envelopes and real retained corpus
+
+on:
+  push:
+    branches: ['carr/ci-next9-headless-*']
+    paths: ['carr-library/**', '.github/workflows/carr-next9-headless.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contracts:
+    name: Ubuntu actual PCM and corpus harness contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: carr-next9-headless-source-${{ github.ref }}
+      cancel-in-progress: true
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare existing pinned headless dependencies and Ubuntu codec
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          mkdir ci-next9-results
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+          python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          python -B -m pip check
+          python -I -B - <<'PY' | tee ci-next9-results/runtime.json
+          from hashlib import sha256
+          import json, os, platform, shutil, subprocess, sys
+          from pathlib import Path
+          root = Path.cwd().resolve()
+          def run(args):
+              return subprocess.run(args, check=True, stdin=subprocess.DEVNULL,
+                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=30).stdout
+          head = run(['git', 'rev-parse', 'HEAD']).strip()
+          assert head == os.environ['EXPECTED_SOURCE_SHA']
+          runtime = {}
+          for name in ('ffmpeg', 'ffprobe'):
+              path = Path(shutil.which(name) or '/missing').resolve(strict=True)
+              assert path == Path('/usr/bin/' + name).resolve(strict=True)
+              runtime[name] = {'sha256': sha256(path.read_bytes()).hexdigest(),
+                               'version': run([str(path), '-version']).splitlines()[0]}
+          filters = run(['/usr/bin/ffmpeg', '-hide_banner', '-filters'])
+          assert 'aeval' in filters and 'alimiter' in filters and 'loudnorm' in filters
+          result = {'status': 'PREPARED', 'head': head,
+              'tree': run(['git', 'rev-parse', 'HEAD^{tree}']).strip(),
+              'python': sys.version, 'platform': platform.platform(), 'runtime': runtime,
+              'packages': run(['dpkg-query', '-W', 'ffmpeg', 'libavfilter9']).splitlines(),
+              'qualification': 'Ubuntu source PCM only; not Windows installed, playback, acoustic, native-egress or release acceptance'}
+          print(json.dumps(result, indent=2))
+          PY
+      - name: Require whole new suites and existing affected processing contracts
+        timeout-minutes: 20
+        run: |
+          set -euo pipefail
+          python -B scripts/ci_check.py --jobs 3 \
+            tests/audio/test_envelopes.py \
+            tests/studio/test_envelope_workflow.py \
+            tests/audio/test_dsp.py \
+            tests/audio/test_effect_presets.py \
+            tests/audio/test_audio_conversion.py \
+            tests/studio/test_project_effects.py \
+            tests/storage/test_backup_studio_effects.py \
+            tests/packaging/test_library_scale_benchmark.py \
+            2>&1 | tee ci-next9-results/source-contracts.txt
+          python -I -B - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          root = Path('ci-next9-results')
+          raw = (root / 'source-contracts.txt').read_bytes()
+          lines = raw.decode('utf-8').splitlines()
+          expected = {
+              'tests/audio/test_envelopes.py': 64,
+              'tests/studio/test_envelope_workflow.py': 17,
+              'tests/packaging/test_library_scale_benchmark.py': 24,
+          }
+          for name, count in expected.items():
+              assert lines.count(f'PASS: {name}: junit_passed={count}, failed=0, skipped=0, pytest_exit=0') == 1, name
+          result = {'status': 'PASS', 'expected_new_whole_suites': expected,
+                    'all_whole_suites': 8, 'strict_fail_skip_xfail_xpass_policy': True,
+                    'log_sha256': sha256(raw).hexdigest(), 'qualification': 'Exact source only'}
+          (root / 'source-summary.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: next9-headless-contracts-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-next9-results/
+          if-no-files-found: error
+
+  retained-corpus:
+    name: Actual ${{ matrix.books }} retained books
+    needs: source-contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 195
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        books: [1000, 10000, 50000]
+    concurrency:
+      group: carr-next9-corpus-${{ github.sha }}-${{ matrix.books }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      EXPECTED_SOURCE_SHA: ${{ github.sha }}
+      CARR_MEASURED_BOOKS: ${{ matrix.books }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Prepare exact source and pinned headless dependencies
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          mkdir ci-corpus-results
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git rev-parse HEAD > ci-corpus-results/tested-commit.txt
+          git rev-parse 'HEAD^{tree}' > ci-corpus-results/tested-tree.txt
+          python -B -m pip install --only-binary=:all: --require-hashes -r packaging/linux-sync-core-cp311.lock -r packaging/trusted-client.lock -r packaging/windows-sync-test-cp311.lock
+          python -B -m pip check
+      - name: Build traverse and restart the actual requested book corpus
+        timeout-minutes: 184
+        run: |
+          set -euo pipefail
+          python -B scripts/benchmark_library_scale.py \
+            --output-dir "$RUNNER_TEMP/resonance-corpus-$CARR_MEASURED_BOOKS" \
+            --source-root "$GITHUB_WORKSPACE/carr-library/src" \
+            --expected-application-origin "$GITHUB_WORKSPACE/carr-library/src/carr_library/application.py" \
+            --sizes "$CARR_MEASURED_BOOKS" --segments-per-book 20 --segment-bytes 2048 \
+            --result-page-size 37 --repeats 9 --phase-timeout 3600 \
+            --max-disk-bytes 25769803776 --min-free-bytes 1073741824 \
+            2>&1 | tee ci-corpus-results/benchmark.txt
+      - name: Retain exact measurements and finite budget failures without media or corpus payload
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          python -I -B - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+          count = int(os.environ['CARR_MEASURED_BOOKS'])
+          source = Path(os.environ['RUNNER_TEMP']) / f'resonance-corpus-{count}'
+          destination = Path('ci-corpus-results')
+          allowed = ('configuration.json', 'library-corpus-scale.json',
+                     f'{count}/build.json', f'{count}/measure.json', f'{count}/restart.json')
+          for relative in allowed:
+              path = source / relative
+              if path.is_file() and not path.is_symlink():
+                  target = destination / relative
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copyfile(path, target)
+          report_path = destination / 'library-corpus-scale.json'
+          if report_path.exists():
+              report = json.loads(report_path.read_text(encoding='utf-8'))
+              assert report['requested_sizes'] == [count]
+              print(json.dumps({'status': report['status'], 'requested_books': count,
+                  'cases': [{'requested_books': c['requested_books'], 'status': c['status'],
+                      'phases': [{'phase': p['phase'], 'status': p['status'],
+                                  'books': p.get('books'), 'segments': p.get('segments'),
+                                  'reason': p.get('reason')} for p in c.get('phases', [])]}
+                      for c in report['cases']]}, ensure_ascii=True), flush=True)
+          else:
+              print(json.dumps({'status': 'NO_COMPLETED_REPORT', 'requested_books': count}), flush=True)
+          forbidden = {'.wav', '.mp3', '.dll', '.exe', '.whl', '.sqlite', '.zip', '.audio'}
+          assert not any(path.suffix.lower() in forbidden for path in destination.rglob('*') if path.is_file())
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: ${{ always() }}
+        with:
+          name: retained-corpus-${{ matrix.books }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-corpus-results/
+          if-no-files-found: error

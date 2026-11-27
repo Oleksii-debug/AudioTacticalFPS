@@ -38,7 +38,7 @@ def main():
     import wx
     from carr_library.application import LibraryApp
     from carr_library.audio import Effect
-    from carr_library.audio import dsp, effect_presets, process
+    from carr_library.audio import dsp, effect_presets, envelopes, process
     from carr_library import durable_state, runtime_settings
     from carr_library.operations import broker
     from carr_library.speech import VoiceRegistry
@@ -49,7 +49,7 @@ def main():
     from carr_library.ui import effects_dialog, studio_clips
     from carr_library.ui.desktop_app import DesktopFrame
 
-    checks, errors, proof, module_origins = [], [], {}, {}
+    checks, errors, proof, module_origins, module_hashes = [], [], {}, {}, {}
     def check(name, condition):
         if not condition:
             raise AssertionError(name)
@@ -150,9 +150,10 @@ def main():
     check('actual wx Windows controls', wx.Platform == '__WXMSW__')
     checkout = Path(__file__).resolve().parents[1]
     for module in (project_module, clips, managed_inputs, render, studio_clips, effects_dialog,
-                   effect_presets, dsp, process, broker, durable_state, runtime_settings):
+                   effect_presets, envelopes, dsp, process, broker, durable_state, runtime_settings):
         actual = Path(module.__file__).resolve()
         module_origins[module.__name__] = str(actual)
+        module_hashes[module.__name__] = sha256(actual.read_bytes()).hexdigest()
         original = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         check('exact installed source: ' + module.__name__,
               actual.is_relative_to(Path(sys.prefix).resolve()) and not actual.is_relative_to(checkout)
@@ -307,6 +308,78 @@ def main():
                     check('processing retains measured sample grid', pcm(master)[1] == pcm(baseline)[1])
                     check('saved timeline binds ordered project effects',
                           processed['result']['effects'] == project_module.project_effects(edited))
+
+                    def edit_envelope(popup):
+                        for name, value in (
+                                ('point count (integer points); 2 to 8', 3),
+                                ('interpolation (0 linear, 1 hold); 0 to 1', 1),
+                                ('time 2 (seconds); 0 to 86400', .25),
+                                ('value 2 (dB); -120 to 24', -12),
+                                ('time 3 (seconds); 0 to 86400', .5),
+                                ('value 3 (dB); -120 to 24', -6)):
+                            control = find(popup, name)
+                            check('native envelope numeric field: ' + name, isinstance(control, wx.TextCtrl))
+                            control.ChangeValue(str(value))
+                        press(find(popup, 'Apply effect'))
+
+                    def review_envelope(popup):
+                        kinds = find(popup, 'Effect type to add')
+                        check('native bus exposes width and refuses mono pan envelopes',
+                              kinds.FindString('width_envelope') != wx.NOT_FOUND
+                              and kinds.FindString('pan_envelope') == wx.NOT_FOUND)
+                        index = kinds.FindString('gain_envelope')
+                        check('installed native effect picker offers gain envelope', index != wx.NOT_FOUND)
+                        kinds.SetSelection(index)
+                        press(find(popup, 'Add effect'))
+                        later('Edit gain_envelope effect', edit_envelope)
+                        press(find(popup, 'Edit selected effect'))
+                        ordered = find(popup, 'Ordered audio effects')
+                        reviewed_label = ordered.GetString(ordered.GetSelection())
+                        check('native envelope review shows explicit hold points',
+                              'hold' in reviewed_label and '0.25s: -12' in reviewed_label)
+                        press(find(popup, 'Undo chain change'))
+                        check('native envelope edit is reversible before applying',
+                              ordered.GetString(ordered.GetSelection()) != reviewed_label)
+                        press(find(popup, 'Redo chain change'))
+                        check('native envelope redo restores exact reviewed points',
+                              ordered.GetString(ordered.GetSelection()) == reviewed_label)
+                        press(find(popup, 'Apply effect chain'))
+
+                    later('Ordered audio effects', review_envelope)
+                    press(dialog.buttons['master_effects'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Save reviewed sample envelope')
+                    edited = service.projects.load(project.id)
+                    curve = edited.effects[-1]
+                    check('native envelope points persist in existing schema3 history',
+                          edited.schema == 3 and curve.kind == 'gain_envelope'
+                          and envelopes.read_envelope(curve, 24000).frames == (0, 6000, 12000)
+                          and envelopes.read_envelope(curve, 24000).values == (0, -12, -6))
+                    press(dialog.buttons['render'])
+                    pump(lambda: not frame.working and not dialog.pending, 'Render actual sample envelope')
+                    curve_job, = [row for row in service.jobs()
+                                  if row['fingerprint'] == edited.fingerprint and row['status'] == 'complete']
+                    curve_master = Path(curve_job['destination']) / 'master.wav'
+                    old_pcm, new_pcm = array('h'), array('h')
+                    old_pcm.frombytes(pcm(master)[0])
+                    new_pcm.frombytes(pcm(curve_master)[0])
+                    if sys.byteorder != 'little':
+                        old_pcm.byteswap()
+                        new_pcm.byteswap()
+                    measured = []
+                    for sample, gain in ((3613, 0), (9013, -12), (18013, -6)):
+                        factor = 10 ** (gain / 20)
+                        measured.extend(abs(new_pcm[sample * 2 + channel]
+                                            - old_pcm[sample * 2 + channel] * factor) <= 3
+                                        for channel in (0, 1))
+                    check('native saved envelope changes actual PCM at reviewed sample intervals', all(measured))
+                    check('native envelope retains exact sample geometry',
+                          pcm(curve_master)[1] == pcm(master)[1] == (24000, 2, 24000))
+                    check('native envelope receipt binds every saved numeric point',
+                          curve_job['result']['effects'] == project_module.project_effects(edited))
+                    check('native envelope reuses completed unchanged scene audio',
+                          all(node['reused'] for node in curve_job['nodes'].values()
+                              if node['kind'] == 'scene mix')
+                          and any(node['kind'] == 'scene mix' for node in curve_job['nodes'].values()))
                     newer = None
                     def concurrent_review(popup):
                         nonlocal newer
@@ -367,7 +440,11 @@ def main():
             gui.Yield()
         if native_handle is not None:
             native_handle.close()
+    for name, location in module_origins.items():
+        check('unchanged installed module after envelope work: ' + name,
+              sha256(Path(location).read_bytes()).hexdigest() == module_hashes[name])
     print(json.dumps({'result': 'PASS', 'checks': checks, 'module_origins': module_origins,
+        'module_sha256': module_hashes, 'actual_gain_envelope': 'PASS',
         'audio_runtime': proof, 'native_keyboard': 'PASS', 'actual_ffmpeg': 'PASS',
         'fixture': 'actual synthetic PCM and a dormant role; no speech inference',
         'project_schema': 3, 'native_file_pickers': 'NOT_RUN', 'nvda': 'NOT_RUN',

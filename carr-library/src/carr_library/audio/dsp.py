@@ -23,6 +23,8 @@ import tempfile
 from .models import (AudioBudget, AudioCancelled, AudioCleanupPending, AudioError, AudioInfo,
                      AudioUnavailable, Effect, LoudnessInfo, Track, finite, integer)
 from .process import publish_file, run_process
+from .envelopes import (ENVELOPE_KINDS, active_envelope, control_definitions,
+                        envelope_filter, validate_envelope_scope)
 from ..durable_state import local_path
 
 
@@ -81,12 +83,14 @@ _CONTROLS = {
     'loudness': {'target_lufs': (-18, -40, -9, 'LUFS'), 'peak_db': (-1, -9, 0, 'dBTP'),
                  'range_lu': (7, 1, 20, 'LU')},
 }
+_CONTROLS.update(control_definitions())
 _FILTERS = {'gain': 'volume', 'equalizer': 'equalizer', 'highpass': 'highpass',
     'lowpass': 'lowpass', 'lowshelf': 'bass', 'highshelf': 'treble', 'notch': 'bandreject',
     'gate': 'agate', 'compressor': 'acompressor', 'limiter': 'alimiter', 'denoise': 'afftdn',
     'declick': 'adeclick', 'declip': 'adeclip', 'deesser': 'deesser', 'delay': 'aecho',
     'reverb': 'aecho', 'chorus': 'chorus', 'tempo': 'atempo', 'pitch': 'asetrate',
     'width': 'extrastereo', 'loudness': 'loudnorm'}
+_FILTERS.update({kind: 'aeval' for kind in ENVELOPE_KINDS})
 
 
 def effect_controls():
@@ -124,6 +128,8 @@ def effect_filter(effect, sample_rate=24000):
     """Validate *all* controls, including bypassed effects, before compiling."""
     if not isinstance(effect, Effect) or effect.kind not in _CONTROLS:
         raise ValueError('Unsupported audio effect; arbitrary filters are not accepted.')
+    if effect.kind in ENVELOPE_KINDS:
+        return envelope_filter(effect, sample_rate)
     definitions = _CONTROLS[effect.kind]
     unknown = set(effect.parameters) - set(definitions)
     if unknown:
@@ -471,12 +477,19 @@ class AudioRuntime:
         if selected > info.duration - start + 1 / info.sample_rate:
             raise ValueError('Selection exceeds the source audio.')
         chain = self._chain(effects, sample_rate)
+        curve_pan = active_envelope(effects, 'pan_envelope')
+        curve_width = active_envelope(effects, 'width_envelope')
+        if curve_pan and (info.channels != 1 or channels != 2):
+            raise ValueError('Convert pan envelopes require a mono source and stereo output.')
+        if curve_width and (info.channels != 2 or channels != 2):
+            raise ValueError('Convert stereo-width envelopes require a stereo source and stereo output.')
+        validate_envelope_scope(effects, routing='pan' if curve_pan else 'stereo')
         tempo = math.prod(float(effect.parameters.get('factor', 1)) for effect in effects
                           if effect.kind == 'tempo' and effect.enabled)
         output_duration = round(selected / tempo * sample_rate) / sample_rate
         frames = round(output_duration * sample_rate)
         filters = [f'atrim=start={_n(start)}:duration={_n(selected)}', 'asetpts=PTS-STARTPTS',
-                   f'aresample={sample_rate}', f'aformat=sample_fmts=fltp:channel_layouts={"mono" if channels == 1 else "stereo"}',
+                   f'aresample={sample_rate}', f'aformat=sample_fmts=fltp:channel_layouts={"mono" if channels == 1 or curve_pan else "stereo"}',
                    *chain, f'aresample={sample_rate}', f'apad=whole_len={frames}', f'atrim=end_sample={frames}']
         return self._render([*self._base_args(), *self._input_args(source), '-map', '0:a:0',
                              '-af', ','.join(filters)], target, expected_duration=output_duration,
@@ -503,10 +516,12 @@ class AudioRuntime:
             raise ValueError('Every mixed track must be a typed Track.')
         target = self._output(output)
         master = self._chain(effects, sample_rate)
+        validate_envelope_scope(effects, routing='stereo')
         if any(effect.kind == 'tempo' and effect.enabled for effect in effects):
             raise ValueError('Master tempo changes timeline alignment. Change tempo with Convert before mixing.')
         args, graph, prepared = self._base_args(), [], []
         for track in tracks:
+            validate_envelope_scope(track.effects, routing=track.routing, pan=track.pan)
             path = self._input(track.path)
             info = self.inspect(path, cancelled=cancelled)
             if track.trim_start >= info.duration:
@@ -538,7 +553,7 @@ class AudioRuntime:
             if track.routing == 'stereo':
                 if track.pan != 0:
                     raise ValueError('Stereo-preserving routing uses its existing channels; select pan routing to reposition.')
-            else:
+            elif not active_envelope(track.effects, 'pan_envelope'):
                 pan = -1 if track.routing == 'left' else 1 if track.routing == 'right' else track.pan
                 left, right = math.sqrt((1 - pan) / 2), math.sqrt((1 + pan) / 2)
                 filters += [f'pan=stereo|c0={_n(left)}*c0|c1={_n(right)}*c0']

@@ -508,7 +508,8 @@ class ClipDialog(wx.Dialog):
                     guard()
                     if self._cancelled():
                         return
-                    available = tuple(kind for kind in available if kind != 'tempo')
+                    excluded = {'tempo', 'pan_envelope'} if scope in ('scene', 'master') else {'tempo', 'width_envelope'}
+                    available = tuple(kind for kind in available if kind not in excluded)
                     value = show_effect_chain(self, self.library_root, initial,
                         sample_rate=project.sample_rate, available=available, guard=guard)
                     guard()

@@ -193,6 +193,11 @@ def _show(frame, library_root, current_root, scope_current, *, batch=False):
             try:
                 current_root()
                 from .effects_dialog import show_effect_chain
+                # A batch may contain mixed input channel layouts. Spatial
+                # envelopes require an explicitly reviewed mono/stereo scope;
+                # expose them in Studio, where that scope is already known.
+                available = tuple(kind for kind in available
+                                  if kind not in ('pan_envelope', 'width_envelope'))
                 value = show_effect_chain(dialog, library_root, frozen,
                     sample_rate=selected_rate, available=available, guard=current_root)
                 current_root()

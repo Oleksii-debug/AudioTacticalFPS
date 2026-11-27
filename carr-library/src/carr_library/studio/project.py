@@ -10,6 +10,7 @@ from ..durable_state import atomic_json, encode, local_path, read_json, state_lo
 from .managed_inputs import managed_input_sha256
 from ..audio.models import Effect
 from ..audio.effect_presets import checked_chain, read_effect
+from ..audio.envelopes import validate_envelope_scope
 
 
 def _text(value, label, maximum=1_000_000, empty=False):
@@ -241,6 +242,13 @@ class Project:
             raise ValueError('Saved track, scene and master effects require project schema 3.')
         for chain in chains:
             _timeline_effects(chain, self.sample_rate)
+        validate_envelope_scope(self.effects, routing='stereo')
+        for role in self.roles:
+            validate_envelope_scope(role.effects, routing='pan', pan=role.pan)
+        for scene in self.scenes:
+            validate_envelope_scope(scene.effects, routing='stereo')
+            for cue in scene.cues:
+                validate_envelope_scope(cue.effects, routing='pan', pan=cue.pan)
 
     @property
     def fingerprint(self):
