@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAIL_CONSOLE_REPAIR_NOT_RUN",
+  "observed": {
+    "commit": "4fb78e47abb624938e45504c629e4bd5cc602001",
+    "run_id": 46008094966,
+    "job_id": 140536279047,
+    "artifact": {
+      "id": 15204825447,
+      "bytes": 4554134,
+      "sha256": "d485bc9167151da3a15e5fd603cb2d1f877f1a77f5aef84dd6f1ae445ba71bd1"
+    },
+    "source": {
+      "passed": 1,
+      "failed": 6,
+      "cases": 7
+    },
+    "installed": "NOT_RUN",
+    "last_phase_all_six_failures": "native-version-start",
+    "selected_executable": "program/soffice.exe",
+    "libreoffice": {
+      "version": "26.2.7",
+      "msi_sha256": "480fecf759fc6393bd614fbf43753eb95a8198fc1a065d41b727e3b664cd1e59",
+      "bytes": 373121024
+    }
+  },
+  "primary_reference": "https://help.libreoffice.org/latest/en-GB/text/shared/guide/start_parameters.html",
+  "finding": "Publisher prescribes soffice.com for Windows command-line/headless operations and soffice.exe for operation without console. All observed failures occur before version completion.",
+  "repair": {
+    "native_selection": "program/soffice.com",
+    "product_policy": "Require explicit console selection, refuse GUI launcher before native execution, preserve companion executable inventory and held readers.",
+    "native_cases_source": 7,
+    "native_cases_installed": 7,
+    "portable_cases_each": 156,
+    "status": "NOT_RUN"
+  },
+  "limits": "The phase evidence and documented launcher contract justify this candidate. Native successful conversion is not claimed until the repaired source and installed lanes execute."
+}

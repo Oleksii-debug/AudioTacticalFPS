@@ -210,3 +210,31 @@ def test_progress_refuses_untrusted_marker_content_and_aliased_marker(tmp_path):
     office._progress(tmp_path, 'native-version-start')
     os.link(marker, tmp_path / 'alias')
     assert office.progress_detail(tmp_path).endswith('unavailable.')
+
+
+def test_gui_launcher_is_not_silently_promoted_to_unselected_console(tmp_path, monkeypatch):
+    path = installed(tmp_path)
+    gui, console = path.with_name('soffice.exe'), path.with_name('soffice.com')
+    gui.write_bytes(b'Synthetic GUI component')
+    console.write_bytes(b'Synthetic unselected console component')
+    monkeypatch.setattr(office.subprocess, 'Popen', lambda *a, **k: pytest.fail('GUI selection launched native code.'))
+    with pytest.raises(ConversionError, match='explicitly selecting program/soffice.com'):
+        office.OfficeSelection.capture(gui)
+    assert console.read_bytes() == b'Synthetic unselected console component'
+
+
+def test_selected_console_manifest_binds_both_launchers_before_native_work(tmp_path, monkeypatch):
+    path = installed(tmp_path)
+    gui, console = path.with_name('soffice.exe'), path.with_name('soffice.com')
+    gui.write_bytes(b'Synthetic selected GUI companion')
+    console.write_bytes(b'Synthetic explicitly selected console')
+    selection = office.OfficeSelection.capture(console)
+    snapshot = selection.snapshot()
+    assert snapshot['executable'] == 'program/soffice.com'
+    assert {'program/soffice.com', 'program/soffice.exe', 'program/soffice.bin'} <= {
+        row['name'] for row in snapshot['files']}
+    monkeypatch.setattr(office.subprocess, 'Popen', lambda *a, **k: pytest.fail('Admission launched native code.'))
+    assert office._admit(snapshot, '.doc', time.monotonic() + 5) == console
+    gui.write_bytes(b'Changed console companion')
+    with pytest.raises(ConversionError, match='changed'):
+        selection.snapshot()

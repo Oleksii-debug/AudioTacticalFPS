@@ -233,7 +233,7 @@ class WavePlayer:
     def enqueue(self, paths):
         self._queue = self._checked_queue(paths, self._queue)
 
-    def play_index(self, index, *, device_id=_DEVICE_UNSET):
+    def play_index(self, index, *, device_id=_DEVICE_UNSET, start_seconds=None):
         if type(index) is not int or not 0 <= index < len(self._queue):
             raise ValueError('Choose a recording in the current playlist.')
         item = self._queue[index]
@@ -241,7 +241,8 @@ class WavePlayer:
             raise ValueError('The queued recording changed. Add its current version to the playlist again.')
         same_file = self.path == item.path
         loop = self._ab if same_file else None
-        self._start(item.path, start_seconds=loop[0] if loop else 0,
+        beginning = (loop[0] if loop else 0) if start_seconds is None else start_seconds
+        self._start(item.path, start_seconds=beginning,
                     end_seconds=loop[1] if loop else None, device_id=device_id)
         if not same_file:
             self._ab, self.segments = None, ()

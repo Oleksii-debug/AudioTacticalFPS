@@ -162,8 +162,8 @@ qualification is recorded separately by the committed focused gate.
 
 ### Exact focused Windows gate
 
-`.github/workflows/carr-legacy-transcription.yml` runs 265 exact source cases,
-the same 265 installed cases, and 53 exact native-event assertions. The literal
+`.github/workflows/carr-legacy-transcription.yml` runs 268 exact source cases,
+the same 268 installed cases, and 53 exact native-event assertions. The literal
 function-multiplicity and native-label Counters are committed in
 `scripts/legacy_transcription_oracles.json`. Each test phase uses the existing
 isolated acceptance harness, the complete tracked-checkout attestation, the
@@ -185,6 +185,8 @@ runtime payload enters the evidence artifact.
 
 ## Observed Windows export correction — 2026-11-27
 
-Frozen run 46009009552 (job 140539398233, source e0dcac834abb46bda55a9d662674d3638188d682) executed all 265 source and 265 installed cases. Each population had 264 passes and one failure: the second `history-export` invocation incorrectly replaced its existing destination because the shared writer defaults to caller-authorized replacement. The native phase completed, but the aggregate gate correctly remained FAIL.
+Frozen run 46009009552 (job 140539398233, source e0dcac834abb46bda55a9d662674d3638188d682) executed 268 source and 268 installed cases. Each population had 267 passes and one failure: the second `history-export` invocation incorrectly replaced its existing destination because the shared writer defaults to caller-authorized replacement. The native phase completed, but the aggregate gate correctly remained FAIL.
 
-The history exporter now requests atomic create-only publication whenever no captured destination approval is supplied. The native dialog can still pass its existing explicitly confirmed destination snapshot. The CLI regression checks both an identical existing output and a different user-authored existing file, retaining the same case identity and exact 265/265/53 gate populations. The original failure is retained as evidence; this correction requires its own actual Windows run.
+The history exporter now requests atomic create-only publication whenever no captured destination approval is supplied. The native dialog can still pass its existing explicitly confirmed destination snapshot. The CLI regression checks both an identical existing output and a different user-authored existing file, retaining the same case identity and complete selected test population. The original failure is retained as evidence; this correction requires its own actual Windows run.
+
+The complete actual pytest summaries also exposed an oracle-authoring error: the inherited profile-selector test uses `range(3)`, but its declared multiplicity was zero. All three cases were executed in the first run. The corrected exact oracle requires 268 source + 268 installed cases and retains all 53 native labels. No test was removed or weakened. The export-only frozen correction retains its original bytes; the combined export/oracle correction has separate source identity and qualification.

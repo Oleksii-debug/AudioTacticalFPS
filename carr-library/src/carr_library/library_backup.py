@@ -375,11 +375,29 @@ def _validate_audio_batches(db, root, *, cancelled=lambda: False):
         _audio_batch_adapter().validate_state_tree(root, db=db, cancelled=cancelled)
 
 
+def _playback_queue_adapter():
+    from .audio import playlist
+    return playlist
+
+
+def _playback_queue_path(value):
+    return (isinstance(value, str) and value.startswith('playback-queue/')
+            and _playback_queue_adapter().is_state_path(value))
+
+
+def _playback_queue_files(root, *, cancelled=lambda: False):
+    return _playback_queue_adapter().state_paths(root, cancelled=cancelled)
+
+
+def _validate_playback_queue(root, *, cancelled=lambda: False):
+    return _playback_queue_adapter().validate_state_tree(root, cancelled=cancelled)
+
+
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
     if (_reader_path(value) or _assistant_path(value) or _historical_path(value) or _legacy_asr_path(value)
             or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)
-            or _recording_path(value) or _audio_batch_path(value)):
+            or _recording_path(value) or _audio_batch_path(value) or _playback_queue_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -461,6 +479,7 @@ def _sidecar_info(root, relative):
              _transcription_adapter(relative).state_limit(relative) if _transcription_path(relative) else
              _recording_adapter().state_limit(relative) if _recording_path(relative) else
              _audio_batch_adapter().state_limit(relative) if _audio_batch_path(relative) else
+             _playback_queue_adapter().state_limit(relative) if _playback_queue_path(relative) else
              _legacy_asr_limit(relative) if _legacy_asr_path(relative) else
              MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
@@ -528,6 +547,13 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
     resource_policy = _resource_policy_files(root, cancelled=cancelled)
     with ExitStack() as stack:
         stack.enter_context(_legacy_asr_guard(root))
+        # The producer takes the outer writer before this namespace lock.
+        # Snapshot its complete retained media and cursor only while idle.
+        try:
+            stack.enter_context(_playback_queue_adapter().snapshot_guard(root))
+        except RuntimeError as exc:
+            raise RestoreError('The playback queue is being saved; retry backup after it stops.') from exc
+        playback_queue = _playback_queue_files(root, cancelled=cancelled)
         if optional_present(root / 'audio-batches'):
             try:
                 # Same lock order as the producer: outer library writer, then
@@ -604,7 +630,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
                     or _transcription_files(root) != transcription
                     or _resource_policy_files(root, cancelled=cancelled) != resource_policy
                     or _recording_files(root, cancelled=cancelled) != recordings
-                    or _audio_batch_files(root, cancelled=cancelled) != audio_batches):
+                    or _audio_batch_files(root, cancelled=cancelled) != audio_batches
+                    or _playback_queue_files(root, cancelled=cancelled) != playback_queue):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
@@ -756,6 +783,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
     for path in _recording_files(root, cancelled=cancelled):
         add(path)
     for path in _audio_batch_files(root, cancelled=cancelled):
+        add(path)
+    for path in _playback_queue_files(root, cancelled=cancelled):
         add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
@@ -937,6 +966,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_recordings(app.root, cancelled=cancelled)
                 _validate_audio_batches(snapshot_storage.db, app.root, cancelled=cancelled)
+                _validate_playback_queue(app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             legacy_asr = _capture_legacy_asr(app.root, stage / SIDECARS, cancelled=cancelled)
@@ -961,6 +991,8 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
             if any(_audio_batch_path(entry['path']) for entry in sidecars):
                 with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
                     _validate_audio_batches(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
+            if any(_playback_queue_path(entry['path']) for entry in sidecars):
+                _validate_playback_queue(stage / SIDECARS, cancelled=cancelled)
             # Refuse a newly introduced project before interpreting its files.
             # The final check also covers inventory changes during the rescan.
             check_projects()
@@ -1185,6 +1217,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         assistant_job_bytes, assistant_template_bytes, assistant_templates = 0, 0, 0
         translation_total, translation_jobs, translation_caches = 0, 0, 0
         supplied_total, supplied_files, supplied_jobs = 0, 0, set()
+        playback_total = playback_files = 0
         for entry in entries:
             if (type(entry) is not dict or set(entry) != {field, 'size_bytes', 'sha256'}
                     or not _backup_sidecar_allowed(entry[field])
@@ -1204,6 +1237,14 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             if (_recording_path(entry[field])
                     and entry['size_bytes'] > _recording_adapter().state_limit(entry[field])):
                 raise RestoreError('recording sidecar byte limit')
+            if _playback_queue_path(entry[field]):
+                adapter = _playback_queue_adapter()
+                playback_total += entry['size_bytes']
+                playback_files += 1
+                if (entry['size_bytes'] > adapter.state_limit(entry[field])
+                        or playback_total > adapter.MAX_TOTAL_BYTES + adapter.MAX_STATE_BYTES
+                        or playback_files > adapter.MAX_ITEMS + 1):
+                    raise RestoreError('Retained playback queue count or byte limit')
             if _resource_policy_path(entry[field]) and entry['size_bytes'] > MAX_RESOURCE_POLICY:
                 raise RestoreError('resource policy sidecar byte limit')
             if _reader_path(entry[field]):
@@ -1330,6 +1371,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
             _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
             _validate_recordings(checked_root, cancelled=cancelled)
             _validate_audio_batches(storage.db, checked_root, cancelled=cancelled)
+            _validate_playback_queue(checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,

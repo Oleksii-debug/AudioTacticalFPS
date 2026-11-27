@@ -129,7 +129,7 @@ jobs:
             $arguments = '/a "' + $prepared.libreoffice_msi + '" /qn /norestart TARGETDIR="' + $office + '" /l*v "' + $msiLog + '"'
             $process = Start-Process -FilePath $msiexec -ArgumentList $arguments -Wait -PassThru
             if ($process.ExitCode -ne 0) { throw ('Pinned LibreOffice extraction failed: ' + $process.ExitCode) }
-            $matches = @(Get-ChildItem -LiteralPath $office -Recurse -File -Filter 'soffice.exe' |
+            $matches = @(Get-ChildItem -LiteralPath $office -Recurse -File -Filter 'soffice.com' |
                          Where-Object { $_.Directory.Name -ceq 'program' })
             if ($matches.Count -ne 1) { throw 'Expected one actual extracted LibreOffice installation.' }
             "CARR_SOFFICE=$($matches[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
