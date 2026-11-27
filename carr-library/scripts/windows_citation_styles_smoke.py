@@ -55,6 +55,7 @@ def main():
     from carr_library.ui import academic_library_dialog, citation_styles_dialog
 
     checks, failures, network_attempts = [], [], []
+    failure_exit = [None]
     key_events = deque(maxlen=24)
     user32 = ctypes.WinDLL('user32', use_last_error=True)
     user32.GetForegroundWindow.argtypes = []
@@ -67,6 +68,38 @@ def main():
     user32.SetForegroundWindow.restype = wintypes.BOOL
     user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     user32.GetClassNameW.restype = ctypes.c_int
+    user32.GetWindowTextW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user32.GetWindowTextW.restype = ctypes.c_int
+    user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+    user32.GetWindow.argtypes = [wintypes.HWND, wintypes.UINT]
+    user32.GetWindow.restype = wintypes.HWND
+    user32.GetDlgItem.argtypes = [wintypes.HWND, ctypes.c_int]
+    user32.GetDlgItem.restype = wintypes.HWND
+    user32.GetDlgCtrlID.argtypes = [wintypes.HWND]
+    user32.GetDlgCtrlID.restype = ctypes.c_int
+    user32.IsWindowVisible.argtypes = [wintypes.HWND]
+    user32.IsWindowVisible.restype = wintypes.BOOL
+    user32.IsWindowEnabled.argtypes = [wintypes.HWND]
+    user32.IsWindowEnabled.restype = wintypes.BOOL
+
+    def native_title(handle):
+        title = ctypes.create_unicode_buffer(512)
+        user32.GetWindowTextW(handle, title, len(title))
+        return title.value
+
+    def overwrite_prompt():
+        # wxMSW MessageDialog uses a real Win32 message/task dialog. Observe
+        # only this process's foreground window; do not replace its factory,
+        # ShowModal(), return value, controls, or event handler.
+        handle = user32.GetForegroundWindow()
+        process = wintypes.DWORD()
+        if handle:
+            user32.GetWindowThreadProcessId(handle, ctypes.byref(process))
+        if (process.value == os.getpid() and user32.IsWindowVisible(handle)
+                and native_title(handle) == 'Replace bibliography file'):
+            return handle
+        return None
 
     def check(name, condition):
         if not condition:
@@ -93,8 +126,7 @@ def main():
 
     class ProbeApp(wx.App):
         def OnExceptionInMainLoop(self):
-            failures.append(traceback.format_exc())
-            self.ExitMainLoop()
+            abort_native_run(traceback.format_exc(), 'native event-loop exception')
             return False
 
     gui = ProbeApp(False)
@@ -120,7 +152,9 @@ def main():
             'top_active': top.IsActive() if top is not None else None,
             'foreground_handle': int(foreground or 0),
             'foreground_class': native_class.value,
+            'overwrite_prompt_handle': int(overwrite_prompt() or 0),
             'thread_focus_handle': int(user32.GetFocus() or 0),
+            'thread_focus_control_id': user32.GetDlgCtrlID(user32.GetFocus()),
             'thread_active_handle': int(user32.GetActiveWindow() or 0),
             'recent_key_events': list(key_events),
         }, sort_keys=True), flush=True)
@@ -135,6 +169,21 @@ def main():
                 })
                 event.Skip()
             control.Bind(event_type, observe)
+
+    def abort_native_run(error, reason):
+        failures.append(error)
+        print(json.dumps({'result': 'FAIL', 'error': error, 'native_step': reason}), flush=True)
+        if failure_exit[0] is None:
+            # A native TaskDialogIndirect loop may outlive wx.ExitMainLoop().
+            # Fail within a bound even if its window loses foreground or the
+            # GUI cannot unwind; never manufacture an answer or a passing check.
+            failure_exit[0] = threading.Timer(3, lambda: os._exit(1))
+            failure_exit[0].daemon = True
+            failure_exit[0].start()
+        try:
+            diagnostics(reason)
+        finally:
+            gui.ExitMainLoop()
 
     def pump_until(predicate, explanation, timeout=12):
         """Yield to MainLoop between checks; never replace native dispatch."""
@@ -329,6 +378,8 @@ def main():
                 executor.observe = lambda: {
                     'busy_controls': not dialog.generate.IsEnabled()
                     and all(not control.IsEnabled() for control in dialog.options),
+                    'publication_disabled': all(not control.IsEnabled() for control in (
+                        dialog.copy_bibliography, dialog.copy_citations, dialog.export_button)),
                     'close_enabled': dialog.close_button.IsEnabled(),
                 }
                 dialog.style_choice.SetSelection(next(
@@ -464,6 +515,171 @@ def main():
                          cancelled=lambda: True), TimeoutError, 'cancelled export reports cancellation')
                 check('cancelled export creates no destination', not cancelled_destination.exists())
 
+                # Exercise the actual export button and both real modal dialogs.
+                # Only the file chooser's selected temporary path is controlled;
+                # format selection and overwrite answers use native keys.
+                selected_export_path = [None]
+                export_pickers = []
+                original_picker = wx.FileDialog
+                native_format_dialog = wx.SingleChoiceDialog
+                native_message_dialog = wx.MessageDialog
+
+                class ChosenExportFile:
+                    def __init__(self, parent, message, **options):
+                        check('native export action requests only its explicit save picker',
+                              parent is dialog and message == 'Save formatted bibliography'
+                              and options['style'] & wx.FD_SAVE
+                              and not options['style'] & wx.FD_OVERWRITE_PROMPT)
+                        self.path = selected_export_path[0]
+                        self.destroyed = False
+                        export_pickers.append(self)
+
+                    def ShowModal(self):
+                        return wx.ID_OK
+
+                    def GetPath(self):
+                        return str(self.path)
+
+                    def Destroy(self):
+                        self.destroyed = True
+
+                def format_dialog():
+                    return next((window for window in wx.GetTopLevelWindows()
+                                 if isinstance(window, native_format_dialog)
+                                 and window.GetParent() is dialog
+                                 and window.IsShown() and window.IsModal()
+                                 and window.GetTitle() == 'Export bibliography'), None)
+
+                def begin_native_export(path, format_name='text'):
+                    selected_export_path[0] = path
+                    count = len(executor.jobs)
+                    yield from press(dialog.export_button)
+                    yield from pump_until(lambda: format_dialog() is not None,
+                               'The real export format dialog did not open.')
+                    choice = format_dialog()
+                    children = list(choice.GetChildren())
+                    for child in children:
+                        children.extend(child.GetChildren())
+                    choices = next((child for child in children if isinstance(child, wx.ListBox)), None)
+                    check('export format uses the real native modal list and original choices',
+                          choices is not None and choices.GetStrings() == [
+                              label for _, label, _ in bibliography_workbench.EXPORT_FORMATS])
+                    observe_keys(choices)
+                    yield from focus(choices)
+                    yield from key(wx.WXK_HOME)
+                    index = next(i for i, item in enumerate(bibliography_workbench.EXPORT_FORMATS)
+                                 if item[0] == format_name)
+                    for _ in range(index):
+                        yield from key(wx.WXK_DOWN)
+                    yield from pump_until(lambda: choices.GetSelection() == index,
+                               'Native keys did not select the intended export format.')
+                    check('native format selection matches the requested export',
+                          choices.GetStringSelection() == bibliography_workbench.EXPORT_FORMATS[index][1])
+                    confirm = wx.Window.FindWindowById(wx.ID_OK, choice)
+                    check('the real format dialog exposes its native OK button', isinstance(confirm, wx.Button))
+                    yield from press(confirm)
+                    return count
+
+                def real_overwrite_prompt():
+                    yield from pump_until(lambda: overwrite_prompt() is not None,
+                               'The real native overwrite confirmation did not open.')
+                    handle = overwrite_prompt()
+                    # Win32 standard IDs: IDYES=6, IDNO=7. wxMSW uses them for
+                    # both MessageBox and TaskDialogIndirect implementations.
+                    yes_button = user32.GetDlgItem(handle, 6)
+                    no_button = user32.GetDlgItem(handle, 7)
+                    check('overwrite confirmation is an owned native dialog with Yes and No',
+                          user32.GetWindow(handle, 4) == dialog.GetHandle()
+                          and yes_button and no_button
+                          and user32.IsWindowVisible(yes_button) and user32.IsWindowVisible(no_button)
+                          and user32.IsWindowEnabled(yes_button) and user32.IsWindowEnabled(no_button))
+                    yield from pump_until(lambda: user32.GetFocus() == no_button,
+                               'The real overwrite dialog did not focus its default No button.')
+                    check('the real overwrite confirmation starts with No focused by default',
+                          user32.GetFocus() == no_button)
+                    return handle, yes_button
+
+                def answer_yes(handle, yes_button):
+                    yield from key(wx.WXK_TAB, wx.MOD_SHIFT)
+                    yield from pump_until(lambda: overwrite_prompt() == handle
+                                          and user32.GetFocus() == yes_button,
+                               'Shift+Tab did not reach the real overwrite Yes button.')
+                    check('native keyboard navigation reaches the overwrite Yes button', True)
+                    yield from key(wx.WXK_RETURN)
+
+                def export_finished(count):
+                    yield from pump_until(lambda: len(executor.jobs) == count + 1,
+                               'The native export action did not submit exactly one real worker.')
+                    job = executor.jobs[-1]
+                    yield from pump_until(lambda: job['future'].done() and dialog.pending is None,
+                               'The native export worker did not settle.', timeout=45)
+                    check('native export runs in the actual worker with publication controls disabled',
+                          job['submitted_on'] == main_thread and job['executed_on'] != main_thread
+                          and job['busy_controls'] and job['publication_disabled'] and job['close_enabled'])
+                    return job
+
+                wx.FileDialog = ChosenExportFile
+                try:
+                    declined = root / 'native declined overwrite.txt'
+                    declined.write_bytes(b'Existing file retained after default No')
+                    count = yield from begin_native_export(declined)
+                    yield from real_overwrite_prompt()
+                    yield from key(wx.WXK_RETURN)
+                    yield from pump_until(lambda: overwrite_prompt() is None
+                                          and user32.GetForegroundWindow() == dialog.GetHandle(),
+                               'Enter did not dismiss the real default-No confirmation.')
+                    check('default No declines without queuing work or changing the selected file',
+                          len(executor.jobs) == count and dialog.pending is None
+                          and declined.read_bytes() == b'Existing file retained after default No'
+                          and dialog.export_button.IsEnabled())
+
+                    changed = root / 'native changed during confirmation.txt'
+                    changed.write_bytes(b'Original file shown for replacement')
+                    count = yield from begin_native_export(changed)
+                    handle, yes_button = yield from real_overwrite_prompt()
+                    competing = b'Newer work saved while the real confirmation is open'
+                    changed.write_bytes(competing)
+                    check('the competing save occurs while the actual overwrite question remains open',
+                          overwrite_prompt() == handle and changed.read_bytes() == competing)
+                    yield from answer_yes(handle, yes_button)
+                    job = yield from export_finished(count)
+                    check('real Yes after a competing save fails closed and preserves the newer bytes',
+                          isinstance(job['future'].exception(), ValueError)
+                          and changed.read_bytes() == competing
+                          and 'Bibliography not exported:' in dialog.status.GetValue()
+                          and 'destination changed' in dialog.status.GetValue() and focused(dialog.status))
+
+                    approved = root / 'native approved overwrite.txt'
+                    approved.write_bytes(b'Unchanged file explicitly approved for replacement')
+                    count = yield from begin_native_export(approved)
+                    handle, yes_button = yield from real_overwrite_prompt()
+                    yield from answer_yes(handle, yes_button)
+                    job = yield from export_finished(count)
+                    check('real Yes replaces only the unchanged approved destination',
+                          approved.read_bytes() == job['future'].result().encode('utf-8')
+                          and approved.read_text(encoding='utf-8') == formatted.bibliography
+                          and dialog.status.GetValue() == f'Bibliography saved to {approved}.'
+                          and focused(dialog.status))
+
+                    fresh = root / 'native new bibliography.html'
+                    check('the native new-export scenario starts with an absent destination', not fresh.exists())
+                    count = yield from begin_native_export(fresh, 'html')
+                    job = yield from export_finished(count)
+                    check('real format selection and native export publish a fresh HTML file through the worker',
+                          overwrite_prompt() is None
+                          and fresh.read_bytes() == job['future'].result().encode('utf-8')
+                          and 'Content-Security-Policy' in job['future'].result()
+                          and 'Український текст' in job['future'].result()
+                          and dialog.status.GetValue() == f'Bibliography saved to {fresh}.'
+                          and focused(dialog.status))
+                    check('native export scenarios dispose controlled pickers without replacing real dialogs',
+                          len(export_pickers) == 4 and all(item.destroyed for item in export_pickers)
+                          and wx.SingleChoiceDialog is native_format_dialog
+                          and wx.MessageDialog is native_message_dialog
+                          and not list(root.glob('.research-export-*')))
+                finally:
+                    wx.FileDialog = original_picker
+
                 # Only the file-picker choice is controlled. The native button,
                 # bound load handler, filesystem loader and CSL engine remain real.
                 custom_path = root / 'native custom style.csl'
@@ -587,6 +803,8 @@ def main():
                         for module in modules
                     },
                     'native_keyboard': 'PASS', 'native_clipboard': 'PASS',
+                    'native_export_format': 'PASS', 'native_overwrite_confirmation': 'PASS',
+                    'export_file_choice': 'controlled temporary paths only',
                     'native_custom_style': 'PASS', 'custom_style_file_choice': 'controlled path only',
                     'service_exports': ['text', 'html', 'docx'],
                     'manual_keyboard': 'NOT_RUN', 'native_file_pickers': 'NOT_RUN',
@@ -602,16 +820,13 @@ def main():
                     completed.append(True)
                     gui.ExitMainLoop()
                 except BaseException:
-                    failures.append(traceback.format_exc())
-                    diagnostics('native scenario failed')
-                    gui.ExitMainLoop()
+                    abort_native_run(traceback.format_exc(), 'native scenario failed')
                 else:
                     next_tick[0] = wx.CallLater(delay, advance)
 
             def expired():
-                failures.append('Native bibliography acceptance exceeded 150 seconds.')
-                diagnostics('native acceptance watchdog')
-                gui.ExitMainLoop()
+                abort_native_run('Native bibliography acceptance exceeded 150 seconds.',
+                                 'native acceptance watchdog')
 
             watchdog = wx.CallLater(150000, expired)
             next_tick[0] = wx.CallLater(150, advance)
@@ -636,6 +851,8 @@ def main():
             if frame is not None:
                 frame.Destroy()
             gui.Yield()
+            if failure_exit[0] is not None:
+                failure_exit[0].cancel()
     return 0
 
 

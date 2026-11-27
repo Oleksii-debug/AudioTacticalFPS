@@ -177,6 +177,52 @@ citations and bibliography entries disambiguate correctly as `2020a`/`2020b`.
 This implementation is not a claim that every CSL conformance fixture or all
 edge cases of a style manual have been independently verified.
 
+### Stable document citation context
+
+The same `citations` argument also accepts the normalized document-cluster
+shape used by the existing academic integration contract:
+
+```python
+citations = [
+    {"id": "cite-opening", "items": [{"id": "reference-a"}], "note_index": 7},
+    {"id": "cite-followup", "items": [{"id": "reference-a"}], "note_index": 11},
+]
+result = render(records, style=note_style, citations=citations)
+```
+
+The outer `id` identifies an occurrence of a citation cluster in a document;
+each inner item `id` identifies a selected bibliographic record. Explicit
+clusters require `id` and `items`, and accept an optional `note_index`. IDs are
+unique across the complete sequence, at most 200 characters, nonblank, without
+whitespace, unsupported controls or reserved processor names. Supplied note
+indices must be integers from 1 through 1,000,000; booleans and explicit zero
+are rejected. Repeated indices represent multiple clusters in one note, and
+gaps can account for intervening notes that contain no citations.
+
+An omitted or `None` note index resolves to the cluster's sequence position,
+starting at 1, for a note style; it resolves to 0 for an in-text style. This
+preserves legacy example behavior and the document contract's positional note
+default. It does not infer a number from the preceding explicit index. For an
+existing document, supply every actual note number and the complete ordered
+cluster sequence. The processor receives these IDs and effective note indices
+in both the current citation and the preceding-citation context. Thus `ibid`,
+`near-note` and `first-reference-note-number` use the real document positions.
+
+`RenderedBibliography.citation_ids` and `.note_indices` are immutable tuples
+aligned with `.citations`. Existing constructor calls remain compatible because
+the new fields default to empty tuples. Legacy item-list clusters still receive
+`citation-1`, `citation-2`, and so on; those positional example IDs are not a
+persistence mechanism. A document layer retains its IDs across insertion,
+reordering and regeneration. Mixed legacy/document inputs are supported, but
+colliding explicit and generated IDs are rejected instead of renamed.
+
+Document context is data only and is charged to the existing input budget.
+The byte-budget boundary for legacy example inputs is unchanged. Each render
+still uses a fresh bounded interpreter; no document state, sidecar, dependency
+or GUI is added. This API does not create Word fields, manipulate existing
+footnotes or claim live Word updates. Document producers retain responsibility
+for keeping their stored citation order and note numbers consistent.
+
 ## Resource, output and failure behavior
 
 `RenderBudget` defaults to a batch of 2,000 references, 4,000 citation
@@ -216,7 +262,7 @@ writing Word or standalone HTML output.
 From `carr-library/`, with the pinned `quickjs-ng` dependency installed:
 
 ```console
-python -m pytest -q tests/citations/test_csl.py tests/citations/test_custom_csl.py
+python -m pytest -q tests/citations/test_csl.py tests/citations/test_custom_csl.py tests/citations/test_csl_contexts.py
 ```
 
 The suite uses the actual interpreter and actual pinned resources. It covers
@@ -238,6 +284,14 @@ namespaces, controls in decoded XML, prototype-sensitive values, dependent
 parents, macro recursion/depth, installed-style compatibility and real runtime
 CPU/output limits. Passing these tests does not certify arbitrary user styles
 against the full CSL schema or a publisher's formatting manual.
+
+The document-context suite runs the real QuickJS processor with adjacent,
+repeated and gapped note indices, first-reference back-references, manual
+locators, stable IDs after insertion/reordering, complete replay without
+residual state, mixed legacy/document clusters, omitted-note defaults and
+legacy formatting/budget parity. It also verifies bounded context input,
+reserved/duplicate/control-character IDs, explicit-zero and invalid note
+rejection, source immutability and the compatible result constructor.
 
 The initial full run caught a real integration defect: registering every item
 as uncited before citing caused numeric styles to use import order. The fix

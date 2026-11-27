@@ -1,5 +1,6 @@
 """RIS review uses actual catalog transactions and historical source snapshots."""
 from dataclasses import replace
+from threading import Event
 
 import pytest
 
@@ -179,6 +180,72 @@ def test_failed_shared_work_publication_rolls_back_every_selected_field(case, mo
                            {'title': 'Alternative title', 'authors': prepared.record.authors, 'language': 'uk'})
     assert len(calls) == 2
     assert state(app) == before
+
+
+@pytest.mark.parametrize('cancel_after', (1, 2))
+def test_partial_metadata_cancelled_after_staging_rolls_back_every_shared_edition(
+        case, monkeypatch, cancel_after):
+    app, workspace = case
+    current = app.edition_metadata(workspace, 'e1')
+    topic = app.create_topic(workspace, 'Historical evidence')
+    for hit in app.search(workspace, 'railway passage'):
+        app.save_hit(workspace, topic, hit.ref, hit.revision, 'Retained research note')
+    before = state(app)
+    assets = {row.asset: app.assets.resolve(row.asset).read_bytes()
+              for row in app.browse(workspace)}
+    original = Storage.stage_revision
+    cancelled = Event()
+    staged = []
+
+    def cancel_after_staging(self, scope, edition_id, *args, **kwargs):
+        result = original(self, scope, edition_id, *args, **kwargs)
+        staged.append(edition_id)
+        if len(staged) == cancel_after:
+            cancelled.set()
+        return result
+
+    monkeypatch.setattr(Storage, 'stage_revision', cancel_after_staging)
+    with pytest.raises(InterruptedError, match='Metadata update cancelled'):
+        app.update_metadata(workspace, 'e1', title='Cancelled title',
+            authors=('Cancelled author',), language='uk',
+            edition='Unchecked edition', volume='Unchecked volume',
+            expected_metadata=current, selected_fields=('title', 'authors', 'language'),
+            cancelled=cancelled.is_set)
+
+    assert cancelled.is_set()
+    assert staged == ['e1', 'e2'][:cancel_after]
+    reopened = LibraryApp(app.root)
+    assert state(reopened) == before
+    assert {asset: reopened.assets.resolve(asset).read_bytes() for asset in assets} == assets
+
+
+def test_partial_metadata_with_cancellation_callback_preserves_unselected_values(whitespace_case):
+    app, workspace = whitespace_case
+    before = {row.edition_id: row for row in app.browse(workspace)}
+    with app.read(workspace) as db:
+        revisions = dict(db.execute('SELECT edition,revision FROM active WHERE workspace=?', (workspace,)))
+    checked = []
+
+    def not_cancelled():
+        checked.append(True)
+        return False
+
+    revision = app.update_metadata(workspace, 'e1', title='Unchecked title',
+        authors=('Unchecked author',), language='uk',
+        edition='Unchecked edition', volume='Unchecked volume',
+        expected_metadata=before['e1'], selected_fields=('language',),
+        cancelled=not_cancelled)
+
+    reopened = LibraryApp(app.root)
+    after = {row.edition_id: row for row in reopened.browse(workspace)}
+    assert checked
+    assert after['e1'] == replace(before['e1'], language='uk')
+    assert after['e2'] == before['e2']
+    with reopened.read(workspace) as db:
+        current_revisions = dict(db.execute(
+            'SELECT edition,revision FROM active WHERE workspace=?', (workspace,)))
+    assert current_revisions['e1'] == revision != revisions['e1']
+    assert current_revisions['e2'] == revisions['e2']
 
 
 def test_local_file_is_bounded_and_non_regular_paths_are_rejected(tmp_path, monkeypatch):
