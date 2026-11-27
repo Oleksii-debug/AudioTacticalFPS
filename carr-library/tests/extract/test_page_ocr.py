@@ -151,3 +151,34 @@ def test_conflicting_layout_retains_raw_candidates(mixed_pdf, monkeypatch, index
         assert 'Native header' in result['raw_text']
     else:
         assert 'Railway bridge' in result['raw_text']
+
+
+def test_duplicate_ocr_word_identity_rejected():
+    from carr_library.extract.page_ocr import _matching_ocr_blocks
+    tsv = _layout_words(['alpha', 'alpha']).splitlines()
+    cells = tsv[2].split('\t')
+    cells[5] = '1'  # Same hierarchical word ID, different rectangle.
+    cells[6:8] = ['50', '50']
+    tsv[2] = '\t'.join(cells)
+    with pytest.raises(ValueError, match='invalid OCR layout word'):
+        _matching_ocr_blocks('\n'.join(tsv) + '\n', (100, 100), 'alpha alpha')
+
+
+def test_whitespace_only_ocr_word_rejected():
+    from carr_library.extract.page_ocr import _matching_ocr_blocks
+    with pytest.raises(ValueError, match='invalid OCR layout word'):
+        _matching_ocr_blocks(_layout_words(['   ']), (100, 100), '')
+
+
+@pytest.mark.parametrize('different_line', [False, True])
+def test_repeated_ocr_text_with_distinct_word_identity(different_line):
+    from carr_library.extract.page_ocr import _matching_ocr_blocks
+    tsv = _layout_words(['alpha', 'alpha']).splitlines()
+    cells = tsv[2].split('\t')
+    if different_line:
+        cells[4:6] = ['2', '1']
+    cells[6:8] = ['50', '50']
+    tsv[2] = '\t'.join(cells)
+    blocks = _matching_ocr_blocks('\n'.join(tsv) + '\n', (100, 100), 'alpha alpha')
+    assert [item['text'] for item in blocks] == ['alpha', 'alpha']
+
