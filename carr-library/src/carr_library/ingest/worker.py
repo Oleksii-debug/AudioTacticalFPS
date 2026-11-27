@@ -875,6 +875,15 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             raise ValueError('Import request belongs to another library.')
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
+        if record.get('attempt') is not None or record.get('publication_candidate') is not None:
+            # Explicit resume invalidates the previous process hint before
+            # resource admission can stop us. Fresh queued requests still have
+            # no execution attempt until admitted; a completed replay returned
+            # above without changing its durable result or resource ownership.
+            record = dict(record, state='pending', attempt=uuid4().hex,
+                          publication_candidate=None)
+            record.pop('result', None)
+            _store(root, request_id, record)
     from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled, ResourceError, ResourceTimeout
     with ExitStack() as reservations:
         try:

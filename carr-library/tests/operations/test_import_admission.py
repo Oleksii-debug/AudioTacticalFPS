@@ -97,3 +97,57 @@ def test_post_publication_lease_cleanup_error_cannot_relabel_committed_import(tm
     monkeypatch.setattr(worker, '_invoke', lambda *args, **kwargs: pytest.fail('Committed import was repeated'))
     assert app.resume_import(workspace, request['request_id'], timeout=.1)['state'] == 'complete'
     assert len(app.browse(workspace)) == 1 and broker.snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('reason', ['cancelled', 'timed_out'])
+def test_resumed_waiting_import_invalidates_old_attempt_without_starting_or_republishing(
+        tmp_path, monkeypatch, reason):
+    from carr_library.pending_backup import _request
+
+    app, workspace, original, broker = prepared(tmp_path)
+    first = app.import_file(workspace, original, timeout=20)
+    assert first['state'] == 'complete', first
+    identity = first['request_id']
+    old = worker.load_request(app.root, identity)
+    assert old['publication_candidate'] is not None
+    old_attempt = old['attempt']
+    old['state'] = 'running'
+    old.pop('result')
+    worker._store(app.root, identity, old)
+    with app.read(workspace) as db:
+        committed = tuple(db.execute('SELECT * FROM import_publication').fetchone())
+    before = original.read_bytes()
+    stopped = threading.Event()
+    timer = threading.Timer(.05, stopped.set)
+    with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='other-owner', timeout=0):
+        with monkeypatch.context() as guarded:
+            guarded.setattr(worker, '_invoke',
+                lambda *args, **kwargs: pytest.fail('Waiting resume launched a native parser.'))
+            if reason == 'cancelled':
+                timer.start()
+            try:
+                result = app.resume_import(workspace, identity,
+                    cancelled=stopped.is_set, timeout=.2)
+            finally:
+                timer.cancel()
+        assert result['state'] == reason, result
+        current = worker.load_request(app.root, identity)
+        assert current['attempt'] != old_attempt
+        assert current['publication_candidate'] is None
+        assert current['result'] == result
+        for key in ('metadata', 'config', 'source', 'asset_sha256', 'job'):
+            assert current.get(key) == old.get(key)
+        with app.read(workspace) as db:
+            assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == committed
+            # The cancelled/timeout record remains valid typed backup data;
+            # its prior completion hint cannot become restored authority.
+            _request(current, identity, str(app.root), db)
+        assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['other-owner']
+    assert original.read_bytes() == before
+    assert broker.snapshot()['leases'] == []
+    resumed = app.resume_import(workspace, identity, timeout=20)
+    assert resumed['state'] == 'complete', resumed
+    assert len(app.browse(workspace)) == 1
+    with app.read(workspace) as db:
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == committed
+    assert broker.snapshot()['leases'] == []

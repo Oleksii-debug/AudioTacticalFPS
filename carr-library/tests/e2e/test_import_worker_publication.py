@@ -17,6 +17,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.extract.page_ocr import Config
 from carr_library.ingest import worker
+from carr_library.operations import ResourceBroker, ResourceLimits
 
 
 def _source(root, kind):
@@ -200,12 +201,18 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
         tmp_path, monkeypatch, kind, competitor_kind):
     app = LibraryApp(tmp_path / 'private')
     workspace = app.create_workspace('Competing publication after rollback')
+    # This fixture intentionally completes another supervised request before
+    # the first parent has reconciled its stopped child. Give both real
+    # reservations capacity; the default 4 GiB admits only one 3 GiB import.
+    broker = ResourceBroker.for_app(app.root, limits=ResourceLimits(
+        cpu_slots=2, memory_bytes=6 * 1024**3))
     source = _source(tmp_path, kind)
     planned = worker.prepare_request(app.root, workspace, source, _metadata(), Config())
     marker = tmp_path / 'before-commit'
     real_popen, real_stop = worker.subprocess.Popen, worker._stop
     _barrier(monkeypatch, marker, boundary='before')
-    competing = []
+    competing, admissions = [], []
+    real_invoke = worker._invoke
 
     def stop_then_publish(process):
         real_stop(process)
@@ -213,9 +220,25 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
             # The cancelled child has released the writer lock. Complete a
             # different import before its parent can reconcile the hint.
             competing.append(None)
+            held = broker.snapshot()
+            assert held['usage']['cpu_slots'] == 1
+            assert held['usage']['memory_bytes'] == 3 * 1024**3
+            assert [row['operation_id'] for row in held['leases']] == [
+                'import:' + planned['request_id']]
+
+            def competing_invoke(message, **options):
+                held = broker.snapshot()
+                assert held['usage']['cpu_slots'] == 2
+                assert held['usage']['memory_bytes'] == 6 * 1024**3
+                assert {row['operation_id'] for row in held['leases']} == {
+                    'import:' + planned['request_id'], 'import:' + message['request_id']}
+                admissions.append(message['request_id'])
+                return real_invoke(message, **options)
+
             with monkeypatch.context() as clean_launch:
                 clean_launch.setattr(worker.subprocess, 'Popen', real_popen)
                 if competitor_kind != 'direct':
+                    clean_launch.setattr(worker, '_invoke', competing_invoke)
                     competing[0] = worker.run_request(app.root, workspace, source,
                         _metadata(), Config(), timeout=15.0)
                 else:
@@ -234,6 +257,8 @@ def test_competing_commit_after_kill_does_not_complete_stopped_request(
                                 cancelled=marker.exists, timeout=15.0,
                                 request_id=planned['request_id'])
     assert marker.exists() and competing[0]['state'] == 'complete', competing
+    assert admissions == ([] if competitor_kind == 'direct' else [competing[0]['request_id']])
+    assert broker.snapshot()['leases'] == []
     assert result['state'] == 'cancelled' and 'publication_recovered' not in result, result
     request = worker.load_request(app.root, result['request_id'])
     # The source ID is deliberately unchanged; ownership comes from the
