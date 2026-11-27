@@ -684,3 +684,45 @@ head's acceptance. The complete successor must pass its own required gates;
 the current execution outcome remains in PR152. All previously stated private
 asset, model/language quality, corpus capacity, human Windows11/NVDA,
 physical-device/listening and signed-distribution qualifications remain separate.
+
+## Recovered 9f source-phase results and current-contract follow-through
+
+On ordinary supersession by 95ef, the previous integrated Windows job ended
+cancelled at 22:50:44 UTC. Its terminal log then became readable. The
+[exact follow-through](acceptance/20261127-9f2a83-integrated-terminal.json) records the decoded-log SHA-256,
+actual verdicts, complete selector multiplicity and all unreported entries.
+The correct source-phase tally is 103 completed reports, 2269 passes, 22
+failures and zero skips. It includes the real six-case
+`bootstrap/semantic_compat/test_probe.py` report and excludes the PowerShell
+command echo of an expected 58-case PASS string. The declared array has 404
+entries/403 distinct paths: one academic suite runs serially and 403 entries
+remain in the parallel command; OCR selection is intentionally preserved twice.
+Three hundred and one entries have no completed source report.
+
+Nine failed JUnit cases came from an outdated installer/worker harness, one from
+early import cancellation, one from a source-snapshot batch fixture, nine from
+scanner wrappers and two from the already diagnosed 90-second Book CLI children.
+Separately, the retrieval evaluator's one-MiB generated parameter ID exceeded
+Windows' environment-variable value limit when pytest assigned
+`PYTEST_CURRENT_TEST`. The trace shows setup and teardown errors for that same
+case, with two enormous error headings and very slow report emission. It has no
+completed JUnit verdict. This observed reporting failure does not establish
+every contributor to elapsed time or qualify any missing suite.
+
+| Exact component | Correction | Preserved boundary |
+| --- | --- | --- |
+| `57d625f199b6b07df4300434043ff135298c9f96` | Catch actually requested interruption only around initial source admission; forward real cancellation callbacks through the existing batch/scanner fixtures. | All old assertions remain. Six real controls cover direct/planned descriptor-open cancellation, unrequested exception identity, actual committed publication and a later journal-close error. |
+| `304cc84ac6021c7cd8b6abf9fce691ac6371f6fb` | Execute the unchanged current inline native installer command in a real child; test the canonical acquisition worker instead of the retired DOI client. | Native PASS/FAIL status handling, all lifecycle checks, interpreter flags and cold/stale sealed-runtime verification remain real. Controlled acquisition rejection occurs before transport/DNS. |
+| `f05b9567bbbfd1f28ff8535f069b0ba512ae8bb4` | Give the two retrieval parameter cases short explicit IDs. | Duplicate-key bytes, exact one-MiB-plus-one payload, ten test functions and all original assertions remain unchanged. |
+| `dab188250d093510bc2bd074fd51ff7fabe46e33` | Append four missing observed-failure files to the quick strict command. | All 102 previous selectors/order, dependencies, two workers, 600-second suite limit, 18-minute job limit and separate namespace policy remain. Total selection becomes 106. |
+
+The reviewed source union is
+`007b52f4b66f2e60e8ebc6230e0b993a690c4ccd`, tree
+`06ebb52195fec295dd606561ea47edf407c6b729`, based on 95ef. Root and independent
+review checked all seven changed full bodies and the complete 1345-file tree:
+1338 unrelated files remain identical, with no additions, deletions or mode
+changes. Each component is a direct child of 95ef; no diagnostic workflow or
+new diagnostic ancestry is imported. The final documentation child adds this
+historical terminal record. Source approval alone is not execution; the
+complete ordinary successor and the separately identified Book diagnostic
+retain their own actual gates.

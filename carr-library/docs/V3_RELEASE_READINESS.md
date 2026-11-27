@@ -13,6 +13,7 @@ bound to the stated source identities.
 
 | Recent exact checkpoint | Actual result | Evidence and scope |
 | --- | --- | --- |
+| 9f late integrated terminal readback | **103 actual source reports: 2269 passed, 22 failed, zero skipped; 301 selected entries remain unreported** | [Exact terminal follow-through](acceptance/20261127-9f2a83-integrated-terminal.json). The complete 404-entry inventory includes one bootstrap compatibility suite and one pre-existing duplicate. A huge generated test ID also failed Windows environment-variable setup/teardown; no final JUnit report exists for that suite. The job ended cancelled on ordinary supersession at 22:50:44 UTC. |
 | 9f broad source composition | **2432 passed in 102 quick suites; 2113 in 109 production suites; 3218 in 95 reconciled suites; zero failures/skips** | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). The separate direct regression passed 987 cases with one intentional Windows-only deselection. These selections overlap. |
 | 9f completed Windows and Linux components | **15 workflow jobs completed successfully**, including both ASR selections, native reading/templates/bibliography/keyboard/lifetime and both compiled launchers | [Exact checkpoint](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). ASR completed 734 Linux and 733 Windows cases, six Windows native handle barriers, 15 native ASR and 31 installed incremental-backup checks. Hosted controls retain their stated qualification limits. |
 | 9f integrated desktop evidence | **Native Import Center and all 137 metadata checks passed; recording closure and Book completion still failed** | [Exact recovered phase evidence](acceptance/20261127-9f2a83-completed-gates-and-diagnostics.json). Nine metadata installed origins, source-wheel bytes and full-lock/SBOM parity passed. Source phase 56 remained in progress at the snapshot, beyond its configured 35-minute limit; no source coverage is inferred. |
@@ -209,6 +210,39 @@ The Ukrainian startup guide now describes the implemented ASR review/resume
 flow, raster input bounds and the distinct private-model and signed-distribution
 requirements. These clarifications do not expand the supported-format or
 qualification claims below.
+
+## Follow-through from recovered integrated source output
+
+The later [complete 9f terminal log](acceptance/20261127-9f2a83-integrated-terminal.json) exposed source failures that
+were absent from the earlier phase artifact. The source phase finished 103
+actual suite reports: 2269 passes and 22 failures. Its 404 selected entries
+include the bootstrap compatibility suite and two selections of the same OCR
+file; 301 entries remain unreported. Command echoes containing an expected PASS
+string are excluded from these counts. A missing report never becomes a pass.
+
+The follow-up source composition
+[007b52f4](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/007b52f4b66f2e60e8ebc6230e0b993a690c4ccd)
+restores the established cancelled result only when a real cancellation
+interrupts initial source admission. Exceptions after retention, journal work or
+publication remain outside that catch. Six real boundary controls preserve
+the original source, empty-catalog cancellation and the truth of already
+committed output. Snapshot test wrappers now pass the actual cancellation
+callback through the current reader.
+
+The installer regression executes its current fixed inline native check in a
+real child and observes both PASS and FAIL exit statuses. Cold/stale bytecode
+integrity now exercises the canonical acquisition worker, whose controlled
+invalid private destination is rejected before networking. The retired DOI
+client is not reintroduced. Existing lifecycle, original-byte and manifest
+assertions remain.
+
+The oversized retrieval fixture now has two short explicit test IDs; its actual
+duplicate-key and one-MiB-plus-one payloads and every assertion are unchanged.
+Four previously missing files also join the quick strict gate: 104 offline
+suites plus the same two namespace suites, with all 102 earlier selectors
+preserved. The full Windows inventory remains unchanged. This reviewed
+seven-path source union requires its own actual execution; current outcomes
+remain bound to the head reported in PR152.
 
 ## Explicit capability limits
 
