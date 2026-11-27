@@ -727,7 +727,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     except Exception:
                         pass  # A detached reporter must not trap the modal.
             finally:
-                if not native_destroyed and not parent_destroyed:
+                # wx defers top-level destruction. ShowModal can return while
+                # Destroy is queued but before EVT_WINDOW_DESTROY is delivered.
+                # Respect that native pending state instead of requesting it twice.
+                if (not native_destroyed and not parent_destroyed
+                        and dialog and not dialog.IsBeingDeleted()):
                     dialog.Destroy()
 
 

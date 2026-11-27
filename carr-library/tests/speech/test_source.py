@@ -213,6 +213,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
             assert get_ident() == main
             assert not self.destroyed
         def GetId(self): self.native(); return self.identity
+        def IsBeingDeleted(self): self.native(); return False
         def SetName(self, value): self.native(); self.name = value
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
