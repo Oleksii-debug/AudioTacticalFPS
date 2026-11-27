@@ -265,6 +265,25 @@ def record_publication(root, request_id, workspace, registration, revision, conf
     record_progress(root, request_id, result=receipt)
 
 
+def _request_config_matches(left, right):
+    """Compare only the legacy/default automatic-language request extension.
+
+    Keep raw request, journal and runtime fingerprints unchanged. This boundary
+    admits the absent field only as False; every other key and value stays exact.
+    It must not be used to reuse physical checkpoints from another runtime.
+    """
+    legacy = {'languages', 'dpi', 'timeout', 'max_pixels', 'orientation',
+              'model_policy', 'model_profile'}
+    current = legacy | {'automatic_languages'}
+    if (type(left) is not dict or type(right) is not dict
+            or set(left) not in (legacy, current) or set(right) not in (legacy, current)
+            or ('automatic_languages' in left and type(left['automatic_languages']) is not bool)
+            or ('automatic_languages' in right and type(right['automatic_languages']) is not bool)):
+        return False
+    return canonical({**left, 'automatic_languages': left.get('automatic_languages', False)}) == canonical(
+        {**right, 'automatic_languages': right.get('automatic_languages', False)})
+
+
 def _validate_recovery_settings(record, config, mime, revision):
     """Bind retained format and parser configuration to this exact request."""
     from ..extract.document_formats import FORMAT_BY_MIME
@@ -276,7 +295,7 @@ def _validate_recovery_settings(record, config, mime, revision):
         adapter = 'raster_ocr-v1' if mime in RASTER_MIMES else 'page_ocr-v1'
         if (record.get('job') != revision or settings.get('adapter') != adapter
                 or settings.get('kind') != 'physical_page'
-                or settings.get('config') != record['config']):
+                or not _request_config_matches(settings.get('config'), record['config'])):
             raise ValueError('Stopped physical-page import has a different job or configuration.')
         if mime in RASTER_MIMES and settings.get('format') != RASTER_BY_MIME[mime].name:
             raise ValueError('Stopped raster import has a different image format.')
@@ -735,8 +754,9 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
         except FileNotFoundError:
             _store(root, request_id, planned, create=True)
             return planned
-        identity = set(planned) - {'state'}
+        identity = set(planned) - {'state', 'config'}
         if (any(existing.get(key) != planned[key] for key in identity)
+                or not _request_config_matches(existing.get('config'), planned['config'])
                 or existing.get('expected_manifest') != planned.get('expected_manifest')):
             raise ValueError('Persisted import request differs from its planned identity.')
         return existing
