@@ -100,12 +100,22 @@ def test_actual_source_change_cannot_be_recorded_as_a_successful_measurement(ben
     assert source.exists()
 
 
-def test_actual_search_deadline_is_reported_without_fabricating_a_fast_result(benchmark, tmp_path):
+def test_actual_search_deadline_is_reported_without_fabricating_a_fast_result(benchmark, tmp_path, monkeypatch):
+    from carr_library import application
     case = tmp_path / 'case'
     corpus = benchmark._page_build(case, benchmark._page_recipe(4, 128, 4, 1))
+    # Expire the real application budget deterministically, independently of
+    # host clock resolution. Corpus creation and search/deadline code stay real.
+    ticks = []
+    def advancing_clock():
+        value = 100.0 + len(ticks)
+        ticks.append(value)
+        return value
+    monkeypatch.setattr(application, 'monotonic', advancing_clock)
     measured = benchmark._page_measure(case, corpus, 'phrase', dict(
         repeats=2, pages_per_trial=2, result_limit=2, page_budget=2,
         character_budget=1000, search_timeout=1e-12))
+    assert len(ticks) >= 4, 'Both real search budgets must consult the controlled clock.'
     assert measured['search_timeouts'] == 2
     assert measured['sampling_complete_trials'] == 0
     assert measured['first_page']['samples'] == 0
@@ -169,4 +179,60 @@ def test_invalid_experiments_create_no_output(benchmark, tmp_path, extra):
     output = tmp_path / 'unused'
     with pytest.raises(SystemExit):
         benchmark._source_pages_main(options(output) + extra)
+    assert not output.exists()
+
+
+@pytest.mark.parametrize('build_timeout', [None, 1200], ids=['unchanged-default', 'setup-only-followup'])
+def test_real_build_allowance_is_bound_without_changing_query_limits(
+        benchmark, tmp_path, monkeypatch, build_timeout):
+    output = tmp_path / 'fresh-setup-measurement'
+    arguments = options(output)
+    index = arguments.index('--case-timeout')
+    del arguments[index:index + 2]  # Exercise the unchanged public default of 600 seconds.
+    if build_timeout is not None:
+        arguments += ['--build-timeout', str(build_timeout)]
+    expected = {'build_seconds': 600 if build_timeout is None else build_timeout,
+                'query_child_seconds': 600, 'public_search_seconds': 60}
+    observed = []
+    original = process.run_process
+
+    def checked(argv, **kwargs):
+        action = argv[-3]
+        budget = kwargs['budget']
+        assert kwargs['owned_tree'] is True
+        assert budget.timeout == expected[
+            'build_seconds' if action == 'build' else 'query_child_seconds']
+        assert budget.max_output_bytes == 768 * 1024**2
+        assert budget.max_log_bytes == 2 * 1024**2
+        assert budget.max_staging_files == 10000
+        assert kwargs['watch'] == ((output / '33',) if action == 'build'
+                                  else (output / '33' / (action + '.json'),))
+        observed.append(action)
+        return original(argv, **kwargs)
+
+    monkeypatch.setattr(process, 'run_process', checked)
+    assert benchmark._source_pages_main(arguments) == 0
+    assert observed == ['build', 'phrase', 'thematic']
+    configuration = (output / 'run.json').read_bytes()
+    config = json.loads(configuration)
+    report = json.loads((output / 'source-pages.json').read_bytes())
+    assert config['execution_timeouts'] == report['execution_timeouts'] == expected
+    assert config['settings']['search_timeout'] == report['settings']['search_timeout'] == 60
+    assert report['configuration_sha256'] == benchmark.sha256(configuration).hexdigest()
+    case, = report['cases']
+    for phase in (case['corpus'], *case['measurements']):
+        assert phase['configuration_sha256'] == report['configuration_sha256']
+        assert phase['outcome'] == 'measured'
+    assert case['corpus']['actual_pages'] == 33
+    assert case['corpus']['actual_editions'] == 5
+    assert all(row['search_timeouts'] == 0 for row in case['measurements'])
+    assert report['claims']['performance_acceptance'] == 'NOT_ASSESSED'
+    assert not (output / 'source-pages-incomplete.json').exists()
+
+
+@pytest.mark.parametrize('value', ['0', '-1', 'nan', 'inf', '3601'])
+def test_invalid_build_allowance_creates_no_output(benchmark, tmp_path, value):
+    output = tmp_path / 'unadmitted-build'
+    with pytest.raises(SystemExit):
+        benchmark._source_pages_main(options(output) + ['--build-timeout', value])
     assert not output.exists()

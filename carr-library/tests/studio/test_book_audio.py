@@ -201,7 +201,7 @@ def test_review_prepare_and_saved_plan_never_start_speech_and_names_are_exact(bo
     assert [e.production.get(candidate.job_id(i))['destination'] for i in (1, 2)] == list(ready.destinations)
     assert all(Path(name).parent == e.output for name in ready.destinations)
     assert [Path(name).name for name in ready.destinations] == [
-        f'{index:04d}---Original-source-title---Part-{index}-{candidate.job_id(index)[:12]}'
+        f'{index:04d}---Original-so-{sha256(candidate.job_id(index).encode("ascii")).hexdigest()}'
         for index in (1, 2)]
     assert not list(e.output.iterdir()) and e.voices.received == []
     again = e.service.prepare(candidate, e.output, approval=ready.fingerprint)
@@ -318,15 +318,20 @@ def test_complete_item_still_rechecks_source_and_artifact_bytes(book):
     assert e.voices.received == calls
 
 
-def test_manifest_and_job_tamper_cannot_relabel_existing_review(book):
+@pytest.mark.parametrize('legacy', [False, True], ids=['bound-operation', 'historical-operation'])
+def test_manifest_and_job_tamper_cannot_relabel_existing_review(book, legacy):
     e = book
     candidate, ready = prepared(e)
     path = e.production.jobs_root / candidate.job_id(1) / 'job.json'
     state = e.production.get(candidate.job_id(1))
+    assert 'operation_sha256' in state
+    if legacy:
+        del state['operation_sha256']
     changed = replace(candidate.project(1), title='Another project')
     state.update(project=changed.to_dict(), fingerprint=changed.fingerprint)
     atomic_json(path, state, replace=True)
-    with pytest.raises(ValueError, match='immutable'):
+    expected = 'immutable' if legacy else r'^The saved production operation options changed\.$'
+    with pytest.raises(ValueError, match=expected):
         e.service.run(candidate.id, e.output, approval=ready.fingerprint)
     assert not e.voices.received and not list(e.output.iterdir())
 
@@ -577,3 +582,26 @@ def test_book_run_retains_same_plan_and_production_locks_until_native_owner_is_q
         assert accepted == {path: sha256(Path(path).read_bytes()).hexdigest() for path in accepted}
         assert e.app.assets.resolve(e.imported['asset']).read_bytes() == original
         assert not e.production.broker.snapshot()['leases']
+
+
+def test_historical_book_destinations_remain_exact_after_new_operation_naming(book):
+    e = book
+    candidate, _ = prepared(e)
+    expected, historical = [], {}
+    for index in (1, 2):
+        job_id = candidate.job_id(index)
+        state = e.production.get(job_id)
+        assert 'operation_sha256' in state
+        del state['operation_sha256']
+        destination = e.output / (
+            f'{index:04d}---Original-source-title---Part-{index}-{job_id[:12]}')
+        state['destination'] = str(destination)
+        path = e.production.jobs_root / job_id / 'job.json'
+        atomic_json(path, state, replace=True)
+        historical[path] = path.read_bytes()
+        expected.append(str(destination))
+    reviewed = e.service.review(candidate, e.output)
+    assert reviewed.prepared and reviewed.destinations == tuple(expected)
+    assert e.service.prepare(candidate, e.output, approval=reviewed.fingerprint) == reviewed
+    assert all(path.read_bytes() == data for path, data in historical.items())
+    assert not list(e.output.iterdir()) and e.voices.received == []

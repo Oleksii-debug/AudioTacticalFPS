@@ -50,6 +50,9 @@ class Mci:
 def queued(recordings, monkeypatch):
     value = module.WavePlayer()
     monkeypatch.setattr(module, 'os', SimpleNamespace(name='nt'))
+    # Model the MCI protocol independently of this host's temporary-root length.
+    # Unmodified filename routing is exercised in test_wave_output.py.
+    monkeypatch.setattr(module, '_mci_filename_supported', lambda path: True)
     mci = Mci()
     value._mci = mci
     value._mci_open = lambda path: mci(f'open "{path}" type waveaudio alias {value._alias}')

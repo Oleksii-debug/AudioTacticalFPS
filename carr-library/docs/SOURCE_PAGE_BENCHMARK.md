@@ -99,8 +99,15 @@ snapshot, each corpus receipt, and per-phase reports remain alongside it.
 
 `--search-timeout` retains the production API's maximum 60-second allowance.
 An actual search timeout is recorded as such, without a fabricated empty or
-fast result. `--case-timeout` bounds each owned child (default 600 seconds).
-These are execution limits, not performance thresholds. A child failure or
+fast result. `--case-timeout` bounds each owned query child (default 600 seconds).
+An optional `--build-timeout` sets a separate finite positive allowance for corpus
+setup; when omitted it inherits `--case-timeout`, preserving the original
+behavior. The configuration digest, complete report and incomplete receipt bind
+all three allowances: setup, query child and public search. For a separately
+declared Windows setup experiment, for example, use `--build-timeout 1200`
+with unchanged `--case-timeout 600 --search-timeout 60` and a new output directory.
+The original interrupted experiment stays incomplete and is never resumed or
+reclassified by this new run. These are execution limits, not performance thresholds. A child failure or
 interruption retains the new synthetic directory and writes
 `source-pages-incomplete.json` when possible; it does not produce a completed
 aggregate report or delete files whose native owner may still be active.

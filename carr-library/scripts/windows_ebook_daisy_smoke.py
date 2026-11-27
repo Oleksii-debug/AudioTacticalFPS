@@ -71,7 +71,9 @@ def run_native(source, report, checkpoint):
     names = ('carr_library.studio.publishing', 'carr_library.studio.publishing_source',
         'carr_library.studio.daisy', 'carr_library.reader.ebook_audio',
         'carr_library.ui.publishing_dialog', 'carr_library.ui.ebook_audio_dialog',
+        'carr_library.ui.ebook_model',
         'carr_library.ui.reading_desk', 'carr_library.speech.player',
+        'carr_library.speech._wave_output',
         'carr_library.runtime_settings', 'carr_library.audio.cleanup')
     modules = [importlib.import_module(name) for name in names]
     origins = {module.__name__: Path(module.__file__).resolve(strict=True) for module in modules}
@@ -214,7 +216,37 @@ def run_native(source, report, checkpoint):
                     overlay = reading._audio_dialog
                     if overlay is None:
                         wx.CallLater(20, scenario); return
-                    pump(lambda: not overlay.busy and overlay.transport is not None)
+                    def initialization_state():
+                        session = overlay.session
+                        value = {'busy': overlay.busy, 'closed': overlay.closed,
+                            'closing': overlay.closing, 'cancelled': overlay.cancelled.is_set(),
+                            'parent_cancelled': bool(overlay.parent_cancelled()),
+                            'has_session': session is not None,
+                            'session_closed': None if session is None else session._closed.is_set(),
+                            'has_transport': overlay.transport is not None,
+                            'has_player': overlay.player is not None,
+                            'status': overlay.status.GetValue()[:2048]}
+                        if session is not None:
+                            value.update(source_characters=len(session.page.raw_text),
+                                source_logical_lines=session.page.raw_text.count('\n') + 1,
+                                native_display_lines=overlay.text.GetNumberOfLines())
+                        return value
+                    try:
+                        pump(lambda: not overlay.busy and overlay.transport is not None)
+                    except BaseException as exc:
+                        raise RuntimeError('Recorded EPUB initialization did not complete: ' +
+                            json.dumps(initialization_state(), sort_keys=True)) from exc
+                    report['recorded_initialization'] = initialization_state()
+                    check('recorded reader retained a live session after native initialization',
+                          overlay.session is not None and not overlay.session._closed.is_set()
+                          and not overlay.stopped() and overlay.player is not None
+                          and overlay.status.GetValue().startswith('Ready.'))
+                    cue = overlay.session.chapter.cues[overlay.transport.index]
+                    check('wrapped source view selects the exact authored recorded interval',
+                          overlay.text.GetNumberOfLines() > overlay.session.page.raw_text.count('\n') + 1
+                          and overlay.text.GetValue() == overlay.session.page.raw_text
+                          and overlay.text.GetRange(*overlay.text.GetSelection())
+                              == overlay.session.page.raw_text[cue.start:cue.end])
                     check('recorded reader borrows the existing source-reader worker',
                           overlay.executor is reading.executor)
                     check('open and selected fragment do not autoplay', overlay.player.state == 'stopped')
@@ -222,6 +254,15 @@ def run_native(source, report, checkpoint):
                           overlay.session.page == original_page
                           and len(overlay.session.chapter.cues) == len(source_proof['intervals']))
                     native_events = []
+                    def native_state():
+                        wave_output = overlay.player._wave
+                        return {'backend': overlay.player.backend,
+                            'mci_open': overlay.player._open,
+                            'wave_open': bool(wave_output is not None and wave_output.handle.value),
+                            'wave_stopping': None if wave_output is None else wave_output.stopping,
+                            'wave_buffers': 0 if wave_output is None else len(wave_output.pending),
+                            'wave_source_open': bool(wave_output is not None
+                                and wave_output.stream is not None and not wave_output.stream.closed)}
                     actual_open = overlay.player._mci_open
                     def observed_open(path):
                         event = {'operation': 'open', 'api': 'mciSendCommandW',
@@ -245,7 +286,8 @@ def run_native(source, report, checkpoint):
                     except BaseException as exc:
                         diagnostic = {'busy': overlay.busy, 'closed': overlay.closed,
                             'cancelled': overlay.stopped(), 'mci_open': overlay.player._open,
-                            'status': overlay.status.GetValue()[:2048], 'native_events': native_events}
+                            'status': overlay.status.GetValue()[:2048], 'native_events': native_events,
+                            'initialization': initialization_state(), 'native_owner': native_state()}
                         for name in ('state', 'position_seconds', 'duration_seconds'):
                             try:
                                 diagnostic[name] = getattr(overlay.player, name)
@@ -253,7 +295,22 @@ def run_native(source, report, checkpoint):
                                 diagnostic[name] = type(error).__name__ + ': ' + str(error)[:512]
                         raise RuntimeError('Recorded EPUB playback did not advance: ' +
                             json.dumps(diagnostic, sort_keys=True)) from exc
-                    check('real WinMM/MCI endpoint is playing prepared recorded PCM', overlay.player._open)
+                    first_prepared = overlay.transport.prepared
+                    filename_units = len(str(first_prepared.path).encode('utf-16-le')) // 2
+                    expected_backend = 'Windows MCI' if filename_units + 1 <= 128 else 'Windows waveOut'
+                    native_wave = overlay.player._wave
+                    owns_output = ((expected_backend == 'Windows MCI' and overlay.player._open
+                                    and native_wave is None)
+                        or (expected_backend == 'Windows waveOut' and not overlay.player._open
+                            and native_wave is not None and bool(native_wave.handle.value)
+                            and not native_wave.stopping and native_wave.path == first_prepared.path
+                            and native_wave.reader is not None and native_wave.stream is not None
+                            and not native_wave.stream.closed and native_wave.levels is None))
+                    report['recorded_native_output'] = dict(native_state(),
+                        filename_utf16_units=filename_units, expected_backend=expected_backend)
+                    check('real WinMM/MCI endpoint is playing prepared recorded PCM',
+                          overlay.player.backend == expected_backend and owns_output
+                          and not overlay.player._live_controls)
                     press(button(overlay.dialog, 'Pause recorded audio'))
                     pump(lambda: overlay.player.state == 'paused')
                     check('native Pause preserves prepared segment', overlay.transport.prepared.path.exists())
@@ -265,9 +322,15 @@ def run_native(source, report, checkpoint):
                     press(button(overlay.dialog, 'Play from selected segment'))
                     pump(lambda: not overlay.busy and overlay.player.state == 'playing')
                     prepared = overlay.transport.prepared
+                    stopped_wave = overlay.player._wave
                     press(button(overlay.dialog, 'Stop recorded audio'))
                     check('native Stop closes endpoint and releases its prepared file',
-                          overlay.player.state == 'stopped' and not overlay.player._open and not prepared.path.exists())
+                          overlay.player.state == 'stopped' and not overlay.player._open
+                          and overlay.player._wave is None
+                          and (stopped_wave is None or (not stopped_wave.handle.value
+                              and not stopped_wave.pending and stopped_wave.reader is None
+                              and stopped_wave.stream is None))
+                          and not prepared.path.exists())
                     press(button(overlay.dialog, 'Where am I in recorded audio?'))
                     check('recorded position report keeps source timing limitations explicit',
                           'authored fragment timing' in overlay.status.GetValue())
@@ -294,7 +357,8 @@ def run_native(source, report, checkpoint):
             reading.dialog.Destroy(); reading = None
             report.update(audio_runtime=audio_hashes,
                 module_sha256={name: sha256(path.read_bytes()).hexdigest() for name, path in origins.items()},
-                native_keys='wx.UIActionSimulator', recorded_epub_playback='actual MCI synthetic PCM',
+                native_keys='wx.UIActionSimulator',
+                recorded_epub_playback='actual owned Windows output with synthetic PCM',
                 daisy_hardware_reader='NOT_RUN', full_daisy_rule_validation='NOT_RUN', manual_nvda='NOT_RUN')
         finally:
             if overlay is not None:

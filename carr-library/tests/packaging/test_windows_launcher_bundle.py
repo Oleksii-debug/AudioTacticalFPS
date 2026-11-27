@@ -101,9 +101,9 @@ def candidate(tmp_path, monkeypatch):
                  'ACADEMIC_SEARCH.md', 'ADVANCED_SEARCH.md', 'ACADEMIC_LIBRARY.md',
                  'ACADEMIC_WORKFLOWS.md', 'CATALOG_TOOLS.md', 'READING_DESK.md',
                  'RESEARCH_NOTEBOOK.md', 'EPUB_READING.md', 'IMPORT_CENTER.md',
-                 'TRANSCRIPTION.md', 'recording.md',
+                 'TRANSCRIPTION.md', 'recording.md', 'recording_monitoring.md',
                  'LOCAL_AUDIO_RUNTIME_SETUP.md',
-                 'LOCAL_VOICES.md',
+                 'LOCAL_VOICES.md', 'VOICE_PREFERENCES.md', 'STUDIO_OUTPUT_REVIEW.md', 'PYTHON_VOICE_HELPER.md',
                  'VOICE_REFERENCE_REVIEW.md',
                  'READING_PREPARATION.md',
                  'BOOK_AUDIO_BATCH.md',
@@ -168,6 +168,12 @@ def test_bom_evidence_and_real_manifest_seal_only_the_launcher(candidate):
     assert 'bundled_launcher' not in manifest and 'launcher' not in manifest
     assert manifest['files']['ResearchLibrary.exe'] == sha256(expected).hexdigest()
     assert (candidate.output / 'ResearchLibrary.exe').read_bytes() == expected
+    for name in ('recording_monitoring.md', 'VOICE_PREFERENCES.md',
+                 'STUDIO_OUTPUT_REVIEW.md', 'PYTHON_VOICE_HELPER.md'):
+        relative = 'guides/' + name
+        content = (candidate.package / 'docs' / name).read_bytes()
+        assert manifest['files'][relative] == sha256(content).hexdigest()
+        assert (candidate.output / relative).read_bytes() == content
     assert not {'windows_child_probe.exe', 'build-evidence.json', 'launcher.c', 'zig.exe'} & set(manifest['files'])
     assert result['launcher']['source_commit'] == candidate.commit
     assert result['launcher']['release_status'] == 'unsigned-private-candidate'

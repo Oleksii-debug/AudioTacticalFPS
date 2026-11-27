@@ -13,6 +13,25 @@ The configured three result pages per trial do not exhaust any tested corpus.
 They do not establish native application, human accessibility, neural inference,
 cold-disk, retrieval-quality, physical-device or large-PDF acceptance.
 
+## Separate Windows 50,000-page follow-up — 21:40 UTC
+
+The current follow-up [run46071323514](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071323514)
+uses commit `87939e06609e133774c5b7361f345d028f0514db` and the unchanged P4 application
+source tree `9e29c116a1db0644ff6a1a2ca4ed36a02e1f2e16`. It creates a new 50,000-page
+corpus in each Windows import mode with an explicitly recorded 1,200-second
+**setup-only** allowance. Query child 600 seconds and public search 60 seconds remain
+unchanged, as do memory, file-count, output and process-ownership bounds. This
+new execution is pending; it supplies no Windows 50,000 query or acceptance claim.
+
+The initial follow-up at `e2ed6814473fe0443a195d79264217579d420655`,
+[run46070047919](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46070047919),
+correctly stopped before corpus creation because an existing timeout regression
+relied on a 1e-12-second real-clock deadline. Eighteen other contract cases passed
+in each mode. The successor fixture drives the real application's monotonic
+budget deterministically, retaining actual corpus/search execution and every
+original no-fabricated-result assertion. No application search code or acceptance
+deadline changes. The original 600-second setup failure below remains unchanged.
+
 ## Exact evidence
 
 - [Measurement run 46059259121](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46059259121)

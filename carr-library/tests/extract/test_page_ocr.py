@@ -137,8 +137,8 @@ def test_conflicting_layout_retains_raw_candidates(mixed_pdf, monkeypatch, index
     original_read = page_ocr._read_ocr_output
     original = hashlib.sha256(mixed_pdf.read_bytes()).hexdigest()
 
-    def conflicting_read(path):
-        actual = original_read(path)
+    def conflicting_read(path, maximum=page_ocr._MAX_OCR_OUTPUT_BYTES):
+        actual = original_read(path, maximum)
         return _layout_words(['Unrelated', 'text']) if path.suffix == '.tsv' else actual
 
     monkeypatch.setattr(page_ocr, '_read_ocr_output', conflicting_read)

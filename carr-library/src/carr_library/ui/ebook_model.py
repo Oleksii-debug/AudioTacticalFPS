@@ -266,8 +266,9 @@ def native_position(control, raw_text, offset):
     """Map a source offset only if the native control proves the exact prefix.
 
     wx.TextCtrl positions differ from Python indices on Windows (CRLF and
-    UTF-16). XYToPosition supplies platform-native candidates; GetRange verifies
-    them against the unmodified source. Unsupported mappings fail explicitly.
+    UTF-16). Native display rows may include soft wraps. Only positions whose
+    GetRange prefix matches the unmodified source are accepted; unsupported
+    mappings fail explicitly.
     """
     if type(offset) is not int or not 0 <= offset <= len(raw_text):
         raise ValueError('Invalid extracted-text position.')
@@ -287,4 +288,24 @@ def native_position(control, raw_text, offset):
                 # A Windows candidate may end between a surrogate pair.
                 # Try the UTF-16 column only; never accept a partial character.
                 continue
+    line_count = getattr(control, 'GetNumberOfLines', None)
+    if callable(line_count) and line_count() > raw_text.count('\n') + 1:
+        # Wrapped Windows controls expose display rows to XYToPosition.
+        # Source offsets still refer to the same unchanged text, so try only
+        # the finite native code-point/UTF-16 and LF/CRLF representations.
+        # Prove both exact sides: wx normalizes a lone trailing CR to LF,
+        # so the prefix alone cannot distinguish the middle of a CRLF pair.
+        # A guessed offset alone never authorizes a selection.
+        last = control.GetLastPosition()
+        units = len(prefix.encode('utf-16-le')) // 2
+        candidates = (len(prefix), units,
+                      len(prefix) + row, units + row)
+        for position in dict.fromkeys(candidates):
+            if 0 <= position <= last:
+                try:
+                    if (control.GetRange(0, position) == prefix
+                            and control.GetRange(position, last) == raw_text[offset:]):
+                        return position
+                except UnicodeError:
+                    continue
     raise ValueError('The text control could not locate that exact extracted-text position.')

@@ -261,6 +261,9 @@ def transport(tmp_path, monkeypatch, inventory):
         stream.writeframes(b'\0\0' * 16000)
     original = source.read_bytes()
     monkeypatch.setattr(playback, 'os', SimpleNamespace(name='nt'))
+    # Model the MCI protocol independently of this host's temporary-root length.
+    # Unmodified filename routing is exercised in test_wave_output.py.
+    monkeypatch.setattr(playback, '_mci_filename_supported', lambda path: True)
     player, native = playback.WavePlayer(), MCI()
     monkeypatch.setattr(player, '_mci', native.send)
     monkeypatch.setattr(player, '_mci_open',

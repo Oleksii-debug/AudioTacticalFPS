@@ -503,6 +503,8 @@ def _source_pages_main(arguments):
     parser.add_argument('--repeats', type=int, default=3)
     parser.add_argument('--search-timeout', type=float, default=60)
     parser.add_argument('--case-timeout', type=float, default=600)
+    parser.add_argument('--build-timeout', type=float, default=None,
+                        help='Optional setup-child limit; query children keep --case-timeout.')
     parser.add_argument('--hardware-label', default='', help='Optional operator label; never a machine serial.')
     args = parser.parse_args(arguments)
     if (not args.sizes or len(args.sizes) > 6 or len(set(args.sizes)) != len(args.sizes)
@@ -513,7 +515,9 @@ def _source_pages_main(arguments):
             or not args.characters <= args.character_budget <= 5_000_000
             or not 1 <= args.result_limit <= 100 or not 1 <= args.pages_per_trial <= 20
             or not 1 <= args.repeats <= 10 or not 0 < args.search_timeout <= 60
-            or not 1 <= args.case_timeout <= 3600 or len(args.hardware_label) > 80
+            or not 1 <= args.case_timeout <= 3600
+            or (args.build_timeout is not None and not 1 <= args.build_timeout <= 3600)
+            or len(args.hardware_label) > 80
             or any(ord(c) < 32 for c in args.hardware_label)):
         parser.error('Choose finite synthetic corpus, sample and execution bounds.')
     if (args.page_budget, args.character_budget) == (500, 5_000_000):
@@ -530,9 +534,14 @@ def _source_pages_main(arguments):
         stream.write(harness_bytes)
     settings = {name: getattr(args, name) for name in
         ('page_budget', 'character_budget', 'result_limit', 'pages_per_trial', 'repeats', 'search_timeout')}
+    execution_timeouts = {
+        'build_seconds': args.case_timeout if args.build_timeout is None else args.build_timeout,
+        'query_child_seconds': args.case_timeout,
+        'public_search_seconds': args.search_timeout,
+    }
     config = dict(schema=_SOURCE_PAGE_SCHEMA, package=str(package), installed=args.installed,
         output=str(output), sizes=args.sizes, characters=args.characters, pages_per_book=args.pages_per_book,
-        match_every=args.match_every, settings=settings, modules=modules,
+        match_every=args.match_every, settings=settings, execution_timeouts=execution_timeouts, modules=modules,
         harness_sha256=sha256(harness_bytes).hexdigest())
     from carr_library.audio.models import AudioBudget
     from carr_library.audio.process import run_process
@@ -552,7 +561,9 @@ def _source_pages_main(arguments):
                 result = run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-X', 'utf8',
                     str(harness), '--source-page-case', str(config_path), config_digest,
                     action, str(case), corpus_digest],
-                    budget=AudioBudget(timeout=args.case_timeout, max_output_bytes=768 * 1024**2,
+                    budget=AudioBudget(timeout=execution_timeouts[
+                        'build_seconds' if action == 'build' else 'query_child_seconds'],
+                                       max_output_bytes=768 * 1024**2,
                                        max_log_bytes=2 * 1024**2, max_staging_files=10000),
                     owned_tree=True, env=environment, cwd=str(output),
                     watch=(case,) if action == 'build' else (case / (action + '.json'),))
@@ -579,7 +590,8 @@ def _source_pages_main(arguments):
             recorded_at_utc=datetime.now(timezone.utc).isoformat(), environment=_page_environment(),
             hardware_label=args.hardware_label, configuration_sha256=config_digest,
             production_python_inventory_sha256=sha256(_page_json(modules)).hexdigest(),
-            harness_sha256=config['harness_sha256'], settings=settings, cases=cases,
+            harness_sha256=config['harness_sha256'], settings=settings,
+            execution_timeouts=execution_timeouts, cases=cases,
             method={
                 'corpus': 'Fresh retained UTF-8 TXT originals and sealed revisions through LibraryApp.add_text.',
                 'isolation': 'Existing owned process boundary; fresh setup child and fresh measurement child per mode/size.',
@@ -598,7 +610,8 @@ def _source_pages_main(arguments):
         # Keep the owned synthetic directory and any immutable partial evidence.
         # In particular, never delete files while native cleanup may be pending.
         failure = dict(schema=_SOURCE_PAGE_SCHEMA, outcome='incomplete',
-            configuration_sha256=config_digest, completed_cases=len(cases),
+            configuration_sha256=config_digest, execution_timeouts=execution_timeouts,
+            completed_cases=len(cases),
             error_type=type(exc).__name__, error=str(exc)[:2000])
         try:
             atomic_json(output / 'source-pages-incomplete.json', failure)

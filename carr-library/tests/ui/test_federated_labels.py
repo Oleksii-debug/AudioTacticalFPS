@@ -87,7 +87,7 @@ def native_dialog(monkeypatch, rows, active):
            **{name: Control for name in ('Dialog', 'BoxSizer', 'StaticText', 'FlexGridSizer',
                                         'CheckListBox', 'TextCtrl', 'Choice', 'Button', 'ListBox')})
     monkeypatch.setitem(sys.modules, 'wx', wx)
-    controller = N(selection_changed=Mock(), search=Mock())
+    controller = N(selection_changed=Mock(), search_page=Mock(), next_cursor=None)
     monkeypatch.setattr(module, 'SearchCenter', lambda frame, view: controller)
     view = NativeSearchCenter(N(active=(active, None)), rows)
     return view, controller
@@ -102,10 +102,12 @@ def test_native_checklist_distinct_labels_preserve_checked_library_ids(monkeypat
     view, controller = native_dialog(monkeypatch, rows, rows[-1].id)
     assert_distinct(rows, view.libraries_control.choices)
     assert view.libraries_control.checked == {len(rows) - 1}
+    view.next_button.Enable.assert_called_with(False)
     view.libraries_control.Check(0)
     view.query.GetValue.return_value = 'railway'
     view._search()
-    options, = controller.search.call_args.args
+    controller.search_page.assert_called_once()
+    options, = controller.search_page.call_args.args
     assert options.workspaces == tuple(row.id for i, row in enumerate(rows)
                                        if i in {0, len(rows) - 1})
     assert options.query == 'railway'

@@ -1,0 +1,251 @@
+name: Resonance focused native reader playback
+
+# This evaluation-only workflow tests the exact triggering application commit.
+# Ordinary acceptance gates and the reviewed endpoint helper remain unchanged.
+on:
+  push:
+    branches: [carr/ci-endpoint-evaluation-20261127]
+    paths:
+      - .github/workflows/carr-mci-path-evaluation.yml
+      - .github/scripts/mci_path_diagnostic.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-mci-path-evaluation-20261127
+  cancel-in-progress: false
+
+jobs:
+  native-paths:
+    name: Same-head source and installed reader / EPUB native playback
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify exact event source and unchanged endpoint helper
+        run: |
+          New-Item -ItemType Directory -Force ci-mci-results | Out-Null
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($head -cne $env:GITHUB_SHA) { throw 'Checkout differs from the exact triggering commit.' }
+          $head | Set-Content ci-mci-results/tested-commit.txt
+          git diff --exit-code 10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a HEAD -- scripts/ci_audio_endpoint.py scripts/ci_audio_endpoint_pins.json scripts/ci_audio_endpoint_authenticode.ps1 scripts/ci_audio_endpoint_NOTICE.md
+          if ($LASTEXITCODE -ne 0) { throw 'The reviewed endpoint helper, pins, signature check and notice must remain unchanged.' }
+          git ls-tree -r HEAD -- src/carr_library packaging scripts/windows_reader_player_smoke.py scripts/windows_ebook_daisy_smoke.py scripts/prepare_daisy_schemas.py scripts/ci_audio_endpoint.py scripts/ci_audio_endpoint_pins.json scripts/ci_audio_endpoint_authenticode.ps1 scripts/ci_audio_endpoint_NOTICE.md | Set-Content ci-mci-results/source-inventory.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Build and prove the exact event wheel with locked desktop dependencies
+        id: installed
+        timeout-minutes: 6
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-mci-path-python'
+          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-mci-path-wheel'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # The existing wheel verifier uses packaging; reuse its exact locked
+          # entry without installing the separate semantic runtime.
+          $verificationLock = Join-Path $env:RUNNER_TEMP 'carr-wheel-verification.lock'
+          & $python -I -B -X utf8 -c "import pathlib,re,sys; text=pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(encoding='utf-8'); rows=re.findall(r'(?m)^packaging==[^\n]*(?:\n[ \t]+[^\n]+)*',text); assert len(rows)==1 and '--hash=sha256:' in rows[0]; pathlib.Path(sys.argv[1]).write_text(rows[0]+'\n',encoding='utf-8')" $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r $verificationLock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip wheel --no-deps --wheel-dir $wheelDirectory .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $wheelDirectory -Filter '*.whl' -File)
+          if ($wheels.Count -ne 1) { throw 'Expected one exact application wheel.' }
+          & $python -I -B -X utf8 -c "import json,os,runpy,sys; verify=runpy.run_path('packaging/source_wheel.py')['verify_application_wheel']; print(json.dumps(verify(sys.argv[1], '..', os.environ['GITHUB_SHA']),sort_keys=True))" $wheels[0].FullName | Tee-Object ci-mci-results/wheel-identity.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps $wheels[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $inventory = @'
+          import ast, hashlib, importlib.metadata as metadata, json, os, pathlib, re, runpy, sys, zipfile
+          import carr_library
+          checkout = pathlib.Path.cwd().resolve(strict=True)
+          owner = runpy.run_path('scripts/windows_reader_player_smoke.py')['_installed_package_root']
+          installed = owner(metadata.distributions(name='universal-research-library'), carr_library.__file__, checkout)
+          assert installed.is_relative_to(pathlib.Path(sys.prefix).resolve(strict=True))
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              expected = {name: archive.read(name) for name in archive.namelist()
+                          if name.startswith('carr_library/') and name.endswith('.py')}
+          actual = {'carr_library/' + path.relative_to(installed).as_posix()
+                    for path in installed.rglob('*.py')}
+          assert expected and actual == set(expected), 'Installed Python inventory differs from the verified wheel.'
+          rows = []
+          for name, data in sorted(expected.items()):
+              source = checkout / 'src' / name
+              target = installed.parent / name
+              assert source.stat().st_size == target.stat().st_size == len(data), name
+              assert source.read_bytes() == target.read_bytes() == data, name
+              rows.append({'path': name, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+          lock = checkout / 'packaging/windows-cp311.lock'
+          pairs = re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', lock.read_text(encoding='utf-8'), re.M)
+          assert pairs and len(pairs) == len({re.sub(r'[-_.]+', '-', name).lower() for name, _ in pairs})
+          pins = dict(pairs)
+          assert {name: metadata.version(name) for name in pins} == pins
+          semantic_lock = checkout / 'packaging/windows-semantic-cp311.lock'
+          packaging_pin = re.findall(r'^packaging==([^\s]+)', semantic_lock.read_text(encoding='utf-8'), re.M)
+          assert len(packaging_pin) == 1 and metadata.version('packaging') == packaging_pin[0]
+          for name in ('scripts/windows_reader_player_smoke.py', 'scripts/windows_ebook_daisy_smoke.py'):
+              ast.parse((checkout / name).read_text(encoding='utf-8'))
+          print(json.dumps({'status': 'PASS', 'source_commit': os.environ['GITHUB_SHA'],
+                            'python': sys.version, 'executable': sys.executable, 'prefix': sys.prefix,
+                            'source_package': str(checkout / 'src/carr_library'),
+                            'installed_package': str(installed), 'python_files': rows,
+                            'lock_sha256': hashlib.sha256(lock.read_bytes()).hexdigest(),
+                            'locked_dependencies': pins,
+                            'verification_support': {'packaging': packaging_pin[0],
+                                                     'lock_sha256': hashlib.sha256(semantic_lock.read_bytes()).hexdigest()}}, sort_keys=True))
+          '@
+          & $python -I -B -X utf8 -c $inventory $wheels[0].FullName | Tee-Object ci-mci-results/source-installed-python-inventory.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Start existing audio services without changing startup policy
+        timeout-minutes: 2
+        run: |
+          $evidence = @()
+          foreach ($serviceName in @('AudioEndpointBuilder', 'Audiosrv')) {
+            $service = Get-Service -Name $serviceName -ErrorAction Stop
+            $before = $service.Status.ToString()
+            try {
+              if ($service.Status -eq 'Stopped') {
+                $service.Start()
+              } elseif ($service.Status -notin @('Running', 'StartPending')) {
+                throw "Unsupported service state: $serviceName $before"
+              }
+              $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(20))
+            } finally {
+              $service.Refresh()
+              $evidence += @{ name=$serviceName; before=$before; after=$service.Status.ToString(); start_type=$service.StartType.ToString() }
+              $service.Dispose()
+              @{ services=$evidence; startup_policy_changed=$false } | ConvertTo-Json -Depth 5 | Set-Content 'ci-mci-results/audio-services.json'
+            }
+          }
+
+      - name: Verify existing signature serialization under both PowerShell versions
+        timeout-minutes: 2
+        run: |
+          $legacy = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell/v1.0/powershell.exe'
+          $modern = Join-Path $env:ProgramFiles 'PowerShell/7/pwsh.exe'
+          & $legacy -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-mci-results/signature-json-ps51.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $modern -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-mci-results/signature-json-ps7.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare only the exact already-reviewed signed render endpoint
+        id: endpoint
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/ci_audio_endpoint.py --receipt ci-mci-results/endpoint-evaluation.json 2>&1 | Tee-Object ci-mci-results/endpoint-evaluation.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the existing pinned private Windows audio runtime
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        id: audio_runtime
+        timeout-minutes: 10
+        run: |
+          $audioRuntime = Join-Path $env:RUNNER_TEMP 'carr-audio-runtime'
+          & $env:CARR_PYTHON -I -B -X utf8 packaging/prepare_windows_audio.py --download --output $audioRuntime | Tee-Object ci-mci-results/audio-runtime.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_AUDIO_RUNTIME=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $audioRuntime 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Prepare the existing pinned offline DAISY validation schemas
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        id: daisy_schemas
+        timeout-minutes: 3
+        run: |
+          $schemas = Join-Path $env:RUNNER_TEMP 'carr-daisy-validation-schemas'
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/prepare_daisy_schemas.py --destination $schemas --report ci-mci-results/daisy-schema-preparation.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_DAISY_SCHEMAS=$schemas" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Capture the exact freshly enumerated reviewed secondary output
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' && steps.endpoint.outcome == 'success' }}
+        id: output_inventory
+        timeout-minutes: 1
+        run: |
+          $inventory = & $env:CARR_PYTHON -I -B -X utf8 -c "import json; from carr_library.speech.output_devices import output_devices; print(json.dumps([dict(index=d.index,name=d.name,identity=d.identity) for d in output_devices()]))"
+          if ($LASTEXITCODE -ne 0) { throw 'The actual reader output inventory failed.' }
+          $inventory | Set-Content ci-mci-results/reader-output-inventory.json
+          $outputs = @($inventory | ConvertFrom-Json)
+          $selected = @($outputs | Where-Object { $_.name -ceq 'CABLE In 16 Ch (VB-Audio Virtua' })
+          if ($selected.Count -ne 1) { throw 'The explicitly reviewed secondary output is missing or ambiguous.' }
+          $identity = [string]$selected[0].identity
+          if ($identity -cnotmatch '^[0-9a-f]{64}$') { throw 'The selected output lacks its exact stable identity.' }
+          "CARR_READER_OUTPUT_ID=$identity" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $selected[0] | ConvertTo-Json | Set-Content ci-mci-results/reviewed-output.json
+
+      - name: Require actual source reader player and retained queue
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' && steps.endpoint.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.daisy_schemas.outcome == 'success' && steps.output_inventory.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_player_smoke.py --source . --require-output-device --expected-device-identity $env:CARR_READER_OUTPUT_ID --ffmpeg (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe') --ffprobe (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffprobe.exe') --report ci-mci-results/source-reader-player.json 2>&1 | Tee-Object ci-mci-results/source-reader-player.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require actual installed reader player and retained queue
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' && steps.endpoint.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.daisy_schemas.outcome == 'success' && steps.output_inventory.outcome == 'success' }}
+        timeout-minutes: 6
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_player_smoke.py --require-output-device --expected-device-identity $env:CARR_READER_OUTPUT_ID --ffmpeg (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffmpeg.exe') --ffprobe (Join-Path $env:CARR_AUDIO_RUNTIME 'bin/ffprobe.exe') --report ci-mci-results/installed-reader-player.json 2>&1 | Tee-Object ci-mci-results/installed-reader-player.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require actual source EPUB recorded-audio ownership
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' && steps.endpoint.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.daisy_schemas.outcome == 'success' && steps.output_inventory.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_ebook_daisy_smoke.py --source . --output ci-mci-results/source-ebook-daisy.json 2>&1 | Tee-Object ci-mci-results/source-ebook-daisy.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require actual installed EPUB recorded-audio ownership
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' && steps.endpoint.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.daisy_schemas.outcome == 'success' && steps.output_inventory.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_ebook_daisy_smoke.py --expect-installed --output ci-mci-results/installed-ebook-daisy.json 2>&1 | Tee-Object ci-mci-results/installed-ebook-daisy.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve only public bounded receipts and source identity
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-native-reader-playback-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-mci-results/
+          if-no-files-found: warn
+          retention-days: 7

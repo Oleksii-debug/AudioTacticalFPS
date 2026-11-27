@@ -520,10 +520,15 @@ def native_controls(player, check, commands, selected_output, private_root, runt
                             diagnostic[name] = type(error).__name__ + ': ' + str(error)[:512]
                     raise RuntimeError('Actual queue playback did not advance: ' +
                                        json.dumps(diagnostic, sort_keys=True)) from exc
-                check('retained queue PCM opens through the typed Unicode MCI element',
-                      owner.player.backend == 'Windows MCI'
-                      and any(event.get('api') == 'mciSendCommandW' and event.get('ok')
-                              and event.get('suffix') == '.audio' for event in queue_native_events))
+                queue_output = owner.player._wave
+                queue_units = len(str(item.path).encode('utf-16-le')) // 2
+                check('retained long queue PCM owns its exact waveOut source before measured playback',
+                      queue_units >= 128 and owner.player.backend == 'Windows waveOut'
+                      and queue_output is not None and bool(queue_output.handle.value)
+                      and queue_output.path == item.path and queue_output.identity == item.identity
+                      and queue_output.levels is None and owner.player.output_device is None
+                      and queue_output.device is None and not owner.player._open
+                      and queue_native_events == [])
                 press(find(popup, 'Pause or resume recording'))
                 check('actual queue pause keeps the retained original frame', owner.player.state == 'paused')
                 press(find(popup, 'Save playback queue'))
@@ -534,7 +539,10 @@ def native_controls(player, check, commands, selected_output, private_root, runt
                 press(find(popup, 'Close playback controls'))
                 def closed():
                     try:
-                        check('normal queue Close confirms native silence', owner.closed and owner.silence_confirmed)
+                        check('normal queue Close confirms native silence', owner.closed and owner.silence_confirmed
+                              and owner.player._wave is None and not owner.player._open
+                              and not queue_output.handle.value and not queue_output.pending
+                              and queue_output.stream is None)
                         saved_bytes.append(owner.store.path.read_bytes())
                         open_menu(reopened)
                     except BaseException:

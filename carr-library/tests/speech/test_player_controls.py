@@ -72,6 +72,9 @@ def transport(tmp_path, monkeypatch, request):
     platform = SimpleNamespace(name='nt' if request.param == 'mci' else 'posix',
                                kill=lambda pid, signal: signals.append((pid, signal)))
     monkeypatch.setattr(module, 'os', platform)
+    # Model the MCI protocol independently of this host's temporary-root length.
+    # Unmodified filename routing is exercised in test_wave_output.py.
+    monkeypatch.setattr(module, '_mci_filename_supported', lambda path: True)
     signal_protocol = None
     if request.param == 'ffplay':
         # Model the POSIX signal namespace with the modeled POSIX process API.

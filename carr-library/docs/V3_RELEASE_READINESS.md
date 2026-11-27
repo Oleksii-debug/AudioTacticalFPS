@@ -10,39 +10,125 @@ unchanged until a verified migration; visible application titles use Resonance.
 
 ## Current specification reconciliation — 2026-11-27
 
-The current finalization entry point is blob
+The current finalization entry point remains blob
 `db8adbdc483a03c262885928c7ed214ca70bbaa7`, read with audio/agent blob
 `d0b2761dd22b33233b311d4800230fb47f5d3d8b` and root AGENTS
 `080bb9104d3224749e9317c2273d803c0ac37835`. Canonical source was rechecked at
-`e5c64a5245583f8f8b404a0f042f6ca438c24d7f`; the current development composition
-is retained separately with exact checkpoints in the
-[integration ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md).
-The complete scope remains required. Historical evidence below describes its
-named predecessors; it does not qualify newly composed code.
+`e5c64a5245583f8f8b404a0f042f6ca438c24d7f`; this reconciliation does not reduce
+the specification. The development composition and its exact checkpoints remain
+in the [integration ledger](INTEGRATION_REUSE_2026-11-27_READING_AUDIO.md).
+Historical sections below describe named predecessors and must not be used to
+qualify a later composition.
 
 | Requirement area | Current implementation contribution | Execution and remaining dependency |
 | --- | --- | --- |
-| V3-01/02 | Explicit OCR language controls and finite reviewed reading preparation | At7471d045 language choice, Preview and Apply pass; Ctrl+Z fails. The successor connects fixed editor keys to existing history. Fresh native execution and language/voice quality remain separate. |
-| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard and opt-in global/tray controls, measured progress | Favorites, exact-language defaults and named profiles extend current engine settings and typed backup. Typed MCI OPEN and original navigation gates require execution. Manual Windows11/NVDA remains open. |
-| V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion, existing clip/player/Director contracts | Actual native Book source+installed controls pass at7471d045; the new conversion/reader changes require successor execution. Neural long-form quality and physical audio acceptance remain separate. |
-| V3-06/08 | Incremental backup plus authenticated local portable snapshots over canonical format5/schema6 | Native encrypted source+installed review/restore passed at 23d64013. This successor needs its own gates. This does not establish cloud/WebDAV service or shared live databases. |
-| V3-07 | Explicit streamed UTF-8 originals up to a selected 128 MiB, bounded fragments, current original/quotation/backup authority; scoped/ranked source windows and federated continuation | Real greater-than-64-MiB suites and native intake/literal/ranked/federated controls passed at 23d64013. Two pagination fixture expectations are corrected in the successor. Ranking is local to each source window. Actual Linux measurements through50,000pages and Windows through10,000 are retained; Windows50,000 setup is incomplete. Performance acceptance and multi-gigabyte PDF remain open. |
-| V3-08 | Existing CSL/source citations extended through reviewed live Word COM plans and named native review | All four modeled source/installed APA/Chicago native review sequences passed at 23d64013. Actual Microsoft Word, publisher deployment and human interaction remain separate. |
-| V3-09 | Typed current-reader and Book/batch assistant routes through existing services/stores | Bounded state-I/O suites and both native domain routes passed at 23d64013. Successor gates remain required. Deterministic tools do not certify a local LLM or grant model output shell authority. |
-| V3-21 | Owner reference creation/lifecycle and authenticated protected profile export/import using the same Sync crypto and package publisher | Native reference controls and protected backend/UI suites passed at 23d64013. At7471d045 native transfer/password actions pass, then Close revocation fails; the successor fixes that lifetime gap and requires rerun. Real rights/model/language quality remains unqualified. |
-| V3-16/17 | Existing integrity/cleanup/publication boundaries plus exact cryptography/cffi/pycparser pins and supplemental SBOM records | Reviewed publisher hashes and actual earlier dependency installation are separate from final package/signature and per-profile distribution clearance. |
-| V3-11/12/13/14/15/18/22 | Existing provider, production, model, language, update and entitlement contracts remain in scope | Their prior implementation/evidence is preserved. New provider credentials, private authority/signing, real weights/inference and independent quality evidence are not invented or substituted. |
+| V3-01/02 | Installed-language OCR controls, review-preserving automatic candidates and finite language-aware reading preparation | P3 native preparation, including current-editor Undo, passed in source and installed modes. P4 OCR consistency cases reached a fixture signature defect; their two-line repair is prepared. Automatic OCR still requires source review and does not approve quotations. Language and voice quality remain separate. |
+| V3-03/10/19 | Navigation, tabs/focus, device choice, reading edits, exact clipboard, opt-in global/tray controls, progress, favorites, exact-language defaults and named profiles | P3 native control groups passed, including the corrected preparation, preferences and Close behavior. The ordinary E3 gate still failed long-path queue playback, recorded EPUB playback and other named native stages. The reviewed route and EPUB successors are NOT_RUN. Manual Windows 11/NVDA remains open. |
+| V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion and existing clip/player/Director contracts | P3 native source and installed Book controls passed. The P4 component run reports two Book assertions requiring the prepared real-preview/fixture corrections. Full capture and sealed-bundle acceptance remain open, as do neural long-form quality and physical audio review. |
+| V3-06/08 | Incremental backup and authenticated local portable snapshots over the canonical backup formats and schema 6 | Earlier native encrypted review/restore evidence remains retained. P4 native-format/foreign-flat backup regressions retain passive restored state; one obsolete iterator fixture needs the prepared scandir correction. These results do not establish a cloud/WebDAV service or shared live databases. |
+| V3-07 | Explicit streamed UTF-8 originals up to the selected 128 MiB limit, bounded fragments and source authority; scoped/ranked source windows and federated continuation | Actual greater-than-64-MiB suites and earlier native intake/literal/ranked/federated controls are retained. Ranking is local to each source window. Linux measurements through 50,000 pages and Windows through 10,000 are retained; the fresh Windows 50,000 build is in progress, with no completed latency result. Performance acceptance and multi-gigabyte PDF remain open. |
+| V3-08 | Existing CSL/source citations extended through reviewed live Word COM plans and named native review | The focused Word integration suite passed 84 cases in each of four Linux/Windows source/installed modes. Modeled COM and native review controls do not qualify an actual Microsoft Word installation, publisher deployment or human interaction. |
+| V3-09 | Typed current-reader and Book/batch assistant routes through existing services and stores | P3 native domain controls and earlier bounded state-I/O evidence are retained. The current full aggregate is incomplete. Deterministic tools do not certify a local LLM or grant model output shell authority. |
+| V3-21 | Owner reference creation/lifecycle and authenticated protected profile transfer through the existing crypto and package publisher | P3 source and installed native reference/protected-transfer controls passed, including the corrected Close revocation. This does not establish rights to a voice, actual owner-model inference, training or language/listening quality. |
+| V3-16/17 | Existing integrity, cleanup and publication boundaries; pinned dependencies and supplemental SBOM records | Reviewed source, hashes and dependency installation remain separate from a passing final bundle, publisher signature and per-profile distribution clearance. |
+| V3-11/12/13/14/15/18/22 | Existing provider, production, model, language, update and entitlement contracts remain required | Prior implementations and evidence are preserved. Remaining code/interop acceptance, provider credentials, private authority/signing, actual weights/inference and independent quality evidence remain explicit requirements. |
 
-The failed complete run 46031920263 at `94ecfdd4` retained no eligible wheel.
-Preflight 46048596823 at `142de6b6` has partial successful native evidence and
-observed DAISY/preparation/assistant failures and unfinished Book production. Its Word native review sequences passed independently. It is not a release gate PASS.
 Only a successful full Windows aggregate and all six required ordinary workflows
 at one exact head may supply the retained delivery wheel. The final owner
-application archive excludes the separately set up audio runtime. No final
-private archive, signed installer or whole-platform completion is claimed.
+application archive excludes the separately set up audio runtime. No eligible
+delivery wheel, final private archive, signed installer or whole-platform
+completion is claimed by this checkpoint.
 
+## Latest measured checkpoint — after E3 main completion, 2026-11-27
 
-## Latest measured checkpoint — 2026-11-27, 20:24 UTC
+The following results describe different immutable candidates and must not be
+combined into a successful release gate.
+
+| Candidate or focused gate | Observed result | Limit of the evidence |
+| --- | --- | --- |
+| P3 product `10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a`, [preflight 46063639311](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063639311) | All native control groups passed, including source and installed preparation/Undo, voice preferences, protected transfer and Book controls. The long Windows source block completed 125 of its 151 module suites successfully before its 25-minute aggregate cutoff. | 125 completed PASS reports do not establish that all 151 suites completed. Focused native success does not qualify the full wheel or bundle. |
+| Focused Word integration | 84 cases passed in each of four Linux/Windows source/installed modes. | Actual Office installation, manual NVDA and document interaction remain separate. |
+| Focused ordinary import admission | 100 cases passed in each of four Linux/Windows source/installed modes. | These focused admission results do not replace the complete source/installed aggregate. Exact heads and receipts remain in the integration ledger. |
+| E3 ordinary evaluation `49fe25ade1d91dc4b283fe3b0fd29cc6b4e921ae`, application-identical to P3 | Four ordinary workflows are green. The main Windows workflow completed FAIL; V3 was still running at this snapshot. | The six-workflow same-head condition is not satisfied. |
+| P4 component head `07425b55fdcd703e0e9150c5c5479b37bb64c750`, [run 46069568992](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069568992), Linux job 140742999592 | Source: 37 module reports, 34 clean, 1,150 cases passed and 7 failed, with no skips. Installed: the same seven failures, 1,150 passed and 12 passed subtests. | These are two separate source/installed results, not 2,300 distinct tests. The seven failures are confined to OCR (4), Book (2) and the obsolete backup-iterator fixture (1). The repairs require their own run. |
+
+The four green E3 workflows are
+[native Windows launch](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682473),
+[canonical compatibility](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682499),
+[bibliography/import](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682437)
+and [supplied transcription](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682395).
+[Main Windows 46063682412](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682412)
+completed FAIL at 21:37 UTC. Its distinct source reports within step 67 contain
+361 completed suites: 358 PASS and three FAIL, before the 45-minute aggregate
+limit ended the step. This is an incomplete aggregate, not a full-source result.
+Earlier step output must not be counted again. The three preserved source
+failures are the old benchmark-clock fixture, the launcher-bundle fixture missing
+copied guides, and the federated-label fixture lacking the current
+`next_cursor` field. Their successors preserve the original behavioral
+assertions. A proposed 75-minute aggregate allowance for the successor does not
+alter the existing 600-second per-suite limits or retroactively pass this run.
+[V3 46063682482](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682482)
+remains unfinished at this snapshot.
+
+The main workflow also retains known capture, reader queue/EPUB, Import Center
+and sealed-bundle failures. Passing preparation and preferences in the P3
+preflight does not erase those ordinary-gate failures. Earlier capture diagnosis
+and the existing consent/policy settings remain unchanged.
+
+### Prepared successors and the next evidence boundary
+
+- **P4 Book, OCR and backup repairs:** the two Book cases are corrected through
+  the actual reviewed-preview contract. The four real-Tesseract OCR cases retain
+  all raw/TSV/source checks while forwarding the unchanged maximum-byte argument
+  to the real reader. The backup fixture now exercises the actual lazy
+  `os.scandir` context and proves first-unknown-name refusal plus closure.
+  These prepared corrections are not yet a passing P4 component result.
+- **Long-path playback:** the actual source and installed diagnostic
+  [46069532528](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069532528),
+  job 140742876934, opened the same PCM through MCI at 127 UTF-16 path units and
+  observed error 304 at 128 and 174. Existing WaveOutput played the long path
+  and completed its close checks. The successor chooses that existing backend
+  before launch for long paths, preserves the exact source/endpoint, inherits
+  the native level when no level was requested, and retains native ownership
+  until confirmed Close. Its production composition and strengthened queue
+  probe are **NOT_RUN**; diagnostic success is not successor acceptance.
+- **Recorded EPUB initialization:** the reviewed successor verifies native
+  offsets for wrapped text using exact prefix and suffix checks and adopts the
+  session/player only after initialization succeeds. Failed initialization
+  leaves Play unavailable and retains pending cleanup. The real EPUB/FFmpeg
+  regressions and source/installed native playback predicates remain required.
+  The final EPUB/long-path route composition is **NOT_RUN**.
+- **Portable versus native gates:** component follow-up retains the existing
+  tests and adds the affected EPUB initialization/lifecycle, playback and
+  regression modules. It does not change the endpoint helper's authorized
+  branch. Actual source/installed reader and EPUB output acceptance belongs to
+  the ordinary evaluation branch with its existing authorized audio setup.
+
+The [scale report](SOURCE_PAGE_BENCHMARK_RESULTS_2026-11-27.md) retains measured
+Linux cases through 50,000 pages, smaller completed Windows cases and the earlier
+incomplete Windows 50,000 setup. The fresh Windows 50,000 follow-up
+[46071323514](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071323514)
+passed its source benchmark contract and began its actual source corpus build at
+21:40:20 UTC; the installed companion was starting. No completed 50,000-page
+Windows latency or resource result exists at this snapshot. The explicit
+1,200-second setup allowance, 600-second query-child allowance and 60-second
+public-search budget describe this fresh run only. They do not reclassify a
+previous timeout or introduce a performance PASS threshold.
+
+The implementation, exact candidate execution, physical/human qualification and
+rights/distribution decisions remain separate. Synthetic PCM, modeled providers
+and native controls do not certify neural voices, all 135 languages, private
+authority, signing, listening quality or NVDA. No automatic acquisition, paid
+provider use or rights approval follows from a test result.
+
+## Historical checkpoints
+
+The following sections retain earlier observations and implementation snapshots.
+Their pending/failing/successful labels apply to the candidate named there.
+Current status is the snapshot above; a later successful focused check does not
+retroactively turn a failed aggregate into a passing one.
+
+## Historical measured checkpoint — 2026-11-27, 20:24 UTC
 
 Product `7471d045` passed **231/231 Linux module suites**. Its actual source and
 installed Windows Book production, metadata and backup controls now pass.
@@ -87,7 +173,7 @@ green on the same exact head is eligible. No such wheel, final private archive,
 manual NVDA verdict or full-platform completion is claimed. The final application
 bundle continues to exclude the separately installed audio runtime.
 
-## Observed failure reconciliation — 2026-11-27, 19:09 UTC
+## Historical failure reconciliation — 2026-11-27, 19:09 UTC
 
 The completed preflight at `142de6b6028cc86f9a5bf70c42e60adc40f96b77`
 (run 46048596823) reported 207 portable suites: 184 passed and 23 failed.
@@ -121,7 +207,7 @@ source-window additions and their current installed wheel remain **NOT_RUN**
 until the next exact-head gates complete. No eligible delivery wheel or final
 private application archive has been produced.
 
-## Implemented behavior and qualification boundaries
+## Historical implementation and qualification snapshot
 
 | Area | Implemented behavior | Evidence and limits |
 | --- | --- | --- |
@@ -145,7 +231,7 @@ production, output verification, restart, CSL/DOCX, isolated text conversion and
 named native dialogs while the selected runtime executables have outbound
 firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 
-## Canonical reconciliation and additive reader pass
+## Historical canonical reconciliation and additive reader pass
 
 The accepted canonical PR147 head above adds resources, file-job transcription,
 Advanced translation and local model proposals. The combined source retains the
@@ -170,7 +256,7 @@ in its real-FFmpeg regression, acknowledges the actual TLS handshake phase,
 and gives the complete test inventory an adequate job budget. No failed or
 independently tested predecessor wheel can be used for delivery.
 
-## Earlier completion evidence
+## Historical earlier completion evidence
 
 The authoritative specification was rechecked against canonical source
 `e3cf74c243d4ef930b526b5648ca9003c0900057` (PR147 composition and the
@@ -245,7 +331,7 @@ can be used for local execution and acceptance without being distributed as
 part of an application archive. This preserves the distinction between runtime
 qualification and permission to redistribute each component.
 
-## Additions awaiting the composite execution gate
+## Historical additions awaiting the composite execution gate
 
 The integrated candidate contains the following source changes. Portable
 follow-up gates now cover the export, storage migration, publication recovery
@@ -273,6 +359,11 @@ third-party EPUB interoperability remain separate requirements.
 
 ## Requirements still open
 
+The following remain release requirements. Current source implementations and
+focused passes described above do not remove their remaining implementation,
+interoperability, exact-candidate, owner-input or human acceptance work. Historical
+NOT_RUN labels above are not a claim that those features are still absent.
+
 The following cannot be labelled DONE by passing the current core tests:
 
 - Remaining reader acceptance includes the current tabs/focus, clipboard/tray and
@@ -293,7 +384,8 @@ The following cannot be labelled DONE by passing the current core tests:
   interruption/recovery and key-rotation acceptance.
 - Actual owner-supplied cloning runtime, authorized reference recordings and
   independent multilingual inference/listening. Protected profile transfer is
-  now source-integrated; its exact candidate crypto/owner/native gates remain required.
+  source-integrated and P3 native controls passed; complete successor gates and
+  independent owner-model/rights qualification remain required.
 - Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
   the remaining approved Balabolka-equivalent workflow checklist, independently
   verified synchronized publishing/reading, DAISY and Braille interoperability.

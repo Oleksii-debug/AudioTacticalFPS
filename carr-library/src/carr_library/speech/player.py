@@ -33,6 +33,16 @@ class _MciOpenParameters(ctypes.Structure):
     ]
 
 
+def _mci_filename_supported(path):
+    """The legacy multimedia filename buffer includes its UTF-16 terminator.
+
+    mmioOpen documents at most 128 characters, including the null character:
+    https://learn.microsoft.com/previous-versions/dd757331(v=vs.85)
+    Choose the existing waveOut transport before opening an incompatible path.
+    """
+    return len(str(path).encode('utf-16-le')) + 2 <= 128 * 2
+
+
 class WavePlayer:
     def __init__(self, *, clock=time.monotonic):
         self.path = None
@@ -147,7 +157,7 @@ class WavePlayer:
                 self._disarm()
                 self._close_backend()
                 raise
-            self._levels = levels
+            self._levels, self._live_controls = levels, True
             return levels
         state = self.state
         if state not in ('playing', 'paused'):
@@ -496,7 +506,9 @@ class WavePlayer:
         transport = self._listening.path if self._listening is not None else target
         transport_identity = self._stamp(transport)
         transport_start, transport_end = self._to_transport(start), self._to_transport(end)
-        if os.name == 'nt' and end_seconds is not None and not self._live_controls:
+        wave_output = os.name == 'nt' and (
+            self._live_controls or not _mci_filename_supported(transport))
+        if os.name == 'nt' and end_seconds is not None and not wave_output:
             start_ms, end_ms = math.ceil(transport_start * 1000), math.floor(transport_end * 1000)
             if start_ms >= end_ms:
                 raise ValueError('The A/B interval is shorter than the playback device resolution.')
@@ -513,12 +525,14 @@ class WavePlayer:
             self._state, self._started = 'paused', None
             return
         try:
-            if os.name == 'nt' and self._live_controls:
+            if wave_output:
                 from ._wave_output import WaveOutput
                 self._wave = WaveOutput()
                 self._wave.open(transport, start_seconds=transport_start,
                     end_seconds=None if end_seconds is None else transport_end,
-                    device=self._output_device, levels=self.levels, expected=transport_identity)
+                    device=self._output_device,
+                    levels=self.levels if self._live_controls else None,
+                    expected=transport_identity)
                 self.backend = 'Windows waveOut'
             elif os.name == 'nt':
                 selected = self._verify_output_route()

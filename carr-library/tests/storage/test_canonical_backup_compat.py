@@ -493,16 +493,27 @@ def test_unknown_namespace_entry_is_rejected_before_consuming_unbounded_iterator
     app, _, _ = library
     backup = tmp_path / 'backup'
     _, checksum = _flat_backup(app, backup)
-    original = Path.iterdir
-    def guarded(path):
-        if path == backup:
-            yield path / 'not-in-manifest'
+    original = backup_compat.os.scandir
+    observed = []
+    class UnknownEntries:
+        def __enter__(self):
+            observed.append('opened')
+            return self
+        def __exit__(self, *_):
+            observed.append('closed')
+        def __iter__(self):
+            return self
+        def __next__(self):
+            if observed == ['opened']:
+                observed.append('unknown')
+                return SimpleNamespace(name='not-in-manifest')
             raise AssertionError('The inventory eagerly consumed unknown extra entries.')
-        else:
-            yield from original(path)
-    monkeypatch.setattr(Path, 'iterdir', guarded)
+    def guarded(path):
+        return UnknownEntries() if path == backup else original(path)
+    monkeypatch.setattr(backup_compat.os, 'scandir', guarded)
     with pytest.raises(RestoreError, match='unexpected'):
         restore_backup(backup, tmp_path / 'rejected', checksum)
+    assert observed == ['opened', 'unknown', 'closed']
     assert not (tmp_path / 'rejected').exists()
 
 

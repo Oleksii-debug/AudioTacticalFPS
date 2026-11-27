@@ -23,7 +23,7 @@ from ..reader.ebook_contents import open_ebook
 from ..speech._io import run_process
 from ..speech import reading
 from .project import Line, Project, Role, Scene
-from .render import ProductionService, _output_name
+from .render import ProductionService, _production_output_name
 
 MAX_CHARACTERS = 2_000_000
 MAX_PARTS = 256
@@ -547,7 +547,7 @@ class BookAudioService:
             state = self._job(plan, index)
             if state is None or state.get('restore_requires_new_output') is True:
                 prepared = False
-                output = parent / f'{_output_name(plan.project(index).title)}-{plan.job_id(index)[:12]}'
+                output = parent / _production_output_name(plan.project(index).title, plan.job_id(index))
             else:
                 output = local_path(state['destination'])
                 if output.parent != parent:

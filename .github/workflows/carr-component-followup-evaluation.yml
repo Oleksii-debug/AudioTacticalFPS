@@ -10,12 +10,14 @@ concurrency:
   cancel-in-progress: false
 jobs:
   updated-components:
+    name: Updated components / ${{ matrix.os }} / ${{ matrix.mode }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, windows-2022]
+        mode: [source, installed]
     defaults:
       run:
         shell: pwsh
@@ -117,7 +119,7 @@ jobs:
           $proof | python -I -B -X utf8 - | Tee-Object ci-component-results/application-source.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require source and installed native additional-document imports
-        if: ${{ !cancelled() && runner.os == 'Windows' && steps.inventory.outcome == 'success' }}
+        if: ${{ !cancelled() && matrix.mode == 'source' && runner.os == 'Windows' && steps.inventory.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           $failures = @()
@@ -127,7 +129,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { $failures += 'installed-native-document-formats' }
           if ($failures.Count) { throw ('Native additional-document imports failed: ' + ($failures -join ', ')) }
       - name: Require source updated components and adjacent contracts
-        if: ${{ !cancelled() && steps.inventory.outcome == 'success' && (runner.os != 'Windows' || (steps.audio.outcome == 'success' && steps.ocr.outcome == 'success')) }}
+        if: ${{ !cancelled() && matrix.mode == 'source' && steps.inventory.outcome == 'success' && (runner.os != 'Windows' || (steps.audio.outcome == 'success' && steps.ocr.outcome == 'success')) }}
         run: |
           $suites = @(
             'tests/assistant/test_local_planning.py',
@@ -165,13 +167,26 @@ jobs:
             'tests/ui/test_engine_settings_review.py',
             'tests/audio/test_cleanup_contexts.py',
             'tests/audio/test_audio_process.py',
-            'tests/audio/test_process_deadline.py'
+            'tests/audio/test_process_deadline.py',
+            'tests/ui/test_ebook_audio_initialization.py',
+            'tests/ui/test_ebook_dialog.py',
+            'tests/reader/test_ebook_audio.py',
+            'tests/reader/test_ebook_audio_lifecycle.py',
+            'tests/speech/test_wave_output.py',
+            'tests/speech/test_player_controls.py',
+            'tests/speech/test_player_transport.py',
+            'tests/speech/test_output_devices.py',
+            'tests/speech/test_listening.py',
+            'tests/speech/test_playlist.py',
+            'tests/search/test_source_page_benchmark.py',
+            'tests/packaging/test_windows_launcher_bundle.py',
+            'tests/ui/test_federated_labels.py'
           )
           if (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }
           python -B scripts/ci_check.py --jobs 2 @suites 2>&1 | Tee-Object ci-component-results/source.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require installed updated components and adjacent contracts
-        if: ${{ !cancelled() && steps.inventory.outcome == 'success' && (runner.os != 'Windows' || (steps.audio.outcome == 'success' && steps.ocr.outcome == 'success')) }}
+        if: ${{ !cancelled() && matrix.mode == 'installed' && steps.inventory.outcome == 'success' && (runner.os != 'Windows' || (steps.audio.outcome == 'success' && steps.ocr.outcome == 'success')) }}
         run: |
           python -I -B -c "from pathlib import Path; import carr_library; path=Path(carr_library.__file__).resolve(); assert not path.is_relative_to(Path('src').resolve()), path; print(path)"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -211,7 +226,20 @@ jobs:
             'tests/ui/test_engine_settings_review.py',
             'tests/audio/test_cleanup_contexts.py',
             'tests/audio/test_audio_process.py',
-            'tests/audio/test_process_deadline.py'
+            'tests/audio/test_process_deadline.py',
+            'tests/ui/test_ebook_audio_initialization.py',
+            'tests/ui/test_ebook_dialog.py',
+            'tests/reader/test_ebook_audio.py',
+            'tests/reader/test_ebook_audio_lifecycle.py',
+            'tests/speech/test_wave_output.py',
+            'tests/speech/test_player_controls.py',
+            'tests/speech/test_player_transport.py',
+            'tests/speech/test_output_devices.py',
+            'tests/speech/test_listening.py',
+            'tests/speech/test_playlist.py',
+            'tests/search/test_source_page_benchmark.py',
+            'tests/packaging/test_windows_launcher_bundle.py',
+            'tests/ui/test_federated_labels.py'
           )
           if (-not $IsWindows) { $suites += 'tests/storage_posix/test_state_backup_names.py' }
           python -I -B -m pytest -q -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-component-results/installed.xml @suites 2>&1 | Tee-Object ci-component-results/installed.txt
@@ -222,7 +250,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: carr-component-followup-${{ matrix.os }}-${{ github.sha }}-${{ github.run_attempt }}
+          name: carr-component-followup-${{ matrix.os }}-${{ matrix.mode }}-${{ github.sha }}-${{ github.run_attempt }}
           path: carr-library/ci-component-results/
           if-no-files-found: error
           retention-days: 7

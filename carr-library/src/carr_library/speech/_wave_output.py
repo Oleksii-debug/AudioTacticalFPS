@@ -103,7 +103,8 @@ class WaveOutput:
             raise RuntimeError('This native playback transport is already owned.')
         if _UNRELEASED_OUTPUTS:
             raise PlaybackCleanupError('An earlier playback driver has not released its buffers. Close the application.')
-        if not isinstance(levels, PlaybackLevels) or type(paused) is not bool:
+        if ((levels is not None and not isinstance(levels, PlaybackLevels))
+                or type(paused) is not bool):
             raise ValueError('Invalid native playback controls.')
         self.path = local_file(path)
         self.identity = _stamp(self.path.stat())
@@ -155,7 +156,13 @@ class WaveOutput:
             _check(self.library.waveOutGetDevCapsW(self.handle.value, C.byref(caps), C.sizeof(caps)),
                    'inspect this playback instance')
             self._caps = caps.support
-            self.set_levels(levels)
+            # A plain long-path playback request preserves the device's native
+            # level. Explicit live controls retain their exact capability and
+            # set/readback checks, only on this owned playback handle.
+            if levels is None:
+                self.levels = None
+            else:
+                self.set_levels(levels)
             self.paused, self.ended = True, False
             self.pump()
             if not paused:

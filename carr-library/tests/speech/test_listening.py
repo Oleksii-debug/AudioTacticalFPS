@@ -52,6 +52,9 @@ def reader(tmp_path, monkeypatch):
     # Only the playback command boundary is doubled. Conversion/inspection run
     # their unchanged real child processes against genuine local PCM files.
     monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='nt'))
+    # Model the MCI protocol independently of this host's temporary-root length.
+    # Unmodified filename routing is exercised in test_wave_output.py.
+    monkeypatch.setattr(implementation, '_mci_filename_supported', lambda path: True)
     player._mci = driver
     player._mci_open = lambda path: driver(f'open "{path}" type waveaudio alias {player._alias}')
     player.play(source)

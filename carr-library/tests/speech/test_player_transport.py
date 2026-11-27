@@ -21,6 +21,9 @@ def windows_player(chunk, monkeypatch):
     player = implementation.WavePlayer()
     # This is the MCI command contract, not an actual Windows driver.
     monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='nt'))
+    # Model the MCI protocol independently of this host's temporary-root length.
+    # Unmodified filename routing is exercised in test_wave_output.py.
+    monkeypatch.setattr(implementation, '_mci_filename_supported', lambda path: True)
     player.path, player.duration_seconds = chunk, .2
     player._open, player._state, player._offset = True, 'paused', .05
     player._mci_open = lambda path: player._mci(f'open "{path}" type waveaudio alias {player._alias}')
@@ -134,6 +137,9 @@ class OpenCommand:
 def typed_windows_player(monkeypatch, *, code=0):
     send, commands = OpenCommand(code), []
     monkeypatch.setattr(implementation, 'os', SimpleNamespace(name='nt'))
+    # Model the MCI protocol independently of this host's temporary-root length.
+    # Unmodified filename routing is exercised in test_wave_output.py.
+    monkeypatch.setattr(implementation, '_mci_filename_supported', lambda path: True)
     monkeypatch.setattr(implementation.ctypes, 'windll',
         SimpleNamespace(winmm=SimpleNamespace(mciSendCommandW=send)), raising=False)
     player = implementation.WavePlayer()

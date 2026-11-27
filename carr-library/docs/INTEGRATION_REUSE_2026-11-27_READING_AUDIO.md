@@ -1,20 +1,218 @@
 # Reading, audio production and recovery integration — 2026-11-27
 
-## Authority and status
+## Authority and current composition
 
-This checkpoint follows root AGENTS.md `080bb9104d3224749e9317c2273d803c0ac37835`,
-the current finalization specification `db8adbdc483a03c262885928c7ed214ca70bbaa7`,
-and the detailed reading/audio requirements `d0b2761dd22b33233b311d4800230fb47f5d3d8b`.
-It extends the existing Resonance application in `carr-library/`.
-Canonical source is `e5c64a5245583f8f8b404a0f042f6ca438c24d7f`;
-the current composition parent is `7471d0455549b5598248b4e51d67ad613f86f5ca`.
-Historical parents and checkpoint results are retained below with their own dates.
+Root AGENTS `080bb9104d3224749e9317c2273d803c0ac37835`, finalization
+`db8adbdc483a03c262885928c7ed214ca70bbaa7` and detailed reading/audio
+requirements `d0b2761dd22b33233b311d4800230fb47f5d3d8b` remain the authority.
+Canonical `carr-library` was last checked at
+`e5c64a5245583f8f8b404a0f042f6ca438c24d7f`.
+The existing composition is extended through its current services and persisted
+formats; the canonical service layout is not copied over competing implementations.
 
-Status: **implemented source, reviewed within the scopes below, composed execution
-NOT_RUN at creation of this checkpoint**. This is not whole-platform DONE, a
-release, manual NVDA acceptance, speech quality, or evidence that every requested
-language/model/device works. Exact workflow head SHAs and results are authoritative;
-older component runs do not qualify the newly composed code.
+## Reviewed repair successor — 2026-11-27, 21:42 UTC
+
+The canonical head and all three authority blobs above were checked again without
+a scope change. This successor composes independently reviewed fixes on
+`07425b55fdcd703e0e9150c5c5479b37bb64c750`. Its new code is not qualified by
+predecessor results; actual source, installed and native execution is required.
+
+### Completed evidence and remaining observed failures
+
+- [Component run46069568992](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069568992):
+  Linux completed **34/37 source modules**; both source and installed tests report
+  **1,150 passed, seven failed, zero skipped**. The failures are four OCR test
+  wrappers with an obsolete one-argument signature, two Book identity tests,
+  and one flat-backup fixture patching an obsolete directory iterator. Windows
+  remains in progress at this checkpoint.
+- [Full Windows run46063682412](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063682412)
+  completed with failure. Its required source aggregate retained **361 completed
+  module verdicts: 358 PASS, three FAIL**, then reached the 45-minute step limit.
+  The three failed modules expose an existing wall-clock timeout fixture,
+  missing copied guides in the launcher-bundle fixture, and a native search
+  controller stand-in missing the current continuation field. The remaining
+  source selection is incomplete. Its artifact `15232873082` retains SHA256
+  `a9b361bc105505c7727dc4c221e5cca03024b5d689452d6c882fa8292707dc1e`.
+- That full job also retains actual selected-input capture failure, queue MCI
+  filename failure, recorded-EPUB initialization failure, and the obsolete
+  Import Center direct-child fixture. The Import Center fixture correction
+  already passes real source and installed controls in the component run.
+  The V3 job remains unfinished; the other four ordinary workflows passed on
+  the named predecessor. No successful full aggregate or eligible wheel exists.
+
+The full source aggregate now has a 75-minute orchestration allowance for its
+expanded selection; the preflight reading/production aggregate has 45 minutes.
+Neither changes any isolated suite's 600-second owner watchdog, product budget,
+native success predicate, skip policy, selected-device requirement or wheel gate.
+
+### Concrete behavior repairs
+
+**Playback filename admission.** The controlled
+[same-basename Windows run46069532528](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069532528)
+observed the same PCM through typed MCI at 127 UTF-16 units, while the same
+basename at 128 and 174 units returned error304, for both WAV and audio suffixes.
+The existing WaveOutput played the exact long file through its reviewed
+endpoint and confirmed cleanup in source and installed modes.
+[evidence/mci-path-20261127.json](evidence/mci-path-20261127.json) preserves the
+raw receipts, exact source/job/artifact identities, and the earlier trial's
+explicit basename-length confound.
+
+The product chooses the existing owned WaveOutput route before launch when
+the reviewed filename exceeds that boundary. It does not retry a failed MCI
+open or choose another device. Short default paths retain typed MCI.
+Implicit native volume stays unchanged; explicit live volume/balance/mute
+still use the same validated controls. Position, pause/resume, repeat, sleep,
+source stamps, selected endpoint and retryable cleanup remain owned.
+Six existing regression modules retain their scenarios and sixteen additional
+cases cover the routing boundary. The real queue probe retains all 66 check
+calls and deadlines, with an exact WaveOutput ownership predicate and stronger
+Close proof for the previously failing long retained path.
+
+**Recorded EPUB initialization.** Wrapped native text rows no longer masquerade
+as logical source lines. The existing position adapter checks a finite set of
+codepoint/UTF-16 and LF/CRLF candidates against exact native prefix and suffix
+ranges, rejecting a partial CRLF position. A session becomes usable only after
+native highlighting, registration and timer initialization succeed. Failed
+initialization retains its first error and cleanup owner; it cannot expose a
+cancelled session as a working Play target. Fifteen additive regressions and
+the original real EPUB/DAISY workflow require execution. The native probe binds
+its actual backend to the prepared path and verifies Close before deleting PCM.
+
+**Book output identity.** Preview for new and restored plans now calls the
+same full-operation output-name helper as actual ProductionService submission.
+Existing saved destinations remain receipt-authoritative. Review, approval
+fingerprint, source validation, collision checks and fresh-plan requirements
+are unchanged. The 46-case Book module covers new binding and historical
+receipts, including passive destination and exact job-byte preservation.
+
+**Fixture reconciliation.** OCR wrappers accept and forward the real output
+byte limit before altering synthetic comparison data; real Tesseract and all
+semantic assertions remain. The backup fixture now observes the actual bounded,
+context-managed scandir interface and proves first-extra-entry refusal plus
+iterator closure. The benchmark timeout test advances the real application
+clock deterministically, retaining real corpus/search code and all original
+no-fabricated-result assertions. The launcher-bundle fixture copies the four
+new required guides and verifies their exact output bytes and sealed hashes.
+The federated-label stand-in models the current continuation field and actual
+search-page method; all label/library/options cases remain, with disabled-Next
+and single-dispatch checks. None changes application capacity or deadlines.
+
+**Separate scale measurement.** The new Windows 50,000-page run
+[46071323514](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46071323514)
+at `87939e06609e133774c5b7361f345d028f0514db` uses the exact P4 application
+source tree with a declared setup-only 1,200-second bound. Query child 600 seconds
+and public search 60 seconds are unchanged. It creates a new corpus, retains
+the original interrupted trial, and does not infer performance acceptance.
+Its execution and measured query samples remain pending here.
+
+## Component reconciliation checkpoint — 2026-11-27, 21:15 UTC
+
+The current reviewed component checkpoint is
+`ae25ef5e585b2926a0ed3fcf7e45debd7d2b2acb`, application parent
+`10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a`.
+Its [source/installed cohort run46068000447](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46068000447)
+passed setup, exact source/installed inventory, the pinned OCR/font prerequisites
+and both Windows native additional-format probes. Both test commands then stopped
+before collection because two PowerShell arrays had terminal commas. The exact
+workflow-only correction is `07425b55fdcd703e0e9150c5c5479b37bb64c750`;
+[run46069568992](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46069568992)
+requires the unchanged 36 common modules and one additional Linux module. No
+product test verdict is inferred from the failed workflow syntax. All 58 intended paths were read back (44 exact
+blob identities and 14 complete text comparisons), with no unrelated changes
+or deleted paths. This is reviewed source and pending execution, not a release.
+
+### Actual P3 evidence
+
+[Preflight46063639311](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063639311)
+passed **237/237 Linux module suites**. Its Windows native preparation, voice
+preferences, protected profiles, Book production, Word review, reference,
+portable snapshots, recording controls, streamed intake and source/search
+controls passed in source and installed modes. The eight full retained receipts
+for preparation, preferences, protected profiles and Book controls are in
+[evidence/p3-native-controls-20261127.json](evidence/p3-native-controls-20261127.json):
+55/57 preparation checks, 41 preference checks per mode, 48 protected-profile
+checks per mode and 72 Book checks per mode. These receipts explicitly retain
+their model/listening/NVDA qualification limits.
+
+The same Windows job passed the separate 13/13 clip/monitor and 14/14
+reading/process blocks and its later native clip/tabs/focus/appearance stages.
+Its 151-module reading/production aggregate retained 125 completed module
+verdicts, all PASS, before its 25-minute step limit. The remaining selection is
+incomplete. The aggregate is not PASS. The next one-off aggregate allows
+45 minutes for the larger required selection; each isolated module retains its
+600-second owner watchdog and all product/native predicates retain their
+existing deadlines.
+
+The [isolated existing Word run46065460236](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46065460236)
+completed 84/84 cases from source and 84/84 from the installed package on each
+OS, with no skips. It isolates the three existing Word modules; it does not
+substitute for the interrupted aggregate or actual Microsoft Word/NVDA review.
+[Ordinary admission run46063011782](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46063011782)
+completed 100/100 source and installed cases on each OS on the same two ordinary
+admission files now present in P3.
+
+On ordinary evaluation `49fe25ade1d91dc4b283fe3b0fd29cc6b4e921ae`,
+compatibility, bibliography, both launcher compilers and both OS transcription
+jobs pass. The full Windows and V3 jobs remain in progress at this snapshot.
+The complete bundle is not accepted: the updated scrollable Import Center
+exposes an obsolete direct-child lookup in the native additional-format probe.
+The successor changes that lookup to the actual form parent, retaining every
+assertion and deadline, and adds source/installed native execution to the cohort.
+
+### Reused updated component contracts
+
+| Existing contribution | Adaptation in this composition | Required evidence |
+| --- | --- | --- |
+| PR193 and later PR188 production identity | Output names bind the complete case-sensitive job ID. New operation hashes bind project, format and stems; exact legacy receipts remain readable. Unknown output ownership fails before publication. | Existing real production outcomes plus 14 native/flat backup cases; execution pending |
+| PR199 Studio output choices and drafts | Existing controls follow the selected saved job; changes require an explicit new output/job. Rich clips/effects/source bindings and Save All remain. Drafts bind exact revision/fingerprint and use one pure validator in existing native/flat recovery. | Existing Studio controls plus 36 output-choice and 18 draft-backup cases; execution pending |
+| PR205 Plan decoding | Duplicate keys, non-finite JSON numbers and overflow floats fail before typed validation. Exact empty-step clarification is bounded non-executable model text. Current tools and system prompt remain. | Original planning/state tests plus 80 additive planning cases; execution pending |
+| PR203 portable archive names | Existing intake/archive guards also reject the missing Windows-reserved punctuation and control characters before extraction/I/O. CRC, link, size and count limits remain. | 70 new archive/intake cases and existing import/EPUB tests; execution pending |
+| PR206 bounded backup discovery | Existing native capture/restore, typed sidecar and flat verifier inventories stream bounded scandir iterators. Declared capacity and empty legacy directories remain supported; an unlisted file is refused before file stat/copy. | 20 new scan cases plus native/flat/portability regressions; execution pending |
+| PR207 OCR text/layout consistency | Ordered raw OCR words and TSV layout must agree with unique word IDs, including automatic baseline, crop alternatives and whole-page admission. Conflicts retain raw evidence and review/fallback behavior. | Existing real OCR/evidence suites plus 26 additions; execution pending |
+| PR197 ASR inventory | Optional additional distributions and captured bytecode enter the outer profile fingerprint. The worker's exact seven-package checkpoint dialect and current publication/rebind checks remain. Restore stays passive. | Real-file runtime inventory and native/flat profile recovery; execution pending |
+| PR202 Python voice helper | A reviewed interpreter/script hash pair uses the existing helper contract and provider registry, fixed isolated argv and fresh prelaunch checks. Existing process-family ownership retains temporary streams/chunks until confirmed cleanup. Passive restore never probes or activates the pair. | 36 helper and 26 backup cases plus current engine-review/process regressions; execution pending |
+
+The helper's pure declaration parser accepts either supported OS path dialect
+without external I/O. Active registration still requires native local files,
+exact fingerprints and explicit review. It does not infer a private vendor API,
+download a model or qualify model output. The helper and Studio output guides
+are included in the existing sealed-guide inventory and manifest tests.
+
+### Test environment and retained contracts
+
+The new cohort checks the exact event HEAD, installed module origin and the
+entire installed Python source inventory before tests. Both OS modes retain
+strict zero-skip/error/failure verdicts. Linux requires real FFmpeg and
+English/Ukrainian Tesseract data. Windows uses the already reviewed audio/OCR
+preparers, and exposes the prepared Tesseract path and data directory. The
+existing OCR fixtures receive the exact public DejaVu 2.37 font after its
+published archive SHA256 is checked; the font is a CI input and is not bundled
+or retained as application output.
+
+The two original actual-filesystem POSIX functions (three cases) moved verbatim
+from the common state-portability module into a required Linux module. Windows
+retains the common manifest/Unicode/restore/error contracts. No assertion was
+removed, replaced by a skip or weakened. The missing-engine OCR fixture also
+clears an explicitly configured runtime before simulating absence from PATH;
+all its original result/limit assertions remain.
+
+Every old ordinary selector remains. New selectors enter the existing main,
+preflight, V3, transcription and bibliography workflows as appropriate. The
+focused cohort retains only public synthetic logs, receipts and XML. Private
+models, entitlement/signing data, user recordings/documents, audio runtime and
+application bundles are not uploaded.
+
+### Remaining release evidence
+
+A successful complete Windows aggregate and all six ordinary workflows at the
+same exact source head are still required before retaining an eligible delivery
+wheel. The current selected input capture gate remains failed; no device
+consent, OS policy or success predicate was changed. Native audio route and
+EPUB initialization repairs require their own exact execution. Private runtime,
+language/inference, publisher/signing and human Windows11/NVDA/listening
+qualification remain distinct requirements.
+
+Historical checkpoints follow with their original scope and dates.
 
 ## Current composition and evidence — 2026-11-27, 20:24 UTC
 

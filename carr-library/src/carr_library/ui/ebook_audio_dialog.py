@@ -258,25 +258,45 @@ class EbookAudioDialog:
                      self._loaded, lambda session: session.close())
 
     def _loaded(self, session):
-        self.session = session
-        self.player = self.player_factory()
-        self.transport = OverlayPlayback(session, self.player)
-        if self.progress is not None:
-            self.progress.register_player(self.transport.observed)
-        self.segments.Set([f'{cue.index + 1}. {session.page.raw_text[cue.start:cue.end][:160]}'
-                           for cue in session.chapter.cues])
-        self.text.ChangeValue(session.page.raw_text)
-        self.segments.SetSelection(0); self._highlight()
-        self.report('Ready. No audio has started. Select a segment and choose Play. '
-                    'Playback continues through this source section; Stop or a new selection cancels it.')
-        self.segments.SetFocus(); self.timer.Start(100)
+        # A session is adopted only after the native source view and player
+        # registration both succeed. A failed highlight must not leave Play
+        # attached to the session that _submit will discard.
+        player = self.player_factory()
+        transport = OverlayPlayback(session, player)
+        registered = False
 
-    def _highlight(self):
-        cue = self.session.chapter.cues[self.transport.index]
+        def release_player(value):
+            value.close()
+            if registered and self.progress is not None:
+                self.progress.unregister_player(transport.observed, silence_confirmed=True)
+
+        try:
+            self.segments.Set([f'{cue.index + 1}. {session.page.raw_text[cue.start:cue.end][:160]}'
+                               for cue in session.chapter.cues])
+            self.text.ChangeValue(session.page.raw_text)
+            self.segments.SetSelection(0)
+            self._highlight(session=session, index=0)
+            self.report('Ready. No audio has started. Select a segment and choose Play. '
+                        'Playback continues through this source section; Stop or a new selection cancels it.')
+            self.segments.SetFocus()
+            if self.progress is not None:
+                registered = True
+                self.progress.register_player(transport.observed)
+            self.timer.Start(100)
+        except Exception:
+            self.timer.Stop()
+            self._discard(player, release_player)
+            raise
+        self.session, self.player, self.transport = session, player, transport
+
+    def _highlight(self, *, session=None, index=None):
+        session = self.session if session is None else session
+        index = self.transport.index if index is None else index
+        cue = session.chapter.cues[index]
         # Existing native mapping verifies exact prefixes, including Windows
         # CRLF and UTF-16 positions; Python offsets alone are not sufficient.
-        start = native_position(self.text, self.session.page.raw_text, cue.start)
-        end = native_position(self.text, self.session.page.raw_text, cue.end)
+        start = native_position(self.text, session.page.raw_text, cue.start)
+        end = native_position(self.text, session.page.raw_text, cue.end)
         self.text.SetSelection(start, end)
         self.text.ShowPosition(start)
 

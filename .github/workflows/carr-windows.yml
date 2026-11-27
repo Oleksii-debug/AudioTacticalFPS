@@ -660,6 +660,7 @@ jobs:
             'tests/packaging/test_prepare_daisy_schemas.py',
             'tests/reader/test_ebook_audio.py',
             'tests/reader/test_ebook_audio_lifecycle.py',
+            'tests/ui/test_ebook_audio_initialization.py',
             'tests/studio/test_daisy_publishing.py',
             'tests/studio/test_daisy_boundaries.py',
             'tests/studio/test_publishing_cli.py',
@@ -1693,6 +1694,7 @@ jobs:
                             'tests/packaging/test_prepare_daisy_schemas.py',
                             'tests/reader/test_ebook_audio.py',
                             'tests/reader/test_ebook_audio_lifecycle.py',
+                            'tests/ui/test_ebook_audio_initialization.py',
                             'tests/studio/test_daisy_publishing.py',
                             'tests/studio/test_daisy_boundaries.py',
                             'tests/studio/test_publishing_cli.py',
@@ -2062,7 +2064,9 @@ jobs:
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required workflows against the complete pinned runtime
         if: ${{ !cancelled() && steps.desktop_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
-        timeout-minutes: 45
+        # The expanded complete source inventory exceeded 45 minutes after 361
+        # completed modules. Per-module 600-second ownership and product limits stay unchanged.
+        timeout-minutes: 75
         run: |
           $suites = @(Get-Content -Raw 'ci-results/required-source-suites.json' | ConvertFrom-Json)
           if ($suites.Count -eq 0) { throw 'Required source-suite inventory is missing.' }
