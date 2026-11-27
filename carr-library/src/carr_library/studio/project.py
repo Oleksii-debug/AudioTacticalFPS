@@ -8,6 +8,8 @@ from uuid import uuid4
 
 from ..durable_state import atomic_json, encode, local_path, read_json, state_lock
 
+MAX_PROJECT_IMPORT_BYTES = 16 * 1024**2
+
 
 def _text(value, label, maximum=1_000_000, empty=False):
     if not isinstance(value, str) or '\x00' in value or len(value) > maximum or (not empty and not value.strip()):
@@ -293,6 +295,55 @@ def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful
         lines.append(Line('line-' + str(len(lines) + 1), role, spoken))
     flush()
     return Project(project_id or uuid4().hex, title, tuple(roles), tuple(scenes), text, mode)
+
+
+def bilingual_project(pairs, *, title, roles, translation_id, source_sha256):
+    """Build literal paired narration with passive links to an accepted export.
+
+    This receives already reviewed text, never parses document text as Studio
+    directions and grants no source access or quotation authority. The existing
+    translation export manifest binds the project to its original and receipts.
+    """
+    from ..speech.runtime import split_utterances
+    if (type(pairs) is not tuple or not 1 <= len(pairs) <= 10000
+            or type(roles) is not tuple or len(roles) != 2
+            or any(not isinstance(role, Role) or not role.voice_id for role in roles)
+            or roles[0].id == roles[1].id
+            or type(translation_id) is not str or not re.fullmatch(r'[0-9a-f]{32}', translation_id)
+            or type(source_sha256) is not str or not re.fullmatch(r'[0-9a-f]{64}', source_sha256)):
+        raise ValueError('Choose a completed translation and two explicit narration voices.')
+    for pair in pairs:
+        if type(pair) is not tuple or len(pair) != 2:
+            raise ValueError('Each narration pair needs original and translated text.')
+        for value in pair:
+            _text(value, 'literal narration text', 2_000_000, True)
+    if sha256(''.join(pair[0] for pair in pairs).encode('utf-8')).hexdigest() != source_sha256:
+        raise ValueError('Bilingual narration no longer matches its original text.')
+    if any(sum(len(pair[index]) for pair in pairs) > 2_000_000 for index in (0, 1)):
+        raise ValueError('Choose a smaller source range for this bilingual narration project.')
+    scenes = []
+    for index, pair in enumerate(pairs):
+        lines = []
+        for role, text in zip(roles, pair):
+            parts = tuple(split_utterances(text)) if text.strip() else (text,)
+            offset = 0
+            for part_index, part in enumerate(parts):
+                reference = (f'Translation job {translation_id}; request chunk {index + 1}; '
+                             f'{role.id}; chunk text sha256 {sha256(text.encode()).hexdigest()}; '
+                             f'characters {offset}-{offset + len(part)}; '
+                             'derived narration; no quotation or live source authority')
+                lines.append(Line(f'{role.id}-{part_index + 1}', role.id, part,
+                                  .5 if part_index == len(parts) - 1 else 0, reference))
+                offset += len(part)
+        scenes.append(Scene(f'pair-{index + 1}', f'Original and translation — request chunk {index + 1}',
+                            tuple(lines)))
+    script = '\n\n'.join('ORIGINAL\n' + original + '\nTRANSLATION\n' + translated
+                         for original, translated in pairs)
+    project = Project(uuid4().hex, title, roles, tuple(scenes), original_script=script)
+    if len(encode(project.to_dict())) > MAX_PROJECT_IMPORT_BYTES:
+        raise ValueError('The bilingual project exceeds the 16 MiB Studio import budget. '
+                         'Export text only or choose fewer source positions for narration.')
+    return project
 
 
 class ProjectStore:

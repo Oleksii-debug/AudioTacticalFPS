@@ -94,6 +94,7 @@ jobs:
           import carr_library.assistant.translation, carr_library.assistant.providers
           import carr_library.ui.translation_dialog
           import carr_library.assistant.profiles, carr_library.ui.assistant_dialog
+          import carr_library.studio.project
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
@@ -106,7 +107,8 @@ jobs:
                    'carr_library.storage.revisions', 'carr_library.storage.schema_identity',
                    'carr_library.assistant.translation', 'carr_library.assistant.providers',
                    'carr_library.ui.translation_dialog',
-                   'carr_library.assistant.profiles', 'carr_library.ui.assistant_dialog')
+                   'carr_library.assistant.profiles', 'carr_library.ui.assistant_dialog',
+                   'carr_library.studio.project')
           def installed_origins():
               origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in names}
               assert all(not pathlib.Path(path).is_relative_to(checkout) for path in origins.values()), origins
@@ -149,6 +151,7 @@ jobs:
                     'tests/assistant/test_translation.py',
                     'tests/assistant/test_providers.py',
                     'tests/assistant/test_translation_v3.py',
+                    'tests/assistant/test_translation_narration.py',
                     'tests/ui/test_profile_project_exports.py']
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
                                '-o', 'xfail_strict=true', '--import-mode=importlib',
