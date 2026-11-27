@@ -31,6 +31,25 @@ reproduced source bundle for every linked third-party library. Public binary
 redistribution clearance is not claimed. Preserve the private deployment
 boundary and the original licenses.
 
+The source lock's two false review flags are an actual outstanding rights gate,
+not incorrect values to flip after a green execution test. The verifier,
+preparation/attachment reports and native smoke receipt now retain those
+booleans independently of execution. The pinned owner-local profile rejects
+missing, non-boolean or promoted clearance fields even if a source-lock hash
+is re-pinned. A later public profile requires a reviewed source/notice bundle
+and an explicit policy change; no existing installed local runtime is blocked
+by network or entitlement checks.
+
+The pinned dependency-source-index.json enumerates 127 build recipes, not a
+resolved list of shipped components. Reconcile the exact enabled configuration,
+actual imported DLLs and statically linked libraries (the build uses
+`--pkg-config-flags=--static`), including transitive dependencies and their
+notices/corresponding source/build instructions. Disabled recipes must not be
+counted as shipped. Verify user replacement of shared LGPL libraries, applicable
+reverse-engineering terms and distribution notices before approving a public
+package. The exact FFmpeg and build-recipe source archives alone do not close
+this gate. Neither a private ZIP nor a successful Windows smoke closes it.
+
 ## Explicit acquisition and preparation
 
 The application never calls either setup helper and never silently downloads a
