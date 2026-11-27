@@ -691,3 +691,79 @@ def test_advanced_rejects_nonstring_detected_language_before_receipt(tmp_path, t
     assert not service.jobs.load(identity)['receipts']
     row = service.gateway.ledger.get(approval.id)['operations'][identity + '_0']
     assert row['status'] == 'uncertain' and row['output_sha256'] is None
+
+
+@pytest.mark.parametrize('glossary', [None, GLOSSARY])
+@pytest.mark.parametrize('action', ['export', 'resume'])
+@pytest.mark.parametrize('mutation', ['text-and-local-hash', 'detected-language', 'missing-job-digest', 'missing-ledger-digest'])
+def test_advanced_decoded_translation_receipt_is_independently_bound(tmp_path, transport, action, mutation, glossary):
+    from carr_library.assistant.state import atomic_json
+    service, p, _ = ready(tmp_path, transport)
+    source = 'Synthetic selected text.'
+    source_language = 'en' if glossary else 'auto'
+    approval, cost = translation_approval(p, source, source_language, 'uk', '1', glossary=glossary)
+    identity = service.submit(p, source, source_language, 'uk', authorization=approval, per_call_cost=cost, glossary=glossary)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.jobs.load(identity)
+    receipt = job['receipts'][0]
+    usage = service.gateway.ledger.get(approval.id)
+    accepted = usage['operations'][identity + '_0']
+    key = 'decoded_translation_sha256'
+    assert receipt[key] == accepted['usage'][key]
+    if mutation == 'text-and-local-hash':
+        receipt['text'] = 'Changed local translation'
+        receipt['translation_sha256'] = sha256(receipt['text'].encode('utf-8')).hexdigest()
+        receipt[key] = provider_transport.translation_receipt_sha256(receipt['text'], receipt['detected_source'])
+    elif mutation == 'detected-language':
+        receipt['detected_source'] = 'fr'
+        receipt[key] = provider_transport.translation_receipt_sha256(receipt['text'], receipt['detected_source'])
+    elif mutation == 'missing-job-digest':
+        del receipt[key]
+    else:
+        del accepted['usage'][key]
+        atomic_json(service.gateway.ledger._path(approval.id), usage)
+    service.jobs.save(job)
+    before = service.jobs.path(identity).read_bytes()
+    count = len(transport['calls'])
+    output = tmp_path / 'invalid-decoded-export'
+    with pytest.raises(ValueError, match='decoded translation receipt'):
+        if action == 'export':
+            service.export(identity, output)
+        else:
+            service.resume(identity)
+    assert not output.exists()
+    assert service.jobs.path(identity).read_bytes() == before
+    assert len(transport['calls']) == count
+
+
+@pytest.mark.parametrize('glossary', [None, GLOSSARY])
+@pytest.mark.parametrize('legacy', [False, True])
+def test_advanced_export_labels_decoded_integrity_without_rebilling_or_inventing_legacy_evidence(tmp_path, transport, legacy, glossary):
+    from carr_library.assistant.state import atomic_json
+    service, p, vault = ready(tmp_path, transport)
+    source = 'Synthetic selected text.'
+    source_language = 'en' if glossary else 'auto'
+    approval, cost = translation_approval(p, source, source_language, 'uk', '1', glossary=glossary)
+    identity = service.submit(p, source, source_language, 'uk', authorization=approval, per_call_cost=cost, glossary=glossary)
+    assert service.resume(identity)['status'] == 'complete'
+    job = service.jobs.load(identity)
+    receipt = job['receipts'][0]
+    usage = service.gateway.ledger.get(approval.id)
+    accepted = usage['operations'][identity + '_0']
+    key = 'decoded_translation_sha256'
+    if legacy:
+        del receipt[key]
+        del accepted['usage'][key]
+        service.jobs.save(job)
+        atomic_json(service.gateway.ledger._path(approval.id), usage)
+    calls, credentials = len(transport['calls']), len(vault.calls)
+    service.gateway.mode = 'LOCAL_ONLY'
+    output = tmp_path / 'decoded-export'
+    service.export(identity, output)
+    row = read_json(output / 'translation-provenance.json')['chunks'][0]
+    assert row['decoded_receipt_integrity'] == ('legacy-wire-only' if legacy else 'decoded-ledger-bound')
+    assert (key in row) == (not legacy)
+    assert service.jobs.load(identity) == job
+    assert (output / 'original.txt').read_text(encoding='utf-8') == source
+    assert (output / 'translated.txt').read_text(encoding='utf-8') == receipt['text']
+    assert len(transport['calls']) == calls and len(vault.calls) == credentials

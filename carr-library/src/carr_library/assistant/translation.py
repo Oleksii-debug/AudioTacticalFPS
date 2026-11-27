@@ -13,7 +13,7 @@ from uuid import uuid4
 from .models import canonical, local_path, text
 from .profiles import ProviderProfile, google_v3_parent
 from .translation_source import capture_source, source_context, source_task_id, validate_source
-from .providers import Authorization, Gateway, money, _request
+from .providers import Authorization, Gateway, money, _request, translation_receipt_sha256
 from .state import JobStore, atomic_json, read_json, now
 from ..speech.reading import ReadingDocument
 from ..speech._io import new_output, digest
@@ -239,7 +239,7 @@ class TranslationService:
         self.jobs.save(job)
         return identity
 
-    def _load(self, identity):
+    def _load(self, identity, *, receipt_integrity=None):
         """Verify existing receipts without renewing remote authority or billing."""
         job = self.jobs.load(identity)
         if (job.get('kind') != 'translation/1' or job.get('source_sha256') != _hash(job.get('source_text', ''))
@@ -275,8 +275,11 @@ class TranslationService:
                 raise ValueError('A completed translation chunk is damaged.')
             if requests[index] is None:
                 if (row['text'] != job['chunks'][index] or row.get('request_sha256') is not None
-                        or row.get('response_sha256') is not None or row.get('detected_source') is not None):
+                        or row.get('response_sha256') is not None or row.get('detected_source') is not None
+                        or 'decoded_translation_sha256' in row):
                     raise ValueError('A whitespace chunk differs from its preserved original.')
+                if receipt_integrity is not None:
+                    receipt_integrity.append('original-whitespace')
                 continue
             text(row['text'], 'completed translation output', maximum=200000)
             recorded = operations.get(identity + '_' + str(index))
@@ -297,6 +300,21 @@ class TranslationService:
                 if (row.get('reported_model') != google_v3_parent(profile.endpoint) + '/models/' + profile.model
                         or row.get('glossary_config') != expected_glossary):
                     raise ValueError('The Advanced v3 receipt has no verified model/glossary provenance.')
+            usage = recorded.get('usage')
+            if type(usage) is not dict:
+                raise ValueError('Completed translation usage evidence is invalid.')
+            key = 'decoded_translation_sha256'
+            if key in row or key in usage:
+                expected = translation_receipt_sha256(row['text'], row.get('detected_source'))
+                if row.get(key) != expected or usage.get(key) != expected:
+                    raise ValueError('A decoded translation receipt differs from its usage evidence.')
+                integrity = 'decoded-ledger-bound'
+            else:
+                # Historical receipts predate the independent decoded digest.
+                # Keep user-owned derivatives exportable without inventing evidence.
+                integrity = 'legacy-wire-only'
+            if receipt_integrity is not None:
+                receipt_integrity.append(integrity)
         return job
 
     def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None):
@@ -329,6 +347,9 @@ class TranslationService:
                         'request_sha256': result.get('request_sha256'), 'response_sha256': result.get('output_sha256')}
                     if profile.adapter == 'google-translation-v3' and chunk.strip():
                         receipt.update(reported_model=result['reported_model'], glossary_config=result['glossary_config'])
+                    if chunk.strip():
+                        receipt['decoded_translation_sha256'] = translation_receipt_sha256(
+                            result['text'], result.get('detected_source'))
                     job['receipts'].append(receipt)
                     # Save accepted output before cancellation: never bill twice.
                     self.jobs.save(job)
@@ -345,7 +366,8 @@ class TranslationService:
             return {'id': identity, 'status': job['status'], 'completed': len(job['receipts']), 'total': total}
 
     def export(self, identity, output):
-        job = self._load(identity)
+        receipt_integrity = []
+        job = self._load(identity, receipt_integrity=receipt_integrity)
         if job['status'] != 'complete' or len(job['receipts']) != len(job['chunks']):
             raise ValueError('Finish and verify all chunks before publishing the translation.')
         self._validate_source(job)
@@ -356,12 +378,12 @@ class TranslationService:
         # Stage privately, then use the existing exclusive directory publisher.
         # A source revoked while serializing cannot leave exported source bytes.
         with TemporaryDirectory(dir=target.parent, prefix='.pending-translation-export-') as staged:
-            report = self._export_into(job, Path(staged))
+            report = self._export_into(job, Path(staged), receipt_integrity)
             self._validate_source(job)
             publish_state(staged, target)
         return {'status': 'complete', 'path': str(target), 'files': report['files']}
 
-    def _export_into(self, job, target):
+    def _export_into(self, job, target, receipt_integrity):
         translated = _assemble_translation(job['chunks'], job['receipts'])
         reading = ReadingDocument(job['source_text'], title=job['title'], source_anchor=job.get('source_anchor'))
         reading.replace(0, len(reading.text), translated, label='Machine translation derivative; not a source quotation')
@@ -379,7 +401,9 @@ class TranslationService:
             'provider_endpoint': job['profile']['endpoint'], 'glossary': job.get('glossary'),
             'model': job['profile']['model'], 'source_is_immutable': True, 'quotation_authority': False,
             'automated_translation_quality': 'not independently qualified',
-            'chunks': [{key: value for key, value in row.items() if key != 'text'} for row in job['receipts']],
+            'chunks': [dict({key: value for key, value in row.items() if key != 'text'},
+                            decoded_receipt_integrity=integrity)
+                       for row, integrity in zip(job['receipts'], receipt_integrity)],
             'files': {name: digest(target / name) for name in paths}}
         if job.get('source_anchor') is not None:
             report.update(source_anchor=job['source_anchor'], source_metadata=job['source_metadata'],
