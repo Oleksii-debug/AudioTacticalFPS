@@ -339,11 +339,77 @@ def test_portable_native_orientation_uses_existing_cli_without_wrapper(native_bu
     ImageDraw.Draw(picture).multiline_text((60, 60), text, fill='black', spacing=24, font=font)
     pdf = tmp_path / 'rotated.pdf'
     picture.rotate(90, expand=True).save(pdf, resolution=240)
-    result = extract_page(pdf, 1, Config(dpi=240, orientation=True))
+    # This fixture performs baseline OCR, OSD and a second OCR pass over forty
+    # lines. All stages retain one explicit bounded deadline, with headroom for
+    # loaded Windows runners. Production's default 30-second limit is unchanged.
+    result = extract_page(pdf, 1, Config(dpi=240, timeout=90, orientation=True))
     orientation = result['provenance']['orientation']
     assert orientation['algorithm'] == 'portable-native-osd-v1'
-    assert orientation['status'] == 'ocr_candidate' and orientation['clockwise'] == 90
+    assert orientation['status'] == 'ocr_candidate' and orientation.get('clockwise') == 90, {
+        key: orientation.get(key) for key in ('status', 'clockwise', 'failure_type', 'confidence')}
     assert 'The archive contains' in orientation['raw_text']
     assert result['provenance']['config']['model_policy'] == 'default'
     assert 'wrapper_version' not in orientation
     assert result['status'] == 'review_required'
+
+
+def test_unreadable_directory_rejects_entire_inventory(bundle, monkeypatch):
+    hidden = bundle / 'unreadable'
+    hidden.mkdir()
+    (hidden / 'unlisted.dll').write_bytes(b'unreviewed')
+    original = runtime.os.scandir
+
+    def denied(path):
+        if Path(path) == hidden:
+            raise PermissionError('synthetic enumeration failure')
+        return original(path)
+
+    monkeypatch.setattr(runtime.os, 'scandir', denied)
+    with pytest.raises(runtime.OcrRuntimeError, match='unavailable or invalid'):
+        runtime.verify_ocr_bundle(bundle)
+
+
+def test_empty_directory_inventory_has_a_bound(bundle, monkeypatch):
+    monkeypatch.setattr(runtime, 'MAX_FILES', 4)
+    for index in range(4):
+        (bundle / f'empty-{index}').mkdir()
+    with pytest.raises(runtime.OcrRuntimeError, match='directory limit'):
+        runtime.verify_ocr_bundle(bundle)
+
+
+def test_directory_inventory_checks_budget_between_entries(bundle, monkeypatch):
+    # Isolate the inventory stage: budget is checked before accepting each
+    # entry, including empty directories, not only once per os.walk yield.
+    for index in range(10):
+        (bundle / f'empty-{index}').mkdir()
+    count = 0
+
+    def remaining():
+        nonlocal count
+        count += 1
+        if count == 4:
+            raise TimeoutError('synthetic budget expiry')
+
+    with pytest.raises(TimeoutError, match='budget expiry'):
+        runtime._inventory(bundle, remaining)
+    assert count == 4
+
+
+@pytest.mark.parametrize('error', [
+    subprocess.TimeoutExpired('synthetic-private-path', 1),
+    ValueError('synthetic-private-path is malformed'),
+], ids=['deadline', 'invalid-output'])
+def test_native_orientation_classifies_failure_without_private_exception_text(error):
+    from PIL import Image
+    from carr_library.extract.ocr_orientation_bridge import orientation_candidate
+    from carr_library.extract.page_ocr import Config
+    def fail(*args):
+        raise error
+    def unused(*args):
+        pytest.fail('Failed OSD must not create a rotated OCR result.')
+    result = orientation_candidate(Image.new('RGB', (20, 10)), Config(orientation=True),
+        'synthetic-ocr', lambda: 1, fail, unused, native_cli=True)
+    assert result['status'] == 'orientation_failed_or_timed_out'
+    assert result['failure_type'] == type(error).__name__
+    assert 'raw_text' not in result and 'synthetic-private-path' not in repr(result)
+    assert Config().timeout == 30
