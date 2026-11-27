@@ -43,6 +43,11 @@ def test_first_run_is_read_only_and_save_roundtrips(tmp_path, registry):
     b'{"version":1,"bindings":{"library.import":"Ctrl+C"}}',
     b'{"version":' + b'9' * 5000 + b',"bindings":{}}',
     b' ' * (MAX_BYTES + 1),
+], ids=[
+    'malformed-json', 'invalid-utf8', 'array', 'null', 'boolean-version',
+    'float-version', 'unsupported-version', 'unknown-key', 'missing-bindings',
+    'duplicate-version', 'duplicate-binding', 'list-bindings', 'invalid-command-id',
+    'boolean-shortcut', 'reserved-shortcut', 'huge-version', 'oversized-file',
 ])
 def test_corrupt_settings_are_never_overwritten_by_load(tmp_path, raw):
     path = tmp_path / 'keyboard-shortcuts.json'
