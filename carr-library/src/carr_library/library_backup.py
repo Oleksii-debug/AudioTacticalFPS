@@ -330,11 +330,32 @@ def _validate_recordings(root, *, cancelled=lambda: False):
     return _recording_adapter().validate_state_tree(root, cancelled=cancelled)
 
 
+def _audio_batch_adapter():
+    from . import audio_batch_backup
+    return audio_batch_backup
+
+
+def _audio_batch_path(value):
+    return (isinstance(value, str) and value.startswith('audio-batches/')
+            and _audio_batch_adapter().state_path(value))
+
+
+def _audio_batch_files(root, *, cancelled=lambda: False):
+    if not optional_present(root / 'audio-batches'):
+        return ()
+    return _audio_batch_adapter().state_paths(root, cancelled=cancelled)
+
+
+def _validate_audio_batches(db, root, *, cancelled=lambda: False):
+    if optional_present(root / 'audio-batches'):
+        _audio_batch_adapter().validate_state_tree(root, db=db, cancelled=cancelled)
+
+
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
     if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
             or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)
-            or _recording_path(value)):
+            or _recording_path(value) or _audio_batch_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -415,6 +436,7 @@ def _sidecar_info(root, relative):
              _translation_adapter().state_limit(relative) if _translation_path(relative) else
              _transcription_adapter(relative).state_limit(relative) if _transcription_path(relative) else
              _recording_adapter().state_limit(relative) if _recording_path(relative) else
+             _audio_batch_adapter().state_limit(relative) if _audio_batch_path(relative) else
              MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
     minimum = 0 if (_historical_path(relative) or _transcription_allows_empty(relative)
@@ -480,6 +502,14 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
     transcription = ()
     resource_policy = _resource_policy_files(root, cancelled=cancelled)
     with ExitStack() as stack:
+        if optional_present(root / 'audio-batches'):
+            try:
+                # Same lock order as the producer: outer library writer, then
+                # the complete queue namespace, then managed child projects.
+                stack.enter_context(_audio_batch_adapter().snapshot_guard(root))
+            except RuntimeError as exc:
+                raise RestoreError('An audio batch is capturing or producing output; retry after it stops.') from exc
+        audio_batches = _audio_batch_files(root, cancelled=cancelled)
         if optional_present(root / _recording_adapter().DIRECTORY):
             try:
                 stack.enter_context(_recording_adapter().snapshot_guard(root))
@@ -545,7 +575,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
                     or _translation_files(root) != translation
                     or _transcription_files(root) != transcription
                     or _resource_policy_files(root, cancelled=cancelled) != resource_policy
-                    or _recording_files(root, cancelled=cancelled) != recordings):
+                    or _recording_files(root, cancelled=cancelled) != recordings
+                    or _audio_batch_files(root, cancelled=cancelled) != audio_batches):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
@@ -693,6 +724,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
     for path in _resource_policy_files(root, cancelled=cancelled):
         add(path)
     for path in _recording_files(root, cancelled=cancelled):
+        add(path)
+    for path in _audio_batch_files(root, cancelled=cancelled):
         add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
@@ -872,6 +905,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_resource_policy(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_recordings(app.root, cancelled=cancelled)
+                _validate_audio_batches(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             # Bind the copied ASR state to this exact catalog before publishing
@@ -881,6 +915,9 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                     _validate_transcriptions(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
             if any(_recording_path(entry['path']) for entry in sidecars):
                 _validate_recordings(stage / SIDECARS, cancelled=cancelled)
+            if any(_audio_batch_path(entry['path']) for entry in sidecars):
+                with closing(Storage(snapshot, schema_version=CURRENT_SCHEMA_VERSION)) as snapshot_storage:
+                    _validate_audio_batches(snapshot_storage.db, stage / SIDECARS, cancelled=cancelled)
             # Refuse a newly introduced project before interpreting its files.
             # The final check also covers inventory changes during the rescan.
             check_projects()
@@ -1229,6 +1266,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
             _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
             _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
             _validate_recordings(checked_root, cancelled=cancelled)
+            _validate_audio_batches(storage.db, checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES,
