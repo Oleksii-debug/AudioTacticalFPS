@@ -36,3 +36,16 @@ At preparation of this source record the composed corrections are NOT_RUN. Requi
 These corrections change three test fixtures, one existing workflow selection and this evidence note. Application source, runtime owners, parsers, storage schemas, dependency profiles and time limits are unchanged. Earlier completed product runs retain their exact executed identities; they are not relabeled as new executions.
 
 The already completed receipt correction, Audio, managed update, publication, corpus and large-source results remain recorded separately in [PR99](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/99). Manual NVDA, physical audio, owner-model qualification, production signing and distribution clearance remain separate acceptance.
+
+## Follow-up review of the full-bundle execution order
+
+After fixture composition, [Fast run 46060179784](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46060179784) on exact `78b2883c292002dae2d800960028b240617b098f` completed successfully on both operating systems: 22 source suites / 458 passing cases, 21 exact-installed suites / 418 passing cases, and two loopback suites / 45 passing cases, without failures or skips. Each mode includes all 60 cases from the three corrected modules and all 30 receipt cases. These are separate execution observations, not unique-test totals.
+
+A narrow source review of the still-unexecuted final full-bundle step found two further workflow defects. These findings were proven by source inspection, not reported as executed failures:
+
+1. The installed local-translation loopback command preceded the existing offline installation of pytest/reportlab. The production installer creates an isolated virtual environment and installs the sealed production lock; that lock contains neither test package. The required CI child imports pytest. Candidate `2cd9be24a3870daf9508601fd260ec5f9ee71f71` moves only the unchanged two-line invocation/exit-check block after the already existing successful offline test-dependency installation, inside the same firewall-controlled step.
+2. `verify_application_wheel` already returns `source_tree`, while the final workflow receipt also supplied it explicitly to `dict(..., **proof)`. The same candidate retains the independent Git tree lookup, asserts that `proof['source_tree']` equals it, and emits the field once. Source provenance verification is preserved and made explicit.
+
+The candidate changes only `.github/workflows/carr-windows.yml`; exact inverse reconstruction verifies that all other workflow bytes are unchanged. The composed follow-up also appends this evidence note. Application and test source, dependency locks, production profiles, suite selections, installed-origin checks, numeric-loopback restrictions, firewall boundaries and time limits are unchanged.
+
+At preparation of this follow-up, its full installed/native bundle and standard-setup execution remain NOT_RUN. Require the complete MAIN run on the composed follow-up source. The already completed exact 78b Fast results retain their actual source and artifact identities.
