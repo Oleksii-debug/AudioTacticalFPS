@@ -5,10 +5,14 @@ is used here. The fixture implements only the documented file protocol.
 """
 from pathlib import Path
 from hashlib import sha256
+import builtins
+import io
 import json
+import os
 import runpy
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -448,3 +452,77 @@ def test_v5_cli_configure_create_run_export_share_the_persisted_profile(v5, tmp_
     assert len(service.list()) == 1 and invoke('show', identity)['status'] == 'completed'
     assert service.text(identity, result['sources'][0]['filename']) == 'Synthetic V5 fixture.\n'
     assert source.read_bytes() == original
+
+
+@pytest.mark.parametrize('protocol', ['receipts-v1', PROTOCOL])
+def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_path, monkeypatch, protocol):
+    """Keep the host's old snapshot open until the real child replaces its name."""
+    _, _, service, source, _, models = v5
+    if protocol == 'receipts-v1':
+        legacy = runpy.run_path(str(Path(__file__).with_name('test_supplied_worker_bridge.py')))
+        worker = tmp_path / 'legacy-progress-worker.py'
+        worker.write_text(legacy['SYNTHETIC_WORKER'].replace('__MODE__', repr('progress-wait')),
+                          encoding='utf-8')
+        service.configure(Path(sys.executable).resolve(), worker, models, protocol=protocol)
+    identity = service.submit([source])
+    job = service._path(identity)
+    if protocol == PROTOCOL:
+        mode(service, identity, 'wait-before-results')
+    release = job / ('progress-observed' if protocol == 'receipts-v1' else 'fixture-release')
+    status_path = job / 'job_status.json'
+    observed = {'claimed': False, 'replacement_while_open': False, 'old_snapshot': None}
+
+    class HeldSnapshot:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            self.stream.__enter__()
+            return self
+
+        def __exit__(self, *arguments):
+            return self.stream.__exit__(*arguments)
+
+        def fileno(self):
+            return self.stream.fileno()
+
+        def read(self, *arguments):
+            held = os.fstat(self.stream.fileno())
+            release.write_text('Release the real synthetic child while its old status is open.',
+                               encoding='utf-8')
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                current = status_path.stat()
+                if (current.st_dev, current.st_ino) != (held.st_dev, held.st_ino):
+                    assert not self.stream.closed
+                    observed['replacement_while_open'] = True
+                    break
+                time.sleep(.02)
+            raw = self.stream.read(*arguments)
+            observed['old_snapshot'] = json.loads(raw)
+            return raw
+
+    def hold_first_status_reader(original):
+        def opened(file, *arguments, **keywords):
+            stream = original(file, *arguments, **keywords)
+            if (not observed['claimed'] and isinstance(file, (str, bytes, os.PathLike))
+                    and Path(os.fsdecode(file)).absolute() == status_path):
+                observed['claimed'] = True
+                return HeldSnapshot(stream)
+            return stream
+        return opened
+
+    # Cover both the original Path.open implementation and the shared-read
+    # opener. Neither the actual child nor os.replace is mocked.
+    monkeypatch.setattr(builtins, 'open', hold_first_status_reader(builtins.open))
+    monkeypatch.setattr(io, 'open', hold_first_status_reader(io.open))
+    notices = []
+    result = service.run(identity, timeout=20, progress=lambda *notice: notices.append(notice))
+    assert observed['claimed'] and release.is_file()
+    assert observed['replacement_while_open'], result['last_error']
+    assert observed['old_snapshot']['done'] == 0
+    assert result['status'] == 'completed' and result['done'] == 1, result['last_error']
+    assert {'txt', 'srt', 'vtt', 'json'} <= {item['format'] for item in result['artifacts']}
+    assert service.verify(identity)['status'] == 'completed'
+    assert service.text(identity, result['sources'][0]['filename']).startswith('Synthetic')
+    assert notices[-1][-1] == 'completed'
