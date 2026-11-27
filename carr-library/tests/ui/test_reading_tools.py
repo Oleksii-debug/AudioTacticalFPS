@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 from carr_library.speech.marks import join_next_break, split_paragraph
-from carr_library.speech.navigation import native_cursor_position, native_insertion_offset
+from carr_library.speech.navigation import native_cursor_position, native_insertion_offset, native_selection
 from carr_library.speech.reading import ReadingDocument
 from carr_library.speech.session import ReaderDraftStore, ReaderResume
 from carr_library.ui import reading_tools
@@ -126,6 +126,7 @@ class Editor:
     def GetValue(self): return self.value
     def GetRange(self, first, last): return self.value[first:last]
     def GetInsertionPoint(self): return self.cursor
+    def GetSelection(self): return (self.cursor, self.cursor)
     def GetLastPosition(self): return len(self.value)
     def SetInsertionPoint(self, value): self.cursor = value
     def ChangeValue(self, value): self.value = value
@@ -154,7 +155,7 @@ def factory(state):
     body = factory.body[0].body
     body[next(i for i, n in enumerate(body) if isinstance(n, ast.FunctionDef) and n.name == 'placeholder')] = callback
     namespace = dict(__package__='carr_library.ui', native_cursor_position=native_cursor_position,
-                     native_insertion_offset=native_insertion_offset, ReaderResume=ReaderResume)
+                     native_insertion_offset=native_insertion_offset, native_selection=native_selection, ReaderResume=ReaderResume)
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), namespace)
     return namespace['factory'](state)
 
