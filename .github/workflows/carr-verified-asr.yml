@@ -6,6 +6,8 @@ on:
     paths:
       - carr-library/src/carr_library/transcription/**
       - carr-library/tests/transcription/**
+      - carr-library/src/carr_library/operations/**
+      - carr-library/tests/operations/**
       - .github/workflows/carr-verified-asr.yml
   workflow_dispatch:
 
@@ -53,3 +55,6 @@ jobs:
           python -m pip install --only-binary=:all: pytest==9.0.2 filelock==3.29.0 platformdirs==4.10.0 packaging==26.0
       - name: Require actual subprocess and strict file-contract tests
         run: python scripts/ci_check.py tests/transcription/test_verified_protocol.py tests/transcription/test_verified_runtime.py tests/transcription/test_service.py tests/transcription/test_runtime_admission.py tests/operations/test_resources.py
+      - name: Require POSIX fork inheritance protection
+        if: runner.os == 'Linux'
+        run: python scripts/ci_check.py tests/operations/posix_fork_case.py

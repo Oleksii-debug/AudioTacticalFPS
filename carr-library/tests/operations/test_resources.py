@@ -293,21 +293,6 @@ def test_runtime_leases_outside_backup_state_and_truthful_capabilities(tmp_path)
     assert 'no physical RAM/VRAM measurement' in facts['memory_policy']
 
 
-@pytest.mark.skipif(not hasattr(os, 'fork'), reason='Native fork inheritance is POSIX-only.')
-def test_forked_child_cannot_release_parent_reservation(broker):
-    with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='parent', timeout=0) as lease:
-        pid = os.fork()
-        if pid == 0:
-            try:
-                lease.release()
-            except ResourceStateError:
-                os._exit(0)
-            os._exit(1)
-        _, status = os.waitpid(pid, 0)
-        assert os.waitstatus_to_exitcode(status) == 0
-        assert len(broker.snapshot()['leases']) == 1
-
-
 def test_paths_do_not_follow_links_and_invalid_requests_are_rejected(tmp_path):
     real = tmp_path / 'real'
     real.mkdir()

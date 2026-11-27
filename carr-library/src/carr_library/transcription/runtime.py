@@ -3,6 +3,8 @@ from hashlib import sha256
 from importlib import metadata
 import json
 import os
+import re
+import stat
 from pathlib import Path
 
 from ..durable_state import local_path, regular
@@ -46,6 +48,25 @@ def file_identity(path, *, cancel=None, maximum=64 * 1024**3):
     if size != before.st_size or _stamp(regular(path)) != _stamp(before):
         raise ValueError('A selected file changed during verification.')
     return {'sha256': digest.hexdigest(), 'size': size}
+
+
+
+def _support_identity(value, *, cancel=None):
+    """Allow only final interpreter aliases within the same ordinary directory."""
+    path = Path(value).absolute()
+    parent = local_path(path.parent, exists=True)
+    before = path.lstat()
+    if stat.S_ISLNK(before.st_mode):
+        if not re.fullmatch(r'python(?:w|[0-9]+(?:\.[0-9]+)*)?\.exe', path.name.casefold()):
+            raise ValueError('Only final Python executable aliases are supported.')
+        resolved = local_path(path.resolve(strict=True), root=parent, exists=True)
+        if resolved.parent != parent or resolved == path:
+            raise ValueError('Python executable aliases must stay in their base directory.')
+        identity = file_identity(resolved, cancel=cancel, maximum=MAX_PYTHON_SUPPORT_BYTES)
+        if _stamp(path.lstat()) != _stamp(before) or path.resolve(strict=True) != resolved:
+            raise ValueError('A Python executable alias changed during inspection.')
+        return {'resolved': str(resolved), **identity}
+    return file_identity(path, cancel=cancel, maximum=MAX_PYTHON_SUPPORT_BYTES)
 
 
 def _python_layout(python, resolved_python, *, cancel=None):
@@ -108,12 +129,12 @@ def _python_layout(python, resolved_python, *, cancel=None):
                             or (directory == native and name.endswith(('.pyd', '.dll'))))
                 if not selected:
                     continue
-                path = local_path(entry.path, exists=True)
+                path = Path(entry.path).absolute()
                 if str(path) in support:
                     continue
                 if len(support) >= MAX_PYTHON_SUPPORT_FILES:
                     raise ValueError('The selected Python exceeds its support-file inventory budget.')
-                identity = file_identity(path, cancel=cancel, maximum=MAX_PYTHON_SUPPORT_BYTES)
+                identity = _support_identity(path, cancel=cancel)
                 total += identity['size']
                 if total > MAX_PYTHON_SUPPORT_BYTES:
                     raise ValueError('The selected Python exceeds its support-file byte budget.')

@@ -76,3 +76,36 @@ def test_missing_windows_base_executable_cannot_be_reviewed(synthetic_asr_runtim
     (base / 'python.exe').unlink()
     with pytest.raises(ValueError, match='base Python executable'):
         inspect_runtime(launcher, runtime.worker, runtime.model)
+
+
+def test_final_python_alias_is_pinned_to_its_same_directory_target(synthetic_asr_runtime):
+    runtime = synthetic_asr_runtime
+    launcher, base = windows_layout(runtime)
+    alias = base / 'python3.exe'
+    alias.symlink_to(base / 'python.exe')
+    inspected = inspect_runtime(launcher, runtime.worker, runtime.model)
+    record = inspected['python_support'][str(alias)]
+    assert record['resolved'] == str(base / 'python.exe')
+    assert record['sha256'] == inspected['python_support'][str(base / 'python.exe')]['sha256']
+    (base / 'python.exe').write_bytes(b'Changed base interpreter identity.')
+    changed = inspect_runtime(launcher, runtime.worker, runtime.model)
+    assert changed['fingerprint'] != inspected['fingerprint']
+
+
+def test_python_alias_cannot_escape_ordinary_base_directory(synthetic_asr_runtime):
+    runtime = synthetic_asr_runtime
+    launcher, base = windows_layout(runtime)
+    outside = runtime.root / 'outside-python.exe'
+    outside.write_bytes(b'Unreviewed external alias target.')
+    (base / 'python3.exe').symlink_to(outside)
+    with pytest.raises(ValueError, match='outside|base directory'):
+        inspect_runtime(launcher, runtime.worker, runtime.model)
+
+
+def test_executable_alias_exception_does_not_allow_native_dll_links(synthetic_asr_runtime):
+    runtime = synthetic_asr_runtime
+    launcher, base = windows_layout(runtime)
+    alias = base / 'python312.dll'
+    alias.symlink_to(base / 'python311.dll')
+    with pytest.raises(ValueError, match='Python executable aliases'):
+        inspect_runtime(launcher, runtime.worker, runtime.model)
