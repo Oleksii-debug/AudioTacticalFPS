@@ -10,9 +10,25 @@ import traceback
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def run_native_transcription(frame, directory):
+def assert_product_origins(*, source=False):
+    expected = (ROOT / 'src' if source else Path(sys.prefix)).resolve()
+    origins = {}
+    for name, module in tuple(sys.modules.items()):
+        if name == 'carr_library' or name.startswith('carr_library.'):
+            filename = getattr(module, '__file__', None)
+            if filename is not None:
+                path = Path(filename).resolve()
+                assert path.is_relative_to(expected), f'{name} imported outside the selected distribution: {path}'
+                origins[name] = str(path)
+    assert 'carr_library' in origins, 'The product distribution was not imported.'
+    return origins
+
+
+def run_native_transcription(frame, directory, *, source=False):
     """Exercise an existing host; return measured native evidence, never model quality."""
     import pytest
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
     import wx
     from carr_library.audio import transcription as asr
     from carr_library.audio.models import AudioBudget
@@ -20,6 +36,7 @@ def run_native_transcription(frame, directory):
     from carr_library.ui import speech_dialog
     from carr_library.ui.transcription_dialog import (TranscriptionController,
                                                       create_transcription_dialog)
+    assert_product_origins(source=source)
 
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
@@ -259,8 +276,15 @@ def run_native_transcription(frame, directory):
             'real_model_quality': 'NOT_RUN'}
 
 
-def main():
-    sys.path[:0] = [str(ROOT / 'src'), str(ROOT)]
+def main(argv=None):
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--source', action='store_true', help='Explicitly test checkout source instead of the installed distribution')
+    args = parser.parse_args(argv)
+    if args.source:
+        sys.path.insert(0, str(ROOT / 'src'))
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
     import wx
     from carr_library.application import LibraryApp
     from carr_library.ui.desktop_app import DesktopFrame
@@ -272,7 +296,8 @@ def main():
         frame = DesktopFrame(library)
         frame.Show()
         try:
-            result = run_native_transcription(frame, root / 'fixture')
+            result = run_native_transcription(frame, root / 'fixture', source=args.source)
+            result['product_module_origins'] = assert_product_origins(source=args.source)
         finally:
             frame._closing = True
             frame.cancel_event.set()

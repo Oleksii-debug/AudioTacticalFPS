@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import struct
+import time
 import wave
 from tempfile import TemporaryDirectory
 from time import monotonic
@@ -81,10 +82,10 @@ def check_saved_reading_drafts(frame, library, voice_id):
                                 and control.GetLabel().replace('&', '') == label)
 
                 editor = named('Reading copy (editable; Ctrl+S saves)')
-                status = named('Speech and save status').GetValue()
+                status = named('Reading-copy save and export status').GetValue()
                 assert not status.startswith(('Operation did not complete.', 'Saved drafts were not opened.')), status
                 if state['phase'] == 'opening':
-                    if not button('Reload voices').IsEnabled():
+                    if not button('Read current text aloud').IsEnabled():
                         return
                     assert isinstance(editor, wx.TextCtrl) and editor.GetValue() == ''
                     control = named('Recover saved reading draft')
@@ -123,15 +124,15 @@ def check_saved_reading_drafts(frame, library, voice_id):
                         return
                     assert editor.GetValue() == expected.text
                     assert wx.Window.FindFocus() == editor, 'Recovered text did not receive native focus.'
-                    assert named('Synthesis rate, minus ten to ten').GetValue() == 2
-                    assert named('Speech volume, zero to one hundred').GetValue() == 65
+                    assert named('Speech rate for the next reading operation').GetValue() == 2
+                    assert named('Voice volume for the next reading operation').GetValue() == 65
                     lineage = named('Original and reading-copy status').GetValue()
                     assert ('Library source identity retained' if expected.source_bound
                             else 'Unbound reading copy') in lineage
                     editor.SetInsertionPointEnd()
                     editor.WriteText(addition)
                     click(button('Save reading copy'))
-                    assert named('Speech and save status').GetValue().startswith(
+                    assert named('Reading-copy save and export status').GetValue().startswith(
                         'Reading draft, voice settings and current position saved for recovery.')
                     candidates = []
                     for path in set(store.root.glob('*.reader.json')) - before:
@@ -181,6 +182,8 @@ def check_saved_reading_drafts(frame, library, voice_id):
 def main():
     if sys.platform != 'win32':
         raise RuntimeError('This acceptance script requires actual Windows execution.')
+    from carr_library.native_runtime import activate_bundled_runtime
+    native_handle = activate_bundled_runtime()
     import wx
     from carr_library.application import LibraryApp
     from carr_library.speech import VoiceRegistry, SpeechSettings
@@ -190,6 +193,7 @@ def main():
     from carr_library.ui.assistant_dialog import show_assistant, show_provider_settings
     from carr_library.ui.engine_settings import show_engine_settings
     from carr_library.ui.translation_dialog import show_translation
+    from carr_library.ui.speech_dialog import show_speech_reader
     app = wx.App(False)
     result = {'status': 'RUNNING', 'platform': sys.platform, 'manual_nvda': 'NOT_RUN', 'checks': []}
     with TemporaryDirectory(prefix='carr-native-v3-') as temporary:
@@ -261,7 +265,9 @@ def main():
 
         def inspect_dialog(open_dialog, required_names, close_id=None):
             inspected = []
+            deadline = time.monotonic() + 30
             def visit():
+                assert time.monotonic() < deadline, 'The native dialog did not become visible.'
                 dialogs = [window for window in wx.GetTopLevelWindows() if isinstance(window, wx.Dialog) and window.IsShown()]
                 if not dialogs:
                     wx.CallLater(100, visit)
@@ -286,7 +292,7 @@ def main():
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)
-        inspect_dialog(show_translation, ('Google Basic v2 account', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
+        inspect_dialog(show_translation, ('Google API account and edition', 'Selected text', 'Preview, supported languages'), wx.ID_CLOSE)
         result['checks'].append('native studio/assistant/provider/engine dialogs with named keyboard controls')
         result['checks'].extend(check_saved_reading_drafts(frame, library, voice.id))
         import runpy
@@ -296,10 +302,15 @@ def main():
         operations_probe = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'tests' / 'ui' / 'native_operations_smoke.py'))
         result['operations'] = operations_probe['run_native_operations'](frame, root / 'native-operations')
         result['checks'].append('native tasks, responsive initialization, durable resource policy and actual dialog destruction')
+        inspect_dialog(show_speech_reader, ('Reading copy', 'Local reading voice; choose explicitly',
+            'Read aloud from cursor', 'Read selection aloud', 'Pause or resume voice',
+            'Use selected local voice for progress',
+            'Live voice reading status, exact chunk range and audio position'))
         frame.Close()
         app.Yield()
     result['status'] = 'PASS'
     print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+    del native_handle
 
 
 if __name__ == '__main__':

@@ -19,6 +19,21 @@ class ProcessResult:
     stdout: bytes
     stderr: bytes
     elapsed: float
+    returncode: int = 0
+    stopped: bool = False
+
+
+def native_audio_environment(environment=None):
+    """Keep required host settings without ambient FFmpeg report-file writes.
+
+    FFREPORT can write to an arbitrary inherited path even for a read-only
+    inspection. Diagnostic capture belongs to this application's bounded pipes.
+    Work on a copy so callers' explicit environments and the host stay intact.
+    """
+    return {key: value for key, value in
+            (os.environ if environment is None else environment).items()
+            if not ((isinstance(key, str) and key.casefold() == 'ffreport')
+                    or (isinstance(key, bytes) and key.lower() == b'ffreport'))}
 
 
 def _terminate(process):
@@ -42,14 +57,17 @@ def _terminate(process):
 
 
 def run_process(args, *, budget=None, cancelled=lambda: False,
-                watch=(), progress=None, env=None, cwd=None):
+                watch=(), progress=None, env=None, cwd=None, owned_tree=False,
+                stop_requested=None, allow_failure=False):
     """Run an already constructed argument vector, never a shell expression.
 
     Progress callbacks receive rendered seconds from FFmpeg's progress stream.
     Ordinary stdout/stderr have a *total* byte cap, including a fast child which
     finishes between polls. Expected progress is streamed into a single latest
     value rather than accumulated for multi-hour renders.  Callbacks run on the
-    caller's thread. No child inherits stdin.
+    caller's thread. No child inherits stdin. Explicit recording callers may
+    request FFmpeg's fixed q command through an owned pipe; cancellation still
+    terminates and discards incomplete output.
     """
     budget = budget or AudioBudget()
     if not isinstance(args, (tuple, list)) or not args:
@@ -58,17 +76,28 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         raise ValueError('Invalid audio worker argument.')
     if not Path(args[0]).is_absolute():
         raise ValueError('Audio worker must use a resolved executable.')
+    if stop_requested is not None and not callable(stop_requested):
+        raise ValueError('Graceful audio stop requires a callback.')
+    if type(allow_failure) is not bool or type(owned_tree) is not bool:
+        raise ValueError('Audio process ownership and diagnostic exits must be explicit.')
     if cancelled():
         raise AudioCancelled('Audio operation cancelled before starting.')
     watched = tuple(Path(path) for path in watch)
     overflow = threading.Event()
     buffers = {'stdout': bytearray(), 'stderr': bytearray()}
     latest = [None]
-    process = subprocess.Popen(args, stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
-        cwd=cwd, env=env, start_new_session=os.name == 'posix',
-        creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
+    if owned_tree and os.name == 'nt':
+        from .windows_job import JobProcess
+        process = JobProcess(args, cwd=cwd, env=native_audio_environment(env),
+                             stdin_pipe=stop_requested is not None)
+    else:
+        process = subprocess.Popen(args,
+            stdin=subprocess.PIPE if stop_requested is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False,
+            cwd=cwd, env=native_audio_environment(env), start_new_session=os.name == 'posix',
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0) if os.name == 'nt' else 0)
     started = time.monotonic()
+    stopped_at = None
 
     def read_pipe(pipe, name):
         count = 0
@@ -106,9 +135,21 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
     last_progress = None
 
     def check():
-        nonlocal last_progress
+        nonlocal last_progress, stopped_at
         if cancelled():
             raise AudioCancelled('Audio operation cancelled; incomplete output discarded.')
+        if (stop_requested is not None and stopped_at is None
+                and stop_requested() and process.poll() is None):
+            stopped_at = time.monotonic()
+            try:
+                process.stdin.write(b'q\n')
+                process.stdin.flush()
+                process.stdin.close()
+            except BrokenPipeError:
+                pass  # A concurrent exit is checked by the normal result path.
+        if (stopped_at is not None and time.monotonic() - stopped_at > 5
+                and process.poll() is None):
+            raise AudioError('Audio capture did not finalize within its stop allowance; incomplete output discarded.')
         if overflow.is_set():
             raise AudioError('Audio worker exceeded its diagnostic output budget.')
         if time.monotonic() - started > budget.timeout:
@@ -163,23 +204,49 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             raise AudioError('Audio worker did not close its diagnostic streams.')
         # Required even for a child which exited before the first polling tick.
         check()
-        if process.returncode:
+        if process.returncode and not allow_failure:
             message = bytes(buffers['stderr']).decode('utf-8', errors='replace')[-3000:]
             raise AudioError(f'Local audio worker failed (exit {process.returncode}): {message.strip()}')
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
-                             time.monotonic() - started)
+                             time.monotonic() - started, process.returncode,
+                             stopped_at is not None)
     finally:
-        try:
+        def cleanup_process():
+            if owned_tree and os.name == 'nt':
+                return process.close()
             _terminate(process)
-        finally:
+            if owned_tree and os.name == 'posix':
+                # Kill only the session created by this call, even when its
+                # root exited before its own inference child.
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            return True
+
+        def release_streams():
+            if process.stdin is not None:
+                try:
+                    process.stdin.close()
+                except OSError:
+                    pass
             for thread in threads:
                 if thread.ident is not None:
                     thread.join(timeout=2)
-            # A reader owns and closes its stream. Streams whose readers never
-            # started still belong to this caller and must be closed here.
+            # Only readers that actually started own their streams. Retain
+            # startup-failure cleanup even when allocation/start fails midway.
             for pipe in (process.stdout, process.stderr):
                 if pipe not in started_pipes:
                     pipe.close()
+
+        try:
+            cleanup_process()
+        except Exception as exc:
+            from .cleanup import pending_cleanup
+            raise pending_cleanup(cleanup_process,
+                message='Audio process cleanup is still pending; its admission remains reserved.',
+                callbacks=(release_streams,)) from exc
+        release_streams()
 
 
 def fsync_directory(path):

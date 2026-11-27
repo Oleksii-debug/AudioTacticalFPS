@@ -64,7 +64,12 @@ def _unique(pairs):
 
 
 def _open_json_file(path):
-    """Read one snapshot without blocking another process's atomic replacement."""
+    """Open a bounded snapshot with Windows read/write/delete sharing.
+
+    The writer can atomically replace a delete-sharing snapshot using the
+    supported native rename operation. Ordinary non-delete-sharing readers or
+    filesystems without that operation retain the bounded replacement retry.
+    """
     if os.name != 'nt':
         return path.open('rb')
     import ctypes

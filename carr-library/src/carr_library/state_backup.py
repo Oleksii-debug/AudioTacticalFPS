@@ -45,7 +45,9 @@ def _include(path, generated):
 
 
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, include_paths=None):
+    if include_paths is not None:
+        include_paths = frozenset(relative_name(name).as_posix() for name in include_paths)
     root = Path(root)
     if cancelled():
         raise InterruptedError('Backup cancelled.')
@@ -64,7 +66,8 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             for name in sorted(files):
                 source = Path(directory) / name
                 relative = source.relative_to(root)
-                if _include(relative, include_generated):
+                if (_include(relative, include_generated)
+                        and (include_paths is None or relative.as_posix() in include_paths)):
                     found[relative] = _stamp(regular(source))
                     if len(found) > MAX_STATE_FILES:
                         raise ValueError('Application state exceeds the file budget.')
@@ -105,6 +108,9 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
+    from .studio.backup_inputs import snapshot_inputs
+    retained_entries = snapshot_inputs(target, entries, max_bytes=max_bytes,
+        max_files=MAX_STATE_FILES, cancelled=cancelled)
     # File metadata is not a content identity: on Windows an equal-size write
     # can retain the observed timestamps. Recheck every copied source against
     # its manifest hash before the caller can publish this snapshot.
@@ -134,29 +140,21 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
-    # A snapshot must pass the same portable manifest checks as a restore.
-    # Keep this after content revalidation and before publication.
-    validate_state(entries)
-    return sorted(entries, key=lambda entry: entry['filename'])
+    # PR145: the writer must obey the same portable namespace as its reader.
+    validate_state(retained_entries)
+    return sorted(retained_entries, key=lambda entry: entry['filename'])
 
 
-def validate_state(entries):
-    if not isinstance(entries, list) or len(entries) > MAX_STATE_FILES:
-        raise ValueError('Invalid application state manifest.')
-    names, directories, portable_paths, total = set(), set(), {}, 0
-    for item in entries:
-        if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
-                or type(item['size_bytes']) is not int or item['size_bytes'] < 0
-                or not isinstance(item['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', item['sha256'])):
-            raise ValueError('Invalid application state manifest.')
-        name = relative_name(item['filename']).as_posix()
+def validate_portable_paths(values):
+    """Reject NFC/case aliases, including ancestors and file/directory overlap."""
+    names, directories, portable_paths = set(), set(), {}
+    for value in values:
+        path = relative_name(value)
+        name = path.as_posix()
         key = unicodedata.normalize('NFC', name).casefold()
         if key in names:
             raise ValueError('Duplicate application state filename.')
         names.add(key)
-        # Reuse the typed sidecar portable-path policy, including ancestors.
-        # A/one and a/two may coexist on POSIX but alias on Windows.
-        path = PurePosixPath(name)
         for component in (path, *path.parents):
             current = str(component)
             if current == '.':
@@ -167,19 +165,39 @@ def validate_state(entries):
                 raise ValueError('Application state paths collide on a portable filesystem.')
             if component != path:
                 directories.add(portable)
-        total += item['size_bytes']
     if names & directories:
         raise ValueError('Application state file and directory paths collide.')
+
+
+def validate_state(entries):
+    if not isinstance(entries, list) or len(entries) > MAX_STATE_FILES:
+        raise ValueError('Invalid application state manifest.')
+    names, total = set(), 0
+    for item in entries:
+        if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
+                or type(item['size_bytes']) is not int or item['size_bytes'] < 0
+                or not isinstance(item['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', item['sha256'])):
+            raise ValueError('Invalid application state manifest.')
+        name = relative_name(item['filename']).as_posix()
+        if name.casefold() in names:
+            raise ValueError('Duplicate application state filename.')
+        names.add(name.casefold())
+        total += item['size_bytes']
     if total > MAX_STATE_BYTES:
         raise ValueError('Application state manifest exceeds its byte budget.')
+    validate_portable_paths(item['filename'] for item in entries)
 
 
-def restore_state(source, target, entries):
+def restore_state(source, target, entries, *, cancelled=lambda: False):
+    if cancelled():
+        raise InterruptedError('Restore cancelled.')
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
     found = []
     for directory, dirs, files in os.walk(source, followlinks=False):
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
         for name in dirs:
             regular(Path(directory) / name, directory=True)
         for name in files:
@@ -191,6 +209,8 @@ def restore_state(source, target, entries):
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)
     for item in entries:
+        if cancelled():
+            raise InterruptedError('Restore cancelled.')
         incoming = local_path(source / item['filename'], root=source, exists=True)
         if regular(incoming).st_size != item['size_bytes']:
             raise ValueError('Application state size mismatch.')
@@ -199,6 +219,8 @@ def restore_state(source, target, entries):
         digest, size = sha256(), 0
         with incoming.open('rb') as read, destination.open('xb') as write:
             while block := read.read(1024 * 1024):
+                if cancelled():
+                    raise InterruptedError('Restore cancelled.')
                 size += len(block)
                 if size > item['size_bytes']:
                     raise ValueError('Application state changed during restore.')
@@ -211,10 +233,12 @@ def restore_state(source, target, entries):
     sync_directory(target)
 
 
-def publish_state(source, target):
+def publish_state(source, target, *, cancelled=lambda: False):
     target = Path(target)
     target.mkdir(mode=0o700)
     for path in sorted(Path(source).rglob('*')):
+        if cancelled():
+            raise InterruptedError('Publication cancelled; the destination remains incomplete.')
         relative = path.relative_to(source)
         if path.is_dir():
             (target / relative).mkdir(exist_ok=True)

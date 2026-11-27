@@ -74,6 +74,9 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
         def GetValue(self):
             return self.value
 
+        def SetEditable(self, editable):
+            self.editable = editable
+
         def ChangeValue(self, value):
             self.value = value
 
@@ -147,7 +150,7 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
         VERTICAL=1, HORIZONTAL=2, ALL=4, EXPAND=8, TE_MULTILINE=16, TE_READONLY=32,
         DEFAULT_DIALOG_STYLE=64, RESIZE_BORDER=128, EVT_BUTTON='button', EVT_CLOSE='close')
     monkeypatch.setitem(sys.modules, 'wx', wx)
-    monkeypatch.setattr(workspace, 'TranslationService', lambda root: saved.service)
+    monkeypatch.setattr(workspace, 'TranslationService', lambda root, **kwargs: saved.service)
     monkeypatch.setattr(workspace, 'ProfileStore',
                         lambda root: SimpleNamespace(list=lambda: tuple(profiles)))
 
@@ -175,7 +178,7 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
 
 def visible(ui):
     return {key: ui.fields[name] for key, name in {
-        'account': 'Google Basic v2 account',
+        'account': 'Google API account and edition',
         'source': 'Source language code; auto detects',
         'target': 'Target language code',
         'text': 'Selected text; originals remain unchanged',
@@ -208,7 +211,7 @@ def test_saved_job_restores_visible_scope_and_resumes_without_rebilling(tmp_path
 
     ui.scenario = scenario
     workspace.show_translation(ui.frame)
-    assert ui.jobs == ['Translating approved selected text']
+    assert ui.jobs == ['Reading saved translation jobs', 'Translating approved selected text']
     assert len(saved.connection['calls']) == before
     assert saved.service.get(saved.identity)['source_text'] == saved.original
 
@@ -238,7 +241,7 @@ def test_changed_visible_saved_scope_blocks_actual_handlers_before_queue_or_choo
 
     ui.scenario = scenario
     workspace.show_translation(ui.frame)
-    assert not ui.jobs and not ui.gateways and ui.chooser_count == 0
+    assert ui.jobs == ['Reading saved translation jobs'] and not ui.gateways and ui.chooser_count == 0
     assert saved.service.jobs.path(saved.identity).read_bytes() == before
     assert len(saved.connection['calls']) == calls and len(saved.vault.calls) == credentials
 
@@ -259,12 +262,12 @@ def test_missing_saved_account_blocks_remote_resume_but_preserves_real_offline_e
         assert fields['account'].GetSelection() == -1
         assert 'remote resume is blocked' in fields['status'].GetValue()
         ui.buttons['Translate / resume'].click()
-        assert not ui.jobs and not ui.gateways
+        assert ui.jobs == ['Reading saved translation jobs'] and not ui.gateways
         ui.buttons['Export'].click()
 
     ui.scenario = scenario
     workspace.show_translation(ui.frame)
-    assert ui.jobs == ['Exporting translation derivative'] and ui.chooser_count == 1
+    assert ui.jobs == ['Reading saved translation jobs', 'Exporting translation derivative'] and ui.chooser_count == 1
     output, = ui.directory.iterdir()
     assert (output / 'original.txt').read_text(encoding='utf-8') == saved.original
     assert (output / 'translation.reading.json').is_file()

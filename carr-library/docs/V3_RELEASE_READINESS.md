@@ -17,10 +17,10 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Synchronized EPUB publication | Reused Studio publisher, native controls and CLI export completed schema-1 productions as EPUB 3 media overlays; verified existing MP3 is reused or the current FFmpeg adapter converts the WAV master | Required tests cover exact source/timeline provenance, no-clobber publication, actual child death before/after linking, shared resources, receipt recovery and full backup/restore. Installed native SAPI/EPUB and pinned EPUBCheck gates require fresh exact-head execution; line synchronization does not establish word alignment, reader interoperability, DAISY or Braille qualification |
 | Shared operations | Native Tasks and resources view and CLI over the existing import, Studio, ASR and assistant stores; cooperating CPU/RAM/disk/device reservations, shared CUDA exclusion and cancellable admission | Canonical ASR, actual isolated imports, process ownership and controller regressions are required by the exact portable/native/installed gates; disposable metadata cleanup cannot reverse a verified completed output; hardware capacity and hard-crash orphan management remain separate |
 | Documents and citations | Bounded BibTeX/RIS import, selected-field metadata review, isolated conversion, local citeproc-js styles/locales and editable DOCX regeneration with citation provenance | Actual parser, local processor, cancellation/rollback, generated-document and overwrite-confirmation regressions; no live Word add-in |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings, projects and discoverable reader drafts; catalog v5 records immutable request/attempt publication receipts in the import transaction | Real process interruption, competing imports, exact v3/v4/v5 schema validation, rollback, portable-name validation and restore tests; externally exported audio and OS credential secrets are separate |
+| Recovery | Manifest-bound archive v5 includes pending import bytes, identities, settings, projects, discoverable reader drafts and typed retained media extensions; catalog v5 records immutable request/attempt publication receipts in the import transaction | Real process interruption, competing imports, exact v3/v4/v5 schema validation, rollback, portable-name validation and restore tests; externally exported audio and OS credential secrets are separate |
 | Exports | Selected-file approval binds file identity and bytes; new files publish without replacement; completed exports retain success if only temporary cleanup fails | Actual competing creates, equal-size content edits, moved destinations, cancellation and bounded-read tests; existing files above the 64 MiB overwrite-check limit require a new filename |
 | Supplied transcription | Existing Whisper worker protocol, strict source preparation, reviewed local runtime/model inventories, isolated processes, immutable input and atomic TXT/SRT/VTT/JSON receipts; native file/folder selection, jobs/status/pause/cancel/resume and separate transcript editing, plus CLI | Actual process/filesystem tests use synthetic recognition, including a separate execution of the supplied worker; real model inference, throughput, native runtime isolation and human NVDA remain unqualified |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
+| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; physical capture/monitoring needs a real device test; recording controls use the separate explicit-device capture service |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, decoded-text receipts, scope-bound resume and new exports | Synthetic transport with the real gateway/ledger, bound UI handlers and complete backup/restore tests; completed saved text remains exportable without another request. Live API, translation quality, Advanced v3 and local model inference are not qualified |
@@ -107,7 +107,7 @@ audio binaries and synthetic output are excluded from the evidence uploads and
 sealed application. Conformance, native SAPI, source/installed regressions and the
 final unchanged-bundle check must succeed for the exact source being assessed.
 
-The complete-backup format remains v4. Catalog schema v5 adds only import
+The complete-backup format advances to archive v5 for typed retained-media extensions, while earlier supported archives remain readable. Catalog schema v5 adds only import
 publication receipts; the exact earlier schema definitions remain unchanged.
 Opening a supported v3 or v4 library validates and migrates it transactionally.
 Restoring an older snapshot preserves its original version until that normal
@@ -141,3 +141,22 @@ after a committed Save As, is reported separately from the successful save.
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,
 automatic model acquisition or publishing private voice profiles.
+
+
+## Current platform composition
+
+The current integration composes PR149's reviewed extended document adapters,
+advanced research search and semantic cache, source reading transport, explicit
+recording controls, nondestructive clip timeline, retained media inputs and
+typed archive-v5 extensions with PR143's exact source recovery, resource broker,
+publication receipts, protected exports and source-bound native launcher.
+The archive format version is independent of the catalog schema: catalog V5
+continues to mean the canonical immutable `import_publication` layout. Archive
+v5 retains supported earlier envelopes and validates typed extension schema3.
+
+Source and installed acceptance include the previous complete gate plus the
+added component cases; no prior source, native or unchanged-bundle seal is
+removed. The new native probes exercise controls and synthetic engine contracts;
+physical recording/playback, real ASR/music/LLM inference and human NVDA are
+separate qualification requirements. Read the exact published head and its
+checks in PR143; component or predecessor evidence is not final acceptance.

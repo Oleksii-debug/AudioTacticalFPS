@@ -142,6 +142,60 @@ def output(service, job_id, format='txt'):
     return service.root/job_id/'outputs'/record['request']['inputs'][0]['file']/('transcript.'+format)
 
 
+
+
+@pytest.mark.parametrize('status_failure', [False, True])
+def test_pending_native_cleanup_retains_staging_and_exact_runtime_and_job_locks(service, tmp_path, monkeypatch, status_failure):
+    from filelock import FileLock, Timeout
+    from carr_library.audio.cleanup import CleanupOwner
+    from carr_library.audio.models import AudioCleanupPending
+    ready = threading.Event()
+    owner = CleanupOwner(lambda: ready.is_set())
+    pending = AudioCleanupPending('Injected uncertain native shutdown.', cleanup_owner=owner)
+    stages = []
+
+    def uncertain_process(*args, **kwargs):
+        stage = Path(kwargs['cwd'])
+        stages.append(stage)
+        assert (stage / 'worker.py').is_file()
+        raise pending
+
+    job = service.create([audio(tmp_path)])
+    runtime_id = service.load(job)['request']['runtime']
+    monkeypatch.setattr(asr, 'run_process', uncertain_process)
+    if status_failure:
+        write = asr.atomic_json
+        def failed_journal(path, value, **kwargs):
+            if Path(path).name == 'job.json' and value.get('status') == 'failed':
+                raise OSError('Injected status persistence failure')
+            return write(path, value, **kwargs)
+        monkeypatch.setattr(asr, 'atomic_json', failed_journal)
+    with pytest.raises(AudioCleanupPending) as raised:
+        service.run(job)
+    assert raised.value is pending
+    if status_failure:
+        assert isinstance(pending.status_publication_error, OSError)
+        assert service.load(job)['status'] == 'running'
+    else:
+        assert service.load(job)['status'] == 'failed'
+    assert len(stages) == 1 and stages[0].is_dir()
+    assert [row['operation_id'] for row in service._broker.snapshot()['leases']] == ['asr:' + job]
+    locks = [FileLock(service.root / job / '.job.lock', timeout=0),
+             FileLock(service.root / ('.runtime-' + runtime_id + '.lock'), timeout=0)]
+    for lock in locks:
+        with pytest.raises(Timeout):
+            lock.acquire()
+    ready.set()
+    thread = threading.Thread(target=owner.close)
+    thread.start()
+    thread.join(3)
+    assert not thread.is_alive() and owner.quiescent and not stages[0].exists()
+    assert not service._broker.snapshot()['leases']
+    for lock in locks:
+        with lock:
+            pass
+
+
 def test_actual_isolated_worker_imports_reviewed_site_and_commits_all_formats(service, tmp_path):
     source = audio(tmp_path)
     original = source.read_bytes()

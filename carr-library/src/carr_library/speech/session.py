@@ -1,5 +1,5 @@
 """Atomic recovery of valid reading drafts and non-secret local voice settings."""
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from hashlib import sha256
 import math
 from pathlib import Path
@@ -7,6 +7,7 @@ import re
 from uuid import uuid4
 
 from ..durable_state import atomic_json, encode, local_path, read_json, regular, state_lock
+from ..reader.reading_state import ReadingLocation, _location
 from .reading import MAX_HISTORY, MAX_PROJECT_BYTES, ReadingDocument
 from .runtime import SpeechSettings
 from ._io import text_value
@@ -66,6 +67,7 @@ class ReaderResume:
     volume: int = 80
     cursor: int = 0
     audio_seconds: float = 0
+    source_locations: tuple[ReadingLocation, ...] = ()
 
     def __post_init__(self):
         if not isinstance(self.document, ReadingDocument):
@@ -77,6 +79,68 @@ class ReaderResume:
         if (type(self.audio_seconds) not in (float, int) or not math.isfinite(self.audio_seconds)
                 or not 0 <= self.audio_seconds <= 31_536_000):
             raise ValueError('Invalid recovery playback position.')
+        if (type(self.source_locations) is not tuple or len(self.source_locations) > 10000
+                or any(type(item) is not ReadingLocation for item in self.source_locations)):
+            raise ValueError('Invalid authenticated reading-source locations.')
+        anchored = document_source_locations(self.document)
+        if anchored:
+            if self.source_locations and self.source_locations != anchored:
+                raise ValueError('The legacy source envelope differs from canonical reading-copy lineage.')
+            object.__setattr__(self, 'source_locations', anchored)
+        if self.source_locations:
+            first = self.source_locations[0]
+            identity = first.workspace, first.edition, first.revision, first.asset_sha256, first.kind
+            previous = 0
+            for item in self.source_locations:
+                if ((item.workspace, item.edition, item.revision, item.asset_sha256, item.kind) != identity
+                        or item.index <= previous):
+                    raise ValueError('Reading-source locations must identify one ordered exact edition.')
+                previous = item.index
+
+
+def document_source_locations(document):
+    """Derive the compatibility view from canonical reading-copy lineage."""
+    anchor = document.source_anchor
+    if anchor is None:
+        return ()
+    return tuple(ReadingLocation(anchor['workspace'], anchor['edition'], anchor['revision'],
+        row['kind'], row['index'], row['text_sha256'], anchor['asset_sha256'])
+        for row in anchor['positions'])
+
+def decode_reader_resume(record):
+    """Typed v1/v2 recovery parsing; callers authenticate v2 source references.
+
+    Source locations come from canonical ReadingDocument.source_anchor, or from
+    the strictly checked interim v2 envelope when no anchor exists. A hashed
+    slot filename never grants authority or implies workspace scope.
+    """
+    fields = {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'}
+    if not isinstance(record, dict):
+        raise ValueError('Unsupported reading-session recovery state.')
+    version = record.get('schema')
+    if version == 'carr.reader-session.v2':
+        fields.add('source_locations')
+    elif version != 'carr.reader-session.v1':
+        raise ValueError('Unsupported reading-session recovery state.')
+    if set(record) != fields:
+        raise ValueError('Unsupported reading-session recovery fields.')
+    locations = record.get('source_locations', [])
+    if type(locations) is not list or len(locations) > 10000 or (version.endswith('.v2') and not locations):
+        raise ValueError('Invalid reading-session source bindings.')
+    return ReaderResume(ReadingDocument.from_dict(record['document']), record['voice_id'],
+                        record['rate'], record['volume'], record['cursor'], record['audio_seconds'],
+                        tuple(_location(value) for value in locations))
+
+def _encode_reader_resume(resume):
+    # Retain canonical v1 envelopes and the validated interim v2 envelope.
+    # The saved location view grants no live source authority by itself.
+    record = {'schema': 'carr.reader-session.v1', 'document': resume.document.to_dict(),
+              'voice_id': resume.voice_id, 'rate': resume.rate, 'volume': resume.volume,
+              'cursor': resume.cursor, 'audio_seconds': resume.audio_seconds}
+    if resume.source_locations and resume.document.source_anchor is None:
+        record.update(schema='carr.reader-session.v2',
+                      source_locations=[asdict(value) for value in resume.source_locations])
+    return record
 
 
 class ReaderDraftStore:
@@ -96,9 +160,7 @@ class ReaderDraftStore:
     def _save(self, resume, *, replace):
         if not isinstance(resume, ReaderResume):
             raise ValueError('A validated reader recovery snapshot is required.')
-        record = {'schema': 'carr.reader-session.v1', 'document': resume.document.to_dict(),
-                  'voice_id': resume.voice_id, 'rate': resume.rate, 'volume': resume.volume,
-                  'cursor': resume.cursor, 'audio_seconds': resume.audio_seconds}
+        record = _encode_reader_resume(resume)
         with state_lock(self.root, self.key):
             if resume.document.format_notice and self.path.exists():
                 raise ValueError('Use Save As to preserve the original pre-release reading draft.')
@@ -114,9 +176,7 @@ class ReaderDraftStore:
             existing = self.load()
             if existing is not None:
                 return existing
-            record = {'schema': 'carr.reader-session.v1', 'document': resume.document.to_dict(),
-                      'voice_id': resume.voice_id, 'rate': resume.rate, 'volume': resume.volume,
-                      'cursor': resume.cursor, 'audio_seconds': resume.audio_seconds}
+            record = _encode_reader_resume(resume)
             atomic_json(self.path, record, replace=False)
         self._remember_published()
         return resume
@@ -230,7 +290,7 @@ class ReaderDraftStore:
                 before = _saved_digest(path, cancelled)
                 record = read_json(path)
                 check()
-                if (type(record) is not dict or record.get('schema') != 'carr.reader-session.v1'
+                if (type(record) is not dict or record.get('schema') not in ('carr.reader-session.v1', 'carr.reader-session.v2')
                         or type(record.get('document')) is not dict):
                     raise ValueError('Unsupported saved reading draft.')
                 document = record['document']
@@ -277,7 +337,7 @@ class ReaderDraftStore:
         """Preserve the saved file and open an independently recoverable copy."""
         copied = ReaderResume(ReadingDocument.from_dict(resume.document.to_dict()),
                               resume.voice_id, resume.rate, resume.volume,
-                              resume.cursor, resume.audio_seconds)
+                              resume.cursor, resume.audio_seconds, resume.source_locations)
         store = type(self)(self.root.parent.parent, slot='recovered-copy:' + uuid4().hex)
         store._family = self._family
         store._save(copied, replace=False)
@@ -286,13 +346,7 @@ class ReaderDraftStore:
     def load(self):
         if not self.path.exists():
             return None
-        record = read_json(self.path)
-        if (not isinstance(record, dict) or set(record) != {'schema', 'document', 'voice_id',
-                'rate', 'volume', 'cursor', 'audio_seconds'} or record['schema'] != 'carr.reader-session.v1'):
-            raise ValueError('Unsupported reading-session recovery state.')
-        document = ReadingDocument.from_dict(record['document'])
-        return ReaderResume(document, record['voice_id'], record['rate'], record['volume'],
-                            record['cursor'], record['audio_seconds'])
+        return decode_reader_resume(read_json(self.path))
 
 
 def open_source_draft(source, legacy_store, *, choose, guard=lambda: None):

@@ -53,7 +53,7 @@ def _manifest(root):
     optional_flags = ('bundled_native_runtime', 'bundled_audio', 'bundled_citation_runtime')
     identities = {'source_commit': 40, 'source_tree': 40,
                   'parent_source_commit': 40, 'parent_manifest_sha256': 64}
-    optional = {*optional_flags, *identities, 'use_scope'}
+    optional = {*optional_flags, *identities, 'use_scope', 'native_launcher'}
     if (type(value) is not dict or not required <= value.keys()
             or value.keys() - required - optional
             or type(value['schema']) is not int or value['schema'] != 1
@@ -84,6 +84,8 @@ def _manifest(root):
                 or not isinstance(digest, str) or not re.fullmatch('[0-9a-f]{64}', digest)):
             raise ValueError('Invalid or duplicate installation inventory entry.')
         folded.add(name.casefold())
+    from .native_launcher import validate_manifest_entry
+    validate_manifest_entry(value)
     return value
 
 
@@ -92,13 +94,23 @@ def check_native_dependencies(bundle_root):
     report = {'status': 'FAIL', 'platform': sys.platform, 'machine': platform.machine(),
               'python': platform.python_version(), 'windows_execution': 'NOT_RUN',
               'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN', 'checks': [],
-              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'}}
+              'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'},
+              'native_launcher': {'status': 'NOT_INCLUDED'}, 'audio': {'status': 'NOT_INCLUDED'},
+              'citations': {'status': 'NOT_INCLUDED'}}
     component = 'installation manifest'
     _runtime_handle = None
     try:
         root = Path(bundle_root).absolute()
         manifest = _manifest(root)
         report['bundle_target'] = manifest['target']
+        if 'source_commit' in manifest:
+            report['source_commit'] = manifest['source_commit']
+        if 'ResearchLibrary.exe' in manifest['files']:
+            component = 'native launch entry identity'
+            report['native_launcher']['status'] = 'FAIL'
+            from .native_launcher import verify_payload
+            report['native_launcher'] = verify_payload(root, manifest)
+            report['checks'].append(component)
         for name, flag in (('semantic', 'bundled_model'), ('ocr', 'bundled_ocr')):
             if manifest[flag]:
                 report[name]['status'] = 'NOT_RUN'
@@ -139,6 +151,12 @@ def check_native_dependencies(bundle_root):
                 raise RuntimeError('The canonical OCR installation check did not pass.')
             report['ocr'] = result
             report['checks'].append(component)
+        from .bundled_engines import verify_optional_runtime
+        for key, directory in (('audio', 'audio'), ('citations', 'citation-runtime')):
+            component = 'bundled ' + key + ' runtime'
+            report[key] = verify_optional_runtime(root, manifest, directory, execute=True)
+            if report[key]['status'] == 'PASS':
+                report['checks'].append(component)
         report['status'] = 'PASS'
     except Exception as exc:
         report['failed_component'] = component

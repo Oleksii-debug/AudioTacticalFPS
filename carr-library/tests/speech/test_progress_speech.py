@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import sys
 import threading
 import wave
 
@@ -18,6 +19,9 @@ from carr_library.ui.operation_progress import ProgressEvent, WindowsProgressSou
 
 class PCMProvider:
     name = 'Purpose-written PCM fixture'
+    # This fixture renders in this interpreter. The strengthened registry binds
+    # every admitted provider to real runtime bytes before and after synthesis.
+    executable = Path(sys.executable)
 
     def __init__(self, *, language='en', capabilities=('volume',), seconds=.1):
         self.voice = Voice('fixture:chosen', 'Selected fixture voice', 'Fixture', language,
@@ -78,7 +82,10 @@ def test_actual_registry_writes_bounded_private_pcm_and_never_touches_user_outpu
     text, identity, part, settings = provider.calls[0]
     assert text == 'Importing files. 50 percent.' and identity == 'fixture:chosen'
     assert settings.volume == 25 and settings.rate == 0
-    assert settings.max_output_bytes == 2 * 1024 * 1024 and settings.timeout_seconds == 20
+    assert settings.max_output_bytes == 2 * 1024 * 1024
+    # Identity verification is part of the one deadline; the provider receives
+    # its remaining budget, never a fresh twenty-second allowance.
+    assert 0 < settings.timeout_seconds <= 20
     assert player.closed == 1 and speech.quiescent
     assert len(player.played) == 1 and player.played[0][1] == 2205
     assert not player.played[0][0].exists() and not part.exists()

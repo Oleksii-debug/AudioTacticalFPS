@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 from hashlib import sha256
+import re
 
 from carr_library.durable_state import local_path, regular
 from .documents import (
-    CitationParagraph, _MAX_DOCUMENT, export_citation_docx, read_citation_docx,
+    CitationParagraph, _MAX_DOCUMENT, _read_citation_docx_bytes, export_citation_docx,
 )
 from .formatting import (
     CitationCancelled, CitationCluster, CitationError, CitationRequest,
@@ -60,7 +61,8 @@ def _restore_clusters(values, ids):
 
 def regenerate_citation_docx(source, destination, *, references=None, citations=None,
                              paragraphs=None, changed_reference_ids=(), style_path=None,
-                             node_path=None, cancelled=None, timeout=30):
+                             node_path=None, cancelled=None, timeout=30,
+                             expected_source_sha256=None, before_publish=None):
     """Reformat the embedded CARR snapshot into a new, non-overwriting DOCX.
 
     Visible edits made in Word are not imported. By default the saved title,
@@ -71,12 +73,20 @@ def regenerate_citation_docx(source, destination, *, references=None, citations=
     citation requests. Saved locator checks are prior caller assertions, not
     fresh source verification. The exact saved processor and style are required;
     a custom style additionally needs its explicitly selected local file.
+    ``expected_source_sha256`` binds a reviewed document selection across queued
+    work. ``before_publish`` can recheck caller authorization after rendering.
     """
     def cancel():
         if cancelled and cancelled():
             raise CitationCancelled('Citation document regeneration was cancelled.')
 
     cancel()
+    if expected_source_sha256 is not None and (
+            type(expected_source_sha256) is not str
+            or re.fullmatch('[0-9a-f]{64}', expected_source_sha256) is None):
+        raise CitationError('The reviewed source digest must be a SHA-256 value.')
+    if before_publish is not None and not callable(before_publish):
+        raise CitationError('A document publication check must be callable.')
     path = local_path(source, exists=True)
     original_stat = regular(path)
     if original_stat.st_size > _MAX_DOCUMENT:
@@ -85,9 +95,13 @@ def regenerate_citation_docx(source, destination, *, references=None, citations=
         raw = handle.read(_MAX_DOCUMENT + 1)
     if len(raw) > _MAX_DOCUMENT:
         raise CitationError('The citation document exceeds its size budget.')
+    if len(raw) != original_stat.st_size:
+        raise CitationError('The source document changed during regeneration; read it again.')
     original_hash = sha256(raw).hexdigest()
+    if expected_source_sha256 is not None and original_hash != expected_source_sha256:
+        raise CitationError('The selected source document changed. Open and review it again.')
+    snapshot = _read_citation_docx_bytes(raw)
     del raw
-    snapshot = read_citation_docx(path)
     if type(snapshot.get('schema')) is not int or snapshot['schema'] != 1:
         raise CitationError('The saved citation document uses an unsupported schema.')
     if snapshot.get('processor') != _manifest()['processor']:
@@ -139,10 +153,6 @@ def regenerate_citation_docx(source, destination, *, references=None, citations=
     if (result.style.sha256 != style['sha256'] or result.style.kind != style['kind']
             or result.style.id != style['id']):
         raise CitationError('The saved style identity changed; select the exact original style before regenerating.')
-    with path.open('rb') as handle:
-        if sha256(handle.read(_MAX_DOCUMENT + 1)).hexdigest() != original_hash:
-            raise CitationError('The source document changed during regeneration; read it again.')
-
     def final_check():
         cancel()
         current = regular(path)
@@ -152,5 +162,32 @@ def regenerate_citation_docx(source, destination, *, references=None, citations=
             raise CitationError('The source document changed during regeneration; read it again.')
         return False
 
+    def verify_source():
+        # Do full content verification once after rendering and once after DOCX
+        # assembly, rather than re-reading a large document for every paragraph.
+        final_check()
+        digest, size = sha256(), 0
+        with path.open('rb') as handle:
+            while True:
+                cancel()
+                block = handle.read(min(1024 * 1024, original_stat.st_size + 1 - size))
+                if not block:
+                    break
+                size += len(block)
+                if size > original_stat.st_size:
+                    raise CitationError('The source document changed during regeneration; read it again.')
+                digest.update(block)
+        if size != original_stat.st_size or digest.hexdigest() != original_hash:
+            raise CitationError('The source document changed during regeneration; read it again.')
+        final_check()
+
+    verify_source()
+    def publication_check():
+        verify_source()
+        if before_publish is not None:
+            before_publish()
+        cancel()
+
     return export_citation_docx(result, destination, title=document['title'],
-        paragraphs=body if paragraphs is None else paragraphs, cancelled=final_check)
+        paragraphs=body if paragraphs is None else paragraphs, cancelled=final_check,
+        before_publish=publication_check)

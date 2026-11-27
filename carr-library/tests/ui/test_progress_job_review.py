@@ -371,28 +371,38 @@ def test_studio_executor_start_failure_is_terminal_and_unlocks_controls(studio):
     assert studio.reports == ['Worker unavailable']
 
 
-@pytest.mark.parametrize('device_failure', [False, True])
-def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(device_failure):
+@pytest.mark.parametrize('cleanup_pending', [False, True])
+def test_reader_host_delegates_audio_cleanup_without_blocking_native_close(cleanup_pending):
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/speech_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
-    env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
-                                      'executor', 'audio_files', 'dialog')}
-    if device_failure:
-        env['player'].close.side_effect = RuntimeError('Audio device disconnected')
+    helper = next(node for node in reader.body if isinstance(node, ast.FunctionDef) and node.name == 'close_resources')
+    factory = ast.parse('''
+def make(autosave_timer, cancel, live, executor, parent):
+    alive, resources_closed = True, False
+    return close_resources, lambda: alive
+''')
+    factory.body[0].body.insert(1, helper)
+    factory_environment = {}
+    exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), factory_environment)
+    env = {name: Mock() for name in ('autosave_timer', 'cancel', 'live', 'executor', 'dialog', 'parent')}
+    completion = Future()
+    if not cleanup_pending:
+        completion.set_result(None)
+    env['live'].close.return_value = completion
+    close_resources, is_alive = factory_environment['make'](*(env[name] for name in
+        ('autosave_timer', 'cancel', 'live', 'executor', 'parent')))
+    env['close_resources'] = close_resources
+    close_resources()  # The native Close callback may precede the modal's final unwind.
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
-    env['player'].close.assert_called_once_with()
-    env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
-    env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
-    if device_failure:
-        env['audio_files'].cleanup.assert_not_called()
-        assert env['parent']._reader_playback_retained == [(env['player'], env['audio_files'])]
-    else:
-        env['audio_files'].cleanup.assert_called_once_with()
+    env['live'].close.assert_called_once_with()
+    env['executor'].shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    env['cancel'].set.assert_called_once_with()
+    env['autosave_timer'].Stop.assert_called_once_with()
     env['dialog'].Destroy.assert_called_once_with()
-    assert env['alive'] is False
-    assert env['parent'].report.call_count == int(device_failure)
+    assert is_alive() is False
+    assert completion.done() is not cleanup_pending
 
 
 @pytest.mark.parametrize('device_failure', [False, True])

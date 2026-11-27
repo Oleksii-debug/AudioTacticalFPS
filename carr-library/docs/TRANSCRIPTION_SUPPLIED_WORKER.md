@@ -21,6 +21,11 @@ at most 20000 directory entries, supports cancellation and applies the existing
 job input byte allowance. Selection does not start inference. No runtime or
 model is downloaded or installed by this window.
 
+**Verify and connect local dependencies** saves an explicitly selected local
+connection only after verification. **Disable saved connection** stops future use
+while preserving jobs, outputs and editable reading copies. A restored connection
+is disabled until reviewed again; opening the dialog does not launch inference.
+
 The second page lists saved jobs and completed results. Refresh, dependency
 checks, input retention, inference and receipt checks all use the existing
 desktop background executor. **F6** starts or resumes; **F8** requests pause;
@@ -90,6 +95,15 @@ The helper is implemented in `audio/supplied_runtime_manifest.py` and covered by
 
 ## Implemented boundary
 
+The adapter accepts two separately pinned supplied sources. The original V4.3
+source uses the strict preparation below. The separately supplied hardened worker
+has SHA256 `5379b889b8019c7ad9f427a7bc8db268dccd747469abc72db4f3001f9f82306c`
+and protocol `carr-asr-v43-hardened-1`; its source bytes remain unchanged. For that
+protocol, the host additionally verifies the terminal run, retained recognition
+receipt, model/runtime declarations, actual inference device/compute type and
+every requested artifact against this exact job. Both routes use the same job
+store, source retention, resource admission and output publication service.
+
 - The original worker must match SHA256
   `1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
   `audio/supplied_whisper.py` reuses PR135's exact-source strict-settings change
@@ -122,7 +136,9 @@ The helper is implemented in `audio/supplied_runtime_manifest.py` and covered by
   selected runtime identity. Shared cooperative resource admission additionally
   coordinates this canonical service, studio production and isolated imports.
   It reserves declared CPU/RAM/disk and configured device allowances; it does
-  not measure model peaks or enforce OS-wide limits on other engines. See
+  not measure model peaks or enforce OS-wide limits on other engines. A pending
+  native cleanup keeps the same resource reservation, runtime/job locks and
+  private staging until the process owner confirms termination. See
   `runtime_resources.md` for the participating boundaries and policy.
 - The host checks actual worker done/failed counts, selected language/settings,
   source identity, timestamp order and every requested export. Worker exit zero
@@ -135,6 +151,10 @@ The helper is implemented in `audio/supplied_runtime_manifest.py` and covered by
   file; it does not yet resume within a recognition segment. Completed files
   are reverified and reused. Progress observer or post-commit cleanup failures
   do not change successful completed work into failed work.
+- Runtime identities include the exact public adapter/supervisor files as well
+  as the selected worker, executable and inventories. Updating that implementation
+  invalidates incompatible inference reuse; previous transcripts and reading
+  drafts remain preserved. Resume requires the matching reviewed identity.
 - Reading `status` revalidates completed receipts and artifact bytes. Missing or
   modified results cannot be reported as a valid completed job. Status, saved
   jobs and pause/cancel commands do not require a working runtime installation.
@@ -200,6 +220,15 @@ the same reviewed installation identity before resuming. No restored job starts
 inference or a network operation automatically. Credentials are not used here.
 
 ## Evidence and open acceptance
+
+`tests/audio/test_hardened_transcription_protocol.py` includes an authored
+protocol peer launched through the actual hardened bootstrap and selected
+interpreter. It spawns a real multiprocessing child, imports only its inventoried
+fixture dependency, verifies isolated UTF-8/no-bytecode flags and rejection of
+an Internet-socket attempt, then commits all requested formats through the
+normal receipt checks. This qualifies process/protocol integration only; it
+contains no private worker code, performs no acoustic inference and establishes
+neither real model quality nor native network containment.
 
 `tests/audio/test_supplied_transcription.py` executes actual isolated Python child
 processes with authored synthetic worker/model fixtures. It covers cache and

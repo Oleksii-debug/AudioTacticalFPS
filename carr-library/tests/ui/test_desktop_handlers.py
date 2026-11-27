@@ -12,6 +12,7 @@ import pytest
 
 from carr_library.citations.anchors import Identity, Locator, Metadata, make_anchor, format_citation
 from carr_library.application import LibraryApp
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 from carr_library.catalog.read_views import active_collections
 from carr_library.reader.context import open_context
 from carr_library.research.topic_tree import TopicTree
@@ -45,6 +46,7 @@ def classes():
     env = dict(wx=wx,WorkspaceFrame=BaseFrame,PagedSearchPanel=object,Hit=Hit,
                __name__='carr_library.ui._handler_probe',__package__='carr_library.ui',
                format_citation=format_citation,Path=Path,LibraryApp=Mock(),
+               file_dialog_wildcard=file_dialog_wildcard,supported_formats_text=supported_formats_text,
                contextmanager=contextmanager,TopicTree=TopicTree,open_context=open_context,
                ScopeServices=ScopeServices,scope_labels=scope_labels,active_collections=active_collections,
                text_dialog=Mock(return_value='Reviewer'),show_text=Mock(),show_page_context=Mock(),metadata_dialog=Mock())
@@ -132,6 +134,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     for module, installer in [('speech_dialog', 'install_speech_actions'),
                               ('language_matrix', 'install_language_actions'),
                               ('translation_dialog', 'install_translation_actions'),
+                              ('transcription_dialog', 'install_transcription_actions'),
                               ('studio_dialog', 'install_studio_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
                               ('document_conversion', 'install_conversion_actions'),

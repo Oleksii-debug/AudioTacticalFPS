@@ -4,16 +4,17 @@ The dialog owns its result handles. It never changes the desktop's library,
 topic, selection cache, or notebook, including an unsaved evidence note.
 Native wx controls are imported only when the desktop command is opened.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from ..search.federated import FederatedSearch
 from .research_actions import NativeDialogs
 from .scope_bindings import scope_labels
 
 
-MODES = ('phrase', 'word', 'terms', 'thematic', 'semantic')
+MODES = ('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced')
 PRESENTATIONS = ('short', 'thematic')
 LIMITS = (10, 25, 50, 100)
+PAGED_MODES = ('terms', 'advanced')
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class SearchOptions:
     language: str | None = None
     edition: str | None = None
     limit_per_library: int = 50
+    offset_per_library: int = 0
 
     def validate(self):
         if (not isinstance(self.workspaces, tuple) or not self.workspaces
@@ -36,8 +38,18 @@ class SearchOptions:
             raise ValueError('Enter a search query.')
         if self.mode not in MODES or self.result_mode not in PRESENTATIONS:
             raise ValueError('Choose a retrieval method and result presentation.')
+        if self.mode == 'advanced':
+            from ..search.advanced import compile_query
+            try:
+                compile_query(self.query.strip())
+            except ValueError as exc:
+                raise ValueError(f'Invalid advanced query: {exc}') from exc
         if type(self.limit_per_library) is not int or not 1 <= self.limit_per_library <= 100:
             raise ValueError('Choose between 1 and 100 results per library.')
+        if type(self.offset_per_library) is not int or self.offset_per_library < 0:
+            raise ValueError('The result-page offset must be a nonnegative whole number.')
+        if self.offset_per_library and self.mode not in PAGED_MODES:
+            raise ValueError('Result pages are available for All words and Advanced search.')
         return self
 
 
@@ -94,6 +106,8 @@ class SearchCenter:
         self.service = service or FederatedSearch(self.library)
         self.dialogs = dialogs or NativeDialogs()
         self.rows = ()
+        self.options = None
+        self.has_more = False
         self.epoch = 0
         self.running = False
         self.alive = True
@@ -123,8 +137,20 @@ class SearchCenter:
     def _clear_rows(self):
         self.epoch += 1
         self.rows = ()
+        self.options = None
+        self.has_more = False
         if self.alive:
             self.view.clear_results()
+            self._refresh_navigation()
+
+    def _refresh_navigation(self):
+        options = self.options
+        enabled = (not self.running and self._scope_current() and options is not None
+                   and options.mode in PAGED_MODES)
+        if self.alive:
+            self.view.set_navigation(
+                bool(enabled and options.offset_per_library > 0),
+                bool(enabled and self.has_more))
 
     def options_changed(self):
         self._clear_rows()
@@ -147,6 +173,49 @@ class SearchCenter:
         if verified and hit.result.verified is not True:
             raise ValueError('This extraction needs independent review before copying or saving a quotation.')
         return hit
+
+    def build_query(self, builder=None):
+        """Apply a reviewed expression only to the still-current search form."""
+        try:
+            self._ready()
+            if builder is None:
+                from .advanced_search import show_query_builder
+                builder = show_query_builder
+            epoch, current = self.epoch, self.view.query_value()
+            query = builder(self.view.parent, current_query=current)
+            if query is None:
+                if self._scope_current():
+                    self.view.focus_query()
+                return
+            self._ready()
+            if self.epoch != epoch or self.view.query_value() != current:
+                raise ValueError('Search options changed while the query builder was open. Open it again.')
+            from ..search.advanced import compile_query
+            compile_query(query)
+            # ChangeValue and SetSelection do not emit editing events. Withdraw
+            # old source handles before the reviewed query becomes visible.
+            self.options_changed()
+            self.view.set_advanced_query(query)
+            self.view.report('Advanced query ready. Press Enter in the query field to search the checked libraries.')
+            self.view.focus_query()
+        except Exception as exc:
+            self._report_error(exc)
+
+    def navigate(self, direction):
+        """Read a new result page using the exact last accepted form settings."""
+        try:
+            self._ready()
+            options = self.options
+            if type(direction) is not int or direction not in (-1, 1):
+                raise ValueError('Choose the previous or next result page.')
+            if options is None or options.mode not in PAGED_MODES:
+                raise ValueError('Search with All words or Advanced mode before changing result pages.')
+            if (direction == 1 and not self.has_more) or (direction == -1 and not options.offset_per_library):
+                raise ValueError('There is no further result page in that direction.')
+            offset = max(0, options.offset_per_library + direction * options.limit_per_library)
+            self.search(replace(options, offset_per_library=offset))
+        except Exception as exc:
+            self._report_error(exc)
 
     def selection_changed(self):
         if not self.alive:
@@ -176,6 +245,7 @@ class SearchCenter:
         self._ready()
         self.running = True
         self.view.set_busy(True)
+        self._refresh_navigation()
         self.view.report(title + '…', focus=True)
 
         def finish():
@@ -185,6 +255,7 @@ class SearchCenter:
                 self._clear_when_idle = False
             if self.alive:
                 self.view.set_busy(False)
+                self._refresh_navigation()
             elif hasattr(self.view, 'finish_disposal'):
                 self.view.finish_disposal()
 
@@ -236,7 +307,10 @@ class SearchCenter:
             def done(session):
                 if session.workspaces != options.workspaces:
                     raise ValueError('The completed search differs from the selected libraries')
+                if session.offset_per_library != options.offset_per_library:
+                    raise ValueError('The completed result page differs from the requested page')
                 self.rows = session.hits
+                self.options, self.has_more = options, session.has_more
                 labels = scope_labels((group.workspace, None, group.library_name)
                                       for group in session.groups)
                 names = dict(zip(session.workspaces, labels))
@@ -248,11 +322,18 @@ class SearchCenter:
                 text = (f'{len(self.rows)} results. {counts}. '
                         f'Up to {options.limit_per_library} results per library. '
                         'Results are grouped by selected library, not ranked across libraries.')
+                if options.mode in PAGED_MODES:
+                    text += (f' Page {options.offset_per_library // options.limit_per_library + 1}. '
+                             'Previous and Next read fresh results using the same options; '
+                             'changes to source libraries can change their order.')
+                    if not session.has_more:
+                        text += ' No further matching page was found.'
                 if any(hit.result.verified is not True for hit in self.rows):
                     text += ' Unverified extraction is labelled and cannot be saved as a quotation.'
                 if notices:
                     text += '\n' + '\n'.join(dict.fromkeys(notices))
                 self.view.report(text, focus=not self.rows)
+                self._refresh_navigation()
                 if self.rows:
                     self.view.select(0)
                     self.selection_changed()
@@ -263,6 +344,7 @@ class SearchCenter:
                 result_mode=options.result_mode, title=options.title, author=options.author,
                 language=options.language, edition=options.edition,
                 limit_per_library=options.limit_per_library,
+                offset_per_library=options.offset_per_library,
                 cancelled=self._cancelled, on_status=notices.append), done, epoch=epoch)
         except Exception as exc:
             self._report_error(exc)
@@ -387,6 +469,7 @@ class SearchCenter:
         self.alive = False
         self.epoch += 1
         self.rows = ()
+        self.options, self.has_more = None, False
         if self.running:
             self.frame.cancel_event.set()
             self._clear_when_idle = True
@@ -430,7 +513,8 @@ class NativeSearchCenter:
                            wx.TextCtrl(self.window, style=wx.TE_PROCESS_ENTER))
         self.retrieval = field('Retrieval method', wx.Choice(self.window, choices=[
             'Exact phrase', 'Whole word', 'All words on one page',
-            'Thematic (local keywords)', 'Semantic (local model)']))
+            'Thematic (local keywords)', 'Semantic (local model)',
+            'Advanced (AND, OR, NOT, NEAR)']))
         self.presentation = field('Result presentation', wx.Choice(self.window,
             choices=['Short quotations', 'Thematic excerpts']))
         self.limit = field('Maximum results per library', wx.Choice(self.window,
@@ -444,12 +528,23 @@ class NativeSearchCenter:
         layout.Add(form, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         commands = wx.BoxSizer(wx.HORIZONTAL)
         self.search_button = wx.Button(self.window, label='&Search')
+        self.builder_button = wx.Button(self.window, label='Build &advanced query')
+        self.builder_button.SetName('Build advanced query; Ctrl+Alt+Q')
         self.cancel_button = wx.Button(self.window, label='Cancel &operation')
         commands.Add(self.search_button, 0, wx.ALL, 5)
+        commands.Add(self.builder_button, 0, wx.ALL, 5)
         commands.Add(self.cancel_button, 0, wx.ALL, 5)
         layout.Add(commands, 0, wx.EXPAND)
         layout.Add(wx.StaticText(self.window, label='Results — grouped by source library'),
                    0, wx.LEFT | wx.RIGHT, 8)
+        pages = wx.BoxSizer(wx.HORIZONTAL)
+        self.previous_button = wx.Button(self.window, label='&Previous result page')
+        self.next_button = wx.Button(self.window, label='&Next result page')
+        self.previous_button.SetName('Previous result page; All words or Advanced mode')
+        self.next_button.SetName('Next result page; All words or Advanced mode')
+        for button in (self.previous_button, self.next_button):
+            pages.Add(button, 0, wx.ALL, 5)
+        layout.Add(pages, 0, wx.EXPAND)
         self.results = wx.ListBox(self.window, style=wx.LB_SINGLE, size=(-1, 130))
         self.results.SetName('Search results with library and verification status')
         layout.Add(self.results, 1, wx.EXPAND | wx.ALL, 8)
@@ -475,6 +570,7 @@ class NativeSearchCenter:
         self.window.SetEscapeId(self.close_button.GetId())
         self.controller = SearchCenter(frame, self)
         self._bind()
+        self.set_navigation(False, False)
         self.clear_results()
         self.set_busy(False)
         self.report('Only the current library is checked initially. Choose libraries and enter a query.'
@@ -484,8 +580,11 @@ class NativeSearchCenter:
     def _bind(self):
         wx, controller = self.wx, self.controller
         self.search_button.Bind(wx.EVT_BUTTON, self._search)
+        self.builder_button.Bind(wx.EVT_BUTTON, lambda event: controller.build_query())
         self.query.Bind(wx.EVT_TEXT_ENTER, self._search)
         self.cancel_button.Bind(wx.EVT_BUTTON, lambda event: controller.cancel())
+        self.previous_button.Bind(wx.EVT_BUTTON, lambda event: controller.navigate(-1))
+        self.next_button.Bind(wx.EVT_BUTTON, lambda event: controller.navigate(1))
         self.context_button.Bind(wx.EVT_BUTTON, lambda event: controller.context())
         self.quote_button.Bind(wx.EVT_BUTTON, lambda event: controller.copy('quote'))
         self.citation_button.Bind(wx.EVT_BUTTON, lambda event: controller.copy('citation'))
@@ -530,6 +629,8 @@ class NativeSearchCenter:
     def _key(self, event):
         if event.GetKeyCode() == self.wx.WXK_ESCAPE:
             self._close()
+        elif event.ControlDown() and event.AltDown() and event.GetKeyCode() in (ord('Q'), ord('q')):
+            self.controller.build_query()
         else:
             event.Skip()
 
@@ -544,7 +645,7 @@ class NativeSearchCenter:
     def set_busy(self, busy):
         for control in (self.libraries_control, self.query, self.retrieval, self.presentation,
                         self.limit, *self.filters.values(), self.search_button, self.results,
-                        self.close_button):
+                        self.builder_button, self.close_button):
             control.Enable(not busy)
         self.cancel_button.Enable(busy)
         if busy:
@@ -558,6 +659,20 @@ class NativeSearchCenter:
         self.status.SetInsertionPoint(0)
         if focus:
             self.status.SetFocus()
+
+    def query_value(self):
+        return self.query.GetValue()
+
+    def set_advanced_query(self, query):
+        self.query.ChangeValue(query)
+        self.retrieval.SetSelection(MODES.index('advanced'))
+
+    def focus_query(self):
+        self.query.SetFocus()
+
+    def set_navigation(self, previous, next_page):
+        self.previous_button.Enable(previous)
+        self.next_button.Enable(next_page)
 
     def clear_results(self):
         self.results.Clear()

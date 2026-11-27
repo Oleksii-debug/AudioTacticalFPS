@@ -200,6 +200,10 @@ def test_dirty_or_git_replaced_source_cannot_claim_the_original_commit(
 
 def installed_fixture(bundle_inputs, native_inputs, monkeypatch):
     synthetic_application_identity(monkeypatch)
+    python_archive = BASE["synthetic_runtime"](bundle_inputs.output.parent)
+    python_hash = json.loads((ROOT / "packaging/windows-python.json").read_text(encoding="utf-8"))["download"]["sha256"]
+    actual_sha = builder.sha256
+    monkeypatch.setattr(builder, "sha256", lambda path: python_hash if Path(path) == python_archive else actual_sha(path))
     # The installed probe admits complete delivery bundles, including the OCR
     # inventory and its pinned corresponding sources. These are inert fixture
     # bytes; the genuine builder/verifiers run, but no OCR engine is executed.
@@ -227,7 +231,8 @@ def installed_fixture(bundle_inputs, native_inputs, monkeypatch):
             "sha256": builder.sha256(source)}},
     }
     (ocr / "ocr-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
-    build(bundle_inputs, **launcher_arguments(native_inputs), ocr_dir=ocr, ocr_source_archive=source)
+    build(bundle_inputs, **launcher_arguments(native_inputs), ocr_dir=ocr, ocr_source_archive=source,
+          python_archive=python_archive)
     environment = bundle_inputs.output / ".venv"
     (environment / "Scripts").mkdir(parents=True)
     (environment / ".installation-complete").touch()

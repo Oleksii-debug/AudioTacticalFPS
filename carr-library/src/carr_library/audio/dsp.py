@@ -22,6 +22,7 @@ import tempfile
 from .models import (AudioBudget, AudioCancelled, AudioError, AudioInfo,
                      AudioUnavailable, Effect, LoudnessInfo, Track, finite, integer)
 from .process import publish_file, run_process
+from .cleanup import retained_temporary_directory
 from ..durable_state import local_path
 
 
@@ -224,6 +225,11 @@ class AudioRuntime:
         self.budget = budget or AudioBudget()
         if not isinstance(self.budget, AudioBudget):
             raise ValueError('Audio budget must be an AudioBudget.')
+        if ffmpeg is None or ffprobe is None:
+            from ..bundled_engines import bundled_programs
+            programs = bundled_programs('audio')
+            ffmpeg = programs.get('ffmpeg') if ffmpeg is None else ffmpeg
+            ffprobe = programs.get('ffprobe') if ffprobe is None else ffprobe
         self.ffmpeg = self._executable(ffmpeg, 'ffmpeg')
         self.ffprobe = self._executable(ffprobe, 'ffprobe')
         self._capabilities = None
@@ -237,7 +243,8 @@ class AudioRuntime:
     @staticmethod
     def _executable(value, name):
         if value is None:
-            value = shutil.which(name)
+            from ..bundled_engines import executable_on_path
+            value = executable_on_path(name)
         if value is None:
             raise AudioUnavailable(f'{name} is not installed. Select a trusted local FFmpeg installation.')
         path = Path(value)
@@ -403,7 +410,7 @@ class AudioRuntime:
         self._space(expected_duration, rate, channels, bit_depth, target.parent)
         encoding = self._encoding(target, rate, channels, bit_depth, bitrate)
         snapshots = [(source, _identity(source)) for source in sources]
-        with tempfile.TemporaryDirectory(prefix='.audio-', dir=target.parent) as temporary:
+        with retained_temporary_directory(prefix='.audio-', dir=target.parent) as temporary:
             staged = Path(temporary) / ('render' + target.suffix)
             command = [*args, '-map_metadata', '-1', '-map_chapters', '-1', '-vn', '-sn', '-dn',
                        *encoding]
@@ -582,7 +589,7 @@ class AudioRuntime:
         samples = round(duration * sample_rate)
         total = samples / sample_rate
         self._space(total, sample_rate, channels, bit_depth, target.parent)
-        with tempfile.TemporaryDirectory(prefix='.audio-join-', dir=target.parent) as folder:
+        with retained_temporary_directory(prefix='.audio-join-', dir=target.parent) as folder:
             manifest = Path(folder) / 'scenes.ffconcat'
             with manifest.open('x', encoding='utf-8', newline='\n') as stream:
                 stream.write('ffconcat version 1.0\n')

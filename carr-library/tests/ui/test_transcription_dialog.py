@@ -578,3 +578,36 @@ def test_destroy_tolerates_partial_view_construction():
     del window.controller
     assert window.Destroy() is True
     assert window.destroy_requests == 1
+
+
+def test_destroy_after_parent_native_deletion_keeps_wrapper_guard(setup, monkeypatch):
+    window = _deferred_native_dialog(setup.controller)
+    monkeypatch.setattr(type(window), '__bool__', lambda self: False, raising=False)
+    assert window.Destroy() is False
+    assert setup.controller.closed and window.destroy_requests == 0
+
+
+@pytest.mark.parametrize('native_deleted', [False, True])
+def test_saved_job_modal_handoff_imports_wx_and_cleans_up_dead_parent(monkeypatch, native_deleted):
+    import sys
+    from unittest.mock import Mock
+    from carr_library.ui import transcription_dialog as ui
+    queued = []
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(
+        CallAfter=lambda callback, *args: queued.append((callback, args))))
+    class Dialog:
+        def __init__(self):
+            self.controller = SimpleNamespace(inspect=Mock(), dispose=Mock())
+            self.pages = SimpleNamespace(SetSelection=Mock())
+            self.CentreOnParent, self.Destroy = Mock(), Mock()
+        def __bool__(self): return not native_deleted
+        def ShowModal(self):
+            for callback, args in queued:
+                callback(*args)
+    dialog = Dialog()
+    monkeypatch.setattr(ui, 'create_transcription_dialog', lambda frame: dialog)
+    ui.show_transcription(SimpleNamespace(), job_id=JOB)
+    dialog.pages.SetSelection.assert_called_once_with(1)
+    dialog.controller.inspect.assert_called_once_with(JOB)
+    dialog.controller.dispose.assert_called_once()
+    assert dialog.Destroy.call_count == (0 if native_deleted else 1)

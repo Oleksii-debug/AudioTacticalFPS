@@ -10,7 +10,7 @@ from hashlib import sha256
 import json
 import math
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import shutil
 import stat
@@ -47,6 +47,85 @@ _INVALID_XML = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]
 _NAMES = {'mimetype', 'META-INF/container.xml', 'META-INF/metadata.xml', 'EPUB/package.opf',
           'EPUB/nav.xhtml', 'EPUB/content.xhtml', 'EPUB/source.xhtml', 'EPUB/overlay.smil',
           'EPUB/styles.css', 'EPUB/audio/master.mp3'}
+
+
+def validate_publication_receipt(record, *, publication_id=None):
+    """Validate a saved declaration without opening any recorded external path.
+
+    This composes with the typed backup inventory. Source hashes describe the
+    exact historical production; validation does not grant source authority,
+    execute a job, or imply that the external EPUB is included in a backup.
+    Relocation still requires explicit selection and byte verification.
+    """
+    fields = {'schema', 'id', 'status', 'studio_root', 'output', 'artifact',
+              'source', 'created', 'notice'}
+    if (type(record) is not dict or set(record) != fields
+            or record['schema'] != 'resonance-publication/1'
+            or type(record['id']) is not str or not re.fullmatch('[0-9a-f]{32}', record['id'])
+            or record['status'] not in ('prepared', 'complete')
+            or (publication_id is not None and record['id'] != publication_id)):
+        raise ValueError('Invalid saved publication receipt identity or fields.')
+
+    def path(value, label):
+        if (type(value) is not str or not value or len(value) > 32768
+                or any(ord(character) < 32 for character in value)
+                or value.startswith(('//', '\\\\'))
+                or not (PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute())):
+            raise ValueError('Invalid absolute ' + label + ' declaration in publication receipt.')
+
+    def digest(value):
+        if type(value) is not str or not _HASH.fullmatch(value):
+            raise ValueError('Invalid publication receipt checksum.')
+
+    def size(value, *, positive=False):
+        if type(value) is not int or not int(positive) <= value <= 2**63 - 1:
+            raise ValueError('Invalid publication receipt byte count.')
+
+    path(record['studio_root'], 'Studio root')
+    path(record['output'], 'EPUB output')
+    if not record['output'].lower().endswith('.epub'):
+        raise ValueError('A publication receipt must declare an EPUB output.')
+    artifact = record['artifact']
+    if type(artifact) is not dict or set(artifact) != {'size', 'sha256'}:
+        raise ValueError('Invalid completed EPUB artifact receipt.')
+    size(artifact['size'], positive=True)
+    digest(artifact['sha256'])
+    source = record['source']
+    if (type(source) is not dict or set(source) != {'job_id', 'job_sha256', 'project_id',
+            'project_sha256', 'source_script_sha256', 'artifacts'}):
+        raise ValueError('Invalid historical publication source identity.')
+    _id(source['job_id'])
+    _id(source['project_id'])
+    for field in ('job_sha256', 'project_sha256', 'source_script_sha256'):
+        digest(source[field])
+    artifacts = source['artifacts']
+    if type(artifacts) is not list or not 3 <= len(artifacts) <= 100000:
+        raise ValueError('Invalid bounded source artifact graph in publication receipt.')
+    names = set()
+    for row in artifacts:
+        if type(row) is not dict or set(row) != {'name', 'size', 'sha256'}:
+            raise ValueError('Invalid source artifact receipt fields.')
+        name = row['name']
+        if (type(name) is not str or not name or len(name) > 4096
+                or any(ord(character) < 32 for character in name) or '\\' in name or ':' in name):
+            raise ValueError('Invalid source artifact receipt filename.')
+        relative = PurePosixPath(name)
+        if (not relative.parts or relative.is_absolute() or str(relative) != name or '..' in relative.parts
+                or name.casefold() in names):
+            raise ValueError('Invalid or duplicate relative source artifact name.')
+        names.add(name.casefold())
+        size(row['size'])
+        digest(row['sha256'])
+    if not {'master.wav', 'project.json', 'timeline.json'} <= names:
+        raise ValueError('Publication receipt is missing its original production artifacts.')
+    created = record['created']
+    if type(created) is not str or not re.fullmatch(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', created):
+        raise ValueError('Invalid publication receipt timestamp.')
+    datetime.strptime(created, '%Y-%m-%dT%H:%M:%SZ')
+    _text(record['notice'], 'Publication receipt notice', maximum=8192)
+    encode(record)  # The same bounded JSON contract used by the producer.
+    return record
+
 
 
 def language_tag(value):

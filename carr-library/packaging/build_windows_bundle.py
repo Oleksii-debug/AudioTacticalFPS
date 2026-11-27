@@ -162,6 +162,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         raise ValueError("supply both native launcher and its expected SHA256")
     native_bytes = (launcher_bytes(native_launcher, native_launcher_sha256)
                     if native_launcher is not None else None)
+    if native_bytes is not None and (python_archive is None or source_commit is None):
+        raise ValueError("native launcher requires bundled Python and an exact source commit")
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
     pins = read_lock(lock)

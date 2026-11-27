@@ -27,6 +27,7 @@ class WavePlayer:
         self._process = None
         self._alias = 'carr_' + uuid4().hex
         self._open = False
+        self._resume_from_seek = False
         self.backend = 'Windows MCI' if os.name == 'nt' else 'ffplay'
         self.position_is_approximate = os.name != 'nt'
         self._executable = shutil.which('ffplay') if os.name != 'nt' else None
@@ -119,19 +120,34 @@ class WavePlayer:
         if self.state != 'paused':
             return False
         if os.name == 'nt':
-            self._mci(f'resume {self._alias}')
+            if self._resume_from_seek:
+                self._mci(f'play {self._alias} from {round(self._offset * 1000)}')
+            else:
+                self._mci(f'resume {self._alias}')
         else:
             if self._process.poll() is not None:
                 raise RuntimeError('The playback device stopped. Start playback again.')
             os.kill(self._process.pid, signal.SIGCONT)
         self._started = time.monotonic()
         self._state = 'playing'
+        self._resume_from_seek = False
         return True
 
     def seek(self, seconds):
         if self.path is None:
             raise ValueError('Open a recording before seeking.')
+        if (type(seconds) not in (float, int) or not math.isfinite(seconds)
+                or not 0 <= seconds <= self.duration_seconds):
+            raise ValueError('Choose a playback position within the recording.')
         paused = self.state == 'paused'
+        if paused and os.name == 'nt' and self._open:
+            # MCI seek moves silently and leaves the native device stopped.
+            # Keep the logical pause until an explicit resume starts playback.
+            # Reopening with play followed by pause can leak a short burst.
+            self._mci(f'seek {self._alias} to {round(seconds * 1000)} wait')
+            self._offset, self._started = float(seconds), None
+            self._resume_from_seek = True
+            return
         self.play(self.path, start_seconds=seconds)
         if paused:
             self.pause()
@@ -143,6 +159,7 @@ class WavePlayer:
             stop_process(self._process)
             self._process = None
         self._state, self._offset, self._started = 'stopped', 0.0, None
+        self._resume_from_seek = False
 
     def close(self):
         try:

@@ -1,5 +1,6 @@
 """Actual canonical citeproc and OOXML regeneration, using synthetic sources."""
 from copy import deepcopy
+from contextlib import contextmanager
 from hashlib import sha256
 from io import BytesIO
 import json
@@ -196,3 +197,63 @@ def test_custom_style_requires_explicit_file_and_exact_saved_bytes(tmp_path):
     style.write_bytes(style.read_bytes() + b'\n')
     with pytest.raises(CitationError, match='identity changed'):
         regenerate_citation_docx(source, tmp_path / 'different-style.docx', style_path=style)
+
+
+def test_regeneration_parses_the_bytes_it_hashed_when_a_path_is_reopened(tmp_path, monkeypatch):
+    """A second path read must not substitute another real, valid DOCX snapshot."""
+    from carr_library.academic_integration import documents
+
+    source, _ = document(tmp_path)
+    original = source.read_bytes()
+    expected = read_citation_docx(source)
+    rewrite_snapshot(source, lambda saved: saved['document'].update(title='Different saved snapshot'))
+    alternate = source.read_bytes()
+    source.write_bytes(original)
+    source_stat = source.stat()
+    actual_regular = regeneration.regular
+    actual_archive = documents.ZipFile
+
+    @contextmanager
+    def substituted_archive(value, *args, **kwargs):
+        if value == source:
+            source.write_bytes(alternate)
+            try:
+                with actual_archive(value, *args, **kwargs) as archive:
+                    yield archive
+            finally:
+                source.write_bytes(original)
+        else:
+            with actual_archive(value, *args, **kwargs) as archive:
+                yield archive
+
+    # Model Windows metadata that does not expose an intervening write, while
+    # actually replacing and parsing source bytes at the second-read boundary.
+    monkeypatch.setattr(regeneration, 'regular',
+        lambda path: source_stat if path == source else actual_regular(path))
+    monkeypatch.setattr(documents, 'ZipFile', substituted_archive)
+    target = regenerate_citation_docx(source, tmp_path / 'same-snapshot.docx')
+    assert read_citation_docx(target) == expected
+    assert source.read_bytes() == original
+
+
+def test_same_metadata_source_change_during_docx_assembly_stops_publication(tmp_path, monkeypatch):
+    from docx.document import Document
+
+    source, _ = document(tmp_path)
+    source_stat = source.stat()
+    actual_regular = regeneration.regular
+    actual_save = Document.save
+    changed = b'Newer source saved while the regenerated document was assembled'
+
+    def save_then_change_source(document, destination):
+        actual_save(document, destination)
+        source.write_bytes(changed)
+
+    monkeypatch.setattr(Document, 'save', save_then_change_source)
+    monkeypatch.setattr(regeneration, 'regular',
+        lambda path: source_stat if path == source else actual_regular(path))
+    target = tmp_path / 'must-not-be-published.docx'
+    with pytest.raises(CitationError, match='changed during regeneration'):
+        regenerate_citation_docx(source, target)
+    assert source.read_bytes() == changed
+    assert not target.exists()

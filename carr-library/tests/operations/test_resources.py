@@ -417,6 +417,75 @@ def test_native_release_failure_is_not_hidden_as_metadata_cleanup(broker, monkey
     assert not broker.snapshot()['leases']
 
 
+@pytest.mark.parametrize('phase', ['construction', 'acquire'])
+@pytest.mark.parametrize('check', ['leaf', 'local-path'])
+def test_native_lock_accepts_normal_release_between_optional_path_checks(tmp_path, monkeypatch, phase, check):
+    from carr_library import durable_state
+    from carr_library.operations import _locks as module
+    path = tmp_path / '.admission.lock'
+    owner = module.NativeLock(path)
+    assert owner.acquire()
+    contender = module.NativeLock(path) if phase == 'acquire' else None
+    checked_module = module if check == 'leaf' else durable_state
+    original, released = checked_module.regular, []
+
+    def release_before_leaf_check(candidate, **options):
+        if Path(candidate) == path and not released:
+            released.append(True)
+            # Use the pinned backend's actual unlink-on-release behavior. This
+            # is normal contention, with the resource directory still present.
+            owner.release()
+            assert not path.exists() and tmp_path.is_dir()
+        return original(candidate, **options)
+
+    try:
+        monkeypatch.setattr(checked_module, 'regular', release_before_leaf_check)
+        if contender is None:
+            contender = module.NativeLock(path)
+        assert contender.acquire()
+        assert released == [True] and contender.held and not owner.held
+        assert path.is_file()
+    finally:
+        if contender is not None:
+            contender.release()
+        owner.release()
+    assert not path.exists()
+
+
+@pytest.mark.parametrize('kind', ['directory', 'hardlink', 'permission', 'parent-removed'])
+def test_native_lock_optional_path_check_does_not_hide_invalid_paths(tmp_path, monkeypatch, kind):
+    from carr_library.operations import _locks as module
+    parent = tmp_path / 'resource-directory'
+    parent.mkdir()
+    path = parent / '.admission.lock'
+    contender = module.NativeLock(path)
+    if kind == 'directory':
+        path.mkdir()
+    elif kind == 'hardlink':
+        original = tmp_path / 'outside.lock'
+        original.write_bytes(b'retained outside bytes')
+        os.link(original, path)
+    elif kind == 'permission':
+        actual = module.regular
+        def denied(candidate, **options):
+            if Path(candidate) == path:
+                raise PermissionError('Actual path access is unavailable')
+            return actual(candidate, **options)
+        monkeypatch.setattr(module, 'regular', denied)
+        path.write_bytes(b'locked')
+    else:
+        parent.rmdir()
+    expected = (ValueError if kind in ('directory', 'hardlink') else
+                PermissionError if kind == 'permission' else FileNotFoundError)
+    with pytest.raises(expected):
+        contender.acquire()
+    assert not contender.held
+    if kind == 'hardlink':
+        assert original.read_bytes() == b'retained outside bytes'
+    if kind == 'parent-removed':
+        assert not parent.exists()
+
+
 if __name__ == '__main__':
     if sys.argv[2] == 'crash':
         test_actual_spawned_process_crash_releases_without_pid_reaping(ResourceBroker(Path(sys.argv[3])))

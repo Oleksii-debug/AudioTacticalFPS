@@ -11,11 +11,18 @@ import ast
 import hashlib
 
 SOURCE_SHA256 = '1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9'
+HARDENED_SHA256 = '5379b889b8019c7ad9f427a7bc8db268dccd747469abc72db4f3001f9f82306c'
+HARDENED_PROTOCOL = 'carr-asr-v43-hardened-1'
 PREPARATION_VERSION = 'supplied-whisper-v43-strict-3'
 
 
 def prepare(raw: bytes) -> bytes:
-    if hashlib.sha256(raw).hexdigest() != SOURCE_SHA256:
+    actual = hashlib.sha256(raw).hexdigest()
+    if actual == HARDENED_SHA256:
+        # This separately supplied worker already has strict settings, exact
+        # output names and owned inference. Its private bytes stay unmodified.
+        return raw
+    if actual != SOURCE_SHA256:
         raise ValueError('The supplied Whisper worker differs from the reviewed source.')
     source = raw.decode('utf-8')
     tree = ast.parse(source)

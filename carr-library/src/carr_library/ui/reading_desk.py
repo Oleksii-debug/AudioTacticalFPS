@@ -164,11 +164,12 @@ def location_text(page):
 class ReadingDialog:
     """Modal native reader with a cancellable worker and no late UI callbacks."""
 
-    def __init__(self, parent, desk, state, guard):
+    def __init__(self, parent, desk, state, guard, *, live_factory=None):
         import wx
 
         self.wx, self.parent = wx, parent
-        self.dialog = wx.Dialog(parent, title='Read book — ' + desk.title, size=(880, 700))
+        self.dialog = wx.Dialog(parent, title='Read book — ' + desk.title, size=(1020, 900),
+                                style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
         self.dialogs = NativeDialogs()
         self.cancelled = threading.Event()
         # Native source validation must observe this dialog's cancel action,
@@ -178,6 +179,7 @@ class ReadingDialog:
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='reading-desk')
         self.closed = self.busy = False
         self.buttons = []
+        self.command_buttons = {}
         self.accelerators = []
         self._accelerator_ids = []
         layout = wx.BoxSizer(wx.VERTICAL)
@@ -188,6 +190,9 @@ class ReadingDialog:
         self.text = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.text.SetName('Full source page or text segment')
         layout.Add(self.text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+        from .live_reading import attach_source_controls
+        self.live = (attach_source_controls(self, layout, core_factory=live_factory)
+                     if live_factory is not None else attach_source_controls(self, layout))
         navigation = wx.WrapSizer(wx.HORIZONTAL)
         self._button(navigation, 'Previous source location', lambda _: self.navigate(-1),
                      wx.ACCEL_CTRL, wx.WXK_PAGEUP)
@@ -226,7 +231,8 @@ class ReadingDialog:
         layout.Add(footer, 0, wx.ALIGN_RIGHT)
         self.dialog.SetSizer(layout)
         self.dialog.SetEscapeId(wx.ID_CANCEL)
-        self.dialog.SetAcceleratorTable(wx.AcceleratorTable(self.accelerators))
+        from .live_reading import bind_live_shortcuts
+        bind_live_shortcuts(self.dialog, self.live, self.accelerators)
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
 
     def _button(self, sizer, label, handler, modifier=None, key=None):
@@ -289,7 +295,13 @@ class ReadingDialog:
             self.cancel.Disable()
             self._error(exc)
 
-    def _page(self, navigation):
+    def _stop_live(self):
+        if hasattr(self, 'live') and self.live.core.status().state != 'discovering':
+            self.live.stop()
+
+    def _page(self, navigation, *, focus=True, from_live=False):
+        if not from_live:
+            self._stop_live()
         self.controller.check()
         page = navigation.page
         self.text.ChangeValue(page.raw_text)
@@ -300,15 +312,19 @@ class ReadingDialog:
         self.controller.accept(navigation)
         self.status.ChangeValue(self.controller.save_warning or
             'Source location loaded. Page-level resume saved. Use F1 for reader shortcuts.')
-        self.text.SetFocus()
+        if focus:
+            self.text.SetFocus()
 
     def navigate(self, direction):
+        self._stop_live()
         self._run('Opening source location', lambda: self.controller.move(direction), self._page)
 
     def go_first(self):
+        self._stop_live()
         self._run('Opening first source location', lambda: self.controller.go(1), self._page)
 
     def history(self, direction):
+        self._stop_live()
         self._run('Returning to reading location', lambda: self.controller.history_move(direction), self._page)
 
     def go_to(self, event=None):
@@ -325,6 +341,7 @@ class ReadingDialog:
             if not value.strip().isascii() or not value.strip().isdecimal():
                 raise ValueError('Enter a whole-number reading position.')
             position = int(value.strip())
+            self._stop_live()
             self._run('Opening reading position', lambda: self.controller.go(position), self._page)
         except Exception as exc:
             self._error(exc)
@@ -406,12 +423,19 @@ class ReadingDialog:
             'Ctrl+B: add a named page bookmark.\n'
             'Ctrl+Shift+B: open, rename or delete page bookmarks.\n'
             'Ctrl+Shift+L: focus the current source location and verification status.\n'
+            'Choose a discovered local voice explicitly before reading aloud.\n'
+            'F6: read the current text; F9: read from the text cursor.\n'
+            'Ctrl+Shift+F6: read the selected text only.\n'
+            'F7: pause or resume; F8: stop voice reading.\n'
+            'Ctrl+Shift+F8: resume the saved source chunk; Ctrl+Alt+F8: voice status.\n'
+            'Automatic continuation is off until you select its checkbox.\n'
             'Escape: close this reader and return to the library.\n\n'
             'Resume and bookmarks save the current source page or text segment, not the NVDA cursor. '
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
             'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
-            'The existing library backup does not yet include this reader state.')
+            'Voice resume saves an exact source chunk, not word timing or a screen-reader cursor. '
+            'The complete library backup includes supported source reading positions.')
         self.text.SetFocus()
 
     def close(self, event=None):
@@ -419,6 +443,8 @@ class ReadingDialog:
             return
         self.closed = True
         self.cancelled.set()
+        if hasattr(self, 'live'):
+            self.live.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)
@@ -426,6 +452,7 @@ class ReadingDialog:
     def show(self):
         try:
             self._run('Resuming source reading', self.controller.start, self._page)
+            self.live.discover()
             self.dialog.ShowModal()
         finally:
             self.close()

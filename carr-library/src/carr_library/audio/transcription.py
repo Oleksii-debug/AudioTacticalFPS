@@ -8,6 +8,7 @@ reused; no faster-whisper dependency is imported into the desktop process.
 """
 from __future__ import annotations
 
+from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
@@ -17,10 +18,12 @@ import re
 import shutil
 import tempfile
 
-from .models import AudioBudget, AudioCancelled, AudioError, finite, integer
+from .models import AudioBudget, AudioCancelled, AudioCleanupPending, AudioError, finite, integer
+from .cleanup import retained_state_lock
 from .process import run_process
 from .dsp import _digest as _file_digest
-from .supplied_whisper import PREPARATION_VERSION, SOURCE_SHA256, prepare
+from .supplied_whisper import (PREPARATION_VERSION, SOURCE_SHA256, HARDENED_SHA256,
+                              HARDENED_PROTOCOL, prepare)
 from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode,
                             local_path, read_json, regular, state_lock)
 
@@ -203,9 +206,14 @@ class SuppliedWhisperRuntime:
         if not {'model.bin', 'config.json', 'tokenizer.json'} <= set(data['model_files']):
             raise ValueError('The reviewed local Whisper model is incomplete.')
         identity = {'schema': 1, 'adapter': PREPARATION_VERSION,
-                    'source_sha256': SOURCE_SHA256, 'prepared_sha256': sha256(prepared).hexdigest(),
+                    'source_sha256': sha256(raw).hexdigest(), 'prepared_sha256': sha256(prepared).hexdigest(),
                     'python_sha256': data['python_sha256'], 'runtime_files': data['runtime_files'],
                     'model_files': data['model_files'], 'model': data['model']}
+        package = Path(__file__).parent.parent
+        identity['adapter_files'] = {name: _file_digest(package / name, cancelled)
+            for name in ('audio/transcription.py', 'audio/transcription_protocol.py',
+                         'audio/supplied_whisper.py', 'audio/process.py', 'audio/windows_job.py', 'audio/cleanup.py',
+                         'audio/models.py', 'audio/dsp.py', 'durable_state.py')}
         return _digest(identity), prepared, python, runtime_root, model_root
 
 
@@ -238,6 +246,127 @@ def _validate_request(request):
         names.add(name)
 
 
+def validate_saved_job(record):
+    """Validate saved declarations without looking up an engine or model.
+
+    Backup recovery uses this pure boundary before staging a saved job. Artifact
+    bytes must additionally be checked against the retained input and output
+    receipts; a valid declaration alone does not establish completed audio.
+    """
+    required = {'schema', 'id', 'request', 'status', 'completed', 'error',
+                'external_dependencies'}
+    optional = {'notices', 'cleanup_pending', 'recovery_review_required', 'source_labels', 'resource_plan'}
+    if (not isinstance(record, dict) or not required <= set(record)
+            or set(record) - required - optional
+            or record['schema'] != 'resonance-transcription-job/1'):
+        raise ValueError('Invalid durable transcription job schema.')
+    _validate_request(record['request'])
+    if record['id'] != _digest(record['request']):
+        raise ValueError('Invalid durable transcription job identity.')
+    if record['status'] not in ('queued', 'running', 'paused', 'cancelled', 'failed', 'complete'):
+        raise ValueError('Invalid durable transcription state.')
+    expected = {item['file'] for item in record['request']['inputs']}
+    completed = record['completed']
+    if (not isinstance(completed, list) or any(not isinstance(v, str) or v not in expected for v in completed)
+            or len(set(completed)) != len(completed)
+            or (record['status'] == 'complete' and set(completed) != expected)):
+        raise ValueError('Invalid transcription completion inventory.')
+    if record['error'] is not None and (not isinstance(record['error'], str) or len(record['error']) > 2100):
+        raise ValueError('Invalid saved transcription error.')
+    if record['external_dependencies'] != {
+            'runtime_identity': record['request']['runtime'],
+            'runtime_and_model_included': False,
+            'resume_requires_reviewed_local_installation': True}:
+        raise ValueError('Invalid external transcription dependency declaration.')
+    for name in ('notices', 'cleanup_pending'):
+        values = record.get(name, [])
+        if (not isinstance(values, list) or len(values) > 10000
+                or any(not isinstance(v, str) or not v or len(v) > 2000 for v in values)):
+            raise ValueError('Invalid saved transcription notice.')
+    if ('recovery_review_required' in record
+            and record['recovery_review_required'] is not True):
+        raise ValueError('Invalid transcription recovery review declaration.')
+    if 'source_labels' in record:
+        labels = record['source_labels']
+        if (not isinstance(labels, dict) or set(labels) != expected
+                or any(not isinstance(name, str) or not 1 <= len(name) <= 500 or '\x00' in name
+                       or '/' in name or '\\' in name for name in labels.values())):
+            raise ValueError('Invalid saved transcription source labels.')
+    if 'resource_plan' in record:
+        from ..operations.models import ResourceRequest
+        plan = record['resource_plan']
+        fields = {'cpu_memory_basis', 'disk_basis', 'gpu_basis'}
+        if (not isinstance(plan, dict) or set(plan) != {'schema', 'request', *fields}
+                or type(plan['schema']) is not int or plan['schema'] != 1
+                or any(not isinstance(plan[name], str) or not 1 <= len(plan[name]) <= 2000
+                       for name in fields)):
+            raise ValueError('Invalid saved transcription resource declaration.')
+        # Pure validation only: these are historical estimates, never resumed
+        # reservations or authority to open paths from the earlier installation.
+        ResourceRequest.from_dict(plan['request'])
+    return record
+
+def restored_job(record):
+    """Make a detached recovery record inert without probing declared paths."""
+    validate_saved_job(record)
+    result = json.loads(encode(record))
+    if result['status'] in ('queued', 'running'):
+        result['status'] = 'paused'
+    result['recovery_review_required'] = True
+    return result
+
+def validate_saved_snapshot(directory, record, *, cancelled=lambda: False):
+    """Check copied job bytes without reading any external runtime declaration."""
+    validate_saved_job(record)
+    directory = local_path(directory, exists=True)
+    regular(directory, directory=True)
+    if directory.name != record['id']:
+        raise ValueError('The saved transcription directory has another job identity.')
+    if read_json(directory / 'job.json') != record:
+        raise ValueError('The saved transcription declaration changed during validation.')
+    control = read_json(directory / 'control.json')
+    if (not isinstance(control, dict) or set(control) != {'command'}
+            or control['command'] not in ('run', 'pause', 'cancel')):
+        raise ValueError('Invalid saved transcription control.')
+    expected = {'job.json', 'control.json'}
+    for item in record['request']['inputs']:
+        _cancel(cancelled)
+        relative = 'inputs/' + item['file']
+        source = local_path(directory / relative, root=directory, exists=True)
+        if regular(source).st_size != item['bytes'] or _file_digest(source, cancelled) != item['sha256']:
+            raise ValueError('A saved transcription input failed its identity check.')
+        expected.add(relative)
+        receipt = TranscriptionService._receipt(directory, item, record['request'], cancelled=cancelled)
+        if receipt is None:
+            if item['file'] in record['completed']:
+                raise ValueError('A saved completed transcription input has no valid receipt.')
+            continue
+        prefix = 'outputs/' + item['file'] + '/'
+        expected.add(prefix + 'receipt.json')
+        expected.update(prefix + 'transcript.' + format for format in record['request']['formats'])
+    # Only the producer's durable format belongs to its recovery namespace.
+    # Incomplete private .pending-asr directories are excluded by the backup
+    # producer before this validation, rather than accepted as finished data.
+    actual, pending, count = set(), [directory], 0
+    while pending:
+        with os.scandir(pending.pop()) as entries:
+            for entry in entries:
+                _cancel(cancelled)
+                count += 1
+                if count > 100000:
+                    raise ValueError('The saved transcription exceeds its inventory allowance.')
+                path = Path(entry.path)
+                if entry.is_dir(follow_symlinks=False):
+                    regular(path, directory=True)
+                    pending.append(path)
+                else:
+                    regular(path)
+                    actual.add(path.relative_to(directory).as_posix())
+    if actual != expected:
+        raise ValueError('The saved transcription contains missing or undeclared files.')
+    return record
+
+
 def _time(seconds):
     milliseconds = round(seconds * 1000)
     hours, milliseconds = divmod(milliseconds, 3600000)
@@ -259,6 +388,11 @@ def _verified_result(meta, source, settings):
             or meta.get('selected_language') != settings['language']
             or meta.get('v43_attempt') != 'original' or meta.get('v43_attempt_no') != 1):
         raise ValueError('The worker result differs from the selected source or recognition settings.')
+    return _normalized_result(meta, settings)
+
+
+def _normalized_result(meta, settings):
+    """Validate timed text shared by the two explicitly pinned worker protocols."""
     language = meta.get('detected_language')
     if not isinstance(language, str) or not re.fullmatch('[a-z]{2,3}', language):
         raise ValueError('The supplied worker did not return a valid language.')
@@ -278,12 +412,27 @@ def _verified_result(meta, source, settings):
             raise ValueError('The transcript timestamps are not in order.')
         previous = start
         normalized.append({'start': start, 'end': end, 'text': _text(segment.get('text'))})
+        if 'raw_model_timestamps' in segment:
+            raw = segment['raw_model_timestamps']
+            if not isinstance(raw, dict) or set(raw) != {'start', 'end'}:
+                raise ValueError('Invalid raw model timestamp warning.')
+            raw_start = finite(raw['start'], 'Raw segment start', 0, 365 * 86400)
+            raw_end = finite(raw['end'], 'Raw segment end', raw_start, 365 * 86400)
+            normalized[-1]['raw_model_timestamps'] = {'start': raw_start, 'end': raw_end}
+            normalized[-1]['timestamp_warning'] = _text(segment.get('timestamp_warning'))
     text = '\n'.join(line.strip() for line in '\n'.join(s['text'] for s in normalized).splitlines()
                      if line.strip())
     if meta.get('text') != text:
         raise ValueError('The transcript text differs from its timed segments.')
-    return {'language': language, 'duration': duration, 'text': text,
-            'segments': normalized, 'word_timestamps': False, 'diarization': False}
+    result = {'language': language, 'duration': duration, 'text': text,
+              'segments': normalized, 'word_timestamps': False, 'diarization': False}
+    warnings = meta.get('warnings', [])
+    if (not isinstance(warnings, list) or len(warnings) > 1000
+            or any(not isinstance(value, str) or len(value) > 2000 for value in warnings)):
+        raise ValueError('Invalid worker transcript warnings.')
+    if warnings:
+        result['warnings'] = warnings
+    return result
 
 
 def _outputs(result):
@@ -312,6 +461,34 @@ def audit(event, args):
 sys.addaudithook(audit)
 sys.argv = [worker, '--job-dir', job]
 runpy.run_path(worker, run_name='__main__')
+'''
+
+
+_HARDENED_BOOTSTRAP = r'''
+import importlib.util, pathlib, socket, sys
+worker, job, runtime = sys.argv[1:]
+sys.path.insert(0, runtime)
+def audit(event, args):
+    # multiprocessing's local duplex Pipe uses AF_UNIX on POSIX. Internet
+    # sockets and name resolution remain denied in the supervisor and child.
+    if event.startswith('socket.'):
+        local = (event == 'socket.__new__' and args[1] == getattr(socket, 'AF_UNIX', -1))
+        local = local or (event in ('socket.bind', 'socket.connect')
+                         and getattr(args[0], 'family', None) == getattr(socket, 'AF_UNIX', -1))
+        if not local:
+            raise PermissionError('The local transcription worker denies network access.')
+    if event in ('subprocess.Popen', 'os.system', 'os.posix_spawn'):
+        raise PermissionError('The local transcription worker denies child commands.')
+sys.addaudithook(audit)
+spec = importlib.util.spec_from_file_location('_carr_reviewed_worker', worker)
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+# spawn reimports this public bootstrap as __mp_main__. It installs the same
+# audit policy and private module identity before unpickling the worker target.
+if __name__ == '__main__':
+    result = module.Worker(pathlib.Path(job)).run()
+    raise SystemExit({'succeeded': 0, 'partial': 1, 'failed': 1, 'cancelled': 3}[result['state']])
 '''
 
 
@@ -591,9 +768,14 @@ class TranscriptionService:
     def control(self, job_id, command):
         if command not in ('run', 'pause', 'cancel'):
             raise ValueError('Select run, pause or cancel.')
+        if command == 'run':
+            value = self.load(job_id)
+            if value.pop('recovery_review_required', False):
+                atomic_json(self._directory(job_id) / 'job.json', value, replace=True)
         atomic_json(self._directory(job_id) / 'control.json', {'command': command}, replace=True)
 
-    def _receipt(self, directory, item, request, *, cancelled=lambda: False):
+    @staticmethod
+    def _receipt(directory, item, request, *, cancelled=lambda: False):
         receipt_path = directory / 'outputs' / item['file'] / 'receipt.json'
         if not receipt_path.exists():
             return None
@@ -622,8 +804,10 @@ class TranscriptionService:
         if self.runtime is None:
             raise ValueError('Select a reviewed local transcription runtime before resuming a job.')
         directory = self._directory(job_id)
-        with state_lock(directory, 'job'):
+        with retained_state_lock(directory, 'job'):
             record = self._record(job_id)
+            if record.get('recovery_review_required'):
+                raise ValueError('Review the restored job and its local runtime, then explicitly resume it.')
             request = record['request']
             command = 'run'
             def stopped():
@@ -651,7 +835,7 @@ class TranscriptionService:
                 if runtime_id != request['runtime']:
                     raise ValueError('The selected runtime or model changed; create a new reviewed job.')
                 settings = TranscriptionSettings(**request['settings'])
-                with state_lock(self.root, 'runtime-' + runtime_id):
+                with retained_state_lock(self.root, 'runtime-' + runtime_id):
                     save('running')
                     completed = []
                     for index, item in enumerate(request['inputs'], 1):
@@ -666,12 +850,20 @@ class TranscriptionService:
                             save('queued')
                             notify('Waiting for shared local transcription resources.')
                             try:
-                                with self.broker.reserve(resource, operation_id='asr:' + job_id,
-                                                         cancelled=stopped, timeout=60) as lease:
+                                with ExitStack() as admission:
+                                    lease = admission.enter_context(self.broker.reserve(resource,
+                                        operation_id='asr:' + job_id, cancelled=stopped, timeout=60))
                                     save('running')
                                     notify(f'Transcribing file {index} of {len(request["inputs"])} locally.')
-                                    notice = self._run_one(directory, item, request, source, settings,
-                                        prepared, python, runtime_root, model_root, lease.cancelled)
+                                    try:
+                                        notice = self._run_one(directory, item, request, source, settings,
+                                            prepared, python, runtime_root, model_root, lease.cancelled)
+                                    except AudioCleanupPending as pending:
+                                        # The existing lease remains owned until the worker's
+                                        # native tree has actually stopped, including descendants.
+                                        retained = admission.pop_all()
+                                        pending.cleanup_owner.add_quiescent_callback(retained.close)
+                                        raise
                             except ResourceCancelled as exc:
                                 raise AudioCancelled('Transcription stopped while waiting for shared resources.') from exc
                             if lease.cleanup_pending:
@@ -700,7 +892,13 @@ class TranscriptionService:
                 raise
             except Exception as exc:
                 if record['status'] != 'complete':
-                    save('failed', type(exc).__name__ + ': ' + str(exc)[:2000])
+                    try:
+                        save('failed', type(exc).__name__ + ': ' + str(exc)[:2000])
+                    except BaseException as status_error:
+                        if not isinstance(exc, AudioCleanupPending):
+                            raise
+                        exc.add_note('Cleanup status could not be saved: ' + type(status_error).__name__)
+                        exc.status_publication_error = status_error
                 raise
 
     def _run_one(self, directory, item, request, source, settings, prepared,
@@ -725,14 +923,48 @@ class TranscriptionService:
             config = {'job_name': 'Resonance transcription', 'folders': [str(incoming)],
                       'results_root': str(stage / 'results'), 'models_dir': str(model_root.parent),
                       'settings': worker_settings}
+            hardened = sha256(prepared).hexdigest() == HARDENED_SHA256
+            if hardened:
+                config.update(protocol_version=1, job_id=directory.name)
             atomic_json(stage / 'job_config.json', config)
             env = {name: os.environ[name] for name in ('PATH', 'SYSTEMROOT', 'WINDIR', 'LANG', 'TEMP', 'TMP') if name in os.environ}
             env.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', HF_DATASETS_OFFLINE='1',
                        HF_HUB_DISABLE_TELEMETRY='1', PYTHONDONTWRITEBYTECODE='1')
-            run_process([str(python), '-I', '-S', '-B', '-X', 'utf8',
-                         '-X', 'pycache_prefix=' + str(stage / 'bytecode'), '-c', _BOOTSTRAP,
-                         str(worker), str(stage), str(runtime_root)],
-                        budget=self.budget, cancelled=cancelled, watch=(stage,), env=env, cwd=stage)
+            entrypoint = ['-c', _BOOTSTRAP]
+            if hardened:
+                bootstrap = stage / 'host_bootstrap.py'
+                atomic_bytes(bootstrap, _HARDENED_BOOTSTRAP.encode('utf-8'))
+                entrypoint = [str(bootstrap)]
+            try:
+                run_process([str(python), '-I', '-S', '-B', '-X', 'utf8',
+                             '-X', 'pycache_prefix=' + str(stage / 'bytecode'), *entrypoint,
+                             str(worker), str(stage), str(runtime_root)],
+                            budget=self.budget, cancelled=cancelled, watch=(stage,), env=env, cwd=stage,
+                            owned_tree=hardened)
+            except (AudioCancelled, AudioCleanupPending):
+                raise
+            except AudioError as exc:
+                # This worker records inference exceptions in its terminal
+                # receipt and stdout. Preserve a bounded useful explanation
+                # before private staging is removed; an exit code is not a
+                # successful or reusable recognition result.
+                detail = None
+                if hardened:
+                    try:
+                        failed = read_json(stage / 'job_result.json')
+                        if (isinstance(failed, dict) and failed.get('protocol') == HARDENED_PROTOCOL
+                                and failed.get('job_id') == directory.name
+                                and failed.get('state') in ('failed', 'partial')):
+                            messages = list(failed.get('errors', []))
+                            for row in failed.get('files', []):
+                                if isinstance(row, dict):
+                                    messages.append(row.get('error'))
+                            detail = '; '.join(value for value in messages if isinstance(value, str) and value)[:2000]
+                    except (ValueError, OSError, TypeError):
+                        pass
+                if detail:
+                    raise AudioError('The supplied local worker could not transcribe this input: ' + detail) from exc
+                raise
             if self.runtime.verify(cancelled)[0] != request['runtime']:
                 raise ValueError('The runtime or model changed during transcription.')
             status = read_json(stage / 'job_status.json')
@@ -741,14 +973,23 @@ class TranscriptionService:
                     or status.get('done') != 1 or status.get('total') != 1
                     or status.get('failed') != 0 or status.get('active_count') != 0):
                 raise AudioError('The supplied worker did not finish the requested file successfully.')
-            base = stage / 'results' / 'input' / item['sha256']
-            meta = read_json(base.with_suffix('.json'))
-            result = _verified_result(meta, snapshot, worker_settings)
+            if hardened:
+                from .transcription_protocol import verify_hardened_result
+                meta, worker_outputs = verify_hardened_result(stage, snapshot, item,
+                    worker_settings, self.runtime.data, status, job_id=directory.name,
+                    worker_sha256=HARDENED_SHA256, cancelled=cancelled)
+                result = _normalized_result(meta, worker_settings)
+                result['worker_protocol'] = HARDENED_PROTOCOL
+            else:
+                base = stage / 'results' / 'input' / item['sha256']
+                meta = read_json(base.with_suffix('.json'))
+                result = _verified_result(meta, snapshot, worker_settings)
+                worker_outputs = {format: base.with_suffix('.' + format) for format in ('txt', 'srt', 'vtt')}
             payloads = _outputs(result)
             for format in ('txt', 'srt', 'vtt'):
                 if format not in request['formats']:
                     continue
-                if _bounded_bytes(base.with_suffix('.' + format)) != payloads[format]:
+                if _bounded_bytes(worker_outputs[format]) != payloads[format]:
                     raise AudioError('A required worker transcript format is missing or inconsistent.')
             _cancel(cancelled)
             identity = {'source_sha256': item['sha256'], 'source_bytes': item['bytes'],
@@ -790,15 +1031,21 @@ class TranscriptionService:
             active_error = exc
             raise
         finally:
-            try:
-                shutil.rmtree(stage)
-            except OSError:
-                if committed:
-                    cleanup_pending = stage.name
-                elif active_error is not None:
-                    active_error.add_note('Private temporary audio cleanup remains necessary: ' + stage.name)
-                else:
-                    raise
-                # Preserve durable successful completion. The retained .pending
-                # staging is deliberately excluded by the existing backup policy.
+            if isinstance(active_error, AudioCleanupPending):
+                # The still-owned process may hold or write these files. Neither
+                # a GUI future nor a failed native wait authorizes their removal.
+                active_error.cleanup_owner.add_quiescent_callback(
+                    lambda: shutil.rmtree(stage, ignore_errors=True))
+            else:
+                try:
+                    shutil.rmtree(stage)
+                except OSError:
+                    if committed:
+                        cleanup_pending = stage.name
+                    elif active_error is not None:
+                        active_error.add_note('Private temporary audio cleanup remains necessary: ' + stage.name)
+                    else:
+                        raise
+                    # Preserve durable successful completion. The retained .pending
+                    # staging is deliberately excluded by the existing backup policy.
         return cleanup_pending

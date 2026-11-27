@@ -3,7 +3,7 @@
 Every accepted node is content-addressed and checksum-verified before reuse.
 Source text is data. This module never accepts shell commands or provider URLs.
 """
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, replace
 from hashlib import sha256
 import math
@@ -11,13 +11,31 @@ import os
 from pathlib import Path
 import re
 import shutil
+import threading
 import time
 from uuid import uuid4
 
-from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, state_lock
+from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, regular, state_lock
 from .project import Project, ProjectStore, parse_script, _id
 
 ENGINE_SCHEMA = 'studio-local-dag-v1'
+
+
+def production_runtime_identity(runtime, capabilities, *, cancelled=lambda: False):
+    """Bind reusable nodes to executable and implementation bytes, not banners."""
+    from ..audio import dsp, models, music, process
+    from ..speech._io import digest
+    modules = {'production': Path(__file__), 'audio': Path(dsp.__file__),
+               'models': Path(models.__file__), 'music': Path(music.__file__),
+               'process': Path(process.__file__),
+               'windows_job': Path(process.__file__).with_name('windows_job.py'),
+               'cleanup': Path(process.__file__).with_name('cleanup.py')}
+    identity = {'capabilities': capabilities,
+                'executables': {name: digest(getattr(runtime, name), cancelled=cancelled)
+                                for name in ('ffmpeg', 'ffprobe')},
+                'implementation': {name: digest(path, cancelled=cancelled)
+                                   for name, path in modules.items()}}
+    return sha256(encode(identity)).hexdigest()
 
 
 def music_installation_identity(runtime, engine):
@@ -81,9 +99,16 @@ class ProductionService:
         self.jobs_root.mkdir(exist_ok=True)
         self.cache = self.root / 'cache'
         self.cache.mkdir(exist_ok=True)
+        self.inputs = self.root / 'inputs'
+        self.inputs.mkdir(exist_ok=True)
         self._voices = voices
+        self._owns_voices = voices is None
+        self._closed = threading.Event()
+        self._voice_state = threading.Lock()
+        self._voice_discovery = threading.Lock()
         self.runtime_factory = runtime_factory
-        self.input_roots = tuple(local_path(x, exists=True) for x in input_roots)
+        self.input_roots = (local_path(self.inputs, exists=True),
+                            *(local_path(x, exists=True) for x in input_roots))
         self._broker = broker
 
     @property
@@ -101,7 +126,31 @@ class ProductionService:
             raise ResourceStateError('The production resource policy belongs to another data folder.')
         return self._broker
 
-    def _resource_plan(self, project, state, runtime):
+    @contextmanager
+    def _audio_admission(self, runtime, *, operation_id, disk_bytes=0,
+                         disk_path=None, cancelled=lambda: False):
+        """Use the shared broker for bounded clip inspection, retention or preview."""
+        from ..audio.models import AudioCancelled, AudioCleanupPending
+        from ..operations import ResourceCancelled, ResourceRequest
+        def stopping():
+            return self._closed.is_set() or bool(cancelled())
+        broker = self._admission_broker(stopping)
+        request = ResourceRequest(cpu_slots=runtime.budget.threads,
+            memory_bytes=max(512 * 1024**2, 2 * runtime.budget.max_alloc_bytes),
+            disk_bytes=disk_bytes, disk_path=disk_path)
+        with ExitStack() as reservations:
+            try:
+                lease = reservations.enter_context(broker.reserve(request,
+                    operation_id=operation_id, cancelled=stopping, timeout=60))
+                yield lease.cancelled
+            except AudioCleanupPending as exc:
+                retained = reservations.pop_all()
+                exc.cleanup_owner.add_quiescent_callback(retained.close)
+                raise
+            except ResourceCancelled as exc:
+                raise AudioCancelled('Audio operation cancelled while waiting for shared local resources.') from exc
+
+    def _resource_plan(self, project, state, runtime, *, clip_info=None):
         from ..operations import ResourceRequest, ResourceUnavailable
         limits = self.broker.limits
         neural = {scene.music.engine for scene in project.scenes if scene.music is not None
@@ -128,10 +177,26 @@ class ProductionService:
         memory = limits.memory_bytes if neural else max(512 * 1024 ** 2, 2 * runtime.budget.max_alloc_bytes)
         if neural and memory == 0:
             raise ResourceUnavailable('Configure a positive declared memory budget for neural production.')
-        seconds = sum(max(scene.minimum_duration,
-                      sum(len(line.text) * .5 + line.pause_after for line in scene.lines)) for scene in project.scenes)
+        clip_info = clip_info or {}
+        seconds = 0
+        for scene in project.scenes:
+            duration = max(scene.minimum_duration,
+                           sum(len(line.text) * .5 + line.pause_after for line in scene.lines))
+            if not scene.lines and not scene.cues:
+                duration = max(duration, 1)
+            for cue in scene.cues:
+                info = clip_info[cue.path]
+                available = info.duration - cue.trim_start
+                selected = available if cue.duration is None else cue.duration
+                if available <= 0 or selected > available + 1 / info.sample_rate:
+                    raise ValueError('An edited clip selection is outside its original audio.')
+                if max(cue.fade_in, cue.fade_out) > selected:
+                    raise ValueError('An edited clip fade exceeds its selected audio.')
+                duration = max(duration, cue.start + selected)
+            seconds += max(duration, 1 / project.sample_rate)
         pcm = math.ceil(max(1, seconds) * project.sample_rate * 2 * 2)
-        roles = len(project.roles) if state['stems'] else 0
+        roles = (len(project.roles) + (len({cue.role for scene in project.scenes for cue in scene.cues})
+                                      if project.schema >= 2 else 0)) if state['stems'] else 0
         music = int(any(scene.music is not None for scene in project.scenes))
         cache_bytes = pcm * (6 + 2 * roles + 2 * music) + runtime.budget.reserve_disk_bytes
         export_bytes = pcm * (2 + roles + music * int(state['stems']) + int(state['format'] != 'wav')) + 1024 ** 2
@@ -144,15 +209,64 @@ class ProductionService:
             'memory_basis': ('exclusive configured RAM/GPU pool; model peak is not measured' if neural else
                              'declared estimate: at least 512 MiB and twice the FFmpeg per-allocation budget'),
             'disk_basis': 'declared estimate from 0.5 seconds per source character, explicit pauses/durations, '
-                          'PCM bytes and intermediate/stem/export copies; not a measured duration or hard output cap',
+                          'verified clip durations/placement, PCM bytes and intermediate/stem/export copies; '
+                          'not a measured speech duration or hard output cap',
             'enforcement': 'cooperative admission; existing bounded worker checks still apply'}
 
     @property
     def voices(self):
-        if self._voices is None:
+        return self.discover_voices()
+
+    def discover_voices(self, *, cancelled=lambda: False):
+        """Discover once on the caller's worker, with cancellable admission."""
+        def stopping():
+            return self._closed.is_set() or bool(cancelled())
+        if stopping():
+            raise InterruptedError('Production voice discovery cancelled or closed.')
+        with self._voice_state:
+            if self._voices is not None:
+                return self._voices
+        while not self._voice_discovery.acquire(timeout=.05):
+            if stopping():
+                raise InterruptedError('Production voice discovery cancelled or closed.')
+        try:
+            if stopping():
+                raise InterruptedError('Production voice discovery cancelled or closed.')
+            with self._voice_state:
+                if self._voices is not None:
+                    return self._voices
             from ..runtime_settings import voice_registry
-            self._voices = voice_registry(self.root.parent)
-        return self._voices
+            found = voice_registry(self.root.parent, cancelled=stopping)
+            try:
+                with self._voice_state:
+                    if not stopping():
+                        self._voices, found = found, None
+                        return self._voices
+            finally:
+                if found is not None:
+                    cleanup = getattr(found, 'close', None)
+                    if callable(cleanup):
+                        cleanup()
+            raise InterruptedError('Production voice discovery cancelled or closed.')
+        finally:
+            self._voice_discovery.release()
+
+    def close(self):
+        """Release owned discovery after queued work; supplied registries are borrowed.
+
+        Canonical providers own a bounded process for each call and retain no
+        background worker between calls. Optional registry implementations may
+        expose close() for their own resources.
+        """
+        self._closed.set()
+        with self._voice_state:
+            owned = self._voices if self._owns_voices else None
+        if owned is not None:
+            cleanup = getattr(owned, 'close', None)
+            if not callable(cleanup) or cleanup() is not False:
+                with self._voice_state:
+                    if self._voices is owned:
+                        self._voices = None
 
     def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):
         project = parse_script(text, title=title, voice_ids=voice_ids, mode=mode)
@@ -167,9 +281,11 @@ class ProductionService:
         if any(not role.voice_id for role in project.roles if any(
                 line.role == role.id and line.text for scene in project.scenes for line in scene.lines)):
             raise ValueError('Assign an installed voice to every speaking role before rendering.')
-        available = {voice.id for voice in self.voices.voices()}
-        if any(role.voice_id not in available for role in project.roles if role.voice_id):
-            raise ValueError('A selected local voice is no longer available. Reassign the role.')
+        speaking = {line.role for scene in project.scenes for line in scene.lines if line.text}
+        if speaking:
+            available = {voice.id for voice in self.voices.voices()}
+            if any(role.voice_id not in available for role in project.roles if role.id in speaking):
+                raise ValueError('A selected local voice is no longer available. Reassign the role.')
         destination = local_path(destination, exists=True)
         if not destination.is_dir():
             raise ValueError('Choose an existing local output directory.')
@@ -185,6 +301,7 @@ class ProductionService:
                     or previous['format'] != format or previous['stems'] != stems):
                 raise ValueError('This operation ID is already bound to a different production plan.')
             return job_id
+        self.register_project_inputs(project)
         self.projects.save(project)
         state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
                  'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
@@ -207,6 +324,75 @@ class ProductionService:
     def jobs(self):
         return tuple(self.get(path.parent.name) for path in sorted(self.jobs_root.glob('*/job.json')))
 
+    def register_project_inputs(self, project, *, imported=False):
+        """Declare unreviewed external paths without opening those paths."""
+        from .backup_inputs import input_review, register_pending_inputs
+        review = input_review(self.root)
+        pending = []
+        for scene in project.scenes:
+            for cue in scene.cues:
+                path = Path(cue.path)
+                simple = path.is_absolute() and '..' not in path.parts
+                managed = (simple and path.parent == self.inputs
+                           and re.fullmatch(r'[0-9a-f]{64}\.audio', path.name))
+                selected = (simple and any(path.is_relative_to(root)
+                            for root in self.input_roots if root != self.inputs))
+                if not managed and (imported or not selected):
+                    if imported or cue.path not in review['approved']:
+                        pending.append(cue.path)
+        if pending:
+            register_pending_inputs(self.root, pending)
+
+    def relocate_restored_job(self, job_id, destination):
+        """Accept a fresh output parent explicitly selected after backup restore."""
+        directory = self.jobs_root / _id(job_id)
+        with state_lock(directory, 'render'):
+            state = self.get(job_id)
+            if state.get('recovery', {}).get('requires_output_directory') is not True:
+                raise ValueError('Only a restored job awaiting an output directory can be relocated.')
+            parent = local_path(destination, exists=True)
+            if not parent.is_dir() or parent.is_relative_to(self.root):
+                raise ValueError('Choose an existing output directory outside private production state.')
+            project = Project.from_dict(state['project'])
+            output = parent / f'{_output_name(project.title)}-{job_id[:12]}-restored-{uuid4().hex[:8]}'
+            if os.path.lexists(output):
+                raise FileExistsError('The new restored-job output folder is already occupied.')
+            state['destination'] = str(output)
+            state['recovery']['requires_output_directory'] = False
+            state['status'], state['progress'] = 'pending', 'New output directory approved; ready to resume.'
+            self._save(state)
+            return state
+
+    def restored_inputs_to_review(self, job_id):
+        from .backup_inputs import input_review, _input_paths
+        project = Project.from_dict(self.get(job_id)['project'])
+        return tuple(sorted(_input_paths(project) & set(input_review(self.root)['pending'])))
+
+    def approve_restored_inputs(self, selected_paths, *, cancelled=lambda: False):
+        from .backup_inputs import approve_input_review
+        return approve_input_review(self.root, selected_paths, cancelled=cancelled)
+
+    def _cue_source(self, cue, *, cancelled=lambda: False):
+        from .backup_inputs import input_review, _checked_digest
+        review = input_review(self.root)
+        if cue.path in review['pending']:
+            raise ValueError('A cue is outside the selected input approvals; review and explicitly approve it before rendering.')
+        declared = Path(cue.path)
+        if not declared.is_absolute() or '..' in declared.parts:
+            raise ValueError('A cue needs an explicitly selected absolute local path.')
+        source = local_path(cue.path, exists=True)
+        if source.is_relative_to(self.inputs):
+            match = re.fullmatch(r'([0-9a-f]{64})\.audio', source.name)
+            if source.parent != self.inputs or match is None or _checked_digest(source, regular(source), cancelled) != match[1]:
+                raise ValueError('A restored Studio input differs from its verified content identity.')
+        elif cue.path in review['approved']:
+            if review['approved'][cue.path] != {
+                    'size_bytes': source.stat().st_size, 'sha256': _checked_digest(source, regular(source), cancelled)}:
+                raise ValueError('A reviewed legacy Studio input changed; select it again before rendering.')
+        elif not any(source.is_relative_to(root) for root in self.input_roots):
+            raise ValueError('A cue is outside the explicitly selected input directories.')
+        return source
+
     def _save(self, state):
         state['updated'] = time.time()
         atomic_json(self.jobs_root / state['id'] / 'job.json', state, replace=True)
@@ -221,23 +407,27 @@ class ProductionService:
         atomic_json(self.jobs_root / job_id / 'control.json', {'action': 'cancel'},
                     replace=(self.jobs_root / job_id / 'control.json').exists())
 
-    def _runtime(self):
+    def _runtime(self, *, reviewed_roots=()):
         if self.runtime_factory is not None:
-            return self.runtime_factory(self.cache, input_roots=(self.cache, *self.input_roots))
+            return self.runtime_factory(self.cache, input_roots=(self.cache, *self.input_roots, *reviewed_roots))
         from ..runtime_settings import audio_runtime
         from ..audio import AudioBudget
         # Only choose the previously unspecified default FFmpeg thread count.
         # Explicit caller-supplied runtimes retain their exact declared budget.
         budget = AudioBudget(threads=min(AudioBudget().threads, self.broker.limits.cpu_slots))
         return audio_runtime(self.cache, state_root=self.root.parent,
-                             input_roots=(self.cache, *self.input_roots), budget=budget)
+                             input_roots=(self.cache, *self.input_roots, *reviewed_roots), budget=budget)
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
-        from ..audio import AudioCancelled, Track, MusicSpec
+        from ..audio import AudioCancelled, AudioCleanupPending, Track, MusicSpec
+        from ..audio.cleanup import retained_state_lock
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
-        with state_lock(job_root, 'render'), ExitStack() as reservations:
+        with retained_state_lock(job_root, 'render'), ExitStack() as reservations:
             state = self.get(job_id)
+            if (state.get('status') == 'waiting-input'
+                    or state.get('recovery', {}).get('requires_output_directory') is True):
+                raise ValueError('Choose a new output directory for this restored production job first.')
             if state['status'] == 'complete':
                 self._verify_artifacts(state)
                 return state
@@ -247,12 +437,25 @@ class ProductionService:
                 control.unlink()  # explicit Run/Resume authorizes continuing the saved job
 
             def admission_cancelled():
-                return bool(cancelled()) or control.exists()
+                return self._closed.is_set() or bool(cancelled()) or control.exists()
 
             try:
                 self._admission_broker(admission_cancelled)
-                runtime = self._runtime()
-                request, resource_plan = self._resource_plan(project, state, runtime)
+                sources = [self._cue_source(cue, cancelled=admission_cancelled)
+                           for scene in project.scenes for cue in scene.cues]
+                runtime = self._runtime(reviewed_roots=tuple({source.parent for source in sources}))
+                clip_info = {}
+                if sources:
+                    with self._audio_admission(runtime, operation_id='studio-inspect:' + job_id,
+                                               cancelled=admission_cancelled) as inspecting:
+                        inspected = {}
+                        for cue in (cue for scene in project.scenes for cue in scene.cues):
+                            source = self._cue_source(cue, cancelled=inspecting)
+                            if source not in inspected:
+                                inspected[source] = runtime.inspect(source, cancelled=inspecting)
+                            self._cue_source(cue, cancelled=inspecting)
+                            clip_info[cue.path] = inspected[source]
+                request, resource_plan = self._resource_plan(project, state, runtime, clip_info=clip_info)
                 state['resource_plan'] = resource_plan
                 state['status'], state['progress'], state['error'] = 'queued', 'Waiting for shared local resources.', ''
                 self._save(state)
@@ -260,6 +463,17 @@ class ProductionService:
                     progress(state['progress'])
                 lease = reservations.enter_context(self.broker.reserve(request,
                     operation_id='studio:' + job_id, cancelled=admission_cancelled, timeout=60))
+            except AudioCleanupPending as exc:
+                # The inspector already transferred its resource lease. Keep
+                # this exception intact so the outer render lock transfers too,
+                # even if writing the failure journal is no longer possible.
+                state['status'], state['error'] = 'failed', str(exc)[:2000]
+                try:
+                    self._save(state)
+                except BaseException as status_error:
+                    exc.add_note('Cleanup status could not be saved: ' + type(status_error).__name__)
+                    exc.status_publication_error = status_error
+                raise
             except Exception as exc:
                 from ..operations import ResourceCancelled
                 action = read_json(control).get('action') if control.exists() else None
@@ -270,21 +484,11 @@ class ProductionService:
                 if isinstance(exc, ResourceCancelled):
                     raise InterruptedError('Production paused or cancelled while waiting for resources.') from exc
                 raise
-            try:
-                capabilities = runtime.capabilities()
-            except BaseException as exc:
-                state['status'], state['error'] = 'failed', str(exc)[:2000]
-                self._save(state)
-                raise
-            # Engine inventory is part of the node identity. A different installed
-            # FFmpeg/voice version must not silently reuse incompatible work.
-            runtime_identity = sha256(encode(capabilities)).hexdigest()
-            state['runtime'] = capabilities
             state['status'], state['error'] = 'running', ''
             self._save(state)
 
             def stopping():
-                return lease.cancelled()
+                return self._closed.is_set() or lease.cancelled()
 
             def check():
                 if stopping():
@@ -296,7 +500,7 @@ class ProductionService:
                 if progress is not None:
                     progress(message)
 
-            def node(kind, identity, operation):
+            def node(kind, identity, operation, *, cached_check=None):
                 check()
                 key = sha256(encode({'engine': ENGINE_SCHEMA, 'runtime': runtime_identity,
                                      'kind': kind, 'input': identity})).hexdigest()
@@ -311,6 +515,8 @@ class ProductionService:
                     candidate = local_path(self.cache / receipt['file'], root=self.cache)
                     if candidate.is_file() and digest_file(candidate) == receipt.get('sha256'):
                         info = runtime.inspect(candidate)
+                        if cached_check is not None:
+                            cached_check()
                         state['nodes'][key] = {'kind': kind, 'sha256': receipt['sha256'], 'reused': True}
                         self._save(state)
                         return candidate, info
@@ -340,10 +546,23 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))
 
             roles = {role.id: role for role in project.roles}
-            voices = {voice.id: voice for voice in self.voices.voices()}
             timeline, scene_results, stem_scenes, chapter_data = [], [], {}, []
+            clip_timeline, clip_stems = [], {}
             offset = 0.0
             try:
+                check()
+                # Recheck exact retained inputs after resource admission; use
+                # the same runtime and budget that own the current reservation.
+                for scene in project.scenes:
+                    for cue in scene.cues:
+                        self._cue_source(cue, cancelled=stopping)
+                capabilities = runtime.capabilities()
+                state['runtime'] = capabilities
+                runtime_identity = production_runtime_identity(runtime, capabilities, cancelled=stopping)
+                self._save(state)
+                speaking = any(line.text for scene in project.scenes for line in scene.lines)
+                voices = ({voice.id: voice for voice in self.discover_voices(cancelled=stopping).voices()}
+                          if speaking else {})
                 for scene_index, scene in enumerate(project.scenes, 1):
                     report(f'Scene {scene_index} of {len(project.scenes)}: {scene.title}')
                     clips, clip_roles, scene_lines, cursor = [], [], [], 0.0
@@ -357,12 +576,22 @@ class ProductionService:
                             voice_identity = json_safe(voice_data)
                             fingerprint = getattr(self.voices, 'fingerprint', None)
                             if callable(fingerprint):
-                                voice_identity['runtime_fingerprint'] = json_safe(fingerprint(role.voice_id))
+                                voice_identity['runtime_fingerprint'] = json_safe(fingerprint(role.voice_id, cancelled=stopping))
                             settings = SpeechSettings(rate=role.rate, volume=role.volume)
+
+                            def verify_voice(role=role, expected=voice_identity.get('runtime_fingerprint')):
+                                if callable(fingerprint) and fingerprint(role.voice_id, cancelled=stopping) != expected:
+                                    raise ValueError('The installed voice changed before accepting cached speech. Retry with its current identity.')
+
+                            def speak(target, line=line, role=role, settings=settings,
+                                      expected=voice_identity.get('runtime_fingerprint')):
+                                options = {'settings': settings, 'cancelled': stopping}
+                                if expected is not None:
+                                    options['expected_fingerprint'] = expected
+                                return self.voices.synthesize(line.text, role.voice_id, target, **options)
+
                             speech, info = node('speech', [line.text, voice_identity, asdict(settings)],
-                                lambda target, line=line, role=role, settings=settings:
-                                self.voices.synthesize(line.text, role.voice_id, target,
-                                    settings=settings, cancelled=stopping))
+                                speak, cached_check=verify_voice)
                             duration = round((info.duration + line.pause_after) * project.sample_rate) / project.sample_rate
                             clip, clip_info = node('voice placement', [digest_file(speech), duration,
                                                    role.pan, role.gain_db, project.sample_rate],
@@ -377,15 +606,38 @@ class ProductionService:
                         clips.append(clip)
                         clip_roles.append((role.id, clip_info.duration))
                         cursor += clip_info.duration
-                    if not clips:
-                        clip, info = silence(max(scene.minimum_duration, 1))
-                        clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     required_duration = scene.minimum_duration
+                    cue_tracks = []
                     for cue in scene.cues:
-                        source = local_path(cue.path, exists=True)
-                        if not any(source.is_relative_to(root) for root in self.input_roots):
-                            raise ValueError('A cue is outside the explicitly selected input directories.')
-                        required_duration = max(required_duration, cue.start + runtime.inspect(source).duration)
+                        source = self._cue_source(cue, cancelled=stopping)
+                        info = runtime.inspect(source, cancelled=stopping)
+                        available = info.duration - cue.trim_start
+                        selected = available if cue.duration is None else cue.duration
+                        if available <= 0 or selected > available + 1 / info.sample_rate:
+                            raise ValueError('An edited clip selection is outside its original audio.')
+                        if max(cue.fade_in, cue.fade_out) > selected:
+                            raise ValueError('An edited clip fade exceeds its selected audio.')
+                        selected = round(selected * project.sample_rate) / project.sample_rate
+                        if selected <= 0:
+                            raise ValueError('An edited clip must retain at least one output sample.')
+                        placed = (round(cue.start * project.sample_rate) / project.sample_rate
+                                  if project.schema >= 2 else cue.start)
+                        required_duration = max(required_duration, placed + selected)
+                        track = Track(source, cue.start, cue.gain_db, cue.pan, cue.role,
+                                      cue.trim_start, cue.duration, cue.fade_in, cue.fade_out)
+                        cue_tracks.append(track)
+                        if project.schema >= 2:
+                            clip_timeline.append({'scene': scene.id, 'id': cue.id, 'role': cue.role, 'title': cue.title,
+                                'source_sha256': digest_file(source), 'source_duration': info.duration,
+                                'trim_start': cue.trim_start, 'duration': selected,
+                                'start': offset + placed, 'end': offset + placed + selected,
+                                'gain_db': cue.gain_db, 'pan': cue.pan,
+                                'fade_in': cue.fade_in, 'fade_out': cue.fade_out})
+                    if not clips:
+                        duration = (max(required_duration, 1 / project.sample_rate)
+                                    if project.schema >= 2 and cue_tracks else max(scene.minimum_duration, 1))
+                        clip, info = silence(duration)
+                        clips, clip_roles, cursor = [clip], [('', info.duration)], info.duration
                     if required_duration > cursor + .5 / project.sample_rate:
                         clip, info = silence(required_duration - cursor)
                         clips.append(clip)
@@ -416,11 +668,7 @@ class ProductionService:
                             lambda target: runtime.concatenate(score_parts, target,
                                 sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
-                    for cue in scene.cues:
-                        source = local_path(cue.path, exists=True)
-                        if not any(source.is_relative_to(root) for root in self.input_roots):
-                            raise ValueError('A cue is outside the explicitly selected input directories.')
-                        tracks.append(Track(source, cue.start, cue.gain_db, cue.pan, cue.role))
+                    tracks.extend(cue_tracks)
                     final_scene, final_info = node('scene mix',
                         {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate},
                         lambda target: runtime.mix(tracks, target, sample_rate=project.sample_rate,
@@ -438,6 +686,16 @@ class ProductionService:
                         if scene.music is not None:
                             # This is the actual pre-duck score; final scene contains measured sidechain ducking.
                             stem_scenes.setdefault('music', []).append((scene.id, music, final_info.duration))
+                        if project.schema >= 2:
+                            for role in sorted({track.role for track in cue_tracks}):
+                                selected_tracks = tuple(track for track in cue_tracks if track.role == role)
+                                stem, _ = node('scene clip stem',
+                                    {'tracks': [track_identity(track) for track in selected_tracks],
+                                     'duration': final_info.duration, 'sample_rate': project.sample_rate},
+                                    lambda target, selected_tracks=selected_tracks: runtime.mix(
+                                        selected_tracks, target, duration=final_info.duration,
+                                        sample_rate=project.sample_rate, cancelled=stopping))
+                                clip_stems.setdefault(role, {})[scene.id] = stem
                     timeline.extend(scene_lines)
                     chapter_data.append({'id': scene.id, 'title': scene.title, 'start': offset,
                                          'end': offset + final_info.duration})
@@ -516,6 +774,13 @@ class ProductionService:
                         lambda target, paths=paths: runtime.concatenate(paths, target,
                             sample_rate=project.sample_rate, cancelled=stopping))
                     publish(stem, 'stems/' + role_id + '.wav')
+                for role, mapping in clip_stems.items():
+                    paths = [mapping.get(scene.id) or silence(info.duration)[0]
+                             for scene, _, info in scene_results]
+                    stem, _ = node('complete clip stem', [digest_file(path) for path in paths],
+                        lambda target, paths=paths: runtime.concatenate(paths, target,
+                            sample_rate=project.sample_rate, cancelled=stopping))
+                    publish(stem, 'stems/clips/' + role + '.wav')
                 subtitles = ['WEBVTT\n']
                 srt = []
                 for index, line in enumerate(timeline, 1):
@@ -533,6 +798,10 @@ class ProductionService:
                             'music_continuity': 'Neural segments are separate seeded variations with boundary fades; '
                                                 'continuous neural composition and perceptually seamless joins are not assumed.',
                             'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.'}
+                if project.schema >= 2:
+                    metadata['clips'] = clip_timeline
+                    metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
+                        'Music stems are before ducking; recorded clips have no inferred transcript.')
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
                                   ('timeline.json', encode(metadata)),
@@ -552,6 +821,9 @@ class ProductionService:
                 self._save(state)
                 return state
             except BaseException as exc:
+                if isinstance(exc, AudioCleanupPending):
+                    retained = reservations.pop_all()
+                    exc.cleanup_owner.add_quiescent_callback(retained.close)
                 # A stop request is not acknowledgement of cancellation. Keep
                 # a real render/publication error even if Pause arrived at the
                 # same time; only the runtimes' explicit interruption types can
@@ -564,7 +836,13 @@ class ProductionService:
                         action = None
                     state['status'] = 'cancelled' if action == 'cancel' else 'paused'
                 state['error'] = str(exc)[:2000]
-                self._save(state)
+                try:
+                    self._save(state)
+                except BaseException as status_error:
+                    if not isinstance(exc, AudioCleanupPending):
+                        raise
+                    exc.add_note('Cleanup status could not be saved: ' + type(status_error).__name__)
+                    exc.status_publication_error = status_error
                 raise
 
     def _verify_artifacts(self, state):

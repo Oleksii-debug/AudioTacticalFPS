@@ -1,11 +1,13 @@
 """Offline distribution boundaries, using synthetic wheel bytes and real files."""
 import hashlib
 import importlib.util
+import io
 import json
 from pathlib import Path
 import tempfile
 import subprocess
 import struct
+import tarfile
 import unittest
 from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
@@ -23,6 +25,17 @@ def module(name):
 
 builder = module("build_windows_bundle")
 installer = module("install_windows")
+
+
+def synthetic_runtime(folder):
+    """Inert archive for packaging tests; never a runnable Python fixture."""
+    path = folder / "synthetic-python.tar.gz"
+    with tarfile.open(path, "w:gz") as archive:
+        payload = b"Synthetic runtime; never executed."
+        member = tarfile.TarInfo("python/python.exe")
+        member.size = len(payload)
+        archive.addfile(member, io.BytesIO(payload))
+    return path
 
 
 def wheel(folder, name, version="1.0", *, tag="py3-none-any", requires=(), entrypoint=False):
@@ -51,6 +64,15 @@ class WindowsBundleTests(unittest.TestCase):
 
     def build(self):
         return builder.build_bundle(self.app, self.wheels, self.lock, self.output)
+
+    def build_native(self, **kwargs):
+        runtime = synthetic_runtime(self.root)
+        expected = json.loads((ROOT / "packaging/windows-python.json").read_text(encoding="utf-8"))["download"]["sha256"]
+        actual_sha = builder.sha256
+        with patch.object(builder, "sha256", side_effect=lambda path: expected if Path(path) == runtime else actual_sha(path)), \
+                patch.object(builder, "verify_application_source", side_effect=lambda path, commit: {"wheel_sha256": actual_sha(path)}):
+            return builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                        python_archive=runtime, source_commit="a" * 40, **kwargs)
 
     def test_complete_bundle_verifies_without_network(self):
         result = self.build()
@@ -87,8 +109,7 @@ class WindowsBundleTests(unittest.TestCase):
         launcher = self.native_launcher()
         original, expected = launcher.read_bytes(), builder.sha256(launcher)
         with patch.object(subprocess, "Popen", side_effect=AssertionError("Bundle assembly must not execute a launcher")):
-            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 native_launcher=launcher, native_launcher_sha256=expected)
+            self.build_native(native_launcher=launcher, native_launcher_sha256=expected)
         sealed = self.output / "ResearchLibrary.exe"
         self.assertEqual(sealed.read_bytes(), original)
         self.assertTrue((self.output / "ResearchLibrary.cmd").is_file())
@@ -115,8 +136,7 @@ class WindowsBundleTests(unittest.TestCase):
                 (oversized, builder.sha256(oversized), "size budget")):
             with self.subTest(message=message):
                 with self.assertRaisesRegex(ValueError, message):
-                    builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                         native_launcher=selected, native_launcher_sha256=expected)
+                    self.build_native(native_launcher=selected, native_launcher_sha256=expected)
                 self.assertFalse(self.output.exists())
 
     def test_native_launcher_input_replacement_cannot_substitute_captured_bytes(self):
@@ -132,8 +152,7 @@ class WindowsBundleTests(unittest.TestCase):
             return original_copy(source, destination, *args, **kwargs)
 
         with patch.object(builder.shutil, "copyfile", side_effect=replace_input):
-            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                 native_launcher=launcher, native_launcher_sha256=expected)
+            self.build_native(native_launcher=launcher, native_launcher_sha256=expected)
         self.assertEqual(changed, [True])
         self.assertNotEqual(launcher.read_bytes(), original)
         self.assertEqual((self.output / "ResearchLibrary.exe").read_bytes(), original)
@@ -151,8 +170,7 @@ class WindowsBundleTests(unittest.TestCase):
 
         with patch.object(builder.shutil, "copyfile", side_effect=change_stage):
             with self.assertRaisesRegex(ValueError, "changed before bundle sealing"):
-                builder.build_bundle(self.app, self.wheels, self.lock, self.output,
-                                     native_launcher=launcher, native_launcher_sha256=expected)
+                self.build_native(native_launcher=launcher, native_launcher_sha256=expected)
         self.assertFalse(self.output.exists())
 
     def sbom(self, version="1.0"):

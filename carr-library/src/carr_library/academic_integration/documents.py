@@ -87,12 +87,15 @@ def _json(value):
 def export_citation_docx(result: FormattedCitations, destination: str | Path, *,
                          title: str = 'Citations and bibliography',
                          paragraphs: Sequence[CitationParagraph | str] | None = None,
-                         cancelled: Callable[[], bool] | None = None) -> Path:
+                         cancelled: Callable[[], bool] | None = None,
+                         before_publish: Callable[[], None] | None = None) -> Path:
     """Write a new DOCX without overwriting any existing file.
 
     Paragraph citation IDs refer to ``result.citations[].cluster_id``. Citation
     strings remain editable; originals and research-library records are never
     modified. The embedded metadata supports later regeneration in CARR.
+    A caller can revalidate its source or authorization with ``before_publish``
+    after document assembly and before the exclusive publication operation.
     """
     from docx import Document
     from docx.oxml import OxmlElement
@@ -105,6 +108,8 @@ def export_citation_docx(result: FormattedCitations, destination: str | Path, *,
 
     if not isinstance(result, FormattedCitations):
         raise CitationError('Export requires a completed local CSL formatting result.')
+    if before_publish is not None and not callable(before_publish):
+        raise CitationError('A document publication check must be callable.')
     title = _text(title, 'Document title', 255)
     if not title.strip():
         raise CitationError('Choose a nonblank document title.')
@@ -250,6 +255,9 @@ def export_citation_docx(result: FormattedCitations, destination: str | Path, *,
     content = output.getvalue()
     if len(content) > _MAX_DOCUMENT:
         raise CitationError('The citation document exceeds its size budget.')
+    if before_publish is not None:
+        before_publish()
+    check()
     return atomic_bytes(path, content, replace=False)
 
 
@@ -263,8 +271,17 @@ def read_citation_docx(source: str | Path) -> dict:
     path = local_path(source, exists=True)
     if regular(path).st_size > _MAX_DOCUMENT:
         raise CitationError('The citation document exceeds its size budget.')
+    with path.open('rb') as handle:
+        raw = handle.read(_MAX_DOCUMENT + 1)
+    return _read_citation_docx_bytes(raw)
+
+
+def _read_citation_docx_bytes(document_bytes: bytes) -> dict:
+    """Parse one bounded immutable snapshot, including its embedded checksum."""
+    if type(document_bytes) is not bytes or len(document_bytes) > _MAX_DOCUMENT:
+        raise CitationError('The citation document exceeds its size budget.')
     try:
-        with ZipFile(path) as archive:
+        with ZipFile(BytesIO(document_bytes)) as archive:
             infos = archive.infolist()
             if len(infos) > 10_000 or sum(i.file_size for i in infos) > 100_000_000:
                 raise CitationError('The citation document exceeds its archive budget.')

@@ -10,6 +10,7 @@ import threading
 from ..audio.models import AudioCancelled
 from ..audio.transcription import (AUDIO_EXTENSIONS, FORMATS, SuppliedWhisperRuntime,
                                    TranscriptionService, TranscriptionSettings)
+from ..audio import transcription_settings as connection_settings
 from ..durable_state import local_path, regular
 from .import_center import readable
 
@@ -57,6 +58,12 @@ class TranscriptionController:
         self._control_lock = threading.Lock()
         self._pending_command = self._active_job = self._active_service = None
         self._requested_command = None
+        saved = connection_settings.load_settings(self.library.root)
+        self._saved_connection = saved['enabled']
+        if saved['enabled']:
+            self.manifest = saved['manifest_path']
+            self.dependency = ('A local connection is saved. Its files will be verified again before use; '
+                               'opening this window does not run a worker or inspect external paths.')
 
     def guard(self):
         if self.closed or getattr(self.frame, '_closing', False) or self.frame.library is not self.library:
@@ -72,6 +79,7 @@ class TranscriptionController:
             return False
         self.guard()
         self.manifest = str(path)
+        self._saved_connection = False
         self.dependency = 'Selected local manifest; worker, runtime and model inventories have not yet been verified.'
         self.changed(False)
         return True
@@ -107,7 +115,11 @@ class TranscriptionController:
         if command and service is not None and job is not None:
             service.control(job, command)
             command = None
-        return (bool(command) or self.frame.cancel_event.is_set()
+        disabled = False
+        if self._saved_connection:
+            saved = connection_settings.load_settings(self.library.root)
+            disabled = not saved['enabled'] or saved['manifest_path'] != self.manifest
+        return (disabled or bool(command) or self.frame.cancel_event.is_set()
                 or self.closed or getattr(self.frame, '_closing', False)
                 or self.frame.library is not self.library)
 
@@ -192,12 +204,30 @@ class TranscriptionController:
         def work(progress):
             runtime = self.runtime_factory(manifest)
             identity, *_ = runtime.verify(self._cancelled)
+            self.guard()
+            if self._cancelled():
+                raise AudioCancelled('Connecting the local runtime was cancelled.')
+            connection_settings.save_settings(self.library.root,
+                {'version': 1, 'enabled': True, 'manifest_path': manifest})
             return identity
         def done(identity):
+            self._saved_connection = True
             self.dependency = (f'Local worker, runtime and model inventories verified: {identity[:16]}. '
                                'This check does not run recognition or qualify model quality. No downloads.')
             self.report(self.dependency, focus=True)
         return self._job('Checking local transcription dependencies', work, done)
+
+    def disable_runtime(self):
+        def work(progress):
+            self.guard()
+            connection_settings.disable(self.library.root)
+            return None
+        def done(value):
+            self._saved_connection = False
+            self.manifest = ''
+            self.dependency = 'Local transcription is disabled. Saved transcripts and reading copies remain available.'
+            self.report(self.dependency, focus=True)
+        return self._job('Disabling the saved transcription connection', work, done)
 
     def refresh(self):
         def done(value):
@@ -375,9 +405,10 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
                 return controls
 
             self.manifest = field('Local runtime &manifest', wx.TextCtrl, style=wx.TE_READONLY)
-            self.choose_runtime, self.verify = buttons([
+            self.choose_runtime, self.verify, self.disable_runtime = buttons([
                 ('&Browse runtime manifest…', self.choose_manifest),
-                ('&Verify local dependencies', lambda event: self.controller.verify_runtime())])
+                ('&Verify and connect local dependencies', lambda event: self.controller.verify_runtime()),
+                ('&Disable saved connection', lambda event: self.controller.disable_runtime())])
             self.dependencies = field('Local dependency status', wx.TextCtrl,
                 style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 50))
             self.files = field('Audio &inputs', wx.ListBox, size=(-1, 65))
@@ -488,7 +519,7 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             if controller.outputs:
                 self.results.SetSelection(min(max(selection, 0), len(controller.outputs) - 1))
             self.status.ChangeValue(controller.status)
-            mutable = (self.choose_runtime, self.verify, self.files, self.choose_files_button,
+            mutable = (self.choose_runtime, self.verify, self.disable_runtime, self.files, self.choose_files_button,
                        self.folder_inputs_button, self.new_button, self.jobs, self.refresh_button, self.results)
             for control in mutable:
                 control.Enable(not controller.busy)
@@ -563,7 +594,7 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             controller = getattr(self, 'controller', None)
             if controller is not None:
                 controller.dispose()
-            return super().Destroy()
+            return super().Destroy() if self else False
 
         def on_destroy(self, event):
             # The original Python wrapper can already be invalid here.
@@ -582,6 +613,7 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
 
 
 def show_transcription(frame, *, job_id=None):
+    import wx
     dialog = create_transcription_dialog(frame)
     try:
         dialog.CentreOnParent()
@@ -591,4 +623,17 @@ def show_transcription(frame, *, job_id=None):
         dialog.ShowModal()
     finally:
         dialog.controller.dispose()
-        dialog.Destroy()
+        if dialog:
+            dialog.Destroy()
+
+
+def install_transcription_actions(frame):
+    import wx
+    bar = frame.menu_bar
+    menu = next((bar.GetMenu(index) for index in range(bar.GetMenuCount())
+                 if bar.GetMenuLabel(index).replace('&', '').casefold() == 'tools'), None)
+    if menu is None:
+        raise RuntimeError('Install the shared Tools menu before transcription actions.')
+    identity = wx.NewIdRef()
+    menu.Append(identity, 'Local audio and video &transcription...')
+    frame.Bind(wx.EVT_MENU, lambda event: show_transcription(frame), id=int(identity))
