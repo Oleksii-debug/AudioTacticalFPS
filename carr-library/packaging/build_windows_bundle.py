@@ -27,6 +27,10 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 TARGET = "Windows x64 / CPython 3.11"
 HERE = Path(__file__).resolve().parent
+BUNDLE_GUIDES = ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
+                 "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
+                 "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+                 "TRANSCRIPTION.md")
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
 
@@ -298,10 +302,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         # exact advanced-query syntax and complete-backup behavior.
         guides = staged / "docs"
         guides.mkdir()
-        for name in ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
-                     "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
-                     "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
-                     "TRANSCRIPTION.md"):
+        for name in BUNDLE_GUIDES:
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
