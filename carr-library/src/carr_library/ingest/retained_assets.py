@@ -53,7 +53,7 @@ class RetainedAssets:
             raise RetentionError('retained asset digest mismatch')
         return path
 
-    def _recover_staged_publication(self, target, digest):
+    def _recover_staged_publication(self, target, digest, *, cancelled=lambda: False):
         """Finish only a fully accounted link publication under the writer guard.
 
         A process can die after linking the target but before TemporaryDirectory
@@ -74,7 +74,7 @@ class RetainedAssets:
             from ..audio.jobs import file_identity, verified_reader
             from ..catalog.streaming_pdf import _digest
             with verified_reader(target, expected_identity=file_identity(published)) as stream:
-                actual = _digest(stream, published.st_size, lambda: False)
+                actual = _digest(stream, published.st_size, cancelled)
         else:
             actual = hash_file(target)
         if actual != digest:
@@ -174,7 +174,7 @@ class RetainedAssets:
         if existing:
             if len(existing) != 1 or existing[0] != target:
                 raise RetentionError('Missing, ambiguous or changed retained asset type.')
-            self._recover_staged_publication(target, asset.digest)
+            self._recover_staged_publication(target, asset.digest, cancelled=cancelled)
             # Validate the supplied original even when an exact retained copy exists.
             with asset.open(cancelled=cancelled):
                 pass
@@ -210,5 +210,5 @@ class RetainedAssets:
     def run(self, ingest, workspace, job, **kwargs):
         """Scope-check via existing journal first; resume from original bytes."""
         record = ingest.inspect(workspace, job)
-        retained = self.resolve(record['asset'])
+        retained = self.resolve(record['asset'], cancelled=kwargs.get('cancelled', lambda: False))
         return ingest.run(workspace, job, self.root, retained.name, **kwargs)

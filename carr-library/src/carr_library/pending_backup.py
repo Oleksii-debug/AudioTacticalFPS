@@ -739,7 +739,7 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
                 if wanted is not None:
                     candidates = [root / 'originals' / (wanted + suffix) for suffix in SUFFIXES.values()]
                     if any(os.path.lexists(path) for path in candidates):
-                        retained = app.assets.resolve(wanted)
+                        retained = app.assets.resolve(wanted, cancelled=cancelled)
                 try:
                     incoming = planned_snapshot(local_path(retained or source, exists=True),
                                                 cancelled=cancelled) if retained or source else None
@@ -749,6 +749,8 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
                     raise ValueError('Pending import retained source bytes are missing; a complete backup cannot be created.')
                 if wanted is not None and incoming.digest != wanted or expected is not None and incoming.manifest() != expected:
                     raise ValueError('Pending import source changed after planning; original pinned bytes are required.')
+                if sum(item['size_bytes'] for item in files) + incoming.size > MAX_TOTAL:
+                    raise ValueError('Pending import backup exceeds its total byte budget.')
                 name = incoming.digest + SUFFIXES[incoming.mime]
                 if isinstance(incoming, FileAsset):
                     destination = target / 'originals' / name

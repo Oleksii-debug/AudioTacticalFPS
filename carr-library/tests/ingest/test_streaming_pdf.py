@@ -13,13 +13,22 @@ from carr_library.catalog.intake import MAX_BYTES, IntakeError, snapshot
 from carr_library.catalog.streaming_pdf import (CHUNK_BYTES, MAX_PDF_BYTES, MAX_READ_BYTES,
     FileAsset, _BoundedReader, pdf_budget, snapshot_original, valid_original_size)
 from carr_library.audio.engines import _start_process, _stop
-from tests.ingest.streaming_pdf_fixture import MIB, write_pdf
+def _fixture():
+    import importlib.util
+    path = Path(__file__).with_name('streaming_pdf_fixture.py')
+    spec = importlib.util.spec_from_file_location('_carr_streaming_pdf_fixture', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+MIB, write_pdf = _fixture().MIB, _fixture().write_pdf
 
 
 @pytest.mark.parametrize('megabytes', [72, 144])
 def test_real_large_pdf_has_bounded_fresh_process_resident_and_python_allocations(tmp_path, record_property, megabytes):
-    process = _start_process([sys.executable, '-B', '-m', 'tests.ingest.streaming_pdf_probe',
-                              str(tmp_path), str(megabytes)],
+    probe = Path(__file__).with_name('streaming_pdf_probe.py').resolve(strict=True)
+    flags = ['-I'] if sys.flags.isolated else []
+    process = _start_process([sys.executable, '-B', *flags, str(probe), str(tmp_path), str(megabytes)],
                              stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         output, errors = process.communicate(timeout=180)
@@ -181,3 +190,44 @@ def test_pdf_attestation_rechecks_file_even_with_an_injected_renderer(tmp_path):
     source.write_bytes(b'changed original')
     assert attest(identity, Locator('physical_page', 1), raw_hash) is False
     assert called == []
+
+
+@pytest.mark.parametrize('replacement', ['different-file', 'new-hardlink'])
+def test_copy_failure_preserves_a_replacement_after_owned_handles_close(tmp_path, monkeypatch, replacement):
+    from contextlib import contextmanager
+    from carr_library.audio import jobs
+    source = write_pdf(tmp_path / 'source.pdf', MIB)
+    asset = FileAsset.capture(source)
+    destination = tmp_path / 'copy.pdf'
+    foreign = tmp_path / 'foreign.pdf'
+    foreign.write_bytes(b'user-owned replacement')
+    original_reader = jobs.verified_reader
+    observed = []
+
+    @contextmanager
+    def fail_after_close(path, **options):
+        with original_reader(path, **options) as stream:
+            yield stream
+        # Both copy contexts have closed. Windows can perform real replacement here.
+        assert destination.exists()
+        if replacement == 'different-file':
+            destination.unlink()
+            foreign.rename(destination)
+            observed.append(destination.stat().st_ino)
+        else:
+            os.link(destination, tmp_path / 'linked-copy.pdf')
+            observed.append(destination.stat().st_nlink)
+        raise OSError('controlled failure after owned handles close')
+
+    monkeypatch.setattr(jobs, 'verified_reader', fail_after_close)
+    with pytest.raises(OSError, match='controlled failure'):
+        asset.copy_to(destination)
+    assert observed and destination.exists()
+    if replacement == 'different-file':
+        assert destination.read_bytes() == b'user-owned replacement'
+        assert destination.stat().st_ino == observed[0]
+    else:
+        assert destination.stat().st_nlink == 2
+        assert (tmp_path / 'linked-copy.pdf').stat().st_ino == destination.stat().st_ino
+    monkeypatch.setattr(jobs, 'verified_reader', original_reader)
+    assert FileAsset.capture(source).manifest() == asset.manifest()

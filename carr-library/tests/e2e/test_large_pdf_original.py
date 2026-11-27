@@ -13,7 +13,15 @@ from carr_library.extract.page_ocr import Config
 from carr_library.ingest.worker import load_request, prepare_request
 from carr_library.library_backup import create_backup, restore_backup
 from carr_library.reader.source_file import prepare_source_file, launch_source_file
-from tests.ingest.streaming_pdf_fixture import MIB, write_pdf
+def _fixture():
+    import importlib.util
+    path = Path(__file__).parents[1] / 'ingest' / 'streaming_pdf_fixture.py'
+    spec = importlib.util.spec_from_file_location('_carr_streaming_pdf_fixture', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+MIB, write_pdf = _fixture().MIB, _fixture().write_pdf
 
 
 def _metadata():
@@ -144,3 +152,24 @@ def test_pending_backup_refuses_source_exceeding_its_saved_request_budget(tmp_pa
     assert not (destination / 'manifest.json').exists()
     assert load_request(app.root, request['request_id'])['pdf_max_bytes'] == 512
     assert source.exists() and app.browse(workspace) == ()
+
+
+def test_large_pending_aggregate_budget_fails_before_copying_original(tmp_path, monkeypatch):
+    import carr_library.pending_backup as pending
+    with TemporaryDirectory(prefix='budget-pdf-', dir=tmp_path) as temporary:
+        root = Path(temporary)
+        source = write_pdf(root / 'source.pdf')
+        app = LibraryApp(root / 'library')
+        workspace = app.create_workspace('Aggregate PDF limit')
+        original = snapshot_original(root, source.name)
+        prepare_request(app.root, workspace, source, _metadata(), Config(),
+                        expected_manifest=original.manifest(), pdf_max_bytes=96 * MIB)
+        monkeypatch.setattr(pending, 'MAX_TOTAL', original.size - 1)
+        def forbidden_copy(*args, **kwargs):
+            pytest.fail('The aggregate budget must reject before original bytes are copied.')
+        monkeypatch.setattr(FileAsset, 'copy_to', forbidden_copy)
+        backup = root / 'backup'
+        with pytest.raises(ValueError, match='total byte budget'):
+            create_backup(app, backup)
+        assert not (backup / 'manifest.json').exists()
+        assert source.exists() and app.browse(workspace) == ()

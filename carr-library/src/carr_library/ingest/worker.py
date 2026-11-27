@@ -617,7 +617,7 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         source_path = Path(record['source'])
         if record.get('asset_sha256'):
             from .retained_assets import RetainedAssets
-            source_path = RetainedAssets(library / 'originals').resolve(record['asset_sha256'])
+            source_path = RetainedAssets(library / 'originals').resolve(record['asset_sha256'], cancelled=cancelled)
         source_info = regular_file(source_path)
         source_mime = 'application/pdf' if source_path.suffix.casefold() == '.pdf' else ''
         if (source_info.st_nlink != 1 or not valid_original_size(source_mime, source_info.st_size,

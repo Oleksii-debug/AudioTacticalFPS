@@ -62,7 +62,7 @@ def _original(app, db, workspace, ref, revision, cancelled=lambda: False):
     assets = _directory(app.assets_dir)
     if assets != root / 'originals':
         raise ValueError('The original source directory changed.')
-    path = RetainedAssets(assets).resolve(identity.asset_sha256)
+    path = RetainedAssets(assets).resolve(identity.asset_sha256, cancelled=cancelled)
     if path.suffix != SUFFIXES[row[0]]:
         raise ValueError('The original source format changed.')
     original = snapshot_original(assets, path.name, cancelled=cancelled)

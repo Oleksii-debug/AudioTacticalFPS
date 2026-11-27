@@ -36,8 +36,18 @@ def peak_rss():
     return int(value if sys.platform == 'darwin' else value * 1024)
 
 
+def _fixture():
+    import importlib.util
+    path = Path(__file__).with_name('streaming_pdf_fixture.py')
+    spec = importlib.util.spec_from_file_location('_carr_streaming_pdf_fixture', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def main():
-    from .streaming_pdf_fixture import MIB, write_pdf
+    fixture = _fixture()
+    MIB, write_pdf = fixture.MIB, fixture.write_pdf
     # Include import costs in the baseline rather than attributing them to input size.
     import pypdf
     import pypdfium2

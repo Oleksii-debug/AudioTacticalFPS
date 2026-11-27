@@ -13,6 +13,7 @@ import os
 from pathlib import Path, PureWindowsPath
 import re
 import shutil
+import stat
 
 from .intake import MAX_BYTES, IntakeError, snapshot
 
@@ -184,11 +185,22 @@ class FileAsset:
             raise IntakeError('Insufficient free space for the exact PDF working copy.')
         if file_identity(_regular(self.path)) != self.identity:
             raise IntakeError('PDF original identity changed.')
-        created = False
+        owned = None
+
+        def same_target():
+            if owned is None or not owned.st_ino:
+                return False
+            current = destination.lstat()
+            return (stat.S_ISREG(current.st_mode) and current.st_nlink == 1
+                    and not getattr(current, 'st_file_attributes', 0) & 0x400
+                    and (current.st_dev, current.st_ino) == (owned.st_dev, owned.st_ino))
+
         try:
             with verified_reader(self.path, expected_identity=self.identity) as source:
                 with destination.open('xb') as target:
-                    created = True
+                    owned = os.fstat(target.fileno())
+                    if owned.st_nlink != 1 or not owned.st_ino:
+                        raise IntakeError('The copied PDF has no unique owned file identity.')
                     digest, count = sha256(), 0
                     while True:
                         _cancel(cancelled)
@@ -205,13 +217,15 @@ class FileAsset:
                     _regular(self.path)
                     target.flush()
                     os.fsync(target.fileno())
+            if not same_target():
+                raise IntakeError('The PDF copy path changed before verification.')
             return destination
         except BaseException:
-            if created:
-                try:
-                    destination.unlink(missing_ok=True)
-                except OSError:
-                    pass
+            try:
+                if same_target():
+                    destination.unlink()
+            except OSError:
+                pass
             raise
 
 

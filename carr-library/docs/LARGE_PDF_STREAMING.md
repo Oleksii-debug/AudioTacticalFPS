@@ -10,6 +10,9 @@ A PDF above 64 MiB is represented internally by a `FileAsset`: its canonical
 local path, SHA256, exact size and the device/inode/size/mtime/ctime identity.
 Every reopen uses the existing verified input handle and that expected identity.
 Copies use 1 MiB chunks, exclusive creation, complete hash checks and fsync.
+The target fd identity is captured at creation; failure cleanup and successful
+return require the same regular inode/device, a single link and no reparse point.
+An unknown replacement or newly hard-linked target is preserved.
 Retention keeps the existing hash-addressed namespace and no-replace link
 publication; recovery still requires complete accounting for owned staging links.
 Symlinks, reparse points, hard-linked originals, alternate streams and foreign
@@ -55,19 +58,20 @@ other component's byte/count limit and final verification remains in force.
 
 ## Executable evidence
 
-Two new strict selectors contain 19 source-derived cases:
+Two standalone strict selectors contain 22 source-derived cases:
 
-- `tests/ingest/test_streaming_pdf.py`: 15 cases, including actual fresh owned
+- `tests/ingest/test_streaming_pdf.py`: 17 cases, including actual fresh owned
   processes with valid 72 and 144 MiB synthetic PDF containers. Each contains a
   painted text page and a real unreferenced stream object. No sparse or truncated
   substitute is used. The process runs native text extraction, PDFium rendering,
   retention and full readback. It records platform/CPU/Python, actual peak resident
   memory, baseline peak, traced Python peak and elapsed time. Resident increase
   must stay below 64 MiB; traced allocations below 32 MiB.
-- `tests/e2e/test_large_pdf_original.py`: four cases covering the existing actual
+- `tests/e2e/test_large_pdf_original.py`: five cases covering the existing actual
   import worker, original copy/launch boundary, explicit review, full backup,
   pending-source restoration/resume, cancellation after real copied bytes and
-  refusal when a source exceeds its persisted request budget.
+  refusal when a source exceeds its persisted request budget, and aggregate
+  pending-byte refusal before any original copy.
 
 These tests also preserve non-PDF limits and reject replacement, hardlinks,
 forged digests, oversized parser reads, native callback failure and changed
@@ -79,3 +83,36 @@ At this source checkpoint these cases are **NOT_RUN**. There is no real-corpus,
 multi-gigabyte execution, p50/p95, external viewer, NVDA or general performance
 qualification claim. Measured values must come from the exact committed tests
 and JUnit properties on the actual executing host.
+
+## Pinned parser interface audit
+
+The primary py-pdf/pypdf source at tag 7.1.1 was inspected across 32 reader,
+generic, page, utility, encryption and text-extraction modules. The actual
+file-backed read path uses read/seek/tell. Its binary-mode attribute check is
+conditional, and PdfReader.close closes a stream only when the reader itself
+opened a path. No readline/closed interface is required on this pinned path.
+The stream-size helper uses seek/tell when getbuffer is absent.
+
+The pinned reader's cross-reference repair and notebook-display helpers can
+request an entire stream. This path intentionally refuses those requests; it
+does not convert a malformed large PDF into an unbounded in-memory fallback.
+A changed parser dependency needs renewed interface and native tests.
+
+Primary sources:
+- https://github.com/py-pdf/pypdf/blob/7.1.1/pypdf/_reader.py
+- https://github.com/py-pdf/pypdf/blob/7.1.1/pypdf/_utils.py
+- https://github.com/py-pdf/pypdf/blob/7.1.1/pypdf/generic/_data_structures.py
+
+## Scan-continuation composition
+
+The separately reviewed bf603 continuation requires a one-line merge at its new
+visit function: pass both live cancellation and its page deadline into
+planned_snapshot. The callback returns True so InterruptedError preserves the
+previous durable cursor; it must not raise TimeoutError into the rejected-row
+catch. The old scan already forwards cancellation in this source patch.
+
+Two additional composition-only cases are supplied as an exact Git blob and
+oracle: a real 5001-file scan including one >64MiB PDF, and cancellation after an
+actual PDF hash chunk followed by continuation of the unchanged cursor. They
+require both this patch and the bf603 scan API; they are not claimed as standalone
+coverage on the earlier base.
