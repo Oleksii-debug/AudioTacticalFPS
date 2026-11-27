@@ -230,3 +230,36 @@ def test_shared_model_keeps_two_live_libraries_caches_separate(tmp_path):
     ranker.engine.calls.clear()
     assert first.search(workspace, 'transport', mode='semantic')[0].quote == hits[0].quote
     assert ranker.engine.calls == []
+
+
+def test_unavailable_library_cache_never_uses_direct_ranker_cache(tmp_path, monkeypatch):
+    from carr_library.application import LibraryApp
+    ranker = fixture_ranker(tmp_path)
+    direct_cache = ranker.cache
+    root = tmp_path / 'library'
+    app = LibraryApp(root, semantic_ranker=ranker)
+    workspace = app.create_workspace('Private library')
+    raw = 'Railway transport connected cities.'
+    app.add_text(workspace, 'Railways', raw)
+    from carr_library import semantic_cache
+    guard = semantic_cache.guard_data_directory
+
+    def reject_cache(path, **kwargs):
+        if Path(path) == root / 'semantic-cache':
+            raise ValueError('The embedding cache directory is inside the program folder.')
+        return guard(path, **kwargs)
+
+    monkeypatch.setattr(semantic_cache, 'guard_data_directory', reject_cache)
+    reopened = LibraryApp(root, semantic_ranker=ranker)
+    assert reopened.semantic_cache is None
+    assert ranker.cache is direct_cache
+    with patch.object(direct_cache, 'get_many', side_effect=AssertionError('wrong library cache')), \
+            patch.object(direct_cache, 'put_many', side_effect=AssertionError('wrong library cache')):
+        hit, = reopened.search(workspace, 'transport', mode='semantic')
+    assert hit.quote == raw and hit.verified
+    assert ranker.cache_statistics['embedded_texts'] >= 2
+    assert not direct_cache.directory.exists()
+    ranker.bind_cache(root)
+    assert ranker.cache is None
+    with pytest.raises(ValueError, match='validated embedding cache budget'):
+        ranker.bind_cache(root, budget=object())
