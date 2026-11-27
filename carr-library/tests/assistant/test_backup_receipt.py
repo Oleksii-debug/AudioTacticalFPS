@@ -228,10 +228,18 @@ def test_second_pass_preserves_cancellation_and_deadline(tmp_path, monkeypatch, 
     assert source.read_bytes() == original
 
 
-@pytest.mark.parametrize('trigger', ['later-file', 'last-callback'])
-@pytest.mark.parametrize('change', ['earlier-payload', 'new-file', 'new-directory'])
+@pytest.mark.parametrize('trigger,change,repeatable_pins', [
+    pytest.param('later-file', 'earlier-payload', False, id='earlier-payload-later-file'),
+    pytest.param('last-callback', 'earlier-payload', False, id='earlier-payload-last-callback'),
+    pytest.param('later-file', 'new-file', False, id='new-file-later-file'),
+    pytest.param('last-callback', 'new-file', False, id='new-file-last-callback'),
+    pytest.param('later-file', 'new-directory', False, id='new-directory-later-file'),
+    pytest.param('last-callback', 'new-directory', False, id='new-directory-last-callback'),
+    pytest.param('later-file', 'earlier-payload', True, id='equal-pins-earlier-payload-later-file'),
+    pytest.param('last-callback', 'earlier-payload', True, id='equal-pins-earlier-payload-last-callback'),
+])
 def test_final_quiet_native_pins_reject_mutations_after_second_content_pass(
-        tmp_path, monkeypatch, trigger, change):
+        tmp_path, monkeypatch, trigger, change, repeatable_pins):
     from contextlib import contextmanager
     from carr_library.assistant import backup_receipt as receipt
 
@@ -241,6 +249,13 @@ def test_final_quiet_native_pins_reject_mutations_after_second_content_pass(
     original = target.read_bytes()
     arm, changed, visits = [], [], []
     actual_open, actual_scandir = receipt.os.open, receipt.os.scandir
+    if repeatable_pins:
+        # Real changed bytes must fail even if both ordinary and native
+        # timestamps repeat. Only metadata is controlled, never the hash/read.
+        actual_stamp = receipt._stamp
+        monkeypatch.setattr(receipt, '_stamp',
+            lambda value: actual_stamp(value)[:-1] + (0,))
+        monkeypatch.setattr(receipt, 'stream_change_time', lambda stream: 1)
 
     if trigger == 'later-file':
         def open_file(path, *args, **kwargs):
@@ -285,6 +300,9 @@ def test_final_quiet_native_pins_reject_mutations_after_second_content_pass(
     with pytest.raises(ValueError, match='changed during verification'):
         capture(root, digest, cancelled=cancelled)
     assert arm and changed == [change]
+    if change == 'earlier-payload':
+        assert len(target.read_bytes()) == len(original)
+        assert sha256(target.read_bytes()).hexdigest() != sha256(original).hexdigest()
     assert (root / 'manifest.json').is_file()
 
 

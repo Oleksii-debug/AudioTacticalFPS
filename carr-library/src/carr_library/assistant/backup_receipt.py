@@ -70,6 +70,27 @@ def _native_pin(path):
     return _stamp(before) + (native,)
 
 
+def _quiet_content(path, stamp, expected, native_pin):
+    """Re-attest recorded bytes after the last external cancellation callback."""
+    digest, remaining = sha256(), stamp[3]
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    fd = os.open(path, flags)
+    with os.fdopen(fd, 'rb') as stream:
+        if (_stamp(os.fstat(stream.fileno())) != stamp
+                or stream_change_time(stream) != native_pin[-1]):
+            raise ValueError('The backup tree changed during verification.')
+        while remaining:
+            block = stream.read(min(1024 * 1024, remaining))
+            if not block or len(block) > remaining:
+                raise ValueError('The backup tree changed during verification.')
+            digest.update(block)
+            remaining -= len(block)
+        if (stream.read(1) or digest.hexdigest() != expected
+                or _stamp(os.fstat(stream.fileno())) != stamp
+                or stream_change_time(stream) != native_pin[-1]):
+            raise ValueError('The backup tree changed during verification.')
+
+
 def _final_pins(observed, native_pins):
     """No external callback after this finite final namespace/payload pass."""
     for path, (is_directory, stamp, expected) in observed.items():
@@ -77,6 +98,11 @@ def _final_pins(observed, native_pins):
             if _stamp(_plain(path, directory=is_directory)) != stamp:
                 raise ValueError('The backup tree changed during verification.')
             if not is_directory:
+                # Even native timestamps can repeat on a rapid Windows rewrite.
+                # This final quiet pass costs one additional bounded read of
+                # every recorded byte; no caller code can alter an earlier
+                # attestation while later entries are checked.
+                _quiet_content(path, stamp, expected, native_pins[path])
                 if _native_pin(path) != native_pins[path]:
                     raise ValueError('The backup tree changed during verification.')
                 continue
