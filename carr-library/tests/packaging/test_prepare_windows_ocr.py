@@ -106,3 +106,40 @@ def test_duplicate_selected_archive_members_are_rejected(tmp_path):
     ])
     with pytest.raises(ValueError, match='duplicate'):
         prepare.selected_archive_members(archive, ['bin/tesseract.exe'])
+
+
+def test_prepare_manifest_uses_lf_bytes_and_retains_exact_source_tar(tmp_path):
+    from hashlib import sha256
+
+    note = 'Synthetic offline source notice.\n'
+    note_bytes = note.encode('utf-8')
+    expected_source = BytesIO()
+    with tarfile.open(fileobj=expected_source, mode='w', format=tarfile.USTAR_FORMAT) as archive:
+        info = tarfile.TarInfo('SOURCE.txt')
+        info.mode, info.mtime = 0o644, 0
+        info.uid = info.gid = 0
+        info.uname = info.gname = ''
+        info.size = len(note_bytes)
+        archive.addfile(info, BytesIO(note_bytes))
+    source_bytes = expected_source.getvalue()
+    output_bytes = b'Synthetic OCR preparation fixture.\n'
+    output_record = {'size': len(output_bytes), 'sha256': sha256(output_bytes).hexdigest()}
+    manifest = {'schema': 1, 'files': {'README.txt': output_record}}
+    lock = {'schema': 1, 'target': 'win_amd64', 'engine_version': 'synthetic',
+            'artifacts': {},
+            'output_files': {'README.txt': {'text': output_bytes.decode('utf-8'), **output_record}},
+            'manifest': manifest,
+            'source_archive': {'filename': 'ocr-corresponding-source.tar',
+                'entries': [{'name': 'SOURCE.txt', 'text': note}],
+                'size': len(source_bytes), 'sha256': sha256(source_bytes).hexdigest()}}
+    lock_path = tmp_path / 'lock.json'
+    lock_path.write_bytes(json.dumps(lock).encode('utf-8'))
+    output, source = tmp_path / 'runtime', tmp_path / 'sources.tar'
+    result = prepare.prepare(lock_path, tmp_path / 'cache', output, source)
+    raw = (output / 'ocr-manifest.json').read_bytes()
+    assert raw.endswith(b'\n') and b'\r' not in raw
+    assert json.loads(raw) == manifest
+    assert (output / 'README.txt').read_bytes() == output_bytes
+    assert source.read_bytes() == source_bytes
+    assert result['source_archive_sha256'] == sha256(source_bytes).hexdigest()
+    assert result['windows_execution'] == 'NOT_RUN'

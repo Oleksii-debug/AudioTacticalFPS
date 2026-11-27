@@ -141,7 +141,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         for path in sorted((stage / 'wheelhouse').iterdir()):
             name, version, _ = wheel_metadata(path)
             requirements.append(f'{name}=={version} --hash=sha256:{sha256(path)}')
-        (stage / 'install.lock').write_text('\n'.join(requirements) + '\n', encoding='utf-8')
+        (stage / 'install.lock').write_text('\n'.join(requirements) + '\n', encoding='utf-8', newline='\n')
         for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
             shutil.copyfile(HERE / name, stage / name)
         shutil.copyfile(HERE.parent / 'docs' / 'RUNNING.md', stage / 'README.txt')
@@ -167,7 +167,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         if native_evidence is not None:
             (stage / 'ResearchLibrary.exe').write_bytes(native_evidence['executable_bytes'])
             (stage / 'native-launcher-build.json').write_bytes(native_evidence['proof_bytes'])
-        (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8')
+        (stage / 'application-source.json').write_text(json.dumps(identity, indent=2) + '\n', encoding='utf-8', newline='\n')
         refreshed = {'files', 'source_commit', 'source_tree', 'bundled_native_launcher',
                      'native_launcher_sha256', 'native_launcher_source_commit'}
         manifest = {key: value for key, value in previous.items() if key not in refreshed}
@@ -180,7 +180,7 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
             manifest.update(bundled_native_launcher=True,
                             native_launcher_sha256=native_evidence['report']['launcher_sha256'],
                             native_launcher_source_commit=source_commit)
-        (stage / 'bundle-manifest.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+        (stage / 'bundle-manifest.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n', encoding='utf-8', newline='\n')
         verify(stage)
         output.mkdir(mode=0o700)
         for path in stage.iterdir():

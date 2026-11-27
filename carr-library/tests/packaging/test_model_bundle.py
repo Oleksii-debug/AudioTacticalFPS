@@ -1,5 +1,7 @@
 import hashlib
 import importlib.util
+import json
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -30,14 +32,21 @@ def staged(tmp_path, monkeypatch):
     return tmp_path, entries
 
 
-def test_native_verifier_and_manifest(staged):
+def test_native_verifier_and_manifest(staged, tmp_path_factory, monkeypatch):
     root, entries = staged
+    manifest = tmp_path_factory.mktemp('model-manifest') / 'model-manifest.json'
+    monkeypatch.setattr(sys, 'argv', ['model_bundle.py', str(root), str(manifest)])
     with patch.object(HfApi, 'list_repo_tree', return_value=entries) as tree:
         result = m.seal(root)
+        m.main()
     assert tree.call_args.kwargs['revision'] == m.REVISION
     assert tree.call_args.kwargs['token'] is False
     assert result['hashes'] == m.hashes(root)
     assert len(result['hashes']) == 9
+    raw = manifest.read_bytes()
+    assert json.loads(raw) == result
+    assert raw.endswith(b'\n')
+    assert b'\r' not in raw
 
 
 @pytest.mark.parametrize('name', ['model_optimized.onnx', 'config.json'])

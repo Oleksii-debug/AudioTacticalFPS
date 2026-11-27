@@ -160,6 +160,10 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     identity = json.loads((bundle.output / 'application-source.json').read_bytes())
     assert identity['source_commit'] == bundle.commit
     assert manifest['source_tree'] == identity['source_tree'] == _git(bundle.repo, 'rev-parse', bundle.commit + '^{tree}')
+    for name in ('install.lock', 'application-source.json', 'bundle-manifest.json'):
+        raw = (bundle.output / name).read_bytes()
+        assert raw.endswith(b'\n'), name
+        assert b'\r' not in raw, name
     assert identity['wheel_sha256'] == sha256(bundle.wheel.read_bytes()).hexdigest()
     assert manifest['parent_manifest_sha256'] == bundle.parent_hash
     assert manifest['parent_source_commit'] == 'a' * 40

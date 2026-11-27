@@ -342,7 +342,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             if sha256(destination) != inventory[source.name]:
                 raise ValueError("wheel changed during bundle assembly")
             install.append(f"{name}=={version} --hash=sha256:{inventory[source.name]}")
-        (staged / "install.lock").write_text("\n".join(install) + "\n", encoding="utf-8")
+        (staged / "install.lock").write_text("\n".join(install) + "\n", encoding="utf-8", newline="\n")
         if python_archive is not None:
             unpacked = staged / "_python"
             with tarfile.open(python_archive, "r:gz") as archive:
@@ -377,7 +377,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             for record in included:
                 shutil.copyfile(regular(notices_root / record["file"]), notices_destination / record["file"])
             (notices_destination / "SOURCES.json").write_text(
-                json.dumps(included, indent=2) + "\n", encoding="utf-8")
+                json.dumps(included, indent=2) + "\n", encoding="utf-8", newline="\n")
         if ocr_dir is not None:
             # The runtime verifier validates every payload file and rejects
             # links and unlisted additions. Copy only its admitted inventory.
@@ -426,7 +426,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             manifest["native_launcher_sha256"] = native_launcher_sha256
             manifest["native_launcher_source_commit"] = source_commit
         (staged / "bundle-manifest.json").write_text(
-            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
         # Reserve a fresh destination; never overwrite an existing installation.
         output.mkdir(exist_ok=False)
         for item in staged.iterdir():

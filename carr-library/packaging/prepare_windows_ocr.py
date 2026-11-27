@@ -204,7 +204,7 @@ def prepare(lock_path, cache, output, source_archive, *, download=False):
                           for name, record in lock['output_files'].items()}
         if manifest['files'] != expected_files:
             raise ValueError('OCR runtime manifest does not match normalized output.')
-        (staged / 'ocr-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
+        (staged / 'ocr-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8', newline='\n')
         with TemporaryDirectory(prefix='ocr-source-', dir=source_archive.parent) as source_tmp:
             staged_source = Path(source_tmp) / source_specification['filename']
             _write_source_archive(staged_source, source_specification, artifacts)

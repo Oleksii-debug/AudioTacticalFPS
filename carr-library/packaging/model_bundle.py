@@ -69,7 +69,7 @@ def main():
     if args.manifest.resolve().is_relative_to(args.directory.resolve()):
         parser.error('manifest must be outside model directory')
     result = seal(args.directory)
-    with args.manifest.open('x', encoding='utf-8') as f:
+    with args.manifest.open('x', encoding='utf-8', newline='\n') as f:
         json.dump(result, f, indent=2, sort_keys=True)
         f.write('\n')
 
