@@ -165,8 +165,12 @@ complete backup revalidation and unchanged native A/observed B are all required
 before rollback. Missing, corrupt, replayed or coherently rewritten journals and
 prior bytes cannot supply that authority. A newer C remains untouched. The
 credential is deleted only after terminal state and pending cleanup, and only
-when its exact value still matches. Credential errors preserve research and
-prevent native setup or require explicit cleanup review. A generic/in-memory
+when its exact value still matches. After a failed setup or ordinary cancellation,
+the exact initial credential can also be cleared only when A has just been
+verified restored and all pending coordination is gone. This cleanup exception
+cannot authorize rollback from an unobserved restart or cleanup of completed B.
+Credential errors preserve research and prevent native setup or require explicit
+cleanup review. A generic/in-memory
 anchor has no durable recovery capability and retains the previous refusal
 for restarted pre-commit controllers.
 

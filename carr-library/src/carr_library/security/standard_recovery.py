@@ -113,12 +113,19 @@ class StandardRecoveryAuthority:
             raise TrustError('The prior native activation has no matching protected restart authority; '
                              'program and data are preserved.')
 
-    def settle(self, record):
-        """Delete only this exact credential after terminal state and pending cleanup."""
+    def settle(self, record, *, restored_prior=False):
+        """Delete only an exact owned credential after verified terminal cleanup."""
         expected, current = self.value(record), self._read(record)
         if current is None:
             return
-        if not isinstance(current, str) or not hmac.compare_digest(current, expected):
+        accepted = [expected]
+        if restored_prior is True and record['phase'] == 'rolled-back':
+            # A normal setup/cancellation can stop before observe() publishes.
+            # This fallback clears authority only; require() remains strict.
+            initial = dict(record, observed=None,
+                           pending=dict(record['pending'], candidate_generation=''))
+            accepted.append(self.value(initial))
+        if not isinstance(current, str) or not any(hmac.compare_digest(current, value) for value in accepted):
             raise TrustError('Changed protected recovery authority is retained for owner review.')
         try:
             self.anchor.vault.delete(self.anchor.reference, self.binding(record))

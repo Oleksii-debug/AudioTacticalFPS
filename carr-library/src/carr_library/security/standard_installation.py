@@ -333,7 +333,10 @@ class StandardUpdateTransaction:
         if self._recovery_authority is not None:
             if record['phase'] not in _TERMINAL or os.path.lexists(self.root / PENDING) or os.path.lexists(self.root / PRIOR):
                 raise TrustError('Protected recovery authority can clear only after terminal pending cleanup.')
-            self._recovery_authority.settle(record)
+            restored_prior = record['phase'] == 'rolled-back'
+            if restored_prior and self.host.snapshot(self.root) != record['prior']:
+                raise TrustError('Protected recovery cleanup requires the exact restored prior activation.')
+            self._recovery_authority.settle(record, restored_prior=restored_prior)
 
     def _recover_locked(self, package=None, *, cancelled=lambda: False):
         _cancel(cancelled)

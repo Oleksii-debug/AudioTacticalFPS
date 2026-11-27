@@ -1414,3 +1414,68 @@ def test_uncheckpointed_native_activation_refuses_restart_reclassification_and_p
     current = setup.root.joinpath(*setup.host.snapshot(setup.root)['generation'].split('/'))
     with pytest.raises(TrustError, match='pending update'):
         check_generation_start(setup.root, current / '.venv', [])
+
+
+def test_review_reserved_b_failure_before_activation_clears_only_its_protected_authority(setup, monkeypatch):
+    vault = protected_setup(setup)
+    prior = setup.host.snapshot(setup.root)
+    def fail_after_reserve(root, staged, installer, transaction, *, cancelled):
+        with setup.host.setup_guard():
+            pending = read_pending(root)
+            generation = root / 'versions' / (B[:12] + '-700')
+            reserve_generation(root, transaction, generation, pending['candidate_source'],
+                               pending['candidate_manifest'], pending['candidate_setup'])
+            generation.mkdir()
+        raise TrustError('synthetic early native setup failure')
+    monkeypatch.setattr(setup.host, 'launch', fail_after_reserve)
+    with pytest.raises(TrustError, match='synthetic early native setup failure'):
+        setup.transaction.apply(verified(setup))
+    assert setup.host.snapshot(setup.root) == prior
+    assert setup.anchor.load() == Anchor()
+    record, key = recovery_credential(setup)
+    assert record['phase'] == 'rolled-back'
+    assert key not in vault.values
+    assert not (setup.root / PENDING).exists() and not (setup.root / PRIOR).exists()
+
+
+@pytest.mark.parametrize('failure', ['write-failure', 'cancel-before-write', 'cancel-after-write'])
+def test_observation_failure_clears_only_owned_initial_or_observed_authority_and_allows_fresh_retry(setup, monkeypatch, failure):
+    from carr_library.security.updates import UpdateCancelled
+    vault = protected_setup(setup)
+    prior = setup.host.snapshot(setup.root)
+    observe = setup.transaction._recovery_authority.observe
+    put = vault.put
+    entered, stopped = [], threading.Event()
+    def observed(record, before, **options):
+        entered.append(record['pending']['candidate_generation'])
+        if failure == 'cancel-before-write':
+            stopped.set()
+        return observe(record, before, **options)
+    def writing(reference, binding, value):
+        if entered and binding != setup.anchor.vault_binding:
+            if failure == 'write-failure':
+                raise OSError('Synthetic observed-credential write failure')
+            put(reference, binding, value)
+            if failure == 'cancel-after-write':
+                stopped.set()
+            return
+        return put(reference, binding, value)
+    with monkeypatch.context() as patch:
+        patch.setattr(setup.transaction._recovery_authority, 'observe', observed)
+        patch.setattr(vault, 'put', writing)
+        error = UpdateCancelled if failure.startswith('cancel-') else TrustError
+        with pytest.raises(error):
+            setup.transaction.apply(verified(setup), cancelled=stopped.is_set)
+    assert len(entered) == 1
+    assert setup.host.snapshot(setup.root) == prior and setup.anchor.load() == Anchor()
+    record, key = recovery_credential(setup)
+    assert record['phase'] == 'rolled-back' and key not in vault.values
+    assert not (setup.root / PENDING).exists() and not (setup.root / PRIOR).exists()
+    assert vault.get(setup.anchor.reference, 'f' * 64) == 'unrelated-explicit-test-credential'
+    assert setup.app.search(setup.workspace, 'exact research source')
+    stopped.clear()
+    controller = restart_protected(setup)
+    assert controller.recover_update() == 'rolled-back'
+    setup.repository.advance()
+    assert controller.install_review(verified(setup), accepted=True)['status'] == 'complete'
+    assert setup.host.launches == 2 and setup.anchor.load().sequence == 2
