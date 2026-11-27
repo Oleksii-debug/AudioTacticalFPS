@@ -78,6 +78,7 @@ jobs:
         timeout-minutes: 10
         run: |
           $work = Join-Path $env:RUNNER_TEMP 'carr-backup-audio'
+          New-Item -ItemType Directory -Force $work | Out-Null
           $audioCache = Join-Path $work 'cache'
           $audioRuntime = Join-Path $work 'runtime'
           python packaging/acquire_audio_runtime.py --output $audioCache --download
