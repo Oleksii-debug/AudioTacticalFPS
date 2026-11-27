@@ -360,7 +360,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         guides.mkdir()
         for name in ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
                      "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
-                     "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+                     "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "EPUB_RECORDED_READING.md", "IMPORT_CENTER.md",
                      "DOCUMENT_FORMATS_V3.md", "DOCUMENT_EXTRACTOR_REUSE.md",
                      "ACADEMIC_ACQUISITION.md", "TRANSCRIPTION.md", "TRUSTED_CLIENT.md",
                      "STUDIO_CLIP_EDITING.md", "MICROPHONE_RECORDING.md", "STUDIO_EPUB_PUBLISHING.md",

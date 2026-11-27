@@ -27,6 +27,13 @@ remain available in the source text control. To start a changed source afresh,
 choose **Start at first source location** explicitly; an unavailable old resume
 position is reported rather than silently redirected.
 
+## Recorded EPUB audio
+
+For an imported EPUB with local recorded SMIL overlays, use **EPUB synchronized
+recorded audio** in this reader. It opens the current source section without
+starting playback. See [recorded EPUB reading](EPUB_RECORDED_READING.md) for the
+supported subset, named playback controls and source-preservation checks.
+
 ## Source locations
 
 Physical PDF pages and logical TXT/DOCX segments stay distinct. The reading-order
