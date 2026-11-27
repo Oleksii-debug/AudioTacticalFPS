@@ -23,7 +23,7 @@ from .legacy import LEGACY_SUFFIXES, QUALIFIED_SUFFIXES, kind_for
 from .legacy_runtime import ToolSelection
 from .models import (
     ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable, MAX_REPORT_BYTES,
-    selected_text_encoding,
+    email_subject_metadata, selected_text_encoding,
 )
 
 
@@ -287,6 +287,8 @@ class ConversionService:
             expected = {'engine', 'separator', 'segments', 'warnings', 'source_sha256', 'source_size'}
             if encoding is not None:
                 expected.add('source_encoding')
+            if suffix == '.eml':
+                expected.add('metadata')
             if (not isinstance(details, dict) or set(details) != expected
                     or encoding is not None and details.get('source_encoding') != encoding
                     or details['source_sha256'] != source_hash or details['source_size'] != count
@@ -298,6 +300,7 @@ class ConversionService:
                     or len(details['warnings']) > 100
                     or any(not isinstance(item, str) or len(item) > 256 for item in details['warnings'])):
                 raise ConversionError('The conversion worker returned invalid provenance.')
+            metadata = email_subject_metadata(details['metadata']) if suffix == '.eml' else None
             text_info = regular_file(converted)
             if (text_info.st_nlink != 1 or not 0 < text_info.st_size <= self.budget.max_text_bytes
                     or result.get('text_bytes') != text_info.st_size
@@ -327,6 +330,8 @@ class ConversionService:
                 **{key: details[key] for key in ('engine', 'separator', 'segments', 'warnings')})
             if encoding is not None:
                 report['source_encoding'] = encoding
+            if metadata is not None:
+                report['metadata'] = metadata
             encoded = (json.dumps(report, ensure_ascii=False, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
             if len(encoded) > MAX_REPORT_BYTES:
                 raise ConversionError('The final provenance report exceeds its byte budget.')

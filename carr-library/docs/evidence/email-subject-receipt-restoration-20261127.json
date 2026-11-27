@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "status": "SOURCE_RESTORED_RUNTIME_NOT_RUN",
+  "base_commit": "8e63256d4da4a6e12a66714b83a89d6643bb5abf",
+  "base_tree": "fc284971e27b8593c93365d1e8b441429a114f09",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_test": {
+    "path": "tests/conversion/test_conversion.py",
+    "blob": "e8cae855b1d64bc85fe06b945f840976f07c67a3",
+    "function": "test_eml_chooses_body_and_never_reads_attachment"
+  },
+  "diagnosis": "The current bounded MIME reader retains a decoded Subject in metadata.title. The conversion worker previously discarded that metadata, so the source-bound derivative report lost canonical metadata.subject even though the selected body and attachment suppression remained.",
+  "consumers": {
+    "reader": "extract/document_formats_text.py::_mail retains only non-defective Subject <=512 characters and screens unsafe controls; original bytes are already verified before this parser.",
+    "conversion": "conversion.worker._extract_records now maps only EML title to the exact passive subject field; service validates and copies that field before the current report-last publication.",
+    "library": "application._import_file constructs Registration with explicit title or selected path stem before extraction. This change does not silently alter catalog-title authority or existing immutable launch metadata.",
+    "ui": "ui/document_conversion.py displays the new derivative and report paths; filenames and current completion handling are unchanged."
+  },
+  "contract": {
+    "metadata_shapes": [
+      {},
+      {
+        "subject": "bounded Unicode data"
+      }
+    ],
+    "maximum_subject_characters": 512,
+    "finite_keys": [
+      "subject"
+    ],
+    "source_formats": [
+      ".eml"
+    ],
+    "request_schema": "UNCHANGED",
+    "worker_result_schema": "UNCHANGED",
+    "details_schema": "metadata required for EML only",
+    "report_schema": "carr-reading-derivative/1",
+    "quotation_verified": false
+  },
+  "tests": {
+    "path": "tests/conversion/test_email_metadata.py",
+    "counter": {
+      "test_actual_email_subject_is_passive_source_bound_report_data": 3,
+      "test_actual_email_subject_uses_existing_reader_bound_and_omission_policy": 3,
+      "test_actual_email_batch_keeps_each_subject_bound_to_its_original": 1,
+      "test_parent_refuses_forged_email_metadata_before_any_publication": 8,
+      "test_parent_rejects_email_metadata_added_to_non_email_worker_output": 1
+    },
+    "cases": 16,
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "fixture_dependencies": "stdlib email.message; current product only, no tests-only helper staging"
+  },
+  "preserved": [
+    "strict UTF-8 default and finite explicit TXT encoding",
+    "bounded PDF and streamed UTF-8 intake",
+    "selected converter and Office private-stage lifecycle",
+    "same source SHA/size authority",
+    "ordered body and suppression warnings",
+    "source immutability, bounded output/report and no-replace report-last publication"
+  ],
+  "limitations": [
+    "Headers are unauthenticated; metadata is not proof of authorship.",
+    "No canonical runtime verdict is transferred to this candidate.",
+    "No Python compilation or execution was available during authoring."
+  ]
+}

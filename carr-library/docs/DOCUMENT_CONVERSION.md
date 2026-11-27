@@ -95,6 +95,30 @@ remain available if a later source fails or the user cancels. Batches do not hav
 a durable extraction/resume journal; use the existing import workflow when
 checkpoint recovery is required.
 
+## Email Subject in the source-bound report
+
+EML keeps the MIME reader's selected readable body separate from its headers
+and attachments. The conversion report now retains the already decoded Subject
+as `metadata.subject`, when the existing reader accepts it. This is one passive
+field, limited to 512 Unicode characters and valid UTF-8 without the reader's
+unsupported control characters. A missing or unusable Subject produces the
+exact empty `metadata` object; it does not discard an otherwise readable body.
+
+The isolated child derives this field from the same verified original bytes as
+the selected body. The parent accepts only that exact optional field and its
+bounds before publishing the text/report pair. Unknown metadata, invalid types,
+oversized fields and metadata on another source format are refused. The report
+still records the original SHA256/size and the warning that email headers are
+not authenticated.
+
+A Subject is never a path, an output filename, a catalog-title replacement or
+quotation verification. Batch filenames still derive from the selected source
+stem and ordinal. Plain-body selection, HTML alternative handling, attachment
+omission, no external resource fetching and immutable originals remain with the
+existing MIME reader. This restores the canonical derivative-report field;
+it does not change the separate library registration's explicitly selected
+title or its source-bound launch metadata.
+
 ## Explicit encoding for legacy TXT
 
 Plain TXT keeps its strict UTF-8 default, including an optional UTF-8 BOM. It

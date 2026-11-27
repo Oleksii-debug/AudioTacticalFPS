@@ -13,12 +13,13 @@ from ..audio.jobs import checked_directory, regular_file, verified_reader
 from ..catalog.intake import classify
 from ..extract.document_formats import FORMAT_BY_SUFFIX, extract_document
 from ..extract.page_ocr import Config
-from .models import ConversionBudget, ConversionError, MAX_REPORT_BYTES, selected_text_encoding
+from .models import (ConversionBudget, ConversionError, MAX_REPORT_BYTES,
+                     email_subject_metadata, selected_text_encoding)
 from .capabilities import CONVERSION_SUFFIXES, IMAGES, OFFICE_SUFFIXES
 from .legacy import LEGACY_SUFFIXES
 
 
-def _extract_records(source, data, suffix, config, budget, deadline, *, decoded_text=None):
+def _extract_records(source, data, suffix, config, budget, deadline, *, decoded_text=None, metadata=None):
     if suffix == '.txt':
         if decoded_text is None and data.count(b'\f') >= budget.max_records:
             raise ConversionError('Text form-feed count exceeds the record budget.')
@@ -41,6 +42,12 @@ def _extract_records(source, data, suffix, config, budget, deadline, *, decoded_
     if suffix in FORMAT_BY_SUFFIX:
         result = extract_document(data, suffix, max_bytes=budget.max_source_bytes,
                                   max_chars=min(budget.max_text_bytes, 10_000_000), deadline=deadline)
+        if suffix == '.eml' and metadata is not None:
+            # The existing bounded MIME reader has decoded this header from
+            # the same verified source bytes as the selected body.
+            original = result['metadata']
+            metadata.update(email_subject_metadata(
+                {'subject': original['title']} if 'title' in original else {}))
         return 'existing-' + FORMAT_BY_SUFFIX[suffix].name, '\n\n', result['records'], result['warnings']
     if suffix == '.pdf':
         from pypdf import PdfReader
@@ -128,6 +135,7 @@ def convert_request(message):
         raise ConversionError('The private conversion source checksum changed.')
     deadline = time.monotonic() + budget.timeout
     adapter = message.get('adapter')
+    metadata = {} if suffix == '.eml' else None
     if suffix == '.rtf' or suffix in IMAGES or suffix in OFFICE_SUFFIXES or suffix in LEGACY_SUFFIXES:
         from .adapters import selected_records
         engine, separator, records, warnings = selected_records(
@@ -140,8 +148,11 @@ def convert_request(message):
             classify(data, suffix)
         else:
             decoded_text = _decoded_plain_text(data, encoding, budget)
+        options = {'decoded_text': decoded_text}
+        if metadata is not None:
+            options['metadata'] = metadata
         engine, separator, records, warnings = _extract_records(
-            source, data, suffix, config, budget, deadline, decoded_text=decoded_text)
+            source, data, suffix, config, budget, deadline, **options)
         if encoding is not None:
             engine = 'explicit-text-encoding-v1'
     segments, encoded_size, characters, visible = [], 0, 0, False
@@ -179,6 +190,8 @@ def convert_request(message):
                    source_sha256=message['sha256'], source_size=len(data))
     if encoding is not None:
         details['source_encoding'] = encoding
+    if metadata is not None:
+        details['metadata'] = email_subject_metadata(metadata)
     raw = (json.dumps(details, ensure_ascii=False, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
     if len(raw) > MAX_REPORT_BYTES:
         raise ConversionError('Conversion provenance exceeds its report budget.')
