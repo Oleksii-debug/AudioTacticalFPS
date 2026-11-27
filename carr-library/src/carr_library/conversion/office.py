@@ -273,6 +273,10 @@ def _stage_usage(stage, maximum, deadline):
                         # The owned native child can remove its transient files.
                         # Permission, enumeration and unsafe-path failures stay errors.
                         continue
+                    except ConversionError:
+                        # A measured quota/alias violation remains a failure
+                        # even if the offending native entry then disappears.
+                        raise
                     except ValueError:
                         if not _missing_transient_entry(entry.path):
                             raise

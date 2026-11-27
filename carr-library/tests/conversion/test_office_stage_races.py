@@ -1,4 +1,5 @@
 """Real transient filesystem races during the current owned Office census."""
+import os
 from pathlib import Path
 import time
 
@@ -114,3 +115,47 @@ def test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root(tm
         assert 'staging was replaced' in str(raised.value)
         assert retained.is_dir() and stage.is_dir()
         assert list(retained.iterdir()) == list(stage.iterdir()) == []
+
+
+@pytest.mark.parametrize('violation', ['bytes', 'hardlink', 'depth'])
+def test_disappearance_after_observed_policy_violation_cannot_make_stage_valid(tmp_path, monkeypatch, violation):
+    stage = (tmp_path / 'stage').resolve()
+    stage.mkdir()
+    foreign = tmp_path / 'foreign.bin'
+    foreign.write_bytes(b'RETAINED FOREIGN CONTENT')
+    offending = stage / 'native-transient'
+    maximum = 1024
+    if violation == 'bytes':
+        offending.write_bytes(b'0123456789')
+        maximum = 9
+        expected = 'byte budget'
+    elif violation == 'hardlink':
+        os.link(foreign, offending)
+        expected = 'aliased file'
+    else:
+        offending = stage
+        for number in range(17):
+            offending = offending / ('level-' + str(number))
+            offending.mkdir()
+        expected = 'depth budget'
+    observed, classified = [], []
+    original = office._missing_transient_entry
+    class DisappearedAfterMeasurement(ConversionError):
+        def __init__(self, message):
+            assert expected in message
+            observed.append(message)
+            if violation == 'depth':
+                offending.rmdir()
+            else:
+                offending.unlink()
+            super().__init__(message)
+    def classify(path):
+        classified.append(Path(path))
+        return original(path)
+    monkeypatch.setattr(office, 'ConversionError', DisappearedAfterMeasurement)
+    monkeypatch.setattr(office, '_missing_transient_entry', classify)
+    with pytest.raises(ConversionError, match=expected):
+        office._stage_usage(stage, maximum, time.monotonic() + 5)
+    assert len(observed) == 1 and classified == []
+    assert not offending.exists() and stage.is_dir()
+    assert foreign.read_bytes() == b'RETAINED FOREIGN CONTENT'

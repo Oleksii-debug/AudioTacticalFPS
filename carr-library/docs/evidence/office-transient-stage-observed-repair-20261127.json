@@ -29,14 +29,15 @@
     "error": "ValueError: The project directory does not exist."
   },
   "source_diagnosis": "The current Office staging census permits FileNotFoundError for disappearing native temporary entries. checked_directory intentionally reports a missing directory with ValueError, including a file parent removed after enumeration, so the census can abort while the exact private root still exists. Observed logs prove the error/phase; deterministic authored race cases bind this source diagnosis without claiming runtime execution.",
-  "repair": "Retain the existing checked_directory/regular_file checks. After ValueError, ignore only an entry whose disappearance is confirmed by an unfollowed lstat walk through existing regular, non-reparse, non-symlink ancestors. Existing unsafe or still-present entries re-raise, permission/lookup errors propagate, and final private-root identity verification remains mandatory.",
+  "repair": "Retain the existing checked_directory/regular_file checks. After ValueError, ignore only an entry whose disappearance is confirmed by an unfollowed lstat walk through existing regular, non-reparse, non-symlink ancestors. Existing unsafe or still-present entries re-raise, permission/lookup errors propagate, and final private-root identity verification remains mandatory. ConversionError policy violations always propagate before absence classification.",
   "new_test_counter": {
     "test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
     "test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2,
     "test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
-    "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2
+    "test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+    "test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3
   },
-  "new_cases": 7,
+  "new_cases": 10,
   "unchanged": [
     "selected component inventory and held runtime handles",
     "short parent-owned native workspace and atomic multivolume admission",
@@ -50,5 +51,12 @@
     "No Python execution or compilation was available while authoring.",
     "The previous 4/7 source result remains FAIL; installed execution and changed-head native qualification are not inferred.",
     "The inert artifact reader is a separate frozen diagnostic, never executes artifact payloads."
-  ]
+  ],
+  "peer_review_correction": {
+    "prior_candidate": "8d4efebfd33127c01ea7ffe18511372a7d153fda",
+    "finding": "ConversionError subclasses ValueError, so the first candidate could suppress an already measured quota/alias/depth violation if the offending native entry subsequently disappeared.",
+    "correction": "Propagate ConversionError before classifying ValueError absence. Three actual-filesystem cases remove the violating byte-overflow/hardlink/deep-directory entry only after the violation was constructed; every observed violation must still propagate and must never invoke the absence classifier.",
+    "runtime": "NOT_RUN",
+    "prior_frozen_ref": "carr/converters-r21-office-transient-stage-d3a-20261127"
+  }
 }
