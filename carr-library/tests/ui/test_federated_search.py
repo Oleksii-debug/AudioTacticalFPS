@@ -591,8 +591,10 @@ def test_forced_window_destruction_never_hides_or_destroys_deleted_controls(cent
     center.view.finish_disposal = native.finish_disposal
     center.frame.deferred = True
     search(center)
+    native._native_window_id = -31994
     event = Mock()
-    event.GetEventObject.return_value = native.window
+    event.GetId.return_value = native._native_window_id
+    event.GetEventObject.return_value = object()  # A replacement wx wrapper for the deleted owner.
     native.window.ShowModal.side_effect = lambda: native._destroyed(event)
     native.window.Hide.side_effect = AssertionError('The native window was already deleted')
     native.window.Destroy.side_effect = AssertionError('The native window was already deleted')
@@ -951,3 +953,33 @@ def test_selected_library_pages_preserve_user_selection_and_unsaved_notebook(cen
     assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
     center.controller.navigate_scope('libraries', -1)
     assert center.controller.options.library_offset == 0 and center.controller.rows == ()
+
+
+def test_native_search_owner_id_rejects_child_then_withdraws_queued_real_result(center):
+    native = NativeSearchCenter.__new__(NativeSearchCenter)
+    native.window = Mock()
+    native._native_window_id = -31994
+    native._window_alive, native._deferred_destroy = True, False
+    native.controller = center.controller
+    native.window.Hide.side_effect = AssertionError('Deleted native owner cannot be hidden.')
+    native.window.Destroy.side_effect = AssertionError('Deleted native owner cannot be destroyed again.')
+    center.view.finish_disposal = native.finish_disposal
+    center.frame.deferred = True
+    search(center)
+    assert center.controller.running and center.controller.alive
+    child = SimpleNamespace(GetId=lambda: -31993, GetEventObject=lambda: native.window, Skip=Mock())
+    native._destroyed(child)
+    child.Skip.assert_called_once()
+    assert native._window_alive and center.controller.alive and not center.frame.cancel_event.is_set()
+    before = (center.view.messages[:], center.view.labels, center.view.busy_history[:])
+    owner = SimpleNamespace(GetId=lambda: -31994, GetEventObject=lambda: object(), Skip=Mock())
+    # Frame.finish executes the real search on its worker, then holds adoption
+    # at this exact native event boundary before dispatching the result.
+    center.frame.finish(before_callback=lambda: native._destroyed(owner))
+    owner.Skip.assert_called_once()
+    assert not native._window_alive and not center.controller.alive
+    assert center.frame.cancel_event.is_set() and not center.controller.running
+    assert center.controller.rows == () and center.controller.service.current is None
+    assert (center.view.messages, center.view.labels, center.view.busy_history) == before
+    native.window.Hide.assert_not_called()
+    native.window.Destroy.assert_not_called()

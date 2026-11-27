@@ -257,6 +257,10 @@ class _Control:
         assert not self.dead, 'A completion accessed a destroyed control'
         self.calls.append((method, args))
 
+    def GetId(self):
+        self._touch('GetId')
+        return id(self)
+
     def GetValue(self):
         self._touch('GetValue')
         return self.value
@@ -347,6 +351,7 @@ def native_handlers(monkeypatch):
         window = cls.__new__(cls)
         _Window.__init__(window)
         window._window_alive, window.pending = True, False
+        window._native_window_id = window.GetId()
         window.status = _Control()
         window.executor = _DeferredExecutor()
         if kind == 'editor':
@@ -367,11 +372,12 @@ def native_handlers(monkeypatch):
         return window
 
     def destroy(window):
-        event = SimpleNamespace(GetEventObject=lambda: window, Skip=Mock())
-        window.on_destroy(event)
-        event.Skip.assert_called_once()
+        identity, peer = window._native_window_id, object()
         for control in window.all_controls:
             control.dead = True
+        event = SimpleNamespace(GetId=lambda: identity, GetEventObject=lambda: peer, Skip=Mock())
+        window.on_destroy(event)
+        event.Skip.assert_called_once()
 
     def drain():
         while queued:
@@ -482,7 +488,8 @@ def test_live_completion_and_child_destroy_keep_normal_callbacks(controller, nat
         window.on_save()
     else:
         window._run('Loading overview', controller.statistics if outcome == 'success' else Mock(side_effect=error), done)
-    window.on_destroy(SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock()))
+    window.on_destroy(SimpleNamespace(GetId=lambda: window._native_window_id + 1,
+        GetEventObject=lambda: object(), Skip=Mock()))
     assert window._window_alive and window.pending
     if kind == 'academic':
         assert not window.cancel_event.is_set()
@@ -710,3 +717,64 @@ def test_native_interchange_observer_tracks_actual_receipt_export_entry(
         assert window.status.value.startswith(f'Bibliography exported to {destination}.')
     assert observed.export_attempts == [{'path': str(destination), 'format': 'bibtex'}]
     assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('kind', ['editor', 'academic'])
+def test_academic_native_owner_id_filters_child_even_when_python_object_matches(controller, native_handlers, kind):
+    ui = native_handlers
+    window = ui.make(kind, controller)
+    skipped = Mock()
+    window.on_destroy(SimpleNamespace(GetId=lambda: window._native_window_id + 1,
+                                     GetEventObject=lambda: window, Skip=skipped))
+    skipped.assert_called_once()
+    assert window._window_alive
+    if kind == 'academic':
+        assert not window.cancel_event.is_set()
+    ui.destroy(window)  # Same captured native ID, dead old wrapper, different event object.
+    assert not window._window_alive and all(control.dead for control in window.all_controls)
+    if kind == 'academic':
+        assert window.cancel_event.is_set()
+
+
+@pytest.mark.parametrize('kind', ['editor', 'academic'])
+def test_dead_academic_owner_releases_held_real_result_without_ui_access_or_rollback(
+        controller, native_handlers, kind):
+    ui = native_handlers
+    window, done = ui.make(kind, controller), Mock()
+    entered, release = Event(), Event()
+    saved = []
+
+    def operation(values=None):
+        if kind == 'editor':
+            saved.append(controller.create(values))
+            result = saved[-1]
+        else:
+            result = controller.statistics()
+        entered.set()
+        assert release.wait(5)
+        return result
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        window.executor = executor
+        if kind == 'editor':
+            window.save = operation
+            window.on_save()
+        else:
+            window._run('Actual held statistics result', operation, done)
+        try:
+            assert entered.wait(5) and window.pending
+            if kind == 'editor':
+                assert controller.list() == tuple(saved)
+            ui.destroy(window)
+            before = [control.calls[:] for control in window.all_controls]
+        finally:
+            release.set()
+    assert ui.queued  # Real completion is held until the UI owner dispatches it.
+    ui.drain()
+    assert not window.pending and not window._window_alive
+    assert [control.calls for control in window.all_controls] == before
+    done.assert_not_called()
+    if kind == 'editor':
+        assert window.saved == saved[0] and controller.list() == tuple(saved)
+    else:
+        assert window.cancel_event.is_set() and controller.list() == ()

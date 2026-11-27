@@ -261,6 +261,7 @@ def _native_types():
             super().__init__(parent, title='Edit academic reference' if reference else 'New academic reference',
                              size=(780, 740), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self._window_alive = True
+            self._native_window_id = self.GetId()
             self.save, self.executor = save, executor
             self.confirm_discard = confirm_discard
             self.pending, self.saved = False, None
@@ -342,7 +343,7 @@ def _native_types():
             self.controls['title'].SetFocus()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_window_id:
                 self._window_alive = False
             event.Skip()
 
@@ -557,6 +558,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
             super().__init__(parent, title='Academic library', size=(960, 820),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self._window_alive = True
+            self._native_window_id = self.GetId()
             self.controller, self.executor = controller, executor
             self.rows, self.offset, self.has_more = (), 0, False
             self.pending = False
@@ -644,7 +646,7 @@ def create_academic_dialog(parent, controller, *, executor=None):
             self.query.SetFocus()
 
         def on_destroy(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._native_window_id:
                 self._window_alive = False
                 self.cancel_event.set()
             event.Skip()
