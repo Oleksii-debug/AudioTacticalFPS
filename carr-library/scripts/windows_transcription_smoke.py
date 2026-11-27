@@ -107,7 +107,10 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         record_close('destroy-event', frame, inspect_dirty=False,
             captured_frame_id=captured_frame_id, event_id=event.GetId(),
             event_object_is_frame=event.GetEventObject() is frame)
-        if event.GetEventObject() is frame:
+        # A native destruction event may expose a different Python wrapper.
+        # Match the ID captured while this exact frame was alive; child IDs
+        # cannot satisfy the frame's destruction proof.
+        if event.GetId() == captured_frame_id:
             destroyed.append(True)
             wx.CallAfter(desktop.ExitMainLoop)
         event.Skip()
@@ -339,6 +342,7 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
             'captured_frame_id': captured_frame_id, 'destroyed': bool(destroyed),
             'observations': close_observations}, ensure_ascii=False), flush=True)
         assert destroyed, 'The real desktop window did not complete destruction.'
+        assert not frame, 'The native desktop wrapper is still live after its destruction event.'
 print(json.dumps({'status': 'PASS', 'checks': [
     'actual named wx controls', 'shared background operation',
     'actual native protocol choices and explicit trust registration', 'V5 three-source binding',
