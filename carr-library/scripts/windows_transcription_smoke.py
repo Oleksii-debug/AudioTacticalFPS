@@ -97,6 +97,22 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
             wx.CallLater(50, drive)
         except BaseException:
             failures.append(traceback.format_exc())
+            # Synthetic test evidence must be read before TemporaryDirectory cleanup.
+            try:
+                failed_job = service.get(job_id)
+                failures.append('ASR_NATIVE_RESULT ' + json.dumps({
+                    key: failed_job.get(key) for key in
+                    ('status', 'done', 'failed', 'last_error', 'worker_run_id')
+                }, ensure_ascii=True))
+                for name in ('job_status.json', 'synthetic-worker-failure.json'):
+                    try:
+                        with (service._path(job_id) / name).open('r', encoding='utf-8') as stream:
+                            diagnostic = stream.read(5000)
+                    except OSError as error:
+                        diagnostic = type(error).__name__
+                    failures.append('ASR_NATIVE_FILE ' + name + ' ' + diagnostic)
+            except Exception as error:
+                failures.append('ASR_NATIVE_DIAGNOSTIC ' + type(error).__name__ + ': ' + str(error)[:1000])
             frame.cancel_event.set()
             if dialog is not None:
                 dialog.EndModal(wx.ID_CANCEL)

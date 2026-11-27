@@ -4,12 +4,14 @@ No Whisper model, acoustic accuracy, diarization or multilingual quality is
 claimed by these tests. The private supplied worker has a separate test pack.
 """
 from hashlib import sha256
+import ast
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import time
+from types import SimpleNamespace
 
 import pytest
 
@@ -53,10 +55,25 @@ def bind(value):
 run_id = uuid.uuid4().hex
 status = {'state': 'running', 'result_state': 'running', 'run_id': run_id,
           'total': len(sources), 'done': 0, 'failed': 0, 'receipts': []}
+def _replace_published(source, destination):
+    # Windows readers may briefly deny replacement of an otherwise valid file.
+    deadline = time.monotonic() + .75
+    for attempt in range(32):
+        try:
+            os.replace(source, destination)
+            return
+        except OSError as error:
+            remaining = deadline - time.monotonic()
+            if (os.name != 'nt' or getattr(error, 'winerror', None) != 5
+                    or attempt == 31 or remaining <= 0):
+                raise
+            time.sleep(min(.025, remaining))
+            if time.monotonic() >= deadline:
+                raise
 def publish():
     temp = job / 'status.tmp'
     temp.write_text(json.dumps(status), encoding='utf-8')
-    os.replace(temp, job / 'job_status.json')
+    _replace_published(temp, job / 'job_status.json')
 publish()
 if MODE == 'progress-wait':
     while not (job / 'progress-observed').exists():
@@ -558,3 +575,98 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     assert events[-1] == (2, 2, 'completed')
     assert require_complete(completed) == completed
 
+
+
+@pytest.fixture
+def status_publisher():
+    """Exercise the actual fixture helper without launching recognition."""
+    tree = ast.parse(SYNTHETIC_WORKER.replace('__MODE__', repr('complete')))
+    definition = next(node for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == '_replace_published')
+    clock = SimpleNamespace(now=0.0, sleeps=[])
+    def pause(delay):
+        clock.sleeps.append(delay)
+        clock.now += delay
+    operating_system = SimpleNamespace(name='nt', replace=os.replace)
+    timer = SimpleNamespace(monotonic=lambda: clock.now, sleep=pause)
+    namespace = {'os': operating_system, 'time': timer}
+    exec(compile(ast.Module(body=[definition], type_ignores=[]),
+                 '<synthetic-status-publisher>', 'exec'), namespace)
+    return namespace['_replace_published'], operating_system, timer, clock
+
+
+def _publication_error(winerror=5):
+    error = PermissionError(13, 'Synthetic Windows publication conflict')
+    if winerror is not None:
+        error.winerror = winerror
+    return error
+
+
+def test_status_publication_retries_only_the_transient_windows_rename(status_publisher, tmp_path):
+    replace, operating_system, _, clock = status_publisher
+    source, destination = tmp_path / 'pending.json', tmp_path / 'status.json'
+    source.write_bytes(b'new complete status')
+    destination.write_bytes(b'old complete status')
+    attempts = []
+    def occupied(pending, published):
+        attempts.append(clock.now)
+        assert Path(pending).read_bytes() == b'new complete status'
+        assert Path(published).read_bytes() == b'old complete status'
+        if clock.now < .35:
+            raise _publication_error()
+        os.replace(pending, published)
+    operating_system.replace = occupied
+    replace(source, destination)
+    assert len(attempts) > 1 and .35 <= clock.now < .75
+    assert destination.read_bytes() == b'new complete status' and not source.exists()
+
+
+@pytest.mark.parametrize('platform,winerror', [('posix', 5), ('nt', 32), ('nt', None)])
+def test_status_publication_does_not_retry_unobserved_errors(status_publisher, tmp_path, platform, winerror):
+    replace, operating_system, _, clock = status_publisher
+    source, destination = tmp_path / 'pending.json', tmp_path / 'status.json'
+    source.write_bytes(b'new status')
+    destination.write_bytes(b'old status')
+    error, attempts = _publication_error(winerror), []
+    def denied(*args):
+        attempts.append(args)
+        raise error
+    operating_system.name, operating_system.replace = platform, denied
+    with pytest.raises(PermissionError) as caught:
+        replace(source, destination)
+    assert caught.value is error and len(attempts) == 1 and clock.sleeps == []
+    assert destination.read_bytes() == b'old status' and source.read_bytes() == b'new status'
+
+
+def test_status_publication_exhaustion_preserves_failure_and_old_bytes(status_publisher, tmp_path):
+    replace, operating_system, _, clock = status_publisher
+    source, destination = tmp_path / 'pending.json', tmp_path / 'status.json'
+    source.write_bytes(b'new status')
+    destination.write_bytes(b'old status')
+    error, attempts = _publication_error(), []
+    def occupied(*args):
+        attempts.append(clock.now)
+        raise error
+    operating_system.replace = occupied
+    with pytest.raises(PermissionError) as caught:
+        replace(source, destination)
+    assert caught.value is error and 1 < len(attempts) <= 32
+    assert clock.now == pytest.approx(.75) and max(clock.sleeps) <= .025
+    assert destination.read_bytes() == b'old status' and source.read_bytes() == b'new status'
+
+
+def test_status_publication_has_a_separate_attempt_cap(status_publisher, tmp_path):
+    replace, operating_system, timer, clock = status_publisher
+    source, destination = tmp_path / 'pending.json', tmp_path / 'status.json'
+    source.write_bytes(b'new status')
+    destination.write_bytes(b'old status')
+    error, attempts = _publication_error(), []
+    def occupied(*args):
+        attempts.append(args)
+        raise error
+    operating_system.replace = occupied
+    timer.sleep = clock.sleeps.append
+    with pytest.raises(PermissionError) as caught:
+        replace(source, destination)
+    assert caught.value is error and len(attempts) == 32 and len(clock.sleeps) == 31
+    assert destination.read_bytes() == b'old status' and source.read_bytes() == b'new status'

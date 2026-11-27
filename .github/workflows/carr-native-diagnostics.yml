@@ -89,13 +89,13 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,re; pins=dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)',pathlib.Path('packaging/windows-semantic-cp311.lock').read_text(),re.M)); actual={n:m.version(n) for n in pins}; assert len(pins)==50 and actual==pins; print(json.dumps(actual,sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Capture actual child exceptions in the original complete transcription suite
+      - name: Verify the repaired complete transcription suite with retained exception diagnostics
         if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
         timeout-minutes: 5
         run: |
-          for ($attempt = 1; $attempt -le 3; $attempt++) {
+          for ($attempt = 1; $attempt -le 2; $attempt++) {
             $caseRoot = Join-Path $env:RUNNER_TEMP "carr-asr-observed-suite-$attempt"
-            Write-Output "Original transcription suite reproduction attempt $attempt of 3"
+            Write-Output "Original transcription suite reproduction attempt $attempt of 2"
             & $env:CARR_PYTHON -I -B -m pytest -q -x -o addopts= -o xfail_strict=true "--basetemp=$caseRoot" "--junitxml=ci-results/transcription-observed-$attempt.xml" tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_pr99_host.py 2>&1 | Tee-Object "ci-results/transcription-observed-$attempt.txt"
             $caseExit = $LASTEXITCODE
             Get-ChildItem -LiteralPath $caseRoot -Recurse -File -Filter 'synthetic-worker-failure.json' | ForEach-Object {
