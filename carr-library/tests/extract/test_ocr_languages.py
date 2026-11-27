@@ -138,8 +138,16 @@ def test_capture_uses_bound_native_arguments_and_file_backed_output(monkeypatch)
     assert models._capture(native, '--list-langs', lambda: 3) == report('eng')
 
 
+@pytest.fixture
+def python_inventory_environment(monkeypatch):
+    # Keep the actual subprocess/limits while isolating the synthetic Python
+    # emitter from installed OCR model arguments on Windows acceptance hosts.
+    monkeypatch.delenv('CARR_OCR_DIR', raising=False)
+    monkeypatch.delenv('TESSDATA_PREFIX', raising=False)
+
+
 @pytest.mark.parametrize('stream', ['stdout', 'stderr'])
-def test_actual_child_oversized_output_is_stopped_and_rejected(stream):
+def test_actual_child_oversized_output_is_stopped_and_rejected(stream, python_inventory_environment):
     # Actual bounded process handling, using a synthetic Python emitter instead
     # of changing any installed native executable or model.
     code = f'import sys,time; sys.{stream}.buffer.write(b"x" * 1048576); sys.{stream}.flush(); time.sleep(5)'
@@ -149,7 +157,7 @@ def test_actual_child_oversized_output_is_stopped_and_rejected(stream):
         models._capture(native, '--list-langs', lambda: 2)
 
 
-def test_actual_child_cancel_is_checked_while_inventory_process_runs():
+def test_actual_child_cancel_is_checked_while_inventory_process_runs(python_inventory_environment):
     native = SimpleNamespace(executable=sys.executable, root=None,
         command=lambda args: [sys.executable, '-c', 'import time; time.sleep(5)'])
     stopped = Event()
