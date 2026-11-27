@@ -377,14 +377,16 @@ def test_reader_host_delegates_audio_cleanup_without_blocking_native_close(clean
     tree = ast.parse(path.read_text(encoding='utf-8'))
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
-    helper = next(node for node in reader.body if isinstance(node, ast.FunctionDef) and node.name == 'close_resources')
+    helpers = [node for node in reader.body if isinstance(node, ast.FunctionDef)
+               and node.name in ('detach_reader', 'close_resources')]
     factory = ast.parse('''
 def make(autosave_timer, cancel, live, executor, parent):
     alive, resources_closed = True, False
+    owned_registries, ownership_lock = set(), threading.RLock()
     return close_resources, lambda: alive
 ''')
-    factory.body[0].body.insert(1, helper)
-    factory_environment = {}
+    factory.body[0].body[-1:-1] = helpers
+    factory_environment = {'threading': threading}
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), factory_environment)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'live', 'executor', 'dialog', 'parent')}
     completion = Future()
@@ -410,27 +412,39 @@ def test_studio_close_releases_device_and_both_observers_even_after_device_failu
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     studio = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
-    close = next(node for node in studio.body if isinstance(node, ast.FunctionDef) and node.name == 'close')
+    helpers = [node for node in studio.body if isinstance(node, ast.FunctionDef)
+               and node.name in ('dispose', 'release_service', 'cleanup', 'close')]
     factory = ast.parse('''
 def make(autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor):
     alive = True
     busy = True
+    cleanup_started = False
     current_job = 'saved-production'
     return close
 ''')
-    factory.body[0].body.insert(-1, close)
+    factory.body[0].body[-1:-1] = helpers
     env = dict(wx=SimpleNamespace(ID_CLOSE=123))
     exec(compile(ast.fix_missing_locations(factory), str(path), 'exec'), env)
     autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor = [Mock() for _ in range(9)]
+    dialog._playback_generation = 0
     if device_failure:
         dialog._audio_player.close.side_effect = RuntimeError('Audio device disconnected')
     callback = env['make'](autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor)
     callback()
+    callback()  # A second native close must not release an owner twice.
     dialog._audio_player.close.assert_called_once_with()
     progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
     parent_progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
     progress.pause.assert_called_once_with('Audio production paused; completed chunks retained')
     progress.close.assert_called_once_with()
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+    dialog._playback_navigation.close.assert_called_once_with()
+    assert dialog._playback_generation == 1
+    service.close.assert_not_called()
+    executor.submit.assert_called_once()
+    release = executor.submit.call_args.args[0]
+    assert release.__name__ == 'release_service'
+    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+    release()  # Owned registry release runs after already queued production work.
+    service.close.assert_called_once_with()
     dialog.EndModal.assert_called_once_with(123)
     assert report.call_count == int(device_failure)

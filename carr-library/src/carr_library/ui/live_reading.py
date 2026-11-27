@@ -4,25 +4,32 @@ from __future__ import annotations
 import time
 
 from ..reader.live_reading import LiveReader, SourceSequence, native_text_range
+from ..reader.reading_units import reading_unit_range
 
 
-def reading_range(control, raw, mode):
+def reading_range(control, raw, mode, *, cancelled=lambda: False):
+    def read(name, *args):
+        if cancelled():
+            raise InterruptedError('Reading selection was cancelled.')
+        return getattr(control, name)(*args)
+
     if mode == "page":
         return 0, len(raw)
-    if mode == "cursor":
-        position = control.GetInsertionPoint()
-        prefix = control.GetRange(0, position)
-        start, _ = native_text_range(raw, control.GetValue(), prefix, prefix)
-        return start, len(raw)
+    if mode in ("cursor", "word", "sentence", "paragraph"):
+        position = read('GetInsertionPoint')
+        prefix = read('GetRange', 0, position)
+        start, _ = native_text_range(raw, read('GetValue'), prefix, prefix)
+        return ((start, len(raw)) if mode == 'cursor' else
+                reading_unit_range(raw, start, mode, cancelled=cancelled))
     if mode == "selection":
-        start, end = control.GetSelection()
+        start, end = read('GetSelection')
         if start == end:
             raise ValueError("Select source text before choosing Read selection aloud.")
-        first, last = native_text_range(raw, control.GetValue(), control.GetRange(0, start), control.GetRange(0, end))
+        first, last = native_text_range(raw, read('GetValue'), read('GetRange', 0, start), read('GetRange', 0, end))
         if first == last:
             raise ValueError("The selected range contains no complete source characters.")
         return first, last
-    raise ValueError("Choose the current source, cursor or selected text.")
+    raise ValueError("Choose the current text, cursor, selection, word, sentence or paragraph.")
 
 
 def native_cursor_position(control, raw, offset):
@@ -111,6 +118,7 @@ class LiveReadingControls:
         self.on_stop = on_stop
         self.core = core_factory(source, require_display_ack=True)
         self.closed = False
+        self._start_generation = 0
         self._sequence = -1
         self._voices = ()
         self._section = None
@@ -148,7 +156,14 @@ class LiveReadingControls:
             self._button(buttons, "Read current text aloud", lambda event: self.start("page"), "reader.speech_all"),
             self._button(buttons, "Read aloud from cursor", lambda event: self.start("cursor"), "reader.speech_cursor"),
             self._button(buttons, "Read selection aloud", lambda event: self.start("selection"), "reader.speech_selection"),
+            self._button(buttons, "Read current word aloud", lambda event: self.start("word"), "reader.speech_word"),
+            self._button(buttons, "Read current sentence aloud", lambda event: self.start("sentence"), "reader.speech_sentence"),
+            self._button(buttons, "Read current paragraph aloud", lambda event: self.start("paragraph"), "reader.speech_paragraph"),
         ]
+        for button in self.read_buttons[-3:]:
+            button.SetToolTip('Use the text at the insertion cursor. Words follow letter/number boundaries, '
+                             'sentences follow punctuation, and paragraphs are separated by blank lines. '
+                             'At a separator, read the next unit; at the end, read the last unit.')
         self.pause_button = self._button(buttons, "Pause or resume voice", self.pause, "reader.speech_pause")
         self.stop_button = self._button(buttons, "Stop voice reading", self.stop, "reader.speech_stop")
         self.seek_button = self._button(buttons, "Seek within current speech chunk", self.seek, "reader.speech_seek")
@@ -230,17 +245,30 @@ class LiveReadingControls:
     def start(self, mode):
         if self.closed:
             return
+        generation = getattr(self, '_start_generation', 0)
+        stopping = lambda: self.closed or getattr(self, '_start_generation', 0) != generation
         try:
             if not self.ready() or self.core.busy:
                 raise ValueError("Wait for the current source operation before starting voice reading.")
+            if stopping():
+                return
             ordinal, raw = self.current()
-            start, end = reading_range(self.text, raw, mode)
+            if stopping():
+                return
+            start, end = reading_range(self.text, raw, mode, cancelled=stopping)
+            if stopping():
+                return
             if not raw[start:end].strip():
                 raise ValueError("The chosen reading range has no spoken text.")
             voice, rate, volume = self._voice_settings()
+            if stopping():
+                return
+            continuous = self.continuous.GetValue() if mode in ('page', 'cursor') else False
             self._quiet_begin()
+            if stopping():
+                return
             self.core.start(ordinal, voice, start=start, end=end, rate=rate, volume=volume,
-                            continuous=self.continuous.GetValue() if mode != "selection" else False)
+                            continuous=continuous)
         except Exception as exc:
             self._report(exc)
 
@@ -268,6 +296,7 @@ class LiveReadingControls:
 
     def stop(self, event=None):
         if not self.closed:
+            self._start_generation = getattr(self, '_start_generation', 0) + 1
             self.core.stop()
             self.on_stop()
 
@@ -408,6 +437,9 @@ def bind_live_shortcuts(dialog, controls, accelerators=()):
         ('reader.speech_all', 0, wx.WXK_F6),
         ('reader.speech_cursor', 0, wx.WXK_F9),
         ('reader.speech_selection', wx.ACCEL_CTRL | wx.ACCEL_SHIFT, wx.WXK_F6),
+        ('reader.speech_word', wx.ACCEL_CTRL, wx.WXK_F9),
+        ('reader.speech_sentence', wx.ACCEL_SHIFT, wx.WXK_F9),
+        ('reader.speech_paragraph', wx.ACCEL_CTRL | wx.ACCEL_SHIFT, wx.WXK_F9),
         ('reader.speech_pause', 0, wx.WXK_F7),
         ('reader.speech_stop', 0, wx.WXK_F8),
         ('reader.speech_resume', wx.ACCEL_CTRL | wx.ACCEL_SHIFT, wx.WXK_F8),

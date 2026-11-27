@@ -262,7 +262,9 @@ def test_legacy_recovery_original_root_is_portable_inert_data(tmp_path, monkeypa
 
 
 @pytest.mark.parametrize('declared_root', [None, True, 1, '', 'relative/library',
-    r'Z:relative', 'file:///former-machine/library', '/former\x00machine', '/' + 'a' * 32768])
+    r'Z:relative', 'file:///former-machine/library', '/former\x00machine', '/' + 'a' * 32768],
+    ids=['none', 'boolean', 'integer', 'empty', 'relative-posix', 'relative-windows',
+         'file-uri', 'nul', 'overlong'])
 def test_legacy_recovery_rejects_invalid_original_root_declarations(tmp_path, declared_root):
     from carr_library.backup_compat import recovery
     source, _ = archive(tmp_path, 'v4')

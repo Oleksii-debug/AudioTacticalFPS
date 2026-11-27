@@ -751,7 +751,7 @@ jobs:
                                               carr_library.reader.ebook_audio, carr_library.ui.pronunciation_dialog,
                                               carr_library.ui.command_palette, carr_library.ui.language_matrix,
                                               carr_library.assistant.llm, carr_library.assistant.service)}
-          additional_names = ('carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings')
+          additional_names = ('carr_library.file_publication', 'carr_library.security._files', 'carr_library.security.anchors', 'carr_library.security.boundary', 'carr_library.security.controller', 'carr_library.security.entitlements', 'carr_library.security.installation', 'carr_library.security.refresh', 'carr_library.security.updates', 'carr_library.sync.archive', 'carr_library.sync.cli', 'carr_library.sync.crypto', 'carr_library.sync.service', 'carr_library.sync.vault', 'carr_library.ui.portable_sync', 'carr_library.ui.trust_status', 'carr_library.studio.pronunciation', 'carr_library.ui.studio_pronunciation', 'carr_library.ui.playback_navigation', 'carr_library.ui.find_replace_dialog', 'carr_library.speech.regex_worker', 'carr_library.ui.live_reading', 'carr_library.ui.keyboard_settings', 'carr_library.reader.reading_units')
           for name in additional_names:
               module = importlib.import_module(name)
               installed_origins[name] = str(pathlib.Path(module.__file__).resolve())
@@ -847,6 +847,7 @@ jobs:
               'tests/extract/test_document_formats_xml.py',
               'tests/e2e/test_extended_document_workflows.py',
               'tests/reader/test_live_reading.py',
+              'tests/reader/test_reading_units.py',
               'tests/reader/test_live_player.py',
               'tests/ui/test_live_reading_controls.py',
               'tests/ui/test_reading_copy_save_guard.py',
@@ -949,7 +950,6 @@ jobs:
               'tests/ui/test_audio_conversion_controls.py',
               'tests/ui/test_playback_navigation.py',
               'tests/ui/test_studio_playback_actions.py',
-              'tests/studio/test_production.py',
               'tests/security/test_windows_vault.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
@@ -1195,6 +1195,7 @@ jobs:
             'tests/extract/test_document_formats_xml.py',
             'tests/e2e/test_extended_document_workflows.py',
             'tests/reader/test_live_reading.py',
+            'tests/reader/test_reading_units.py',
             'tests/reader/test_live_player.py',
             'tests/ui/test_live_reading_controls.py',
             'tests/ui/test_reading_copy_save_guard.py',
@@ -1297,7 +1298,6 @@ jobs:
             'tests/ui/test_audio_conversion_controls.py',
             'tests/ui/test_playback_navigation.py',
             'tests/ui/test_studio_playback_actions.py',
-            'tests/studio/test_production.py',
             'tests/security/test_windows_vault.py'
           )
           $previousPath = $env:PATH

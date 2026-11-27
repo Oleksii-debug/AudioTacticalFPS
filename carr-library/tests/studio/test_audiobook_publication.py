@@ -11,19 +11,24 @@ import sys
 import pytest
 
 from carr_library.audio.audiobook import inspect_chapters, line_lrc
-from carr_library.speech import FliteProvider, VoiceRegistry
+from carr_library.speech import FliteProvider, NativeSapiProvider, VoiceRegistry
 from carr_library.studio.project import parse_script
 from carr_library.studio.render import ProductionService
 
 
 def test_actual_studio_m4b_embeds_measured_chapters_and_lrc(tmp_path):
     assert shutil.which('ffmpeg') and shutil.which('ffprobe'), 'Actual FFmpeg is required.'
-    voices = VoiceRegistry([FliteProvider(shutil.which('ffmpeg'))])
-    assert 'flite:awb' in {voice.id for voice in voices.voices()}, 'Actual Flite is required.'
+    provider = NativeSapiProvider() if sys.platform == 'win32' else FliteProvider(shutil.which('ffmpeg'))
+    voices = VoiceRegistry([provider])
+    installed = voices.voices()
+    assert installed, 'Actual native SAPI or Flite speech is required: ' + '; '.join(voices.notices)
+    selected = (next((voice for voice in installed if voice.language.casefold().startswith('en')), installed[0]).id
+                if sys.platform == 'win32' else 'flite:awb')
+    assert selected in {voice.id for voice in installed}, 'The actual test voice is required.'
     output = tmp_path / 'output'; output.mkdir()
     service = ProductionService(tmp_path / 'state', voices=voices)
     original = '[Scene: First]\nReader: Preserve this first line.\n[Scene: Second]\nReader: Preserve this final line.'
-    project = parse_script(original, title='Measured chapters', voice_ids=('flite:awb',), mode='authored')
+    project = parse_script(original, title='Measured chapters', voice_ids=(selected,), mode='authored')
     try:
         job = service.submit(project, output, format='m4b', stems=False)
         result = service.run(job)
@@ -49,7 +54,7 @@ def test_actual_studio_m4b_embeds_measured_chapters_and_lrc(tmp_path):
 
 def silent_project():
     # Explicit measured silence avoids an unrelated voice/model dependency in
-    # the recovery tests. The retained test above exercises actual Flite speech.
+    # the recovery tests. The retained test above exercises actual local speech.
     return parse_script('[Scene: First]\n[Duration: 0.6]\n[Scene: Second]\n[Duration: 0.9]',
                         title='Silent recovery fixture', mode='authored')
 

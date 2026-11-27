@@ -34,6 +34,7 @@ class NativeWidget:
     def GetId(self): self.native(); return self.identity
     def Bind(self, event, callback, *args, **kwargs): self.native(); self.handlers[event] = callback
     def SetName(self, name): self.native(); self.name = name
+    def SetToolTip(self, value): self.native(); self.tooltip = value
     def SetMinSize(self, *args): self.native()
     def SetSizer(self, *args): self.native()
     def CreateStdDialogButtonSizer(self, *args): self.native(); return Sizer()

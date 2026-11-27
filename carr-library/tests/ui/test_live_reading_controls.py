@@ -289,11 +289,151 @@ def test_closed_timer_and_actions_never_touch_native_controls():
             value.destroyed = True
     owner.tick()
     owner.start('page')
+    owner.start('word')
+    owner.start('sentence')
+    owner.start('paragraph')
     owner.resume()
     owner.pause()
     owner.stop()
     owner.focus_status()
     assert owner.core.calls == []
+
+
+@pytest.mark.parametrize(('mode', 'needle', 'expected'), [
+    ('word', 'п’ять', 'п’ять'),
+    ('sentence', 'п’ять', 'Repeat п’ять and Cafe\u0301.'),
+    ('paragraph', 'п’ять', 'Repeat п’ять and Cafe\u0301.\r\nSoft wrapped line.'),
+])
+def test_current_units_use_native_cursor_not_selection_and_never_continue(mode, needle, expected):
+    owner = controls()
+    voice = Voice('test:explicit', 'Explicit voice', 'synthetic', 'uk', ('rate', 'volume'))
+    owner._voices, owner.voice.selection = (voice,), 0
+    raw = 'Є 🚂.\r\n\r\nRepeat п’ять and Cafe\u0301.\r\nSoft wrapped line.\r\n\r\nLater.'
+    owner.text = NativeText(raw)
+    offset = raw.index(needle) + 2
+    owner.text.cursor = native_cursor_position(owner.text, raw, offset)
+    owner.text.selection = (0, 1)  # Current-unit commands use the insertion cursor.
+    before = owner.text.GetValue(), owner.text.GetSelection(), owner.text.GetInsertionPoint()
+    owner.current = lambda: (7, raw)
+    owner.start(mode)
+    assert len(owner.core.calls) == 1
+    args, options = owner.core.calls[0]
+    assert args == (7, voice.id)
+    assert options['continuous'] is False and owner.continuous.GetValue() is True
+    assert raw[options['start']:options['end']] == expected
+    assert before == (owner.text.GetValue(), owner.text.GetSelection(), owner.text.GetInsertionPoint())
+
+
+@pytest.mark.parametrize('mode', ['word', 'sentence', 'paragraph'])
+@pytest.mark.parametrize('boundary', ['ready', 'current', 'native_cursor', 'quiet_start'])
+def test_owner_deletion_during_unit_capture_never_touches_later_native_controls(mode, boundary):
+    owner = controls()
+    raw = 'Exact source.'
+    forbidden = []
+    voice = Voice('test:explicit', 'Explicit voice', 'synthetic', 'uk', ('rate', 'volume'))
+    owner._voices, owner.voice.selection = (voice,), 0
+    class Peer(NativeText):
+        def GetInsertionPoint(self):
+            if owner.closed: forbidden.append('GetInsertionPoint')
+            if boundary == 'native_cursor':
+                detach()
+            return super().GetInsertionPoint()
+        def GetRange(self, first, last):
+            if owner.closed: forbidden.append('GetRange')
+            return super().GetRange(first, last)
+        def GetValue(self):
+            if owner.closed: forbidden.append('GetValue')
+            return super().GetValue()
+    owner.text = Peer(raw)
+    def detach():
+        owner.close()
+        for value in vars(owner).values():
+            if isinstance(value, Control):
+                value.destroyed = True
+    def ready():
+        if boundary == 'ready': detach()
+        return True
+    def current():
+        if boundary == 'current': detach()
+        return 1, raw
+    owner.ready, owner.current = ready, current
+    if boundary == 'quiet_start':
+        owner._bridge = SimpleNamespace(quiet_during_media=True, suspend=detach)
+    owner.start(mode)
+    assert owner.closed and forbidden == [] and owner.core.calls == []
+
+
+@pytest.mark.parametrize('mode', ['word', 'sentence', 'paragraph'])
+@pytest.mark.parametrize('boundary', ['current', 'quiet_start'])
+def test_stop_during_unit_admission_does_not_restart_the_cancelled_command(mode, boundary):
+    owner = controls()
+    raw = 'One exact reading sentence.'
+    voice = Voice('test:explicit', 'Explicit voice', 'synthetic', 'uk', ('rate', 'volume'))
+    owner._voices, owner.voice.selection = (voice,), 0
+    owner.text = NativeText(raw)
+    def current():
+        if boundary == 'current': owner.stop()
+        return 1, raw
+    owner.current = current
+    if boundary == 'quiet_start':
+        owner._bridge = SimpleNamespace(quiet_during_media=True, suspend=owner.stop)
+    owner.start(mode)
+    assert not owner.closed and owner.core.calls == [('stop', None)]
+
+
+def test_unit_shortcuts_keep_existing_keys_and_drop_queued_actions_after_owner_close():
+    from carr_library.ui.live_reading import bind_live_shortcuts
+    owner = controls()
+    raw = 'First sentence.\r\n\r\nSecond paragraph.'
+    owner.text = NativeText(raw)
+    owner.text.cursor = native_cursor_position(owner.text, raw, raw.index('sentence') + 2)
+    owner.current = lambda: (1, raw)
+    voice = Voice('test:explicit', 'Explicit voice', 'synthetic', 'uk', ('rate', 'volume'))
+    owner._voices, owner.voice.selection = (voice,), 0
+    existing = ['all', 'cursor', 'selection', 'pause', 'stop', 'resume', 'status']
+    admitted, buttons = [], {}
+    owner.command_buttons = {}
+    for name in existing + ['word', 'sentence', 'paragraph']:
+        button = Control()
+        def enabled(target=button):
+            target.alive()
+            return target.enabled
+        button.IsEnabled = enabled
+        action = ((lambda event, mode=name: owner.start(mode)) if name in ('word', 'sentence', 'paragraph')
+                  else (lambda event, command=name: admitted.append(command)))
+        owner.command_buttons['reader.speech_' + name] = button, action
+        buttons[name] = button
+    identity = iter(range(100, 200))
+    bound, tables = {}, []
+    owner.wx = SimpleNamespace(ACCEL_CTRL=1, ACCEL_SHIFT=2, ACCEL_ALT=4,
+        WXK_F6=6, WXK_F7=7, WXK_F8=8, WXK_F9=9, EVT_MENU=object(),
+        NewIdRef=lambda: next(identity), AcceleratorTable=tuple)
+    dialog = SimpleNamespace(Bind=lambda event, handler, *, id: bound.__setitem__(id, handler),
+                             SetAcceleratorTable=tables.append)
+    prior = (1, ord('F'), 17)
+    bind_live_shortcuts(dialog, owner, [prior])
+    entries = tables[0]
+    assert entries[0] == prior
+    assert len({(flags, key) for flags, key, _ in entries}) == len(entries)
+    assert {(flags, key) for flags, key, _ in entries} >= {(0, 6), (0, 7), (0, 8), (0, 9), (3, 6)}
+    requests = []
+    unit_handlers = []
+    for flags in (1, 2, 3):
+        command = next(identity for modifier, key, identity in entries if modifier == flags and key == 9)
+        unit_handlers.append(bound[command])
+        owner.core.busy = False
+        bound[command](None)
+        options = owner.core.calls[-1][1]
+        assert options['continuous'] is False
+        requests.append(raw[options['start']:options['end']])
+    assert requests == ['sentence', 'First sentence.', 'First sentence.']
+    before = list(owner.core.calls)
+    owner.close()
+    for button in buttons.values():
+        button.destroyed = True
+    for handler in unit_handlers:
+        handler(None)
+    assert owner.core.calls == before and admitted == []
 
 
 def test_stopped_pending_section_cannot_reopen_old_source_after_user_navigation():

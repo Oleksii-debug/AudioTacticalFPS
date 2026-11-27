@@ -177,6 +177,87 @@ def test_exact_selection_is_chunked_without_drops_normalization_or_ssml(source, 
     assert saved.location == desk.page(1).location
 
 
+@pytest.mark.parametrize('unit', ['word', 'sentence', 'paragraph'])
+@pytest.mark.parametrize('reading_copy', [False, True])
+def test_current_unit_uses_owned_live_chunks_and_preserves_source_and_reading_map(source, make_reader,
+                                                                              unit, reading_copy):
+    from carr_library.reader.reading_units import reading_unit_range
+    app, workspace, book, desk, pages = source
+    original = desk.page(1)
+    document = ReadingDocument(pages[0])
+    if reading_copy:
+        document.replace(0, 0, 'An explicit reading edit. ')
+        sequence = DocumentSequence(app.root, document)
+        raw = document.text
+    else:
+        sequence, raw = SourceSequence(desk), pages[0]
+    saved_document = document.to_dict()
+    start, end = reading_unit_range(raw, raw.index('Literal') + 2, unit)
+    reader, renderer, player = make_reader(sequence)
+    reader.start(1, VOICE.id, start=start, end=end, continuous=False).result(5)
+    assert reader.status().state == 'complete', reader.status()
+    assert ''.join(request.text for request in renderer.requests) == raw[start:end]
+    assert reader.status().section.ordinal == 1
+    assert reader.status().range_end == end
+    assert player.play_count == len(renderer.requests) >= 1
+    if unit == 'paragraph':
+        assert len(renderer.requests) > 1, 'A long selected paragraph must keep the existing bounded chunker.'
+    assert all(len(request.text) <= 64 for request in renderer.requests)
+    assert all(not path.exists() for path in player.paths)
+    assert document.to_dict() == saved_document
+    assert desk.page(1).raw_text == original.raw_text and desk.page(1).location == original.location
+
+
+def test_stop_during_current_paragraph_render_cannot_play_or_continue_and_next_word_is_explicit(source,
+                                                                                            make_reader):
+    from carr_library.reader.reading_units import reading_unit_range
+    app, _workspace, _book, desk, pages = source
+    entered, release = threading.Event(), threading.Event()
+    def hold_first(request, target, options):
+        if not entered.is_set():
+            entered.set()
+            assert release.wait(5), 'The controlled render was not released.'
+    renderer, player = SyntheticRender(hold_first), SyntheticPlayer()
+    reader, _renderer, _player = make_reader(SourceSequence(desk), renderer=renderer, player=player)
+    start, end = reading_unit_range(pages[0], pages[0].index('Literal'), 'paragraph')
+    future = reader.start(1, VOICE.id, start=start, end=end)
+    try:
+        assert entered.wait(5)
+        reader.stop()
+    finally:
+        release.set()
+    future.result(5)
+    assert reader.status().state == 'stopped' and player.play_count == 0
+    assert len(renderer.requests) == 1 and not player.paths
+    assert not any(app.root.glob('.live-reading-*'))
+    first_count = len(renderer.requests)
+    start, end = reading_unit_range(pages[0], pages[0].index('Literal') + 2, 'word')
+    reader.start(1, VOICE.id, start=start, end=end).result(5)
+    assert reader.status().state == 'complete'
+    assert [request.text for request in renderer.requests[first_count:]] == ['Literal']
+    assert player.play_count == 1 and all(not path.exists() for path in player.paths)
+
+
+@pytest.mark.parametrize('unit', ['word', 'sentence', 'paragraph'])
+def test_closed_reader_never_plays_a_pending_unit_after_its_native_display_owner_is_gone(source,
+                                                                                       make_reader, unit):
+    from carr_library.reader.reading_units import reading_unit_range
+    _app, _workspace, _book, desk, pages = source
+    reader, renderer, player = make_reader(SourceSequence(desk), require_display_ack=True)
+    start, end = reading_unit_range(pages[0], pages[0].index('Literal'), unit)
+    future = reader.start(1, VOICE.id, start=start, end=end)
+    until(lambda: reader.status().section is not None)
+    pending_section = reader.status().section
+    completion = reader.close()
+    # A callback already queued by the departed native owner is harmless.
+    reader.acknowledge(pending_section)
+    if completion is not None:
+        completion.result(5)
+    future.result(5)
+    assert not reader.busy and renderer.requests == [] and player.play_count == 0
+    assert player.handle is None
+
+
 def test_continuous_reading_is_explicit_and_skips_only_unspoken_whitespace(source, make_reader):
     _app, _workspace, _book, desk, pages = source
     reader, render, player = make_reader(SourceSequence(desk))

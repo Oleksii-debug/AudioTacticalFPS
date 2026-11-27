@@ -8,6 +8,7 @@ Run scripts/windows_live_player_probe.py separately on an audio-capable machine.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 from pathlib import Path
 import platform
@@ -197,6 +198,17 @@ def main():
     from carr_library.speech.live_adapter import discover_voices, render_speech
     from carr_library.ui.live_reading import reading_range
     from carr_library.ui.reading_desk import ReadingDialog
+    from carr_library.reader import live_reading, reading_units
+    from carr_library.search import literal, presentation
+    from carr_library.ui import live_reading as live_controls
+    from carr_library.ui import speech_dialog
+
+    bindings_path = Path(__file__).with_name('windows_publishing_smoke.py')
+    bindings_spec = importlib.util.spec_from_file_location('_live_reading_source_bindings', bindings_path)
+    bindings = importlib.util.module_from_spec(bindings_spec)
+    bindings_spec.loader.exec_module(bindings)
+    source_identity = bindings.verify_installed_sources(
+        live_reading, reading_units, literal, presentation, live_controls, speech_dialog)
 
     wx_app = wx.App(False)
     with TemporaryDirectory(prefix='carr-native-live-reader-') as temporary:
@@ -243,7 +255,15 @@ def main():
         timer = wx.Timer(reader.dialog)
         started = time.monotonic()
         state = {'stage': 0, 'failure': None, 'pause_at': None, 'pause_started': None,
-                 'voice_id': None}
+                 'voice_id': None, 'unit_index': 0, 'units': []}
+        native_id, destruction_events = reader.dialog.GetId(), []
+        def destroyed(event):
+            if event.GetId() == native_id:
+                destruction_events.append(event.GetId())
+            event.Skip()
+        reader.dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
+        pending_unit_actions = tuple(controls.command_buttons['reader.speech_' + unit][1]
+                                     for unit in ('word', 'sentence', 'paragraph'))
 
         def native_position(prefix):
             wanted = prefix.replace('\r\n', '\n').replace('\r', '\n')
@@ -255,6 +275,27 @@ def main():
                 if actual.replace('\r\n', '\n').replace('\r', '\n') == wanted:
                     return position
             raise AssertionError('Native UTF-16/CRLF position could not be mapped to the exact source.')
+
+        def begin_unit():
+            unit = ('word', 'sentence', 'paragraph')[state['unit_index']]
+            offset = first.index('Ω') if unit == 'word' else first.index('source') + 2
+            reader.text.SetInsertionPoint(native_position(first[:offset]))
+            expected_unit = {'word': 'Ω', 'sentence': 'Repeat source words.', 'paragraph': first}[unit]
+            span = reading_range(reader.text, first, unit)
+            assert first[slice(*span)] == expected_unit
+            state['unit_expected'], state['unit_range'] = expected_unit, span
+            state['native_cursor'] = reader.text.GetInsertionPoint()
+            state['native_selection'] = reader.text.GetSelection()
+            state['unit_request_offset'] = len(observed['requests'])
+            # A bounded unit ending at the page end must still not advance.
+            controls.continuous.SetValue(True)
+            button, _action = controls.command_buttons['reader.speech_' + unit]
+            assert button.IsEnabled() and button.GetName() == 'Read current ' + unit + ' aloud'
+            reader.text.SetFocus()
+            event = wx.CommandEvent(wx.EVT_BUTTON.typeId, button.GetId())
+            event.SetEventObject(button)
+            assert button.GetEventHandler().ProcessEvent(event)
+            state['stage'] = 7
 
         def advance(event):
             try:
@@ -314,12 +355,38 @@ def main():
                     controls.stop()
                     state['stage'] = 6
                 elif stage == 6 and not controls.core.busy:
+                    if not all(controls.command_buttons['reader.speech_' + unit][0].IsEnabled()
+                               for unit in ('word', 'sentence', 'paragraph')):
+                        return
                     assert view.state == 'stopped', view.message
                     assert all(not path.exists() for path in fixture.opened)
                     assert not any(path.is_dir() for path in root.glob('.live-reading-*'))
-                    state['stage'] = 7
-                    timer.Stop()
-                    reader.close()
+                    begin_unit()
+                elif stage == 7 and view.state == 'playing':
+                    assert observed['requests'][state['unit_request_offset']:] == [state['unit_expected']]
+                    assert (view.chunk_start, view.chunk_end) == state['unit_range']
+                    assert view.section.ordinal == 1 and view.section.text == first
+                    assert reader.text.GetInsertionPoint() == state['native_cursor']
+                    assert reader.text.GetSelection() == state['native_selection']
+                    assert wx.Window.FindFocus() is reader.text
+                    fixture.advance(fixture.duration)
+                    state['stage'] = 8
+                elif stage == 8 and view.state == 'complete' and not controls.core.busy:
+                    if not all(controls.command_buttons['reader.speech_' + unit][0].IsEnabled()
+                               for unit in ('word', 'sentence', 'paragraph')):
+                        return
+                    assert view.section.ordinal == 1
+                    assert view.range_end == state['unit_range'][1]
+                    assert desk.page(1).raw_text == first
+                    assert all(not path.exists() for path in fixture.opened)
+                    state['units'].append(('word', 'sentence', 'paragraph')[state['unit_index']])
+                    state['unit_index'] += 1
+                    if state['unit_index'] < 3:
+                        begin_unit()
+                    else:
+                        state['stage'] = 9
+                        timer.Stop()
+                        reader.close()
             except Exception:
                 state['failure'] = traceback.format_exc()
                 timer.Stop()
@@ -336,16 +403,36 @@ def main():
             frame.Destroy()
         if state['failure']:
             raise AssertionError(state['failure'])
-        assert state['stage'] == 7
-        assert len(observed['renders']) == 2 and observed['discovery_roots']
+        assert state['stage'] == 9 and state['units'] == ['word', 'sentence', 'paragraph']
+        assert len(observed['renders']) == 5 and observed['discovery_roots']
         assert fixture.stream is None
+        # Deliver held real handlers only after observing actual native deletion.
+        deletion_deadline = time.monotonic() + 5
+        while reader.dialog and time.monotonic() < deletion_deadline:
+            wx_app.Yield()
+            time.sleep(.01)
+        assert not reader.dialog and controls.closed and destruction_events == [native_id]
+        delivered = []
+        def late_unit(action):
+            assert not reader.dialog and controls.closed
+            action(None)
+            delivered.append(True)
+        for action in pending_unit_actions:
+            wx.CallAfter(late_unit, action)
+        delivery_deadline = time.monotonic() + 5
+        while len(delivered) < 3 and time.monotonic() < delivery_deadline:
+            wx_app.Yield()
+            time.sleep(.01)
+        assert len(delivered) == 3 and len(observed['renders']) == 5 and fixture.stream is None
         copy_report = canonical_copy_probe(wx, library, desk, discover, render)
-        assert len(observed['renders']) == 3
+        assert len(observed['renders']) == 6
         report = dict(status='PASS', platform=platform.platform(),
                       native_modal_controls='PASS', native_unicode_crlf_selection='PASS',
                       explicit_voice_selection='PASS', actual_sapi_synthesis='PASS',
                       library_configuration_root='PASS', background_focus_preserved='PASS',
                       controlled_pause_resume_stop='PASS', exact_source_resume='PASS',
+                      current_word_sentence_paragraph='PASS', continuous_disabled_for_units='PASS',
+                      late_unit_handlers_after_native_deletion='PASS', source_identity=source_identity,
                       temporary_audio_cleanup='PASS', selected_voice_id=state['voice_id'],
                       renders=observed['renders'], player='CONTROLLED_PCM_TEST_FIXTURE',
                       physical_audio_device='NOT_RUN', actual_local_player='NOT_RUN',
