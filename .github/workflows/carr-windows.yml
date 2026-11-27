@@ -708,7 +708,10 @@ jobs:
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
 
+      # Exercise independent prepared profiles even after an earlier gate fails.
+      # Every gate remains mandatory; any failed step still fails the whole job.
       - name: Qualify the independent library, OCR and native profile without audio
+        if: ${{ !cancelled() }}
         timeout-minutes: 25
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -1056,6 +1059,7 @@ jobs:
       # Evidence and the exact tested application wheel only; no model, native
       # runtime, OCR source archive, credentials or user documents are uploaded.
       - name: Run required integrated source workflows
+        if: ${{ !cancelled() }}
         timeout-minutes: 35
         run: |
           $suites = @(

@@ -8,11 +8,17 @@ import sys
 
 import pytest
 
+import bootstrap
+import carr_library
 from carr_library.application import LibraryApp
 from carr_library import backup_sidecars, library_backup
 from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
 from carr_library.reader.reading_desk import ReadingDesk
 from carr_library.reader.reading_state import ReadingState
+
+
+PACKAGE_PATH = os.pathsep.join(str(Path(package.__file__).resolve().parent.parent)
+                               for package in (carr_library, bootstrap))
 
 
 def resign(folder, manifest):
@@ -307,8 +313,8 @@ os.link=interrupt
 if operation=='backup':create_backup(LibraryApp(root),target)
 else:restore_backup(source,target,digest)
 '''
-    result = subprocess.run([sys.executable, '-c', code, str(app.root), str(folder), str(destination), digest, operation],
-        env={**os.environ, 'PYTHONPATH': os.pathsep.join(sys.path)}, capture_output=True, timeout=20)
+    result = subprocess.run([sys.executable, '-B', '-P', '-s', '-c', code, str(app.root), str(folder), str(destination), digest, operation],
+        env={**os.environ, 'PYTHONPATH': PACKAGE_PATH}, capture_output=True, timeout=20)
     assert result.returncode == 73, result.stderr
     if operation == 'backup':
         assert not (destination / 'manifest.json').exists()

@@ -7,10 +7,13 @@ import sys
 
 import pytest
 
+import bootstrap
+import carr_library
 from carr_library.application import LibraryApp
 
 
-ROOT = Path(__file__).resolve().parents[2]
+PACKAGE_PATH = os.pathsep.join(str(Path(package.__file__).resolve().parent.parent)
+                               for package in (carr_library, bootstrap))
 
 
 @pytest.fixture
@@ -24,10 +27,10 @@ def cli(tmp_path):
                                 authors=(author,), language=language, edition='First')
         assert imported['state'] == 'complete'
     env = dict(os.environ)
-    env['PYTHONPATH'] = os.pathsep.join((str(ROOT / 'src'), str(ROOT)))
+    env['PYTHONPATH'] = PACKAGE_PATH
     env['PYTHONUTF8'] = '1'
     def run(*arguments, expected=0):
-        result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(app.root),
+        result = subprocess.run([sys.executable, '-B', '-P', '-s', '-m', 'carr_library', '--data-dir', str(app.root),
                                  *map(str, arguments)], cwd=tmp_path, env=env, text=True,
                                 encoding='utf-8', capture_output=True, timeout=30)
         assert result.returncode == expected, (result.stdout, result.stderr, result.returncode)
@@ -64,9 +67,9 @@ def test_existing_modes_and_metadata_filters_apply_in_each_selected_library(cli,
 
 
 def test_missing_library_selection_is_an_error_and_does_not_create_data(tmp_path):
-    env = dict(os.environ, PYTHONPATH=os.pathsep.join((str(ROOT / 'src'), str(ROOT))))
+    env = dict(os.environ, PYTHONPATH=PACKAGE_PATH)
     destination = tmp_path / 'must-not-exist'
-    result = subprocess.run([sys.executable, '-m', 'carr_library', '--data-dir', str(destination),
+    result = subprocess.run([sys.executable, '-B', '-P', '-s', '-m', 'carr_library', '--data-dir', str(destination),
                              '--search', 'history'], env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 2 and '--workspace' in result.stderr
     assert not destination.exists()

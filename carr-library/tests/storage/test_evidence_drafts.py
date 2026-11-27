@@ -8,11 +8,17 @@ import sys
 
 import pytest
 
+import bootstrap
+import carr_library
 from carr_library.application import LibraryApp
 from carr_library.evidence_drafts import (
     DraftConflict, EvidenceDrafts, FILENAME, MAX_NOTE_BYTES, validate_evidence_drafts,
 )
 from carr_library.ingest.writer_guard import WriterBusy, exclusive_writer
+
+
+PACKAGE_PATH = os.pathsep.join(str(Path(package.__file__).resolve().parent.parent)
+                               for package in (carr_library, bootstrap))
 
 
 @pytest.fixture
@@ -189,9 +195,8 @@ EvidenceDrafts(app.root).checkpoint(row,'Process stopped after durable checkpoin
 os._exit(19)
 '''
     environment = dict(os.environ)
-    source = Path(__file__).resolve().parents[2] / 'src'
-    environment['PYTHONPATH'] = os.pathsep.join((str(source), str(source.parent)))
-    result = subprocess.run([sys.executable, '-c', program, str(app.root),
+    environment['PYTHONPATH'] = PACKAGE_PATH
+    result = subprocess.run([sys.executable, '-B', '-P', '-s', '-c', program, str(app.root),
                              row.anchor.identity.workspace, row.topic_id], env=environment,
                             capture_output=True, timeout=20)
     assert result.returncode == 19, result.stderr.decode()
