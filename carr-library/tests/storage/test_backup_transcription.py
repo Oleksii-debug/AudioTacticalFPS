@@ -5,10 +5,11 @@ model, decode recordings, use the network, or establish acoustic qualification.
 """
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import runpy
 import shutil
-import sys
+import venv
 
 import pytest
 
@@ -73,7 +74,20 @@ def factory(tmp_path):
             model.mkdir()
             for name in ('model.bin', 'config.json', 'tokenizer.json'):
                 (model / name).write_bytes(('Synthetic model identity only: ' + name).encode())
-        service.configure(Path(sys.executable).absolute(), worker, models, protocol=protocol)
+        # These real child peers use only the standard library. Select a real
+        # isolated interpreter so each required inspection seals that runtime,
+        # rather than repeatedly hashing unrelated application-site packages.
+        # Operational-base/native-file and per-boundary verification stay real.
+        environment = tmp_path / 'selected-python'
+        venv.EnvBuilder(with_pip=False, system_site_packages=False,
+                        symlinks=os.name != 'nt').create(environment)
+        python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+        configured = service.configure(python, worker, models, protocol=protocol)
+        inventory = configured['runtime_inventory']
+        assert inventory['python_executable'] == str(python.absolute())
+        assert inventory['python_configuration']
+        assert all(row == {'present': False}
+                   for row in inventory['runtime_distributions'].values())
         originals = []
         for index in range(count):
             original = tmp_path / ('original-' + str(index) + '.wav')
