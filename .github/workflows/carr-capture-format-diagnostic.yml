@@ -1,10 +1,10 @@
-name: Resonance bounded capture-format diagnosis
+name: Resonance read-only capture access diagnosis
 
 # An isolated test-first experiment, not the application's recurring CI or
 # installer. This branch is created once for the 2026-11-27 evaluation.
 on:
   push:
-    branches: [carr/ci-endpoint-evaluation-20261127]
+    branches: [carr/capture-access-dbbb-20261127]
     paths:
       - .github/workflows/carr-capture-format-diagnostic.yml
 
@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: carr-capture-format-diagnostic-20261127
+  group: carr-capture-access-dbbb-20261127
   cancel-in-progress: false
 
 jobs:
@@ -598,6 +598,83 @@ jobs:
           & $env:CARR_PYTHON -I -B $path
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Read fixed microphone consent, policy and runner session diagnostics
+        if: always()
+        timeout-minutes: 2
+        run: |
+          $probe = @'
+          """Read fixed Windows capture-access settings; never change consent or policy."""
+          import ctypes
+          from ctypes import wintypes
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import sys
+          import winreg
+          
+          if sys.platform != 'win32' or os.environ.get('GITHUB_ACTIONS') != 'true':
+              raise RuntimeError('This read-only diagnosis requires the disposable Windows CI runner.')
+          
+          report = {
+              'status': 'DIAGNOSED', 'registry_writes': False, 'consent_changes': False,
+              'device_access_attempt': False, 'physical_microphone': 'NOT_RUN',
+              'windows': tuple(sys.getwindowsversion()), 'settings': [],
+          }
+          def read_value(label, hive, key, value):
+              result = {'label': label, 'key': key, 'value_name': value}
+              try:
+                  with winreg.OpenKey(hive, key, 0, winreg.KEY_READ | winreg.KEY_WOW64_64KEY) as handle:
+                      data, kind = winreg.QueryValueEx(handle, value)
+                  result['registry_type'] = kind
+                  if type(data) is int and 0 <= data <= 0xffffffff:
+                      result['value'] = data
+                  elif isinstance(data, str) and data in ('Allow', 'Deny', 'Prompt', 'UserInControl'):
+                      result['value'] = data
+                  else:
+                      result['value'] = 'OTHER_REDACTED'
+              except FileNotFoundError:
+                  result['state'] = 'NOT_CONFIGURED_AT_THIS_KEY'
+              except OSError as exc:
+                  result['state'] = 'READ_FAILED'
+                  result['winerror'] = exc.winerror
+              report['settings'].append(result)
+          
+          consent = r'SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone'
+          for label, hive in (('current-user', winreg.HKEY_CURRENT_USER), ('machine', winreg.HKEY_LOCAL_MACHINE)):
+              read_value(label, hive, consent, 'Value')
+              read_value(label + '-desktop', hive, consent + r'\NonPackaged', 'Value')
+          policy = r'SOFTWARE\Policies\Microsoft\Windows\AppPrivacy'
+          for name in ('LetAppsAccessMicrophone', 'LetDesktopAppsAccessMicrophone',
+                       'LetAppsAccessMicrophone_ForceAllowUnsigned', 'LetAppsAccessMicrophone_ForceDenyUnsigned'):
+              read_value('machine-policy', winreg.HKEY_LOCAL_MACHINE, policy, name)
+          terminal = r'SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+          for name in ('fDisableAudioCapture', 'fDisableAudio'):
+              read_value('remote-session-policy', winreg.HKEY_LOCAL_MACHINE, terminal, name)
+          
+          kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+          query = kernel.ProcessIdToSessionId
+          query.argtypes = (wintypes.DWORD, ctypes.POINTER(wintypes.DWORD))
+          query.restype = wintypes.BOOL
+          session = wintypes.DWORD()
+          if query(os.getpid(), ctypes.byref(session)):
+              report['process_session_id'] = session.value
+          else:
+              report['session_query_error'] = ctypes.get_last_error()
+          name = os.environ.get('SESSIONNAME', '')
+          report['session_name'] = name if re.fullmatch(r'Console|Services|RDP-Tcp#\d{1,8}', name) else 'UNSET_OR_OTHER'
+          report['sources'] = [
+              'https://learn.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-activateaudiointerfaceasync',
+              'https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-privacy',
+          ]
+          path = Path('ci-results/capture-access-settings.json')
+          path.write_text(json.dumps(report, ensure_ascii=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(report, ensure_ascii=True, indent=2), flush=True)
+          '@
+          $path = Join-Path $env:RUNNER_TEMP 'carr-capture-access-readonly.py'
+          $probe | Set-Content -LiteralPath $path -Encoding utf8
+          & $env:CARR_PYTHON -I -B $path
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain only bounded synthetic text evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
