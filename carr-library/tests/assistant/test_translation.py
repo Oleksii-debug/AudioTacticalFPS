@@ -1256,3 +1256,48 @@ def test_source_job_cannot_downgrade_to_legacy_to_bypass_archival(
     assert len(connection['calls']) == calls and not (tmp_path / 'downgraded').exists()
     if not started:
         assert not case.service.gateway.ledger._path(approval.id).exists()
+
+@pytest.mark.parametrize('claimed,actual', [(False, True), (True, False)])
+def test_fresh_source_translation_rejects_unattested_capture_snapshot(
+        tmp_path, connection, monkeypatch, claimed, actual):
+    from dataclasses import replace
+    from carr_library.reader.reading_desk import ReadingDesk
+
+    case = bound_ready(tmp_path, connection, first=3, last=3)
+    anchor = case.document.source_anchor
+    assert anchor['positions'][0]['text_verified_at_capture'] is True
+    anchor['positions'][0]['text_verified_at_capture'] = claimed
+    case.document = ReadingDocument(case.source.text, title=case.source.title,
+                                    source_anchor=anchor)
+    if not actual:
+        # Exercise the unreviewed-reader boundary while keeping real library
+        # identity, source bytes and text validation. No claim of PDF OCR here.
+        original_page = ReadingDesk.page
+        def unreviewed(desk, ordinal):
+            return replace(original_page(desk, ordinal), verified=False)
+        monkeypatch.setattr(ReadingDesk, 'page', unreviewed)
+    calls = len(connection['calls'])
+    with pytest.raises(ValueError, match='verification snapshot'):
+        submit_bound(case)
+    assert not case.service.jobs.identities()
+    assert len(connection['calls']) == calls
+
+
+def test_saved_source_translation_keeps_historical_capture_snapshot(
+        tmp_path, connection, monkeypatch):
+    from dataclasses import replace
+    from carr_library.reader.reading_desk import ReadingDesk
+
+    case = bound_ready(tmp_path, connection, first=3, last=3)
+    identity, _ = submit_bound(case)
+    original_page = ReadingDesk.page
+    def unreviewed(desk, ordinal):
+        return replace(original_page(desk, ordinal), verified=False)
+    monkeypatch.setattr(ReadingDesk, 'page', unreviewed)
+    assert case.service.resume(identity)['status'] == 'complete'
+    target = tmp_path / 'historical-capture'
+    case.service.export(identity, target)
+    report = read_json(target / 'translation-provenance.json')
+    assert report['quotation_authority'] is False
+    assert report['source_anchor'] == case.document.source_anchor
+    assert report['source_anchor']['positions'][0]['text_verified_at_capture'] is True
