@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "base": "c5e37ec798cca301e8767577550ebf33e142abe4",
+  "owner_provenance": "f8d5f85619b61fb52df24c7eb2f5dd4d1febc18f",
+  "instruction": "Apply each exact unique context once; preserve all other root/appearance/export changes.",
+  "changes": [
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "from .reader.narration import (\n",
+      "after": "from .reader.publication_state import (\n    FILENAME as PUBLICATION_READING_STATE, MAX_BYTES as MAX_PUBLICATION_READING_STATE,\n    decode_positions as decode_publication_positions,\n)\nfrom .reader.narration import (\n"
+    },
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "before": "_SIMPLE_SIDECARS = {\n",
+      "after": "_SIMPLE_SIDECARS = {\n    PUBLICATION_READING_STATE: (MAX_PUBLICATION_READING_STATE, decode_publication_positions),\n"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "before": "from .reading_desk import install_reading_desk_actions\n",
+      "after": "from .reading_desk import install_reading_desk_actions\nfrom .media_overlay_dialog import install_media_overlay_actions\n"
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/desktop_app.py",
+      "before": "        install_reading_desk_actions(self)\n",
+      "after": "        install_reading_desk_actions(self)\n        install_media_overlay_actions(self)\n"
+    }
+  ]
+}
