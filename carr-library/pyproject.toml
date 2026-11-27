@@ -86,6 +86,7 @@ packages = [
   "carr_library.speech",
   "carr_library.studio",
   "carr_library.assistant",
+  "carr_library.operations",
   "carr_library.conversion",
   "carr_library.academic_integration",
   "carr_library.language_qualification",
