@@ -18,7 +18,7 @@ from carr_library.ingest.pipeline import canonical
 from carr_library.ingest.worker import load_request, prepare_request, record_progress
 from carr_library.ingest.writer_guard import exclusive_writer
 from carr_library.pending_backup import snapshot_pending, restore_pending, validate_pending
-from carr_library.storage.revisions import Storage
+from carr_library.storage.revisions import CURRENT_SCHEMA, Storage
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def _source(tmp_path, name='original.txt', text='Original first page.\fOriginal 
 def _snapshot(app, tmp_path, name='snapshot'):
     stage = tmp_path / name
     stage.mkdir()
-    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=4)) as storage:
+    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=CURRENT_SCHEMA)) as storage:
         storage.backup(stage / 'library.sqlite')
         metadata = snapshot_pending(app, stage / 'pending')
     return stage, metadata
@@ -316,7 +316,8 @@ def test_journal_online_backup_includes_committed_wal(app, tmp_path):
         assert journal.execute('SELECT error FROM job').fetchone()[0] == 'committed_wal_evidence'
 
 
-@pytest.mark.skipif(shutil.which('tesseract') is None, reason='Actual local OCR engine required')
+@pytest.mark.skipif(shutil.which('tesseract') is None and not os.environ.get('CARR_OCR_DIR'),
+                    reason='Actual local OCR engine required')
 def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp_path):
     from PIL import Image, ImageDraw, ImageFont
     from reportlab.lib.utils import ImageReader

@@ -368,36 +368,24 @@ def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: 
                             request_id=request_id, new=new)
 
 
-
-def _publication_watermark(app, workspace):
-    """Release the read snapshot before starting the native worker."""
-    with app.read(workspace) as db:
-        # Revision rows are append-only in the accepted schema. A scalar is
-        # bounded even after many metadata revisions of the same edition.
-        return db.execute('SELECT coalesce(max(rowid),0) FROM revision').fetchone()[0]
-
-
-def _published_after_stop(app, initial, watermark):
-    """Recognize only a new, intact publication bound to this import request.
+def _published_after_stop(app, initial, attempt_id):
+    """Recognize only this attempt's transactionally committed publication.
 
     A stopped process may have committed before returning its stdout receipt.
-    Existing/replayed revisions are not proof that this invocation completed.
+    Timing or an existing/replayed revision cannot prove invocation completion.
     This read never resumes parsing, changes a journal, or approves quotations.
     """
     from ..catalog.membership import _metadata
+    from ..storage.publication_receipts import PublicationAttempt, request_identity, validate_receipt
     from .retained_assets import SUFFIXES as MIME_SUFFIXES
 
     try:
+        attempt = PublicationAttempt(attempt_id, request_identity(initial))
+        expected_request = attempt.request()
         request = load_request(app.root, initial['request_id'])
         identity = ('version', 'request_id', 'data_dir', 'workspace', 'source',
                     'metadata', 'config', 'expected_manifest')
         if any(request.get(key) != initial.get(key) for key in identity):
-            return None
-        # The parent snapshot precedes launch. A different import can finish
-        # before this child acquires the shared writer guard, so only the
-        # child's fresh, guarded boundary can distinguish a replay here.
-        boundary = request.get('publication_watermark')
-        if type(boundary) is not int or not watermark <= boundary < 2 ** 63:
             return None
         metadata = request['metadata']
         digest = request.get('asset_sha256')
@@ -406,17 +394,23 @@ def _published_after_stop(app, initial, watermark):
             return None
         workspace, edition = request['workspace'], metadata['edition_id']
         with app.read(workspace) as db:
-            rows = db.execute(
+            receipt = db.execute('SELECT * FROM publication_receipt WHERE request_id=? AND attempt_id=?',
+                                 (initial['request_id'], attempt_id)).fetchone()
+            if receipt is None:
+                return None
+            proof = validate_receipt(db, receipt)
+            if proof['request'] != expected_request or proof['source']['sha256'] != digest:
+                return None
+            row = db.execute(
                 'SELECT r.id,r.config,a.revision AS active,e.work,c.mime,c.size '
                 'FROM revision r JOIN sealed s ON s.revision=r.id '
                 'JOIN catalog_edition e ON e.workspace=r.workspace AND e.id=r.edition AND e.asset=r.asset '
                 'JOIN catalog_asset c ON c.digest=e.asset '
                 'LEFT JOIN active a ON a.workspace=r.workspace AND a.edition=r.edition '
-                'WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.rowid>? LIMIT 2',
-                (workspace, edition, digest, boundary)).fetchall()
-            if len(rows) != 1:
+                'WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.id=?',
+                (workspace, edition, digest, receipt['revision'])).fetchone()
+            if row is None:
                 return None
-            row = rows[0]
             if (row['work'] != metadata['work_id'] or row['active'] is None
                     or row['mime'] not in MIME_SUFFIXES or type(row['size']) is not int
                     or not 0 < row['size'] <= 64 * 1024 * 1024
@@ -492,7 +486,8 @@ def _published_after_stop(app, initial, watermark):
                 return None
             return dict(state='complete' if row['active'] == row['id'] else 'superseded',
                         workspace=workspace, edition=edition, id=row['id'], asset=digest,
-                        completed=count, total=count, verified=mime == 'text/plain',
+                        completed=count, total=count,
+                        verified=mime == 'text/plain' and row['active'] == row['id'],
                         recovered_publication=True)
     except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
         # An absent, ambiguous or damaged binding grants no completion authority.
@@ -514,24 +509,29 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         if record.get('state') == 'complete' and isinstance(record.get('result'), dict):
             return dict(record['result'], request_id=request_id, isolated=True)
     from ..application import LibraryApp
+    from ..storage.publication_receipts import request_identity
     app = LibraryApp(root)
-    watermark = _publication_watermark(app, workspace)
+    # This value is fresh for every native launch, including resumed requests.
+    # Only the worker that commits a new revision can persist its receipt.
+    attempt_id = uuid4().hex
+    fingerprint = sha256(request_identity(record).encode('utf-8')).hexdigest()
     started = False
 
     def worker_started():
         nonlocal started
         started = True
 
-    # A stopped launch must never reuse a previous child's guarded boundary.
-    record_progress(root, request_id, state='running', publication_watermark=None)
+    record_progress(root, request_id, state='running')
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'timeout': timeout}, timeout=timeout, cancelled=cancelled,
+                      'attempt_id': attempt_id, 'request_sha256': fingerprint,
+                      'source': record['source'], 'timeout': timeout},
+                     timeout=timeout, cancelled=cancelled,
                      on_started=worker_started)
     if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
-        committed = _published_after_stop(app, record, watermark)
+        committed = _published_after_stop(app, record, attempt_id)
         if committed is not None:
             result = dict(committed, worker_state=result['state'],
-                          message='A durable publication matching this request is available. '
+                          message='The import was committed before the worker stopped. '
                                   'Its saved source and publication have been verified.')
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
@@ -655,7 +655,7 @@ def main():
         if len(raw) > MAX_REQUEST:
             raise ValueError('Import worker request exceeded its limit.')
         message = json.loads(raw)
-        import_keys = {'data_dir', 'request_id', 'timeout'}
+        import_keys = {'data_dir', 'request_id', 'attempt_id', 'request_sha256', 'source', 'timeout'}
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
         if not isinstance(message, dict) or set(message) not in (import_keys, render_keys):
             raise ValueError('Invalid import worker request schema.')
@@ -689,6 +689,13 @@ def main():
                 or not isinstance(record.get('workspace'), str)
                 or not isinstance(record.get('source'), str)):
             raise ValueError('Invalid persisted import request schema.')
+        from ..storage.publication_receipts import PublicationAttempt, request_identity
+        identity = request_identity(record)
+        attempt = PublicationAttempt(message['attempt_id'], identity)
+        attempt.request()
+        if (record['source'] != message['source'] or
+                sha256(identity.encode('utf-8')).hexdigest() != message['request_sha256']):
+            raise ValueError('Import request changed before this worker attempt.')
         from ..application import LibraryApp
         from ..extract.page_ocr import Config
         metadata = dict(record['metadata'])
@@ -704,7 +711,8 @@ def main():
             result = app._import_file(record['workspace'], source, **metadata,
                                       config=Config(**record['config']),
                                       _request_id=record['request_id'], _resume_job=record.get('job'),
-                                      _expected_manifest=record.get('expected_manifest'))
+                                      _expected_manifest=record.get('expected_manifest'),
+                                      _publication_attempt=attempt)
         print(canonical({'result': result}))
         return 0
     except Exception as exc:

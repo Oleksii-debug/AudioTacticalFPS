@@ -1,11 +1,11 @@
 """Actual isolated LibraryApp publication races; no synthetic database or result."""
-from copy import deepcopy
 from hashlib import sha256
 import json
 from pathlib import Path
 import time
 from types import SimpleNamespace
 from uuid import uuid4
+from zipfile import ZipFile
 
 import pytest
 
@@ -14,7 +14,7 @@ from carr_library.ingest import worker
 
 
 def source_file(tmp_path, kind):
-    path = tmp_path / ('Original source.' + kind)
+    path = tmp_path / ('Оригінал source.' + kind)
     if kind == 'docx':
         from docx import Document
         document = Document()
@@ -22,25 +22,24 @@ def source_file(tmp_path, kind):
         document.save(path)
     elif kind == 'pdf':
         from reportlab.pdfgen.canvas import Canvas
-        document = Canvas(str(path))
-        document.drawString(72, 700, 'Committed railway source.')
-        document.save()
+        canvas = Canvas(str(path))
+        canvas.drawString(72, 700, 'Committed railway source.')
+        canvas.save()
     elif kind == 'epub':
-        from zipfile import ZipFile
         with ZipFile(path, 'w') as archive:
             archive.writestr('mimetype', 'application/epub+zip')
             archive.writestr('META-INF/container.xml',
                 '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container">'
-                '<rootfiles><rootfile full-path="book.opf" '
+                '<rootfiles><rootfile full-path="content.opf" '
                 'media-type="application/oebps-package+xml"/></rootfiles></container>')
-            archive.writestr('book.opf',
+            archive.writestr('content.opf',
                 '<package xmlns="http://www.idpf.org/2007/opf" version="3.0">'
                 '<metadata/><manifest><item id="chapter" href="chapter.xhtml" '
                 'media-type="application/xhtml+xml"/></manifest>'
                 '<spine><itemref idref="chapter"/></spine></package>')
             archive.writestr('chapter.xhtml',
-                '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Source</title>'
-                '</head><body><p>Committed railway source. Київ.</p></body></html>')
+                '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Source</title></head>'
+                '<body><p>Committed railway source. Київ.</p></body></html>')
     else:
         path.write_text('Committed railway source. Київ.', encoding='utf-8')
     return path
@@ -88,6 +87,18 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
 
     monkeypatch.setattr(worker.subprocess, 'Popen', launch)
     return processes
+
+
+def capture_attempt(monkeypatch):
+    invoke = worker._invoke
+    launches = []
+    def launch(message, **options):
+        if 'request_id' in message:
+            launches.append((worker.load_request(message['data_dir'], message['request_id']),
+                             message['attempt_id']))
+        return invoke(message, **options)
+    monkeypatch.setattr(worker, '_invoke', launch)
+    return launches
 
 
 @pytest.mark.parametrize('kind', ('docx', 'epub', 'pdf', 'txt'))
@@ -177,6 +188,47 @@ def test_preexisting_replay_is_not_new_completion_after_cancel(tmp_path, monkeyp
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
 
 
+@pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration', 'language'))
+def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, monkeypatch, change):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Request binding')
+    source = source_file(tmp_path, 'docx')
+    launches = capture_attempt(monkeypatch)
+    result = app.import_file(workspace, source)
+    assert result['state'] == 'complete'
+    initial, attempt = launches[0]
+    assert worker._published_after_stop(app, initial, attempt)['state'] == 'complete'
+    changed = worker.load_request(app.root, result['request_id'])
+    if change == 'scope':
+        changed['workspace'] = app.create_workspace('Other')
+    elif change == 'work':
+        changed['metadata']['work_id'] = uuid4().hex
+    elif change == 'asset':
+        changed['asset_sha256'] = 'f' * 64
+    elif change == 'configuration':
+        changed['config']['dpi'] += 1
+    else:
+        changed['metadata']['language'] = 'uk'
+    worker._store(app.root, result['request_id'], changed)
+    assert worker._published_after_stop(app, initial, attempt) is None
+
+
+def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Original binding')
+    source = source_file(tmp_path, 'docx')
+    launches = capture_attempt(monkeypatch)
+    result = app.import_file(workspace, source)
+    initial, attempt = launches[0]
+    assert worker._published_after_stop(app, initial, attempt)['state'] == 'complete'
+    current = worker.load_request(app.root, result['request_id'])
+    retained = app.assets.resolve(current['asset_sha256'])
+    raw = bytearray(retained.read_bytes())
+    raw[-1] ^= 1
+    retained.write_bytes(raw)
+    assert worker._published_after_stop(app, initial, attempt) is None
+
+
 def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path, monkeypatch):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Concurrent replay boundary')
@@ -206,37 +258,3 @@ def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path,
     assert app.browse(workspace)
     with app.read(workspace) as db:
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
-
-
-@pytest.mark.parametrize('change', ('scope', 'work', 'asset', 'configuration'))
-def test_changed_request_identity_cannot_authorize_reconciliation(tmp_path, change):
-    app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Request binding')
-    source = source_file(tmp_path, 'docx')
-    result = app.import_file(workspace, source)
-    assert result['state'] == 'complete'
-    initial = worker.load_request(app.root, result['request_id'])
-    changed = deepcopy(initial)
-    if change == 'scope':
-        changed['workspace'] = app.create_workspace('Other')
-    elif change == 'work':
-        changed['metadata']['work_id'] = uuid4().hex
-    elif change == 'asset':
-        changed['asset_sha256'] = 'f' * 64
-    else:
-        changed['config']['dpi'] += 1
-    worker._store(app.root, result['request_id'], changed)
-    assert worker._published_after_stop(app, initial, 0) is None
-
-
-def test_corrupted_retained_bytes_cannot_authorize_reconciliation(tmp_path):
-    app = LibraryApp(tmp_path / 'library')
-    workspace = app.create_workspace('Original binding')
-    source = source_file(tmp_path, 'docx')
-    result = app.import_file(workspace, source)
-    initial = worker.load_request(app.root, result['request_id'])
-    retained = app.assets.resolve(initial['asset_sha256'])
-    raw = bytearray(retained.read_bytes())
-    raw[-1] ^= 1
-    retained.write_bytes(raw)
-    assert worker._published_after_stop(app, initial, 0) is None

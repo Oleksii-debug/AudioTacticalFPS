@@ -79,7 +79,9 @@ def test_create_only_export_rejects_existing_file_without_touching_it(export):
     assert not list(target.parent.glob('.research-export-*'))
 
 
-def test_file_created_after_final_destination_check_is_never_replaced(export, monkeypatch):
+@pytest.mark.parametrize('explicit_policy', (False, True))
+def test_file_created_after_final_destination_check_is_never_replaced(
+        export, monkeypatch, explicit_policy):
     target, _, publish = export
     inspect = export_file._destination
     checks = 0
@@ -96,7 +98,7 @@ def test_file_created_after_final_destination_check_is_never_replaced(export, mo
 
     monkeypatch.setattr(export_file, '_destination', competing_writer)
     with pytest.raises(FileExistsError):
-        publish(require_absent=True)
+        publish(**({'require_absent': True} if explicit_policy else {}))
     assert target.read_bytes() == b'Concurrent writer owns this file'
     assert not list(target.parent.glob('.research-export-*'))
 
@@ -189,6 +191,149 @@ def test_destination_approval_cannot_be_reused_for_another_path(export):
     with pytest.raises(ValueError, match='destination changed'):
         publish(approval=approval)
     assert not target.exists()
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('when', ('queued', 'staging'))
+def test_existing_approval_rejects_same_size_edit_with_unchanged_observed_times(
+        export, monkeypatch, when):
+    target, _, publish = export
+    target.write_bytes(b'Original selected content')
+    original = target.stat()
+    if os.name != 'nt':
+        # Python's Windows st_ctime is creation time. Keep that observation on
+        # POSIX too, while inode, size, mode, links and mtime remain real. This
+        # makes the regression exercise the Windows failure on every runner.
+        actual_state = export_file._file_state
+        monkeypatch.setattr(export_file, '_file_state',
+                            lambda info: actual_state(info)[:-1] + (original.st_ctime_ns,))
+    approval = export_file.capture_export_destination(
+        target, private_root=target.parent / 'private')
+    newer = b'Independently saved data!'
+    assert len(newer) == original.st_size
+
+    def modify():
+        target.write_bytes(newer)
+        os.utime(target, ns=(original.st_atime_ns, original.st_mtime_ns))
+        assert export_file._file_state(target.stat()) == approval.state
+
+    if when == 'queued':
+        modify()
+    else:
+        actual_sync = os.fsync
+
+        def sync_then_modify(fd):
+            actual_sync(fd)
+            modify()
+
+        monkeypatch.setattr(os, 'fsync', sync_then_modify)
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=approval)
+    assert target.read_bytes() == newer
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_existing_approval_rejects_oversized_target_without_reading(export, monkeypatch):
+    target, _, _ = export
+    previous = b'Unchanged existing export'
+    target.write_bytes(previous)
+    monkeypatch.setattr(export_file, 'MAX_APPROVAL_BYTES', len(previous) - 1)
+
+    def forbidden_open(*args, **kwargs):
+        pytest.fail('An oversized overwrite candidate was read.')
+
+    with monkeypatch.context() as reading:
+        reading.setattr(os, 'open', forbidden_open)
+        with pytest.raises(ValueError, match='size limit.*new filename'):
+            export_file.capture_export_destination(
+                target, private_root=target.parent / 'private')
+    assert target.read_bytes() == previous
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_existing_target_moved_aside_during_final_hash_is_not_replaced(export, monkeypatch):
+    target, _, publish = export
+    previous = b'Original selected content'
+    newer = b'Independent replacement'
+    target.write_bytes(previous)
+    approval = export_file.capture_export_destination(
+        target, private_root=target.parent / 'private')
+    digest = export_file._existing_digest
+    reads = 0
+    saved = target.with_name('saved-original')
+
+    def move_after_read(*args):
+        nonlocal reads
+        result = digest(*args)
+        reads += 1
+        if reads == 2:
+            target.rename(saved)
+            target.write_bytes(newer)
+        return result
+
+    monkeypatch.setattr(export_file, '_existing_digest', move_after_read)
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=approval)
+    assert saved.read_bytes() == previous
+    assert target.read_bytes() == newer
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('reason', ('cancelled', 'deadline'))
+@pytest.mark.parametrize('stage', ('approval', 'queued', 'staging'))
+def test_existing_file_hash_can_stop_between_bounded_reads(
+        export, monkeypatch, reason, stage):
+    target, _, publish = export
+    previous = b'Previous export\r\n' * 100_000
+    target.write_bytes(previous)
+    approval = export_file.capture_export_destination(
+        target, private_root=target.parent / 'private')
+    stopped = False
+    clock = 0.0
+    inspected = []
+    opened = 0
+    actual_open = os.fdopen
+
+    class ObservedFile:
+        def __init__(self, stream, interrupt):
+            self.stream, self.interrupt = stream, interrupt
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.stream.close()
+
+        def fileno(self):
+            return self.stream.fileno()
+
+        def read(self, size):
+            nonlocal stopped, clock
+            assert 0 < size <= 1024 * 1024
+            data = self.stream.read(size)
+            if self.interrupt:
+                inspected.append(len(data))
+                stopped = reason == 'cancelled'
+                clock = export_file.APPROVAL_TIMEOUT + 1
+            return data
+
+    def observed_open(fd, *args, **kwargs):
+        nonlocal opened
+        opened += 1
+        return ObservedFile(actual_open(fd, *args, **kwargs),
+                            opened == (2 if stage == 'staging' else 1))
+
+    monkeypatch.setattr(os, 'fdopen', observed_open)
+    monkeypatch.setattr(export_file, 'monotonic', lambda: clock)
+    message = 'cancelled' if reason == 'cancelled' else 'too long.*new filename'
+    with pytest.raises(TimeoutError, match=message):
+        if stage == 'approval':
+            export_file.capture_export_destination(
+                target, private_root=target.parent / 'private', cancelled=lambda: stopped)
+        else:
+            publish(approval=approval, cancelled=lambda: stopped)
+    assert inspected == [1024 * 1024]
+    assert target.read_bytes() == previous
     assert not list(target.parent.glob('.research-export-*'))
 
 

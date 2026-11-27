@@ -14,6 +14,7 @@ from tempfile import NamedTemporaryFile
 import sys
 
 from ._io import check_cancelled, digest, local_file, new_output, run_process, text_value, _sync_directory
+from .source import NarrationSource, validate_source_anchor
 
 MAX_HISTORY = 500
 MAX_PROJECT_BYTES = 32 * 1024 * 1024
@@ -83,12 +84,29 @@ def _unique(pairs):
 
 class ReadingDocument:
     """An editable reading copy with persistent undo/redo, outside evidence APIs."""
-    def __init__(self, source_text, *, title='Reading copy', source_path=None):
+    def __init__(self, source_text, *, title='Reading copy', source_path=None, source_anchor=None):
         self._source = text_value(source_text, 'source text', empty=True)
         self.title = text_value(title, 'reading-copy title', maximum=512)
         self._source_hash = sha256(self._source.encode('utf-8')).hexdigest()
         self._source_path = Path(source_path).absolute() if source_path is not None else None
-        self._states = [((MappedRun(self._source, 0, len(self._source), True),) if self._source else ())]
+        anchor = validate_source_anchor(self._source, source_anchor) if source_anchor is not None else None
+        # An immutable serialized snapshot prevents caller mutations from
+        # changing provenance after its hashes and offsets were checked.
+        self._source_anchor = json.dumps(anchor, sort_keys=True, ensure_ascii=False) if anchor else None
+        initial = []
+        if anchor is None:
+            if self._source:
+                initial.append(MappedRun(self._source, 0, len(self._source), True))
+        else:
+            offset = 0
+            for position in anchor['positions']:
+                start, end = position['start'], position['end']
+                if start > offset:
+                    initial.append(MappedRun(self._source[offset:start], None, None, False))
+                if end > start:
+                    initial.append(MappedRun(self._source[start:end], start, end, True))
+                offset = end
+        self._states = [tuple(initial)]
         self._edits = []
         self._position = 0
         self._saved_path = None
@@ -102,6 +120,23 @@ class ReadingDocument:
     @property
     def source_sha256(self):
         return self._source_hash
+
+    @property
+    def source_anchor(self):
+        """Retained lineage only; this object never grants source authorization."""
+        return json.loads(self._source_anchor) if self._source_anchor is not None else None
+
+    @classmethod
+    def from_narration_source(cls, source):
+        if not isinstance(source, NarrationSource):
+            raise ValueError('A library narration source is required.')
+        return cls(source.text, title=source.title, source_anchor=source.anchor())
+
+    def matches_source(self, source):
+        """Compare exact lineage after the caller's fresh authorized source read."""
+        if not isinstance(source, NarrationSource):
+            raise ValueError('A library narration source is required.')
+        return self.source_text == source.text and self.source_anchor == source.anchor()
 
     @property
     def text(self):
@@ -124,7 +159,8 @@ class ReadingDocument:
         return self._signature() != self._saved_signature
 
     def _signature(self):
-        return self.title, self._position, tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits)
+        return (self.title, self._source_hash, self._source_anchor, self._position,
+                tuple((e['start'], e['end'], e['replacement'], e['label']) for e in self._edits))
 
     def _range(self, start, end):
         if type(start) is not int or type(end) is not int or not 0 <= start <= end <= len(self.text):
@@ -239,9 +275,12 @@ class ReadingDocument:
         return self.set_text(clone.text, label='Pronunciation reading layer')
 
     def to_dict(self):
-        return {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
-                'source_sha256': self._source_hash, 'edits': [dict(edit) for edit in self._edits],
-                'revision': self._position}
+        value = {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
+                 'source_sha256': self._source_hash, 'edits': [dict(edit) for edit in self._edits],
+                 'revision': self._position}
+        if self._source_anchor is not None:
+            value.update(schema='carr.reading-copy.v2', source_anchor=self.source_anchor)
+        return value
 
     def save(self, path, *, cancelled=lambda: False):
         """Create or update this very project with optimistic concurrency checks."""
@@ -295,11 +334,17 @@ class ReadingDocument:
     @classmethod
     def from_dict(cls, data):
         """Validate an exported reading object without approving its source."""
-        if not isinstance(data, dict) or set(data) != {'schema', 'title', 'source_text', 'source_sha256', 'edits', 'revision'}:
+        if not isinstance(data, dict):
             raise ValueError('Invalid reading-project fields.')
-        if data['schema'] != 'carr.reading-copy.v1':
+        fields = {'schema', 'title', 'source_text', 'source_sha256', 'edits', 'revision'}
+        schema = data.get('schema')
+        if schema == 'carr.reading-copy.v2':
+            fields.add('source_anchor')
+        elif schema != 'carr.reading-copy.v1':
             raise ValueError('Unsupported reading-project version.')
-        document = cls(data['source_text'], title=data['title'])
+        if set(data) != fields or (schema == 'carr.reading-copy.v2' and data['source_anchor'] is None):
+            raise ValueError('Invalid reading-project fields.')
+        document = cls(data['source_text'], title=data['title'], source_anchor=data.get('source_anchor'))
         if document.source_sha256 != data['source_sha256']:
             raise ValueError('Reading-project original-source checksum mismatch.')
         if not isinstance(data['edits'], list) or len(data['edits']) > MAX_HISTORY:

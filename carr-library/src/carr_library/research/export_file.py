@@ -6,11 +6,19 @@ temporary file is written; they are not a sandbox against a process that can
 maliciously replace directory entries at the instant of publication.
 """
 from dataclasses import dataclass
+from hashlib import sha256
 import logging
 from pathlib import Path, PureWindowsPath
 import os
 import stat
 from tempfile import NamedTemporaryFile
+from time import monotonic
+
+
+# Approval is captured before the native replacement question, so inspection
+# must have a finite byte budget and check cancellation/time between reads.
+MAX_APPROVAL_BYTES = 64 * 1024 * 1024
+APPROVAL_TIMEOUT = 2.0
 
 
 @dataclass(frozen=True)
@@ -105,6 +113,7 @@ class ExportDestination:
     target: Path
     parent_identity: tuple
     state: tuple | None
+    content_sha256: str | None = None
 
     @property
     def require_absent(self):
@@ -121,16 +130,58 @@ def _export_paths(path, private_root):
     return requested, Path(private_root).absolute()
 
 
-def capture_export_destination(path, *, private_root):
+def _existing_digest(target, state, cancelled):
+    if state is None:
+        return None
+    if state[3] > MAX_APPROVAL_BYTES:
+        raise ValueError('The existing export exceeds the overwrite-check size limit. Choose a new filename.')
+    deadline = monotonic() + APPROVAL_TIMEOUT
+    digest, size = sha256(), 0
+
+    def check_read():
+        if cancelled():
+            raise TimeoutError('Export cancelled; the destination was not changed.')
+        if monotonic() >= deadline:
+            raise TimeoutError('Checking the existing export took too long. Choose a new filename.')
+
+    check_read()
+    flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    with os.fdopen(os.open(target, flags), 'rb') as stream:
+        if _file_state(os.fstat(stream.fileno())) != state:
+            raise ValueError('The export destination changed. Choose the destination again.')
+        while True:
+            check_read()
+            block = stream.read(min(1024 * 1024, MAX_APPROVAL_BYTES + 1 - size))
+            check_read()
+            if not block:
+                break
+            size += len(block)
+            if size > state[3]:
+                raise ValueError('The export destination changed. Choose the destination again.')
+            digest.update(block)
+        if size != state[3] or _file_state(os.fstat(stream.fileno())) != state:
+            raise ValueError('The export destination changed. Choose the destination again.')
+    return digest.hexdigest()
+
+
+def capture_export_destination(path, *, private_root, cancelled=lambda: False):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
     binds approval to the selected path, parent directory and existing file
-    state across queued work and rendering; it grants no permission itself.
+    state and bytes across queued work and rendering; it grants no permission
+    itself. Large or slow existing files require choosing a new filename.
     """
+    if not callable(cancelled):
+        raise ValueError('An export cancellation callback is required.')
+    if cancelled():
+        raise TimeoutError('Export cancelled; the destination was not changed.')
     requested, private = _export_paths(path, private_root)
     target, parent_identity, state = _destination(requested, private)
-    return ExportDestination(requested, private, target, parent_identity, state)
+    content_sha256 = _existing_digest(target, state, cancelled)
+    if state is not None and _destination(requested, private) != (target, parent_identity, state):
+        raise ValueError('The export destination changed. Choose the destination again.')
+    return ExportDestination(requested, private, target, parent_identity, state, content_sha256)
 
 
 def write_export(path, content, *, private_root, cancelled=lambda: False,
@@ -141,7 +192,7 @@ def write_export(path, content, *, private_root, cancelled=lambda: False,
     Library paths, linked ancestors/targets and hard-linked files are rejected.
     Failure or cancellation before publication preserves an existing target
     and removes the temporary file. An optional captured approval also rejects
-    changes since the caller selected and confirmed the destination. A captured
+    changes since the caller selected and confirmed the destination. An
     absent destination always uses atomic no-clobber publication. Once atomic
     replacement completes, the save is complete. CR, LF and CRLF remain unchanged.
     """
@@ -176,14 +227,16 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             raise TimeoutError('Export cancelled; the destination was not changed.')
 
     check_cancelled()
-    requested, private = _export_paths(path, private_root)
-    target, parent_identity, previous = _destination(requested, private)
+    initial = capture_export_destination(path, private_root=private_root, cancelled=cancelled)
+    requested, private, target = initial.requested, initial.private_root, initial.target
+    parent_identity, previous = initial.parent_identity, initial.state
+    # Reuse PR111's policy for legacy callers too: approval cannot cover a file
+    # that did not exist at this snapshot. Publication must never replace one.
+    require_absent = require_absent or previous is None
     if approval is not None:
         if type(approval) is not ExportDestination:
             raise ValueError('A captured export destination approval is required.')
-        if (approval.requested != requested or approval.private_root != private
-                or approval.target != target or approval.parent_identity != parent_identity
-                or approval.state != previous):
+        if approval != initial:
             raise ValueError('The export destination changed. Choose the destination again.')
         require_absent = require_absent or approval.require_absent
     if require_absent and previous is not None:
@@ -203,6 +256,10 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         checked_target, checked_parent, current = _destination(requested, private)
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        if _existing_digest(checked_target, current, cancelled) != initial.content_sha256:
+            raise ValueError('The export destination changed. Choose the destination again.')
+        if previous is not None and _destination(requested, private) != (target, parent_identity, previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
         if require_absent and os.name == 'nt':
