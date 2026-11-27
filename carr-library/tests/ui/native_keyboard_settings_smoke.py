@@ -207,7 +207,7 @@ def run_native(source=None, timeout=120):
                         except BaseException as exc:
                             errors.append(exc)
                         finally:
-                            if settings.dialog.IsModal():
+                            if settings.dialog.IsModal() and settings.dialog.IsShown():
                                 settings.dialog.EndModal(wx.ID_CANCEL)
 
                     wx.CallAfter(edit)
@@ -296,7 +296,7 @@ def run_native(source=None, timeout=120):
                     except BaseException as exc:
                         launcher_errors.append(exc)
                     finally:
-                        if dialog is not None and dialog.IsModal():
+                        if dialog is not None and dialog.IsModal() and dialog.IsShown():
                             dialog.EndModal(wx.ID_CANCEL)
 
                 wx.CallAfter(choose_command)

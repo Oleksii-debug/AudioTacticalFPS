@@ -48,7 +48,7 @@ def limit(name):
         if re.fullmatch(r'receipts/[a-f0-9]{64}\.result\.json', rest):
             return JSON_LIMIT
         if re.fullmatch(r'edits/[a-f0-9]{32}\.json', rest):
-            return MAX_TEXT_BYTES + 4096
+            return JSON_LIMIT
         if rest.startswith('results/') and rest.endswith(('.txt', '.srt', '.vtt', '.json')):
             return 512 * 1024**2
     raise ValueError('Unknown transcription state file; backup was not completed: ' + name)
@@ -84,11 +84,12 @@ def _validate_snapshot(db, root, entries, *, cancelled=lambda: False):
         value = read_json(root / engine)
         required = {'version', 'python', 'worker', 'models_dir', 'python_sha256',
                     'worker_sha256', 'network', 'inference_qualified'}
-        if (not isinstance(value, dict) or set(value) != required or value['version'] != 1
+        if (not isinstance(value, dict) or set(value) != required
+                or type(value['version']) is not int or value['version'] != 1
                 or value['inference_qualified'] is not False
                 or any(not isinstance(value[key], str) or not value[key] or '\0' in value[key]
                        for key in ('python', 'worker', 'models_dir', 'network'))
-                or any(not re.fullmatch('[a-f0-9]{64}', value[key])
+                or any(not isinstance(value[key], str) or not re.fullmatch('[a-f0-9]{64}', value[key])
                        for key in ('python_sha256', 'worker_sha256'))):
             raise ValueError('Invalid passive transcription engine configuration.')
     roots = {name[:-len('job.json')] for name in names if name.endswith('/job.json')}

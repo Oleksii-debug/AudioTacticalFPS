@@ -163,3 +163,28 @@ def test_rechecking_completed_job_respects_cancel_without_rewriting_results(prep
         service.run(identity, cancelled=stop.is_set)
     assert service.get(identity)['status'] == 'completed'
     assert service.get(identity)['artifacts'] == completed_job['artifacts']
+
+
+def test_escaped_edit_roundtrip_uses_serialized_json_limit(prepared, tmp_path):
+    app, workspace, service, _, _ = prepared
+    identity, job = _fixture.completed(prepared)
+    text = '\\' * (9 * 1024**2)
+    revision = service.save_edit(identity, job['sources'][0]['filename'], text)
+    path = service._path(identity) / 'edits' / (revision + '.json')
+    assert len(text.encode('utf-8')) < 16 * 1024**2
+    assert 16 * 1024**2 < path.stat().st_size < 32 * 1024**2
+    digest = app.backup(tmp_path / 'backup')
+    recovered = LibraryApp(restore_backup(tmp_path / 'backup', tmp_path / 'restored', digest)).transcription(workspace)
+    assert recovered.edits(identity)[0]['text'] == text
+    assert recovered.verify(identity)['status'] == 'completed'
+
+
+@pytest.mark.parametrize('value', [None, 17, {}], ids=['null', 'number', 'object'])
+def test_malformed_engine_checksum_is_a_typed_backup_error(prepared, tmp_path, value):
+    app, _, service, _, _ = prepared
+    configuration = service.configuration()
+    configuration['worker_sha256'] = value
+    atomic_json(service.root / 'engine.json', configuration, replace=True)
+    with pytest.raises(ValueError, match='engine configuration'):
+        app.backup(tmp_path / 'rejected')
+    assert not (tmp_path / 'rejected').exists()

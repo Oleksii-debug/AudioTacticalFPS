@@ -365,7 +365,10 @@ def test_cli_and_application_share_one_durable_job_service(prepared, tmp_path):
     completed_job = subprocess.run(prefix + ['-m', 'carr_library', 'transcribe',
         '--data-dir', str(app.root), '--workspace', workspace, 'run', identity, '--timeout', '30'],
         cwd=tmp_path, env=env, capture_output=True, text=True, encoding='utf-8')
-    assert completed_job.returncode == 0, completed_job.stderr
+    assert completed_job.returncode == 0, {
+        'stdout': completed_job.stdout, 'stderr': completed_job.stderr,
+        'saved_job': service.get(identity),
+    }
     assert service.verify(identity)['status'] == 'completed'
 
 
@@ -449,7 +452,7 @@ def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(
             raise RuntimeError('Synthetic detached stop observer')
 
     result = service.run(identity, timeout=10, cancelled=cancelled, progress=broken)
-    assert notices
+    assert notices, result
     assert result == service.get(identity) and result['status'] == 'stopped'
     assert result['done'] == 0 and result['artifacts'] == []
     assert len(list((path / 'receipts').glob('*.result.json'))) == 1

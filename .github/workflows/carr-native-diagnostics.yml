@@ -131,6 +131,15 @@ jobs:
           & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_transcription_smoke.py 2>&1 | Tee-Object 'ci-results/native-transcription.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Verify supplied transcription source workflows on Windows
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -m pytest -q -o addopts= -o xfail_strict=true --junitxml=ci-results/transcription-source.xml tests/transcription/test_supplied_worker_bridge.py tests/transcription/test_pr99_host.py 2>&1 | Tee-Object 'ci-results/transcription-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/transcription-source.xml').iter('testcase')); assert len(cases)==55; assert all(all(c.find(t) is None for t in ('failure','error','skipped')) for c in cases); print(json.dumps(dict(status='PASS',passed=len(cases),failed=0,skipped=0,acoustic_inference='NOT_RUN')))"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Preserve exact-commit runtime and test evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
