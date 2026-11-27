@@ -29,7 +29,7 @@ def test_legacy_absolute_application_binding_migrates_without_opening_old_root(t
     atomic_json(broker.root / '.policy-location.json', {
         'schema': 'carr-resource-policy-location/1',
         'path': str(tmp_path / 'unavailable-original/state/operations/resources.json'),
-    })
+    }, replace=True)
     migrated = ResourceBroker.for_app(root)
     assert migrated.policy_path == broker.policy_path
     assert json.loads((broker.root / '.policy-location.json').read_bytes()) == {
@@ -57,7 +57,7 @@ def test_application_migration_never_adopts_an_arbitrary_policy_binding(tmp_path
     root.mkdir()
     broker = ResourceBroker.for_app(root)
     previous = {'schema': 'carr-resource-policy-location/1', 'path': old_path}
-    atomic_json(broker.root / '.policy-location.json', previous)
+    atomic_json(broker.root / '.policy-location.json', previous, replace=True)
     with pytest.raises(ResourceConflict):
         ResourceBroker.for_app(root)
     assert json.loads((broker.root / '.policy-location.json').read_bytes()) == previous

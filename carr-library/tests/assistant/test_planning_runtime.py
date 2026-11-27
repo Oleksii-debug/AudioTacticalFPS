@@ -10,6 +10,8 @@ from carr_library.audio.engines import Voice, VoiceRegistry
 
 def test_assistant_discovers_the_current_registered_engine_path_lazily(tmp_path, monkeypatch):
     from carr_library import runtime_settings
+    from carr_library.assistant import production as bridge
+    monkeypatch.setattr(bridge, 'resolve_ffmpeg', lambda selected: None)
     app = LibraryApp(tmp_path / 'library')
     calls = []
     voice = Voice('fixture:voice', 'Synthetic voice', ('uk',), 'fixture')
@@ -115,3 +117,78 @@ def test_only_default_renderer_uses_shared_resource_and_music_admission(tmp_path
     assert result['operation_id'] == identity and len(result['artifacts']) == 1
     assert admissions == ([cancelled] if default else [])
     assert resolutions == ([('profiles/' + 'a' * 32 + '.json', 'fluidsynth', cancelled)] if default else [])
+
+
+
+def test_assistant_resolves_sealed_bundle_runtime_lazily_for_voice_and_render(tmp_path, monkeypatch):
+    from hashlib import sha256
+    from types import SimpleNamespace
+    from uuid import uuid4
+    from carr_library import runtime_settings
+    from carr_library.assistant import production as bridge
+
+    app = LibraryApp(tmp_path / 'library')
+    output = tmp_path / 'outputs'
+    output.mkdir()
+    binary = tmp_path / 'admitted-audio-runtime' / 'ffmpeg.exe'
+    binary.parent.mkdir()
+    binary.write_bytes(b'Explicit synthetic local runtime; never executed.')
+    calls = []
+    registry = SimpleNamespace(voices=lambda: ())
+    def resolve(selected):
+        assert selected is None
+        calls.append('resolve current runtime')
+        return binary
+    def configured(root, *, ffmpeg):
+        assert root == app.root and ffmpeg == binary
+        calls.append('configure voices with admitted runtime')
+        return registry
+    def render(plan, folder, *, engine, ffmpeg, cancelled, on_status):
+        assert engine is registry and ffmpeg == binary
+        assert not cancelled()
+        calls.append('render with admitted runtime')
+        folder.mkdir()
+        master = folder / 'master.wav'
+        content = b'Synthetic artifact inventory only; no model or native claim.'
+        master.write_bytes(content)
+        return {'status': 'complete', 'output': str(master),
+                'files': [{'name': master.name, 'size': len(content),
+                           'sha256': sha256(content).hexdigest()}]}
+    monkeypatch.setattr(bridge, 'resolve_ffmpeg', resolve)
+    monkeypatch.setattr(runtime_settings, 'configured_voice_registry', configured)
+    producer = LocalProduction(app.root, renderer=render)
+    assert calls == [], 'Constructing a UI service must not hash a bundled runtime.'
+    assert producer.voices() == ()
+    assert producer.voices() == ()
+    result = producer({'operation_id': uuid4().hex, '_artifact_budget_bytes': 2 * 1024**2,
+                       'text': 'Original literal text', 'language': 'en'},
+                      output, lambda: False, lambda _: None)
+    assert len(result['artifacts']) == 1
+    assert calls == ['resolve current runtime', 'configure voices with admitted runtime',
+                     'resolve current runtime', 'render with admitted runtime']
+
+
+@pytest.mark.parametrize('mode', ['missing', 'invalid-explicit'])
+def test_unadmitted_runtime_fails_before_renderer_or_output_publication(tmp_path, monkeypatch, mode):
+    from types import SimpleNamespace
+    from uuid import uuid4
+    from carr_library.assistant import production as bridge
+
+    app = LibraryApp(tmp_path / 'library')
+    output = tmp_path / 'outputs'
+    output.mkdir()
+    selected = tmp_path / 'selected-ffmpeg' if mode == 'invalid-explicit' else None
+    def resolve(value):
+        assert value == selected
+        if mode == 'invalid-explicit':
+            raise ValueError('Selected runtime failed its existing admission.')
+        return None
+    monkeypatch.setattr(bridge, 'resolve_ffmpeg', resolve)
+    producer = LocalProduction(app.root, registry=SimpleNamespace(voices=lambda: ()),
+        ffmpeg=selected, renderer=lambda *a, **k: pytest.fail('Unadmitted runtime reached rendering.'))
+    match = 'existing admission' if mode == 'invalid-explicit' else 'reviewed local FFmpeg'
+    with pytest.raises(ValueError, match=match):
+        producer({'operation_id': uuid4().hex, '_artifact_budget_bytes': 2 * 1024**2,
+                  'text': 'Original literal text', 'language': 'en'},
+                 output, lambda: False, lambda _: None)
+    assert list(output.iterdir()) == []
