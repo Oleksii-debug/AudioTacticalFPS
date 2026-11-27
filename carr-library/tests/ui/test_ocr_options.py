@@ -1,32 +1,43 @@
-"""Import entrypoint delegates to the shared installed/managed model selector."""
-from unittest.mock import Mock
+"""Import language intent and screen-readable completion text (no GUI verdict)."""
+import sys
+from types import SimpleNamespace
 
 import pytest
 
-from carr_library.extract.page_ocr import Config
 from carr_library.ui.ocr_options import choose_ocr_config
+from carr_library.ui import ocr_language_dialog
+from carr_library.extract.page_ocr import Config
 
 
-@pytest.mark.parametrize('profile,languages', [
-    ('installed', 'eng'), ('installed', 'ukr+slk'),
-    ('fast', 'eng+script/Latin'), ('best', 'script/Cyrillic'),
-])
-def test_import_uses_selected_exact_profile_and_model_order(monkeypatch, profile, languages):
-    result = Config(languages=languages, model_profile=profile)
-    chooser = Mock(return_value=result)
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', chooser)
-    parent = object()
-    assert choose_ocr_config(parent, ['book.PDF']) is result
-    chooser.assert_called_once_with(parent)
+@pytest.mark.parametrize('expected', ['eng', 'ukr', 'slk', 'eng+ukr+slk', 'script/Latin+fra'])
+@pytest.mark.parametrize('profile', ['installed', 'fast', 'best'])
+def test_dialog_adapter_preserves_complete_model_selection(monkeypatch, expected, profile):
+    observed = {}
+    class Dialog:
+        result = Config(languages=expected, dpi=200, timeout=45, orientation=True, model_profile=profile)
+        def ShowModal(self):
+            return 1
+        def Destroy(self):
+            observed['destroyed'] = True
+    def create(parent, initial, *, preset_root):
+        observed.update(parent=parent, initial=initial, root=preset_root)
+        return Dialog()
+    monkeypatch.setattr(ocr_language_dialog, 'create_ocr_dialog', create)
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_OK=1))
+    result = choose_ocr_config(None, ['book.PDF'])
+    assert result == Dialog.result
+    assert observed['destroyed'] and observed['initial'] is None
 
 
-def test_cancel_prevents_import(monkeypatch):
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', lambda parent: None)
+def test_cancel_prevents_import_and_closes_dialog(monkeypatch):
+    observed = []
+    dialog = SimpleNamespace(ShowModal=lambda: 0, result=Config(), Destroy=lambda: observed.append('closed'))
+    monkeypatch.setattr(ocr_language_dialog, 'create_ocr_dialog', lambda *args, **kwargs: dialog)
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(ID_OK=1))
     assert choose_ocr_config(None, ['scan.pdf']) is None
+    assert observed == ['closed']
 
 
 def test_text_import_needs_no_window(monkeypatch):
-    chooser = Mock(side_effect=AssertionError('Text-only imports must not open OCR settings'))
-    monkeypatch.setattr('carr_library.ui.ocr_selection.choose_model_config', chooser)
-    assert choose_ocr_config(None, ['source.txt', 'report.docx', 'book.epub']) == Config()
-    chooser.assert_not_called()
+    monkeypatch.setitem(sys.modules, 'wx', None)
+    assert choose_ocr_config(None, ['source.txt', 'report.docx']).languages == 'eng'

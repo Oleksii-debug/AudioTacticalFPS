@@ -93,6 +93,7 @@ def test_exact_historical_commit_verified_independently_of_checkout_head(source,
     evidence = verifier.verify_application_wheel(candidate, repo, first)
 
     assert evidence['source_commit'] == first
+    assert evidence['source_tree'] == git(repo, 'rev-parse', first + '^{tree}')
     assert evidence['wheel_sha256'] == sha256(candidate.read_bytes()).hexdigest()
     assert evidence['required_runtime_files'] == 2
     assert evidence['payload_files'] == 3
@@ -196,3 +197,55 @@ def test_metadata_identity_and_entry_points_are_bound_to_committed_project(sourc
     payload['fixture_application-1.0.dist-info/entry_points.txt'] = b'[console_scripts]\nfixture-app = wrong:main\n'
     with pytest.raises(ValueError, match='entry points'):
         verifier.verify_application_wheel(wheel(tmp_path, payload), repo, first)
+
+
+def application_source(source, *, declare_audio):
+    """Commit a new product subpackage, including source needed only at runtime."""
+    repo, first, _, payload = source
+    git(repo, 'checkout', '--detach', first)
+    project = repo / 'carr-library'
+    recipe = project / 'pyproject.toml'
+    packages = ['fixture_app', 'carr_library']
+    if declare_audio:
+        packages.append('carr_library.audio')
+    recipe.write_text(recipe.read_text().replace(
+        'packages = ["fixture_app"]',
+        'packages = [' + ', '.join('"' + name + '"' for name in packages) + ']'))
+    additions = {
+        'carr_library/__init__.py': b'"""Synthetic product package."""\n',
+        'carr_library/audio/__init__.py': b'"""Synthetic audio package."""\n',
+        'carr_library/audio/render.py': b'def render():\n    return "local PCM"\n',
+        'carr_library/audio/queue.sql': b'CREATE TABLE render_jobs (id TEXT PRIMARY KEY);\n',
+    }
+    for name, contents in additions.items():
+        path = project / 'src' / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(contents)
+        if declare_audio or name == 'carr_library/__init__.py':
+            payload[name] = contents
+    # Compatibility probes are deliberately outside the application package.
+    probe = project / 'bootstrap/compatibility/probe.py'
+    probe.parent.mkdir(parents=True)
+    probe.write_text('raise RuntimeError("build-time probe, not application code")\n')
+    git(repo, 'add', '.')
+    git(repo, 'commit', '-qm', 'Add a product audio package and a build-time probe')
+    return repo, git(repo, 'rev-parse', 'HEAD'), payload
+
+
+def test_committed_application_subpackage_cannot_be_hidden_by_package_recipe(source, tmp_path):
+    repo, commit, payload = application_source(source, declare_audio=False)
+    candidate = wheel(tmp_path, payload)
+    with pytest.raises(ValueError, match='outside the declared package inventory') as error:
+        verifier.verify_application_wheel(candidate, repo, commit)
+    for name in ('__init__.py', 'render.py', 'queue.sql'):
+        assert 'src/carr_library/audio/' + name in str(error.value)
+
+
+def test_declared_application_subpackage_roundtrip_preserves_probe_exclusion(source, tmp_path):
+    repo, commit, payload = application_source(source, declare_audio=True)
+    candidate = wheel(tmp_path, payload)
+    evidence = verifier.verify_application_wheel(candidate, repo, commit)
+    assert evidence['source_commit'] == commit
+    assert evidence['required_runtime_files'] == 6
+    assert evidence['payload_files'] == 7
+    assert 'bootstrap/compatibility/probe.py' not in payload

@@ -11,6 +11,31 @@ The prepared Windows bundle is for your private installation. Its Microsoft
 runtime terms are included; publishing or redistributing that binary package
 requires the applicable Microsoft redistribution grant.
 
+## Integrated local workflows
+
+The same native application includes editable source-preserving narration copies,
+Audio Studio (Ctrl+Alt+A), and a guided local assistant (Ctrl+Alt+J). Audio uses
+installed SAPI voices and the sealed FFmpeg runtime, with typed multivoice plans,
+DSP, procedural music, chapters, subtitles, stems, verified resume and separate
+project snapshots. Optional neural voice/music engines require explicitly installed
+local assets; the package does not imply that these models or every language are
+available. Literal book narration and explicit production scripts are separate
+modes. No document supplies executable instructions to the assistant.
+
+The Academic Library offers reviewed BibTeX/RIS/CSL import, seven pinned citation
+styles and TXT/HTML/DOCX bibliography output. DOI metadata and provider-reported
+open-access PDF acquisition require explicit network permission for each task.
+The document importer also accepts bounded static HTML, Markdown, EML, FB2/FB3,
+OpenDocument and modern Office files; Help > Document formats explains fidelity
+limits. Quotation approval and original document identity remain separate from
+all bibliography, OCR, narration and assistant output.
+
+The main File and Options menus provide saved reading copies, recoverable research
+notes, configurable contextual commands and a command palette. Complete library
+backups include supported reader, draft, OCR, keyboard and assistant state. External
+Audio Studio projects have their own complete snapshot/restore workflow. Optional
+API profiles use the Windows credential vault and explicit per-task data/cost review.
+
 ## Windows offline package
 
 The Windows x64 package targets CPython 3.11. The complete package includes its
@@ -167,7 +192,7 @@ already imported book. **Open linked document** opens a checked viewing copy;
 changes in an external viewer do not modify the retained original. Standalone
 references do not fabricate document text or allow source quotation.
 
-Import RIS or CSL JSON files through a preview. Select the records to keep;
+Import RIS, BibTeX or CSL JSON files through a preview. Select the records to keep;
 possible duplicates and unsupported fields are reported before import. Selected
 records are saved in one transaction. DOI and ISBN comparisons and conservative
 title/author/year matches identify possible duplicates for review. Records are
@@ -176,9 +201,17 @@ never automatically merged or deleted. Archive and restore retain their IDs.
 Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
 CSV or text. Bibliographic exports omit personal notes by default. Include notes
 only when you deliberately choose that option. The plain bibliography is a
-readable reference list, not a certified APA, MLA or Chicago citation style.
-BibTeX import and online DOI lookup are not part of this version. Entering a DOI
-or URL does not send a network request or download an attachment.
+readable reference list. The separate **Citation styles** action uses a real,
+pinned, offline CSL processor for APA 7, Chicago author-date or notes,
+MLA, Harvard, Vancouver/NLM and IEEE. It previews citations and bibliography
+entries and exports text, formatted HTML or an editable Word document. Author
+names stay literal by default; choose the explicit **Family, Given, optional
+Suffix** convention to format personal initials and inverted names. Braced
+organisation names remain literal. Formatting does not approve source text or
+convert a publication's page range into a verified quotation pinpoint.
+See [citation styles and BibTeX import](V3_BIBLIOGRAPHY.md) for the keyboard and
+headless workflows, supported metadata and current acceptance evidence.
+Entering a DOI or URL alone does not send a network request or download an attachment.
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.
@@ -186,6 +219,38 @@ Install an update into a new program folder, with a backup of your library saved
 first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
+
+## Full-library backup and reading recovery
+
+Choose **Library, Back up all libraries** to save all libraries, including archived ones,
+their registered originals, immutable source revisions, research evidence,
+notes, topics, tags, saved queries and academic references. Backup format 4 also
+includes page bookmarks, resume positions, saved reading copies and recovery
+drafts, OCR presets, keyboard preferences, and validated assistant checkpoints.
+The manifest records the exact included state, including an empty inventory.
+
+The database and supported state are captured under the same library writer lock.
+Each included file is bound by size and SHA256, and saved reading places are
+checked against the copied edition, revision, page or segment and source hashes.
+Corrupt, mismatched or linked reading state causes the operation to stop without
+silently leaving bookmarks out. The reader still checks the current source when
+opening a restored place; an old revision is reported as stale instead of being
+redirected to a newer one.
+
+Keep the returned manifest SHA256 separately from the backup folder. Use
+**Library, Restore backup to a new folder** to validate the complete supported
+backup and create a new data directory; it
+does not overwrite or merge an existing library. Formats 1 and 2 and the three
+documented version-3 layouts remain compatible. Older backups contain only the
+state included by their original format; separately exported bookmarks can be
+imported after restoring the matching library.
+
+The complete inventory and resource budgets are documented in
+[checked library backups](COMPLETE_BACKUP.md). External Audio Studio projects,
+their generated files and cache use **Audio Studio, Back up audio project** and
+**Restore audio snapshot**. API credentials, installed model packs and pending
+import journals are separate. Restored assistant jobs require review of their
+unfinished steps with current folder permissions before a new plan can run.
 
 ## Review the source catalog
 
@@ -218,6 +283,33 @@ See [catalog insights](ACADEMIC_CATALOG_INSIGHTS.md) for report limits and
 interchange details.
 
 ## Research from the keyboard
+
+### Save work and prepare a reading copy
+
+**File, Save current changes**, or **Ctrl+S**, saves a pending research note.
+**Ctrl+Shift+S** saves all main-window changes. Dialogs keep their own contextual
+Save commands. The application reports an unsuccessful save and retains the
+draft instead of reporting completion.
+
+**File, New reading copy** opens an editable text project. Use **Import text as
+a reading copy** for a UTF-8 text file or **Open saved reading copy** to continue
+saved work. In the full-source reader, **Create editable reading copy** starts
+a separate project from the displayed page or segment. Its original text,
+source identity and revision are preserved. Normalization and pronunciation
+replacements require preview and explicit application; edited reading text is
+never approved as a quotation. See [reading copies](READING_COPIES.md).
+
+**Options, Keyboard shortcuts** changes Main window or Reading Desk assignments
+and checks conflicts within the chosen context. **F1** shows the current
+assignments; **Ctrl+Shift+P** finds available commands by name. Preferences can
+be reset, exported and imported from the settings dialog. The shortcuts below
+are defaults. See [keyboard settings](KEYBOARD_SETTINGS.md).
+
+Complete backups now include page bookmarks, resume positions, saved reading
+projects and recovery drafts, OCR language presets and keyboard settings when
+present. The manifest checks each file and its source bindings before restore.
+See [complete backup](COMPLETE_BACKUP.md) for the exact included state and the
+remaining exclusions.
 
 ### Search several libraries and manage saved criteria
 
@@ -271,6 +363,14 @@ use the same checked Save workflow as topic exports.
 
 ### Search and source actions
 
+**Ctrl+Alt+Q** opens the advanced query builder. Its All, Any, Exclude and
+Nearby fields accept one literal word or phrase per line. Build the expression,
+choose Use query, then press Enter in Search. The explicit Advanced search mode
+supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
+through NEAR/100 within one page or text segment. Existing search modes keep
+their original meanings. See `docs/ACADEMIC_SEARCH.md` in the source repository
+for syntax, examples, scope and limits.
+
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently
 chooses **Short quotations**, usually a source sentence around the match, or
@@ -298,6 +398,26 @@ The **Source** menu opens an optional independent PDF page review and can revoke
 an existing review. Reading the extraction or opening the original never grants
 approval. The reviewer must compare the full extracted page with the original;
 Cancel leaves it unchanged. Printed page numbers require separate verification.
+
+## Academic research tools
+
+Press **Alt+A** to open the **Academic** menu. In an open research topic,
+**Ctrl+Alt+M** compares saved source versions, themes, exact quotations and
+research notes. Include subtopics, filter by an exact tag, open selected evidence
+in its existing editor, or export the comparison as CSV/Markdown. **Export
+research outline with subtopics** writes the ordered topic structure as Markdown
+or plain text, keeping source quotations and your notes separately labelled.
+
+**Import bibliographic metadata from RIS** reviews a local RIS record for an
+already imported edition. Only checked title/author/language/edition/volume
+fields are applied; unchecked fields are preserved. Year, journal, DOI and other
+unsupported metadata are not imported, and no attachment or URL is opened.
+**Check catalog quality** reviews missing fields, unfiled editions and tentative
+duplicate hints in one library or collection. It does not merge records.
+
+See [the academic workflow guide](ACADEMIC_WORKFLOWS.md) for complete steps,
+limits and provenance. These commands add no runtime dependency or schema
+migration. Manual Windows/NVDA acceptance of these new workflows is **NOT_RUN**.
 
 ## Search across saved research topics
 
