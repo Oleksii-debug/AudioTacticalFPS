@@ -69,7 +69,8 @@ def _open_worker_status(path):
     kernel.GetFileInformationByHandleEx.restype = wintypes.BOOL
     kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
     kernel.CloseHandle.restype = wintypes.BOOL
-    # FILE_SHARE_READ|WRITE|DELETE lets the producer atomically replace status.
+    # Grant read/write/delete sharing; MoveFileEx writers still retry until
+    # this short-lived handle closes. Delete sharing alone is not POSIX rename.
     # OPEN_REPARSE_POINT avoids following a link swapped in after lstat.
     handle = kernel.CreateFileW(str(path), 0x80000000, 0x7, None, 3, 0x00200000, None)
     if handle in (None, ctypes.c_void_p(-1).value):
@@ -122,15 +123,19 @@ def _observe_worker_status(path):
                     continue
                 raw = stream.read(maximum + 1)
                 after_open = os.fstat(stream.fileno())
-                after = path.lstat()
-                if not ordinary(after_open) or not ordinary(after):
-                    continue
-                # Compare each stat API to itself, with stable identity binding.
-                if (len(raw) != before.st_size or len(raw) > maximum
-                        or _stamp(opened) != _stamp(after_open)
-                        or _stamp(before) != _stamp(after)
-                        or binding(after_open) != binding(after)):
-                    continue
+            # Close the bounded reader before looking up the current pathname.
+            # Windows MoveFileEx replacement may still need the old handle to
+            # close even when it grants FILE_SHARE_DELETE. Producers retry that
+            # transient sharing failure; no reader promises POSIX rename rules.
+            after = path.lstat()
+            if not ordinary(after_open) or not ordinary(after):
+                continue
+            # Compare each stat API to itself, with stable identity binding.
+            if (len(raw) != before.st_size or len(raw) > maximum
+                    or _stamp(opened) != _stamp(after_open)
+                    or _stamp(before) != _stamp(after)
+                    or binding(after_open) != binding(after)):
+                continue
             value = verified_protocol.decode(raw)
             if type(value) is not dict:
                 raise ValueError('The worker returned invalid status.')
