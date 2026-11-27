@@ -12,12 +12,12 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 46076104179,
-    "commit": "a0f5057cae5647722298df95a6e8bf2d7f055a66",
-    "id": 15235918863,
-    "bytes": 64120,
-    "sha256": "381cc8bf853a0afbeaf3f36c6158c80bdaa971b119cebd652ea1d24723910cff",
-    "kind": "standard-native-classification-old-expectation-failure"
+    "run": 46076912528,
+    "commit": "5d09d9a8677d15587d9965a9f25ce40184e55f34",
+    "id": 15236443298,
+    "bytes": 1852924,
+    "sha256": "11c8caa3f214b35d33eb0d06f6433350187d23a574811a0b618d364dd3d6ebbf",
+    "kind": "standard-complete-native-installed-library"
   }
 ]
 
