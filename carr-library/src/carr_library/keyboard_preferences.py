@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import stat
 from uuid import uuid4
 
@@ -128,6 +129,37 @@ def validate_keymap(raw):
     return _decode(raw)
 
 
+_LEGACY_RESERVED = frozenset((
+    'Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+Z', 'Ctrl+Y',
+    'Ctrl+Shift+A', 'Ctrl+Shift+C', 'Ctrl+Shift+V', 'Ctrl+Shift+X', 'Ctrl+Shift+Z',
+    'Ctrl+F', 'Ctrl+H', 'Ctrl+W', 'F6', 'F10', 'Shift+F10', 'Alt+F4', 'Ctrl+Alt+N',
+))
+
+
+def _legacy_shortcut(value):
+    """Validate the earlier grammar without applying a current command map."""
+    if (not isinstance(value, str) or len(value) > 80
+            or any(ord(character) < 32 for character in value)):
+        raise KeymapError('The earlier shortcut must be bounded key text.')
+    value = value.strip()
+    if not value:
+        return ''
+    parts = [part.strip() for part in value.split('+')]
+    aliases = {'ctrl': 'Ctrl', 'control': 'Ctrl', 'alt': 'Alt', 'shift': 'Shift'}
+    modifiers = []
+    for part in parts[:-1]:
+        modifier = aliases.get(part.casefold())
+        if modifier is None or modifier in modifiers:
+            raise KeymapError('The earlier shortcut has invalid modifiers.')
+        modifiers.append(modifier)
+    key = parts[-1].upper()
+    if not re.fullmatch(r'[A-Z0-9]|F(?:[1-9]|1[0-9]|2[0-4])', key):
+        raise KeymapError('The earlier shortcut has an unsupported key.')
+    if len(key) == 1 and 'Ctrl' not in modifiers:
+        raise KeymapError('Earlier letter and digit shortcuts require Ctrl.')
+    return '+'.join([*(name for name in ('Ctrl', 'Alt', 'Shift') if name in modifiers), key])
+
+
 def _decode_legacy(raw):
     """Read the earlier menu-path profile without changing or granting commands."""
     if raw is None:
@@ -142,15 +174,28 @@ def _decode_legacy(raw):
             or len(value['overrides']) > MAX_COMMANDS
             or set(value['overrides']) != set(value['originals'])):
         raise KeymapError('The earlier shortcut profile has an unsupported schema.')
+    used = set()
     for action in value['overrides']:
         if (not isinstance(action, str) or not action or len(action) > 2048
                 or any(ord(character) < 32 for character in action)):
             raise KeymapError('The earlier shortcut profile has an invalid menu identity.')
-        # A legacy shortcut unavailable to this command registry is never
-        # silently substituted. The original file remains available for review.
-        for field in ('overrides', 'originals'):
-            value[field][action] = normalize_shortcut(value[field][action])
+        original = _legacy_shortcut(value['originals'][action])
+        shortcut = _legacy_shortcut(value['overrides'][action])
+        if shortcut in _LEGACY_RESERVED and shortcut != original:
+            raise KeymapError('The earlier shortcut profile reassigns a protected key.')
+        if shortcut and shortcut in used:
+            raise KeymapError('The earlier shortcut profile has duplicate explicit bindings.')
+        if shortcut:
+            used.add(shortcut)
+        value['originals'][action], value['overrides'][action] = original, shortcut
     return value
+
+
+def validate_legacy_keymap(raw):
+    """Validate passive earlier-profile bytes without resolving or granting commands."""
+    if not isinstance(raw, bytes) or len(raw) > 128 * 1024:
+        raise KeymapError('The earlier shortcut profile requires bytes within 128 KiB.')
+    return _decode_legacy(raw)
 
 
 class KeymapStore:
@@ -188,7 +233,7 @@ class KeymapStore:
         if raw is None:
             return None
         self._legacy_observed = path, _digest(raw)
-        return _decode_legacy(raw)
+        return validate_legacy_keymap(raw)
 
     def _check_legacy(self):
         if self._legacy_observed is not None:
