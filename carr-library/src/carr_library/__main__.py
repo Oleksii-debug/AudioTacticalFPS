@@ -66,11 +66,11 @@ from .installation_lease import installed_entrypoint
 
 
 @installed_entrypoint(allow_bootstrap_self_test=True)
-def main(argv=None):
+def main(argv=None, *, trust_controller=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments and arguments[0] == 'transcribe':
         from .transcription_cli import main as transcription_main
-        return transcription_main(arguments[1:])
+        return transcription_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))
     if arguments and arguments[0] == 'sync':
         from .sync.cli import main as sync_main
         return sync_main(arguments[1:])
@@ -79,7 +79,7 @@ def main(argv=None):
         return operations_main(arguments[1:])
     if arguments and arguments[0] == 'assistant':
         from .assistant.cli import main as assistant_main
-        return assistant_main(arguments[1:])
+        return assistant_main(arguments[1:], **({'trust_controller': trust_controller} if trust_controller is not None else {}))
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance — offline libraries, reading and audio')
     parser.add_argument('--version', action='version', version=__version__)
@@ -164,7 +164,7 @@ def main(argv=None):
         from .native_runtime import activate_bundled_runtime
         native_handle = activate_bundled_runtime()
         if audio_requested(args):
-            return run_audio(args)
+            return run_audio(args, **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         if ocr_operation:
             from .extract.model_catalog import models, profile_provenance
             from .extract.ocr_model_store import OcrModelStore
@@ -222,7 +222,8 @@ def main(argv=None):
                 ranker = OfflineSemanticRanker(args.model_dir, args.model_manifest)
             except (ImportError, ValueError, RuntimeError, OSError) as exc:
                 model_notice = f'Local semantic model unavailable: {exc}. Literal and thematic keyword search remain available.'
-        app = LibraryApp(args.data_dir, semantic_ranker=ranker)
+        app = LibraryApp(args.data_dir, semantic_ranker=ranker,
+                         **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         app.semantic_notice = ' '.join(filter(None, (location_notice, model_notice)))
         if args.lookup_doi is not None:
             from .acquisition.cli import run
@@ -256,7 +257,8 @@ def main(argv=None):
         from .ui.desktop_app import DesktopFrame
         from .preferences import remember_directory
         desktop = wx.App(False)
-        frame = DesktopFrame(app, remember_data_dir=remember_directory)
+        frame = DesktopFrame(app, remember_data_dir=remember_directory,
+                             **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         frame.Show()
         desktop.MainLoop()
         return 0

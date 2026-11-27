@@ -237,7 +237,8 @@ class TranscriptionDialog:
         import wx
         self.wx, self.frame = wx, frame
         self.root = Path(frame.library.root).absolute()
-        self.service = service or TranscriptionService(self.root)
+        self.service = service or TranscriptionService(self.root,
+            trust_controller=getattr(frame.library, 'trust_controller', None))
         if Path(self.service.library_root).absolute() != self.root:
             raise ValueError('Transcription must belong to the selected library.')
         self.sources, self.manifest_path, self.current_job = (), '', None

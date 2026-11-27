@@ -142,7 +142,9 @@ def selected_inputs(sources, *, cancelled=lambda: False):
 
 
 class TranscriptionService:
-    def __init__(self, library_root, *, broker=None):
+    def __init__(self, library_root, *, broker=None, trust_controller=None):
+        from .security.admission import checked_controller
+        self.trust_controller = checked_controller(trust_controller)
         self.library_root = checked_directory(library_root)
         self.root = self.library_root / DIRECTORY
         self._broker = broker
@@ -283,6 +285,8 @@ class TranscriptionService:
         if type(timeout) not in (int, float) or not 1 <= timeout <= 7 * 24 * 3600:
             raise ValueError('Choose a transcription deadline between one second and seven days.')
         job = self._job(identity)
+        from .security.admission import admit_new_operation
+        authorization = admit_new_operation(self.trust_controller, 'transcription.run')
         with project_lock(self.root), project_lock(job), ExitStack() as preparation:
             # A separately launched supplied worker does not hold our render
             # locks. Protect its controls and execution records before any

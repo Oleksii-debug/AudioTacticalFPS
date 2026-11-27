@@ -496,8 +496,15 @@ class DesktopSearchPanel(PagedSearchPanel):
 
 class DesktopFrame(WorkspaceFrame):
     def __init__(self, library, remember_data_dir=None, *, trust_controller=None):
+        from ..security.admission import checked_controller
+        trust_controller = checked_controller(trust_controller)
         self.library = library
-        self.trust_controller = trust_controller
+        configured = checked_controller(getattr(library, 'trust_controller', None))
+        if trust_controller is not None and configured is not None and trust_controller is not configured:
+            raise ValueError('The desktop and library must share their configured authority.')
+        self.trust_controller = trust_controller if trust_controller is not None else configured
+        if self.trust_controller is not None:
+            library.trust_controller = self.trust_controller
         self.remember_data_dir = remember_data_dir
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
         self.cancel_event = threading.Event()
@@ -829,7 +836,8 @@ class DesktopFrame(WorkspaceFrame):
             raise ValueError('Choose an existing research-library data folder containing library.sqlite.')
         if not self._confirm():
             return False
-        candidate = LibraryApp(path,semantic_ranker=self.library.semantic_ranker)
+        candidate = LibraryApp(path,semantic_ranker=self.library.semantic_ranker,
+            **({'trust_controller': self.trust_controller} if getattr(self, 'trust_controller', None) is not None else {}))
         if self.remember_data_dir is not None:
             self.remember_data_dir(candidate.root)
         self._drop()

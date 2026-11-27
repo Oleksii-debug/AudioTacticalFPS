@@ -25,10 +25,11 @@ def _supplied_settings_arguments(command):
         command.add_argument('--' + name.replace('_', '-'), **options)
 
 
-def _supplied_command(root, args):
+def _supplied_command(root, args, *, trust_controller=None):
     """Use the existing library-wide service without reclassifying workspace jobs."""
     from .transcription_service import TranscriptionService
-    service = TranscriptionService(root)
+    service = TranscriptionService(root,
+        **({'trust_controller': trust_controller} if trust_controller is not None else {}))
     if args.operation == 'prepare':
         settings = {name: getattr(args, name) for name in SUPPLIED_SETTINGS}
         identity = service.prepare(args.files, args.manifest, settings, title=args.title)
@@ -59,7 +60,7 @@ from .installation_lease import installed_entrypoint
 
 
 @installed_entrypoint
-def main(argv=None):
+def main(argv=None, *, trust_controller=None):
     parser = argparse.ArgumentParser(description='Supplied local Whisper transcription; no downloads')
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--workspace', help='Required for workspace profiles; omit for library-wide supplied jobs')
@@ -142,9 +143,11 @@ def main(argv=None):
         from .application import LibraryApp
         from .durable_state import local_path, regular
         from .transcription import MAX_TEXT_BYTES
-        app = LibraryApp(data_directory(args.data_dir))
+        app = LibraryApp(data_directory(args.data_dir),
+                         **({'trust_controller': trust_controller} if trust_controller is not None else {}))
         if supplied:
-            result = _supplied_command(app.root, args)
+            result = _supplied_command(app.root, args,
+                **({'trust_controller': trust_controller} if trust_controller is not None else {}))
             print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
             return 0
         service = app.transcription(args.workspace)

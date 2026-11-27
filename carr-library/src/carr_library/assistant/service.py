@@ -459,7 +459,17 @@ class AssistantService:
             def production_progress(message):
                 if progress:
                     progress(index, len(record['steps']), message)
-            result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
+            from ..security.admission import operation_context, admitted_operation
+            from .production import LocalProduction
+            authority = getattr(self.app, 'trust_controller', None)
+            with operation_context(authority):
+                if isinstance(self.production, LocalProduction) and self.production._default_renderer:
+                    # The actual renderer first verifies a completed-output
+                    # replay, then admits only a new synthesis operation.
+                    result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
+                else:
+                    with admitted_operation(authority, 'audio.render'):
+                        result = self.production(settings, local_path(scope.output_root), cancelled, production_progress)
             if not isinstance(result, dict) or not result.get('artifacts'):
                 raise RuntimeError('Audio production did not return completed audio artifacts.')
             return result

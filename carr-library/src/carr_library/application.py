@@ -154,7 +154,9 @@ class _CatalogPublisher:
 
 class LibraryApp:
     """One private data directory, persistent workspaces and fresh scoped services."""
-    def __init__(self, data_dir, *, semantic_ranker=None):
+    def __init__(self, data_dir, *, semantic_ranker=None, trust_controller=None):
+        from .security.admission import checked_controller
+        self.trust_controller = checked_controller(trust_controller)
         self.root = guard_data_directory(data_dir)
         if (self.root / '.restore-incomplete').exists():
             raise ValueError('This restore is incomplete. Restore again to a new directory.')
