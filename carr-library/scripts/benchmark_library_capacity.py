@@ -13,10 +13,13 @@ throughput. A separate small TXT series exercises the actual import boundary.
 Use --reuse-fixture with one declared size to verify and measure an existing
 committed corpus without rebuilding it. Reused fixtures are never removed by
 this script. Phase checkpoints retain measured progress if a case times out.
+Use --installed with this interpreter's -I flag to verify the installed candidate
+against this checkout, including every case and fresh-process continuation.
 """
 import argparse
 from datetime import datetime, timezone
 from hashlib import sha256
+import importlib
 import importlib.util
 import json
 import math
@@ -31,18 +34,86 @@ from threading import Event, Thread, Timer
 from time import perf_counter
 from uuid import uuid4
 
-from benchmark_semantic_cache import peak_rss_bytes, rss_method
+# Load only the reviewed sibling measurement helper; -I omits the script folder.
+_RSS_SPEC = importlib.util.spec_from_file_location(
+    '_capacity_existing_rss_probe', Path(__file__).resolve().with_name('benchmark_semantic_cache.py'))
+if _RSS_SPEC is None or _RSS_SPEC.loader is None:
+    raise ImportError('The reviewed RSS measurement helper cannot be loaded.')
+_RSS_MODULE = importlib.util.module_from_spec(_RSS_SPEC)
+_RSS_SPEC.loader.exec_module(_RSS_MODULE)
+peak_rss_bytes, rss_method = _RSS_MODULE.peak_rss_bytes, _RSS_MODULE.rss_method
 
 
 PROJECT = Path(__file__).resolve().parents[1]
 TEXT = 'Needle exact source text. Український текст. Synthetic capacity fixture only.\n'
 QUERY = 'Needle'
 BATCH = 1000
+INSTALLED_MODE = False
+INSTALLED_MODULES = ('carr_library', 'bootstrap', 'carr_library.application',
+                     'carr_library.catalog.read_views', 'carr_library.search.pagination')
 
 
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def installed_identity():
+    """Bind the installed Python packages without adding checkout import paths."""
+    require(sys.flags.isolated, 'Installed measurements require Python -I isolation.')
+    prefix = Path(sys.prefix).resolve(strict=True)
+    origins = {}
+    for name in INSTALLED_MODULES:
+        module = importlib.import_module(name)
+        path = Path(module.__file__).resolve(strict=True)
+        relative = Path(*name.split('.'))
+        relative = relative / '__init__.py' if name in ('carr_library', 'bootstrap') else relative.with_suffix('.py')
+        source = PROJECT / ('src' if name.startswith('carr_library') else '') / relative
+        source = source.resolve(strict=True)
+        require(path.is_relative_to(prefix) and path != source,
+                'Installed module resolved outside this interpreter: ' + name)
+        digest = sha256(path.read_bytes()).hexdigest()
+        require(digest == sha256(source.read_bytes()).hexdigest(),
+                'Installed module differs from the candidate checkout: ' + name)
+        origins[name] = {'path': str(path), 'sha256': digest}
+    files = {}
+    for name in ('carr_library', 'bootstrap'):
+        root = Path(origins[name]['path']).parent
+        source_root = (PROJECT / 'src' / name if name == 'carr_library' else PROJECT / name).resolve(strict=True)
+        for path in sorted(root.rglob('*.py')):
+            actual = path.resolve(strict=True)
+            relative = path.relative_to(root)
+            expected = (source_root / relative).resolve(strict=True)
+            require(actual.is_relative_to(root) and actual.is_relative_to(prefix)
+                    and expected.is_relative_to(source_root),
+                    'Installed Python inventory escapes its declared package.')
+            digest = sha256(actual.read_bytes()).hexdigest()
+            require(digest == sha256(expected.read_bytes()).hexdigest(),
+                    'Installed Python file differs from the candidate checkout: ' + str(relative))
+            files[str(expected.relative_to(PROJECT))] = digest
+    require(bool(files), 'Installed Python inventory is empty.')
+    return {'isolated': True, 'python_prefix': str(prefix),
+            'python_executable': str(Path(sys.executable).resolve(strict=True)),
+            'module_origins': origins, 'files': files}
+
+
+def execution_identity(identity):
+    fields = {'installed_mode': INSTALLED_MODE}
+    if INSTALLED_MODE:
+        runtime = identity['installed']
+        encoded = json.dumps(runtime['files'], sort_keys=True, separators=(',', ':')).encode()
+        fields.update(isolated=runtime['isolated'], module_origins=runtime['module_origins'],
+                      installed_python_sha256=sha256(encoded).hexdigest(),
+                      fixture_sha256=identity['files'][str(Path('tests/search/test_search_pagination.py'))],
+                      harness_sha256=identity['files'][str(Path('scripts/benchmark_library_capacity.py'))],
+                      rss_helper_sha256=identity['files'][str(Path('scripts/benchmark_semantic_cache.py'))])
+    return fields
+
+
+def child_command(*arguments):
+    flags = ['-I', '-B', '-X', 'utf8'] if INSTALLED_MODE else ['-B']
+    return [sys.executable, *flags, str(Path(__file__).resolve()), *arguments,
+            *(['--installed'] if INSTALLED_MODE else [])]
 
 
 def source_identity():
@@ -52,8 +123,13 @@ def source_identity():
               PROJECT / 'scripts/benchmark_semantic_cache.py', Path(__file__).resolve()]
     files = {str(path.relative_to(PROJECT)): sha256(path.read_bytes()).hexdigest()
              for path in paths}
-    encoded = json.dumps(files, sort_keys=True, separators=(',', ':')).encode()
-    return {'sha256': sha256(encoded).hexdigest(), 'files': files}
+    runtime = installed_identity() if INSTALLED_MODE else None
+    payload = {'files': files, 'installed': runtime} if runtime is not None else files
+    encoded = json.dumps(payload, sort_keys=True, separators=(',', ':')).encode()
+    result = {'sha256': sha256(encoded).hexdigest(), 'files': files}
+    if runtime is not None:
+        result['installed'] = runtime
+    return result
 
 
 def statistics(values):
@@ -141,8 +217,9 @@ class DiskSampler:
 
 
 def production():
-    sys.path.insert(0, str(PROJECT))
-    sys.path.insert(0, str(PROJECT / 'src'))
+    if not INSTALLED_MODE:
+        sys.path.insert(0, str(PROJECT))
+        sys.path.insert(0, str(PROJECT / 'src'))
     from carr_library.application import LibraryApp
     fixture_path = PROJECT / 'tests/search/test_search_pagination.py'
     spec = importlib.util.spec_from_file_location('_capacity_existing_search_fixture', fixture_path)
@@ -162,6 +239,12 @@ def verify_hit(app, workspace, hit):
 
 
 def restart_probe(config):
+    require(config.get('installed_mode', False) == INSTALLED_MODE, 'Restart execution mode mismatch.')
+    identity = source_identity()
+    expected = config.get('source_sha256')
+    require(not INSTALLED_MODE or isinstance(expected, str), 'Installed restart lacks its source binding.')
+    if expected is not None:
+        require(identity['sha256'] == expected, 'Restart source identity mismatch.')
     LibraryApp, _ = production()
     started = perf_counter()
     app = LibraryApp(config['root'])
@@ -180,7 +263,9 @@ def restart_probe(config):
         pass
     else:
         raise ValueError('A new process accepted a previous process selection handle.')
-    return {'status': 'PASS', 'application_startup_seconds': startup,
+    require(source_identity() == identity, 'Source changed during restart measurement.')
+    return {'status': 'PASS', 'source_sha256': identity['sha256'], **execution_identity(identity),
+            'application_startup_seconds': startup,
             'continued_search_seconds': search_seconds, 'continued_results': len(page.results),
             'old_selection_rejected': True, 'source_and_copy_verified': True,
             'process_peak_rss_bytes': peak_rss_bytes()}
@@ -188,7 +273,8 @@ def restart_probe(config):
 
 def run_case(root, requested, samples, max_search_pages, expected_source, *,
              reuse=False, progress=None):
-    require(source_identity()['sha256'] == expected_source, 'Child source identity mismatch.')
+    identity = source_identity()
+    require(identity['sha256'] == expected_source, 'Child source identity mismatch.')
     LibraryApp, publish = production()
     baseline = peak_rss_bytes()
     started = perf_counter()
@@ -203,7 +289,8 @@ def run_case(root, requested, samples, max_search_pages, expected_source, *,
     def checkpoint(phase, **values):
         if progress is not None:
             write_json(progress, {'status': 'RUNNING', 'phase': phase,
-                'source_sha256': expected_source, 'requested_synthetic_editions': requested,
+                'source_sha256': expected_source, **execution_identity(identity),
+                'requested_synthetic_editions': requested,
                 'reused_fixture': reuse, 'elapsed_seconds': perf_counter() - started,
                 'process_peak_rss_bytes': peak_rss_bytes(), **values})
     with DiskSampler(root) as disk:
@@ -343,16 +430,18 @@ def run_case(root, requested, samples, max_search_pages, expected_source, *,
         checkpoint('cancellation_and_isolation_complete', cancellation=cancellation)
         restart_config = scratch / 'restart-config.json'
         write_json(restart_config, {'root': str(app.root), 'workspace': workspace,
+            'source_sha256': expected_source, 'installed_mode': INSTALLED_MODE,
             'cursor': first_cursor, 'expected': identities[100:200] if first_cursor else identities[:100],
             'old_ref': recovery.results[0].ref, 'old_revision': recovery.results[0].revision})
         for _ in range(min(samples, 5)):
             began = perf_counter()
-            child = subprocess.run([sys.executable, '-B', str(Path(__file__).resolve()),
-                                    '--restart', str(restart_config)], check=True,
+            child = subprocess.run(child_command('--restart', str(restart_config)), check=True,
                                    capture_output=True, text=True, timeout=180)
             result = json.loads(child.stdout)
             result['fresh_process_wall_seconds'] = perf_counter() - began
-            require(result['status'] == 'PASS', 'Restart probe did not pass.')
+            require(result['status'] == 'PASS' and result['source_sha256'] == expected_source
+                    and result['installed_mode'] == INSTALLED_MODE,
+                    'Restart probe did not return the matching execution identity.')
             restarts.append(result)
         restart_config.unlink()
         checkpoint('restarts_complete', fresh_process_probes=len(restarts),
@@ -380,7 +469,8 @@ def run_case(root, requested, samples, max_search_pages, expected_source, *,
     checkpoint('complete', status='PASS', exact_results_verified=seen,
                all_search_pages_completed=cursor is None, search_latency=statistics(search_times),
                cancellation=cancellation, restart_probes=len(restarts))
-    return {'status': 'PASS', 'requested_synthetic_editions': requested,
+    return {'status': 'PASS', **execution_identity(identity),
+            'requested_synthetic_editions': requested,
             'reused_fixture': reuse,
             'source_sha256': expected_source, 'elapsed_seconds': perf_counter() - started,
             'baseline_peak_rss_bytes': baseline, 'process_peak_rss_bytes': peak_rss_bytes(),
@@ -446,18 +536,27 @@ def environment(output):
 
 
 def main():
+    global INSTALLED_MODE
     require(__debug__, 'Run without Python optimization flags.')
-    if len(sys.argv) > 1 and sys.argv[1] == '--restart':
-        print(json.dumps(restart_probe(json.loads(Path(sys.argv[2]).read_text()))))
+    require(sys.argv[1:].count('--installed') <= 1, 'Select installed mode once.')
+    INSTALLED_MODE = '--installed' in sys.argv[1:]
+    if INSTALLED_MODE:
+        require(sys.flags.isolated, 'Installed measurements require Python -I isolation.')
+    internal = [value for value in sys.argv[1:] if value != '--installed']
+    if internal and internal[0] == '--restart':
+        require(len(internal) == 2, 'Invalid restart arguments.')
+        print(json.dumps(restart_probe(json.loads(Path(internal[1]).read_text()))))
         return 0
-    if len(sys.argv) > 1 and sys.argv[1] == '--case':
-        directory, requested, samples, cap, expected, mode, progress = sys.argv[2:]
+    if internal and internal[0] == '--case':
+        directory, requested, samples, cap, expected, mode, progress = internal[1:]
         require(mode in ('fresh', 'reuse'), 'Unknown fixture mode.')
         print(json.dumps(run_case(Path(directory), int(requested), int(samples), int(cap), expected,
                                   reuse=mode == 'reuse', progress=Path(progress))))
         return 0
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--output-dir', type=Path, required=True)
+    parser.add_argument('--installed', action='store_true',
+                        help='Require isolated installed packages matching this candidate checkout.')
     parser.add_argument('--sizes', type=int, nargs='+', default=[1000, 10000, 50000])
     parser.add_argument('--samples', type=int, default=20)
     parser.add_argument('--max-search-pages', type=int, default=0,
@@ -480,7 +579,8 @@ def main():
     write_json(output / 'source-manifest.json', identity)
     source_commit = subprocess.run(['git', '-C', str(PROJECT), 'rev-parse', 'HEAD'],
                                    check=True, capture_output=True, text=True).stdout.strip()
-    result = {'schema': 2, 'status': 'RUNNING', 'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
+    result = {'schema': 2, 'status': 'RUNNING', **execution_identity(identity),
+              'recorded_at_utc': datetime.now(timezone.utc).isoformat(),
               'checkout_commit': source_commit, 'source_manifest_sha256': identity['sha256'],
               'harness_sha256': sha256(Path(__file__).read_bytes()).hexdigest(),
               'environment': environment(output), 'configuration': {
@@ -509,10 +609,10 @@ def main():
     for size in args.sizes:
         fixture = args.reuse_fixture.resolve() if args.reuse_fixture is not None else output / f'fixture-{size}'
         try:
-            child = subprocess.run([sys.executable, '-B', str(Path(__file__).resolve()), '--case',
-                                    str(fixture), str(size), str(args.samples), str(args.max_search_pages),
-                                    identity['sha256'], 'reuse' if args.reuse_fixture is not None else 'fresh',
-                                    str(output / f'progress-{size}.json')],
+            child = subprocess.run(child_command('--case', str(fixture), str(size),
+                                    str(args.samples), str(args.max_search_pages), identity['sha256'],
+                                    'reuse' if args.reuse_fixture is not None else 'fresh',
+                                    str(output / f'progress-{size}.json')),
                                    capture_output=True, text=True, timeout=args.case_timeout,
                                    env=dict(os.environ, PYTHONDONTWRITEBYTECODE='1'))
         except subprocess.TimeoutExpired:
@@ -525,7 +625,8 @@ def main():
             (output / f'failure-{size}.txt').write_text(child.stderr, encoding='utf-8')
             raise ValueError(f'Case {size} failed; inspect its failure log. Completed case JSON remains available.')
         case = json.loads(child.stdout)
-        require(case['status'] == 'PASS' and case['source_sha256'] == identity['sha256'],
+        require(case['status'] == 'PASS' and case['source_sha256'] == identity['sha256']
+                and case['installed_mode'] == INSTALLED_MODE,
                 'Child did not return a matching successful measurement.')
         write_json(output / f'case-{size}.json', case)
         result['cases'].append(case)
