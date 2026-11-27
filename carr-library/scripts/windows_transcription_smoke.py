@@ -206,7 +206,12 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         owner = DesktopFrame(library)
         owner.Show()
         owned_executor, owned_cancel = owner.executor, owner.cancel_event
-        errors, peers = [], []
+        errors, peers, submitted = [], [], []
+        real_submit = owned_executor.submit
+        def tracked_submit(*args, **kwargs):
+            future = real_submit(*args, **kwargs)
+            submitted.append(future)
+            return future
         observation = {'started': False, 'destroy_requested': False, 'destroy_calls': 0}
         begin_at = time.monotonic()
         class TrackedDialog(NativeDialog):
@@ -247,11 +252,20 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 if peers and peers[0] and not peers[0].IsBeingDeleted():
                     peers[0].EndModal(wx.ID_CANCEL)
         recorded = None
-        with patch.object(wx, 'Dialog', TrackedDialog):
+        with patch.object(wx, 'Dialog', TrackedDialog), \
+                patch.object(owned_executor, 'submit', tracked_submit):
             wx.CallLater(25, destroy_during_child)
             try:
                 show_transcription(owner, job_id=identity)
-                recorded = {**observation, 'errors': tuple(errors)}
+                assert len(submitted) == 1, 'Expected the actual running transcription future.'
+                # Observe product-owned cancellation before fixture cleanup can
+                # signal it. Parent Destroy may already close the executor, so
+                # wait on its captured real future rather than submit new work.
+                submitted[0].result(timeout=10)
+                stopped_before_cleanup = service.get(identity)
+                recorded = {**observation, 'errors': tuple(errors),
+                    'status_before_cleanup': stopped_before_cleanup['status'],
+                    'continued_before_cleanup': (job_root / 'continued').is_file()}
             finally:
                 owned_cancel.set()
                 owned_executor.shutdown(wait=True, cancel_futures=True)
@@ -265,6 +279,8 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         assert recorded is not None and not recorded['errors'], recorded
         assert recorded['started'] and recorded['destroy_requested'], recorded
         assert recorded['destroy_calls'] == (1 if target == 'dialog' else 0), recorded
+        assert recorded['status_before_cleanup'] == 'stopped', recorded
+        assert recorded['continued_before_cleanup'], recorded
         stopped = service.get(identity)
         assert stopped['status'] == 'stopped', stopped
         assert not stopped['receipts'] and not stopped['artifacts']
