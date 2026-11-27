@@ -749,9 +749,20 @@ class LibraryApp:
 
     def import_files(self, workspace, paths, **metadata):
         results = []
+        cancelled = metadata.get('cancelled', lambda: False)
+        if not callable(cancelled):
+            raise ValueError('An import cancellation callback is required.')
         for path in paths:
+            if cancelled():
+                break
             try:
-                results.append({'file': Path(path).name, **self.import_file(workspace, path, **metadata)})
+                result = {'file': Path(path).name, **self.import_file(workspace, path, **metadata)}
+                results.append(result)
+                if result.get('state') == 'cancelled':
+                    break
+            except InterruptedError as exc:
+                results.append({'file': Path(path).name, 'state': 'cancelled', 'message': str(exc)})
+                break
             except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
                 results.append({'file': Path(path).name, 'state': 'failed', 'message': str(exc)})
         return tuple(results)
@@ -1189,6 +1200,10 @@ class LibraryApp:
             load, metadata, _ = self._loaders(db, workspace, cancelled=budget.stopped)
             return SavedTopicQueries(SavedEvidenceStore(db, workspace, load, metadata)).run(
                 topic, identity, timeout=budget.remaining(), cancelled=budget.stopped)
+
+    def transcription(self, workspace):
+        from .transcription import TranscriptionService
+        return TranscriptionService(self, workspace)
 
     def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):
         from .library_backup import create_backup

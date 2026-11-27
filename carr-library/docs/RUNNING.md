@@ -1,9 +1,13 @@
-# Universal Research Library
+# Resonance — Sceneria Innovative Technologies
 
 An offline desktop research library with separate workspaces, books and
 collections, literal and thematic search, source context, saved evidence, notes,
 and exports. Quotations retain their source revision and page or text-segment
 reference. Unknown printed page numbers remain explicitly unknown.
+The application now displays Resonance. Existing `ResearchLibrary.exe`, package
+identifiers and saved data locations stay compatible with previous installations.
+**Help, About Resonance and component notices** shows the installed version and
+component attribution; the normal startup citation-processor credit stays visible.
 
 This is a development build. Windows and NVDA acceptance are recorded separately
 from automated checks; a successful installation is not an accessibility verdict.
@@ -32,7 +36,10 @@ all bibliography, OCR, narration and assistant output.
 
 The main File and Options menus provide saved reading copies, recoverable research
 notes, configurable contextual commands and a command palette. Complete library
-backups include supported reader, draft, OCR, keyboard and assistant state. External
+backups include supported reader, draft, OCR, keyboard and assistant state, plus
+import journals, queued requests and the original bytes needed to resume them.
+Restoration rebinds those requests to the new folder without automatically running
+them. Earlier supported backup formats remain readable. External
 Audio Studio projects have their own complete snapshot/restore workflow. Optional
 API profiles use the Windows credential vault and explicit per-task data/cost review.
 
@@ -535,3 +542,37 @@ are retained in `native-runtime/licenses` and `native-runtime/provenance`.
 Microsoft DLL bytes are not
 included in the source repository. The private-install permission for this
 prepared package does not establish permission for public binary distribution.
+
+## Local audio and video transcription
+
+Open **Library → Transcription: local audio and video...**. The shared
+workspace retains original media, queues recognition, supports stop/resume,
+saves edits as separate revisions and exports verified results. Its service,
+background operation and command-line entry points use the existing host.
+
+The supplied Whisper Transcribe source has been received. Recognition requires
+a separately configured compatible Python runtime, the matching repaired
+`worker.py`, and an already installed local model. Use **Підключити Whisper**
+to select them. Configuration does not download models or establish acoustic
+qualification. Repairs with a different result-receipt format are incompatible.
+
+Completed, verified files can be reused after stopping; an incomplete file is
+processed from its beginning on resume. Edits preserve the original media,
+recognition output and timestamps; editing does not realign timestamps.
+Exports use a new destination without overwriting existing files: TXT,
+phrase-level SRT/VTT, timed JSON, and word-level SRT/VTT when word timestamps
+were enabled. Edited text is identified separately. Derived transcripts are
+not automatically treated as verified research sources or quotations.
+
+Complete backups retain required media, job state, results and edits. Runtime
+files, models and rebuildable caches remain separate. The existing **512 MiB
+aggregate sidecar limit** is shared with the application's other sidecar data;
+a larger collection fails before backup publication. Restore is passive.
+Retained results can be read and exported without the former runtime; select
+a compatible runtime/model installation before resuming recognition on a new
+computer.
+
+See [TRANSCRIPTION.md](TRANSCRIPTION.md) for the user workflow. Actual private
+Whisper inference, multilingual quality and manual NVDA acceptance remain
+separate checks. Automated protocol and native-control tests do not establish
+those qualifications.

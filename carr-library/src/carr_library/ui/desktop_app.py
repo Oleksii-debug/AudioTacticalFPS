@@ -11,6 +11,7 @@ import threading
 import wx
 
 from ..application import LibraryApp
+from ..product_info import WINDOW_TITLE, about_text
 from ..extract.document_formats import file_dialog_wildcard, supported_formats_text
 from ..catalog.read_views import active_collections
 from ..citations.anchors import format_citation
@@ -493,7 +494,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
-        self.SetTitle('Universal Research Library')
+        self.SetTitle(WINDOW_TITLE)
         self.SetMinSize((760, 650))
         self._menus()
         from .productivity import install_productivity_actions
@@ -543,6 +544,8 @@ class DesktopFrame(WorkspaceFrame):
                 ('DOI lookup and open-access sources...', lambda event: show_acquisition_dialog(self)),
                 ('Add selected book to academic library', self.add_selected_book_reference)]),
             ('&Help', [('Keyboard guide\tF1', self.help),
+                ('About Resonance and component notices',
+                    lambda event: show_text(self, 'About Resonance', about_text())),
                 ('Document formats', lambda event: show_text(self, 'Document formats', supported_formats_text())),
                 ('Check this installation', self.check_installation)])]
         for label, actions in menus:
@@ -576,6 +579,8 @@ class DesktopFrame(WorkspaceFrame):
         install_assistant_actions(self)
         install_audio_studio_actions(self)
         install_api_connection_actions(self)
+        from .transcription_dialog import install_transcription_actions
+        install_transcription_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

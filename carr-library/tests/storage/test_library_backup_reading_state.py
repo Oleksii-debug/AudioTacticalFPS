@@ -3,6 +3,7 @@ from errno import ENOSPC
 from hashlib import sha256
 import json
 import os
+import shutil
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -67,7 +68,7 @@ def test_application_backup_restores_exact_bookmarks_and_resume_for_both_librari
                                              sha256=sha256(raw).hexdigest())
     assert (folder / FILENAME).read_bytes() == raw
     assert {path.name for path in folder.iterdir()} == {
-        'manifest.json', 'library.sqlite', 'originals', FILENAME}
+        'manifest.json', 'library.sqlite', 'originals', 'pending', FILENAME}
     restored = LibraryApp(restore_backup(folder, tmp_path / 'restored', digest))
     state = ReadingState(restored.root)
     assert state.path.read_bytes() == raw
@@ -270,6 +271,8 @@ def test_v3_reading_presence_must_be_explicit(reading_library, tmp_path, change)
     create_backup(app, folder)
     manifest = read_manifest(folder)
     manifest['version'] = 3
+    manifest.pop('pending', None)
+    shutil.rmtree(folder / 'pending', ignore_errors=True)
     manifest['reading_state'] = manifest.pop('sidecars')[0]
     del manifest['generated_audio_included']
     if change == 'missing_descriptor':
@@ -428,6 +431,8 @@ def test_legacy_backup_restores_without_fabricating_reading_state(
     create_backup(app, folder)
     manifest = read_manifest(folder)
     manifest['version'] = version
+    manifest.pop('pending', None)
+    shutil.rmtree(folder / 'pending', ignore_errors=True)
     del manifest['sidecars']
     del manifest['generated_audio_included']
     if version == 1:
@@ -451,6 +456,8 @@ def test_legacy_manifest_cannot_smuggle_an_unbound_reading_file(
     create_backup(app, folder)
     manifest = read_manifest(folder)
     manifest['version'] = version
+    manifest.pop('pending', None)
+    shutil.rmtree(folder / 'pending', ignore_errors=True)
     del manifest['sidecars']
     del manifest['generated_audio_included']
     if version == 1:

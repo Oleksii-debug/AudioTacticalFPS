@@ -68,6 +68,8 @@ def _model(module):
 def sidecar_limit(name):
     """Resolve only explicit formats; also fail early if a producer is absent."""
     portable_name(name)
+    if name.startswith('state/transcription/'):
+        return _model('transcription_backup').limit(name)
     if name == 'reading-state.json':
         return READING_BYTES
     if name == 'keybindings.json':
@@ -186,6 +188,7 @@ class Inventory:
     entries: tuple
     empty_roots: frozenset = frozenset()
     generated_audio_included: bool = False
+    pending: dict | None = None
 
 
 def _collection_budgets(entries):
@@ -206,7 +209,7 @@ def normalize_manifest(manifest):
     if version >= 2:
         fields.add('schema_fingerprint')
     extra = set(manifest) - fields
-    entries, roots, generated = [], frozenset(), False
+    entries, roots, generated, pending = [], frozenset(), False, None
     if version <= 2:
         if set(manifest) != fields:
             raise RestoreError('unsupported library manifest fields')
@@ -218,7 +221,8 @@ def normalize_manifest(manifest):
             entries = [value]
     elif version == 3 and extra == {'sidecars'}:
         entries = manifest['sidecars']
-    elif version == 3 and extra == {'state', 'generated_audio_included'}:
+    elif (version == 3 and extra == {'state', 'generated_audio_included'}
+            or version == 4 and extra == {'state', 'generated_audio_included', 'pending'}):
         generated = manifest['generated_audio_included']
         if type(manifest['state']) is not list or len(manifest['state']) > MAX_FILES:
             raise RestoreError('invalid legacy state manifest')
@@ -229,8 +233,17 @@ def normalize_manifest(manifest):
             portable_name(value['filename'])
             entries.append({**value, 'filename': 'state/' + value['filename']})
         roots = frozenset({'state'})
-    elif version == 4 and extra == {'sidecars', 'generated_audio_included'}:
+        if version == 4:
+            pending = manifest['pending']
+            if pending is None:
+                raise RestoreError('missing pending import backup')
+    elif version == 4 and extra in ({'sidecars', 'generated_audio_included'},
+                                    {'sidecars', 'generated_audio_included', 'pending'}):
         entries, generated = manifest['sidecars'], manifest['generated_audio_included']
+        if 'pending' in manifest:
+            pending = manifest['pending']
+            if pending is None:
+                raise RestoreError('missing pending import backup')
     else:
         raise RestoreError('ambiguous or unsupported library manifest fields')
     if set(manifest) != fields | extra or not fields <= set(manifest) or type(generated) is not bool:
@@ -244,7 +257,8 @@ def normalize_manifest(manifest):
                 or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
             raise RestoreError('invalid sidecar manifest entry')
         maximum = sidecar_limit(entry['filename'])
-        if not 0 < entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
+        minimum = 0 if entry['filename'].startswith('state/transcription/') else 1
+        if not minimum <= entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:
             raise RestoreError('invalid sidecar size or duplicate filename')
         names.add(entry['filename'].casefold())
         path = PurePosixPath(entry['filename'])
@@ -260,7 +274,10 @@ def normalize_manifest(manifest):
             raise RestoreError('sidecar manifest byte limit')
         copied.append(dict(entry))
     _collection_budgets((entry['filename'], entry['size_bytes']) for entry in copied)
-    return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated)
+    if pending is not None:
+        from .pending_backup import validate_pending
+        validate_pending(pending)
+    return Inventory(tuple(sorted(copied, key=lambda value: value['filename'])), roots, generated, pending)
 
 
 def _identity(info):
@@ -292,6 +309,8 @@ def read_regular(path, maximum):
 
 
 def _ignored(name):
+    if name.startswith('state/transcription/'):
+        return _model('transcription_backup').ignored(name)
     path = PurePosixPath(name)
     if path.parent.as_posix() == 'state/assistant':
         return bool(re.fullmatch(r'[0-9a-f]{32}\.lock', path.name) or re.fullmatch(
@@ -320,7 +339,7 @@ def _capture(root, *, cancelled=lambda: False):
             info = path.lstat()
             if stat.S_ISDIR(info.st_mode):
                 _plain(path, directory=True)
-                if relative != 'state/studio/cache':
+                if relative != 'state/studio/cache' and not (relative.startswith('state/transcription/') and _ignored(relative)):
                     pending.append(relative)
             else:
                 _regular(path)
@@ -351,6 +370,9 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
         total += before[0][name][4]
         if total > min(MAX_BYTES, max_bytes):
             raise RestoreError('sidecar snapshot byte limit')
+        if name.startswith('state/transcription/'):
+            entries.append(_model('transcription_backup').copy_entry(root, stage, name, cancelled=cancelled))
+            continue
         raw = read_regular(root / name, sidecar_limit(name))
         validate_sidecar(db, name, raw)
         _write(stage, name, raw)
@@ -358,6 +380,8 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
     if _capture(root, cancelled=cancelled) != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
     _assistant_pairs(stage, entries)
+    if any(entry['filename'].startswith('state/transcription/') for entry in entries):
+        _model('transcription_backup').validate_snapshot(db, stage, entries, cancelled=cancelled)
     _check_cancelled(cancelled)
     return entries
 
@@ -365,9 +389,14 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, cancelled=lambda: False):
 def check_namespace(directory, inventory):
     names = {entry['filename'] for entry in inventory.entries}
     expected_dirs = set(inventory.empty_roots)
+    if inventory.pending is not None:
+        names.update('pending/' + entry['filename'] for entry in inventory.pending['files'])
+        expected_dirs.add('pending')
     for name in names:
         expected_dirs.update(str(p) for p in PurePosixPath(name).parents if str(p) != '.')
     roots = {name.split('/')[0] for name in names} | set(inventory.empty_roots)
+    if inventory.pending is not None:
+        roots.add('pending')
     if set(path.name for path in directory.iterdir()) != {'library.sqlite', 'originals', 'manifest.json'} | roots:
         raise RestoreError('incomplete backup or unexpected files')
     for name in expected_dirs:
@@ -400,12 +429,17 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
     for entry in inventory.entries:
         _check_cancelled(cancelled)
         name = entry['filename']
+        if name.startswith('state/transcription/'):
+            _model('transcription_backup').copy_entry(source, stage, name, expected=entry, cancelled=cancelled)
+            continue
         raw = read_regular(source / name, sidecar_limit(name))
         if len(raw) != entry['size_bytes'] or sha256(raw).hexdigest() != entry['sha256']:
             raise RestoreError('sidecar digest or size mismatch')
         validate_sidecar(db, name, raw)
         _write(stage, name, raw)
     _assistant_pairs(stage, inventory.entries)
+    if any(entry['filename'].startswith('state/transcription/') for entry in inventory.entries):
+        _model('transcription_backup').validate_snapshot(db, stage, inventory.entries, cancelled=cancelled)
     entries = list(inventory.entries)
     names = {entry['filename'] for entry in entries}
     total = sum(entry['size_bytes'] for entry in entries)

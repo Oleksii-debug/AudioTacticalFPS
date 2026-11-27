@@ -7,6 +7,7 @@ No global search, database access, or new persistence contract here.
 """
 import wx
 from carr_library.citations.csl import ATTRIBUTION
+from carr_library.product_info import WINDOW_TITLE
 from .paged_search_panel import PagedSearchPanel
 from .catalog_panel import CatalogPanel
 from .topic_panel import TopicPanel
@@ -16,7 +17,7 @@ from .scope_bindings import ScopeServices, bind_scope_services, scope_labels
 
 class WorkspaceFrame(wx.Frame):
     def __init__(self, parent, list_scopes, bind_scope):
-        super().__init__(parent, title='Research Library', size=(900, 700))
+        super().__init__(parent, title=WINDOW_TITLE, size=(900, 700))
         self.list_scopes, self.bind_scope = list_scopes, bind_scope
         self.active = self.book = self.evidence = None
         self.scopes = []
