@@ -47,7 +47,7 @@ def _file_state(info):
             info.st_mtime_ns, info.st_ctime_ns)
 
 
-def _destination(path, private_root):
+def _inspect_destination(path, private_root):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -87,7 +87,16 @@ def _destination(path, private_root):
     return target, _identity(parent.stat()), state
 
 
-def _content_digest(target, expected, *, cancelled=lambda: False):
+def _destination(path, private_root):
+    return _inspect_destination(path, private_root)
+
+
+def _recheck_scope(path, private_root, snapshot):
+    if _inspect_destination(path, private_root) != snapshot:
+        raise ValueError('The export destination changed. Choose the destination again.')
+
+
+def _content_digest(target, expected, *, cancelled=lambda: False, check_scope=lambda: None):
     """Inspect one existing regular file without trusting cached timestamps.
 
     Each inspection reads at most the captured size plus one byte, in bounded
@@ -118,6 +127,9 @@ def _content_digest(target, expected, *, cancelled=lambda: False):
         if (_linked(opened) or not stat.S_ISREG(opened.st_mode)
                 or _file_state(opened) != expected):
             raise ValueError('The export destination changed. Choose the destination again.')
+        # A parent may have been redirected inside os.open while this exact
+        # file kept its identity. Reauthorize the complete route before reads.
+        check_scope()
         digest, total = sha256(), 0
         while True:
             check()
@@ -132,6 +144,7 @@ def _content_digest(target, expected, *, cancelled=lambda: False):
         if (total != size or _file_state(os.fstat(descriptor)) != expected
                 or _file_state(target.lstat()) != expected):
             raise ValueError('The export destination changed. Choose the destination again.')
+        check_scope()
         check()
         return digest.hexdigest()
     finally:
@@ -177,7 +190,8 @@ def capture_export_destination(path, *, private_root, cancelled=lambda: False):
         raise TimeoutError('Export cancelled; the destination was not changed.')
     requested, private = _export_paths(path, private_root)
     target, parent_identity, state = _destination(requested, private)
-    digest = _content_digest(target, state, cancelled=cancelled)
+    digest = _content_digest(target, state, cancelled=cancelled,
+        check_scope=lambda: _recheck_scope(requested, private, (target, parent_identity, state)))
     return ExportDestination(requested, private, target, parent_identity, state, digest)
 
 
@@ -240,7 +254,10 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         require_absent = require_absent or approval.require_absent
     if require_absent and previous is not None:
         raise FileExistsError('The export destination already exists; replacement was not authorized.')
-    previous_digest = _content_digest(target, previous, cancelled=cancelled)
+    def check_scope():
+        _recheck_scope(requested, private, (target, parent_identity, previous))
+
+    previous_digest = _content_digest(target, previous, cancelled=cancelled, check_scope=check_scope)
     if approval is not None and approval.content_sha256 != previous_digest:
         raise ValueError('The export destination changed. Choose the destination again.')
     temporary = None
@@ -258,7 +275,8 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
-        if _content_digest(checked_target, current, cancelled=cancelled) != previous_digest:
+        if _content_digest(checked_target, current, cancelled=cancelled,
+                           check_scope=check_scope) != previous_digest:
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
         if require_absent:
