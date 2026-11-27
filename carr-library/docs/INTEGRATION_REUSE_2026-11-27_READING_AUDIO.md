@@ -681,3 +681,54 @@ All new recording/backup/native work is **INTEGRATED / NOT_RUN**. Recording.md
 states the finite attempt/pause/disk bounds, cooperative admission and omitted
 pause time. Unfinished physical capture is not crash-resumable or copied into
 complete backups; committed but unreceipted originals remain inert recovery data.
+
+## Exact observed portable and Windows failure reconciliation (2026-11-27 19:09 UTC)
+
+Canonical remains `e5c64a5245583f8f8b404a0f042f6ca438c24d7f`; root AGENTS and both
+updated technical specifications are unchanged. Product parent is `8df14eaab2ed1ca260e527006cea7053e569a926`.
+Completed preflight `142de6b6028cc86f9a5bf70c42e60adc40f96b77`, run46048596823,
+is failed: Linux207/184PASS/23FAIL. Windows native Word modeled APA/Chicago
+(source+installed), reference controls (source+installed), encrypted portable
+Sync (source+installed) and actual process ownership15checks passed. The long
+Windows source lane retained107 complete verdicts (91PASS/16FAIL), two named
+module timeouts (BookBatch/BookCLI), and unfinished later selectors at its25min
+cutoff. No predecessor result qualifies this successor's newly composed code.
+
+Corrections are composed through the current domain services, broker and native
+owners: raw measured publication times survive playback rounding/clamping;
+passive Book preparation defers voice discovery, with mandatory actual-Run
+validation before nodes/cache/output under the same lease; exact Book provenance
+notice and queued-close cancellation; admitted playback failure reporting and
+typed playlist stop; existing passive assistant voice/effect routes; same64MiB
+Assistant checkpoint with existing delete-sharing I/O/replacement helpers. The
+largeTXT incremental outer envelope matches full backup, while canonical sealed
+profile verification remains mandatory before publication/restore.
+
+Fixture-only repairs preserve all old source/output/cleanup assertions. They
+stop copying live runtime binding into another root; use current immutable
+inventory/search APIs and active source identities; create a real typed sidecar
+when asserting backupformat5; keep native reading LF offsets separate from exact
+original CRLF bytes; find the actual Library menu after File insertion; and use
+canonical owned Windows temp paths. The import SQL-boundary marker read retains
+its original15s startup/child-exit cleanup checks while tolerating only transient
+owned Windows5/32/33 sharing denial. The production pre-admission fixture now
+requires its existing attention state with no node/artifact/runtime/output/lease.
+
+DAISY validation accepts only the same pinned files' exact local path/URI and
+libxml short-file-URI spellings plus existing fixed public identifiers. Hashes,
+network denial and real invalid-DTD rejection remain. Real lxml URI regression
+cases and negative host/query/basename cases are added. Source Book native calls
+now satisfy their existing-I-B requirement; full-bundle recording locates FFmpeg
+at the already-verified handle directory. Native Book batch completion remains
+unresolved: unchanged80s predicate now emits bounded all-thread/status evidence.
+
+Every prepared repair and added fixture is **NOT_RUN**. Source, installed and
+ordinary workflow selectors retain every prior required module and include the
+new24-case Assistant I/O suite. Native desktop/Book checks precede the early
+preflight artifact upload so a later source timeout cannot hide their evidence.
+No assertions, decoder/schema guards, skipped-test rules, device consent or
+capture policy are relaxed. Full Windows aggregate plus all six ordinary gates
+at one exact head remain mandatory. The observed earlier physical capture access
+denial is unchanged; a read-only diagnostic is scheduled only on its already
+authorized evaluation branch. No wheel/private archive/signature/model quality
+or whole-platform completion is claimed.

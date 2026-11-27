@@ -154,9 +154,9 @@ def create_book_batch_dialog(frame, *, service, wx_module=None):
         controls()
 
         def checked():
-            guard()
             if stopped():
                 raise InterruptedError('The book batch was stopped before starting.')
+            guard()
             return operation()
 
         def finished(value):

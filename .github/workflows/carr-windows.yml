@@ -599,6 +599,7 @@ jobs:
             'tests/academic_integration/test_word_com.py',
             'tests/ui/test_word_citations.py',
             'tests/assistant/test_local_tools.py',
+            'tests/assistant/test_state_io.py',
             'tests/assistant/test_player_tools.py',
             'tests/assistant/test_book_tools.py',
             'tests/ui/test_assistant_domain_routes.py',
@@ -1012,7 +1013,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { $failures += 'source-desktop' }
             & $env:CARR_PYTHON -B -X utf8 scripts/windows_incremental_backup_smoke.py --output ci-results/source-incremental-backup.json 2>&1 | Tee-Object 'ci-results/source-incremental-backup.txt'
             if ($LASTEXITCODE -ne 0) { $failures += 'source-incremental-backup' }
-            & $env:CARR_PYTHON -B -X utf8 scripts/windows_book_audio_smoke.py --source . --output ci-results/source-book-audio.json 2>&1 | Tee-Object 'ci-results/source-book-audio.txt'
+            & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_book_audio_smoke.py --source . --output ci-results/source-book-audio.json 2>&1 | Tee-Object 'ci-results/source-book-audio.txt'
             if ($LASTEXITCODE -ne 0) { $failures += 'source-book-audio' }
             & $env:CARR_PYTHON -B -X utf8 scripts/windows_audio_conversion_smoke.py --report ci-results/source-conversion-batch.json 2>&1 | Tee-Object 'ci-results/source-conversion-batch.txt'
             if ($LASTEXITCODE -ne 0) { $failures += 'source-conversion-batch' }
@@ -1431,7 +1432,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'bundle protected voice controls failed' }
           & $installedPython -I -B -X utf8 scripts/windows_source_pagination_smoke.py --expect-installed --report ci-results/bundle-source-pagination.json
           if ($LASTEXITCODE -ne 0) { throw 'bundle source continuation failed' }
-          $bundleRecordingFfmpeg = & $installedPython -I -B -X utf8 -c "from carr_library.audio.runtime import activate_bundled_audio_runtime; handle=activate_bundled_audio_runtime(); assert handle is not None; print(handle.directory/'bin'/'ffmpeg.exe'); handle.close()"
+          $bundleRecordingFfmpeg = & $installedPython -I -B -X utf8 -c "from carr_library.audio.runtime import activate_bundled_audio_runtime; handle=activate_bundled_audio_runtime(); assert handle is not None; print(handle.directory/'ffmpeg.exe'); handle.close()"
           if ($LASTEXITCODE -ne 0) { throw 'bundle recording runtime verification failed' }
           & $installedPython -I -B -X utf8 scripts/windows_recording_smoke.py --ffmpeg $bundleRecordingFfmpeg --expect-installed --report ci-results/bundle-recording-controls.json
           if ($LASTEXITCODE -ne 0) { throw 'bundle native Pause/Resume recording controls failed' }
@@ -1593,6 +1594,7 @@ jobs:
               'tests/academic_integration/test_word_com.py',
               'tests/ui/test_word_citations.py',
               'tests/assistant/test_local_tools.py',
+              'tests/assistant/test_state_io.py',
               'tests/assistant/test_player_tools.py',
               'tests/assistant/test_book_tools.py',
               'tests/ui/test_assistant_domain_routes.py',

@@ -245,3 +245,55 @@ def test_closed_frame_suppresses_result_controls_but_keeps_committed_backup(setu
     frame._closing = True
     done(receipt)
     assert Path(receipt['path']).is_dir() and not dialogs.results
+
+
+def _native_menu_lookup():
+    import runpy
+    # This is the exact probe helper; it imports no wx until its native entry.
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_incremental_backup_smoke.py'
+    return runpy.run_path(str(path), run_name='carr_incremental_menu_fixture')['_library_commands']
+
+
+class NativeMenuItem:
+    def __init__(self, label):
+        self.label = label
+    def GetItemLabelText(self):
+        return self.label
+
+
+class NativeMenuBar:
+    def __init__(self, rows):
+        self.rows = rows
+    def GetMenuCount(self):
+        return len(self.rows)
+    def GetMenuLabel(self, index):
+        return self.rows[index][0]
+    def GetMenu(self, index):
+        from types import SimpleNamespace
+        return SimpleNamespace(GetMenuItems=lambda: self.rows[index][1])
+
+
+def test_native_probe_selects_library_after_productivity_inserts_file_menu():
+    label = 'Create incremental backup...'
+    decoy, actual = NativeMenuItem(label), NativeMenuItem(label)
+    bar = NativeMenuBar([('&File', [decoy]), ('&Library', [actual]), ('&Options', [])])
+    assert _native_menu_lookup()(bar, label) == [actual]
+    # The previous positional lookup would dispatch the unrelated File item.
+    assert bar.GetMenu(0).GetMenuItems() == [decoy]
+
+
+@pytest.mark.parametrize('labels', [('&File',), ('&Library', 'Library')])
+def test_native_probe_never_substitutes_a_missing_or_ambiguous_library_menu(labels):
+    bar = NativeMenuBar([(label, [NativeMenuItem('Create incremental backup...')])
+                         for label in labels])
+    with pytest.raises(AssertionError, match='Exactly one native Library menu'):
+        _native_menu_lookup()(bar, 'Create incremental backup...')
+
+
+def test_native_probe_keeps_exact_command_label_and_duplicate_checks():
+    actual = NativeMenuItem('Create incremental backup...')
+    bar = NativeMenuBar([('&File', []), ('&Library', [actual, actual])])
+    lookup = _native_menu_lookup()
+    assert lookup(bar, 'Create incremental backup...') == [actual, actual]
+    assert lookup(bar, 'Create incremental backup') == []
+    # The native caller still requires exactly one candidate before EVT_MENU.

@@ -146,7 +146,10 @@ def _run(args):
     frame = None
     try:
         with TemporaryDirectory(prefix='resonance-native-effects-') as temporary:
-            root = Path(temporary)
+            # Match the verified runtime's canonical selected-file spelling.
+            # Windows TEMP may use RUNNER~1 while Path.resolve exposes its
+            # long form; both point to this same owned fixture directory.
+            root = Path(temporary).resolve(strict=True)
             source = root / 'Synthetic original — Україна.wav'
             output = root / 'Reviewed output.wav'
             data = array('h', (round(7000 * math.sin(2 * math.pi * 440 * index / 24000))
@@ -262,6 +265,13 @@ def _run(args):
                 review = find(popup, 'Selected audio batch review')
                 text = review.GetValue()
                 check('native batch review is read-only', isinstance(review, wx.TextCtrl) and not review.IsEditable())
+                print('BATCH_REVIEW:', json.dumps({
+                    'first_source': json.dumps(str(source), ensure_ascii=False) in text,
+                    'second_source': json.dumps(str(second_source), ensure_ascii=False) in text,
+                    'output_settings': '24000 Hz, 1 channel(s)' in text,
+                    'selected_count': 'Selected files: 2.' in text,
+                    'visible_review': text[:8192],
+                }, ensure_ascii=False), flush=True)
                 check('review names both originals and exact output settings',
                       json.dumps(str(source), ensure_ascii=False) in text
                       and json.dumps(str(second_source), ensure_ascii=False) in text

@@ -288,11 +288,13 @@ def _segments(project, timeline, check=lambda: None):
         if abs(start - cursor) > tolerance or end <= start:
             raise ValueError('Measured chapters must cover the master in order without overlaps or gaps.')
         chapter_rows.append({'id': f'chapter-{index}', 'scene': scene.id, 'title': scene.title})
-        def append(kind, begin, finish, line=None):
+        def append(kind, begin, finish, line=None, *, measured_begin=None):
             if round(finish, 6) <= round(begin, 6):
                 return
             segment = {'id': f'interval-{len(segments) + 1}', 'chapter': f'chapter-{index}',
                 'kind': kind, 'start': round(begin, 6), 'end': round(finish, 6),
+                'measured_start': begin if measured_begin is None else measured_begin,
+                'measured_end': finish,
                 'text': line.text if line is not None else 'Audio interval without a scripted line.',
                 'role': line.role if line is not None else None,
                 'line': line.id if line is not None else None, 'scene': scene.id,
@@ -305,7 +307,9 @@ def _segments(project, timeline, check=lambda: None):
                 raise ValueError('A speech interval overlaps another line or exceeds its measured chapter.')
             if begin > cursor:
                 append('audio-interval', cursor, begin)
-            append('line', max(begin, cursor), finish, line)
+            # Playback stays contiguous within the accepted sample tolerance;
+            # the provenance retains the original measurement before clamping.
+            append('line', max(begin, cursor), finish, line, measured_begin=begin)
             cursor = finish
         if end > cursor:
             append('audio-interval', cursor, end)

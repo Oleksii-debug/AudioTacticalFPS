@@ -209,7 +209,15 @@ class PlaybackOwner:
             self.check(idle=True, admission=True)
             if generation != self.generation or session != self.player.session_generation:
                 return
-            action()
+            try:
+                action()
+            except Exception as exc:
+                # A rejected file/device may stop its own player session. This
+                # is still the admitted action's error, even after that session
+                # changes; stale or closed owners must not receive it.
+                if not self.closed and generation == self.generation:
+                    self.failed(exc)
+                raise
             self._autosave()
             self._refresh()
         play_when_quiet((self.progress,), run, schedule=self.schedule,

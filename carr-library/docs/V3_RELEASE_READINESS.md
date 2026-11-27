@@ -27,7 +27,7 @@ named predecessors; it does not qualify newly composed code.
 | V3-04/05 | Book/batch production, measured processed-master chapters, metadata/conversion, existing clip/player/Director contracts | Current batch dispatch and reader cleanup corrections require successor execution. Neural long-form quality and physical audio acceptance are independent. |
 | V3-06/08 | Incremental backup plus authenticated local portable snapshots over canonical format5/schema6 | Native encrypted source+installed review/restore passed at 142de6b6. Later compositions need their own gates. This does not establish cloud/WebDAV service or shared live databases. |
 | V3-07 | Explicit streamed UTF-8 originals up to a selected 128 MiB, bounded fragments, current original/quotation/backup authority; scoped/ranked source windows and federated continuation | Real greater-than-64-MiB and 601-source/25-library regression fixtures plus current native controls are integrated; current execution is pending. Ranking is local to each source window. Multi-gigabyte PDF, corpus-scale latency and hardware memory benchmarks remain open. |
-| V3-08 | Existing CSL/source citations extended through reviewed live Word COM plans and named native review | Modeled native controls are required; actual Microsoft Word, publisher deployment and human interaction are separate. |
+| V3-08 | Existing CSL/source citations extended through reviewed live Word COM plans and named native review | All four modeled source/installed APA/Chicago native review sequences passed at 142de6b6. Actual Microsoft Word, publisher deployment and human interaction remain separate. |
 | V3-09 | Typed current-reader and Book/batch assistant routes through existing services/stores | New source/installed/native gates are required. These deterministic tools do not certify a local LLM or grant model output shell authority. |
 | V3-21 | Owner reference creation/lifecycle and authenticated protected profile export/import using the same Sync crypto and package publisher | Native reference controls passed at 142de6b6. Protected transfer is integrated at 5fd41689 and NOT_RUN; real rights/model/language quality remains unqualified. |
 | V3-16/17 | Existing integrity/cleanup/publication boundaries plus exact cryptography/cffi/pycparser pins and supplemental SBOM records | Reviewed publisher hashes and actual earlier dependency installation are separate from final package/signature and per-profile distribution clearance. |
@@ -35,11 +35,46 @@ named predecessors; it does not qualify newly composed code.
 
 The failed complete run 46031920263 at `94ecfdd4` retained no eligible wheel.
 Preflight 46048596823 at `142de6b6` has partial successful native evidence and
-observed DAISY/preparation/Word-assistant failures; it is not a release gate PASS.
+observed DAISY/preparation/assistant failures and unfinished Book production. Its Word native review sequences passed independently. It is not a release gate PASS.
 Only a successful full Windows aggregate and all six required ordinary workflows
 at one exact head may supply the retained delivery wheel. The final owner
 application archive excludes the separately set up audio runtime. No final
 private archive, signed installer or whole-platform completion is claimed.
+
+
+## Observed failure reconciliation — 2026-11-27, 19:09 UTC
+
+The completed preflight at `142de6b6028cc86f9a5bf70c42e60adc40f96b77`
+(run 46048596823) reported 207 portable suites: 184 passed and 23 failed.
+Its Windows native Word review, reference-profile controls and encrypted Sync
+review/restore passed in the actual source and installed modes. These are
+synthetic, modeled/native-control results, not Microsoft Word installation,
+private speech inference, human listening or NVDA acceptance.
+
+The successor composes the concrete measured-publication timing repair, passive
+Book preparation with mandatory live Run voice admission, original-source notice
+validation, queued-close cancellation ordering, playback error reporting, typed
+playlist cancellation and current bounded Assistant state I/O. Durable checkpoint
+I/O reuses the existing Windows delete-sharing reader and bounded replacement
+helper. It retains the Assistant's 64 MiB envelope and current JobStore format.
+
+The original test expectations are retained where they express product behavior.
+Fixture corrections use current typed empty inventories/search rows, actual
+active source identities, a real format5 settings sidecar, and a new-root runtime
+coordinator rather than copied old-root locks. Native fixtures retain their real
+actions and success predicates while selecting the actual Library menu, native
+LF reading projection with exact original CRLF bytes, and canonical local paths.
+The DAISY validator admits only exact local URI spellings of its pinned schemas;
+its no-network and before/after digest checks remain.
+
+Windows BookBatch/BookCLI still exceeded their individual module deadlines on
+the prior head. The native batch's 80-second completion predicate is unchanged;
+new bounded thread/status diagnostics will identify the outstanding cause.
+Neither the whole-gate 25-minute cutoff nor a guessed device issue is treated
+as a successful test. Current fixes, recording/large-source/protected-transfer/
+source-window additions and their current installed wheel remain **NOT_RUN**
+until the next exact-head gates complete. No eligible delivery wheel or final
+private application archive has been produced.
 
 ## Implemented behavior and qualification boundaries
 

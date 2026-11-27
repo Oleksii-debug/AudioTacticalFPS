@@ -115,7 +115,7 @@ def test_actual_pcm_and_owner_child_create_exact_local_data_without_installing(e
         assert json.loads(archive.read('voice-package.json')) == proposal.document
     assert env['source'].read_bytes() == env['original']
     assert env['manager'].store.read() == old_settings
-    assert env['manager'].versions(proposal.description.profile_id) == []
+    assert env['manager'].versions(proposal.description.profile_id) == ()
     assert not ResourceBroker.for_app(env['library']).snapshot()['leases']
     assert not list((env['library'] / 'runtime').glob('.voice-reference-*'))
     assert not list(env['root'].glob('.voice-reference-package-*'))
@@ -202,7 +202,7 @@ def test_measured_quality_warnings_are_numeric_not_speaker_or_model_claims(envir
     assert proposal.pcm['full_scale_samples'] == (0 if level == 0 else 4800)
     assert 'Warning:' in proposal.summary()
     assert 'do not verify speech content' in proposal.summary()
-    assert env['manager'].versions(proposal.description.profile_id) == []
+    assert env['manager'].versions(proposal.description.profile_id) == ()
 
 
 @pytest.mark.parametrize(('field', 'value'), [

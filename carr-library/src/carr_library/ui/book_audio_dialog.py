@@ -247,9 +247,9 @@ def create_book_audio_dialog(frame, *, service=None, wx_module=None, edition_id=
         controls()
         def checked():
             try:
-                guard()
                 if stopped():
                     raise InterruptedError('Book audio cancelled before starting.')
+                guard()
                 return operation()
             finally:
                 # DesktopFrame intentionally drops done/failed callbacks after

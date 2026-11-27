@@ -1,5 +1,5 @@
 """Actual local snapshot transfers; no mocked filesystem or backup engine."""
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from hashlib import sha256
 import json
 import os
@@ -59,7 +59,8 @@ def test_actual_library_backup_transfer_restore_search_and_quote(tmp_path):
     restored = restore_backup(copied, tmp_path / 'restored library', original_token)
     reopened = LibraryApp(restored)
     result = reopened.search(workspace, 'Exact original source')[0]
-    assert result == original_hit and result.verified == original_hit.verified
+    assert result.ref != original_hit.ref  # Recovery issues a fresh opaque selection handle.
+    assert replace(result, ref=original_hit.ref) == original_hit and result.verified == original_hit.verified
     assert reopened.copy(workspace, result.ref, result.revision, 'quote') == original_quote
     assert 'Exact original source' in original_quote
 

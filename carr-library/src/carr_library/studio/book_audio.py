@@ -574,7 +574,8 @@ class BookAudioService:
                                      'historical jobs and their former paths remain unchanged.')
                 elif state is None:
                     self.production.submit(plan.project(index), reviewed.output_parent,
-                                           format=plan.format, stems=False, operation_id=plan.job_id(index))
+                                           format=plan.format, stems=False, operation_id=plan.job_id(index),
+                                           defer_voice_validation=True)
             return self.review(plan, reviewed.output_parent, cancelled=cancelled, guard=guard)
 
     def run(self, plan_id, destination, *, approval, cancelled=lambda: False,

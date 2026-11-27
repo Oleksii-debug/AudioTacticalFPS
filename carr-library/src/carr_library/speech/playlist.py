@@ -124,29 +124,35 @@ def retain_playlist(library_root, items, *, cancelled=lambda: False):
         return cancelled()
     def inspect(path, *, cancelled):
         prepare_playlist((path,), cancelled=cancelled)
-    from ..operations import ResourceBroker, ResourceRequest
+    from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
     from ..audio.cleanup import retained_context
     from uuid import uuid4
     request = ResourceRequest(cpu_slots=1, memory_bytes=64 * 1024**2,
                               disk_bytes=sum(item.identity[2] for item in items), disk_path=inputs)
-    with retained_context(ResourceBroker.for_app(root).reserve(request,
-            operation_id='reader-playlist:' + uuid4().hex, cancelled=stopped, timeout=60)) as lease:
-        lease.checkpoint()
-        result = []
-        for item in items:
+    try:
+        with retained_context(ResourceBroker.for_app(root).reserve(request,
+                operation_id='reader-playlist:' + uuid4().hex, cancelled=stopped, timeout=60)) as lease:
+            lease.checkpoint()
+            result = []
+            for item in items:
+                if stopped():
+                    raise InterruptedError('Playlist retention was cancelled.')
+                if _stamp(local_file(item.path).stat()) != item.identity:
+                    raise ValueError('A reviewed playlist source changed before retention.')
+                target = retain_audio_input(inputs, item.path, inspect=inspect,
+                    expected_sha256=item.sha256, cancelled=stopped)
+                reviewed, = prepare_playlist((target,), cancelled=stopped)
+                label = item.display_name
+                _label(label)
+                result.append(replace(reviewed, label=label))
             if stopped():
                 raise InterruptedError('Playlist retention was cancelled.')
-            if _stamp(local_file(item.path).stat()) != item.identity:
-                raise ValueError('A reviewed playlist source changed before retention.')
-            target = retain_audio_input(inputs, item.path, inspect=inspect,
-                expected_sha256=item.sha256, cancelled=stopped)
-            reviewed, = prepare_playlist((target,), cancelled=stopped)
-            label = item.display_name
-            _label(label)
-            result.append(replace(reviewed, label=label))
-        if stopped():
-            raise InterruptedError('Playlist retention was cancelled.')
-        return tuple(result)
+            return tuple(result)
+    except ResourceCancelled as exc:
+        # Normalize the shared broker's stop at this existing playlist API.
+        # The retained context has already preserved any pending owners, and
+        # the causal exception chain remains available to callers.
+        raise InterruptedError('Playlist retention was cancelled.') from exc
 
 
 def _label(value):

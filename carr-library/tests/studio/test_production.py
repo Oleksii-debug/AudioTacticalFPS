@@ -309,7 +309,15 @@ def test_unselected_cue_directory_is_denied_before_publication(tmp_path, actual_
     base = parse_script('Narrator: Local only.', voice_ids=('flite:slt',), mode='authored')
     project = replace(base, scenes=(replace(base.scenes[0], cues=(Cue('outside', str(outside)),)),))
     job = service.submit(project, outputs, stems=False)
+    original = outside.read_bytes()
     with pytest.raises(ValueError, match='selected input'):
         service.run(job)
     assert not list(outputs.iterdir())
-    assert service.get(job)['status'] == 'failed'
+    # The shared admission guard requests a new input review before any
+    # render node starts. It does not describe an admitted render failure.
+    state = service.get(job)
+    assert state['status'] == 'attention'
+    assert 'selected input' in state['error']
+    assert state['nodes'] == {} and state['artifacts'] == [] and state['runtime'] is None
+    assert outside.read_bytes() == original
+    assert not service.broker.snapshot()['leases']

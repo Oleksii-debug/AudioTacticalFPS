@@ -181,7 +181,7 @@ class ProductionService:
             local_path(path, exists=True)
             lease.checkpoint()
             if disk_bytes and _retained_bytes((self.root,), cancelled) + disk_bytes > self.total_disk_bytes:
-                raise AudioError('The Studio private disk allowance changed while waiting for resources.')
+                raise AudioError('The Studio total private disk allowance changed while waiting for resources.')
             yield lease
 
     @staticmethod
@@ -309,18 +309,27 @@ class ProductionService:
         self.projects.save(project)
         return project
 
-    def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):
+    def _available_voices(self, project):
+        available = {voice.id: voice for voice in self.voices.voices()}
+        if any(role.voice_id not in available for role in project.roles if role.voice_id):
+            raise ValueError('A selected local voice is no longer available. Reassign the role.')
+        return available
+
+    def submit(self, project, destination, *, format='wav', stems=True, operation_id=None,
+               defer_voice_validation=False):
         self._check_open()
         if format not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
             raise ValueError('Choose a supported local audio output format.')
-        if type(stems) is not bool or not isinstance(project, Project):
+        if (type(stems) is not bool or type(defer_voice_validation) is not bool
+                or not isinstance(project, Project)):
             raise ValueError('Invalid production options.')
         if any(not role.voice_id for role in project.roles if any(
                 line.role == role.id and line.text for scene in project.scenes for line in scene.lines)):
             raise ValueError('Assign an installed voice to every speaking role before rendering.')
-        available = {voice.id for voice in self.voices.voices()}
-        if any(role.voice_id not in available for role in project.roles if role.voice_id):
-            raise ValueError('A selected local voice is no longer available. Reassign the role.')
+        # Explicit Book preparation records its reviewed literal plan only.
+        # No receipt grants future voice authority; actual Run rechecks below.
+        if not defer_voice_validation:
+            self._available_voices(project)
         destination = local_path(destination, exists=True)
         if not destination.is_dir():
             raise ValueError('Choose an existing local output directory.')
@@ -641,11 +650,13 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))
 
             roles = {role.id: role for role in project.roles}
-            voices = {voice.id: voice for voice in self.voices.voices()}
             timeline, scene_results, stem_scenes, chapter_data = [], [], {}, []
             clip_timeline, clip_stems = [], {}
             offset = 0.0
             try:
+                # Live validation stays inside the existing resource lease,
+                # before any speech/cache/output acceptance, including Resume.
+                voices = self._available_voices(project)
                 for scene_index, scene in enumerate(project.scenes, 1):
                     report(f'Scene {scene_index} of {len(project.scenes)}: {scene.title}')
                     clips, clip_roles, scene_lines, cursor = [], [], [], 0.0

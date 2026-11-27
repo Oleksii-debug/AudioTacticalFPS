@@ -96,6 +96,7 @@ def validate_project_provenance(value, project):
     import re
     if (type(value) is not dict or not required <= set(value) <= required | {'landmarks'}
             or value['schema'] != 'carr-book-audio-source/1'
+            or value['notice'] != 'A literal reading derivative; this anchor never authorizes a quotation.'
             or type(value['plan']) is not str or re.fullmatch('[0-9a-f]{32}', value['plan']) is None
             or type(value['plan_sha256']) is not str
             or re.fullmatch('[0-9a-f]{64}', value['plan_sha256']) is None

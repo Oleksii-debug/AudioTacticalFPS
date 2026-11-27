@@ -783,6 +783,7 @@ def test_interrupted_actual_deletion_stays_inactive_and_is_not_replayed(lifecycl
     root = selected.parent / 'models/voices/packages'
     review = lifecycle.review_removal('fixture', delete_files=True)
     original = selected.read_bytes(), manager.store.read()
+    missing = next(path for path in sorted((root / 'fixture').rglob('*')) if path.is_file())
     (tmp_path / 'voice-maintenance-case.txt').write_text('partial-delete')
     with pytest.raises(model_voices.EngineUnavailable):
         lifecycle.remove(review, confirmation=review.confirmation)
@@ -790,8 +791,9 @@ def test_interrupted_actual_deletion_stays_inactive_and_is_not_replayed(lifecycl
     assert 'fixture' not in index['active'] and index['inactive']['fixture'] == '2.0.0'
     assert (root / 'fixture').is_dir() and list((root / 'fixture').rglob('*.wav'))
     assert (selected.read_bytes(), manager.store.read()) == original
-    with pytest.raises((ValueError, ModelManifestError)):
+    with pytest.raises(FileNotFoundError) as rejected:
         manager.configuration()
+    assert Path(rejected.value.args[0]) == missing and not missing.exists()
     assert lifecycle.broker.snapshot()['leases'] == []
 
 

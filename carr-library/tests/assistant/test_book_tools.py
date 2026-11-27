@@ -419,3 +419,35 @@ def test_book_route_vocabulary_is_pure_and_bounded(book, changes, monkeypatch):
     monkeypatch.setattr(book_tools, '_production', forbidden)
     with pytest.raises(ValueError):
         _check_arguments(Step('book.run', {**args, 'review_sha256': '0' * 64, **changes}))
+
+
+def test_passive_book_preparation_never_grants_missing_voice_execution(book, monkeypatch):
+    _fixture.require_audio()
+    e = book
+    candidate, scope, service, args = selected(e)
+    monkeypatch.setattr(e.voices, 'voices', lambda: ())
+
+    # Ordinary Studio submission keeps its existing live voice check.
+    with pytest.raises(ValueError, match='voice is no longer available'):
+        e.production.submit(candidate.project(1), e.output, stems=False)
+    assert not e.production.jobs()
+
+    _, reviewed = invoke(service, scope, Step('book.review', args))
+    assert reviewed.status == 'complete', reviewed
+    _, prepared = invoke(service, scope, Step('book.prepare',
+        {**args, 'review_sha256': reviewed.results[0]['review_sha256']}))
+    assert prepared.status == 'complete', prepared
+    assert len(e.production.jobs()) == len(candidate.parts) == 2
+
+    # Explicit Run must validate the real current inventory even for a saved,
+    # source-bound prepared plan. Its resource lease is not output permission.
+    _, result = invoke(service, scope, Step('book.run',
+        {**args, 'review_sha256': prepared.results[0]['review_sha256']}))
+    assert result.status == 'failed' and result.completed == 0
+    assert 'voice is no longer available' in result.message
+    first, later = (e.production.get(candidate.job_id(index)) for index in (1, 2))
+    assert first['status'] == 'failed' and later['status'] == 'pending'
+    assert first['fingerprint'] == candidate.project(1).fingerprint
+    assert first['nodes'] == {} and first['artifacts'] == []
+    assert e.voices.received == [] and not tuple(e.output.iterdir())
+    assert not e.production.broker.snapshot()['leases']

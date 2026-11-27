@@ -34,6 +34,8 @@ def test_passive_history_survives_actual_backup_without_creating_a_runtime(tmp_p
     assert manifest['version'] == 5 and manifest['schema_version'] == 6
     assert (target / 'sidecars' / NAME).read_bytes() == original
     if shape == 'flat':
+        assert manifest['state'] == []  # This fixture contains only top-level passive history.
+        (target / 'state').rmdir()  # Empty roots have no declaration in the foreign flat envelope.
         entries = [{**row, 'filename': 'state/' + row['filename']} for row in manifest['state']]
         for row in manifest['sidecars']['files']:
             shutil.copyfile(target / 'sidecars' / row['path'], target / row['path'])

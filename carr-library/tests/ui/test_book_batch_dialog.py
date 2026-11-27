@@ -164,13 +164,19 @@ def test_queued_preview_freezes_inputs_and_rejects_later_ui_changes(batch_ui):
     assert not e.find('Prepare batch items').enabled and not e.e.production.jobs()
 
 
-def test_close_cancels_queued_source_review_without_closing_parent_service(batch_ui):
+def test_close_cancels_queued_source_review_without_closing_parent_service(batch_ui, monkeypatch):
     e = batch_ui
     choose_and_review(e)
     e.press('Preview entire batch')
+    entries = []
+    def forbidden_plan(*args, **kwargs):
+        entries.append(True)
+        raise AssertionError('A closed batch must cancel before building a plan.')
+    monkeypatch.setattr(book_batch_dialog, 'select_books', forbidden_plan)
     e.close()
     result = e.e.complete()
     assert isinstance(result, InterruptedError)
+    assert entries == []
     assert not e.e.production.jobs() and not e.e.service._closed.is_set()
 
 

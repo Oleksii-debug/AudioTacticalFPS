@@ -254,7 +254,41 @@ def run_native(source, report, checkpoint):
         dialogs = []
 
         def wait_idle(label):
-            check(label, pump(lambda: not frame.working and not frame.busy, 80))
+            started = monotonic()
+            complete = pump(lambda: not frame.working and not frame.busy, 80)
+            if not complete:
+                # Preserve the actual blocked worker stack before cancellation
+                # or modal teardown can erase the wait boundary.
+                faulthandler.dump_traceback(file=sys.stderr, all_threads=True)
+                evidence = {
+                    'label': label, 'elapsed_seconds': monotonic() - started,
+                    'working': bool(frame.working), 'busy': bool(frame.busy),
+                    'cancelled': frame.cancel_event.is_set(),
+                    'fixture_hold': voices.hold, 'voice_calls': len(voices.calls),
+                    'remaining_probe_seconds': max(0, deadline - monotonic()),
+                    'modal_status': [],
+                }
+                def visible_status(control):
+                    try:
+                        return str(control.GetValue())[:4096]
+                    except (RuntimeError, AttributeError) as error:
+                        return type(error).__name__ + ': ' + str(error)[:512]
+                evidence['frame_status'] = visible_status(frame.status)
+                for window, _ in tuple(dialogs)[-4:]:
+                    if getattr(window, '_book_destroyed', False):
+                        evidence['modal_status'].append('Owner already destroyed')
+                        continue
+                    for name in ('Book split preview and saved job status',
+                                 'Multiple book review and existing Studio checkpoints'):
+                        try:
+                            control = named(window, name)
+                        except (AssertionError, RuntimeError):
+                            continue
+                        evidence['modal_status'].append({'name': name, 'text': visible_status(control)})
+                report['idle_failure'] = evidence
+                checkpoint('failed idle wait: ' + label)
+                print('BOOK_AUDIO_IDLE_FAILURE ' + json.dumps(evidence, ensure_ascii=False), flush=True)
+            check(label, complete)
             if failures:
                 raise failures[0]
 

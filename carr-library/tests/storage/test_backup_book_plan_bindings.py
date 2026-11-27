@@ -9,6 +9,7 @@ from carr_library import backup_producers
 from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, encode, read_json, state_lock
 from carr_library.library_backup import restore_backup
+from carr_library.keybindings import Command, FILENAME as KEYBINDING_FILE, KeybindingStore
 from carr_library.studio.book_audio import BookAudioService, SplitOptions, capture_plan
 from carr_library.studio.project import Project, Role
 from carr_library.studio.render import ProductionService
@@ -81,6 +82,11 @@ def test_individually_valid_job_cannot_break_its_saved_book_plan(book, tmp_path,
 
 def test_actual_preparation_locks_are_not_restored_and_new_output_requires_review(book, tmp_path):
     _prepare(book)
+    # This case intentionally qualifies the composite format-5 envelope. A
+    # library with only state and pending records correctly emits format 4.
+    bindings = {'voice_reader.prepare': 'Ctrl+Alt+Shift+P'}
+    commands = (Command('voice_reader.prepare', 'Prepare reading copy', context='voice_reader'),)
+    preferences = KeybindingStore(book.app.root).save(commands, bindings)
     lock = book.service.plans / ('.book-' + book.plan.id + '.lock')
     plan_path = book.service.plans / (book.plan.id + '.json')
     original_plan = plan_path.read_bytes()
@@ -92,6 +98,8 @@ def test_actual_preparation_locks_are_not_restored_and_new_output_requires_revie
     assert not any(row['filename'].endswith('.lock') for row in manifest['state'])
     restored = restore_backup(tmp_path / 'backup', tmp_path / 'restored',
                               expected_manifest_sha256=checksum)
+    assert (restored / KEYBINDING_FILE).read_bytes() == preferences
+    assert KeybindingStore(restored).load() == bindings
     recovered_app = LibraryApp(restored)
     production = ProductionService(restored / 'state' / 'studio', voices=book.voices)
     service = BookAudioService(recovered_app, book.workspace, production=production)

@@ -37,8 +37,9 @@ def encoded(value):
 
 def actual_location(app, workspace, edition='original'):
     with app.read(workspace) as db:
-        row = db.execute('SELECT e.active_revision,e.asset,p.ordinal,p.physical,p.digest '
-            'FROM catalog_edition e JOIN page p ON p.revision=e.active_revision '
+        row = db.execute('SELECT p.revision,e.asset,p.ordinal,p.physical,p.digest '
+            'FROM catalog_edition e JOIN active_page p ON p.workspace=e.workspace '
+            'AND p.edition=e.id AND p.asset=e.asset '
             'WHERE e.workspace=? AND e.id=? ORDER BY p.ordinal LIMIT 1', (workspace, edition)).fetchone()
     assert row is not None
     revision, asset, ordinal, physical, digest = row
@@ -410,6 +411,12 @@ def test_released_state_envelopes_remain_valid_incremental_bases(source, tmp_pat
     if shape == 'flat-v4':
         _, checksum = _as_flat(base.path, manifest)
     else:
+        # A released v3 envelope predates the separate pending component.
+        # The current source fixture keeps its requests; only this deliberate
+        # historical snapshot projection omits that newer component.
+        if 'pending' in manifest:
+            manifest.pop('pending')
+            shutil.rmtree(base.path / 'pending')
         if shape == 'state-v3':
             manifest.pop('sidecars')
             shutil.rmtree(base.path / 'sidecars')
@@ -419,6 +426,7 @@ def test_released_state_envelopes_remain_valid_incremental_bases(source, tmp_pat
             shutil.rmtree(base.path / 'state')
         manifest['version'] = 3
         checksum = _seal_full(base.path, manifest)
+    assert verify_backup(base.path, checksum) == json.loads((base.path / 'manifest.json').read_bytes())
     selected = BackupReference(base.path, checksum)
     before = bytes_in(base.path)
     document.set_text('Current copy after released backup.')
@@ -639,3 +647,100 @@ def test_new_snapshot_exceeding_logical_budget_never_publishes_a_layer(source, t
     assert not (tmp_path / 'rejected').exists()
     assert bytes_in(base.path) == before
     assert not list(tmp_path.glob('.carr-incremental-*'))
+
+
+def test_actual_streamed_original_above_64_mib_survives_full_delta_and_fresh_restore(
+        tmp_path, monkeypatch):
+    """Reuse the actual source-profile fixture and its real isolated worker."""
+    import runpy
+    fixture = runpy.run_path(str(Path(__file__).with_name('test_streamed_source_backup.py')))
+    app, workspace, source_path, request = fixture['prepared'](tmp_path, large=True)
+    maximum = 64 * 1024**2
+    assert maximum < source_path.stat().st_size <= request['source_profile']['maximum_bytes']
+    completed = app.resume_import(workspace, request['request_id'], timeout=180)
+    assert completed['state'] == 'complete', completed
+    assert completed['asset'] == request['expected_manifest']['sha256']
+    (app.root / 'keybindings.json').write_bytes(encode_preferences({}))
+    document = ReadingDocument('First reviewed large-source reading copy.')
+    drafts = ReaderDraftStore(app.root)
+    drafts.save(ReaderResume(document))
+    base = tmp_path / 'full-streamed'
+    base_digest = create_backup(app, base)
+    manifest = json.loads((base / 'manifest.json').read_bytes())
+    assert manifest['version'] == 5 and manifest['schema_version'] == CURRENT_SCHEMA_VERSION
+    asset, = manifest['assets']
+    assert asset['sha256'] == completed['asset'] and asset['size_bytes'] == source_path.stat().st_size > maximum
+    base_manifest = (base / 'manifest.json').read_bytes()
+    original = base / 'originals' / asset['filename']
+
+    # A genuine >64 MiB original and a valid current SQLite schema still do
+    # not acquire admission from MIME/manifest bytes without a sealed profile.
+    unprofiled = tmp_path / 'unprofiled-full'
+    (unprofiled / 'originals').mkdir(parents=True)
+    shutil.copyfile(original, unprofiled / 'originals' / asset['filename'])
+    with closing(Storage(unprofiled / 'library.sqlite', schema_version=CURRENT_SCHEMA_VERSION)) as storage:
+        with storage.transaction():
+            storage.db.execute('INSERT INTO catalog_asset(digest,mime,size) VALUES(?,?,?)',
+                               (asset['sha256'], asset['mime'], asset['size_bytes']))
+        storage.check()
+    database_bytes = (unprofiled / 'library.sqlite').read_bytes()
+    unprofiled_manifest = dict(version=2, kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
+        schema_fingerprint=expected_schema_fingerprint(CURRENT_SCHEMA_VERSION),
+        database={'filename': 'library.sqlite', 'size_bytes': len(database_bytes),
+                  'sha256': sha256(database_bytes).hexdigest()}, assets=[dict(asset)])
+    unprofiled_digest = _seal_full(unprofiled, unprofiled_manifest)
+    with pytest.raises(ValueError, match='no exact sealed streamed source profile'):
+        create_incremental_backup(app, tmp_path / 'refused-unprofiled',
+                                  base=BackupReference(unprofiled, unprofiled_digest))
+    assert not (tmp_path / 'refused-unprofiled').exists()
+
+    document.replace(0, len(document.text), 'Revised reviewed large-source reading copy.')
+    drafts.save(ReaderResume(document, 'unavailable:passive-voice', cursor=8))
+    # The source is already sealed. Backup/recovery must use its retained bytes
+    # and checked source profile, with no new import worker or audio activation.
+    monkeypatch.setattr(subprocess, 'Popen',
+        lambda *_a, **_k: pytest.fail('Completed streamed backup started a process.'))
+    receipt = create_incremental_backup(app, tmp_path / 'streamed-delta',
+                                       base=BackupReference(base, base_digest))
+    descriptor = json.loads((receipt.path / 'manifest.json').read_bytes())
+    assert 'originals/' + asset['filename'] not in descriptor['stored']
+    proof = verify_incremental_backup(receipt.path, receipt.manifest_sha256,
+                                     bases=(BackupReference(base, base_digest),))
+    assert proof['chain'] == [receipt.manifest_sha256, base_digest]
+    source_path.unlink()
+    shutil.rmtree(app.root)
+    root = restore_incremental_backup(receipt.path, tmp_path / 'streamed-restored',
+        receipt.manifest_sha256, bases=(BackupReference(base, base_digest),))
+    restored = LibraryApp(root)
+    retained = restored.assets_dir / asset['filename']
+    assert retained.stat().st_size == asset['size_bytes']
+    assert incremental.full.hash_file(retained) == asset['sha256']
+    hit, = restored.search_page(workspace, 'Portableneedle original evidence', limit=1).results
+    assert hit.verified and hit.revision == completed['id']
+    assert restored.copy(workspace, hit.ref, hit.revision, 'quote') == 'Portableneedle original evidence'
+    resumed = ReaderDraftStore(root).load()
+    assert resumed.document.to_dict() == document.to_dict() and resumed.cursor == 8
+    assert resumed.voice_id == 'unavailable:passive-voice'
+    assert (base / 'manifest.json').read_bytes() == base_manifest
+    assert incremental.full.hash_file(original) == asset['sha256']
+
+
+@pytest.mark.parametrize('mime,size', [
+    ('application/pdf', 64 * 1024**2 + 1),
+    ('text/plain', 128 * 1024**2 + 1),
+    ('text/plain', True),
+], ids=['ordinary-format-over-64-mib', 'streamed-text-over-128-mib', 'boolean-size'])
+def test_incremental_outer_source_caps_reject_before_any_payload_verification(
+        source, tmp_path, monkeypatch, mime, size):
+    app, workspace, document, drafts, base = source
+    manifest = json.loads((base.path / 'manifest.json').read_bytes())
+    original, = manifest['assets']
+    manifest['assets'] = [{**original, 'mime': mime, 'size_bytes': size,
+        'filename': original['sha256'] + incremental.full.SUFFIXES[mime]}]
+    checksum = _seal_full(base.path, manifest)
+    monkeypatch.setattr(incremental.full, 'verify_backup',
+        lambda *_a, **_k: pytest.fail('Oversized/invalid outer identity reached payload verification.'))
+    destination = tmp_path / 'rejected-source'
+    with pytest.raises(ValueError, match='original identity'):
+        create_incremental_backup(app, destination, base=BackupReference(base.path, checksum))
+    assert not destination.exists()

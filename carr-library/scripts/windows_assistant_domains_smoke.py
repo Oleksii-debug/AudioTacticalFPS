@@ -44,6 +44,7 @@ def _installed_package_root(distributions, package_file, checkout):
 
 MODULES = (
     'carr_library.assistant.models', 'carr_library.assistant.service',
+    'carr_library.assistant.state', 'carr_library.durable_state',
     'carr_library.assistant.local_tools', 'carr_library.assistant.player_tools',
     'carr_library.assistant.book_tools', 'carr_library.ui.assistant_dialog',
     'carr_library.ui.desktop_integration', 'carr_library.ui.speech_dialog',
@@ -69,9 +70,10 @@ def run_native(source, report, checkpoint):
     report.update(origins=origins, module_sha256={
         name: sha256(Path(path).read_bytes()).hexdigest() for name, path in origins.items()})
 
-    def check(name, condition):
+    def check(name, condition, *, details=None):
         if not condition:
-            raise AssertionError(name)
+            suffix = '' if details is None else ': ' + json.dumps(details, ensure_ascii=False)
+            raise AssertionError(name + suffix)
         report['checks'].append(name)
         checkpoint(name)
 
@@ -80,15 +82,15 @@ def run_native(source, report, checkpoint):
         from importlib.metadata import distributions
         installed = _installed_package_root(distributions(name='universal-research-library'),
                                             carr_library.__file__, checkout)
-        check('all nine assistant and reader modules load from the exact installed wheel record',
+        check('all eleven assistant and reader modules load from the exact installed wheel record',
               all(Path(path) == installed.joinpath(*name.split('.')[1:]).with_suffix('.py').resolve(strict=True)
                   for name, path in origins.items()))
     else:
         expected = (source / 'src' / 'carr_library').resolve(strict=True)
-        check('all nine assistant and reader modules load from the explicit source package',
+        check('all eleven assistant and reader modules load from the explicit source package',
               all(Path(path) == expected.joinpath(*name.split('.')[1:]).with_suffix('.py').resolve(strict=True)
                   for name, path in origins.items()))
-    check('all nine imported assistant and reader modules match the exact checkout bytes',
+    check('all eleven imported assistant and reader modules match the exact checkout bytes',
           all(report['module_sha256'][name] == sha256(
               checkout.joinpath('src', *name.split('.')).with_suffix('.py').read_bytes()).hexdigest()
               for name in origins))
@@ -205,8 +207,13 @@ def run_native(source, report, checkpoint):
                         if not pump(finished):
                             raise AssertionError('Native typed execution failed to settle: ' + controls['review'].GetValue())
                         job, = [job for job in observer.jobs() if job.id not in previous]
+                        job_state = {'id': job.id, 'status': job.status, 'completed': job.completed,
+                                     'total': job.total, 'message': job.message,
+                                     'review': controls['review'].GetValue()}
+                        report['last_job'] = job_state
                         check('native result status agrees with the durable assistant checkpoint',
-                              job.status == 'complete' and job.completed == len(steps))
+                              job.status == 'complete' and job.completed == len(steps),
+                              details=job_state)
                         return job
 
                     owned = reader.reader_player

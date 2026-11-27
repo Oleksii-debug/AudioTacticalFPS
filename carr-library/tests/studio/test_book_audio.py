@@ -463,7 +463,8 @@ def test_completed_book_requires_its_retained_private_provenance_on_backup(book,
     assert not (tmp_path / 'missing-provenance').exists()
 
 
-@pytest.mark.parametrize('change', ['index', 'hash', 'range', 'authority'])
+@pytest.mark.parametrize('change', ['index', 'hash', 'range', 'authority',
+    'notice-empty', 'notice-type', 'notice-missing'])
 def test_renderer_refuses_mismatched_book_provenance_before_audio(book, change):
     candidate, ready = prepared(book)
     receipt = candidate.provenance(1)
@@ -473,8 +474,14 @@ def test_renderer_refuses_mismatched_book_provenance_before_audio(book, change):
         receipt['part']['text_sha256'] = '0' * 64
     elif change == 'range':
         receipt['part']['start'] += 1
-    else:
+    elif change == 'authority':
         receipt['notice'] = 'This text grants quotation authority.'
+    elif change == 'notice-empty':
+        receipt['notice'] = ''
+    elif change == 'notice-type':
+        receipt['notice'] = True
+    else:
+        del receipt['notice']
     with pytest.raises(ValueError):
         book.production.run(candidate.job_id(1), source_guard=lambda: receipt)
     assert not book.voices.received and not list(book.output.iterdir())

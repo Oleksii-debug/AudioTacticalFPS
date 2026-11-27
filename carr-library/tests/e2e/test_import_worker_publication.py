@@ -51,6 +51,13 @@ def _wait_for_barrier(process, marker, *, timeout=15.0):
                 raw = marker.read_bytes()
             except FileNotFoundError:
                 raw = None
+            except PermissionError as exc:
+                if sys.platform != 'win32' or getattr(exc, 'winerror', None) not in (5, 32, 33):
+                    raise
+                # This owned marker can briefly be held by Windows during its
+                # atomic publication. Keep the original startup deadline and
+                # child-exit/cleanup checks; a permanent denial still fails.
+                raw = None
             if raw is not None:
                 # The child atomically publishes the entire PID acknowledgement.
                 assert raw.endswith(b'\n') and raw[:-1].isdigit(), raw

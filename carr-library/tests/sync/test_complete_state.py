@@ -1,4 +1,5 @@
 """Real encrypted/plain transfers compose current reading drafts and job authority."""
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,7 @@ def test_portable_complete_state_retains_source_and_requires_job_reapproval(tmp_
     original = 'Exact original.\r\nНезмінне джерело — pôvodný text.'
     app.add_text(workspace, 'Original', original)
     original_hit, = app.search(workspace, 'Exact original')
+    original_quote = app.copy(workspace, original_hit.ref, original_hit.revision, 'quote')
     reading = ReadingDocument(original)
     reading.replace(0, len(reading.text), 'An explicitly edited spoken derivative.')
     state = ReaderResume(reading, 'unavailable:retained-voice', 0, 77, 5, 1.25)
@@ -55,7 +57,10 @@ def test_portable_complete_state_retains_source_and_requires_job_reapproval(tmp_
     assert (resumed.voice_id, resumed.volume, resumed.cursor) == (state.voice_id, 77, 5)
     assert resumed.document.undo() and resumed.document.text == original
     assert (target / 'keybindings.json').read_bytes() == preferences
-    assert recovered.search(workspace, 'Exact original')[0] == original_hit
+    recovered_hit, = recovered.search(workspace, 'Exact original')
+    assert recovered_hit.ref != original_hit.ref
+    assert replace(recovered_hit, ref=original_hit.ref) == original_hit
+    assert recovered.copy(workspace, recovered_hit.ref, recovered_hit.revision, 'quote') == original_quote
     jobs = AssistantService(recovered)
     assert jobs.get(identity).status == 'attention'
     assert jobs.store.load(identity)['restore_requires_review'] is True

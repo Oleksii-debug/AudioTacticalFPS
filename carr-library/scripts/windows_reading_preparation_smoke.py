@@ -68,6 +68,7 @@ def _run_probe(args, report, checkpoint):
 
     def check(name, condition):
         if not condition:
+            checkpoint(name)
             raise AssertionError(name)
         if name not in report['checks']:
             report['checks'].append(name)
@@ -154,6 +155,9 @@ def _run_probe(args, report, checkpoint):
     with TemporaryDirectory(prefix='carr-native-reading-preparation-') as temporary:
         root = Path(temporary)
         raw = '😀 12 + 3.\r\n2024-02-29.\r\nThe original remains unchanged.'
+        # wxMSW exposes multiline text as LF. Keep that editable projection
+        # separate from the unchanged CRLF original and its source digest.
+        reading_text = raw.replace('\r\n', '\n')
         original = root / 'original.txt'
         original.write_bytes(raw.encode('utf-8'))
         source_hash = sha256(original.read_bytes()).hexdigest()
@@ -173,7 +177,7 @@ def _run_probe(args, report, checkpoint):
         allowed = [True]
         failures = []
         seen_readers = []
-        expected = [raw]
+        expected = [reading_text]
         slot = 'native-reading-preparation'
         original_prepare = reader_preparation.preview_preparation
         pending_releases = []
@@ -266,11 +270,12 @@ def _run_probe(args, report, checkpoint):
             check('initial voice inventory completes without synthesis',
                   pump(lambda: not host.busy() and reader.reader_editor.IsEnabled(), timeout=35))
             focus_editor(reader)
-            check('opening the reader preserves exact Unicode source',
-                  host.capture().text == raw and host.capture().source_sha256 == source_hash)
-            start, end = raw.index('12'), raw.index('3.') + 1
+            check('opening preserves native Unicode reading text and exact original identity',
+                  host.capture().text == reading_text and host.capture().source_sha256 == source_hash
+                  and original.read_bytes() == raw.encode('utf-8'))
+            start, end = reading_text.index('12'), reading_text.index('3.') + 1
             host.select(start, end)
-            accepted = raw[:start] + 'один два плюс три' + raw[end:]
+            accepted = reading_text[:start] + 'один два плюс три' + reading_text[end:]
 
             def apply_case(view):
                 check('language starts unselected and every transformation starts off',
@@ -282,12 +287,12 @@ def _run_probe(args, report, checkpoint):
                 choose(view, 2, 'numbers', 'symbols')
                 preview(view)
                 check('Preview alone does not edit the reader or original',
-                      host.capture().text == raw and original.read_bytes() == raw.encode('utf-8'))
+                      host.capture().text == reading_text and original.read_bytes() == raw.encode('utf-8'))
                 check('proposed Ukrainian digit and symbol text is visible',
                       'один два плюс три' in view.preview_text.GetValue())
                 click(view.reject_button)
                 check('Reject discards only the proposal',
-                      view.session.preview is None and host.capture().text == raw)
+                      view.session.preview is None and host.capture().text == reading_text)
                 preview(view)
                 click(view.apply_button)
                 check('explicit Apply changes only the selected reading derivative',
@@ -296,17 +301,17 @@ def _run_probe(args, report, checkpoint):
             focus_editor(reader)
             key(ord('Z'), wx.MOD_CONTROL)
             check('one real native Undo restores the accepted transformation',
-                  host.capture().text == raw and host.capture().source_sha256 == source_hash)
+                  host.capture().text == reading_text and host.capture().source_sha256 == source_hash)
 
-            date_start, date_end = raw.index('2024'), raw.index('2024') + 10
+            date_start, date_end = reading_text.index('2024'), reading_text.index('2024') + 10
             host.select(date_start, date_end)
             date_words = 'rok dva nula dva štyri, mesiac nula dva, deň dva deväť'
-            expected[0] = raw[:date_start] + date_words + raw[date_end:]
+            expected[0] = reading_text[:date_start] + date_words + reading_text[date_end:]
             def date_case(view):
                 choose(view, 3, 'iso_dates')
                 preview(view)
                 check('Slovak ISO preview names all three fields explicitly',
-                      date_words in view.preview_text.GetValue() and host.capture().text == raw)
+                      date_words in view.preview_text.GetValue() and host.capture().text == reading_text)
                 click(view.apply_button)
                 check('ISO acceptance retains both leading digit zeros and punctuation',
                       host.capture().text == expected[0])

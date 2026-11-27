@@ -397,3 +397,25 @@ def test_nul_truncated_zip_name_cannot_masquerade_as_fixed_member(source_job, tm
         assert archive.infolist()[0].orig_filename != 'mimetype'
     with pytest.raises(ValueError, match='container graph'):
         inspect_epub(changed)
+
+
+def test_original_line_measurements_survive_tolerated_playback_clamping():
+    first = SimpleNamespace(id='first', text='First.', role='narrator', source_ref='one')
+    second = SimpleNamespace(id='second', text='Second.', role='narrator', source_ref='two')
+    scene = SimpleNamespace(id='scene', title='Measured source', lines=(first, second))
+    project = SimpleNamespace(id='project', revision=1, original_script='First. Second.',
+                              sample_rate=24000, scenes=(scene,))
+    raw_start = 1 - 1 / project.sample_rate
+    timeline = {'schema': 1, 'project': project.id, 'revision': project.revision,
+        'source_sha256': sha256(project.original_script.encode()).hexdigest(),
+        'sample_rate': project.sample_rate, 'duration': 2.,
+        'chapters': [{'id': scene.id, 'title': scene.title, 'start': 0., 'end': 2.}],
+        'lines': [{'scene': scene.id, 'line': line.id, 'role': line.role,
+                   'text': line.text, 'source_ref': line.source_ref, 'start': begin, 'end': finish}
+                  for line, begin, finish in ((first, 0., 1.), (second, raw_start, 2.))]}
+    _, segments, duration = publishing._segments(project, timeline)
+    assert duration == 2. and len(segments) == 2
+    assert segments[1]['start'] == segments[0]['end'] == 1.
+    assert segments[1]['measured_start'] == raw_start
+    assert [(row['measured_start'], row['measured_end']) for row in segments] == [
+        (row['start'], row['end']) for row in timeline['lines']]

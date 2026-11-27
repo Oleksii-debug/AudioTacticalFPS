@@ -182,6 +182,8 @@ Import folder "C:/Books" / Імпортуй папку "C:/Books"
 Search "railway transport" / Знайди "залізничний транспорт"
 List books / Покажи книги
 List libraries / Покажи бібліотеки
+List voices / Покажи голоси
+List audio effects / Покажи аудіоефекти
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
 Produce audio: [script text] / Озвуч: [текст сценарію]
@@ -239,6 +241,12 @@ def preview(value, scope):
             continue
         if re.fullmatch(r'(?:list\s+books|покажи\s+книги)\.?', line, re.IGNORECASE):
             steps.append(Step('library.catalog'))
+            continue
+        if re.fullmatch(r'(?:list\s+voices|покажи\s+голоси)\.?', line, re.IGNORECASE):
+            steps.append(Step('voice.list'))
+            continue
+        if re.fullmatch(r'(?:list\s+(?:audio\s+)?effects|покажи\s+аудіоефекти)\.?', line, re.IGNORECASE):
+            steps.append(Step('audio.effects'))
             continue
         match = re.fullmatch(r'(?:extract|експортуй\s+текст)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
         if match:

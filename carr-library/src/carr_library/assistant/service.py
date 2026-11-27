@@ -322,14 +322,14 @@ class AssistantService:
                 raise PermissionError('A tool returned an artifact outside the selected output folder.')
             size = regular(path).st_size
             if expected is not None and size != expected['size']:
-                raise ValueError('A produced artifact differs from its declared receipt; output was retained.')
+                raise ValueError('A produced artifact changed from its declared receipt; output was retained.')
             total += size
             if total > scope.max_bytes:
                 raise ValueError('Produced artifacts exceed the approved byte budget.')
             identity = _file_identity(path, maximum=size, cancelled=cancelled)
             if identity['size_bytes'] != size or (expected is not None
                     and identity['sha256'] != expected['sha256']):
-                raise ValueError('A produced artifact differs from its declared receipt; output was retained.')
+                raise ValueError('A produced artifact changed from its declared receipt; output was retained.')
             records.append({'path': str(path), 'size': size, 'sha256': identity['sha256']})
         return records
 
