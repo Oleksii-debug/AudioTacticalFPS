@@ -99,6 +99,22 @@ retained manifest digest. This does not establish encrypted backups,
 incremental/multi-device migration or recovery of external credentials,
 engines or published files.
 
+## Cancellation and pending-import validation boundaries
+
+The same cancellation callback is checked during current and legacy manifest
+normalization, pending file/source binding validation, journal inventory and
+record/checkpoint validation, and immediately before restore publication.
+Malformed non-string membership fields in pending manifests are rejected as
+validation errors before dictionary lookup. This does not change the format,
+retained source identity, allowed filenames or existing aggregate budgets.
+Pending capture scans at most 50,000 total directory entries (including ignored transient files) across request, batch and nested review folders; exceeding the budget rejects the backup before publication. Pending capture scans committed and known transient names incrementally;
+restore copies retained journals by a single pass through the validated file
+inventory. The existing aggregate file/byte limits still apply. JSON decoding,
+individual SQLite queries, bounded source reads and synchronous filesystem
+calls are not preempted; cancellation is cooperative at the next boundary.
+These are correctness and algorithmic bounds, not a measured Windows latency
+or complete crash-recovery qualification.
+
 
 ## Typed sidecar scan resource boundary
 

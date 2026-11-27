@@ -1,5 +1,5 @@
 """Real pending worker/journal recovery, plus untrusted-backup failure cases."""
-from contextlib import closing
+from contextlib import closing, contextmanager
 from copy import deepcopy
 from hashlib import sha256
 import json
@@ -11,6 +11,7 @@ from uuid import uuid4
 
 import pytest
 
+from carr_library import pending_backup as pending
 from carr_library.application import LibraryApp
 from carr_library.catalog.intake import snapshot
 from carr_library.extract.page_ocr import Config
@@ -448,3 +449,375 @@ def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp
     assert final['state'] == 'complete' and final['id'] == pending['id']
     hit, = restored.search(workspace, 'Railway')
     assert hit.verified
+
+
+@pytest.mark.parametrize('failure', (PermissionError, NotADirectoryError))
+def test_pending_inventory_lookup_errors_are_not_absence(tmp_path, monkeypatch, failure):
+    from carr_library.pending_backup import _inventory, pending_roots
+    root = tmp_path / 'library'
+    root.mkdir()
+    (root / 'imports.sqlite').touch()
+    denied = root / 'import-requests'
+    denied.mkdir()
+    original = Path.lstat
+
+    def probe(path, *args, **kwargs):
+        if path == denied:
+            raise failure('pending root lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    monkeypatch.setattr(os.path, 'lexists', lambda path:
+                        False if Path(path) == denied else lexists(path))
+    monkeypatch.setattr(Path, 'lstat', probe)
+    with pytest.raises(failure, match='pending root lookup failed'):
+        _inventory(root)
+    with pytest.raises(failure, match='pending root lookup failed'):
+        pending_roots(root)
+
+
+def test_pending_restore_rejects_unreadable_unlisted_subtree(app, tmp_path, monkeypatch):
+    backup, metadata = _snapshot(app, tmp_path)
+    blocked = backup / 'pending' / 'import-requests'
+    blocked.mkdir()
+    (blocked / ('a' * 32 + '.json')).write_bytes(b'unlisted')
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    shutil.copyfile(backup / 'library.sqlite', stage / 'library.sqlite')
+    scandir = os.scandir
+
+    def denied(path):
+        if Path(path) == blocked:
+            raise PermissionError('pending subtree unreadable')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', denied)
+    with pytest.raises(PermissionError, match='pending subtree unreadable'):
+        restore_pending(backup / 'pending', stage, tmp_path / 'restored', metadata)
+    assert not (stage / '.pending-import-restore').exists()
+    assert not (tmp_path / 'restored').exists()
+
+
+def test_pending_restore_rejects_unlisted_file_before_descending(app, tmp_path, monkeypatch):
+    backup, metadata = _snapshot(app, tmp_path)
+    source = backup / 'pending'
+    (source / 'imports.sqlite').write_bytes(b'unlisted')
+    later = source / 'import-requests'
+    later.mkdir()
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    scandir = os.scandir
+
+    def observe(path):
+        if Path(path) == later:
+            raise AssertionError('unlisted file must reject before descending')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', observe)
+    with pytest.raises(ValueError, match='missing or unlisted'):
+        restore_pending(source, stage, tmp_path / 'restored', metadata)
+    assert not (stage / '.pending-import-restore').exists()
+
+
+def test_pending_capture_streams_committed_files_and_ignores_known_transients(tmp_path, monkeypatch):
+    from carr_library.pending_backup import _inventory
+    root = tmp_path / 'library'
+    reviews = root / 'import-requests' / 'reviews'
+    reviews.mkdir(parents=True)
+    batches = root / 'import-batches'
+    batches.mkdir()
+    (reviews / ('a' * 32 + '.json')).touch()
+    (reviews / ('b' * 32 + '.tmp')).touch()
+    (batches / ('c' * 32 + '.json')).touch()
+    (batches / ('d' * 32 + '.lock')).touch()
+
+    def forbidden(path):
+        raise AssertionError('capture must not materialize a Path.iterdir listing')
+
+    monkeypatch.setattr(Path, 'iterdir', forbidden)
+    assert set(_inventory(root)) == {
+        'import-requests/reviews/' + 'a' * 32 + '.json',
+        'import-batches/' + 'c' * 32 + '.json',
+    }
+
+
+@pytest.mark.parametrize('scan_name', ('import-requests', 'reviews'))
+def test_pending_capture_cancel_when_scan_closes(tmp_path, monkeypatch, scan_name):
+    from contextlib import contextmanager
+    from carr_library.pending_backup import _inventory
+    root = tmp_path / 'library'
+    reviews = root / 'import-requests' / 'reviews'
+    reviews.mkdir(parents=True)
+    (reviews / ('a' * 32 + '.json')).touch()
+    real = os.scandir
+    cancelled = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal cancelled
+        with real(path) as entries:
+            yield entries
+        if Path(path).name == scan_name:
+            cancelled = True
+
+    with monkeypatch.context() as m:
+        m.setattr(os, 'scandir', observed)
+        with pytest.raises(InterruptedError, match='cancelled'):
+            _inventory(root, cancelled=lambda: cancelled)
+
+
+def test_pending_restore_cancel_at_namespace_scan_exit(app, tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    backup, metadata = _snapshot(app, tmp_path)
+    source = backup / 'pending'
+    stage = tmp_path / 'restore-stage'
+    stage.mkdir()
+    shutil.copyfile(backup / 'library.sqlite', stage / 'library.sqlite')
+    real = os.scandir
+    cancelled = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal cancelled
+        with real(path) as entries:
+            yield entries
+        if Path(path) == source:
+            cancelled = True
+
+    with monkeypatch.context() as m:
+        m.setattr(os, 'scandir', observed)
+        with pytest.raises(InterruptedError, match='cancelled'):
+            restore_pending(source, stage, tmp_path / 'restored', metadata,
+                            cancelled=lambda: cancelled)
+    assert not (stage / '.pending-import-restore').exists()
+    assert not (tmp_path / 'restored').exists()
+
+
+def _boundary_manifest(tmp_path):
+    checksum = 'a' * 64
+    filename = 'import-requests/' + 'b' * 32 + '.json'
+    asset = dict(filename=checksum + '.txt', size_bytes=1, sha256=checksum, mime='text/plain')
+    return dict(version=1, data_dir=str(tmp_path), files=[
+        dict(filename=filename, size_bytes=1, sha256='c' * 64),
+        dict(filename='originals/' + asset['filename'], size_bytes=1, sha256=checksum),
+    ], assets=[asset], sources=[dict(filename=filename, row_id=None,
+                                     source=str(tmp_path / 'text.txt'), asset_sha256=checksum)])
+
+
+@pytest.mark.parametrize('section,field', (('assets', 'mime'), ('sources', 'filename'),
+                                           ('sources', 'asset_sha256')))
+@pytest.mark.parametrize('bad', ([], {}, [0], {'bad': 1}, None, 123))
+def test_pending_manifest_rejects_non_string_membership_fields(tmp_path, section, field, bad):
+    metadata = _boundary_manifest(tmp_path)
+    pending.validate_pending(metadata)
+    metadata[section][0][field] = bad
+    with pytest.raises(ValueError, match='Invalid pending'):
+        pending.validate_pending(metadata)
+
+
+@pytest.mark.parametrize('cancel_at', range(1, 7))
+def test_pending_manifest_cancel_at_each_validation_boundary(tmp_path, cancel_at):
+    metadata = _boundary_manifest(tmp_path)
+    calls = 0
+
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls >= cancel_at
+
+    with pytest.raises(InterruptedError, match='cancelled'):
+        pending.validate_pending(metadata, cancelled=cancelled)
+
+
+@pytest.mark.parametrize('directory', ('import-requests', 'import-batches', 'import-requests/reviews'))
+@pytest.mark.parametrize('kind', ('committed', 'transient', 'uppercase', 'unknown', 'directory', 'hardlink'))
+def test_pending_inventory_filesystem_boundaries(tmp_path, directory, kind):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    filename = 'a' * 32 + '.json'
+    target = parent / filename
+    if kind == 'committed':
+        target.write_bytes(b'{}')
+        assert set(pending._inventory(root)) == {directory + '/' + filename}
+    elif kind == 'transient':
+        target.with_suffix('.tmp').touch()
+        assert not pending._inventory(root)
+    else:
+        if kind == 'uppercase':
+            (parent / ('A' * 32 + '.json')).touch()
+        elif kind == 'unknown':
+            target.with_suffix('.bak').touch()
+        elif kind == 'directory':
+            target.mkdir()
+        else:
+            outside = tmp_path / 'outside'
+            outside.write_bytes(b'{}')
+            os.link(outside, target)
+        with pytest.raises(ValueError):
+            pending._inventory(root)
+
+
+@pytest.mark.parametrize('directory', ('import-requests', 'import-batches', 'import-requests/reviews'))
+@pytest.mark.parametrize('failure', (PermissionError, NotADirectoryError))
+def test_pending_inventory_scandir_errors_fail_closed(tmp_path, monkeypatch, directory, failure):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    real = os.scandir
+
+    def denied(path):
+        if Path(path) == parent:
+            raise failure('scan denied')
+        return real(path)
+
+    monkeypatch.setattr(os, 'scandir', denied)
+    with pytest.raises(failure, match='scan denied'):
+        pending._inventory(root)
+
+
+@pytest.mark.parametrize('directory', ('import-requests', 'import-batches', 'import-requests/reviews'))
+@pytest.mark.parametrize('moment', ('entry', 'exit'))
+def test_pending_inventory_cancel_inside_scan_and_at_exit(tmp_path, monkeypatch, directory, moment):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    (parent / ('a' * 32 + '.json')).touch()
+    real = os.scandir
+    stopped = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal stopped
+        with real(path) as entries:
+            if Path(path) == parent and moment == 'entry':
+                def interrupt():
+                    nonlocal stopped
+                    for entry in entries:
+                        stopped = True
+                        yield entry
+                yield interrupt()
+            else:
+                yield entries
+        if Path(path) == parent and moment == 'exit':
+            stopped = True
+
+    with monkeypatch.context() as m:
+        m.setattr(os, 'scandir', observed)
+        with pytest.raises(InterruptedError, match='cancelled'):
+            pending._inventory(root, cancelled=lambda: stopped)
+
+
+def _boundary_checkpoints(db):
+    db.row_factory = sqlite3.Row
+    db.execute('CREATE TABLE checkpoint(job TEXT, ordinal INTEGER, payload TEXT)')
+    asset = dict(sha256='a' * 64, mime='text/plain')
+    raw = 'Перша сторінка.\fSecond page.'.encode('utf-8')
+    jobs = {'job': dict(id='job', asset=asset['sha256'], count=2,
+                       config=json.dumps({'kind': 'logical_segment'}))}
+    for ordinal, segment in enumerate(raw.decode().split('\f'), 1):
+        value = dict(raw_text=segment, provenance=dict(asset_sha256=asset['sha256'], method='strict_utf8'),
+                     status='candidate', blocks=[], warnings=[])
+        db.execute('INSERT INTO checkpoint VALUES (?, ?, ?)', ('job', ordinal, json.dumps(value)))
+    db.commit()
+    return asset, raw, jobs
+
+
+@pytest.mark.parametrize('field,bad', (('raw_text', 'altered'), ('provenance', {}),
+    ('status', 'verified'), ('blocks', ['unexpected']), ('warnings', ['unexpected'])))
+def test_pending_checkpoint_preserves_exact_source_and_status(tmp_path, field, bad):
+    path = tmp_path / 'checkpoint.sqlite'
+    with closing(sqlite3.connect(path)) as db:
+        asset, raw, jobs = _boundary_checkpoints(db)
+    with closing(sqlite3.connect(path)) as db:
+        db.row_factory = sqlite3.Row
+        pending._source_checkpoints(asset, raw, jobs, db)
+        value = json.loads(db.execute('SELECT payload FROM checkpoint WHERE ordinal=2').fetchone()[0])
+        value[field] = bad
+        db.execute('UPDATE checkpoint SET payload=? WHERE ordinal=2', (json.dumps(value),))
+        db.commit()
+    with closing(sqlite3.connect(path)) as db:
+        db.row_factory = sqlite3.Row
+        with pytest.raises(ValueError, match='exact original bytes'):
+            pending._source_checkpoints(asset, raw, jobs, db)
+
+
+@pytest.mark.parametrize('cancel_at', range(1, 6))
+def test_pending_checkpoint_cancel_at_each_database_validation_boundary(tmp_path, cancel_at):
+    path = tmp_path / 'checkpoint.sqlite'
+    with closing(sqlite3.connect(path)) as db:
+        asset, raw, jobs = _boundary_checkpoints(db)
+    calls = 0
+
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls >= cancel_at
+
+    with closing(sqlite3.connect(path)) as db:
+        db.row_factory = sqlite3.Row
+        with pytest.raises(InterruptedError, match='cancelled'):
+            pending._source_checkpoints(asset, raw, jobs, db, cancelled=cancelled)
+        assert db.execute('SELECT count(*) FROM checkpoint').fetchone()[0] == 2
+
+
+
+# CARR-SEC-PENDING-SCAN-001: ignored transient names still consume directory
+# enumeration time. MAX_FILES alone bounds only retained journals.
+@pytest.mark.parametrize('directory', (
+    'import-requests', 'import-batches', 'import-requests/reviews',
+))
+def test_pending_inventory_bounds_ignored_transient_names(tmp_path, monkeypatch, directory):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    for i in range(4):
+        (parent / (f'{i:032x}' + '.tmp')).touch()
+    monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', 3)
+    with pytest.raises(ValueError, match='directory entries'):
+        pending._inventory(root)
+
+
+@pytest.mark.parametrize('directory,limit', (
+    ('import-requests', 4), ('import-batches', 4),
+    ('import-requests/reviews', 5),
+))
+def test_pending_inventory_allows_exact_scanned_entry_budget(
+        tmp_path, monkeypatch, directory, limit):
+    root = tmp_path / 'library'
+    parent = root / directory
+    parent.mkdir(parents=True)
+    for i in range(4):
+        (parent / (f'{i:032x}' + '.tmp')).touch()
+    monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', limit)
+    assert pending._inventory(root) == {}
+
+
+def test_pending_inventory_shared_budget_for_nested_and_outer_scans(tmp_path, monkeypatch):
+    root = tmp_path / 'library'
+    parent = root / 'import-requests'
+    review = parent / 'reviews'
+    review.mkdir(parents=True)
+    for i in range(2):
+        (parent / (f'{i:032x}' + '.tmp')).touch()
+        (review / (f'{i+2:032x}' + '.tmp')).touch()
+    monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', 4)
+    with pytest.raises(ValueError, match='directory entries'):
+        pending._inventory(root)
+
+
+
+def test_full_backup_rejects_transient_scan_overrun_without_publication(
+        app, tmp_path, monkeypatch):
+    """Real library backup path: ignored journals still consume a bounded scan."""
+    from carr_library.library_backup import create_backup
+
+    request_dir = app.root / 'import-requests'
+    request_dir.mkdir(exist_ok=True)
+    for index in range(4):
+        (request_dir / (f'{index:032x}' + '.tmp')).touch()
+    monkeypatch.setattr(pending, 'MAX_SCAN_ENTRIES', 3)
+    destination = tmp_path / 'must-not-publish'
+    with pytest.raises(ValueError, match='Too many pending import directory entries'):
+        create_backup(app, destination)
+    assert not destination.exists()
