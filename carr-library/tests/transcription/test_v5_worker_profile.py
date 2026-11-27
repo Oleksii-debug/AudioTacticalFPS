@@ -11,6 +11,7 @@ import runpy
 import subprocess
 import sys
 import time
+import venv
 
 import pytest
 
@@ -209,7 +210,18 @@ def v5(tmp_path):
         (models / 'small' / name).write_bytes(('Synthetic, non-executable model placeholder: '+name).encode())
     source = tmp_path / 'Запис.wav'
     source.write_bytes(b'Synthetic recording placeholder; no acoustic inference.')
-    service.configure(Path(sys.executable).resolve(), worker, models, protocol=PROTOCOL)
+    # This real V5 child is a standard-library protocol peer, not an inference
+    # runtime. Retain an isolated selected interpreter across explicit rebinds.
+    environment = tmp_path / 'selected-python'
+    venv.EnvBuilder(with_pip=False, system_site_packages=False,
+                    symlinks=os.name != 'nt').create(environment)
+    python = environment / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    configured = service.configure(python, worker, models, protocol=PROTOCOL)
+    inventory = configured['runtime_inventory']
+    assert inventory['python_executable'] == str(python.absolute())
+    assert inventory['python_configuration']
+    assert all(row == {'present': False}
+               for row in inventory['runtime_distributions'].values())
     return app, workspace, service, source, runtime, models
 
 
@@ -460,14 +472,14 @@ def test_old_receipts_job_keeps_its_protocol_after_v5_is_configured(v5, tmp_path
     legacy = runpy.run_path(str(Path(__file__).with_name('test_supplied_worker_bridge.py')))
     worker = tmp_path / 'legacy-worker.py'
     worker.write_text(legacy['SYNTHETIC_WORKER'].replace('__MODE__', repr('complete')), encoding='utf-8')
-    service.configure(Path(sys.executable).resolve(), worker, models, protocol='receipts-v1')
+    service.configure(service.configuration()['python'], worker, models, protocol='receipts-v1')
     identity = service.submit([source])
     assert service.run(identity, timeout=10)['status'] == 'completed'
     job_path = service._path(identity) / 'job.json'
     job = read_json(job_path)
     job.pop('protocol', None)
     atomic_json(job_path, job, replace=True)
-    service.configure(Path(sys.executable).resolve(), v5[4] / 'worker.py', models, protocol=PROTOCOL)
+    service.configure(service.configuration()['python'], v5[4] / 'worker.py', models, protocol=PROTOCOL)
     assert service.get(identity)['protocol'] == 'receipts-v1'
     assert service.text(identity, job['sources'][0]['filename']).startswith('Synthetic transcript.')
     assert service.run(identity, timeout=10)['status'] == 'completed'
@@ -487,7 +499,7 @@ def test_v5_cli_configure_create_run_export_share_the_persisted_profile(v5, tmp_
         assert result.returncode == expected, result.stdout + result.stderr
         return json.loads(result.stdout) if expected == 0 else result
 
-    configured = invoke('configure', '--python', Path(sys.executable).resolve(),
+    configured = invoke('configure', '--python', service.configuration()['python'],
         '--worker', runtime / 'worker.py', '--models-dir', models, '--protocol', PROTOCOL)
     assert configured['protocol'] == PROTOCOL and configured['inference_qualified'] is False
     assert configured['wrapper_sources_sha256'] == {
@@ -521,7 +533,7 @@ def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_pa
         worker = tmp_path / 'legacy-progress-worker.py'
         worker.write_text(legacy['SYNTHETIC_WORKER'].replace('__MODE__', repr('progress-wait')),
                           encoding='utf-8')
-        service.configure(Path(sys.executable).resolve(), worker, models, protocol=protocol)
+        service.configure(service.configuration()['python'], worker, models, protocol=protocol)
     identity = service.submit([source])
     job = service._path(identity)
     if protocol == PROTOCOL:
