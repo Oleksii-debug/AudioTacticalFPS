@@ -21,13 +21,146 @@ def not_run(reason):
     return 77
 
 
+# TaskDialog can draw virtual DirectUI buttons without child HWNDs. UIA must
+# execute outside the wx UI thread so native accessibility callbacks keep moving.
+# https://learn.microsoft.com/windows/win32/winauto/uiauto-threading
+# https://learn.microsoft.com/dotnet/framework/ui-automation/invoke-a-control-using-ui-automation
+# This helper sees only the already ownership-checked synthetic confirmation.
+_UIA_REPLY = r"""
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+try {
+    Add-Type -AssemblyName UIAutomationClient
+    Add-Type -AssemblyName UIAutomationTypes
+    Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public static class ConfirmationOwner {
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetWindow(IntPtr window, uint command);
+}
+'@
+    $dialog = [System.Windows.Automation.AutomationElement]::FromHandle([IntPtr]([long]$request.hwnd))
+    $current = $dialog.Current
+    if ($current.ProcessId -ne $request.pid -or $current.Name -cne $request.title -or
+            $current.NativeWindowHandle -ne $request.hwnd -or $current.ClassName -ne '#32770' -or
+            -not $current.IsEnabled -or $current.IsOffscreen) {
+        throw 'The accessible dialog identity changed'
+    }
+    $seen = @{}
+    $owned = $false
+    $parent = [ConfirmationOwner]::GetWindow([IntPtr]([long]$request.hwnd), 4)
+    for ($depth = 0; $parent -ne [IntPtr]::Zero -and $depth -lt 32; $depth++) {
+        $value = $parent.ToInt64()
+        if ($seen.ContainsKey($value)) { break }
+        $seen[$value] = $true
+        if ($value -eq $request.owner) { $owned = $true; break }
+        $parent = [ConfirmationOwner]::GetWindow($parent, 4)
+    }
+    if (-not $owned) { throw 'The accessible dialog owner changed' }
+    $condition = [System.Windows.Automation.PropertyCondition]::new(
+        [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+        [System.Windows.Automation.ControlType]::Button)
+    $buttons = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants, $condition)
+    if ($buttons.Count -gt 32) { throw 'Too many accessible confirmation buttons' }
+    $answers = @{}
+    foreach ($label in @($request.yes, $request.no)) {
+        $matches = @()
+        foreach ($button in $buttons) {
+            $info = $button.Current
+            if ($info.ProcessId -eq $request.pid -and $info.Name -ceq $label -and
+                    $info.IsEnabled -and -not $info.IsOffscreen) {
+                $matches += $button
+            }
+        }
+        if ($matches.Count -ne 1) { throw 'The owned dialog has no unique accessible Yes/No pair' }
+        $answers[$label] = $matches[0]
+    }
+    $selected = $answers[$request.answer]
+    $info = $selected.Current
+    $pattern = $null
+    if (-not $selected.TryGetCurrentPattern(
+            [System.Windows.Automation.InvokePattern]::Pattern, [ref]$pattern)) {
+        throw 'The owned answer button cannot be invoked'
+    }
+    $receipt = @{
+        status='NATIVE_DIALOG'; method='UIA_Invoke'; pid=[long]$request.pid
+        hwnd=[long]$request.hwnd; owner=[long]$request.owner; title=$request.title
+        button_name=$info.Name; button_id=$info.AutomationId
+        button_hwnd=[long]$info.NativeWindowHandle; button_type=$info.ControlType.Id
+        enabled=$info.IsEnabled; offscreen=$info.IsOffscreen
+    }
+    # Invoke the actual accessible control; never manufacture a modal result.
+    ([System.Windows.Automation.InvokePattern]$pattern).Invoke()
+    $receipt | ConvertTo-Json -Compress
+    exit 0
+} catch {
+    @{status='FAIL'; error='Owned accessible confirmation interaction failed'} | ConvertTo-Json -Compress
+    exit 1
+}
+"""
+
+
+class AccessibleAnswer:
+    """One bounded native UIA operation, polled without blocking the wx loop."""
+    def __init__(self, request):
+        import base64
+        import subprocess
+        self.request = request
+        payload = base64.b64encode(json.dumps(request).encode('utf-8')).decode('ascii')
+        program = ("$request = ConvertFrom-Json ([Text.Encoding]::UTF8.GetString("
+                   "[Convert]::FromBase64String('" + payload + "')))\n" + _UIA_REPLY)
+        command = base64.b64encode(program.encode('utf-16-le')).decode('ascii')
+        executable = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
+        self.process = subprocess.Popen(
+            [str(executable), '-NoLogo', '-NoProfile', '-NonInteractive', '-Mta',
+             '-EncodedCommand', command],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        self.deadline = monotonic() + 8
+
+    def close(self):
+        if self.process.poll() is None:
+            self.process.kill()
+        self.process.communicate(timeout=1)
+
+    def poll(self):
+        if self.process.poll() is None:
+            if monotonic() >= self.deadline:
+                self.close()
+                raise AssertionError('Owned accessible confirmation lookup exceeded eight seconds')
+            return False
+        output, unused_error = self.process.communicate(timeout=1)
+        if self.process.returncode or len(output) > 16384:
+            raise AssertionError('Owned accessible confirmation interaction failed')
+        try:
+            receipt = json.loads(output.decode('utf-8-sig'))
+        except (ValueError, UnicodeError):
+            raise AssertionError('Invalid owned accessible confirmation receipt') from None
+        expected = dict(status='NATIVE_DIALOG', method='UIA_Invoke',
+                        pid=self.request['pid'], hwnd=self.request['hwnd'],
+                        owner=self.request['owner'], title=self.request['title'],
+                        button_name=self.request['answer'], button_type=50000,
+                        enabled=True, offscreen=False)
+        if (type(receipt) is not dict
+                or any(type(receipt.get(key)) is not type(value) or receipt[key] != value
+                       for key, value in expected.items())
+                or type(receipt.get('button_hwnd')) is not int or receipt['button_hwnd'] < 0
+                or type(receipt.get('button_id')) is not str or len(receipt['button_id']) > 256):
+            raise AssertionError('Owned accessible confirmation receipt does not match the request')
+        print(json.dumps(receipt), flush=True)
+        return True
+
+
 class WindowsConfirmations:
     """Click only this process's owned native message/task dialog buttons.
 
     wxMSW MessageDialog does not run wx.Dialog's modal loop. IsModal/EndModal
     cannot be used to discover or dismiss its TaskDialogIndirect window.
     """
-    def __init__(self):
+    def __init__(self, *, yes_label='Yes', no_label='No'):
+        self.yes_label, self.no_label = yes_label, no_label
+        self.pending = None
         import ctypes
         from ctypes import wintypes
         self.ctypes, self.types = ctypes, wintypes
@@ -55,7 +188,31 @@ class WindowsConfirmations:
         function(window, value, len(value))
         return value.value
 
+    def close(self):
+        if self.pending is not None:
+            operation, unused_key = self.pending
+            operation.close()
+            self.pending = None
+
     def reply(self, owner, title, *, accept):
+        key = (owner, title, accept)
+        if self.pending is not None:
+            operation, previous_key = self.pending
+            if key != previous_key:
+                raise AssertionError('A different owned confirmation operation is still pending')
+            try:
+                complete = operation.poll()
+            except BaseException:
+                try:
+                    operation.close()
+                except Exception:
+                    pass  # Retain the handle so final cleanup can retry.
+                else:
+                    self.pending = None
+                raise
+            if complete:
+                self.pending = None
+            return complete
         candidates = []
 
         @self.callback
@@ -82,18 +239,34 @@ class WindowsConfirmations:
             raise AssertionError('Ambiguous owned Windows confirmation dialog')
         window, chain = candidates[0]
         identifier = 6 if accept else 7  # Native IDYES/IDNO, not wx.ID_YES.
-        buttons = []
+        buttons, direct_ui, controls = [], [], []
 
         @self.callback
         def child(control, unused):
-            if (self.api.GetDlgCtrlID(control) == identifier
-                    and self._string(self.api.GetClassNameW, control).casefold() == 'button'
-                    and self.api.IsWindowEnabled(control) and self.api.IsWindowVisible(control)):
-                buttons.append(control)
+            kind = self._string(self.api.GetClassNameW, control)
+            control_id = self.api.GetDlgCtrlID(control)
+            visible = bool(self.api.IsWindowVisible(control))
+            enabled = bool(self.api.IsWindowEnabled(control))
+            if len(controls) < 32:
+                controls.append(dict(hwnd=control, kind=kind, id=control_id,
+                                     visible=visible, enabled=enabled))
+            if visible and enabled:
+                if control_id == identifier and kind.casefold() == 'button':
+                    buttons.append(control)
+                if kind.casefold() == 'directuihwnd':
+                    direct_ui.append(control)
             return True
 
         self.api.EnumChildWindows(window, child, 0)
+        if not buttons and len(direct_ui) == 1:
+            self.pending = (AccessibleAnswer(dict(
+                hwnd=window, owner=owner, pid=os.getpid(), title=title,
+                yes=self.yes_label, no=self.no_label,
+                answer=self.yes_label if accept else self.no_label)), key)
+            return False
         if len(buttons) != 1:
+            print(json.dumps(dict(status='NATIVE_DIALOG_LOOKUP_FAILED',
+                                  hwnd=window, owner_chain=chain, controls=controls)), flush=True)
             raise AssertionError('The owned confirmation has no unique native answer button')
         print(json.dumps(dict(status='NATIVE_DIALOG', pid=os.getpid(), hwnd=window,
                               owner_chain=chain, title=title, button=buttons[0], button_id=identifier)), flush=True)
@@ -130,7 +303,9 @@ def run_native(source=None, *, encrypted=False):
                for module in (portable_sync, service_module)}
     timers = []
     state = {'finished': False}
-    windows = WindowsConfirmations() if sys.platform == 'win32' else None
+    windows = WindowsConfirmations(
+        yes_label=wx.GetStockLabel(wx.ID_YES).replace('&', ''),
+        no_label=wx.GetStockLabel(wx.ID_NO).replace('&', '')) if sys.platform == 'win32' else None
     confirmation_titles = ('Publish all saved libraries in this data folder?',
                            'Restore the verified snapshot into a new folder?')
 
@@ -240,7 +415,18 @@ def run_native(source=None, *, encrypted=False):
                         timers.append(wx.CallLater(20, answer))
                 except BaseException as error:
                     errors.append(type(error).__name__ + ': native modal interaction failed')
-                    dismiss_one_modal()
+                    print(json.dumps(dict(status='FAIL', error=errors[-1], nvda='NOT_RUN')), flush=True)
+                    if windows is not None:
+                        try:
+                            windows.close()
+                        except Exception:
+                            print('Native confirmation helper cleanup failed', flush=True)
+                    try:
+                        dismiss_one_modal()
+                    except BaseException:
+                        # Preserve the original failed check instead of raising
+                        # a second exception from the timer's cleanup callback.
+                        print('Native confirmation cleanup also failed', flush=True)
 
             timers.append(wx.CallLater(20, answer))
 
@@ -253,7 +439,8 @@ def run_native(source=None, *, encrypted=False):
                 raise AssertionError(errors[0])
 
         def finish_job():
-            check('snapshot worker finishes through the event loop', pump(lambda: not native.controller.running))
+            check('snapshot worker finishes through the event loop', pump(lambda: not native.controller.running
+                  and (windows is None or windows.pending is None)))
 
         password = 'Synthetic native snapshot password!' if encrypted else None
         try:
@@ -352,6 +539,8 @@ def run_native(source=None, *, encrypted=False):
                     application.Yield()
                     wx.MilliSleep(10)
                 native.close_window()
+            if windows is not None:
+                windows.close()
             frame.Close()
             application.Yield()
             password = None
