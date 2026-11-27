@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAIL_REPAIR_NOT_RUN",
+  "observed": {
+    "source_commit": "cf94e48272d8d429229518ecd5f70319282287d0",
+    "source_tree": "75d4d6bccd1aa3c03d1b5934277d68a5602eea55",
+    "run_id": 46008914411,
+    "job_id": 140539072195,
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46008914411/job/140539072195",
+    "artifact": {
+      "id": 15203447810,
+      "bytes": 375767,
+      "sha256": "30f92abef5cceb8d7ab820d4b80359f18d21bc05f7ff5e5f5d97b5ee120ec704"
+    },
+    "source": {
+      "passed": 91,
+      "failed": 1,
+      "declared": 92
+    },
+    "installed": {
+      "passed": 91,
+      "failed": 1,
+      "declared": 92,
+      "isolated": true
+    },
+    "native": {
+      "checks": 26,
+      "controls": "PASS",
+      "cleanup": "PASS",
+      "isolated": true
+    },
+    "wheel_sha256": "d359c6201cbabfb8edcf3faedf2308eac5cb7aaab8db219788af858ce3dfea14",
+    "ffmpeg_sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+    "evidence": "Actual decoded GitHub job log; artifact identity from successful upload. Raw JUnit and receipt are retained in that artifact; no independent ZIP readback is claimed here."
+  },
+  "failure": {
+    "test": "tests.audio.test_clip_consolidation.test_pending_native_cleanup_keeps_stage_sources_and_resource_lease_until_quiescent",
+    "cause": "The assertion mistook the nested .clip-* processing directory for its .clip-consolidation-* ancestor. The actual directory existed."
+  },
+  "repair": {
+    "paths": [
+      "tests/audio/test_clip_consolidation.py"
+    ],
+    "behavior": "Require the exact two-level owned processing topology, and both directories alive during every retained-owner cleanup attempt. Source readers, resource lease, no publication before quiescence, two cleanup attempts and final cleanup assertions remain.",
+    "product_changes": false,
+    "oracle_cases_each": 92,
+    "native_checks": 26,
+    "status": "NOT_RUN"
+  }
+}
