@@ -55,7 +55,10 @@ def test_actual_native_import_holds_reservation_through_cleanup_and_reuses_compl
 @pytest.mark.parametrize('reason', ['cancelled', 'timed_out'])
 def test_waiting_import_stops_before_child_and_preserves_exact_prepared_request(tmp_path, monkeypatch, reason):
     app, workspace, original, broker = prepared(tmp_path)
-    request = worker.prepare_request(app.root, workspace, original, {'title': 'Reviewed source'}, Config())
+    metadata = dict(title='Reviewed source', authors=(), language=None, edition=None,
+                    volume=None, collections=(), work_id=None, edition_id=None)
+    request = worker.prepare_request(app.root, workspace, original, metadata, Config())
+    assert set(request['metadata']) == worker.FIELDS
     identity, before = request['request_id'], original.read_bytes()
     cancelled, started = threading.Event(), []
     timer = threading.Timer(.05, cancelled.set)
@@ -74,7 +77,7 @@ def test_waiting_import_stops_before_child_and_preserves_exact_prepared_request(
             assert [row['operation_id'] for row in broker.snapshot()['leases']] == ['other-owner']
     assert original.read_bytes() == before and not app.browse(workspace)
     resumed = app.resume_import(workspace, identity, timeout=20)
-    assert resumed['state'] == 'complete' and resumed['request_id'] == identity
+    assert resumed['state'] == 'complete' and resumed['request_id'] == identity, resumed
     assert len(app.browse(workspace)) == 1 and broker.snapshot()['leases'] == []
 
 
