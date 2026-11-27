@@ -5,8 +5,6 @@ is used here. The fixture implements only the documented file protocol.
 """
 from pathlib import Path
 from hashlib import sha256
-import builtins
-import io
 import json
 import os
 import runpy
@@ -19,7 +17,7 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.durable_state import atomic_json, read_json
 from carr_library.library_backup import restore_backup
-from carr_library import transcription
+from carr_library import durable_state, transcription
 
 
 PROTOCOL = 'whisper-v5-manifest-v1'
@@ -539,10 +537,12 @@ def test_live_progress_reader_allows_actual_worker_status_replacement(v5, tmp_pa
             return stream
         return opened
 
-    # Neither the actual child nor os.replace is mocked. The Windows strategy
-    # is also exercised on POSIX; only POSIX supports held destination snapshots.
-    monkeypatch.setattr(builtins, 'open', hold_first_status_reader(builtins.open))
-    monkeypatch.setattr(io, 'open', hold_first_status_reader(io.open))
+    # Observe the real snapshot boundary on both platforms: Windows uses
+    # CreateFileW and fdopen, so patching Python path opens cannot see it.
+    # Neither the actual child, native opening nor os.replace is mocked. The
+    # Windows strategy also runs on POSIX; only POSIX holds live snapshots.
+    monkeypatch.setattr(durable_state, '_open_json_file',
+                        hold_first_status_reader(durable_state._open_json_file))
     notices = []
 
     def advanced(done, total, phase):
