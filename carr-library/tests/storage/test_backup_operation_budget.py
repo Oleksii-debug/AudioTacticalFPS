@@ -44,16 +44,18 @@ def test_exact_delivered_budget_includes_every_file_and_final_manifest(
     reference = tmp_path / 'reference'
     library_backup.create_backup(app, reference)
     manifest = json.loads((reference / library_backup.MANIFEST).read_bytes())
-    assert manifest['version'] == 4
+    assert manifest['version'] == 5
     assert manifest['provider_restore_mode'] == 'LOCAL_ONLY'
     assert len(manifest['assets']) == 2
     assert {row['filename'] for row in manifest['sidecars']} == {PROGRESS_SETTINGS}
     total_bytes, total_files = delivered(reference)
-    assert total_files == 2 + len(manifest['assets']) + len(manifest['sidecars'])
+    assert total_files == (2 + len(manifest['assets']) + len(manifest['sidecars'])
+                           + len(manifest['pending']['files']))
     assert total_bytes == (
         manifest['database']['size_bytes']
         + sum(row['size_bytes'] for row in manifest['assets'])
         + sum(row['size_bytes'] for row in manifest['sidecars'])
+        + sum(row['size_bytes'] for row in manifest['pending']['files'])
         + (reference / library_backup.MANIFEST).stat().st_size)
     allowance = dict(max_bytes=total_bytes, max_files=total_files)
     too_small = dict(allowance)

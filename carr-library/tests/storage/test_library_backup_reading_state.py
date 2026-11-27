@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shutil
 
 import pytest
 
@@ -76,7 +77,7 @@ def test_full_backup_keeps_bookmarks_resume_and_archived_library(populated, tmp_
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = manifest_at(folder)
-    assert manifest['version'] == 3
+    assert manifest['version'] == 5
     assert reading_entry(manifest) == dict(filename=reading_state.FILENAME,
         size_bytes=len(before), sha256=sha256(before).hexdigest())
     assert (folder / reading_state.FILENAME).read_bytes() == before
@@ -311,6 +312,9 @@ def test_sidecar_presence_must_agree_with_versioned_manifest(populated, tmp_path
     else:
         manifest['version'] = 2
         del manifest['sidecars']
+        del manifest['provider_restore_mode']
+        del manifest['pending']
+        shutil.rmtree(folder / 'pending')
     digest = replace_manifest(folder, manifest)
     with pytest.raises(ValueError, match='incomplete backup|unexpected|sidecar'):
         restore_backup(folder, tmp_path / 'rejected', digest)

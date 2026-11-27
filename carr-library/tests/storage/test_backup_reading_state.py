@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 import json
+import shutil
 import os
 
 import pytest
@@ -73,7 +74,7 @@ def test_complete_backup_preserves_reader_projects_drafts_and_shortcuts(reading_
     source_files = file_bytes(app.root)
     digest = create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-    assert manifest['version'] == 3
+    assert manifest['version'] == 5
     names = {entry['filename'] for entry in manifest['sidecars']}
     assert names == {'reading-state.json', 'keybindings.json', 'ocr-language-presets.json',
                      f'narration-projects/{project.id}.json',
@@ -281,8 +282,11 @@ def test_legacy_backups_remain_usable_without_inventing_reading_state(tmp_path, 
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-    assert manifest['version'] == 2 and 'sidecars' not in manifest
+    assert manifest['version'] == 5 and manifest['sidecars'] == []
     manifest['version'] = version
+    for name in ('sidecars', 'provider_restore_mode', 'pending'):
+        del manifest[name]
+    shutil.rmtree(folder / 'pending')
     if version == 1:
         del manifest['schema_fingerprint']
     restored = restore_backup(folder, tmp_path / 'restored', manifest_digest(folder, manifest))
