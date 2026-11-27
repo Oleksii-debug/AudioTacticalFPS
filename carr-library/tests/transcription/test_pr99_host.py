@@ -371,20 +371,27 @@ def test_late_native_failed_callback_preserves_verified_actual_result(prepared):
         frame.executor.shutdown(wait=True, cancel_futures=True)
 
 def test_live_worker_status_reader_allows_atomic_replacement(tmp_path, monkeypatch):
-    import os
-    from carr_library import transcription_host
+    from carr_library import transcription, transcription_host
     status = tmp_path / 'job_status.json'
     stage = tmp_path / 'status.tmp'
     old = b'{"state":"running","done":0}\n'
     new = b'{"state":"finished","done":1}\n'
     status.write_bytes(old)
     stage.write_bytes(new)
+    worker = tmp_path / 'status-worker.py'
+    worker.write_text("import os\nos.replace('status.tmp', 'job_status.json')\n", encoding='utf-8')
     actual_open = transcription_host._open_worker_status
 
     def replace_after_open(path):
         stream = actual_open(path)
         try:
-            os.replace(stage, status)
+            # Exercise the approved worker's status-only Windows replacement
+            # while the host still owns its old snapshot, not a parent-only
+            # MoveFileEx call that bypasses the worker bootstrap.
+            run_process([str(Path(sys.executable).absolute()), '-I', '-S', '-B', '-c',
+                         transcription_host._SITE_BOOTSTRAP + transcription._WORKER_BOOTSTRAP,
+                         str(worker), str(tmp_path)],
+                        cwd=tmp_path, watch=(tmp_path,), budget=AudioBudget(timeout=10))
         except BaseException:
             stream.close()
             raise
