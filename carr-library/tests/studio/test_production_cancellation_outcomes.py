@@ -178,3 +178,156 @@ def test_stop_during_staged_master_validation_prevents_publication_and_resumes(t
     assert completed['status'] == 'complete'
     service._verify_artifacts(completed)
     assert (output / 'master.wav').is_file()
+
+
+@pytest.fixture
+def submission(tmp_path):
+    # Only queue creation is under test; no voice synthesis is invoked.
+    from types import SimpleNamespace
+    registry = SimpleNamespace(voices=lambda: (SimpleNamespace(id='test:voice'),))
+    service = ProductionService(tmp_path / 'state', voices=registry)
+    project = service.create('Synthetic submission.', voice_ids=('test:voice',))
+    output = tmp_path / 'output'
+    output.mkdir()
+    return service, project, output
+
+
+@pytest.mark.parametrize('committed', [False, True])
+def test_submission_retries_same_operation_after_receipt_write_failure(submission, monkeypatch, committed):
+    from carr_library.studio import render
+    service, project, output = submission
+    job = 'receipt-replay'
+    directory = service.jobs_root / job
+    write = render.atomic_json
+
+    def fail_receipt(path, value, **kwargs):
+        if Path(path) == directory / 'job.json':
+            if committed:
+                write(path, value, **kwargs)
+            else:
+                # Simulate a process interruption before publishing the receipt.
+                (directory / '.pending-interrupted').write_bytes(b'partial receipt')
+            raise OSError('Injected receipt write interruption')
+        return write(path, value, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(render, 'atomic_json', fail_receipt)
+        with pytest.raises(OSError, match='Injected receipt'):
+            service.submit(project, output, operation_id=job)
+    assert (directory / 'job.json').exists() is committed
+    reopened = ProductionService(service.root, voices=service.voices)
+    assert reopened.submit(project, output, operation_id=job) == job
+    receipt = reopened.get(job)
+    assert receipt['status'] == 'pending'
+    assert receipt['fingerprint'] == project.fingerprint
+    assert len(reopened.jobs()) == 1
+    assert reopened.submit(project, output, operation_id=job) == job
+    assert reopened.get(job) == receipt
+    with pytest.raises(ValueError, match='different production plan'):
+        reopened.submit(project, output, operation_id=job, stems=False)
+    if not committed:
+        assert (directory / '.pending-interrupted').read_bytes() == b'partial receipt'
+
+
+def test_submission_does_not_adopt_unreceipted_recovery_data(submission):
+    service, project, output = submission
+    directory = service.jobs_root / 'missing-receipt'
+    directory.mkdir()
+    recovery = directory / 'timeline.json'
+    recovery.write_bytes(b'preserve existing recovery data')
+    with pytest.raises(ValueError, match='recovery data but no receipt'):
+        service.submit(project, output, operation_id=directory.name)
+    assert recovery.read_bytes() == b'preserve existing recovery data'
+    assert not (directory / 'job.json').exists()
+
+
+def test_submission_does_not_adopt_existing_unreceipted_output(submission):
+    from carr_library.studio.render import _output_name
+    service, project, output = submission
+    job = 'existing-output'
+    existing = output / f'{_output_name(project.title)}-{job[:12]}'
+    existing.mkdir()
+    master = existing / 'master.wav'
+    master.write_bytes(b'preserve existing output')
+    with pytest.raises(FileExistsError, match='without a matching job receipt'):
+        service.submit(project, output, operation_id=job)
+    assert master.read_bytes() == b'preserve existing output'
+    assert not (service.jobs_root / job / 'job.json').exists()
+
+
+def test_submission_respects_existing_render_lock(submission):
+    from carr_library.durable_state import state_lock
+    service, project, output = submission
+    job = 'locked-submit'
+    with state_lock(service.jobs_root / job, 'render'):
+        with pytest.raises(RuntimeError, match='already being changed'):
+            service.submit(project, output, operation_id=job)
+        assert not (service.jobs_root / job / 'job.json').exists()
+    assert service.submit(project, output, operation_id=job) == job
+
+
+def test_pending_operation_options_are_bound(submission):
+    from carr_library.durable_state import atomic_json, read_json
+    service, project, output = submission
+    job = service.submit(project, output, format='flac', stems=True)
+    receipt = service.jobs_root / job / 'job.json'
+    saved = read_json(receipt)
+    for options in ({'format': 'wav'}, {'stems': False}, {'stems': 1}):
+        damaged = {**saved, **options}
+        atomic_json(receipt, damaged, replace=True)
+        with pytest.raises(ValueError, match='production options|operation options'):
+            service.get(job)
+        assert read_json(receipt) == damaged
+    atomic_json(receipt, saved, replace=True)
+    assert service.get(job) == saved
+
+
+def test_completed_operation_options_cannot_hide_missing_outputs(tmp_path, voices, monkeypatch):
+    from copy import deepcopy
+    from carr_library.durable_state import atomic_json, read_json
+    from carr_library.studio.render import _operation_sha256
+    registry, selected_voice = voices
+    service = ProductionService(tmp_path / 'state', voices=registry)
+    project = service.create('Synthetic options test.', voice_ids=(selected_voice,))
+    output = tmp_path / 'output'
+    output.mkdir()
+    job = service.submit(project, output, format='flac', stems=True)
+    complete = service.run(job)
+    receipt = service.jobs_root / job / 'job.json'
+    marker = Path(complete['destination']) / 'production-owner.json'
+    owner = read_json(marker)
+    assert owner['operation_sha256'] == complete['operation_sha256']
+    assert any(Path(a['path']).name == 'audiobook.flac' for a in complete['artifacts'])
+    assert any(Path(a['path']).parent.name == 'stems' for a in complete['artifacts'])
+    monkeypatch.setattr(service, '_runtime', lambda: pytest.fail('Must not render committed output.'))
+    damaged = deepcopy(complete)
+    damaged['format'], damaged['stems'] = 'wav', False
+    damaged['artifacts'] = [a for a in complete['artifacts']
+                            if Path(a['path']).name != 'audiobook.flac'
+                            and Path(a['path']).parent.name != 'stems']
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='operation options changed'):
+        service.run(job)
+    # The separately published owner receipt rejects a recalculated identity
+    # or a missing new field; neither is treated as a legacy owner.
+    damaged['operation_sha256'] = _operation_sha256(damaged)
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='owner receipt changed'):
+        service.run(job)
+    del damaged['operation_sha256']
+    atomic_json(receipt, damaged, replace=True)
+    with pytest.raises(ValueError, match='owner receipt changed'):
+        service.run(job)
+    assert read_json(marker) == owner
+    atomic_json(receipt, complete, replace=True)
+    assert service.run(job) == complete
+
+    # Legacy jobs have no separate option identity. Keep them readable and
+    # verify the complete inventory; never silently backfill historical proof.
+    legacy = {k: v for k, v in complete.items() if k != 'operation_sha256'}
+    legacy_owner = {k: v for k, v in owner.items() if k != 'operation_sha256'}
+    atomic_json(receipt, legacy, replace=True)
+    atomic_json(marker, legacy_owner, replace=True)
+    assert service.run(job) == legacy
+    assert read_json(receipt) == legacy
+    assert read_json(marker) == legacy_owner

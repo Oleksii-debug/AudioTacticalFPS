@@ -322,7 +322,7 @@ class ImportCenterActions:
 
     def save_report(self, event=None):
         import wx
-        from ..research.export_file import write_export
+        from ..research.export_file import write_export, export_completion
         from .export_destination import confirm_export_destination
         try:
             self._bound()
@@ -336,11 +336,14 @@ class ImportCenterActions:
             finally:
                 dialog.Destroy()
             if path:
+                self._bound()
                 approval = confirm_export_destination(self, path, private_root=self.library.root, wx_module=wx)
                 if approval is None:
                     return
-                write_export(path, batch_report(batch), private_root=self.library.root, approval=approval)
-                self.report('Import report saved.')
+                self._bound()
+                receipt = write_export(path, batch_report(batch), private_root=self.library.root,
+                                       approval=approval)
+                self.report(export_completion('Import report saved.', receipt))
         except Exception as exc:
             self.report(str(exc))
 

@@ -102,10 +102,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         finally:
             pipe.close()
 
-    threads = [threading.Thread(target=read_pipe, args=(process.stdout, 'stdout'), daemon=True),
-               threading.Thread(target=read_pipe, args=(process.stderr, 'stderr'), daemon=True)]
-    for thread in threads:
-        thread.start()
+    threads, started_pipes = [], set()
     last_progress = None
 
     def check():
@@ -146,6 +143,14 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
             last_progress = latest[0]
 
     try:
+        # Reader allocation/start can fail after Popen (for example exhausted
+        # thread resources). Keep it inside native-process ownership so that
+        # callers cannot release their reservation while the child survives.
+        for pipe, name in ((process.stdout, 'stdout'), (process.stderr, 'stderr')):
+            thread = threading.Thread(target=read_pipe, args=(pipe, name), daemon=True)
+            threads.append(thread)
+            thread.start()
+            started_pipes.add(pipe)
         while process.poll() is None:
             check()
             try:
@@ -164,9 +169,17 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         return ProcessResult(bytes(buffers['stdout']), bytes(buffers['stderr']),
                              time.monotonic() - started)
     finally:
-        _terminate(process)
-        for thread in threads:
-            thread.join(timeout=2)
+        try:
+            _terminate(process)
+        finally:
+            for thread in threads:
+                if thread.ident is not None:
+                    thread.join(timeout=2)
+            # A reader owns and closes its stream. Streams whose readers never
+            # started still belong to this caller and must be closed here.
+            for pipe in (process.stdout, process.stderr):
+                if pipe not in started_pipes:
+                    pipe.close()
 
 
 def fsync_directory(path):

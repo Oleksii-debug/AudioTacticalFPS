@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "universal-research-library"
-version = "0.2.0.dev1"
+version = "0.2.0.dev2"
 description = "Offline academic libraries, reading plans and exact source quotations with accessible desktop controls"
 readme = "docs/RUNNING.md"
 requires-python = ">=3.11"
@@ -96,6 +96,8 @@ packages = [
   "carr_library.speech",
   "carr_library.studio",
   "carr_library.assistant",
+  "carr_library.operations",
+  "carr_library.transcription",
   "carr_library.conversion",
   "bootstrap",
   "bootstrap.vendor",
@@ -116,3 +118,4 @@ bootstrap = "bootstrap"
 [tool.pytest.ini_options]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]
+markers = ["requires_loopback: exercises a synthetic local HTTP server; requires a separately declared loopback-enabled gate"]

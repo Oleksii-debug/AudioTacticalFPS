@@ -3,8 +3,10 @@
 Every accepted node is content-addressed and checksum-verified before reuse.
 Source text is data. This module never accepts shell commands or provider URLs.
 """
+from contextlib import ExitStack
 from dataclasses import asdict, replace
 from hashlib import sha256
+import math
 import os
 from pathlib import Path
 import re
@@ -13,7 +15,7 @@ import stat
 import time
 from uuid import uuid4
 
-from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, state_lock
+from ..durable_state import atomic_bytes, atomic_json, digest_file, encode, local_path, read_json, regular, state_lock
 from .project import Project, ProjectStore, parse_script, _id
 
 ENGINE_SCHEMA = 'studio-local-dag-v1'
@@ -71,9 +73,24 @@ def _output_name(title):
     return name
 
 
+def _operation_sha256(state):
+    # Bind immutable render options, independently of mutable progress and
+    # the project fingerprint (which intentionally describes only the project).
+    return sha256(encode({'job': state['id'], 'fingerprint': state['fingerprint'],
+                          'format': state['format'], 'stems': state['stems']})).hexdigest()
+
+
+def _owner_receipt(state):
+    owner = {'job': state['id'], 'fingerprint': state['fingerprint']}
+    # Preserve legacy receipts without inventing historical option evidence.
+    if 'operation_sha256' in state:
+        owner['operation_sha256'] = state['operation_sha256']
+    return owner
+
+
 class ProductionService:
     def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(),
-                 total_disk_bytes=32 * 1024**3):
+                 total_disk_bytes=32 * 1024**3, broker=None):
         """Bound private state/cache, staging and this job's published copies.
 
         This logical-byte allowance is independent of each AudioBudget output
@@ -96,6 +113,60 @@ class ProductionService:
         self._voices = voices
         self.runtime_factory = runtime_factory
         self.input_roots = tuple(local_path(x, exists=True) for x in input_roots)
+        self._broker = broker
+
+    @property
+    def broker(self):
+        if self._broker is None:
+            from ..operations import ResourceBroker
+            # Canonical app state shares the same broker as ASR and other
+            # admitted engines. Standalone service users may inject one.
+            app_root = (self.root.parent.parent if self.root.name == 'studio'
+                        and self.root.parent.name == 'state' else self.root.parent)
+            self._broker = ResourceBroker.for_app(app_root)
+        return self._broker
+
+    def _resource_plan(self, project, state, runtime):
+        from ..operations import ResourceRequest, ResourceUnavailable
+        limits = self.broker.limits
+        neural = {scene.music.engine for scene in project.scenes if scene.music is not None
+                  and scene.music.engine in ('musicgen', 'ace-step')}
+        devices = set()
+        for engine in neural:
+            if engine not in runtime.music_models:
+                raise ResourceUnavailable(f'Configure the local {engine} model before reserving production resources.')
+            config, _ = runtime.music_models[engine]
+            if config.device != 'cpu':
+                devices.add(config.device + ':0')
+        if len(devices) > 1:
+            raise ResourceUnavailable('Choose one configured GPU device for this production; mixed GPU jobs are not admitted together.')
+        device = next(iter(devices), None)
+        capacity = dict(limits.gpu_devices).get(device, 0)
+        if device is not None and not capacity:
+            raise ResourceUnavailable('The selected music GPU needs an explicit shared resource capacity before rendering.')
+        # These are declared admission estimates, not RAM measurements or
+        # claimed inference requirements. A neural project takes the whole
+        # configured RAM/GPU pool because its peak has not been measured here.
+        memory = limits.memory_bytes if neural else max(512 * 1024 ** 2, 2 * runtime.budget.max_alloc_bytes)
+        if neural and memory == 0:
+            raise ResourceUnavailable('Configure a positive declared memory budget for neural production.')
+        seconds = sum(max(scene.minimum_duration,
+                      sum(len(line.text) * .5 + line.pause_after for line in scene.lines)) for scene in project.scenes)
+        pcm = math.ceil(max(1, seconds) * project.sample_rate * 2 * 2)
+        roles = len(project.roles) if state['stems'] else 0
+        music = int(any(scene.music is not None for scene in project.scenes))
+        cache_bytes = pcm * (6 + 2 * roles + 2 * music) + runtime.budget.reserve_disk_bytes
+        export_bytes = pcm * (2 + roles + music * int(state['stems']) + int(state['format'] != 'wav')) + 1024 ** 2
+        request = ResourceRequest(cpu_slots=runtime.budget.threads, memory_bytes=memory,
+            gpu_device=device, gpu_memory_bytes=capacity, disk_bytes=cache_bytes, disk_path=self.cache,
+            additional_disks=((Path(state['destination']).parent, export_bytes),))
+        return request, {'schema': 1, 'request': request.to_dict(),
+            'cpu_basis': 'actual configured AudioRuntime worker thread count',
+            'memory_basis': ('exclusive configured RAM/GPU pool; model peak is not measured' if neural else
+                             'declared estimate: at least 512 MiB and twice the FFmpeg per-allocation budget'),
+            'disk_basis': 'declared estimate from 0.5 seconds per source character, explicit pauses/durations, '
+                          'PCM bytes and intermediate/stem/export copies; not a measured duration or hard output cap',
+            'enforcement': 'cooperative admission; existing bounded worker checks still apply'}
 
     @property
     def voices(self):
@@ -146,21 +217,45 @@ class ProductionService:
             raise ValueError('Choose an output directory outside the private production state.')
         job_id = _id(operation_id) if operation_id else uuid4().hex
         output = destination / f'{_output_name(project.title)}-{job_id[:12]}'
-        existing_path = self.jobs_root / job_id / 'job.json'
-        if existing_path.exists():
-            previous = self.get(job_id)
+        directory = self.jobs_root / job_id
+        existing_path = directory / 'job.json'
+
+        def already_submitted():
+            try:
+                previous = self.get(job_id)
+            except FileNotFoundError:
+                return False
             if (previous['fingerprint'] != project.fingerprint or previous['destination'] != str(output)
                     or previous['format'] != format or previous['stems'] != stems):
                 raise ValueError('This operation ID is already bound to a different production plan.')
+            return True
+
+        # A committed receipt is immutable in identity, even during rendering.
+        if already_submitted():
             return job_id
-        self.projects.save(project)
-        state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
-                 'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
-                 'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
-                 'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
-        directory = self.jobs_root / job_id
-        directory.mkdir()
-        atomic_json(directory / 'job.json', state)
+        # Use the existing per-job render lock. A crash before job.json is
+        # committed may leave its directory and an uncommitted temporary file.
+        with state_lock(directory, 'render'):
+            if already_submitted():
+                return job_id
+            for entry in directory.iterdir():
+                if entry.name != '.render.lock' and not entry.name.startswith('.pending-'):
+                    raise ValueError('Production job has recovery data but no receipt; review it before resubmitting.')
+                regular(entry)
+            # Never adopt another operation's output after a missing receipt.
+            try:
+                output.lstat()
+            except FileNotFoundError:
+                pass
+            else:
+                raise FileExistsError('Production output already exists without a matching job receipt.')
+            self.projects.save(project)
+            state = {'schema': 1, 'id': job_id, 'status': 'pending', 'project': project.to_dict(),
+                     'fingerprint': project.fingerprint, 'destination': str(output), 'format': format,
+                     'stems': stems, 'nodes': {}, 'artifacts': [], 'progress': '',
+                     'created': time.time(), 'updated': time.time(), 'error': '', 'runtime': None}
+            state['operation_sha256'] = _operation_sha256(state)
+            atomic_json(existing_path, state)
         return job_id
 
     def get(self, job_id):
@@ -170,6 +265,10 @@ class ProductionService:
         project = Project.from_dict(state['project'])
         if state.get('fingerprint') != project.fingerprint:
             raise ValueError('The saved production plan changed.')
+        if state.get('format') not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma') or type(state.get('stems')) is not bool:
+            raise ValueError('Invalid saved production options.')
+        if 'operation_sha256' in state and state['operation_sha256'] != _operation_sha256(state):
+            raise ValueError('The saved production operation options changed.')
         return state
 
     def jobs(self):
@@ -201,27 +300,55 @@ class ProductionService:
         from ..audio import Track, MusicSpec, AudioError, AudioCancelled
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
-        with state_lock(job_root, 'render'):
+        with state_lock(job_root, 'render'), ExitStack() as reservations:
             state = self.get(job_id)
             if state['status'] == 'complete':
                 self._verify_artifacts(state, cancelled=cancelled)
                 return state
             project = Project.from_dict(state['project'])
-            runtime = self._runtime()
-            capabilities = runtime.capabilities()
+            control = job_root / 'control.json'
+            if control.exists():
+                control.unlink()  # explicit Run/Resume authorizes continuing the saved job
+
+            def admission_cancelled():
+                return bool(cancelled()) or control.exists()
+
+            try:
+                runtime = self._runtime()
+                request, resource_plan = self._resource_plan(project, state, runtime)
+                state['resource_plan'] = resource_plan
+                state['status'], state['progress'], state['error'] = 'queued', 'Waiting for shared local resources.', ''
+                self._save(state)
+                if progress is not None:
+                    progress(state['progress'])
+                lease = reservations.enter_context(self.broker.reserve(request,
+                    operation_id='studio:' + job_id, cancelled=admission_cancelled, timeout=60))
+            except Exception as exc:
+                from ..operations import ResourceCancelled
+                action = read_json(control).get('action') if control.exists() else None
+                state['status'] = ('cancelled' if action == 'cancel' else 'paused'
+                                   if admission_cancelled() or isinstance(exc, ResourceCancelled) else 'attention')
+                state['error'] = str(exc)[:2000]
+                self._save(state)
+                if isinstance(exc, ResourceCancelled):
+                    raise InterruptedError('Production paused or cancelled while waiting for resources.') from exc
+                raise
+            try:
+                capabilities = runtime.capabilities()
+            except BaseException as exc:
+                state['status'], state['error'] = 'failed', str(exc)[:2000]
+                self._save(state)
+                raise
             # Engine inventory is part of the node identity. A different installed
             # FFmpeg/voice version must not silently reuse incompatible work.
             runtime_identity = sha256(encode(capabilities)).hexdigest()
             state['runtime'] = capabilities
             state['total_disk_bytes'] = self.total_disk_bytes
             state['status'], state['error'] = 'running', ''
-            control = job_root / 'control.json'
-            if control.exists():
-                control.unlink()  # explicit Run/Resume authorizes continuing the saved job
             self._save(state)
 
             def requested_stop():
-                return bool(cancelled()) or control.exists()
+                return lease.cancelled()
 
             last_disk_check, retained = 0.0, 0
 
@@ -422,11 +549,11 @@ class ProductionService:
                 output = local_path(state['destination'])
                 marker = output / 'production-owner.json'
                 if output.exists():
-                    if not marker.exists() or read_json(marker) != {'job': state['id'], 'fingerprint': state['fingerprint']}:
+                    if not marker.exists() or read_json(marker) != _owner_receipt(state):
                         raise FileExistsError('The output directory is occupied by another project.')
                 else:
                     output.mkdir(mode=0o700)
-                    atomic_json(marker, {'job': state['id'], 'fingerprint': state['fingerprint']})
+                    atomic_json(marker, _owner_receipt(state))
 
                 def publish(source, name):
                     check()
@@ -559,8 +686,7 @@ class ProductionService:
             # A receipt with a shortened (or empty) artifact list must not
             # turn a damaged production into a successful committed replay.
             project = Project.from_dict(state['project'])
-            if read_json(root / 'production-owner.json') != {
-                    'job': state['id'], 'fingerprint': state['fingerprint']}:
+            if read_json(root / 'production-owner.json') != _owner_receipt(state):
                 raise ValueError('The production output owner receipt changed.')
             required = {'master.wav', 'script.vtt', 'script.srt', 'timeline.json', 'project.json'}
             required.update(f'chapters/{index:04d}-{_output_name(scene.title)}.wav'
