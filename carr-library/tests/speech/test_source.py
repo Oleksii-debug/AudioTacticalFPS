@@ -202,6 +202,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     class Control:
         def __init__(self, parent=None, *args, **kwargs):
             self.parent = parent
+            self.identity = next(identifiers)
             self.label = kwargs.get('label', next((a for a in args if isinstance(a, str)), ''))
             self.value = kwargs.get('value', kwargs.get('initial', ''))
             self.name, self.items, self.selection = '', [], -1
@@ -211,6 +212,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def native(self):
             assert get_ident() == main
             assert not self.destroyed
+        def GetId(self): self.native(); return self.identity
         def SetName(self, value): self.native(); self.name = value
         def SetValue(self, value): self.native(); self.value = value
         def ChangeValue(self, value): self.SetValue(value)
@@ -229,10 +231,22 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         def SetEscapeId(self, *args): self.native()
         def SetAcceleratorTable(self, *args): self.native()
         def Bind(self, event, callback, *args, **kwargs): self.native(); self.handlers[event] = callback
+        def Unbind(self, event, handler=None):
+            self.native()
+            if event in self.handlers and (handler is None or self.handlers[event] is handler):
+                del self.handlers[event]
+                return True
+            return False
         def Start(self, *args): self.native()
         def Stop(self): self.native()
         def EndModal(self, result): self.native()
-        def Destroy(self): self.native(); self.destroyed = True
+        def Destroy(self):
+            self.native()
+            self.destroyed = True
+            handler = self.handlers.get('destroy')
+            if handler is not None:
+                identity = self.identity
+                handler(SimpleNamespace(GetId=lambda: identity, Skip=lambda: None))
 
     def named(label):
         return next(control for control in controls if control.label == label)
@@ -275,7 +289,7 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         NewIdRef=lambda: next(identifiers), AcceleratorTable=lambda entries: entries,
         MessageBox=lambda *args, **kwargs: 4, ID_OK=5100, ID_CANCEL=5101,
         NOT_FOUND=-1, YES=2, NO=4, CANCEL=8, EVT_BUTTON='button', EVT_MENU='menu',
-        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer')
+        EVT_CHOICE='choice', EVT_CLOSE='close', EVT_TIMER='timer', EVT_WINDOW_DESTROY='destroy')
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
@@ -284,10 +298,12 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(ui, 'WavePlayer', lambda: SimpleNamespace(
         position_seconds=0, state='stopped', stop=lambda: None, close=lambda: None))
-    parent = SimpleNamespace(library=app, report=statuses.append)
+    parent = Control()
+    parent.library, parent.report = app, statuses.append
 
     ui.show_speech_reader(parent, source_guard=scope,
         source_loader=lambda cancelled: read_source_range(desk, 1, 1, guard=scope, cancelled=cancelled))
+    assert not parent.destroyed and 'destroy' not in parent.handlers
     assert app.assets.resolve(imported['asset']).read_bytes() == original.encode('utf-8')
     assert guard_calls
     if recovery_case in ('legacy', 'foreign', 'revision'):
