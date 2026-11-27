@@ -94,6 +94,45 @@ def test_live_canonical_sources_restore_only_as_inert_history_and_rebackup(tmp_p
     verify_backup(again, digest2)
 
 
+def test_opaque_archived_source_still_requires_its_inner_receipt_hash(tmp_path):
+    app, _ = app_at(tmp_path)
+    saved = canonical_data(app.root)
+    backup = tmp_path / 'backup'
+    create_backup(app, backup)
+    manifest = json.loads((backup / 'manifest.json').read_bytes())
+    row, = [row for row in manifest['sidecars']
+            if recovery.is_state_path(row['path']) and row['path'].endswith('.wav')]
+    source = backup / 'sidecars' / row['path']
+    assert source.read_bytes() == saved.raw
+    assert not saved.raw.startswith((b'RIFF', b'RF64'))
+    # Re-signing only the outer inventory must not authenticate changed input
+    # against the original historical job and its retained archive manifest.
+    changed = b'x' * len(saved.raw)
+    source.write_bytes(changed)
+    row['sha256'] = digest(changed)
+    raw = put(backup / 'manifest.json', manifest)
+    with pytest.raises(ValueError, match='Historical transcription checksum'):
+        verify_backup(backup, digest(raw))
+    target = tmp_path / 'refused'
+    with pytest.raises(ValueError, match='Historical transcription checksum'):
+        restore_backup(backup, target, digest(raw))
+    assert not target.exists()
+    assert saved.source_path.read_bytes() == saved.raw
+
+
+def test_archived_asr_exception_does_not_admit_non_pcm_managed_audio(tmp_path):
+    from carr_library import library_backup
+    from carr_library.ingest.restore import RestoreError
+    app, _ = app_at(tmp_path)
+    relative = 'audio-projects/' + '1' * 32 + '/audio/assets/original.wav'
+    source = app.root / relative
+    source.parent.mkdir(parents=True)
+    source.write_bytes(b'Original retained synthetic audio; never decoded.')
+    identity = library_backup._identity(library_backup._sidecar_info(app.root, relative))
+    with pytest.raises(RestoreError, match='WAV or RF64'):
+        library_backup._copy_sidecar(app.root, relative, None, identity, lambda: False)
+
+
 def test_common_v4_keeps_exact_old_manifest_and_all_results_without_old_runtime(tmp_path):
     app, _ = app_at(tmp_path)
     old = canonical_data(tmp_path / 'old-namespace', complete=True, empty=True)

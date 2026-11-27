@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from hashlib import sha256
 import os
+from operator import index as integer_index
 from pathlib import Path
 
 from ..audio.jobs import file_identity, regular_file, verified_reader
@@ -80,9 +81,17 @@ class _BoundedReader:
 
     def _count(self, size):
         check_cancelled(self._cancelled)
-        if type(size) is not int or not 0 <= size <= MAX_READ_BYTES:
+        if isinstance(size, bool):
             raise ValueError('The PDF parser requested an oversized individual read.')
-        return size
+        try:
+            # pypdf stream lengths are NumberObject (an integer subtype).
+            # Accept the integer/index protocol without coercing floats or text.
+            count = integer_index(size)
+        except TypeError as error:
+            raise ValueError('The PDF parser requested a non-integral read.') from error
+        if not 0 <= count <= MAX_READ_BYTES:
+            raise ValueError('The PDF parser requested an oversized individual read.')
+        return count
 
     def read(self, size=-1):
         return self._stream.read(self._count(size))

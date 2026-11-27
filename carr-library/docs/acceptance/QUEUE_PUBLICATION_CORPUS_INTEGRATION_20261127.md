@@ -51,7 +51,9 @@ The existing fixed-size fixtures still are not public import throughput.
 Previously completed run 46004721023 at source 431ac08712b4c31c70a6253711481c02d092de94
 passed the 1,000-book/20,000-segment and 10,000-book/200,000-segment workloads.
 Those earlier runs did not contain this added complete-library backup cycle.
-Its 50,000-book job was still running at 14:10 UTC on 2026-11-27.
+Its 50,000-book/1,000,000-segment job also passed at 14:12 UTC on 2026-11-27,
+with all 50,000 exact hits reached over 2,001 page requests; the original log and
+artifact identity are recorded in RETAINED_CAPACITY_431_20261127.md.
 
 ## Observed CI corrections
 

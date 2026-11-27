@@ -751,8 +751,11 @@ def _copy_sidecar(root, relative, target, identity, cancelled):
     with os.fdopen(os.open(root / relative, flags), 'rb') as incoming, (target.open('xb') if target is not None else nullcontext()) as output:
         if _identity(os.fstat(incoming.fileno())) != identity:
             raise RestoreError('sidecar changed before copying')
+        # Archived ASR originals remain opaque source bytes, like current job
+        # inputs. Their typed archive validator authenticates the retained
+        # manifest and each payload; only project PCM receives this header gate.
         if (relative.lower().endswith('.wav') and not _transcription_path(relative)
-                and not _recording_path(relative)):
+                and not _legacy_asr_path(relative) and not _recording_path(relative)):
             header = incoming.read(12)
             if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
                 raise RestoreError('project audio artifact is not a WAV or RF64 file')

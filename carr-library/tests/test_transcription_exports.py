@@ -46,9 +46,14 @@ def test_single_format_selection_and_missing_format_refusal(
     assert result['files'] == 1
     assert {row['format'] for row in jobs.read_json(
         tmp_path / 'only-srt/transcription-export.json')['outputs']} == {'srt'}
-    with pytest.raises(ValueError, match='absent'):
-        export_results(service, identity, tmp_path / 'missing-vtt', formats=['vtt'])
-    assert not (tmp_path / 'missing-vtt').exists()
+    for formats, name, message in (
+            (['vtt'], 'missing-vtt', 'contains none of the selected formats'),
+            (['srt', 'vtt'], 'partly-missing', 'selected format is absent')):
+        target = tmp_path / name
+        with pytest.raises(ValueError, match=message):
+            export_results(service, identity, target, formats=formats)
+        assert not target.exists()
+    assert not list(tmp_path.glob('.transcription-export-*'))
 
 
 def test_existing_destination_is_refused_before_verifying_or_reading_transcripts(

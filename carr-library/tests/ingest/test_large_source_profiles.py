@@ -98,7 +98,8 @@ def test_request_version_and_profile_cannot_be_crossed(tmp_path):
         load_request(app.root, request['request_id'])
 
 
-@pytest.mark.parametrize('amount', [-1, MAX_READ_BYTES + 1, True], ids=['read-all', 'oversized', 'boolean'])
+@pytest.mark.parametrize('amount', [-1, MAX_READ_BYTES + 1, True, 58.0, '58'],
+                         ids=['read-all', 'oversized', 'boolean', 'float', 'text'])
 def test_pdf_parser_cannot_request_one_unbounded_read(amount):
     class Source:
         def read(self, _):
@@ -213,3 +214,17 @@ def test_cancelled_large_pdf_review_does_not_launch_renderer_or_save_approval(tm
             confirmed=True, expected_checksum='a' * 64, cancelled=lambda: True)
     assert request_path.read_bytes() == before
     assert not (app.root / 'import-requests' / 'reviews' / (result['request_id'] + '.json')).exists()
+
+
+def test_actual_pypdf_integer_stream_length_preserves_bounded_read_contract():
+    from pypdf.generic import NumberObject
+    source = BytesIO(b'first\nsecond')
+    reader = _BoundedReader(source, lambda: False)
+    assert reader.read(NumberObject(5)) == b'first'
+    assert reader.readline(NumberObject(1)) == b'\n'
+    assert reader.read(NumberObject(0)) == b''
+    assert source.tell() == 6
+    for amount in (NumberObject(-1), NumberObject(MAX_READ_BYTES + 1)):
+        with pytest.raises(ValueError):
+            reader.read(amount)
+        assert source.tell() == 6

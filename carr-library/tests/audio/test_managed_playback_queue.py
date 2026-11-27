@@ -481,3 +481,147 @@ def test_owned_asset_sync_failure_requires_successful_directory_sync_on_retry(pr
     assert synced == [assets]
     assert store.review().state == review.state
     assert tuple(path.name for path in store.paths(review)) == (expected,)
+
+
+def _stage_operation(project, operation):
+    _, _, store, paths = project
+    review = store.review() if operation == 'create' else store.append([paths[0]])
+    before = store.path.read_bytes() if store.path.exists() else None
+    def invoke(cancelled):
+        if operation == 'append':
+            return store.append([paths[1]], review=review, cancelled=cancelled)
+        return store.checkpoint(review, clear=operation == 'replace', cancelled=cancelled)
+    return store, paths, before, invoke
+
+
+@pytest.mark.parametrize('operation', ['create', 'replace', 'append'], ids=str)
+@pytest.mark.parametrize('damage', ['replacement', 'same-inode', 'parent'], ids=str)
+def test_owned_stage_and_parent_are_rechecked_after_last_external_callback(
+        project, monkeypatch, operation, damage):
+    store, paths, previous, invoke = _stage_operation(project, operation)
+    originals = tuple(path.read_bytes() for path in paths)
+    real_seal = module._seal_stage
+    state = {}
+    def seal(path, *args, **kwargs):
+        result = real_seal(path, *args, **kwargs)
+        selected = (path.parent == store.audio / 'assets' if operation == 'append'
+                    else path.parent == store.audio)
+        if selected and not state:
+            state.update(path=path, original=path.read_bytes(), stamp=path.stat(), changed=False)
+        return result
+    monkeypatch.setattr(module, '_seal_stage', seal)
+    def altered():
+        if not state or state['changed']:
+            return False
+        state['changed'] = True
+        stage = state['path']
+        foreign = b'x' * len(state['original'])
+        if damage == 'same-inode':
+            with stage.open('r+b') as stream:
+                stream.write(foreign)
+            stamp = state['stamp']
+            os.utime(stage, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+        elif damage == 'replacement':
+            retained = stage.with_name(stage.name + '.retained-original')
+            stage.rename(retained)
+            stage.write_bytes(foreign)
+            state.update(retained=retained, foreign=foreign)
+        else:
+            parent = stage.parent
+            retained = parent.with_name(parent.name + '-retained-original')
+            try:
+                parent.rename(retained)
+            except OSError as error:
+                # An actual Windows held native lock may refuse directory
+                # renaming outright. That is protection, never a skipped case.
+                assert os.name == 'nt'
+                assert getattr(error, 'winerror', None) in (5, 32) or error.errno == 13
+                state['blocked'] = True
+                return False
+            parent.mkdir()
+            stage.write_bytes(foreign)
+            state.update(retained=retained / stage.name, parent_retained=retained, foreign=foreign)
+        return False
+    error = None
+    try:
+        result = invoke(altered)
+    except Exception as caught:
+        error = caught
+    assert state.get('changed')
+    assert tuple(path.read_bytes() for path in paths) == originals
+    if state.get('blocked'):
+        assert error is None and store.review().state == result.state
+        return
+    assert isinstance(error, (OSError, ValueError, RuntimeError))
+    assert not isinstance(error, module.QueueChangeCommittedError)
+    stage = state['path']
+    if damage == 'same-inode':
+        assert not stage.exists()
+    else:
+        assert stage.read_bytes() == state['foreign']
+        assert state['retained'].read_bytes() == state['original']
+    if damage == 'parent' and operation != 'append':
+        old_queue = state['parent_retained'] / store.path.name
+        assert (old_queue.read_bytes() if old_queue.exists() else None) == previous
+        assert not store.path.exists()
+    else:
+        assert (store.path.read_bytes() if store.path.exists() else None) == previous
+
+
+@pytest.mark.parametrize('operation', ['create', 'append'], ids=str)
+def test_actual_staged_bytes_are_checked_before_native_identity_is_accepted(
+        project, monkeypatch, operation):
+    store, paths, previous, invoke = _stage_operation(project, operation)
+    real_seal = module._seal_stage
+    affected = []
+    def corrupted(path, *args, **kwargs):
+        selected = (path.parent == store.audio / 'assets' if operation == 'append'
+                    else path.parent == store.audio)
+        if selected and not affected:
+            stamp = path.stat()
+            with path.open('r+b') as stream:
+                first = stream.read(1)
+                stream.seek(0)
+                stream.write(bytes([first[0] ^ 1]))
+            os.utime(path, ns=(stamp.st_atime_ns, stamp.st_mtime_ns))
+            affected.append(path)
+        return real_seal(path, *args, **kwargs)
+    monkeypatch.setattr(module, '_seal_stage', corrupted)
+    with pytest.raises(ValueError, match='staging bytes changed') as caught:
+        invoke(lambda: False)
+    assert not isinstance(caught.value, module.QueueChangeCommittedError)
+    assert len(affected) == 1 and not affected[0].exists()
+    assert (store.path.read_bytes() if store.path.exists() else None) == previous
+
+
+@pytest.mark.parametrize('operation', ['create', 'append'], ids=str)
+def test_final_shared_publisher_callback_refuses_a_substituted_stage_after_flush(
+        project, monkeypatch, operation):
+    store, paths, previous, invoke = _stage_operation(project, operation)
+    real = module.publish_noreplace
+    state = {}
+    def intercepted(source, destination, *, cancelled=lambda: False):
+        selected = (source.parent == store.audio / 'assets' if operation == 'append'
+                    else destination == store.path)
+        if not selected:
+            return real(source, destination, cancelled=cancelled)
+        count = 0
+        def final_check():
+            nonlocal count
+            count += 1
+            if count == 2:
+                raw = source.read_bytes()
+                retained = source.with_name(source.name + '.retained-original')
+                source.rename(retained)
+                foreign = b'z' * len(raw)
+                source.write_bytes(foreign)
+                state.update(path=source, retained=retained, original=raw, foreign=foreign)
+            return cancelled()
+        return real(source, destination, cancelled=final_check)
+    monkeypatch.setattr(module, 'publish_noreplace', intercepted)
+    with pytest.raises((ValueError, RuntimeError)) as caught:
+        invoke(lambda: False)
+    assert not isinstance(caught.value, module.QueueChangeCommittedError)
+    assert state['path'].read_bytes() == state['foreign']
+    assert state['retained'].read_bytes() == state['original']
+    assert (store.path.read_bytes() if store.path.exists() else None) == previous

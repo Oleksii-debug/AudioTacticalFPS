@@ -54,28 +54,64 @@ if network_mode == 'offline':
 
 """
 
-PYTEST_CHILD = NETWORK_POLICY + """
+INSTALLED_IDENTITY = r'''
+def verify_packaged_python(source_checkout, selected_packages):
+    """Compare every declared/shipped Python file, excluding unshipped probes."""
+    import hashlib
+    import tomllib
+    from pathlib import Path
+    source_checkout = Path(source_checkout).resolve(strict=True)
+    configuration = tomllib.loads((source_checkout / 'pyproject.toml').read_text(encoding='utf-8'))
+    declared = configuration['tool']['setuptools']['packages']
+    if (type(declared) is not list or not declared
+            or any(type(name) is not str or not all(part.isidentifier() for part in name.split('.'))
+                   for name in declared)):
+        raise SystemExit('Installed acceptance requires the explicit package inventory')
+    if set(selected_packages) != {'carr_library', 'bootstrap'}:
+        raise SystemExit('Installed acceptance requires both application package roots')
+    total = 0
+    for name, relative in (('carr_library', 'src/carr_library'), ('bootstrap', 'bootstrap')):
+        source = source_checkout / relative
+        selected = Path(selected_packages[name]).resolve(strict=True)
+        if not source.is_dir() or selected == source.resolve():
+            raise SystemExit('Installed acceptance refused a missing source or source-shadowed package: ' + name)
+        expected = {}
+        for package in declared:
+            if package != name and not package.startswith(name + '.'):
+                continue
+            directory = source.joinpath(*package.split('.')[1:])
+            if not directory.is_dir():
+                raise SystemExit('Declared source package is missing: ' + package)
+            for original in directory.glob('*.py'):
+                expected[original.relative_to(source).as_posix()] = original
+        actual = {path.relative_to(selected).as_posix(): path for path in selected.rglob('*.py')}
+        if not expected or set(expected) != set(actual):
+            missing = sorted(set(expected) - set(actual))
+            extra = sorted(set(actual) - set(expected))
+            raise SystemExit('Installed Python inventory differs for ' + name +
+                             ': missing=' + repr(missing) + '; unexpected=' + repr(extra))
+        for relative_path, original in expected.items():
+            if (hashlib.sha256(original.read_bytes()).digest() !=
+                    hashlib.sha256(actual[relative_path].read_bytes()).digest()):
+                raise SystemExit('Installed package differs from the tested source: ' + relative_path)
+        total += len(expected)
+    return total
+'''
+
+PYTEST_CHILD = NETWORK_POLICY + INSTALLED_IDENTITY + """
 execution_mode, source_checkout = sys.argv.pop(1), sys.argv.pop(1)
 if execution_mode not in ('source', 'installed'):
     raise SystemExit('Invalid required-test package origin')
 if execution_mode == 'installed':
-    import hashlib
     import importlib
     from pathlib import Path
-    source_checkout = Path(source_checkout).resolve(strict=True)
-    for name, relative in (('carr_library', 'src/carr_library'), ('bootstrap', 'bootstrap')):
-        source = source_checkout / relative
+    selected = {}
+    for name in ('carr_library', 'bootstrap'):
         package = importlib.import_module(name)
-        selected = Path(package.__file__).resolve(strict=True).parent
-        if not source.is_dir() or selected == source.resolve():
-            raise SystemExit('Installed acceptance refused a missing source or source-shadowed package: ' + name)
-        for original in source.rglob('*.py'):
-            retained = selected / original.relative_to(source)
-            if (not retained.is_file() or
-                    hashlib.sha256(original.read_bytes()).digest() !=
-                    hashlib.sha256(retained.read_bytes()).digest()):
-                raise SystemExit('Installed package differs from the tested source: ' + str(original.relative_to(source)))
-    print('PASS: isolated installed package bytes match this exact source checkout', flush=True)
+        selected[name] = Path(package.__file__).resolve(strict=True).parent
+    checked = verify_packaged_python(source_checkout, selected)
+    print('PASS: isolated installed package bytes match this exact source checkout; '
+          + str(checked) + ' declared Python files', flush=True)
 
 try:
     import onnxruntime

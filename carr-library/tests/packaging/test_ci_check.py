@@ -177,5 +177,70 @@ def test_local_only():
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
+class InstalledIdentityTests(unittest.TestCase):
+    def setUp(self):
+        import runpy
+        self.temporary = tempfile.TemporaryDirectory(prefix='CARR identity Україна ')
+        self.addCleanup(self.temporary.cleanup)
+        root = Path(self.temporary.name)
+        self.checkout, self.installed = root / 'checkout', root / 'installed'
+        self.checkout.mkdir()
+        self.selected = {'carr_library': self.installed / 'carr_library',
+                         'bootstrap': self.installed / 'bootstrap'}
+        (self.checkout / 'pyproject.toml').write_text(
+            '[tool.setuptools]\npackages = ["carr_library", "carr_library.ingest", '
+            '"bootstrap", "bootstrap.vendor"]\n', encoding='utf-8')
+        modules = {'src/carr_library/__init__.py': '',
+                   'src/carr_library/ingest/__init__.py': '',
+                   'src/carr_library/ingest/actual.py': 'VALUE = 7\n',
+                   'bootstrap/__init__.py': '',
+                   'bootstrap/vendor/__init__.py': ''}
+        for name, content in modules.items():
+            source = self.checkout / name
+            source.parent.mkdir(parents=True, exist_ok=True)
+            source.write_text(content, encoding='utf-8')
+            relative = name.removeprefix('src/')
+            target = self.installed / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+        probe = self.checkout / 'bootstrap/semantic_compat/probe.py'
+        probe.parent.mkdir()
+        probe.write_text('raise AssertionError("developer probe is not shipped")\n', encoding='utf-8')
+        namespace = {}
+        exec(runpy.run_path(str(SCRIPT))['INSTALLED_IDENTITY'], namespace)
+        self.verify = namespace['verify_packaged_python']
+
+    def test_declared_wheel_python_excludes_unshipped_developer_probe(self):
+        self.assertEqual(self.verify(self.checkout, self.selected), 5)
+
+    def test_changed_shipped_python_is_rejected(self):
+        path = self.selected['carr_library'] / 'ingest/actual.py'
+        path.write_text('VALUE = 8\n', encoding='utf-8')
+        with self.assertRaisesRegex(SystemExit, 'differs from the tested source'):
+            self.verify(self.checkout, self.selected)
+
+    def test_missing_shipped_python_is_rejected(self):
+        (self.selected['carr_library'] / 'ingest/actual.py').unlink()
+        with self.assertRaisesRegex(SystemExit, 'inventory differs'):
+            self.verify(self.checkout, self.selected)
+
+    def test_unexpected_installed_python_is_rejected(self):
+        extra = self.selected['bootstrap'] / 'semantic_compat/probe.py'
+        extra.parent.mkdir()
+        extra.write_text('VALUE = 7\n', encoding='utf-8')
+        with self.assertRaisesRegex(SystemExit, 'unexpected='):
+            self.verify(self.checkout, self.selected)
+
+    def test_source_shadowing_is_rejected(self):
+        self.selected['carr_library'] = self.checkout / 'src/carr_library'
+        with self.assertRaisesRegex(SystemExit, 'source-shadowed'):
+            self.verify(self.checkout, self.selected)
+
+    def test_missing_application_root_cannot_shrink_installed_verification(self):
+        del self.selected['bootstrap']
+        with self.assertRaisesRegex(SystemExit, 'both application package roots'):
+            self.verify(self.checkout, self.selected)
+
+
 if __name__ == '__main__':
     unittest.main()

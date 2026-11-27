@@ -1,0 +1,56 @@
+{
+  "schema": "carr-observed-capacity-evidence/1",
+  "source_commit": "431ac08712b4c31c70a6253711481c02d092de94",
+  "workflow_run": 46004721023,
+  "platform": "Linux",
+  "python": "3.11.18",
+  "source": "completed Actions logs and artifact metadata",
+  "observed_at_utc": "2026-11-27T14:14:00Z",
+  "cases": [
+    {
+      "books": 1000,
+      "segments": 20000,
+      "exact_hits": 1000,
+      "result_page_requests": 41,
+      "job": 140527316366,
+      "status": "PASS",
+      "artifact": 15203590104,
+      "archive_bytes": 4269,
+      "archive_sha256": "cbbfe203caedebdffdfa07f64ee52c851cef25102799d9740804857240f063ee"
+    },
+    {
+      "books": 10000,
+      "segments": 200000,
+      "exact_hits": 10000,
+      "result_page_requests": 401,
+      "job": 140527316279,
+      "status": "PASS",
+      "artifact": 15202911859,
+      "archive_bytes": 4789,
+      "archive_sha256": "3ccf30b802f60498880ae66cca1bff9f1595b88a5e0c23b63dbb418b84629218"
+    },
+    {
+      "books": 50000,
+      "segments": 1000000,
+      "exact_hits": 50000,
+      "result_page_requests": 2001,
+      "job": 140527316349,
+      "status": "PASS",
+      "artifact": 15205360923,
+      "archive_bytes": 6866,
+      "archive_sha256": "cdf9cbd79e02d5539eb3a9e541cdeaefa9e448193a91304732609acabd84a66b",
+      "finished_utc": "2026-11-27T14:12:02Z"
+    }
+  ],
+  "controls": {
+    "public_import_samples_per_case": 12,
+    "actual_worker_cancellation_and_recovery": "PASS",
+    "retained_original_and_tail_checks": "PASS",
+    "fresh_process_startup": "PASS",
+    "complete_library_backup_cycle": "NOT_RUN_AT_THIS_SOURCE",
+    "os_page_cache_evicted": false,
+    "native_worker_network_sandbox_qualified": false,
+    "latency_percentiles": "NOT_EXTRACTED_FROM_ARTIFACT",
+    "current_composed_head": "NO_RESULT_TRANSFER"
+  }
+}

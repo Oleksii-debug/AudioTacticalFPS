@@ -40,6 +40,61 @@ def _stamp(path):
     return identity + (native,)
 
 
+def _directory_identity(path):
+    info = checked_directory(path).stat()
+    return info.st_dev, info.st_ino
+
+
+def _check_stage(path, parent_identity, stamp):
+    if _directory_identity(path.parent) != parent_identity:
+        raise ValueError('The owned playback stage directory changed.')
+    if _stamp(path) != stamp:
+        raise ValueError('The owned playback staging file changed.')
+    if _directory_identity(path.parent) != parent_identity:
+        raise ValueError('The owned playback stage directory changed.')
+
+
+def _seal_stage(path, parent_identity, owner, size, expected_sha256, cancelled):
+    """Check actual staged bytes once, then bind final checks to native identity."""
+    check_cancelled(cancelled)
+    if _directory_identity(path.parent) != parent_identity:
+        raise ValueError('The owned playback stage directory changed.')
+    stamp = _stamp(path)
+    if stamp[:2] != owner or stamp[2] != size:
+        raise ValueError('The owned playback staging file changed.')
+    digest, remaining = sha256(), size
+    with verified_reader(path, expected_identity=stamp[:5]) as stream:
+        while remaining:
+            check_cancelled(cancelled)
+            block = stream.read(min(1024 * 1024, remaining))
+            if not block:
+                raise ValueError('The owned playback staging file was truncated.')
+            remaining -= len(block)
+            digest.update(block)
+        if stream.read(1):
+            raise ValueError('The owned playback staging file grew.')
+        check_cancelled(cancelled)
+    if digest.hexdigest() != expected_sha256:
+        raise ValueError('The owned playback staging bytes changed.')
+    _check_stage(path, parent_identity, stamp)
+    return stamp
+
+
+def _remove_owned_stage(path, parent_identity, owner):
+    """Never unlink a replacement name or follow a retargeted parent on cleanup."""
+    try:
+        if _directory_identity(path.parent) != parent_identity:
+            return
+        info = regular_file(path)
+        if info.st_nlink != 1 or (info.st_dev, info.st_ino) != owner:
+            return
+        if _directory_identity(path.parent) != parent_identity:
+            return
+    except (OSError, ValueError, RuntimeError):
+        return
+    path.unlink(missing_ok=True)
+
+
 def _check(cancelled):
     deadline = monotonic() + MAX_SECONDS
     def check():
@@ -236,8 +291,11 @@ class PlaylistStore:
                            separators=(',', ':'), allow_nan=False) + '\n').encode('utf-8')
         if len(data) > MAX_STATE_BYTES:
             raise ValueError('Queue metadata exceeds its bounded save allowance.')
+        parent_identity = _directory_identity(self.audio)
         descriptor, name = tempfile.mkstemp(prefix='.queue-', dir=self.audio)
         stage = Path(name)
+        created = os.fstat(descriptor)
+        owner = created.st_dev, created.st_ino
         published = None
         staged_identity = None
         candidate = None
@@ -247,30 +305,38 @@ class PlaylistStore:
                     stream.write(data)
                     stream.flush()
                     os.fsync(stream.fileno())
-                    staged_identity = file_identity(os.fstat(stream.fileno()))
-                check_cancelled(cancelled)
+                checksum = sha256(data).hexdigest()
+                staged_identity = _seal_stage(stage, parent_identity, owner,
+                                              len(data), checksum, cancelled)
                 self._validate_review(review)
                 pins = tuple((item.asset, _stamp(self.audio / 'assets' / item.asset))
                              for item in state.items)
-                candidate = QueueReview(self, state, sha256(data).hexdigest(), pins)
-                check_cancelled(cancelled)
+                candidate = QueueReview(self, state, checksum, pins)
+                def before_commit():
+                    check_cancelled(cancelled)
+                    self._validate_review(review)
+                    _check_stage(stage, parent_identity, staged_identity)
+                    return False
                 if review.digest is None:
-                    publish_noreplace(stage, self.path, cancelled=cancelled)
+                    publish_noreplace(stage, self.path, cancelled=before_commit)
                 else:
+                    before_commit()
                     replace_json_file(stage, self.path)
                     published = candidate
                     _sync_directory(self.audio)
                 published = candidate
             finally:
-                stage.unlink(missing_ok=True)
+                _remove_owned_stage(stage, parent_identity, owner)
         except Exception as error:
             if published is None and staged_identity is not None and candidate is not None:
                 try:
                     # Confirm this attempt's own inode, not merely equal bytes.
-                    # An equal-byte create-only competitor is not our receipt.
-                    # This also recognizes a move/link followed by sync failure.
+                    # A changed parent or equal-byte create-only competitor is
+                    # not this attempt's committed queue.
+                    if _directory_identity(self.audio) != parent_identity:
+                        raise ValueError('The owned playback stage directory changed.')
                     value, checksum = _read(self.path)
-                    if (_stamp(self.path)[:2] == staged_identity[:2]
+                    if (_stamp(self.path)[:2] == owner
                             and checksum == sha256(data).hexdigest()
                             and parse_queue(value, self.project_id) == state):
                         published = candidate
@@ -344,8 +410,11 @@ class PlaylistStore:
                     for source_index, (source, size) in enumerate(zip(sources, sizes)):
                         check()
                         identity = _stamp(source)
+                        parent_identity = _directory_identity(self.audio / 'assets')
                         descriptor, name = tempfile.mkstemp(prefix='.queue-input-', dir=self.audio / 'assets')
                         stage = Path(name)
+                        created = os.fstat(descriptor)
+                        owner = created.st_dev, created.st_ino
                         try:
                             digest = sha256()
                             count = 0
@@ -365,6 +434,8 @@ class PlaylistStore:
                                 os.fsync(target.fileno())
                             check()
                             fingerprint = digest.hexdigest()
+                            staged_identity = _seal_stage(stage, parent_identity, owner,
+                                                          size, fingerprint, check)
                             if expected_sha256s is not None and fingerprint != expected_sha256s[source_index]:
                                 raise ValueError('A selected recording differs from its reviewed SHA-256.')
                             asset = fingerprint + '.wav'
@@ -373,6 +444,11 @@ class PlaylistStore:
                             parse_queue(replace(current.state, items=(item,), index=None, frame=None,
                                                 accuracy='not_started').payload(), self.project_id)
                             destination = self.audio / 'assets' / asset
+                            def before_asset_commit():
+                                check()
+                                _check_stage(stage, parent_identity, staged_identity)
+                                return False
+                            before_asset_commit()
                             if optional_present(destination):
                                 verify_items(self.audio, replace(current.state, items=(item,)), cancelled=check)
                                 # A previous move may have succeeded before its
@@ -380,10 +456,10 @@ class PlaylistStore:
                                 # entry now before a queue can reference it.
                                 _sync_directory(destination.parent)
                             else:
-                                publish_noreplace(stage, destination, cancelled=check)
+                                publish_noreplace(stage, destination, cancelled=before_asset_commit)
                             items.append(item)
                         finally:
-                            stage.unlink(missing_ok=True)
+                            _remove_owned_stage(stage, parent_identity, owner)
                     check()
                     state = replace(current.state, items=tuple(items))
                     published = self._write(current, state, check)
