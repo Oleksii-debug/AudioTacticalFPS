@@ -19,6 +19,7 @@ class DesktopEvidencePanel(EvidencePanel):
         self._recovery_owned = self._recovery_pending = None
         self._recovery_seen = set()
         self._recovery_loading = self._recovery_disposed = False
+        self._recovery_owner_id = self.GetId()
         self._recovery_discarded = False
         self._recovery_error = ''
         self._recovery_timer = wx.Timer(self)
@@ -118,7 +119,7 @@ class DesktopEvidencePanel(EvidencePanel):
         return True
 
     def _recovery_destroy(self, event):
-        if event.GetEventObject() is self:
+        if event.GetId() == self._recovery_owner_id:
             self._recovery_timer.Stop()
             # No access to already destroyed child controls: EVT_TEXT captured
             # the exact pending note. Preserve it even after scope revocation;
