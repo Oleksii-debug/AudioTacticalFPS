@@ -4,7 +4,6 @@ import hashlib
 import io
 import json
 import os
-from pathlib import PurePosixPath
 import urllib.request
 import zipfile
 import xml.etree.ElementTree as ET
@@ -12,25 +11,12 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 45992503530,
-    "commit": "955165132fd530d6c3deb0e5b4b48f66dde77963",
-    "id": 15194279779,
-    "sha256": "a677aad0a042786d01468d3e6c3a5bda8396d370c88f4d1f540cd72f5e847103",
-    "kind": "selected"
-  },
-  {
-    "run": 45992503530,
-    "commit": "955165132fd530d6c3deb0e5b4b48f66dde77963",
-    "id": 15196092117,
-    "sha256": "942daaa852b2cd4394fa9217fd1bdfa49cfaa512729d6dc819ff4ca78f4461e2",
-    "kind": "office"
-  },
-  {
-    "run": 46000394557,
-    "commit": "a68fb643bc968020a11e1625e4e59b2d8a9865df",
-    "id": 15200390892,
-    "sha256": "d6b1132c2549a10e6ab46b9bcadc4a1ef4152b606a30a3d07dc6e644d0a6a091",
-    "kind": "translation"
+    "run": 46053395802,
+    "commit": "480f8ecee5e7eee108245391fb617cf8eaa7bfa5",
+    "id": 15226302196,
+    "bytes": 1176055,
+    "sha256": "3a3661a91f7bb49d3869e6f6f6f4018af947558266e61f6cc6a37cb200a54ee7",
+    "kind": "standard-update"
   }
 ]
 
@@ -65,21 +51,49 @@ def brief(value):
     return value
 
 wanted = {
-    'converter-gate.json', 'publisher-identities.json', 'source-provenance.json',
-    'source-origins.json', 'installed-origins.json', 'translation-scope-gate.json',
-    'native-selected-advanced.txt', 'native-selected-advanced.json',
-    'native-document.txt', 'native-document.json', 'native-chapter.txt',
-    'native-chapter.json', 'native-batch.txt', 'native-batch.json',
-    'source-junit.xml', 'installed-junit.xml', 'source-pytest.txt', 'installed-pytest.txt'}
+    "tested-commit.txt",
+    "tested-tree.txt",
+    "standard-native-diagnostic.json",
+    "standard-update/inputs.json",
+    "standard-update/candidate-application-wheel.json",
+    "standard-update/previous-build.json",
+    "standard-update/previous-build-verification.log",
+    "standard-update/preflight.log",
+    "standard-update/native-probe.log",
+    "standard-update/native.json",
+    "standard-update/proof.json",
+    "standard-update/library.json",
+    "standard-update/verdict.log",
+    "standard-update/native-restart-crash-after-activation.json",
+    "standard-update/native-restart-recover.json",
+    "standard-installer/inputs.json",
+    "standard-installer/disk-budget.json",
+    "standard-installer/good-build.json",
+    "standard-installer/negative-build.json",
+    "standard-installer/native.json",
+    "standard-installer/proof.json",
+    "standard-installer/native-probe.log",
+    "standard-installer/install-setup.log",
+    "standard-installer/install-process.log",
+    "standard-installer/failed-bootstrap-setup.log",
+    "standard-installer/failed-bootstrap-process.log",
+    "standard-installer/repair-setup.log",
+    "standard-installer/repair-process.log",
+    "standard-installer/uninstall-setup.log",
+    "standard-installer/uninstall-process.log",
+    "standard-installer/blocked-uninstall-setup.log",
+    "standard-installer/blocked-uninstall-process.log"
+}
 for pin in ARTIFACTS:
     base = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + str(pin['id'])
     metadata = json.loads(read(base, 65536))
     if (metadata['id'] != pin['id'] or metadata['workflow_run']['id'] != pin['run']
             or metadata['workflow_run']['head_sha'] != pin['commit']
-            or metadata['digest'] != 'sha256:' + pin['sha256'] or metadata['expired']):
+            or metadata['digest'] != 'sha256:' + pin['sha256'] or metadata['expired']
+            or metadata['size_in_bytes'] != pin['bytes']):
         raise ValueError('Existing artifact provenance differs.')
     raw = read(base + '/zip', 8 * 1024 * 1024)
-    if hashlib.sha256(raw).hexdigest() != pin['sha256']:
+    if len(raw) != pin['bytes'] or hashlib.sha256(raw).hexdigest() != pin['sha256']:
         raise ValueError('Existing artifact archive failed its recorded digest.')
     print('ARTIFACT', json.dumps({**pin, 'bytes': len(raw), 'name': metadata['name']}), flush=True)
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
@@ -88,8 +102,15 @@ for pin in ARTIFACTS:
         if (len(names) != len(set(names)) or len(names) > 10000
                 or sum(member.file_size for member in members) > 512 * 1024 * 1024):
             raise ValueError('Ambiguous or oversized artifact inventory.')
-        selected = [name for name in names if PurePosixPath(name).name in wanted]
-        print('INVENTORY', json.dumps({'total_members': len(names), 'selected': selected}), flush=True)
+        if any(len(name) > 4096 for name in names):
+            raise ValueError('Artifact member name exceeds the diagnostic bound.')
+        inventory = json.dumps({'total_members': len(names), 'names': names}, ensure_ascii=True)
+        if len(inventory.encode('utf-8')) > 1024 * 1024:
+            raise ValueError('Artifact inventory exceeds the diagnostic output bound.')
+        selected = [name for name in names if name in wanted]
+        print('INVENTORY', inventory, flush=True)
+        print('SELECTION', json.dumps({'selected': selected,
+              'absent_fixed_paths': sorted(wanted.difference(names))}), flush=True)
         for name in selected:
             entry = archive.getinfo(name)
             if entry.file_size > 4 * 1024 * 1024:
@@ -114,3 +135,7 @@ for pin in ARTIFACTS:
                 print(name, json.dumps(brief(json.loads(content)), sort_keys=True, ensure_ascii=False)[-80000:], flush=True)
             else:
                 print(name, content.decode('utf-8', errors='replace')[-48000:], flush=True)
+
+print('DIAGNOSTIC_COMPLETE', json.dumps({'artifact_id': ARTIFACTS[0]['id'],
+    'scope': 'fixed existing text and JSON only; archived code was not executed',
+    'product_qualification': 'NOT_CLAIMED'}), flush=True)

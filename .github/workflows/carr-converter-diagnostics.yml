@@ -1,4 +1,4 @@
-name: CARR existing converter artifact diagnostics
+name: CARR fixed standard rollback artifact diagnostics
 on:
   push:
     branches: ['carr/converter-diagnostics-*']
