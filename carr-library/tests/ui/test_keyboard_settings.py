@@ -60,12 +60,20 @@ class MenuBar:
     def Append(self, menu, label): self.menus.append((label, menu))
 
 
+class Focus:
+    def __init__(self):
+        self.focused = False
+
+    def SetFocus(self): self.focused = True
+
+
 class Frame:
     def __init__(self, root):
         root.mkdir(exist_ok=True)
         self.library = SimpleNamespace(root=root)
         self.menu_bar, self.bindings, self.reports = MenuBar(), {}, []
         self._closing = False
+        self.choice, self.status = Focus(), Focus()
 
     def GetMenuBar(self): return self.menu_bar
     def IsEnabled(self): return True
@@ -311,6 +319,58 @@ def test_legacy_review_notice_is_visible_after_install_and_root_change(frame, wx
     assert 'kept for review' in frame.reports[-1]
     assert not (other / 'keyboard-shortcuts.json').exists()
     assert old.read_bytes() == raw
+
+
+def test_installer_preserves_focus_actions_in_one_registry_with_closing_guard(frame, wx):
+    controller = install_keyboard_settings(frame)
+    before = (frame.menu_bar.GetMenuCount(), len(controller.registry.commands()))
+    for identity, target, shortcut in (
+            ('focus.library', frame.choice, 'Ctrl+Alt+L'),
+            ('focus.status', frame.status, 'Ctrl+Alt+S')):
+        assert controller.registry.get(identity).context == 'main'
+        assert controller.shortcut(identity) == shortcut
+        item = controller.bindings[identity].item
+        assert item.label.endswith(shortcut)
+        frame.bindings[item.GetId()](None)
+        assert target.focused
+        target.focused = False
+        frame._closing = True
+        frame.bindings[item.GetId()](None)
+        assert not target.focused
+        frame._closing = False
+    assert controller.shortcut('reader.next') == 'Ctrl+PageDown'
+    assert install_keyboard_settings(frame) is controller
+    assert (frame.menu_bar.GetMenuCount(), len(controller.registry.commands())) == before
+
+
+def test_focus_default_conflict_keeps_saved_user_keymap_and_reader_context(frame, wx):
+    previous = manager_for(frame)
+    previous.apply_overrides({'library.new': 'Ctrl+Alt+L', 'reader.next': 'Ctrl+Alt+S'})
+    raw = previous.store.path.read_bytes()
+    controller = install_keyboard_settings(frame)
+    assert controller.shortcut('library.new') == 'Ctrl+Alt+L'
+    assert controller.shortcut('focus.library') == ''
+    assert controller.shortcut('focus.status') == 'Ctrl+Alt+S'
+    assert controller.shortcut('reader.next') == 'Ctrl+Alt+S'
+    assert 'new command' in controller.load_notice
+    assert controller.store.path.read_bytes() == raw
+    assert frame.reports
+
+
+def test_focus_semantic_bindings_reopen_on_new_native_menu_ids(frame, wx):
+    controller = install_keyboard_settings(frame)
+    controller.apply_overrides({'focus.library': 'F9', 'focus.status': ''})
+    before = controller.store.path.read_bytes()
+    original = controller.bindings['focus.library'].item.GetId()
+    reopened_frame = Frame(frame.library.root)
+    reopened = install_keyboard_settings(reopened_frame)
+    assert reopened.shortcut('focus.library') == 'F9'
+    assert reopened.shortcut('focus.status') == ''
+    assert reopened.bindings['focus.library'].item.GetId() != original
+    assert not reopened.load_notice
+    assert reopened.store.path.read_bytes() == before
+    reopened_frame.bindings[reopened.bindings['focus.library'].item.GetId()](None)
+    assert reopened_frame.choice.focused
 
 
 class Control:

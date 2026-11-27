@@ -13,7 +13,7 @@ from ..keyboard_preferences import KeymapStore
 from ..research.export_file import write_export
 from .export_destination import confirm_export_destination
 from .builtin_keyboard_commands import MAIN_COMMANDS, builtin_commands, plain_caption
-from .command_registry import CommandRegistry, normalize_shortcut
+from .command_registry import CommandRegistry, CommandSpec, normalize_shortcut
 
 
 CONTEXT_NAMES = {'main': 'Main window', 'reader': 'Reading Desk'}
@@ -610,6 +610,20 @@ def install_keyboard_settings(frame):
     frame.Bind(wx.EVT_MENU, lambda event: show_command_launcher(frame, manager), commands)
     frame.Bind(wx.EVT_MENU, lambda event: show_keyboard_settings(frame, manager), settings)
     manager.activate_loaded()
+    for attribute, identity, label, shortcut in (
+            ('choice', 'focus.library', 'Focus library and research topic', 'Ctrl+Alt+L'),
+            ('status', 'focus.status', 'Focus operation status', 'Ctrl+Alt+S')):
+        target = getattr(frame, attribute, None)
+        if target is None:
+            continue
+        item = menu.Append(wx.ID_ANY, label + '\t' + shortcut)
+        def focus(event, target=target):
+            if not getattr(frame, '_closing', False):
+                target.SetFocus()
+        frame.Bind(wx.EVT_MENU, focus, item)
+        manager.register_menu_command(
+            CommandSpec(identity, label, default_shortcut=shortcut), item,
+            fallback_unassigned=True)
     if manager.load_notice:
         wx.CallAfter(lambda: frame.report(manager.load_notice)
                      if manager.load_notice and not getattr(frame, '_closing', False) else None)
