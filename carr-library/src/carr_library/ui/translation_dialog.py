@@ -35,6 +35,13 @@ def translation_approval(profile, value, source, target, budget, *, source_bound
     return approval, str(per_call)
 
 
+def _matches_saved_scope(job, account, value, source, target, budget, *, offline=False):
+    """Compare displayed values to a validated durable job, not a prior preview."""
+    return ((account is None and offline or account is not None and account.to_dict() == job['profile'])
+            and value == job['source_text'] and source == job['source_language']
+            and target == job['target_language'] and money(budget) == money(job['authorization']['budget']))
+
+
 def source_range(value, total):
     """Reading positions are explicit; no inferred chapter or printed labels."""
     import re
@@ -66,7 +73,8 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     active = getattr(frame, 'active', None)
     root = library.root / 'state' / 'translation'
     service = TranslationService(root, library=library)
-    profiles = tuple(p for p in ProfileStore(library.root / 'state' / 'providers').list()
+    accounts = ProfileStore(library.root / 'state' / 'providers')
+    profiles = tuple(p for p in accounts.list()
                      if p.adapter == 'google-translation-v2' and p.enabled)
     dialog = wx.Dialog(frame, title='Translation — selected text derivatives', size=(850, 900),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
@@ -83,7 +91,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         layout.Add(control, proportion, wx.EXPAND | wx.ALL, 4)
         return control
 
-    provider = field('Google Basic v2 &account', wx.Choice, choices=[p.name for p in profiles])
+    provider = field('Google Basic v2 &account', wx.Choice, choices=[f'{p.name} ({p.id})' for p in profiles])
     if profiles:
         provider.SetSelection(0)
     source = field('&Source language code; auto detects', value='auto')
@@ -111,9 +119,11 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     layout.Add(row, 0, wx.EXPAND)
     dialog.SetSizer(layout)
 
-    def report(value):
+    def report(value, focus=False):
         if alive:
             status.ChangeValue(str(value))
+            if focus:
+                status.SetFocus()
 
     def guard():
         if not alive:
@@ -131,6 +141,34 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         if not 0 <= index < len(profiles):
             raise ValueError('Create and enable a Google Basic v2 account in AI/API connections, then reopen this window.')
         return profiles[index]
+
+    def visible_scope():
+        # Read wx controls only on the UI thread; validation and disk reads run
+        # in the existing background operation before any gateway is created.
+        index = provider.GetSelection()
+        account = profiles[index] if 0 <= index < len(profiles) else None
+        return (account, selected.GetValue(), source.GetValue().strip(),
+                target.GetValue().strip(), budget.GetValue())
+
+    def require_current_account(account):
+        try:
+            current = accounts.get(account.id)
+        except (OSError, ValueError):
+            current = None
+        if current is None or not current.enabled or current.to_dict() != account.to_dict():
+            raise ValueError('The selected account is unavailable, disabled or changed. '
+                             'Reopen translation after reviewing AI/API connections. '
+                             'Completed saved work can still be exported offline.')
+
+    def check_saved_scope(identity, values, *, offline=False):
+        job = service.get(identity)
+        if not _matches_saved_scope(job, *values, offline=offline):
+            raise ValueError('Visible settings differ from saved job ' + job['id'] +
+                             '. Select Saved jobs to restore its exact scope, or choose New translation. '
+                             'No operation on the saved job was started.')
+        if not offline:
+            require_current_account(values[0])
+        return job
 
     def controls():
         if not alive:
@@ -154,7 +192,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             return
         guard()
         if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
-            report('Another operation is active. Finish or cancel it before starting translation.')
+            report('Another operation is active. Finish or cancel it before starting translation.', True)
             return
         busy = True
         cancel.clear()
@@ -169,7 +207,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             nonlocal busy
             busy = False
             controls()
-            report(str(error))
+            report(str(error), True)
         def checked():
             guard()
             if stopped():
@@ -197,7 +235,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                   lambda rows: report('Provider-declared NMT languages; no quality or 135-language qualification claim:\n' +
                                       '\n'.join(row['language'] + ' — ' + row['name'] for row in rows)))
         except Exception as exc:
-            report(str(exc))
+            report(str(exc), True)
 
     def preview(event=None):
         nonlocal reviewed
@@ -211,22 +249,23 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             total = money(budget.GetValue())
             if result['estimated_cost'] is not None and money(result['estimated_cost']) > total:
                 raise ValueError('The entered price estimate exceeds the chosen total budget.')
-            reviewed = (p.id, selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(total))
+            reviewed = (p.to_dict(), selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(total))
             report(json.dumps(result, ensure_ascii=False, indent=2) +
                    '\n\nNo request sent. Translate asks permission for this exact selected text and total budget. '
                    'The budget is a local reservation bound, not a provider-enforced billing guarantee.')
         except Exception as exc:
             reviewed = None
-            report(str(exc))
+            report(str(exc), True)
 
     def run(event):
         nonlocal current_job
         try:
             guard()
             submission = None
+            saved_values = visible_scope() if current_job is not None else None
             if current_job is None:
                 p = profile()
-                values = (p.id, selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(money(budget.GetValue())))
+                values = (p.to_dict(), selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(money(budget.GetValue())))
                 if not source_ready or reviewed != values:
                     raise ValueError('Preview this exact text, languages and budget before approving translation.')
                 if wx.MessageBox(f'Send exactly {len(values[1])} selected characters to Google Translation?\n'
@@ -238,35 +277,46 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                 authorization, bound = translation_approval(p, values[1], values[2], values[3], values[4],
                                                             source_bound=document is not None)
                 submission = (p, values, authorization, bound, document)
-            service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
             def translate():
                 nonlocal current_job
                 if submission is not None:
                     p, values, authorization, bound, source_document = submission
+                    require_current_account(p)
                     current_job = service.submit(p, values[1], values[2], values[3],
                         title=source_document.title if source_document is not None else 'Translation',
                         authorization=authorization, per_call_cost=bound, source_document=source_document,
                         topic=source_topic if source_document is not None else None,
                         cancelled=stopped, guard=guard)
+                    account = p
+                else:
+                    check_saved_scope(current_job, saved_values)
+                    account = saved_values[0]
+                def remote_guard():
+                    guard()
+                    require_current_account(account)
+                remote_guard()
+                service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
                 progress = getattr(frame, 'operation_progress', None)
                 token = progress.event.token if progress is not None else None
                 def advanced(done, total, phase):
                     if progress is not None:
                         progress.update(done, total, phase, token=token)
                     wx.CallAfter(report, f'{done}/{total}: {phase}')
-                return service.resume(current_job, cancelled=stopped, progress=advanced, guard=guard)
+                return service.resume(current_job, cancelled=stopped, progress=advanced, guard=remote_guard)
             begin('Translating approved selected text', translate,
                   lambda result: report(json.dumps(result, indent=2) +
                       '\nExport writes new original, translation, bilingual and reading-copy files.'))
         except Exception as exc:
-            report(str(exc))
+            report(str(exc), True)
 
     def choose_job(rows):
         nonlocal current_job, document, source_ready, reviewed
         try:
             guard()
             chooser = wx.SingleChoiceDialog(dialog, 'Choose a saved approved translation. Its original scope and budget remain binding.',
-                'Translation jobs', [f"{j['title']}; {j['status']}; {len(j['receipts'])}/{len(j['chunks'])}; {j['target_language']}" for j in rows])
+                'Translation jobs', [f"{j['title']}; {j['status']}; {len(j['receipts'])}/{len(j['chunks'])}; "
+                    f"{j['source_language']} to {j['target_language']}; account {j['profile']['name']} "
+                    f"({j['profile']['id']}); budget {j['authorization']['budget']} USD; job {j['id']}" for j in rows])
             try:
                 if chooser.ShowModal() == wx.ID_OK and 0 <= chooser.GetSelection() < len(rows):
                     guard()
@@ -279,22 +329,29 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                     source.ChangeValue(job['source_language'])
                     target.ChangeValue(job['target_language'])
                     budget.ChangeValue(job['authorization']['budget'])
-                    provider.SetSelection(next((i for i, p in enumerate(profiles) if p.id == job['profile']['id']), -1))
+                    rate.ChangeValue('')
+                    index = next((i for i, p in enumerate(profiles) if p.to_dict() == job['profile']), -1)
+                    provider.SetSelection(index)
                     origin.ChangeValue(_origin(document))
-                    report('Saved job selected. Resume reuses verified chunks and original authorization. '
-                           'Source authorization is checked again. Uncertain charges are never automatically retried. '
-                           'Choose New translation to prepare different text, languages or approval.')
                     controls()
+                    account_status = ('Saved account is unavailable or changed in this window; remote resume is blocked. '
+                        'Completed work can still be exported offline. ' if index < 0 else
+                        'Resume requires the unchanged enabled account and reuses the original authorization. ')
+                    report(f"Saved job {job['id']}; {job['status']}; account {job['profile']['name']} "
+                        f"({job['profile']['id']}); {job['source_language']} to {job['target_language']}; "
+                        f"{len(job['source_text'])} characters; budget {job['authorization']['budget']} USD. "
+                        + account_status + 'Source authorization is checked again. Uncertain charges are never retried automatically. '
+                        'Choose New translation for different text, languages or approval.', True)
             finally:
                 chooser.Destroy()
         except Exception as exc:
-            report(str(exc))
+            report(str(exc), True)
 
     def jobs(event):
         try:
             begin('Reading saved translation jobs', service.list, choose_job)
         except Exception as exc:
-            report(str(exc))
+            report(str(exc), True)
 
     def new(event):
         nonlocal current_job, reviewed, document
@@ -311,22 +368,26 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             controls()
             selected.SetFocus()
         except Exception as exc:
-            report(str(exc))
+            report(str(exc), True)
 
     def export(event):
         if current_job is None:
             return
-        chooser = wx.DirDialog(dialog, 'Choose parent folder for a NEW translation export')
+        values = visible_scope()
+        chooser = wx.DirDialog(dialog, 'Choose parent folder for a NEW translation export of job ' + current_job)
         try:
             if chooser.ShowModal() == wx.ID_OK:
                 guard()
                 destination = Path(chooser.GetPath()) / ('Translation-' + current_job[:8] + '-' + uuid4().hex[:8])
                 identity = current_job
+                def publish():
+                    check_saved_scope(identity, values, offline=True)
+                    return service.export(identity, destination, cancelled=stopped, guard=guard)
                 begin('Exporting translation derivative',
-                      lambda: service.export(identity, destination, cancelled=stopped, guard=guard),
+                      publish,
                       lambda result: report('Saved new files in: ' + result['path']))
         except Exception as exc:
-            report(str(exc))
+            report(str(exc), True)
         finally:
             chooser.Destroy()
 
@@ -343,14 +404,14 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             controls()
             selected.SetFocus()
         except Exception as exc:
-            report(str(exc))
+            report(str(exc), True)
 
     def load_source():
         if alive:
             try:
                 begin('Loading authorized translation source', lambda: source_loader(stopped), loaded)
             except Exception as exc:
-                report(str(exc))
+                report(str(exc), True)
 
     def close(event=None):
         nonlocal alive
