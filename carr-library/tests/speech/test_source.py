@@ -279,7 +279,8 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
     for constant in ('DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'LEFT',
             'TOP', 'RIGHT', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL', 'ALIGN_RIGHT', 'TE_READONLY',
             'TE_MULTILINE', 'TE_DONTWRAP', 'FD_SAVE', 'FD_OPEN', 'FD_FILE_MUST_EXIST', 'YES_NO',
-            'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'WXK_F6', 'WXK_F7', 'WXK_F8'):
+            'ICON_QUESTION', 'ACCEL_CTRL', 'ACCEL_SHIFT', 'ACCEL_ALT', 'WXK_F6', 'WXK_F7', 'WXK_F8',
+            'WXK_LEFT', 'WXK_HOME', 'WXK_RIGHT', 'WXK_RETURN'):
         setattr(wx, constant, 0)
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(ui, 'WavePlayer', lambda: SimpleNamespace(
