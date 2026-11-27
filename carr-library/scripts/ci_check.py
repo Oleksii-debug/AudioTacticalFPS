@@ -4,20 +4,31 @@ Use only on a trusted synthetic test checkout, never on imported documents.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import faulthandler
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
+from time import monotonic
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+SUITE_TIMEOUT_SECONDS = 600
+STACK_DUMP_SECONDS = 120
 
 # JUnit alone cannot distinguish a non-strict XPASS from a genuine pass.
 # Use pytest's own report classification in the isolated subprocess.
-PYTEST_CHILD = """
+PYTEST_CHILD = f"""
+import faulthandler
+import os
 import sys
 import socket
+
+print('CHILD:', ascii(sys.argv[-1]), 'pid=' + str(os.getpid()), flush=True)
+faulthandler.enable()
+faulthandler.dump_traceback_later({STACK_DUMP_SECONDS}, repeat=True)
 
 def offline_network(*args, **kwargs):
     raise OSError('Network access is disabled during offline verification')
@@ -36,6 +47,10 @@ else:
 
 import pytest
 
+# pytest installs its own stable stderr descriptor and per-test watchdog.
+# Finish the startup watchdog before that handoff rather than sharing its timer.
+faulthandler.cancel_dump_traceback_later()
+
 class RejectExpectedFailures:
     seen = False
 
@@ -44,7 +59,10 @@ class RejectExpectedFailures:
             self.seen = True
 
 policy = RejectExpectedFailures()
-status = pytest.main(sys.argv[1:], plugins=[policy])
+try:
+    status = pytest.main(sys.argv[1:], plugins=[policy])
+finally:
+    faulthandler.cancel_dump_traceback_later()
 if policy.seen:
     print('FAIL: pytest reported XFAIL or XPASS', flush=True)
     if status == pytest.ExitCode.OK:
@@ -54,10 +72,13 @@ raise SystemExit(status)
 
 
 def run_suite(suite: str) -> bool:
+    started = monotonic()
     path = (ROOT / suite).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
         print(f'FAIL: missing or out-of-tree required suite: {suite}', flush=True)
         return False
+    print(f'START: {suite}: timeout={SUITE_TIMEOUT_SECONDS}s, '
+          f'runner_thread={threading.get_ident():#x}', flush=True)
     env = dict(os.environ)
     for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH'):
         env.pop(key, None)
@@ -72,21 +93,28 @@ def run_suite(suite: str) -> bool:
     env['DO_NOT_TRACK'] = '1'
     with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
         report = Path(tmp) / 'junit.xml'
+        proc = None
         try:
             proc = subprocess.run([
                 sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
-                '-o', 'xfail_strict=true', '--junitxml', str(report),
+                '-o', 'xfail_strict=true',
+                '-o', f'faulthandler_timeout={STACK_DUMP_SECONDS}',
+                '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
-            ], cwd=ROOT, env=env, timeout=600, check=False)
+            ], cwd=ROOT, env=env, timeout=SUITE_TIMEOUT_SECONDS, check=False)
             cases = list(ET.parse(report).iter('testcase'))
         except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
-            print(f'FAIL: required suite did not produce a valid report: {type(exc).__name__}', flush=True)
+            print(f'FAIL: {suite}: required suite did not produce a valid report: '
+                  f'{type(exc).__name__}; timeout={SUITE_TIMEOUT_SECONDS}s; '
+                  f'elapsed={monotonic() - started:.2f}s; '
+                  f'child_exit={proc.returncode if proc is not None else "unavailable"}', flush=True)
             return False
         failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
         skipped = sum(c.find('skipped') is not None for c in cases)
         passed = len(cases) - failed - skipped
         ok = proc.returncode == 0 and passed > 0 and failed == skipped == 0
+        print(f'END: {suite}: elapsed={monotonic() - started:.2f}s', flush=True)
         print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
               f'skipped={skipped}, pytest_exit={proc.returncode}', flush=True)
         return ok
@@ -98,14 +126,21 @@ def main() -> int:
                         help='Run up to four isolated required suites concurrently; default: one')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
     args = parser.parse_args()
-    if args.jobs == 1:
-        results = [run_suite(suite) for suite in args.suites]
-    else:
-        # Every suite retains its own interpreter, offline policy, deadline and
-        # JUnit verdict. Consume every future: one failing suite cannot hide
-        # another missing, skipped or unfinished required suite.
-        with ThreadPoolExecutor(max_workers=args.jobs, thread_name_prefix='required-suite') as executor:
-            results = list(executor.map(run_suite, args.suites))
+    # Diagnostic-only watchdog: preserve live coordinator stacks even if a
+    # platform process wait or cleanup stalls after its child deadline.
+    faulthandler.enable()
+    faulthandler.dump_traceback_later(STACK_DUMP_SECONDS, repeat=True)
+    try:
+        if args.jobs == 1:
+            results = [run_suite(suite) for suite in args.suites]
+        else:
+            # Every suite retains its own interpreter, offline policy, deadline and
+            # JUnit verdict. Consume every future: one failing suite cannot hide
+            # another missing, skipped or unfinished required suite.
+            with ThreadPoolExecutor(max_workers=args.jobs, thread_name_prefix='required-suite') as executor:
+                results = list(executor.map(run_suite, args.suites))
+    finally:
+        faulthandler.cancel_dump_traceback_later()
     print(f'Required suites complete: {len(results)}; passed={sum(results)}; '
           f'failed={len(results) - sum(results)}', flush=True)
     return 0 if all(results) else 1
