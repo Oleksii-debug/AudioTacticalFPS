@@ -448,3 +448,73 @@ def test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes(app, tmp
     assert final['state'] == 'complete' and final['id'] == pending['id']
     hit, = restored.search(workspace, 'Railway')
     assert hit.verified
+
+
+@pytest.mark.parametrize('failure', (PermissionError, NotADirectoryError))
+def test_pending_inventory_lookup_errors_are_not_absence(tmp_path, monkeypatch, failure):
+    from carr_library.pending_backup import _inventory, pending_roots
+    root = tmp_path / 'library'
+    root.mkdir()
+    (root / 'imports.sqlite').touch()
+    denied = root / 'import-requests'
+    denied.mkdir()
+    original = Path.lstat
+
+    def probe(path, *args, **kwargs):
+        if path == denied:
+            raise failure('pending root lookup failed')
+        return original(path, *args, **kwargs)
+
+    lexists = os.path.lexists
+    monkeypatch.setattr(os.path, 'lexists', lambda path:
+                        False if Path(path) == denied else lexists(path))
+    monkeypatch.setattr(Path, 'lstat', probe)
+    with pytest.raises(failure, match='pending root lookup failed'):
+        _inventory(root)
+    with pytest.raises(failure, match='pending root lookup failed'):
+        pending_roots(root)
+
+
+
+def test_pending_restore_rejects_unreadable_unlisted_subtree(app, tmp_path, monkeypatch):
+    backup, metadata = _snapshot(app, tmp_path)
+    blocked = backup / 'pending' / 'import-requests'
+    blocked.mkdir()
+    (blocked / ('a' * 32 + '.json')).write_bytes(b'unlisted')
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    shutil.copyfile(backup / 'library.sqlite', stage / 'library.sqlite')
+    scandir = os.scandir
+
+    def denied(path):
+        if Path(path) == blocked:
+            raise PermissionError('pending subtree unreadable')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', denied)
+    with pytest.raises(PermissionError, match='pending subtree unreadable'):
+        restore_pending(backup / 'pending', stage, tmp_path / 'restored', metadata)
+    assert not (stage / '.pending-import-restore').exists()
+    assert not (tmp_path / 'restored').exists()
+
+
+
+def test_pending_restore_rejects_unlisted_file_before_descending(app, tmp_path, monkeypatch):
+    backup, metadata = _snapshot(app, tmp_path)
+    source = backup / 'pending'
+    (source / 'imports.sqlite').write_bytes(b'unlisted')
+    later = source / 'import-requests'
+    later.mkdir()
+    stage = tmp_path / 'stage'
+    stage.mkdir()
+    scandir = os.scandir
+
+    def observe(path):
+        if Path(path) == later:
+            raise AssertionError('unlisted file must reject before descending')
+        return scandir(path)
+
+    monkeypatch.setattr(os, 'scandir', observe)
+    with pytest.raises(ValueError, match='missing or unlisted'):
+        restore_pending(source, stage, tmp_path / 'restored', metadata)
+    assert not (stage / '.pending-import-restore').exists()
