@@ -141,5 +141,7 @@ jobs:
             tests/audio/test_progress_speech.py \
             tests/ui/test_progress_voice.py \
             tests/assistant/test_local_llm.py \
+            tests/extract/test_ocr_runtime.py \
+            tests/operations/test_linux_process_group.py \
             tests/operations/posix_fork_case.py
       # This source-only job supplements the complete native Windows/bundle gate.

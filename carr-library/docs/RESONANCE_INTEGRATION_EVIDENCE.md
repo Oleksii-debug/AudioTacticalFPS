@@ -62,9 +62,50 @@ fixed synthetic English/Ukrainian requests and permission-denial cases. See
 [Local LLM qualification](LOCAL_LLM_QUALIFICATION.md) for exact pins and results;
 source inclusion alone does not qualify that model.
 
+## Subsequent composed-tree execution
+
+Source `882847f01a848462d8d559512ce7262d4483c00d`,
+tree `3dbad28c155c9e6a41edb123a21cfe6de7b46fef`:
+
+- [Linux 45946492646](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45946492646): 94 required suites, 2626 tests passed, zero failures/skips. This includes the actual desktop backup/restore closures and compatibility preservation.
+- [Windows audio 45946492690](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45946492690): 626 tests and 27 subtests passed; two libflite tests skipped. Existing actual SAPI/FFmpeg/native Studio and 125 effects checks passed. New progress speech then failed after synthesis because an 8.3 TEMP path and its resolved spelling differed.
+- [Windows desktop 45946492643](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45946492643): earlier native search and Import Center checks passed. The additional-format probe stopped while searching only the dialog's direct children for a button now inside its scrolling body. The full 222-suite and installed-package gates were not reached.
+- [Native launcher 45946492660](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45946492660): the native MSVC and pinned-Zig jobs succeeded. These launcher results do not qualify the desktop installation, signing or NVDA.
+
+Component-bound follow-up evidence:
+
+- [Compatibility 719ef, run 45945169871](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45945169871): Linux passed 387 tests. Windows 3.11 reached 117 assertions: 116 passed, one failed, zero skipped. The test's own SQLite observation handle prevented removal of the original library. Successor 1dbdc305 explicitly closes that handle without altering its assertions or production; its separate rerun must supply the verdict.
+- [ASR 6c294, run 45944035858](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45944035858): 133 tests across five Linux suites passed without failures/skips. The later [Windows 05af run 45944560703](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45944560703) passed 129 tests and failed four. Ordinary Windows replacement still needed the old reader handle to close. Successor 160e30d closes the bounded reader before the final pathname check and makes transient sharing retries explicit in synthetic producers. Actual successor Windows execution is required; private-worker interoperability is separate.
+- [Progress voice a1d321f, run 45947928443](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45947928443): 136 source tests passed. The installed product and native controls selected an actual Microsoft David SAPI voice and generated 165108 nonzero mono PCM16 frames at 24000 Hz. Private notification PCM cleanup passed. Windows reported zero audio output devices, so the probe recorded UNAVAILABLE and the required job did not pass. Native playback, interruption during content playback, physical listening and NVDA remain NOT_RUN.
+- [Linux process lifecycle 93f2cb1, run 45948328519](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45948328519): five suites and 58 tests passed without failures/skips. Two new cases execute actual early-exiting leaders and TERM-ignoring descendants; an unconfirmed-observation case refuses a normal result. The separate Windows-existing-path job has its own verdict.
+- [Direct acoustic b686867, run 45945277205](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45945277205): 11 contracts and the declared actual Windows CPU/int8/SAPI/native-network-denial gate passed. Evidence SHA256 is `6dc9f47fa38fdb0eb7bc95810d6d7e96838e0c37f8816f705f6f9366bbc10ad5`. Private-worker interoperability, private cache/cancel/resume and human/multilingual quality remain NOT_RUN.
+
+The composed successor canonicalizes its own notification directory before
+deriving the expected output. Exact returned-path equality and all byte/duration
+limits remain. The native document probe now finds the unique exact button
+through the real scrolling hierarchy and dispatches the same event. Its actual
+combined execution is still required; prior failures remain recorded above.
+
+It also reuses canonical OCR path-equivalence/hash binding and bounded complete
+directory enumeration. An unreadable directory cannot silently disappear from
+the verified inventory, and empty-directory traversal has an explicit limit.
+The Linux process runner retains the leader until its inherited group stops;
+[the lifecycle guide](PROCESS_GROUP_LIFECYCLE.md) states the Windows and
+unconfirmed-shutdown resource-release limits explicitly.
+
+The local-model successor retains the same 1.7B candidate, fixed requests and
+strict semantic assertions. A general prompt clarification requires explicitly
+requested supported options in step arguments. The preceding model response
+selected the Ukrainian catalog tool but omitted the requested count; that
+failure remains in [the qualification record](LOCAL_LLM_QUALIFICATION.md).
+No model proposal has been executed as an application action.
+
 ## Reconciliation decisions
 
-The reviewed canonical source is 1eff701fe848a3bd9eb088c85e5372a7c0a73861.
+The reviewed canonical baseline is 1eff701fe848a3bd9eb088c85e5372a7c0a73861.
+The later inspected head is 4b6f8169986c4a58b43e4a23bc081fbefadbbdcb;
+its narrow OCR inventory correction is reused here. The competing active
+provider/Studio/model contracts still require explicit behavioral reconciliation.
 Its storage/revisions.py and storage/schema_identity.py exactly match the
 integrated storage implementation. The bounded import-metadata check and neutral
 delivery contract are reused from that source. Root pending-import and child

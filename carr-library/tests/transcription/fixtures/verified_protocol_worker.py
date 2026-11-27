@@ -29,6 +29,21 @@ def identity(path):
     return {'sha256': sha256(raw).hexdigest(), 'size_bytes': len(raw)}
 
 
+
+def replace_status(temporary, path):
+    """Keep one staged snapshot while a Windows reader briefly holds the old file."""
+    delays = iter((.01, .02, .04, .08, .16, .32))
+    while True:
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError as exc:
+            delay = next(delays, None)
+            if os.name != 'nt' or getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
+                raise
+            time.sleep(delay)
+
+
 def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name('.stage-' + uuid4().hex)
@@ -37,7 +52,7 @@ def write(path, value):
         stream.write(raw)
         stream.flush()
         os.fsync(stream.fileno())
-    os.replace(temporary, path)
+    replace_status(temporary, path)
     return {'path': path.name, **identity(path)}
 
 

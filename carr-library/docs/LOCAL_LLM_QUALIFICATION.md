@@ -7,9 +7,9 @@ planner, engine, gateway, downloader, or automatic execution path.
 
 ## Pinned inputs
 
-- Official Qwen `Qwen3-0.6B-GGUF` revision
-  `23749fefcc72300e3a2ad315e1317431b06b590a`, Q8_0, 639,446,688 bytes.
-  The exact [model repository](https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/tree/23749fefcc72300e3a2ad315e1317431b06b590a)
+- Official Qwen `Qwen3-1.7B-GGUF` revision
+  `90862c4b9d2787eaed51d12237eafdfe7c5f6077`, Q8_0, 1,834,426,016 bytes.
+  The exact [model repository](https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/tree/90862c4b9d2787eaed51d12237eafdfe7c5f6077)
   publishes Apache-2.0 terms in its LICENSE file.
 - Official llama.cpp `b12774`, commit
   `171527522610996f5f0acf12334e185156ca8f44`, Ubuntu x64 CPU archive,
@@ -18,6 +18,30 @@ planner, engine, gateway, downloader, or automatic execution path.
 - `packaging/local-llm-proof-inputs.json` records publisher hashes, immutable
   download URLs, exact license bytes and the unchanged product-module hashes.
   Acquisition has explicit byte/time limits and no automatic retries.
+
+The previously selected official Qwen3-0.6B Q8_0 candidate remains unqualified.
+With the neutral complete tool descriptions at commit 9685d79, actual run
+45946002017 validated the English library-list proposal but returned the wrong
+tool and omitted the requested count for the Ukrainian book request. The
+unchanged semantic assertion failed; the model proposal was never executed.
+
+The 1.7B candidate changes only the pinned model and service alias. Actual
+metadata-only run 45946912142 verified the immutable publisher pointer, exact
+Apache-2.0 license bytes and model-card bytes before model acquisition. Model
+weights plus the unchanged archive/expanded runtime occupy about 1.79 GiB.
+The native 3 GiB address-space limit, CPU/time limits, fixed seed, product
+source, grammar and all four multilingual/permission cases are unchanged.
+No shared local workspace is used. A metadata PASS is not an inference PASS.
+
+The first actual 1.7B run, 45947558728 at 0e3ec0d, selected the correct English
+and Ukrainian tools within the unchanged native memory/time caps. It still
+omitted the explicitly requested Ukrainian catalog count while mentioning it
+in the summary. The unchanged semantic assertion rejected that proposal;
+artifact 15175282800 preserves the original response and failure.
+The product SYSTEM now makes a general constraint explicit: every supported
+limit, filter, path or option requested by the user must be in step arguments,
+not merely the summary. Unspecified optional fields remain omitted. No example
+number, tool choice or expected answer is supplied by that correction.
 
 The selected runtime uses two CPU threads, one slot, a 2,048-token context and a
 256-token prediction cap. Thinking is disabled with the pinned runtime's
@@ -69,7 +93,7 @@ The parser, tool validator, caller scope, gateway and approval logic remain
 unchanged. The pinned source hash binds actual inference to this product prompt;
 synthetic user instructions contain only their requested operations. The fixed
 sampling seed, generic JSON grammar, all four semantic/boundary cases and
-no-execution controls are unchanged. A new actual run is still required.
+no-execution controls are unchanged. The generically corrected product prompt is exercised against the same pinned 1.7B candidate; a complete actual result is still required.
 
 
 The probe requires actual English and Ukrainian model proposals to pass the

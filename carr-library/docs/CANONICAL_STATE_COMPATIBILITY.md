@@ -132,6 +132,8 @@ Completed execution evidence is recorded separately from static review:
 | 1d0be8866ea8666e7794685d393a03506c8f4953; Actions 45942181950 | Linux CPython 3.12.16, 13 suites, real Tesseract 5.3.4 | 377 passed, 0 failed, 0 skipped; includes 76 compatibility cases |
 | 14d1624b4ca824fb85531f43d3ea771d69b83f53; Actions 45943179159 | Linux CPython 3.12.16, 13 suites | 387 passed, 0 failed, 0 skipped; includes all 86 compatibility cases |
 | 99dd564a588550882b536bfeaff82a075d509c1c; Actions 45944124653, job 140324823246 | Windows CPython 3.12.10, 3 suites | 37 passed, 80 failed, 0 skipped; unsupported source-install interpreter |
+| 719ef9cd093c8a2e6f18bf8cae94ff1b0f1cb875; Actions 45945169871 | Linux CPython 3.12.16, 13 suites | 387 passed, 0 failed, 0 skipped |
+| 719ef9cd093c8a2e6f18bf8cae94ff1b0f1cb875; Actions 45945169871, job 140328103997 | Windows CPython 3.11.9, 3 suites | 116 passed, 1 failed, 0 skipped; fixture-owned SQLite observation handle blocked original-library removal |
 
 The full Windows delivery proof uses the declared CPython 3.11 x64 runtime on
 Windows 2022, an isolated virtual environment and the product's hash-locked
@@ -140,7 +142,11 @@ windows-cp311.lock. That lock is copied exactly from reviewed 4c17d5c2, blob
 The application is installed without dependency resolution, pytest is pinned
 to 9.0.2, pip check remains mandatory, and all 117 assertions from the three
 Windows suites are retained. Its exact result remains pending in this
-checkpoint. These are source/API restore checks; they do not claim an installed
+checkpoint. The first 3.11 run reached all 117 cases. Its sole failure was
+Windows refusing to delete imports.sqlite while the test's own observation
+connection remained open. The test now closes that handle explicitly; no
+production reader, immutable fixture, assertion or ownership check changed.
+These are source/API restore checks; they do not claim an installed
 delivery bundle, signing, GUI keyboard or NVDA acceptance.
 
 Windows source installs under CPython 3.12 are not qualified. The actual 99dd

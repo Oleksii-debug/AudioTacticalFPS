@@ -170,7 +170,10 @@ class LocalProgressSpeech:
             if not player.available:
                 raise RuntimeError('Local progress playback is unavailable on this computer.')
             temporary = TemporaryDirectory(prefix='carr-progress-voice-')
-            directory = Path(temporary.name)
+            # Windows TEMP may use an 8.3 alias; the existing voice adapter
+            # returns its checked, resolved output. Canonicalize our owned
+            # directory once, before deriving the exact expected target.
+            directory = local_path(temporary.name, exists=True)
             output = directory / 'notification.wav'
             synth_deadline = self._clock() + 20.0
 
@@ -190,7 +193,9 @@ class LocalProgressSpeech:
             _staging_size(directory)
             if synthesis_stopped():
                 return False
-            if Path(result) != output or not 0 < regular(output).st_size <= MAX_NOTIFICATION_BYTES:
+            if Path(result) != output:
+                raise ValueError('The progress voice returned an unexpected notification path.')
+            if not 0 < regular(output).st_size <= MAX_NOTIFICATION_BYTES:
                 raise ValueError('The progress voice exceeded its private notification byte budget.')
             info = _wave_info(output)
             if not 0 < info['frames'] / info['sample_rate'] <= 20:

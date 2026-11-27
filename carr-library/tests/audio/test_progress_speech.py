@@ -442,3 +442,66 @@ def test_private_inventory_rejects_reparse_directory_before_descending(tmp_path,
     with pytest.raises(ValueError, match='without links'):
         speech._staging_size(tmp_path)
     assert calls == [junction]
+
+
+def test_owned_temporary_alias_is_canonical_before_real_adapter_output(tmp_path, monkeypatch):
+    from carr_library.audio import engines, progress_speech as speech
+    native_temporary = speech.TemporaryDirectory
+    owners = []
+
+    def aliased_temporary(*args, **kwargs):
+        owner = native_temporary(*args, **kwargs)
+        owners.append(owner)
+        actual = Path(owner.name)
+        # A real existing directory reached by a different lexical spelling,
+        # like the Windows TEMP 8.3 alias observed by the native SAPI probe.
+        alias = actual / '..' / actual.name
+        assert alias != alias.resolve()
+        return SimpleNamespace(name=str(alias), cleanup=owner.cleanup)
+
+    provider, engine, player = selection(tmp_path)
+    synthesize = engine.synthesize
+    requested = []
+
+    def normalized_output(text, output, **settings):
+        requested.append(Path(output))
+        # Exercise the actual adapter boundary that resolves SAPI output.
+        target = engines._output(output)
+        return synthesize(text, target, **settings)
+
+    monkeypatch.setattr(speech, 'TemporaryDirectory', aliased_temporary)
+    engine.synthesize = normalized_output
+    try:
+        assert provider.speak_progress('Public alias fixture.', volume=.2, cancelled=lambda: False)
+        assert len(requested) == len(player.samples) == 1
+        assert requested[0].parent == Path(owners[0].name).resolve()
+        assert any(player.samples[0][2]) and player.closed.is_set() and provider.quiescent
+        assert all(not Path(owner.name).exists() for owner in owners)
+    finally:
+        for owner in owners:
+            owner.cleanup()
+
+
+@pytest.mark.parametrize('returned', ['foreign', 'alias'])
+def test_engine_return_must_exactly_match_the_owned_canonical_output(tmp_path, returned):
+    provider, engine, player = selection(tmp_path)
+    foreign = tmp_path / 'user-owned.wav'
+    foreign.write_bytes(b'user-owned original, never notification output')
+    before = foreign.read_bytes()
+    synthesize = engine.synthesize
+
+    def changed_result(text, output, **settings):
+        result = synthesize(text, output, **settings)
+        if returned == 'foreign':
+            return foreign
+        # Even a different spelling of the same existing file is not an
+        # excuse to canonicalize and accept an arbitrary engine return.
+        return result.parent / '..' / result.parent.name / result.name
+
+    engine.synthesize = changed_result
+    with pytest.raises(ValueError, match='unexpected notification path'):
+        provider.speak_progress('Public ownership fixture.', volume=.2, cancelled=lambda: False)
+    assert len(engine.calls) == 1 and not player.played.is_set()
+    assert player.closed.is_set() and provider.quiescent
+    assert all(not output.parent.exists() for output in engine.outputs)
+    assert foreign.read_bytes() == before

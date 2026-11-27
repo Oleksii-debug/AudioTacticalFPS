@@ -568,7 +568,9 @@ raise AssertionError('The test supervisor should have stopped before finalizatio
     record = json.loads(request_path.read_bytes())
     assert record['state'] == 'running' and 'result' not in record
     assert record['publication_candidate']['attempt'] == record['attempt']
-    with sqlite3.connect(root / 'imports.sqlite') as db:
+    # sqlite3.Connection.__exit__ commits but does not close the handle.
+    # Release this observation before the test removes the original library.
+    with closing(sqlite3.connect(root / 'imports.sqlite')) as db:
         assert db.execute('SELECT state FROM job').fetchone()[0] == (
             'pending' if boundary == 'after-publication' else 'complete')
     app = LibraryApp(root)

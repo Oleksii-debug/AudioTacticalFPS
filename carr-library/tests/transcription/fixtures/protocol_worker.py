@@ -18,11 +18,26 @@ def identity(path):
     return {'sha256': hashlib.sha256(data).hexdigest(), 'size': len(data)}
 
 
+
+def replace_status(temporary, path):
+    """Keep one staged snapshot while a Windows reader briefly holds the old file."""
+    delays = iter((.01, .02, .04, .08, .16, .32))
+    while True:
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError as exc:
+            delay = next(delays, None)
+            if os.name != 'nt' or getattr(exc, 'winerror', None) not in (5, 32, 33) or delay is None:
+                raise
+            time.sleep(delay)
+
+
 def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + '.tmp')
     temporary.write_bytes(raw(value))
-    os.replace(temporary, path)
+    replace_status(temporary, path)
 
 
 def runtime():

@@ -41,7 +41,9 @@ jobs:
           python -m pip install '.[test]'
           python -m pip check
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y ffmpeg
+          sudo apt-get install --no-install-recommends -y ffmpeg openjdk-17-jre-headless
+          python -m pip install --only-binary=:all: 'lxml==6.1.3'
+          python -m pip check
           ffmpeg -version
           ffprobe -version
       - name: Compile and exercise actual current producer and publication boundaries
@@ -52,6 +54,27 @@ jobs:
           python scripts/ci_check.py --jobs 2 \
             tests/audio/test_publication.py \
             tests/ui/test_audio_publication.py \
+            tests/packaging/test_prepare_publication_tools.py \
             tests/audio/test_production.py \
             tests/audio/test_project_backup.py \
             tests/ui/test_audio_studio.py
+      - name: Acquire exact reviewed external validators
+        run: |
+          set -euo pipefail
+          python scripts/prepare_publication_tools.py --output "$RUNNER_TEMP/carr-publication-tools" --download
+          java -version
+      - name: Validate actual installed EPUB publications and negative control
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          python scripts/epubcheck_acceptance.py \
+            --archive "$RUNNER_TEMP/carr-publication-tools/epubcheck-5.3.0.zip" \
+            --java "$(command -v java)" \
+            --report "$RUNNER_TEMP/current-studio-epubcheck.json" --require-installed
+      - name: Validate actual installed DAISY documents against pinned offline DTDs
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          python scripts/daisy_schema_acceptance.py \
+            --schemas "$RUNNER_TEMP/carr-publication-tools/daisy-schemas" \
+            --report "$RUNNER_TEMP/current-studio-daisy.json" --require-installed

@@ -133,6 +133,37 @@ class OcrRuntime:
             raise OcrRuntimeError('Portable OCR runtime changed during execution.')
 
 
+def _inventory(root, remaining):
+    """Read every directory or fail; bound traversal before collecting entries."""
+    found = set()
+    pending = [root]
+    directories = 0
+    while pending:
+        remaining()
+        directory = pending.pop()
+        _stat(directory, directory=True)
+        # Unlike os.walk without onerror, scandir propagates enumeration errors.
+        # Iteration also avoids allocating a whole untrusted directory listing.
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                remaining()
+                path = directory / entry.name
+                if entry.is_dir(follow_symlinks=False):
+                    directories += 1
+                    if directories > MAX_FILES:
+                        raise OcrRuntimeError('Portable OCR bundle exceeds its directory limit.')
+                    _stat(path, directory=True)
+                    pending.append(path)
+                else:
+                    _stat(path)
+                    relative = path.relative_to(root).as_posix()
+                    if relative != MANIFEST:
+                        found.add(relative)
+                    if len(found) > MAX_FILES:
+                        raise OcrRuntimeError('Portable OCR bundle exceeds its file limit.')
+    return found
+
+
 def verify_ocr_bundle(root, *, remaining=lambda: None):
     """Validate the complete manifest inventory without executing native code.
 
@@ -176,19 +207,7 @@ def verify_ocr_bundle(root, *, remaining=lambda: None):
         if total > MAX_TOTAL:
             raise OcrRuntimeError('Portable OCR bundle exceeds its size limit.')
         _stat(root / tessdata, directory=True)
-        found = set()
-        for directory, dirs, names in os.walk(root, followlinks=False):
-            remaining()
-            for name in dirs:
-                _stat(Path(directory) / name, directory=True)
-            for name in names:
-                path = Path(directory) / name
-                relative = path.relative_to(root).as_posix()
-                _stat(path)
-                if relative != MANIFEST:
-                    found.add(relative)
-                if len(found) > MAX_FILES:
-                    raise OcrRuntimeError('Portable OCR bundle exceeds its file limit.')
+        found = _inventory(root, remaining)
         if found != set(files):
             raise OcrRuntimeError('Portable OCR bundle has missing or unlisted files.')
         hashes = []
