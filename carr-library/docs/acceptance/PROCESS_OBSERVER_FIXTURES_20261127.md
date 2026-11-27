@@ -56,7 +56,7 @@ Reviewed candidate:
 `f274cc942bb3d91069f6621d5694bb002dc469c2`, parent
 `5f18481654277425ab8af170575de978e7a2a69c`.
 
-## Scope and verification
+## Scope and verification at d9fc48b0
 
 Both corrections received independent source review. At composition time the
 new fixture bodies are **NOT_RUN**. Their actual Linux and Windows replay is
@@ -72,3 +72,43 @@ The already queued large-source and complete-corpus gates on `5f184816` cover
 unchanged production owners. Their results must retain that exact source SHA;
 they must not be relabeled as execution of this test-only commit. The new
 integrated and installed bundle runs establish the new commit/tree identity.
+
+## Subsequent exact 5f184816 replay and observer follow-up
+
+The actual Linux job [140619371071](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46032443327/job/140619371071)
+on `5f18481654277425ab8af170575de978e7a2a69c` completed 181 strict suites:
+177 passed and 4 failed; 3,963 cases passed, 5 failed, 0 skipped.
+
+Its five failures were the two already diagnosed spelling cases, one owned
+audio procfs observation, one Calibre descendant observation, and one CI
+runner fixture PID record. No other failure appears in that terminal verdict.
+This Linux suite set does not contain `test_pending_backup.py`; it does not
+establish execution of the new eight hot-journal recovery cases.
+
+- Owned audio: a real terminal traceback reports `ESRCH` during procfs read.
+  The observer now routes this condition through its existing second
+  same-PID probe. The additional boundary control holds a real procfs
+  descriptor, waits for actual child exit, then injects the read errno; it
+  requires the real second process probe before claiming absence.
+- Calibre: a further failure reported a live result from the observer; that
+  traceback alone does not prove which branch ran or that the child was gone.
+  Source review identified that a disappearing stat entry could fall through
+  to true after an earlier successful signal probe. The helper now rechecks
+  the same PID when stat is absent. Live processes, unavailable procfs and
+  denied probes remain failures; it does not infer exit from absent procfs.
+  Actual rerun remains necessary to distinguish this race from a real leak.
+- Shared CI runner fixture: the reader observed an empty PID record while the
+  real descendant was still publishing it. The descendant now writes,
+  flushes and closes a private sibling before atomically publishing the
+  marker. The real child identity, existing 30-second startup barrier,
+  0.15-second timeout case, family quiescence and report-cleanup checks remain.
+
+The reviewed follow-up candidates are
+`69ca74dcc96c67f8e7f66fa685e1dbc58239b9a2` (audio observer),
+`8615da518abb83bf645381ac7079167a0f099105` (Calibre observer), and
+`a96a201e3f6ee68511f24c1991eae6fc152885d9` (complete PID marker).
+All have parent `d9fc48b0c1a423e2e22b63c72f0d951a92fc9fb1`.
+They change test fixtures only, received independent source review and were
+**NOT_RUN at composition time**. Product process ownership and deadlines are
+unchanged. The independently merged canonical Save All changes are recorded
+separately in the incremental canonical resolution.

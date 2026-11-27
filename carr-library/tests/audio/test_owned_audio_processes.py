@@ -6,6 +6,7 @@ session. Fault injections test retained-owner decisions without claiming native
 hardware or listening qualification.
 """
 import ctypes
+import errno
 import hashlib
 import json
 import os
@@ -58,7 +59,7 @@ def _running(pid):
         status = Path('/proc') / str(pid) / 'stat'
         try:
             return status.read_text().rsplit(')', 1)[1].split()[0] not in ('Z', 'X')
-        except FileNotFoundError:
+        except (FileNotFoundError, ProcessLookupError):
             # init can reap the process after kill(pid, 0) succeeds. Missing
             # procfs state is not itself proof; require ESRCH for that PID.
             try:
@@ -81,7 +82,8 @@ def _last_cleanup(children):
             child.wait(timeout=5)
 
 
-def test_process_liveness_probe_does_not_resurrect_a_reaped_child(monkeypatch):
+@pytest.mark.parametrize('boundary', ['before-open', 'during-read'])
+def test_process_liveness_probe_does_not_resurrect_a_reaped_child(monkeypatch, boundary):
     child = subprocess.Popen([PYTHON, '-I', '-c', 'import sys; sys.stdin.buffer.read()'],
                              stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
                              stderr=subprocess.DEVNULL)
@@ -98,7 +100,25 @@ def test_process_liveness_probe_does_not_resurrect_a_reaped_child(monkeypatch):
                     assert child.wait(timeout=5) == 0
                 return result
 
-            monkeypatch.setattr(os, 'kill', exit_after_liveness)
+            if boundary == 'before-open':
+                monkeypatch.setattr(os, 'kill', exit_after_liveness)
+            else:
+                real_read = Path.read_text
+                selected = Path('/proc') / str(child.pid) / 'stat'
+
+                def exit_during_read(path, *args, **kwargs):
+                    if path != selected:
+                        return real_read(path, *args, **kwargs)
+                    # Hold the real procfs descriptor across actual child exit.
+                    # Linux may report ESRCH from read, not only ENOENT at open.
+                    with path.open('r', encoding='utf-8') as stream:
+                        assert stream.read(1)
+                        inspected.append(child.pid)
+                        child.stdin.close()
+                        assert child.wait(timeout=5) == 0
+                        raise ProcessLookupError(errno.ESRCH, 'Child exited during procfs read')
+
+                monkeypatch.setattr(Path, 'read_text', exit_during_read)
         else:
             # Windows uses a pinned native process handle instead of /proc.
             child.stdin.close()

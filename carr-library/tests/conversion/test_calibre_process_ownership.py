@@ -50,6 +50,12 @@ def _alive(pid):
             # procfs may report ESRCH after open when the process just exited.
             return False
         return text.rsplit(')', 1)[1].split()[0] not in ('Z', 'X')
+    # The process may have exited between the first signal probe and stat.
+    # An unavailable procfs alone is not evidence that a live PID disappeared.
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
     return True
 
 
@@ -146,3 +152,45 @@ def test_process_observation_race_does_not_hide_other_read_errors(
         assert observed.value is failure
         assert status.is_file()
     assert signals == [(pid, 0)]
+
+
+@pytest.mark.parametrize('proc_present, error_type, code, expected', [
+    (True, ProcessLookupError, errno.ESRCH, False),
+    (True, None, None, True),
+    (False, None, None, True),
+    (True, PermissionError, errno.EACCES, None),
+], ids=['exit-before-stat', 'live-pid-without-stat', 'no-procfs-live-pid', 'denied-recheck'])
+def test_missing_proc_stat_rechecks_the_same_pid_without_assuming_exit(
+        tmp_path, monkeypatch, proc_present, error_type, code, expected):
+    from types import SimpleNamespace
+
+    pid = 12345
+    proc = tmp_path / 'proc'
+    status = proc / str(pid) / 'stat'
+    if proc_present:
+        status.parent.mkdir(parents=True)
+        status.write_text(f'{pid} (observed process) S 0\n', encoding='utf-8')
+    calls = []
+    failure = error_type(code, 'injected second signal observation') if error_type else None
+
+    def observe(process, signal):
+        assert (process, signal) == (pid, 0)
+        calls.append((process, signal))
+        if len(calls) == 1 and proc_present:
+            # The first signal observation succeeds, then the proc entry
+            # disappears before the helper can inspect its state.
+            status.unlink()
+        elif len(calls) == 2 and failure is not None:
+            raise failure
+
+    monkeypatch.setitem(_alive.__globals__, 'os',
+                        SimpleNamespace(name='posix', kill=observe))
+    monkeypatch.setitem(_alive.__globals__, 'Path',
+                        lambda name: proc if name == '/proc' else pytest.fail(name))
+    if error_type is PermissionError:
+        with pytest.raises(PermissionError) as observed:
+            _alive(pid)
+        assert observed.value is failure
+    else:
+        assert _alive(pid) is expected
+    assert calls == [(pid, 0), (pid, 0)]

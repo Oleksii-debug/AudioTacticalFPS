@@ -26,6 +26,8 @@ class SaveSummary:
         prefix = f'{len(self.saved)} drafts saved. '
         if self.cancelled:
             prefix += 'Save All cancelled. '
+        if not self.remaining:
+            return prefix + 'No unsaved drafts remain.'
         return prefix + 'Unsaved changes remain: ' + '; '.join(
             f'{label}: {reason}' for label, reason in self.remaining)
 
@@ -43,7 +45,7 @@ def coordinator_for(window):
     return None
 
 
-@dataclass
+@dataclass(eq=False)
 class _Participant:
     label: str
     dirty: object
@@ -99,6 +101,7 @@ class SaveCoordinator:
             return False
         self.busy = True
         pending = deque(self.participants.items())
+        # Keep failures by registration identity, not just the reusable key.
         saved, failures = [], {}
         stopped = False
         waiting = False
@@ -115,26 +118,34 @@ class SaveCoordinator:
                 try:
                     dirty = participant.dirty()
                 except Exception as exc:
-                    failures[key] = (participant.label, str(exc))
+                    failures[(key, participant)] = (participant.label, str(exc))
                     continue
-                if dirty and key not in failures:
-                    failures[key] = (participant.label, 'newer or unsaved edits are retained')
+                if dirty and (key, participant) not in failures:
+                    failures[(key, participant)] = (participant.label, 'newer or unsaved edits are retained')
             observers, self._completion_observers = self._completion_observers, []
             self.busy = False
-            summary = SaveSummary(tuple(saved), tuple(failures.values()), stopped)
+            # A late stop cannot undo already confirmed durable writes.
+            # Keep cancellation when work remains or no write was confirmed.
+            summary = SaveSummary(tuple(saved), tuple(failures.values()),
+                                  stopped and (bool(failures) or not saved))
             try:
                 completed(summary)
             finally:
                 for observer in observers:
                     observer(summary)
-            if failures:
-                key = next(iter(failures))
-                participant = self.participants.get(key)
-                if participant is not None and participant.focus is not None:
-                    try:
-                        participant.focus()
-                    except Exception:
-                        pass
+            # A late reply belongs to its original registration, not a new
+            # document that happens to reuse the same key. Focus only a live
+            # failed registration after both completion and close observers.
+            for key, participant in failures:
+                if participant is None or self.participants.get(key) is not participant:
+                    continue
+                if participant.focus is None:
+                    continue
+                try:
+                    participant.focus()
+                except Exception:
+                    continue
+                break
 
         def dispatch(key, participant):
             nonlocal waiting
@@ -148,9 +159,9 @@ class SaveCoordinator:
                 replied = True
                 waiting = False
                 if not isinstance(result, SaveResult):
-                    failures[key] = (participant.label, 'save completion was not confirmed')
+                    failures[(key, participant)] = (participant.label, 'save completion was not confirmed')
                 elif not result.saved:
-                    failures[key] = (participant.label, result.message or 'save failed; draft retained')
+                    failures[(key, participant)] = (participant.label, result.message or 'save failed; draft retained')
                 else:
                     saved.append(participant.label)
                 advance()
@@ -174,7 +185,7 @@ class SaveCoordinator:
                         stop = cancelled()
                     except Exception as exc:
                         stopped = True
-                        failures[object()] = ('Save All', f'Cancellation status could not be read: {exc}')
+                        failures[(None, None)] = ('Save All', f'Cancellation status could not be read: {exc}')
                         finish()
                         break
                     if stop:
@@ -186,12 +197,12 @@ class SaveCoordinator:
                         break
                     key, participant = pending.popleft()
                     if self.participants.get(key) is not participant:
-                        failures[key] = (participant.label, 'the open document changed during saving')
+                        failures[(key, participant)] = (participant.label, 'the open document changed during saving')
                         continue
                     try:
                         dirty = participant.dirty()
                     except Exception as exc:
-                        failures[key] = (participant.label, str(exc))
+                        failures[(key, participant)] = (participant.label, str(exc))
                         continue
                     if dirty:
                         dispatch(key, participant)

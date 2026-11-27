@@ -246,10 +246,17 @@ def test_parallel_barrier():
         with original_temp(prefix='CARR owned suite Україна ') as temporary:
             root = Path(temporary).resolve()
             marker = root / 'descendant.pid'
+            # Existence acknowledges a complete, closed PID record. A direct
+            # write_text exposes an empty marker before its first write.
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "staged = marker.with_name(marker.name + '.pending')\n"
+                "with staged.open('x', encoding='ascii') as stream:\n"
+                "    stream.write(str(os.getpid()))\n"
+                "    stream.flush(); os.fsync(stream.fileno())\n"
+                "os.replace(staged, marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             wait = ("    while True: time.sleep(1)\n" if timed_out else
                     "    while not (Path.cwd()/'descendant.pid').exists(): time.sleep(.01)\n")
