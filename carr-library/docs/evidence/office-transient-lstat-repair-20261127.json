@@ -1,6 +1,6 @@
 {
   "schema": "carr.office-transient-lstat-repair.v1",
-  "status": "SOURCE_PEER_REVIEWED_RUNTIME_NOT_RUN",
+  "status": "PASS",
   "date": "2026-11-27",
   "parent_commit": "a282cda765a2fdf09644464f15a5b73c5da49efe",
   "observed_failure": {
@@ -56,7 +56,27 @@
       "test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2
     }
   },
-  "qualification": {
+  "source_review": {
+    "component": "2f220f52d00ee583fe1845cfc55956a23b2acedb",
+    "peer": "capacity_measurements",
+    "result": "GO",
+    "execution_claim": false
+  },
+  "authoring_status": "SOURCE_PEER_REVIEWED_RUNTIME_NOT_RUN",
+  "actual_ordinary_qualification": {
+    "source_commit": "f03f8791f100de41d5e24e060b15f36d879184b2",
+    "source_tree": "84ef7b439a32680dcc14aacc4c140921cf8b6036",
+    "run_id": 46066912589,
+    "job_id": 140734323246,
+    "portable_source": 40,
+    "portable_installed": 40,
+    "native_source": 7,
+    "native_installed": 7,
+    "independent_reader_run": 46067545746,
+    "evidence": "office-ordinary-admission-independent-read-20261127.json",
+    "limits": "Exact declared synthetic fixture population on the pinned LibreOffice26.2.7 Windows runtime; historical failures and diagnostic scope remain recorded."
+  },
+  "qualification_at_authoring": {
     "portable_execution": "NOT_RUN",
     "python_compilation": "NOT_RUN",
     "required_ordinary_native_source": 7,
@@ -66,11 +86,5 @@
     "portable_office_source_cases": 40,
     "portable_office_installed_cases": 40,
     "native_case_counter_unchanged": true
-  },
-  "source_review": {
-    "component": "2f220f52d00ee583fe1845cfc55956a23b2acedb",
-    "peer": "capacity_measurements",
-    "result": "GO",
-    "execution_claim": false
   }
 }

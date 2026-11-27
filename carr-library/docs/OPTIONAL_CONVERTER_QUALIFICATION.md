@@ -11,14 +11,26 @@ the isolated installed wheel in run `45992503530`, job `140483608266`.
 [The recorded evidence](evidence/optional-converter-observed-results-20261127.json)
 retains that successful lane and the separate failed Office lane.
 
-The later `7166d0c8` run passed all seven Office functional cases per mode but
+The ordinary Office candidate
+`f03f8791f100de41d5e24e060b15f36d879184b2` passed run `46066912589`, job
+`140734323246`: all 40 portable and seven native cases passed from source,
+and the same 40 plus seven passed from the isolated installed wheel. The
+native cases include DOC, PPT, XLS, the synthetic WordPerfect 5 header family,
+uncompressed PalmDoc TEXt/REAd, cancellation and output-text-budget refusal.
+All 19,487 selected LibreOffice files remained unchanged. The exact artifact
+was independently read without execution in run `46067545746`; the four raw
+JUnit populations, helper/fixture hashes, source tree, module origins and
+source-bound installed wheel are recorded in the
+[ordinary Office evidence](evidence/office-ordinary-admission-independent-read-20261127.json).
+
+The earlier `7166d0c8` run passed all seven Office functional cases per mode but
 failed the final runtime inventory after 42 Python bytecode files were added.
 The no-bytecode candidate `d7295d13` then passed six source cases and failed one
-during transient stage admission. Both failures are retained in the independent
-evidence. Diagnostic runs passed their complete populations and inventories;
-they remain diagnostic results. The reviewed stage repair requires a fresh
-ordinary seven-case source and installed selection, including XLS. No
-historical or diagnostic result is transferred to the changed source tree.
+during transient stage admission. Both failures remain recorded. Later
+instrumented diagnostic runs are kept as diagnostic evidence; the successful
+qualification above used the ordinary worker bootstrap and one XLS conversion
+per mode, with no diagnostic trace or repetition loop. No result is transferred
+to a later changed source tree.
 
 ## Exact required populations
 

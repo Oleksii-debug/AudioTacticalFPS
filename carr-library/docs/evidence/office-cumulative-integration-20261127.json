@@ -1,6 +1,6 @@
 {
   "schema": "carr.office-cumulative-integration.v1",
-  "status": "SOURCE_REVIEW_PENDING_ORDINARY_RUNTIME_NOT_RUN",
+  "status": "ORDINARY_COMPONENT_QUALIFIED_INDEPENDENT_RAW_READ_PASS",
   "base": {
     "sha": "9e4406b380927d6d0b69d28fca2a533953dad854",
     "tree": "6ab4fbd43d1cf6aecbd54aa875eec9451e335343"
@@ -47,14 +47,14 @@
     {
       "path": "carr-library/docs/evidence/office-transient-lstat-repair-20261127.json",
       "before_blob": null,
-      "after_blob": "9dc8b07f641df6c39b7c1658867aaa1889c7337b",
-      "after_sha256": "05a0893592f88063a2bedcda7e3cad928ba8cdb0fcd78ffd3c71fadd9129ca9b"
+      "after_blob": "1474a005df5bd6d5ca7ef10073f580ddbfcee9c0",
+      "after_sha256": "cba30516efbae6406d8b89d7f7467eb90e57480171ff5f7fa628513471b82746"
     },
     {
       "path": "carr-library/docs/evidence/office-portable-boundary-gate-20261127.json",
       "before_blob": null,
-      "after_blob": "5527aacb5eb586c6b6ebfc366287c0ff46a1c988",
-      "after_sha256": "1dc0ec83ea6cb2ccb762e51146f0eceff97e47bc26f8bb096bfac156f18b0d2d"
+      "after_blob": "6bfe93866c5e28f0cb4203936db9cfd0c9698f4a",
+      "after_sha256": "c1b9ace61873242ba866b212f2238cdd585344668e4e52a0a78945db0f3a520e"
     },
     {
       "path": "carr-library/docs/evidence/office-runtime-bytecode-repair-20261127.json",
@@ -77,14 +77,20 @@
     {
       "path": "carr-library/docs/DOCUMENT_CONVERSION.md",
       "before_blob": "060ee08cffbdd737c71e1116ff21eb48660c7eb7",
-      "after_blob": "5f8961f8e52fce0ab0fc89292fd937f020c96384",
-      "after_sha256": "26a2057fd4d271ef5ee5138904e8384a7993926ddcec2d6e420b6abd7977fe1c"
+      "after_blob": "08d82a446f8ede0e6c52b5299a5376f3b75026e4",
+      "after_sha256": "b4c514e8571ae945b55403211523f75451f300cc9564396240fa80b8f13f3b03"
     },
     {
       "path": "carr-library/docs/OPTIONAL_CONVERTER_QUALIFICATION.md",
       "before_blob": "0e9c920ae6467626c2667f84a136f7cfa1e75adb",
-      "after_blob": "559b2b16c760e2a6ad153d90a6a1e3ce1648013e",
-      "after_sha256": "3191244776e125f08c43747f8eafc256472094907684b184173c64586a431242"
+      "after_blob": "a243166237eef2d395c0e6c400086c402f8b580c",
+      "after_sha256": "135313f090f88c397a667de2ad65e9f40ccee25394c584b291cfe6e826bc0b0a"
+    },
+    {
+      "path": "carr-library/docs/evidence/office-ordinary-admission-independent-read-20261127.json",
+      "before_blob": null,
+      "after_blob": "0a9f79de7fa34e4331d8432de02aac61b5de6f1d",
+      "after_sha256": "b9abf2fcf4aa1a5818394d6aff17a605191123a8d64b70c87b2f1add1ade4614"
     }
   ],
   "unchanged_dependencies": {
@@ -141,5 +147,17 @@
     "Existing main workflow, full-suite oracle, shared service/worker, ODF print-layout parser and audio.jobs bytes are unchanged.",
     "The current CHM ordinary proof and EML documentation remain intact.",
     "The native seven/seven counts are distinct from the separate forty/fourty portable boundary population."
-  ]
+  ],
+  "actual_qualification": {
+    "commit": "f03f8791f100de41d5e24e060b15f36d879184b2",
+    "tree": "84ef7b439a32680dcc14aacc4c140921cf8b6036",
+    "run_id": 46066912589,
+    "job_id": 140734323246,
+    "portable_each": 40,
+    "native_each": 7,
+    "independent_reader_run": 46067545746,
+    "evidence": "carr-library/docs/evidence/office-ordinary-admission-independent-read-20261127.json"
+  },
+  "product_changes_after_qualified_candidate": false,
+  "proof_only_successor": true
 }

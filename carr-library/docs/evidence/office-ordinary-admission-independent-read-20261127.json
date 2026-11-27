@@ -1,0 +1,517 @@
+{
+  "schema": "carr.office-ordinary-admission-independent-read.v1",
+  "status": "PASS",
+  "verified_at": "2026-11-27 21:03:06 UTC",
+  "scope": "Actual Windows synthetic reading-copy conversion through ordinary ConversionService, source and isolated installed package; exact finite formats and boundaries below.",
+  "candidate": {
+    "commit": "f03f8791f100de41d5e24e060b15f36d879184b2",
+    "tree": "84ef7b439a32680dcc14aacc4c140921cf8b6036",
+    "parent": "9e4406b380927d6d0b69d28fca2a533953dad854",
+    "branch": "carr/converters-r33-office-native-lstat-d3a-20261127",
+    "run_id": 46066912589,
+    "job_id": 140734323246,
+    "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46066912589",
+    "conclusion": "success",
+    "ordinary_bootstrap": true,
+    "diagnostic_trace": false,
+    "xls_repetition": false
+  },
+  "artifact": {
+    "run": 46066912589,
+    "commit": "f03f8791f100de41d5e24e060b15f36d879184b2",
+    "id": 15230724645,
+    "sha256": "522b32d5a8404011881b4937dc49fbd69a83d119a7a0964cfb0feb0e8d8f6d77",
+    "bytes": 5844668,
+    "kind": "office-ordinary-forty-portable-and-seven-native-each-source-and-installed",
+    "name": "carr-converters-office-f03f8791f100de41d5e24e060b15f36d879184b2"
+  },
+  "independent_reader": {
+    "commit": "ddc924bb33850808cc130db04ce3eabd81385e69",
+    "tree": "f30470e71062cd89c37bd73ddeb0853bed5c5b13",
+    "branch": "carr/converter-diagnostics-r34-office-ordinary-raw-d3a-20261127",
+    "run_id": 46067545746,
+    "job_id": 140736400020,
+    "conclusion": "success",
+    "helper_blob": "a767bcc0bfad6dd6e4b520377548c81accdba210",
+    "workflow_blob": "8eea8c1f56144c0f00a0591410970528a2c90b44",
+    "job_log_sha256": "627e284245f6e2ebbc551390346f5a3f994a7249d38d2555b4657fe3bc6bd80f",
+    "archive_executed": false,
+    "method": "Exact existing artifact metadata/run/head/size/SHA256 verified, bounded ZIP members read as inert JSON/XML/text without extraction, import or execution. Four raw JUnit function Counters checked independently against the frozen helper."
+  },
+  "counts": {
+    "portable_source": 40,
+    "portable_installed": 40,
+    "native_source": 7,
+    "native_installed": 7,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "portable_selection": 28,
+    "portable_stage": 12,
+    "prior_stage": 10,
+    "added_stage": 2
+  },
+  "junit": [
+    {
+      "artifact": 15230724645,
+      "file": "installed-junit.xml",
+      "cases": 7,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    },
+    {
+      "artifact": 15230724645,
+      "file": "portable-office/installed-junit.xml",
+      "cases": 40,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_selection::test_expired_deadline_never_spawns_a_native_process": 1,
+        "tests.conversion.test_office_selection::test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+        "tests.conversion.test_office_selection::test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+        "tests.conversion.test_office_selection::test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+        "tests.conversion.test_office_selection::test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+        "tests.conversion.test_office_selection::test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+        "tests.conversion.test_office_selection::test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+        "tests.conversion.test_office_selection::test_queued_selection_refuses_new_authority_before_worker": 3,
+        "tests.conversion.test_office_selection::test_selected_console_manifest_binds_both_launchers_before_native_work": 1,
+        "tests.conversion.test_office_selection::test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+        "tests.conversion.test_office_selection::test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+        "tests.conversion.test_office_selection::test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+        "tests.conversion.test_office_selection::test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+        "tests.conversion.test_office_stage_races::test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3,
+        "tests.conversion.test_office_stage_races::test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+        "tests.conversion.test_office_stage_races::test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
+        "tests.conversion.test_office_stage_races::test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
+        "tests.conversion.test_office_stage_races::test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2,
+        "tests.conversion.test_office_stage_races::test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2
+      }
+    },
+    {
+      "artifact": 15230724645,
+      "file": "portable-office/source-junit.xml",
+      "cases": 40,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_selection::test_expired_deadline_never_spawns_a_native_process": 1,
+        "tests.conversion.test_office_selection::test_fixed_adapter_rejects_false_format_before_runtime_admission": 5,
+        "tests.conversion.test_office_selection::test_gui_launcher_is_not_silently_promoted_to_unselected_console": 1,
+        "tests.conversion.test_office_selection::test_native_launch_keeps_existing_owner_and_scrubs_unselected_configuration": 1,
+        "tests.conversion.test_office_selection::test_private_phase_survives_failure_without_publishing_source_or_native_logs": 3,
+        "tests.conversion.test_office_selection::test_profile_is_per_operation_and_disables_active_content_and_external_updates": 1,
+        "tests.conversion.test_office_selection::test_progress_refuses_untrusted_marker_content_and_aliased_marker": 1,
+        "tests.conversion.test_office_selection::test_queued_selection_refuses_new_authority_before_worker": 3,
+        "tests.conversion.test_office_selection::test_selected_console_manifest_binds_both_launchers_before_native_work": 1,
+        "tests.conversion.test_office_selection::test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
+        "tests.conversion.test_office_selection::test_snapshot_rechecks_earlier_component_after_last_hash": 1,
+        "tests.conversion.test_office_selection::test_staging_budget_and_lookup_failures_cannot_report_complete": 4,
+        "tests.conversion.test_office_selection::test_worker_admission_refuses_changed_or_incomplete_inventory": 5,
+        "tests.conversion.test_office_stage_races::test_disappearance_after_observed_policy_violation_cannot_make_stage_valid": 3,
+        "tests.conversion.test_office_stage_races::test_missing_native_entry_cannot_hide_lost_or_replaced_private_stage_root": 2,
+        "tests.conversion.test_office_stage_races::test_native_removed_profile_entry_does_not_abort_the_remaining_stage_census": 2,
+        "tests.conversion.test_office_stage_races::test_permission_failure_during_missing_entry_confirmation_remains_a_failure": 1,
+        "tests.conversion.test_office_stage_races::test_reappeared_owned_descendant_does_not_turn_a_missing_snapshot_into_a_live_entry_refusal": 2,
+        "tests.conversion.test_office_stage_races::test_valueerror_for_a_still_existing_stage_entry_is_never_treated_as_disappearance": 2
+      }
+    },
+    {
+      "artifact": 15230724645,
+      "file": "source-junit.xml",
+      "cases": 7,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.conversion.test_office_native::test_real_selected_legacy_filter_retains_original_and_exact_provenance": 5,
+        "tests.conversion.test_office_native::test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
+        "tests.conversion.test_office_native::test_selected_office_text_budget_keeps_destination_empty": 1
+      }
+    }
+  ],
+  "members": [
+    {
+      "artifact": 15230724645,
+      "name": "before-execution.json",
+      "bytes": 2879831,
+      "sha256": "aec056d670b4687decb79613c6bae424c5a20738ddbcbed72d96da58961f09a2"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "converter-gate.json",
+      "bytes": 3552265,
+      "sha256": "9981a5783715cc814bf0025fb4ed2fddcc16d44d5d308956fe498bf6449c7a20"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "installed-junit.xml",
+      "bytes": 1333,
+      "sha256": "5f56a31464cf80b0443b95a5dd038ed46d69b8af80b7eae7c07b6d6306eac89a"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "installed-origins.json",
+      "bytes": 464,
+      "sha256": "870b159cd45c8d86f0485c14f4badc72905da156b5688e923dc37e7eac058067"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "installed-pytest.txt",
+      "bytes": 2758,
+      "sha256": "c305dc34a074823bf9f2da32aa81e27773af49aeda8704968ea27c3699ad464e"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "portable-office/installed-junit.xml",
+      "bytes": 6738,
+      "sha256": "ce1ef7957e3f0b47049e9b638b39d730c85e792072bf3379682a7c218eebd41f"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "portable-office/installed-origins.json",
+      "bytes": 464,
+      "sha256": "870b159cd45c8d86f0485c14f4badc72905da156b5688e923dc37e7eac058067"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "portable-office/installed-pytest.txt",
+      "bytes": 9281,
+      "sha256": "8abc85baea3e33871bd3a36bcd23bafcce82ca40ffe71239558768b173f1e2d7"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "portable-office/source-junit.xml",
+      "bytes": 6738,
+      "sha256": "deb3f0fd976d2c2ebaaecf089eb0514edb79a65961dee2e9a27e78ecaa3e0178"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "portable-office/source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "portable-office/source-pytest.txt",
+      "bytes": 9278,
+      "sha256": "2c84581fc22919046edc54cc1fb450b14172b3914493af7707e28035b306b946"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "publisher-identities.json",
+      "bytes": 874,
+      "sha256": "406ea416eea369232386f6839cdf3561f6ff2fe2e4b02d407ae4c3c714a30f71"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "source-junit.xml",
+      "bytes": 1333,
+      "sha256": "fadd947c38aaab8732fbc40e73aca8948f6d4ec919ac187f3eba6d1e2c1e6e96"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "source-origins.json",
+      "bytes": 418,
+      "sha256": "23d7bb5d3294fd2585f2ae2c3eed60a77d05e9c93908d99b0ccd2243a9d265ce"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "source-provenance.json",
+      "bytes": 463,
+      "sha256": "4b8be34429472c543d79c5a19a1acc224944b065920017d35e5360faef6e3f48"
+    },
+    {
+      "artifact": 15230724645,
+      "name": "source-pytest.txt",
+      "bytes": 2755,
+      "sha256": "83f42d070d7b39d2ea13d1ee0044d5053a18333f2b760f9ca403a737edc4f8c6"
+    }
+  ],
+  "archive_inventory": {
+    "total_members": 2212,
+    "selected": [
+      "before-execution.json",
+      "converter-gate.json",
+      "installed-junit.xml",
+      "installed-origins.json",
+      "installed-pytest.txt",
+      "portable-office/installed-junit.xml",
+      "portable-office/installed-origins.json",
+      "portable-office/installed-pytest.txt",
+      "portable-office/source-junit.xml",
+      "portable-office/source-origins.json",
+      "portable-office/source-pytest.txt",
+      "publisher-identities.json",
+      "source-junit.xml",
+      "source-origins.json",
+      "source-provenance.json",
+      "source-pytest.txt"
+    ]
+  },
+  "source_binding": {
+    "harness_sha256": "5a254ba909a665f055a56273c93bd8d9d8b4284b5bb13c73f64a65e66c16e04f",
+    "selected_test_sha256": {
+      "tests/conversion/native_diagnostics.py": "576e377cf63b568b8acbf5b6d2c2432da50aa6500babdfebbe61028bc49f46e2",
+      "tests/conversion/test_office_native.py": "ee11ef7ae58d7421b9f183e75250be87e64d20fb00de9672193d8ecd2dc8052a",
+      "tests/conversion/test_office_selection.py": "71c176d23f4b781ed5b98b4c0752bedff9f1d16bd6526bdc2d9c2203c001200d",
+      "tests/conversion/test_office_stage_races.py": "195300bde1313c765e34952a1e9fc187d3d63f53425ac763458b68372bea4b5a"
+    },
+    "product_and_fixture_files": [
+      {
+        "path": "carr-library/src/carr_library/conversion/office.py",
+        "before_blob": "d9c52a9e9613bd561f9cac20874610d9458bc177",
+        "after_blob": "dcbcac43c08ecab48567427f2d3ea8816ad8a51f",
+        "after_sha256": "abfe05739d1d6d132f93656ed34c23b6e93602d085929e72fa57505ae7b4092e"
+      },
+      {
+        "path": "carr-library/tests/conversion/test_office_selection.py",
+        "before_blob": "291977cad0942dc903d8deb12f3f2a92a3b068c4",
+        "after_blob": "2deaaba308ceccf28ccb6652055cf0d6523ed3a4",
+        "after_sha256": "71c176d23f4b781ed5b98b4c0752bedff9f1d16bd6526bdc2d9c2203c001200d"
+      },
+      {
+        "path": "carr-library/tests/conversion/test_office_stage_races.py",
+        "before_blob": "eeb1b89babb0383ec7b22144ac8dbb916dca7d8b",
+        "after_blob": "4f77b1fb7f5ca4d6f392da30133030978f595419",
+        "after_sha256": "195300bde1313c765e34952a1e9fc187d3d63f53425ac763458b68372bea4b5a"
+      },
+      {
+        "path": "carr-library/tests/conversion/test_office_native.py",
+        "before_blob": "e6a6ca3b211711505161f7efcccedcbdbb2d9bd4",
+        "after_blob": "c3e94b4878bb827059babf1739e3b5b2c35c8fb9",
+        "after_sha256": "ee11ef7ae58d7421b9f183e75250be87e64d20fb00de9672193d8ecd2dc8052a"
+      },
+      {
+        "path": "carr-library/scripts/conversion_acceptance.py",
+        "before_blob": "d9dc536b86ee27595e8fb0969b9eedbaf553ad62",
+        "after_blob": "5dbfb75cb7d63db984bda282653a52db36f1b8cf",
+        "after_sha256": "5a254ba909a665f055a56273c93bd8d9d8b4284b5bb13c73f64a65e66c16e04f"
+      }
+    ],
+    "wheel_source": {
+      "payload_files": 440,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 371,
+      "source_commit": "f03f8791f100de41d5e24e060b15f36d879184b2",
+      "source_tree": "84ef7b439a32680dcc14aacc4c140921cf8b6036",
+      "wheel_sha256": "aa22dc0866c75aff3f85f2d2fd7106953f2700700f6612e226ba79e78cb959a4"
+    },
+    "installed_identity": {
+      "files": {
+        "canonical_sha256": "a430fdd04c072c8115d826633da5725bc9c6c0433d63f79d3540e9cf70416d90",
+        "entries": 371
+      },
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+        "carr_library": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py"
+      },
+      "prefix": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\installed",
+      "wheel_sha256": "aa22dc0866c75aff3f85f2d2fd7106953f2700700f6612e226ba79e78cb959a4"
+    },
+    "source_origins": {
+      "isolated": false,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        }
+      }
+    },
+    "installed_origins": {
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        }
+      }
+    },
+    "portable_source_origins": {
+      "isolated": false,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library\\__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        }
+      }
+    },
+    "portable_installed_origins": {
+      "isolated": true,
+      "module_origins": {
+        "bootstrap": {
+          "path": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\installed\\Lib\\site-packages\\bootstrap\\__init__.py",
+          "sha256": "a90e8b1d37413ef4fbc54cdbea7f67a8c2a09ac01ed8cee54e5b9c47fe8fc930"
+        },
+        "carr_library": {
+          "path": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\installed\\Lib\\site-packages\\carr_library\\__init__.py",
+          "sha256": "93ac58ea85ec030da93ad5ae63430cb23c3ba24627931f5d40b3f8ba37ce9c7a"
+        }
+      }
+    }
+  },
+  "publisher": {
+    "artifacts": {
+      "libreoffice": {
+        "bytes": 373121024,
+        "path": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\optional\\LibreOffice_26.2.7_Win_x86-64.msi",
+        "publisher_identity": "PASS",
+        "publisher_metadata_sha256": "e075f5ac9079d0aee70c76282c9577a6596e64d66e1ce37a6237dc801ac2d6e2",
+        "publisher_url": "https://download.documentfoundation.org/libreoffice/stable/26.2.7/win/x86_64/LibreOffice_26.2.7_Win_x86-64.msi.meta4",
+        "sha256": "480fecf759fc6393bd614fbf43753eb95a8198fc1a065d41b727e3b664cd1e59",
+        "version": "26.2.7"
+      }
+    },
+    "libreoffice_msi": "D:\\a\\_temp\\carr-converters-46066912589-1-office\\optional\\LibreOffice_26.2.7_Win_x86-64.msi",
+    "lock_sha256": "8d0beef0e02dfbcfb5f270b122d42895ed46355ab5c7fb48ef5effee3d292cf2",
+    "native_execution": "NOT_RUN",
+    "schema": 1,
+    "status": "PASS"
+  },
+  "runtime_pins": {
+    "bibtexparser": "2.1.0",
+    "cffi": "2.1.1",
+    "cryptography": "50.0.2",
+    "defusedxml": "0.7.1",
+    "filelock": "3.29.0",
+    "lxml": "6.1.3",
+    "numpy": "2.4.6",
+    "pillow": "13.0.0",
+    "platformdirs": "4.10.0",
+    "pycparser": "3.12",
+    "pylatexenc": "2.11",
+    "pypdf": "7.1.1",
+    "pypdfium2": "5.13.0",
+    "python-docx": "1.2.0",
+    "pywin32": "312",
+    "quickjs-ng": "0.18.0.2",
+    "typing-extensions": "4.16.0",
+    "wxpython": "4.2.4"
+  },
+  "runtime_integrity": {
+    "initial_inventory": {
+      "libreoffice": {
+        "canonical_sha256": "12ac5912a96015c94fcafa9d9282476c367f19e2af770e9296d377260fadfeeb",
+        "entries": 19487
+      }
+    },
+    "post_execution_changes": {},
+    "status": "PASS",
+    "method": "The exact frozen helper re-inventories every selected runtime file after all four populations and refuses any added, removed or changed entry. The retained final receipt has the initial full inventory plus the empty live comparison result; no separately archived after-inventory is claimed."
+  },
+  "ordinary_native_formats": [
+    {
+      "suffix": ".doc",
+      "family": "Synthetic MS Word97 compound document",
+      "intermediate": "writer8 ODT"
+    },
+    {
+      "suffix": ".ppt",
+      "family": "Synthetic MS PowerPoint97 compound document",
+      "intermediate": "impress8 ODP"
+    },
+    {
+      "suffix": ".xls",
+      "family": "Synthetic MS Excel97 compound document",
+      "intermediate": "calc8 ODS"
+    },
+    {
+      "suffix": ".wpd",
+      "family": "Synthetic WordPerfect5 document-header family",
+      "intermediate": "writer8 ODT"
+    },
+    {
+      "suffix": ".pdb",
+      "family": "Synthetic uncompressed PalmDoc TEXt/REAd container",
+      "intermediate": "writer8 ODT"
+    }
+  ],
+  "native_assertions": [
+    "Original bytes and source SHA256 unchanged.",
+    "Reading-copy bytes match report text SHA256; exact selected-libreoffice engine and source-bound private profile provenance.",
+    "Logical segments remain review_required with no physical page or printed label and verified_for_quotation=false.",
+    "Cancellation observes the real private profile, settles the existing worker family, removes private staging, preserves original and leaves destination empty.",
+    "Output-text budget refusal leaves destination empty."
+  ],
+  "portable_assertions": [
+    "Existing28 runtime selection, configuration scrubbing, deadline, inactive-content and budget boundaries all retained.",
+    "All10 prior stage disappearance/root/permission/live-entry/observed-policy cases retained.",
+    "Two actual remove/recreate descendant fixtures preserve full byte accounting and refuse a one-byte-short budget while root identity and source bytes remain unchanged."
+  ],
+  "repairs": {
+    "fixed_no_bytecode": {
+      "component": "d7295d13a096c0148559657f7b9d64b865051875",
+      "setting": "PYTHONDONTWRITEBYTECODE=1 after the minimal product environment allowlist and in the synthetic fixture exporter",
+      "previous_added_pyc": 42
+    },
+    "direct_stage_metadata": {
+      "component": "2f220f52d00ee583fe1845cfc55956a23b2acedb",
+      "product_blob": "dcbcac43c08ecab48567427f2d3ea8816ad8a51f",
+      "observed_events": "office-stage-events-independent-read-20261127.json",
+      "boundary": "Unfollowed lstat distinguishes genuinely missing owned descendants from rejected live entries; original root/ancestor, reparse/link, entry/depth/byte, deadline and final-root policies remain."
+    }
+  },
+  "historical_evidence": {
+    "functional_then_inventory_failure": {
+      "commit": "7166d0c8d488cfcd42118fc4dcfd22eba6401f2b",
+      "run_id": 46057627707,
+      "job_id": 140703873789,
+      "status": "FAIL",
+      "native_source": 7,
+      "native_installed": 7,
+      "reason": "Complete runtime inventory changed by42 added Python bytecode files.",
+      "proof": "converters-print-layout-independent-read-20261127.json"
+    },
+    "ordinary_transient_stage_failure": {
+      "commit": "d7295d13a096c0148559657f7b9d64b865051875",
+      "run_id": 46060211492,
+      "job_id": 140712362205,
+      "status": "FAIL",
+      "source_passed": 6,
+      "source_failed": 1,
+      "installed": "NOT_RUN",
+      "reason": "XLS propagated missing-directory ValueError; exact original failing path was not retained.",
+      "proof": "office-stage-diagnostic-independent-read-20261127.json"
+    },
+    "successful_diagnostics": {
+      "status": "DIAGNOSTIC_ONLY",
+      "runs": [
+        46062054170,
+        46063451376
+      ],
+      "proofs": [
+        "office-stage-diagnostic-independent-read-20261127.json",
+        "office-stage-events-independent-read-20261127.json"
+      ],
+      "not_transferred_to_current_qualification": true
+    }
+  },
+  "receipt_notes": [
+    "source-provenance.json remains its deliberately written initial NOT_RUN snapshot; the final converter-gate.json and four independently parsed JUnit reports establish this result.",
+    "publisher-identities.json native_execution=NOT_RUN describes preparation before native tests; it is not a replacement for the final test evidence.",
+    "The actual diagnostic observed owned descendant cleanup and unchanged private roots. The original fatal d729 path and process-leader timing remain unobserved; this source repair has a concrete regression and a new ordinary PASS, not a claim that every possible filesystem race is proven absent.",
+    "Only the native format fixture population above is qualified. Arbitrary user documents, printed pagination/fidelity, quotation correctness, manual NVDA and general vendor interoperability are not established.",
+    "This result belongs to the exact f03f source tree. A later composed application requires its own integrated gates."
+  ]
+}

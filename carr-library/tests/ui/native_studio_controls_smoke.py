@@ -356,8 +356,22 @@ def run(work):
                 check('existing native Redo restores accepted controls', studio.controller.script == accepted_script)
                 studio.notebook.SetSelection(2)
                 press(named(studio.dialog, 'Preview plan', wx.Button))
+                expected_preview = studio.controller.preview()
+                # wx.TextEntry.GetValue exposes canonical LF even on Windows;
+                # the exact original script retains its separately checked CRLF.
+                expected_display = expected_preview.replace('\r\n', '\n').replace('\r', '\n')
+                displayed_preview = studio.plan_text.GetValue()
+                if displayed_preview != expected_display:
+                    first = next((index for index, pair in enumerate(zip(displayed_preview, expected_display))
+                                  if pair[0] != pair[1]), min(len(displayed_preview), len(expected_display)))
+                    print('DIAGNOSTIC preview display: ' + json.dumps({
+                        'first_difference': first, 'actual_length': len(displayed_preview),
+                        'expected_length': len(expected_display),
+                        'actual_context': displayed_preview[max(0, first - 32):first + 64],
+                        'expected_context': expected_display[max(0, first - 32):first + 64]},
+                        ensure_ascii=True), flush=True)
                 check('explicit native Preview describes the current edited plan',
-                      studio.plan_text.GetValue() == studio.controller.preview())
+                      displayed_preview == expected_display and studio.controller.script == accepted_script)
                 press(named(studio.dialog, 'Save all open drafts', wx.Button))
                 check('current native Save All durably saves the accepted script',
                       not studio.controller.dirty and not studio._save_coordinator.busy

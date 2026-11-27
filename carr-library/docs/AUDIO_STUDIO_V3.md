@@ -8,8 +8,8 @@ The previous sealed application package is not replaced by this source change.
 ## Desktop workflow
 
 Open **Audio > Audio Studio** or open the selected book as a narration copy.
-The Studio uses named native controls and three pages: Script, Preparation and
-Production. Enter text, select an installed local voice, select an output folder,
+The Studio uses named native controls and four pages: Script, Preparation,
+Production and Playback. Enter text, select an installed local voice, select an output folder,
 preview the production plan, then choose **Render / resume**. Work runs outside
 the UI thread; Cancel preserves accepted checkpoints. Status and errors are
 readable text. Ctrl+S saves, Ctrl+Shift+S saves under a new name. Autosave preserves
@@ -34,6 +34,64 @@ cache, generated audio, MIDI and manifests in a checksummed ZIP64 snapshot.
 the output location. Stop a running render before backing it up. This snapshot
 is separate from the research-library backup and from installed model/voice
 assets. API keys, executable runtimes and unrelated private files are excluded.
+
+## Role voices and final output controls
+
+Choose **Structured production script** in **Text interpretation** before using
+these forms. Imported reading copies initially use **Literal narration**; switching
+interpretation is an explicit decision because structured mode reads role and
+other production directions.
+
+On the Script page, choose **Edit roles and voices**. The **Production role**
+list selects one existing role. Choose its exact installed voice and then a
+language advertised by that voice. The form preserves the full language code;
+it does not silently select another region or the first voice in the list.
+A saved voice that is advertised as unavailable stays visible. An ID marked
+**not in the current list** remains unchanged too; it may be a retained engine
+alias rather than proof that the engine cannot render it. Changing that role
+requires an explicit advertised voice/language choice.
+
+The named controls use the current production settings:
+
+- **Pan** runs from -1 (left) through 0 (centre) to 1 (right).
+- **Speech rate** and **Speech pitch** use the selected engine's -10 to 10 scale.
+  A control absent from that voice's advertised capabilities is disabled at its
+  default. An inherited nondefault value remains visible so it can be reset
+  explicitly. This pitch control is separate from the audio effect measured in
+  semitones.
+- **Speech volume** is 0 to 100 percent.
+- **Final role gain** is -120 to 24 dB with an explicit enable checkbox. It edits
+  an existing final gain effect or adds that effect at the end. Earlier effects
+  retain their order and settings; use **Role and master effect chains** for
+  other chain changes.
+
+On the Production page, **Final format and stems** opens the same form with
+focus on **Final audio format**. Choose WAV, FLAC, MP3, Opus, M4A, M4B, AIFF, Ogg,
+AAC or WMA, then set **Export separate role and background stems**. Existing
+sample rate, disk budget and master processing are retained. Codec availability
+is checked by the current production workflow. Output-only changes can retain
+an unavailable or unlisted role unchanged; they do not select a replacement.
+
+**Apply role and output changes** makes one undoable edit to the current draft.
+**Cancel role and output changes**, Escape or closing the form discards its
+pending edits. On the Preparation page, **Undo preparation edit** and
+**Redo preparation edit** undo or restore the accepted form edit as one action.
+If the current draft, project or selected runtime changes while the form is
+open, Apply refuses the stale form; review the current project again.
+
+After Apply, use **Save all open drafts** or Ctrl+S to save the project, then
+**Preview plan** to review the changed roles and output before
+**Render / resume**. Accepted changes invalidate the old render result and the
+displayed preview. The immutable original, existing project format and managed
+backup remain the same. The form itself starts no rendering.
+
+The dedicated automated form qualification uses actual Windows wx controls in
+addition to source and isolated installed regressions. Its current source-bound
+status is recorded in
+[Studio role/output validation](validation/STUDIO_ROLE_OUTPUT_CONTROLS_20261127.md);
+the exact `aee11f99c4be0da3aa257ac7722923d768220e7f` [Windows run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46067792077)
+passed all211 source,211 isolated installed and39 native form checks. This form
+change makes no model-quality, physical-playback or manual NVDA claim.
 
 ## Explicit script directions
 
@@ -157,9 +215,8 @@ Manager. `scripts/windows_audio_smoke.py` keeps manual NVDA, physical keyboard,
 device playback, native-speaker assessment and neural inference separate from
 automated success. CI does not call commercial APIs or publish generated audio.
 
-Full V3 acceptance still requires the remaining specification: complete
-Balabolka workflow parity, all optional formats, multilingual OCR model manager,
-language-specific prosody quality, microphone/device controls, full effects and
-player parity, CSL/Word/synchronization, large-library scale benchmarks, general
-local LLM tool planning, real optional models and independent manual Windows/NVDA
-acceptance. This implemented audio slice is not a claim that all V3 gates are done.
+The requirement-by-requirement integration and qualification state is maintained
+in [V3_RELEASE_READINESS.md](V3_RELEASE_READINESS.md). That record separates
+implemented controls and exact automated runs from real voice/model quality,
+physical audio devices, manual Windows/NVDA acceptance and distribution rights.
+This audio slice does not declare the complete platform qualified.

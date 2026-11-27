@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "kind": "current-requirement-and-evidence-dimensions",
-  "authoring_source": "87332e38fe6340f0ab9701ded46a7f2feb40e2d4",
-  "authoring_tree": "6d00b5a3e7df3159d2d9c795c8156afcf958259b",
+  "authoring_source": "e67a275ead5810227788db44df80619e66423021",
+  "authoring_tree": "8101f855594a5b97a87b7709ebc4de2332e2e381",
   "product": "Resonance",
   "version": "0.2.0.dev2",
   "full_platform_status": "NOT_QUALIFIED",
@@ -32,7 +32,7 @@
       "declared_implemented_scope": "Existing isolated import/conversion stack, explicit encodings, managed language/model packs and bounded legacy adapters; exact EML metadata, CHM member recovery and strict ODF page-layout handling.",
       "current_documentation": {
         "path": "docs/DOCUMENT_CONVERSION.md",
-        "blob": "060ee08cffbdd737c71e1116ff21eb48660c7eb7"
+        "blob": "08d82a446f8ede0e6c52b5299a5376f3b75026e4"
       },
       "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
       "runtime": "SOURCE_AND_RUN_SPECIFIC",
@@ -66,7 +66,7 @@
       "runtime": "SOURCE_AND_RUN_SPECIFIC",
       "quality": "CAPABILITY_SPECIFIC_NOT_FULL_PLATFORM",
       "distribution": "NOT_CLEARED_BY_THIS_RECORD",
-      "remaining_dependency_or_scope": "Exact owner-runtime routes and post-render/process integrity are source-reviewed and awaiting their new regression run; real owner voices, legacy drivers, hardware and acoustic quality remain separately qualified."
+      "remaining_dependency_or_scope": "Exact owner-runtime route/lifetime/preservation has56 synthetic cases within the source-bound909/909 run. Real owner voices, legacy drivers, hardware and acoustic quality remain separately qualified."
     },
     {
       "id": "V3-04 / D",
@@ -74,7 +74,7 @@
       "declared_implemented_scope": "Current narration, role/scene projects, batch jobs, chunk identity, durable publication, output formats, chapters, stems and measured duration through the shared renderer.",
       "current_documentation": {
         "path": "docs/AUDIO_STUDIO_V3.md",
-        "blob": "09ee48dcb32d5701f85d11574af803157609f24a"
+        "blob": "9f98aa09130728ccece29e828ec53a18c10779f6"
       },
       "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
       "runtime": "SOURCE_AND_RUN_SPECIFIC",
@@ -85,7 +85,7 @@
     {
       "id": "V3-05 / E",
       "title": "Studio and player",
-      "declared_implemented_scope": "Native track/clip/time controls, non-destructive editing, effects chains, local playback, recording/monitor interfaces and exact output-frame/media validation.",
+      "declared_implemented_scope": "Current native role/voice/language/pan/rate/pitch/volume/final-gain and output/stem forms edit the existing structured draft; track/clip/time controls, effects, playback, recording and exact output/media checks remain.",
       "current_documentation": {
         "path": "docs/STUDIO_CLIP_EDITING.md",
         "blob": "f6909b21eefabe338d392a08fc622f8126057259"
@@ -116,7 +116,7 @@
       "declared_implemented_scope": "Bounded paging, continuation, streaming originals and current catalog/query optimization; source-bound Windows measurements complete 1k/10k/50k synthetic edition traversal.",
       "current_documentation": {
         "path": "docs/LIBRARY_CAPACITY.md",
-        "blob": "f2bb14fa70f9eafba1a6925fd9f2a3d2169d412e"
+        "blob": "2c45a80e82b0ab6ac6d67764977c9107e6c2b4c1"
       },
       "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
       "runtime": "SOURCE_AND_RUN_SPECIFIC",
@@ -270,7 +270,7 @@
       "declared_implemented_scope": "One ordinary Inno installer and signed managed transaction, protected state, generation leases, rollback/recovery and the distinct original→maintenance→candidate proof.",
       "current_documentation": {
         "path": "docs/STANDARD_SIGNED_UPDATES.md",
-        "blob": "7ecb81d973abe1ddf0fdbfb13621be3469597866"
+        "blob": "eba7617b2187d25a7d5454fa935d71c940f1cf0d"
       },
       "integration": "CURRENT_SHARED_OWNER_WITH_DECLARED_LIMITS",
       "runtime": "SOURCE_AND_RUN_SPECIFIC",
@@ -377,5 +377,33 @@
     "An old passing artifact remains tied to its own source/tree/runtime/pack, even when current source is derived from it.",
     "Real models, physical hardware, human accessibility/quality and production rights/authority cannot be manufactured by synthetic tests.",
     "No public binary release, private-source publication, paid request or account deployment is authorized by this record."
-  ]
+  ],
+  "binding_scope": "authoring_source/tree identify the reviewed code baseline. Current documentation hashes identify the files in the final immutable Git tree containing this matrix.",
+  "reconciliation": {
+    "path": "docs/validation/CANONICAL_FINAL_RECONCILIATION_20261127.json",
+    "source_paths": 139,
+    "general": 52,
+    "domain": 87,
+    "absent_test_support_paths": 83,
+    "other_absent_paths": 25
+  },
+  "selected_automatic_populations": {
+    "protected_source": 5813,
+    "protected_installed": 5485,
+    "focused": 911,
+    "studio_focused": 211,
+    "native_families": 21,
+    "studio_native_checks": 39,
+    "execution_status": "READ_EXACT_FINAL_CANDIDATE_RECEIPTS_NO_PASS_TRANSFER"
+  },
+  "observed_studio_component": {
+    "source": "aee11f99c4be0da3aa257ac7722923d768220e7f",
+    "run_id": 46067792077,
+    "source_cases": 211,
+    "installed_cases": 211,
+    "native_checks": 39,
+    "status": "PASS",
+    "voice_metadata": "SYNTHETIC_PROTOCOL_ONLY",
+    "nvda": "NOT_RUN"
+  }
 }

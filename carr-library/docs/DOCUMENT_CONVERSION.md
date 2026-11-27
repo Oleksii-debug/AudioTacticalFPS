@@ -294,7 +294,7 @@ the final composed application as tested.
 | Selected RTF and English raster OCR | `955165132fd530d6c3deb0e5b4b48f66dde77963`, run `45992503530`: all six source and six isolated installed cases passed | [Recorded optional-tool results](evidence/optional-converter-observed-results-20261127.json) |
 | Ordinary DjVu embedded-text admission | `684cc8ddac569fdcf5d685b33302f570481ea6f8`, run `46024229261`: 163 portable and four native cases passed in each mode; exact raw artifact independently read | [DjVu qualification](evidence/djvu-native-qualification-20261127.json) |
 | Ordinary calibre admission for six tested suffixes | `08fb93a68ebbdb0c564a1e09b9960d2d718d020e`, run `46039340019`: 187 portable and nine native cases passed in each mode; exact raw artifact independently read | [Calibre ordinary-admission evidence](evidence/calibre-ordinary-admission-independent-read-20261127.json) |
-| LibreOffice, including XLS | `7166d0c8d488cfcd42118fc4dcfd22eba6401f2b` passed all seven functional cases per mode, then failed the complete runtime inventory because Python caches were added. The subsequent ordinary `d7295d13` source run passed six and failed one during transient stage admission | [Independent layout/inventory result](evidence/converters-print-layout-independent-read-20261127.json), [ordinary failure and diagnostic result](evidence/office-stage-diagnostic-independent-read-20261127.json). The reviewed repair still requires fresh ordinary seven/seven qualification |
+| Ordinary LibreOffice, including XLS | `f03f8791f100de41d5e24e060b15f36d879184b2`, run `46066912589`: all 40 portable and seven native cases passed per mode, with all 19,487 selected runtime files unchanged | [Independent ordinary Office proof](evidence/office-ordinary-admission-independent-read-20261127.json), exact four raw JUnit populations and installed wheel identity verified. The earlier [runtime-inventory failure](evidence/converters-print-layout-independent-read-20261127.json) and [transient-stage failure/diagnostics](evidence/office-stage-diagnostic-independent-read-20261127.json) remain recorded |
 | Ordinary CHM admission | `e5453076c9593219e2d851d8f96a7fa62680d219`, run `46058236666`: 236 portable and four native cases passed per mode, including complete 70-member census assertions | [Ordinary proof](evidence/chm-ordinary-admission-independent-read-20261127.json), independently read from the exact artifact; separate earlier [preview proof](evidence/chm-native-preview-independent-read-20261127.json) retained |
 
 These finite cases do not qualify arbitrary user documents, every OCR language,
@@ -346,9 +346,10 @@ the test-only xlwt 1.3.0 writer, so it is not solely the LibreOffice fixture
 exporter. Observed outcomes were native exit 137 or `std::bad_alloc` under the
 existing 3 GiB address cap. One bounded diagnostic recorded 2,168,999,936 bytes
 RSS and 2,790,580,224 bytes virtual memory before failure. Limits were not
-raised and no derivative was published. A stable selected Windows LibreOffice
-run is still required, including XLS; this one development build does not prove
-that XLS is unsupported by other compatible runtimes. xlwt is not a product
+raised and no derivative was published. At that upstream checkpoint, a stable selected Windows LibreOffice
+run was still required, including XLS; that development build did not prove
+that XLS was unsupported by other compatible runtimes. The exact later
+Windows result is recorded in the current qualification table above. xlwt is not a product
 dependency and neither the 17- nor 53-package Windows lock was changed.
 
 Required strict gates:

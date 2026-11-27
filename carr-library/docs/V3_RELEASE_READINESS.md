@@ -3,10 +3,10 @@
 Product: **Resonance / Резонанс**, version **0.2.0.dev2**.
 
 This is the current integration record for the 27 November technical project.
-The complete platform is **NOT_QUALIFIED**. The implementation and automated
-qualification are being reconciled against the updated scope; intended
-capabilities are retained even when their actual engine, hardware, manual or
-distribution acceptance still needs input.
+The complete platform is **NOT_QUALIFIED**. The implementation has a finite source
+reconciliation against the updated scope. Automated qualification is bound to
+the exact candidate and its CI receipts; intended capabilities are retained when
+their actual engine, hardware, manual or distribution acceptance still needs input.
 
 Start with [START_UK.txt](START_UK.txt) for the actual installation paths,
 menus and keyboard commands. The [technical specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md),
@@ -25,9 +25,9 @@ source/tree, wheel, dependency/runtime packs, commands and outcomes. This
 document neither adds overlapping test counts nor carries PASS to a later
 source tree.
 
-The reviewed full regression oracle currently declares **5,683 protected source
-cases and 5,355 protected installed cases**. The focused selection declares 909
-per mode after CHM and owner-voice recovery integration. These are selected populations, not
+The reviewed full regression oracle currently declares **5,813 protected source
+cases and 5,485 protected installed cases**. The shared focused selection declares
+911 per mode; Studio controls have a separate exact 211-case selection in each mode. These are selected populations, not
 execution results. The finite existing native families, strict failure/skip
 checks, immutable-original guards and complete runtime inventories remain in
 place.
@@ -37,12 +37,14 @@ place.
 | Component | Exact source and actual scope | Durable evidence |
 | --- | --- | --- |
 | Shared recovery/publication/generated audio/ODF | `375f6cc7c62ddf3dce248761ebe8eccdb1cbf9de`: 805 source + 805 installed, zero failure/skip; exact 22 native provider checks and cleanup. Includes generated-media 36 and ODF 55. | [Exact805 proof](validation/SHARED_CONTRACTS_805_WINDOWS_20261127.json) |
+| Owner voice routes and shared contracts | `87332e38fe6340f0ab9701ded46a7f2feb40e2d4`: 909 source + 909 installed, exact 45 modules/376 function identities, no failure/skip, plus 22 native provider checks. The owner adapter contributes 56 synthetic route/lifetime/preservation cases; private speech quality is not inferred. | [Exact909 proof](evidence/canonical-dordiai-focused-909-observed-20261127.json) |
 | Ordinary CHM admission | `e5453076c9593219e2d851d8f96a7fa62680d219`: 236 source + 236 installed, actual 4 native CHM checks in each mode; 149 Linux cases. The source-bound real publisher case asserts 70/70/0 members, without a separately retained raw per-member digest census. | [Ordinary CHM proof](evidence/chm-ordinary-admission-independent-read-20261127.json) |
 | Installed Windows synthetic capacity | `523aa40f9215569a276f0625d09fcc0fa84bb520`:complete 1k/10k/50k edition traversal, including 500 pages at 50k, with cancellation and fresh-process recovery. One shared tiny original is not 50k real books. | [Capacity receipt](evidence/r7-installed-capacity-20261127.json) |
 | Native SAPI process/PCM path | Earlier exact current-engine run and independently checked native PCM/process/file-release evidence; later engine changes require their own current gate. | [SAPI execution record](NATIVE_SAPI_OWNED_SHUTDOWN_RESULTS_20261127.md) |
 | Supplied ASR host/assistant | Actual isolated synthetic protocol, source/installed and native UI records; private source corrections and model inference remain separately identified. | [ASR integration record](validation/ASSISTANT_TRANSCRIPTION_WINDOWS_20261127.md) |
-| Standard maintenance/update | Historical direct-original managed attempt failed; current O→maintenance A→managed B is a separate cohort requiring its exact 4 + 15 checks, installed-library 50 and recovery proof. | [Current standard contract](STANDARD_SIGNED_UPDATES.md), [historical failure](evidence/standard-update-480f-artifact-diagnostic-20261127.json) |
-| Selected Office | Exact earlier run read all 7 source and 7 installed cases, but failed complete runtime immutability because 42 Python cache files were added. Its later no-bytecode run exposed a separate transient path failure; the final normal gate remains required. | [Converter qualification](OPTIONAL_CONVERTER_QUALIFICATION.md) |
+| Standard maintenance/update | At `2d1a4bd89b3c8d63d55848f129e38489e2ea4157`, the exact original→maintenance four checks passed; the next managed health check failed because it entered the portable ownership guard. The separate read-only payload repair is in `910b1498d801cabcf9ba2751b93ecbe01d825ea8`; its actual managed/restart/library result must be read from the exact candidate cohort receipt. | [Observed maintenance and failure](evidence/standard-original-maintenance-r27-observed-20261127.json), [repair](evidence/standard-managed-health-payload-repair-20261127.json), [current standard contract](STANDARD_SIGNED_UPDATES.md) |
+| Selected Office | `f03f8791f100de41d5e24e060b15f36d879184b2`: ordinary 7 native source + 7 native installed and separate 40 portable source + 40 portable installed cases passed. All 19,487 runtime files remained unchanged. The five synthetic document formats and cancellation/budget boundaries qualify this scope; earlier cache/path failures remain in their records. | [Independent ordinary proof](evidence/office-ordinary-admission-independent-read-20261127.json), [converter qualification](OPTIONAL_CONVERTER_QUALIFICATION.md) |
+| Studio role and output forms | `aee11f99c4be0da3aa257ac7722923d768220e7f`: 211 source + 211 isolated installed and all 39 native form checks passed, including two applied edits, three cancellations, capability/stale-draft refusals, two Save All commits and native cleanup. The earlier 23/39 display-comparison failure is retained separately. Synthetic voice metadata does not qualify speech quality. | [Exact Windows run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46067792077), [form contract](validation/STUDIO_ROLE_OUTPUT_CONTROLS_20261127.json), [preserved display failure](validation/STUDIO_FORM_PREVIEW_DISPLAY_20261127.json) |
 
 These rows are not a whole-candidate acceptance verdict. The prior failures
 remain visible and are not converted into success by a source-only correction.
@@ -53,9 +55,9 @@ remain visible and are not converted into success by a source-only correction.
 | --- | --- | --- |
 | V3-01 / A — Documents and OCR | Existing isolated import/conversion stack, explicit encodings, managed language/model packs and bounded legacy adapters; exact EML metadata, CHM member recovery and strict ODF page-layout handling. [Current contract](DOCUMENT_CONVERSION.md). | Actual selected-tool runs, precise format/fixture limits and separate language/model acceptance; arbitrary document fidelity and all OCR languages are not inferred. |
 | V3-02 / B — Reading preparation | Immutable originals, editable/versioned narration, source mapping, pronunciation, scoped rules and explicit preparation modes through the existing reader. [Current contract](READING_PREPARATION.md). | Language-specific pronunciation/stress quality and actual engine prosody need qualified voices and human review. |
-| V3-03 / C — Voices and live reading | One VoiceRegistry with actual native SAPI, explicit reviewed local profiles, the owner-specific worker adapter and the distinct generic helper protocol; live reading and retained playback. [Current contract](LOCAL_VOICES_AND_MUSIC.md). | Exact owner-runtime routes and post-render/process integrity are source-reviewed and awaiting their new regression run; real owner voices, legacy drivers, hardware and acoustic quality remain separately qualified. |
+| V3-03 / C — Voices and live reading | One VoiceRegistry with actual native SAPI, explicit reviewed local profiles, the owner-specific worker adapter and the distinct generic helper protocol; live reading and retained playback. [Current contract](LOCAL_VOICES_AND_MUSIC.md). | Exact owner-runtime routes and post-render/process integrity passed their 56-case synthetic selection inside the source-bound 909/909 run; real owner voices, legacy drivers, hardware and acoustic quality remain separately qualified. |
 | V3-04 / D — Audiobooks and scenes | Current narration, role/scene projects, batch jobs, chunk identity, durable publication, output formats, chapters, stems and measured duration through the shared renderer. [Current contract](AUDIO_STUDIO_V3.md). | Each actual voice/model/codec pair and long-form listening quality needs its own evidence; synthetic audio duration is not neural-generation throughput. |
-| V3-05 / E — Studio and player | Native track/clip/time controls, non-destructive editing, effects chains, local playback, recording/monitor interfaces and exact output-frame/media validation. [Current contract](STUDIO_CLIP_EDITING.md). | Physical microphone/output/monitoring, real-time device behavior and professional listening/NVDA acceptance remain distinct from automated PCM/effect tests. |
+| V3-05 / E — Studio and player | Native role/voice/language/pan/rate/pitch/volume/final-gain and output/stem forms now edit the same structured draft, alongside track/clip/time controls, effects, playback, recording and exact output-frame/media validation. [Current contract](STUDIO_CLIP_EDITING.md). | Physical microphone/output/monitoring, real-time device behavior and professional listening/NVDA acceptance remain distinct from automated PCM/effect tests. |
 | V3-06 / F — Save and recovery | One Save All coordinator, current complete/incremental backups, passive canonical history, retained pending inputs and explicit restore/resume review. [Current contract](COMPLETE_BACKUP.md). | Actual device power-loss/manual desktop recovery and declared per-pack redistribution remain separate; old state is not silently activated. |
 | V3-07 / G — Scale | Bounded paging, continuation, streaming originals and current catalog/query optimization; source-bound Windows measurements complete1k/10k/50k synthetic edition traversal. [Current contract](LIBRARY_CAPACITY.md). | The fixture shares one tiny original. Real diverse books, millions of segments, large-file throughput and declared user hardware require additional measured corpora. |
 | V3-08 / H — Research and citations | Scoped scientific search/evidence, bibliographic metadata, CSL, exports, acquisition adapters and Word citation boundaries through existing owners. [Current contract](V3_BIBLIOGRAPHY.md). | Actual licensed Word/Zotero/editor interoperability and lawful real-corpus relevance are separately recorded; controlled COM tests do not qualify installed Office. |
@@ -78,9 +80,13 @@ remain visible and are not converted into success by a source-only correction.
 
 ## Canonical reconciliation
 
-The merge must retain a finite per-path decision rather than silently discarding
-canonical changes. The52 general source paths are recorded in
-[the source disposition](validation/CANONICAL_GENERAL_SOURCE_DISPOSITION_20261127.json).
+The canonical reconciliation retains a finite per-path decision. The
+[final source and missing-path index](validation/CANONICAL_FINAL_RECONCILIATION_20261127.json)
+binds all 139 canonical source differences to 52
+[general source dispositions](validation/CANONICAL_GENERAL_SOURCE_DISPOSITION_20261127.json)
+and 87 [domain dispositions](validation/CANONICAL_DOMAIN_SOURCE_PATH_DISPOSITION_20261127.json).
+It records current owner blobs and the later CHM, Office, owner-voice and Studio
+repairs separately from the historical reviewed baselines.
 The corresponding canonical missing-test and shared-contract records retain
 exact old blobs, actual replacement tests and differences in Python/CLI/state
 interfaces. Canonical documentation has an explicit

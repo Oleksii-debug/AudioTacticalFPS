@@ -1,6 +1,6 @@
 {
   "schema": "carr.office-portable-boundary-gate.v1",
-  "status": "NOT_RUN",
+  "status": "PASS",
   "portable_office": {
     "tests.conversion.test_office_selection": {
       "test_selected_inventory_checks_fixed_installed_filter_without_executing": 1,
@@ -33,5 +33,19 @@
     "test_selected_office_cancellation_settles_family_before_private_profile_cleanup": 1,
     "test_selected_office_text_budget_keeps_destination_empty": 1
   },
-  "method": "Reuse the existing exact Counter run_population twice under portable-office before the unchanged native source/installed populations. Bind both portable files in the pre/post fixture SHA inventory. Source uses checkout packages; installed uses -I, pythonpath disabled and the actual installed prefix. No runtime inventory exception or source/native count conflation."
+  "method": "Reuse the existing exact Counter run_population twice under portable-office before the unchanged native source/installed populations. Bind both portable files in the pre/post fixture SHA inventory. Source uses checkout packages; installed uses -I, pythonpath disabled and the actual installed prefix. No runtime inventory exception or source/native count conflation.",
+  "authoring_status": "NOT_RUN",
+  "actual_ordinary_qualification": {
+    "source_commit": "f03f8791f100de41d5e24e060b15f36d879184b2",
+    "source_tree": "84ef7b439a32680dcc14aacc4c140921cf8b6036",
+    "run_id": 46066912589,
+    "job_id": 140734323246,
+    "portable_source": 40,
+    "portable_installed": 40,
+    "native_source": 7,
+    "native_installed": 7,
+    "independent_reader_run": 46067545746,
+    "evidence": "office-ordinary-admission-independent-read-20261127.json",
+    "limits": "Exact declared synthetic fixture population on the pinned LibreOffice26.2.7 Windows runtime; historical failures and diagnostic scope remain recorded."
+  }
 }

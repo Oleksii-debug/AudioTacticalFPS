@@ -12,17 +12,20 @@ Start with the [current technical specification and architecture](docs/UNIVERSAL
 launch filenames are retained for compatibility. Carr is an optional collection.
 The canonical product branch is carr-library; preserve main and unrelated projects.
 
-The library workflows below describe the canonical implementation at the time
-of this review. Audio/agent and other additions in open integrated candidates
-require their own exact-head installed-build acceptance before being called released.
-The owner-supplied transcription implementation is [under reviewed integration](docs/TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The [current readiness record](docs/V3_RELEASE_READINESS.md) tracks implemented
+workflows, exact automated evidence and remaining engine, manual and distribution
+qualification. The [Ukrainian guide](docs/START_UK.txt) describes the actual menus
+and keyboard commands. The owner-supplied transcription implementation is
+[under reviewed integration](docs/TRANSCRIPTION_INTEGRATION_REVIEW.md).
 
 ## Run the desktop
 
-The standalone Windows x64 candidate includes Python, dependencies and the
-verified local multilingual MiniLM model. Extract its complete folder, run
-`Install.cmd`, then `ResearchLibrary.cmd`. No Python installation or internet
-connection is needed for that bundle. `CheckInstallation.cmd` exercises a
+When a reviewed standard Windows delivery is supplied, use its
+`Resonance-Setup-<source>.exe` and follow [the Ukrainian installation guide](docs/START_UK.txt).
+For an archive delivery, extract the complete folder, run `Install.cmd`, then
+`ResearchLibrary.cmd`. That standalone x64 bundle includes Python, dependencies
+and the verified local multilingual MiniLM model; it needs no separate Python
+installation or internet connection. `CheckInstallation.cmd` exercises a
 temporary synthetic library without touching personal research.
 
 From a Python 3.11+ development environment:
