@@ -1,4 +1,5 @@
 """Actual FFmpeg renders before/after a spoken-line edit; fixture tones are not speech."""
+from dataclasses import replace
 from hashlib import sha256
 import math
 from pathlib import Path
@@ -111,7 +112,10 @@ def test_delivery_controls_reach_voice_and_reuse_other_speech(tmp_path):
     assert first['result']['lines'][1]['start'] == .75
     changed = parse_script(initial.replace('rate=2', 'rate=4').replace('pause=0.55', 'pause=0.3'),
                            voice_ids=('synthetic-tone',), project_id=project.id)
-    second = service.run(service.submit(changed, output, stems=False))
+    updated = replace(changed, revision=project.revision + 1)
+    service.projects.save(updated, expected_revision=project.revision)
+    reopened = service.projects.load(project.id)
+    second = service.run(service.submit(reopened, output, stems=False))
     assert second['status'] == 'complete'
     assert tones.received == ['First.', 'Second.', 'First.']
     assert tones.settings[-1].rate == 4
