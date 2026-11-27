@@ -474,7 +474,6 @@ class ProductionService:
     def run(self, job_id, *, cancelled=lambda: False, progress=None, source_guard=None):
         self._check_open()
         from ..audio import Track, MusicSpec, AudioError, AudioCancelled
-        from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
         with state_lock(job_root, 'render'), ExitStack() as reservations:
             state = self.get(job_id)
@@ -727,19 +726,20 @@ class ProductionService:
                             fingerprint = getattr(self.voices, 'fingerprint', None)
                             if callable(fingerprint):
                                 voice_identity['runtime_fingerprint'] = json_safe(fingerprint(role.voice_id))
-                            settings = SpeechSettings(rate=role.rate, volume=role.volume)
+                            settings = line.speech_settings(rate=role.rate, volume=role.volume)
                             speech, info = node('speech', [line.synthesis_text, voice_identity, asdict(settings)],
                                 lambda target, line=line, role=role, settings=settings:
                                 self.voices.synthesize(line.synthesis_text, role.voice_id, target,
                                     settings=settings, cancelled=stopping))
                             duration = round((info.duration + line.pause_after) * project.sample_rate) / project.sample_rate
+                            gain_db = role.gain_db if line.gain_db is None else line.gain_db
                             placement_identity = [digest_file(speech), duration,
-                                                  role.pan, role.gain_db, project.sample_rate]
+                                                  role.pan, gain_db, project.sample_rate]
                             if role.effects:
                                 placement_identity.append([effect.to_dict() for effect in role.effects])
                             clip, clip_info = node('voice placement', placement_identity,
-                                lambda target, speech=speech, role=role, duration=duration:
-                                runtime.mix((Track(speech, gain_db=role.gain_db, pan=role.pan,
+                                lambda target, speech=speech, role=role, duration=duration, gain_db=gain_db:
+                                runtime.mix((Track(speech, gain_db=gain_db, pan=role.pan,
                                                    effects=role.effects),), target,
                                             duration=duration, sample_rate=project.sample_rate, cancelled=stopping))
                             scene_lines.append({'scene': scene.id, 'line': line.id, 'role': role.id,

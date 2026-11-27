@@ -9,6 +9,7 @@ from uuid import uuid4
 from ..durable_state import atomic_json, encode, local_path, read_json, state_lock
 from ..audio.models import Effect
 from ..audio.effect_presets import checked_chain, read_effect
+from ..speech.runtime import SpeechSettings
 
 
 def _text(value, label, maximum=1_000_000, empty=False):
@@ -102,6 +103,10 @@ class Line:
     pause_after: float = .3
     source_ref: str = ''
     spoken_text: str = ''
+    rate: int | None = None
+    volume: int | None = None
+    pitch: int | None = None
+    gain_db: float | None = None
 
     def __post_init__(self):
         _id(self.id)
@@ -112,7 +117,17 @@ class Line:
             raise ValueError('A pronunciation override requires a spoken line and nonempty text.')
         _text(self.source_ref, 'source reference', 2048, True)
         _number(self.pause_after, 'Pause', 0, 86400)
+        if any(value is not None for value in (self.rate, self.volume, self.pitch)):
+            self.speech_settings()
+        if self.gain_db is not None:
+            _number(self.gain_db, 'Line gain', -96, 24)
 
+    def speech_settings(self, *, rate=0, volume=100):
+        return SpeechSettings(
+            rate=rate if self.rate is None else self.rate,
+            volume=volume if self.volume is None else self.volume,
+            pitch=self.pitch,
+        )
 
     @property
     def synthesis_text(self):
@@ -279,6 +294,9 @@ class Project:
             for line in scene['lines']:
                 if not line['spoken_text']:
                     line.pop('spoken_text')
+                for name in ('rate', 'volume', 'pitch', 'gain_db'):
+                    if line[name] is None:
+                        line.pop(name)
         return value
 
     @classmethod
@@ -302,12 +320,34 @@ class Project:
             raise ValueError('Invalid or unknown project field.') from exc
 
 
+def _line_delivery(body):
+    parameters = {
+        'rate': ('rate', int),
+        'volume': ('volume', int),
+        'pitch': ('pitch', int),
+        'gain': ('gain_db', float),
+        'pause': ('pause_after', float),
+    }
+    changes = {}
+    for item in body.split(';'):
+        key, separator, value = item.partition('=')
+        key = key.strip().casefold()
+        if not separator or key not in parameters:
+            raise ValueError('Delivery options are rate, volume, pitch, gain and pause. Use key=value.')
+        field_name, convert = parameters[key]
+        if field_name in changes:
+            raise ValueError(f'Duplicate delivery option: {key}.')
+        changes[field_name] = convert(value)
+    return changes
+
+
 def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful', project_id=None):
     """Parse a transparent script grammar; unmarked source prose is spoken verbatim.
 
     [Scene: title], [Music: suspense; tempo=80; gain=-24], [Pause: 2],
     [Duration: 3600] and Speaker [left|center|right]: text are directions.
     [Pronunciation: text] changes only the synthesized text of the preceding line.
+    [Delivery: rate=2; volume=85; pitch=55; gain=-4; pause=0.4] sets line controls.
     [Music prompt: text] supplies a prompt to the selected local neural music engine.
     No document instruction can become a process, path, URL, or filter graph.
     """
@@ -356,6 +396,10 @@ def parse_script(text, *, title='Audio production', voice_ids=(), mode='faithful
                 if lines[-1].spoken_text:
                     raise ValueError('A line can have only one pronunciation direction.')
                 lines[-1] = replace(lines[-1], spoken_text=_text(body, 'pronunciation text', 100_000))
+            elif command in ('delivery', 'подача'):
+                if not lines or not lines[-1].text.strip():
+                    raise ValueError('Place the delivery direction after a spoken line.')
+                lines[-1] = replace(lines[-1], **_line_delivery(body))
             elif command in ('duration', 'тривалість'):
                 minimum = _number(float(body), 'Scene duration', 0, 31_536_000)
             elif command in ('music', 'музика'):

@@ -18,12 +18,14 @@ from carr_library.ui.pronunciation_dialog import ReadingSnapshot, apply_pronunci
 class ToneVoices:
     def __init__(self):
         self.received = []
+        self.settings = []
     def voices(self):
         return (SimpleNamespace(id='synthetic-tone', name='Synthetic protocol tone', language='en',
                                 engine='test fixture'),)
     def synthesize(self, text, voice_id, destination, *, settings, cancelled):
         assert voice_id == 'synthetic-tone' and not cancelled()
         self.received.append(text)
+        self.settings.append(settings)
         with wave.open(str(destination), 'wb') as audio:
             audio.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
             audio.writeframes(b''.join(struct.pack('<h', int(3000 * math.sin(2 * math.pi * 440 * index / 24000)))
@@ -92,3 +94,25 @@ def test_script_pronunciation_keeps_subtitles_and_reuses_unchanged_line(tmp_path
     assert service.get(first['id']) == first
     reverted = editor.undo_line(changed)
     assert reverted.after.scenes[0].lines[0] == scene.lines[0]
+
+
+def test_delivery_controls_reach_voice_and_reuse_other_speech(tmp_path):
+    assert shutil.which('ffmpeg') and shutil.which('ffprobe')
+    tones = ToneVoices()
+    service = ProductionService(tmp_path / 'studio', voices=tones)
+    output = tmp_path / 'rendered'
+    output.mkdir()
+    initial = 'Narrator: First.\n[Delivery: rate=2; volume=78; pitch=40; gain=-9; pause=0.55]\nSecond.'
+    project = parse_script(initial, voice_ids=('synthetic-tone',))
+    first = service.run(service.submit(project, output, stems=False))
+    assert first['status'] == 'complete'
+    assert tones.received == ['First.', 'Second.']
+    assert (tones.settings[0].rate, tones.settings[0].volume, tones.settings[0].pitch) == (2, 78, 40)
+    assert first['result']['lines'][1]['start'] == .75
+    changed = parse_script(initial.replace('rate=2', 'rate=4').replace('pause=0.55', 'pause=0.3'),
+                           voice_ids=('synthetic-tone',), project_id=project.id)
+    second = service.run(service.submit(changed, output, stems=False))
+    assert second['status'] == 'complete'
+    assert tones.received == ['First.', 'Second.', 'First.']
+    assert tones.settings[-1].rate == 4
+    assert second['result']['lines'][1]['start'] == .5

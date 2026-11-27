@@ -25,6 +25,9 @@ Optional directions, each on its own line:
 [Duration: 3600]
 [Pronunciation: spoken text for the preceding line]
 [Вимова: варіант попередньої репліки з наголосами]
+[Delivery: rate=2; volume=85; pitch=55; gain=-4; pause=0.4]
+[Подача: rate=2; volume=85; gain=-4; pause=0.4]
+Apply any of these settings to the preceding line. Native speech controls require voice support.
 
 Music moods: calm, suspense, hopeful, sad, energetic.
 Default music is locally composed procedural instrumental, with no remote request.

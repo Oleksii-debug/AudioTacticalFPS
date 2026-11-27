@@ -15,6 +15,35 @@ def controller(tmp_path):
     return StudioController(SimpleNamespace(root=tmp_path))
 
 
+def test_per_line_delivery_round_trips_after_reopening(tmp_path):
+    ui = controller(tmp_path)
+    original = 'Narrator: Репліка.\n[Подача: rate=-2; volume=75; pitch=41; gain=-8; pause=0.6]\nДругий рядок.'
+    project = ui.save(original, 'Delivery', ('voice-a',))
+    project = ui.service.projects.load(project.id)
+    line, plain_line = project.scenes[0].lines
+    assert project.original_script == original
+    assert (line.text, line.gain_db, line.pause_after) == ('Репліка.', -8, .6)
+    settings = line.speech_settings(rate=3, volume=60)
+    assert (settings.rate, settings.volume, settings.pitch) == (-2, 75, 41)
+    fallback = plain_line.speech_settings(rate=3, volume=60)
+    assert (fallback.rate, fallback.volume, fallback.pitch) == (3, 60, None)
+    assert set(project.to_dict()['scenes'][0]['lines'][1]) == {
+        'id', 'role', 'text', 'source_ref', 'pause_after',
+    }
+
+
+@pytest.mark.parametrize('direction', [
+    'rate=11', 'rate=1.5', 'volume=-1', 'pitch=100', 'gain=nan',
+    'pause=-0.1', 'rate=1; rate=2', 'path=audio.wav',
+])
+def test_invalid_line_delivery_leaves_existing_project_unchanged(tmp_path, direction):
+    ui = controller(tmp_path)
+    project = ui.save('Narrator: Original.', 'Delivery', ('voice-a',))
+    with pytest.raises(ValueError):
+        ui.save(f'Narrator: New voice.\n[Delivery: {direction}]', 'Delivery', ('voice-a',))
+    assert ui.service.projects.load(project.id) == project
+
+
 def test_plain_prose_colons_are_not_silently_removed_in_faithful_mode():
     original = 'Date: 2026-11-26\nRatio: 2:1\nhttps://example.invalid/reference\nA plain sentence.'
     project = parse_script(original, mode='faithful')
