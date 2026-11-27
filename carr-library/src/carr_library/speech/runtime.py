@@ -16,6 +16,7 @@ import struct
 import sys
 import sysconfig
 from tempfile import TemporaryDirectory
+import threading
 import wave
 
 from ._io import (check_cancelled, digest, local_file, new_output, run_process,
@@ -122,7 +123,12 @@ class VoiceRegistry:
         self._voices = {}
         self._owners = {}
         self.notices = []
-        self.reload()
+        self._close_lock = threading.Lock()
+        try:
+            self.reload()
+        except BaseException:
+            self.close()
+            raise
 
     @classmethod
     def discover(cls, *, include_flite=True, ffmpeg=None, include_powershell=False):
@@ -170,6 +176,25 @@ class VoiceRegistry:
 
     def voices(self):
         return tuple(self._voices.values())
+
+    def close(self):
+        """Release owned providers once, including failed discovery workers.
+
+        A progress selection owns the registry only when explicitly activated;
+        its shared lifetime guard defers this call until all speech has ended.
+        """
+        with self._close_lock:
+            providers, self._providers = self._providers, []
+            self._voices, self._owners = {}, {}
+        errors = []
+        for provider in providers:
+            close = getattr(provider, 'close', None)
+            if callable(close):
+                try:
+                    close()
+                except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+                    errors.append(f'{provider.name}: {exc}')
+        self.notices.extend(errors)
 
     def get(self, voice_id):
         try:

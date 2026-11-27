@@ -270,3 +270,208 @@ def test_actual_registry_notification_runs_on_existing_feedback_worker():
     assert sound.last_error is None and sound.quiescent
     assert len(provider.calls) == len(player.played) == 1
     sound.close()
+
+
+class ClosingPCMProvider(PCMProvider):
+    """Real private PCM with observable worker lifetime; never an installed voice."""
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.closed = threading.Event()
+        self.close_count = self.discoveries = 0
+        self.rendering = self.closed_during_render = False
+
+    def voices(self):
+        self.discoveries += 1
+        return super().voices()
+
+    def render(self, *args):
+        self.rendering = True
+        try:
+            return super().render(*args)
+        finally:
+            self.rendering = False
+
+    def close(self):
+        self.closed_during_render |= self.rendering
+        self.close_count += 1
+        self.closed.set()
+
+
+def test_borrowed_progress_registry_survives_all_selection_closes():
+    engine = ClosingPCMProvider()
+    registry = VoiceRegistry((engine,))
+    first = LocalProgressSpeech(registry, engine.voice.id)
+    second = first.copy_selection()
+    try:
+        first.close()
+        second.close()
+        first.close()
+        assert registry.get(engine.voice.id) == engine.voice
+        assert engine.close_count == 0
+        with pytest.raises(RuntimeError, match='closed'):
+            second.copy_selection()
+    finally:
+        registry.close()
+        registry.close()
+    assert engine.close_count == 1
+
+
+def test_owned_progress_registry_closes_once_after_last_copy_and_real_speech(tmp_path):
+    engine, player = ClosingPCMProvider(), PrivatePlayer()
+    engine.entered, engine.release = threading.Event(), threading.Event()
+    registry = VoiceRegistry((engine,))
+    first = activate_progress_voice(tmp_path, engine.voice.id, _registry_factory=lambda root: registry)
+    first._player_factory = lambda: player
+    second = first.copy_selection()
+    results, errors = [], []
+    def speak():
+        try:
+            results.append(second.speak_progress('The surviving view.', volume=.25, cancelled=lambda: False))
+        except BaseException as error:
+            errors.append(error)
+    worker = threading.Thread(target=speak)
+    try:
+        worker.start()
+        assert engine.entered.wait(2)
+        first.close()
+        first.close()
+        assert not second._closed.is_set() and engine.close_count == 0
+        engine.release.set()
+        worker.join(3)
+        assert not worker.is_alive() and results == [True] and errors == []
+        assert len(player.played) == 1 and engine.discoveries == 1
+        assert engine.close_count == 0
+        second.close()
+        second.close()
+        assert engine.closed.wait(2)
+        assert engine.close_count == 1 and not engine.closed_during_render
+        assert registry.voices() == ()
+    finally:
+        engine.release.set()
+        worker.join(3)
+        first.close()
+        second.close()
+        registry.close()
+
+
+def test_last_owned_selection_close_defers_registry_cleanup_until_active_synthesis_ends(tmp_path):
+    engine, player = ClosingPCMProvider(), PrivatePlayer()
+    engine.entered, engine.release = threading.Event(), threading.Event()
+    registry = VoiceRegistry((engine,))
+    speech = activate_progress_voice(tmp_path, engine.voice.id, _registry_factory=lambda root: registry)
+    speech._player_factory = lambda: player
+    results, errors = [], []
+    def speak():
+        try:
+            results.append(speech.speak_progress('Cancelled owned selection.', volume=.2, cancelled=lambda: False))
+        except BaseException as error:
+            errors.append(error)
+    worker = threading.Thread(target=speak)
+    try:
+        worker.start()
+        assert engine.entered.wait(2)
+        speech.close()
+        assert speech._closed.is_set() and engine.close_count == 0
+        engine.release.set()
+        worker.join(3)
+        assert not worker.is_alive() and results == [False] and errors == []
+        assert engine.closed.wait(2)
+        assert engine.close_count == 1 and not engine.closed_during_render
+        assert not player.played and not engine.calls[0][2].exists()
+    finally:
+        engine.release.set()
+        worker.join(3)
+        speech.close()
+        registry.close()
+
+
+def test_rejected_owned_selection_closes_its_fresh_registry(tmp_path):
+    engine = ClosingPCMProvider()
+    registry = VoiceRegistry((engine,))
+    with pytest.raises(ValueError, match='available'):
+        activate_progress_voice(tmp_path, 'missing', _registry_factory=lambda root: registry)
+    assert engine.closed.wait(2)
+    assert engine.close_count == 1 and engine.calls == []
+
+
+def test_failed_copy_releases_only_its_temporary_registry_reference(tmp_path):
+    engine = ClosingPCMProvider()
+    registry = VoiceRegistry((engine,))
+    first = activate_progress_voice(tmp_path, engine.voice.id, _registry_factory=lambda root: registry)
+    registry._voices.clear()
+    try:
+        with pytest.raises(ValueError, match='available'):
+            first.copy_selection()
+        assert engine.close_count == 0
+    finally:
+        first.close()
+    assert engine.closed.wait(2)
+    assert engine.close_count == 1
+
+
+def test_registry_close_releases_failed_discovery_and_other_providers_once():
+    good, bad = ClosingPCMProvider(), ClosingPCMProvider()
+    bad.name = 'Failed discovery fixture'
+    def failed_voices():
+        raise RuntimeError('Synthetic unavailable worker')
+    bad.voices = failed_voices
+    registry = VoiceRegistry((bad, good))
+    assert registry.get(good.voice.id) == good.voice
+    registry.close()
+    registry.close()
+    assert good.close_count == bad.close_count == 1
+
+
+def test_fatal_configured_provider_failure_still_closes_owned_constructor_resources():
+    good, bad = ClosingPCMProvider(), ClosingPCMProvider()
+    bad.failure_is_fatal = True
+    def failed_voices():
+        raise ValueError('Synthetic restored registration is not revalidated')
+    bad.voices = failed_voices
+    with pytest.raises(ValueError, match='not revalidated'):
+        VoiceRegistry((good, bad))
+    assert good.close_count == bad.close_count == 1
+
+
+def test_real_configured_factory_revocation_closes_previously_discovered_registry(tmp_path, monkeypatch):
+    from carr_library import runtime_settings
+    from carr_library.durable_state import atomic_json
+    import carr_library.speech.runtime as speech_runtime
+
+    helper = tmp_path / 'reviewed-helper.txt'
+    helper.write_bytes(b'Reviewed synthetic declaration; this test must never execute it.')
+    settings = load_settings(tmp_path / 'state')
+    settings['voice_helpers'] = [{'executable': str(helper), 'enabled': True,
+        'sha256': sha256(helper.read_bytes()).hexdigest(), 'engine_name': 'Revoked fixture'}]
+    path = runtime_settings.settings_path(tmp_path / 'state')
+    atomic_json(path, settings)
+    engine = ClosingPCMProvider()
+    registry = VoiceRegistry((engine,))
+    def discovered(**kwargs):
+        # The real helper constructor has already validated its approved hash.
+        # Revoke the bytes before add_provider triggers its second validation.
+        helper.write_bytes(b'Changed after initial configured-provider admission.')
+        return registry
+    monkeypatch.setattr(VoiceRegistry, 'discover', discovered)
+    monkeypatch.setattr(speech_runtime, 'run_process',
+        lambda *args, **kwargs: pytest.fail('A revoked helper reached executable dispatch'))
+    with pytest.raises(ValueError, match='hash verification'):
+        runtime_settings.voice_registry(tmp_path / 'state')
+    assert engine.close_count == 1 and engine.closed.is_set()
+    assert registry.voices() == () and registry._providers == []
+
+
+def test_borrowed_add_provider_failure_does_not_close_the_callers_registry():
+    engine, bad = ClosingPCMProvider(), ClosingPCMProvider()
+    registry = VoiceRegistry((engine,))
+    bad.failure_is_fatal = True
+    def revoked():
+        raise ValueError('Synthetic revoked registration')
+    bad.voices = revoked
+    try:
+        with pytest.raises(ValueError, match='revoked'):
+            registry.add_provider(bad)
+        assert engine.close_count == 0 and registry.get(engine.voice.id) == engine.voice
+    finally:
+        registry.close()
+    assert engine.close_count == bad.close_count == 1

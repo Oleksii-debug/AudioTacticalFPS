@@ -206,9 +206,16 @@ def _registry(state_root, value, *, discover=True):
         provider = StudioVoiceProvider(library_root)
         return VoiceRegistry([provider, *providers])
     registry = VoiceRegistry.discover(ffmpeg=value['ffmpeg']) if discover else VoiceRegistry()
-    for provider in providers:
-        registry.add_provider(provider)
-    return registry
+    try:
+        for provider in providers:
+            registry.add_provider(provider)
+        return registry
+    except BaseException:
+        # This factory owns the newly discovered registry until it returns.
+        # Fatal configured-provider revalidation must not leak its earlier
+        # providers. A borrowed caller's add_provider semantics stay unchanged.
+        registry.close()
+        raise
 
 
 def save_settings(state_root, value, *, cancelled=None, expected_settings=None):

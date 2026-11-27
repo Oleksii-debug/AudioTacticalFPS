@@ -1,0 +1,118 @@
+name: Resonance canonical compatibility checks
+
+on:
+  push:
+    branches: [carr/ci-endpoint-evaluation-20261127]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-reconciliation-checks.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-reconciliation-20261127
+  cancel-in-progress: false
+
+jobs:
+  compatibility:
+    name: Windows x64 / exact installed canonical compatibility
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the exact source into a fresh environment
+        id: installed
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-canonical-compatibility-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-reconciliation-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-reconciliation-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require source evidence recovery and owned voice lifecycle
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/storage/test_evidence_drafts.py tests/ui/test_save_all.py tests/ui/test_evidence_draft_recovery.py tests/speech/test_progress_speech.py 2>&1 | Tee-Object 'ci-reconciliation-results/source-contracts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require the same contracts from the installed application
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        timeout-minutes: 5
+        run: |
+          $installedGate = @'
+          import importlib, json, pathlib, sysconfig, xml.etree.ElementTree as ET
+          import pytest
+          checkout = pathlib.Path.cwd().resolve()
+          purelib = pathlib.Path(sysconfig.get_path('purelib')).resolve()
+          modules = ('carr_library.evidence_drafts', 'carr_library.ui.save_all',
+                     'carr_library.runtime_settings', 'carr_library.speech.runtime',
+                     'carr_library.speech.progress_speech')
+          for name in modules:
+              source = pathlib.Path(importlib.import_module(name).__file__).resolve()
+              expected = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert source.is_relative_to(purelib) and not source.is_relative_to(checkout), name
+              assert source.read_bytes() == expected.read_bytes(), name
+          class NoExpectedFailures:
+              def __init__(self): self.seen = []
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen.append(report.nodeid)
+          policy = NoExpectedFailures()
+          report = checkout / 'ci-reconciliation-results' / 'installed-contracts.xml'
+          suites = ['tests/storage/test_evidence_drafts.py', 'tests/ui/test_save_all.py',
+                    'tests/ui/test_evidence_draft_recovery.py', 'tests/speech/test_progress_speech.py']
+          status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
+              '-o', 'xfail_strict=true', '--import-mode=importlib',
+              '--junitxml=' + str(report), *suites], plugins=[policy])
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
+          skipped = sum(c.find('skipped') is not None for c in cases)
+          ok = status == 0 and cases and failed == skipped == 0 and not policy.seen
+          print(json.dumps(dict(status='PASS' if ok else 'FAIL', passed=len(cases)-failed-skipped,
+              failed=failed, skipped=skipped, expected_failures=policy.seen,
+              native_sapi='required by existing speech case', human_nvda='NOT_RUN')))
+          raise SystemExit(0 if ok else 1)
+          '@
+          $installedGate | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-reconciliation-results/installed-contracts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain source identity and contract receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-canonical-compatibility-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-reconciliation-results/
+          if-no-files-found: warn
+          retention-days: 7
