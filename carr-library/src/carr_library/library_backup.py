@@ -21,7 +21,7 @@ supported V3 or V4 database schema. V3 snapshots are restored unchanged; opening
 restored library performs the normal checked upgrade to V4.
 Restoration always creates a new data directory and never merges or overwrites.
 """
-from contextlib import closing
+from contextlib import closing, nullcontext
 from hashlib import sha256
 import json
 import os
@@ -72,6 +72,11 @@ from .assistant.backup import (
     add_restore_reviews,
 )
 from .assistant.backup_state import validate_state_bytes as validate_assistant_state
+from .assistant.translation_state import (
+    is_state_path as is_translation_sidecar, state_limit as translation_sidecar_limit,
+    snapshot_guard as translation_snapshot_guard, snapshot_files as snapshot_translation_files,
+    validate_state_document as validate_translation_state,
+)
 from .pending_backup import (
     MAX_FILES as MAX_PENDING_FILES, MAX_TOTAL as MAX_PENDING_BYTES,
     snapshot_pending, validate_pending, restore_pending,
@@ -140,6 +145,8 @@ def _sidecar_limit(name, *, version=4):
         return _V4_SIDECARS[name][0]
     if version >= 4 and is_assistant_sidecar(name):
         return assistant_sidecar_limit(name)
+    if version >= 4 and is_translation_sidecar(name):
+        return translation_sidecar_limit(name)
     if re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return MAX_PROJECT_BYTES
     raise RestoreError('unsupported backup sidecar')
@@ -167,29 +174,34 @@ def _optional_sidecar(path, maximum):
 
 
 def _snapshot_sidecars(root, *, live=False):
-    raw = ReadingState(root).snapshot()
-    sidecars = {} if raw is None else {READING_STATE: raw}
-    sidecars.update(snapshot_narration_files(root))
-    sidecars.update(snapshot_assistant_files(root, live=live))
-    for name, (maximum, validate) in (_SIMPLE_SIDECARS | _V4_SIMPLE_SIDECARS).items():
-        raw = _optional_sidecar(Path(root) / name, maximum)
-        if raw is not None:
-            validate(raw)
-            sidecars[name] = raw
-    if live:
-        # Profiles must be exported without vault references, and a live SQLite
-        # ledger must use its backup API rather than copying a possibly stale
-        # main file while newer committed operations reside in WAL pages.
-        sidecars.update(snapshot_provider_files(root))
-    else:
-        # A published backup already contains a sanitized closed snapshot.
-        # Verify its exact manifest bytes before trusting its contents; never
-        # sanitize or repair an archive while restoring it.
-        for name, (maximum, _) in _PROVIDER_SIDECARS.items():
+    # Keep translation receipts frozen through the shared ledger snapshot; an
+    # archive is checked read-only and must never acquire/create live lock files.
+    guard = translation_snapshot_guard(root) if live else nullcontext()
+    with guard:
+        raw = ReadingState(root).snapshot()
+        sidecars = {} if raw is None else {READING_STATE: raw}
+        sidecars.update(snapshot_narration_files(root))
+        sidecars.update(snapshot_assistant_files(root, live=live))
+        sidecars.update(snapshot_translation_files(root, live=live))
+        for name, (maximum, validate) in (_SIMPLE_SIDECARS | _V4_SIMPLE_SIDECARS).items():
             raw = _optional_sidecar(Path(root) / name, maximum)
             if raw is not None:
+                validate(raw)
                 sidecars[name] = raw
-    return sidecars
+        if live:
+            # Profiles must be exported without vault references, and a live SQLite
+            # ledger must use its backup API rather than copying a possibly stale
+            # main file while newer committed operations reside in WAL pages.
+            sidecars.update(snapshot_provider_files(root))
+        else:
+            # A published backup already contains a sanitized closed snapshot.
+            # Verify its exact manifest bytes before trusting its contents; never
+            # sanitize or repair an archive while restoring it.
+            for name, (maximum, _) in _PROVIDER_SIDECARS.items():
+                raw = _optional_sidecar(Path(root) / name, maximum)
+                if raw is not None:
+                    sidecars[name] = raw
+        return sidecars
 
 
 def _validate_reading_locations(db, locations):
@@ -228,6 +240,9 @@ def _validate_sidecars(db, sidecars):
                 locations = set()
             elif name in _V4_SIDECARS:
                 _V4_SIDECARS[name][1](raw)
+                locations = set()
+            elif is_translation_sidecar(name):
+                validate_translation_state(name.rsplit('/', 1)[-1], raw)
                 locations = set()
             elif is_assistant_sidecar(name):
                 for workspace in validate_assistant_state(name, raw):
@@ -516,7 +531,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         if total > MAX_SIDECAR_BYTES:
             raise RestoreError('backup sidecar byte limit')
     if manifest['version'] == 4 and not (names.intersection(_V4_SIDECARS)
-                                        or any(is_assistant_sidecar(name) for name in names)):
+                                        or any(is_assistant_sidecar(name) or is_translation_sidecar(name) for name in names)):
         raise RestoreError('version 4 backup manifest has no version 4 state')
     # Pending state shares the existing aggregate resource contract on read as
     # well as write. A newly signed outer manifest cannot increase that ceiling.

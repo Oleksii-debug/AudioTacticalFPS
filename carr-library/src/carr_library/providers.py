@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 from contextlib import closing, contextmanager
 from functools import lru_cache
 from hashlib import sha256
+from html import unescape
 import ctypes
 from ctypes import wintypes
 import http.client
@@ -40,6 +41,9 @@ MAX_LEDGER_BYTES = 64 * 1024 * 1024
 MAX_LEDGER_ROWS = 100000
 _ID = re.compile(r'[a-zA-Z0-9_-]{1,100}')
 CAPABILITIES = {'llm', 'tts', 'music', 'sound_effects'}
+GOOGLE_TRANSLATION_ENDPOINT = 'https://translation.googleapis.com/language/translate/v2'
+MAX_TRANSLATION_RESPONSE = 1024 * 1024
+_LANGUAGE = re.compile(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3}')
 _LEDGER_SCHEMA = (
     'CREATE TABLE IF NOT EXISTS approval (id TEXT PRIMARY KEY, digest TEXT NOT NULL);'
     'CREATE TABLE IF NOT EXISTS operation (id TEXT PRIMARY KEY, job TEXT NOT NULL, request_hash TEXT NOT NULL,'
@@ -148,15 +152,19 @@ class ProviderProfile:
         for text in (self.name, self.model):
             if not isinstance(text, str) or not 1 <= len(text) <= 200 or any(ord(c) < 32 for c in text):
                 raise ProviderError('Profile name and model must be plain text.')
-        if self.provider not in ('elevenlabs', 'openai-compatible'):
+        if self.provider not in ('elevenlabs', 'openai-compatible', 'google-translation-v2'):
             raise ProviderError('This provider adapter is not installed.')
         if (not isinstance(self.capabilities, tuple) or not self.capabilities
-                or set(self.capabilities) - CAPABILITIES or len(set(self.capabilities)) != len(self.capabilities)):
+                or set(self.capabilities) - (CAPABILITIES | {'translation'}) or len(set(self.capabilities)) != len(self.capabilities)):
             raise ProviderError('Select supported, distinct capabilities.')
         if self.provider == 'openai-compatible' and self.capabilities != ('llm',):
             raise ProviderError('The compatible adapter currently supports text reasoning only.')
-        if self.provider == 'elevenlabs' and 'llm' in self.capabilities:
-            raise ProviderError('The speech/music adapter does not support text reasoning.')
+        if self.provider == 'elevenlabs' and set(self.capabilities) - {'tts', 'music', 'sound_effects'}:
+            raise ProviderError('The speech/music adapter only supports speech, music and sound effects.')
+        if self.provider == 'google-translation-v2' and (
+                self.capabilities != ('translation',) or self.model != 'nmt'
+                or self.local or self.endpoint != GOOGLE_TRANSLATION_ENDPOINT):
+            raise ProviderError('Google Basic v2 requires the official Translation endpoint, model nmt and translation capability.')
         if type(self.local) is not bool:
             raise ProviderError('Invalid local-service setting.')
         if not isinstance(self.endpoint, str) or len(self.endpoint) > 2048:
@@ -393,6 +401,120 @@ class ProviderRequest:
 
 
 @dataclass(frozen=True)
+class GoogleTranslationRequest:
+    """A separate request type keeps every existing audio/LLM approval hash stable."""
+    text: str = ''
+    source: str = 'auto'
+    target: str = 'en'
+    operation: str = 'text'
+
+    def __post_init__(self):
+        if self.operation not in ('text', 'languages'):
+            raise ProviderError('Unsupported Google Basic v2 operation.')
+        if not isinstance(self.target, str) or not _LANGUAGE.fullmatch(self.target):
+            raise ProviderError('Choose a supported target language code.')
+        if self.source != 'auto' and (
+                not isinstance(self.source, str) or not _LANGUAGE.fullmatch(self.source)):
+            raise ProviderError('Choose a supported source language code or auto detection.')
+        if self.operation == 'languages':
+            if self.text != '' or self.source != 'auto' or self.target != 'en':
+                raise ProviderError('Language discovery sends only the fixed NMT language-list query.')
+        elif (not isinstance(self.text, str) or not self.text.strip()
+              or len(self.text) > 5000 or '\x00' in self.text or self.source == self.target):
+            raise ProviderError('Translate a nonempty plain-text chunk of at most 5000 characters to a different language.')
+        try:
+            self.text.encode('utf-8', errors='strict')
+        except UnicodeError:
+            raise ProviderError('Translation text contains invalid Unicode.') from None
+
+    @property
+    def capability(self):
+        return 'translation'
+
+    def fingerprint(self, profile):
+        return _digest({'profile': profile.fingerprint, 'request': asdict(self)})
+
+
+def decode_translation_response(request, raw, *, secret=None):
+    """Validate one bounded response before it can become a charged receipt.
+
+    JSON and HTML escapes are decoded before credential-reflection checks. No
+    provider error body, unknown command, credential or response URL is returned.
+    """
+    if not isinstance(request, GoogleTranslationRequest) or not isinstance(raw, bytes):
+        raise ProviderError('Invalid translation response.')
+    if not 0 < len(raw) <= MAX_TRANSLATION_RESPONSE:
+        raise ProviderError('Translation response exceeds its resource budget.')
+
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError
+            result[key] = value
+        return result
+
+    def plain(value, maximum):
+        if (not isinstance(value, str) or not value.strip()
+                or len(value) > maximum or '\x00' in value):
+            raise ValueError
+        value.encode('utf-8', errors='strict')
+        result, probe = unescape(value), value
+        if not result.strip() or '\x00' in result:
+            raise ValueError
+        result.encode('utf-8', errors='strict')
+        for _ in range(5):
+            if secret and secret in probe:
+                raise ProviderError('Provider returned credential material; no response was saved.')
+            decoded = unescape(probe)
+            if decoded == probe:
+                break
+            probe = decoded
+        else:
+            raise ProviderError('Unsupported nested response escapes; no response was saved.')
+        if secret and secret in result:
+            raise ProviderError('Provider returned credential material; no response was saved.')
+        return result
+
+    try:
+        decoded = json.loads(raw, object_pairs_hook=unique,
+                             parse_constant=lambda value: (_ for _ in ()).throw(ValueError()))
+        if type(decoded) is not dict or set(decoded) != {'data'} or type(decoded['data']) is not dict:
+            raise ValueError
+        data = decoded['data']
+        if request.operation == 'languages':
+            if set(data) != {'languages'} or type(data['languages']) is not list or not 1 <= len(data['languages']) <= 1000:
+                raise ValueError
+            rows, codes = [], set()
+            for row in data['languages']:
+                if type(row) is not dict or set(row) != {'language', 'name'}:
+                    raise ValueError
+                code, name = plain(row['language'], 35), plain(row['name'], 200)
+                if not _LANGUAGE.fullmatch(code) or code in codes or any(ord(c) < 32 for c in name):
+                    raise ValueError
+                codes.add(code)
+                rows.append({'language': code, 'name': name})
+            return {'languages': rows}
+        if set(data) != {'translations'} or type(data['translations']) is not list or len(data['translations']) != 1:
+            raise ValueError
+        row = data['translations'][0]
+        if (type(row) is not dict or not {'translatedText'} <= set(row)
+                or set(row) - {'translatedText', 'detectedSourceLanguage', 'model'}):
+            raise ValueError
+        result = plain(row['translatedText'], 200000)
+        detected = row.get('detectedSourceLanguage')
+        if detected is not None and not _LANGUAGE.fullmatch(plain(detected, 35)):
+            raise ValueError
+        if 'model' in row and plain(row['model'], 200) != 'nmt':
+            raise ValueError
+        return {'text': result, 'detected_source': detected}
+    except ProviderError:
+        raise
+    except (ValueError, TypeError, KeyError, IndexError, UnicodeError, RecursionError):
+        raise ProviderError('Unsupported Google Basic v2 response; no result was accepted.') from None
+
+
+@dataclass(frozen=True)
 class JobApproval:
     job_id: str
     profile_fingerprint: str
@@ -452,14 +574,29 @@ class BudgetLedger:
             if prior and prior[0] != fingerprint:
                 raise ProviderError('Job approval changed. Review a new job before continuing.')
             db.execute('INSERT OR IGNORE INTO approval VALUES(?,?)', (approval.job_id, fingerprint))
-            if db.execute('SELECT 1 FROM operation WHERE id=?', (identity,)).fetchone():
+            existing = db.execute(
+                'SELECT job,request_hash,estimate_micros,state FROM operation WHERE id=?', (identity,)).fetchone()
+            if existing and existing != (approval.job_id, request_hash, estimate, 'cancelled_before_send'):
                 raise ProviderError('Operation already recorded; reconcile its result before any retry.')
-            count, total = db.execute("SELECT count(*),coalesce(sum(estimate_micros),0) FROM operation WHERE job=? AND state!='reconciled_no_charge'",
-                                      (approval.job_id,)).fetchone()
+            count, total = db.execute(
+                "SELECT count(*),coalesce(sum(estimate_micros),0) FROM operation "
+                "WHERE job=? AND state NOT IN ('reconciled_no_charge','cancelled_before_send')",
+                (approval.job_id,)).fetchone()
             if count >= approval.max_calls or total + estimate > approval.budget_micros:
                 raise ProviderError('The approved call count or budget would be exceeded.')
-            db.execute('INSERT INTO operation VALUES(?,?,?,?,?,NULL)',
-                       (identity, approval.job_id, request_hash, estimate, 'reserved'))
+            if existing:
+                # An unsent operation may reuse only its exact original approval,
+                # request and reservation. Sent/unknown/completed rows never retry.
+                db.execute("UPDATE operation SET state='reserved' WHERE id=?", (identity,))
+            else:
+                db.execute('INSERT INTO operation VALUES(?,?,?,?,?,NULL)',
+                           (identity, approval.job_id, request_hash, estimate, 'reserved'))
+
+    def cancel_before_send(self, identity):
+        with self._db() as db:
+            cursor = db.execute("UPDATE operation SET state='cancelled_before_send' WHERE id=? AND state='reserved'", (identity,))
+            if cursor.rowcount != 1:
+                raise ProviderError('Only an unsent reserved operation can be cancelled without charge.')
 
     def finish(self, identity, *, output_sha256=None):
         with self._db() as db:
@@ -543,11 +680,11 @@ def _validate_ledger_database(db):
         if (not isinstance(identity, str) or not _ID.fullmatch(identity) or identity in operations
                 or not isinstance(job, str) or job not in jobs or not _is_digest(request_hash)
                 or type(estimate) is not int or not 0 <= estimate <= 10**12
-                or state not in ('reserved', 'uncertain', 'complete', 'reconciled_no_charge')
+                or state not in ('reserved', 'uncertain', 'complete', 'reconciled_no_charge', 'cancelled_before_send')
                 or (not _is_digest(output) if state == 'complete' else output is not None)):
             raise ProviderError('Invalid provider operation record.')
         operations.add(identity)
-        if state != 'reconciled_no_charge':
+        if state not in ('reconciled_no_charge', 'cancelled_before_send'):
             count, cost = totals.get(job, (0, 0))
             count, cost = count + 1, cost + estimate
             if count > 100000 or cost > 10**12:
@@ -649,11 +786,35 @@ def snapshot_provider_files(root):
 class DirectTransport:
     """DNS-checked and address-pinned HTTP. No proxy, redirect or automatic retry."""
     def post(self, profile, route, payload, headers, *, cancelled=lambda: False):
+        return self._send('POST', profile, route, payload, headers, cancelled=cancelled)
+
+    def get(self, profile, route, headers, *, cancelled=lambda: False):
+        return self._send('GET', profile, route, None, headers, cancelled=cancelled)
+
+    def _send(self, method, profile, route, payload, headers, *, cancelled):
         parts = urlsplit(profile.endpoint)
         port = parts.port or (443 if parts.scheme == 'https' else 80)
-        if not re.fullmatch(r'/[a-zA-Z0-9_/-]+', route):
+        google = profile.provider == 'google-translation-v2'
+        if google:
+            expected = '' if method == 'POST' else '/languages?target=en&model=nmt'
+            if route != expected or (method == 'GET' and payload is not None):
+                raise ProviderError('Invalid Google Basic v2 adapter route.')
+        elif method != 'POST' or not re.fullmatch(r'/[a-zA-Z0-9_/-]+', route):
             raise ProviderError('Invalid adapter route.')
+        maximum = MAX_TRANSLATION_RESPONSE if google else MAX_RESPONSE
         host = parts.hostname
+        deadline = monotonic() + 120
+
+        def active(connection=None):
+            if cancelled():
+                raise ProviderError('Provider operation cancelled; reconcile any possible charge before retrying.')
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                raise ProviderError('Provider request exceeded its total elapsed-time budget.')
+            if connection is not None and connection.sock is not None:
+                connection.sock.settimeout(min(30, remaining))
+            return min(30, remaining)
+
         try:
             addresses = sorted({item[4][0] for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)})
             if not addresses or any(not (ipaddress.ip_address(ip).is_loopback if profile.local
@@ -662,30 +823,41 @@ class DirectTransport:
             if cancelled():
                 raise ProviderError('Provider operation cancelled before transmission.')
             address = addresses[0]
-            connection = http.client.HTTPConnection(address, port, timeout=30)
+            connection = http.client.HTTPConnection(address, port, timeout=active())
             connection.connect()
+            active(connection)
             if parts.scheme == 'https':
-                connection.sock = ssl.create_default_context().wrap_socket(connection.sock, server_hostname=host)
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                context.load_default_certs()
+                context.set_alpn_protocols(['http/1.1'])
+                connection.sock = context.wrap_socket(connection.sock, server_hostname=host)
             host_header = f'[{host}]' if ':' in host else host
             if port != (443 if parts.scheme == 'https' else 80):
                 host_header += ':' + str(port)
-            connection.request('POST', parts.path.rstrip('/') + route, body=payload,
+            if cancelled():
+                raise ProviderError('Provider operation cancelled before transmission.')
+            active(connection)
+            connection.request(method, parts.path.rstrip('/') + route, body=payload,
                 headers={**headers, 'Host': host_header, 'Content-Type': 'application/json',
-                         'Accept': 'application/json' if route.endswith('/completions') else 'audio/mpeg',
+                         'Accept': 'application/json' if google or route.endswith('/completions') else 'audio/mpeg',
                          'Connection': 'close'})
+            active(connection)
             response = connection.getresponse()
             if response.status != 200:
                 raise ProviderError(f'Provider returned HTTP {response.status}; no automatic retry was made.')
             declared = response.getheader('Content-Length')
-            if declared and (not declared.isdecimal() or int(declared) > MAX_RESPONSE):
+            if declared and (not declared.isdecimal() or int(declared) > maximum):
                 raise ProviderError('Provider response exceeds its resource budget.')
             data = bytearray()
-            while block := response.read(65536):
-                if cancelled():
-                    raise ProviderError('Provider operation cancelled; reconcile any possible charge before retrying.')
+            while True:
+                active(connection)
+                block = response.read(min(65536, maximum + 1 - len(data)))
+                if not block:
+                    break
                 data.extend(block)
-                if len(data) > MAX_RESPONSE:
+                if len(data) > maximum:
                     raise ProviderError('Provider response exceeds its resource budget.')
+            active(connection)
             if not data:
                 raise ProviderError('Provider returned an empty result.')
             if declared and len(data) != int(declared):
@@ -697,7 +869,10 @@ class DirectTransport:
             raise ProviderError('Provider request failed; its charge status may be uncertain.') from None
         finally:
             if 'connection' in locals():
-                connection.close()
+                try:
+                    connection.close()
+                except Exception:
+                    pass
 
 
 class ProviderGateway:
@@ -707,12 +882,14 @@ class ProviderGateway:
 
     def perform(self, profile, request, *, approval, operation_id, estimated_micros,
                 cancelled=lambda: False):
-        if not isinstance(profile, ProviderProfile) or not isinstance(request, ProviderRequest) or not isinstance(approval, JobApproval):
+        if not isinstance(profile, ProviderProfile) or not isinstance(request, (ProviderRequest, GoogleTranslationRequest)) or not isinstance(approval, JobApproval):
             raise ProviderError('A typed profile, request and explicit job approval are required.')
         if approval.profile_fingerprint != profile.fingerprint or request.fingerprint(profile) not in approval.request_hashes:
             raise ProviderError('This provider, model or task data is outside the approved job.')
         if request.capability not in profile.capabilities:
             raise ProviderError('This profile does not provide the requested capability.')
+        if isinstance(request, GoogleTranslationRequest) != (profile.provider == 'google-translation-v2'):
+            raise ProviderError('Use the typed request for the selected provider adapter.')
         if profile.local:
             if not approval.allow_loopback:
                 raise ProviderError('Authorize this exact local service before sending it task data.')
@@ -720,7 +897,13 @@ class ProviderGateway:
             raise ProviderError('LOCAL ONLY blocks every remote provider request.')
         if cancelled():
             raise ProviderError('Provider operation cancelled before transmission.')
-        if profile.provider == 'openai-compatible':
+        if isinstance(request, GoogleTranslationRequest):
+            route = '/languages?target=en&model=nmt' if request.operation == 'languages' else ''
+            body = {'target': 'en', 'model': 'nmt'} if request.operation == 'languages' else {
+                'q': request.text, 'target': request.target, 'format': 'text', 'model': 'nmt'}
+            if request.operation == 'text' and request.source != 'auto':
+                body['source'] = request.source
+        elif profile.provider == 'openai-compatible':
             route = '/chat/completions'
             body = {'model': profile.model, 'messages': [{'role': 'user', 'content': request.text}], 'stream': False}
         elif request.capability == 'tts':
@@ -737,23 +920,35 @@ class ProviderGateway:
         if len(raw) > MAX_REQUEST:
             raise ProviderError('Request exceeds its resource budget.')
         headers = {}
-        if profile.credential_ref:
-            try:
-                secret = (self.vault or WindowsCredentialVault()).get(profile.credential_ref, profile.credential_binding)
-            except Exception:
-                raise ProviderError('Reconnect this profile: its securely stored credential could not be read.') from None
-            if not isinstance(secret, str) or not secret or any(ord(c) < 33 for c in secret):
-                raise ProviderError('Reconnect this profile: the stored credential is invalid.')
-            headers['xi-api-key' if profile.provider == 'elevenlabs' else 'Authorization'] = (
-                secret if profile.provider == 'elevenlabs' else 'Bearer ' + secret)
-        elif not profile.local:
-            raise ProviderError('Reconnect this profile before using an external provider.')
         self.ledger.reserve(operation_id, approval, request.fingerprint(profile), estimated_micros)
+        submitted, secret = False, None
         try:
-            output = self.transport.post(profile, route, raw, headers, cancelled=cancelled)
+            if profile.credential_ref:
+                try:
+                    secret = (self.vault or WindowsCredentialVault()).get(profile.credential_ref, profile.credential_binding)
+                except Exception:
+                    raise ProviderError('Reconnect this profile: its securely stored credential could not be read.') from None
+                if not isinstance(secret, str) or not secret or any(not 33 <= ord(c) <= 126 for c in secret):
+                    raise ProviderError('Reconnect this profile: the stored credential is invalid.')
+                if profile.provider == 'google-translation-v2':
+                    headers['X-goog-api-key'] = secret
+                else:
+                    headers['xi-api-key' if profile.provider == 'elevenlabs' else 'Authorization'] = (
+                        secret if profile.provider == 'elevenlabs' else 'Bearer ' + secret)
+            elif not profile.local:
+                raise ProviderError('Reconnect this profile before using an external provider.')
+            if cancelled():
+                raise ProviderError('Provider operation cancelled before transmission.')
+            submitted = True
+            if isinstance(request, GoogleTranslationRequest) and request.operation == 'languages':
+                output = self.transport.get(profile, route, headers, cancelled=cancelled)
+            else:
+                output = self.transport.post(profile, route, raw, headers, cancelled=cancelled)
             if not isinstance(output, bytes) or not 0 < len(output) <= MAX_RESPONSE:
                 raise ProviderError('Invalid or oversized provider result.')
-            if request.capability == 'llm':
+            if isinstance(request, GoogleTranslationRequest):
+                decode_translation_response(request, output, secret=secret)
+            elif request.capability == 'llm':
                 try:
                     decoded = json.loads(output)
                     message = decoded['choices'][0]['message']
@@ -764,11 +959,17 @@ class ProviderGateway:
             self.ledger.finish(operation_id, output_sha256=sha256(output).hexdigest())
             return output
         except BaseException as exc:
-            self.ledger.finish(operation_id)
+            if submitted:
+                self.ledger.finish(operation_id)
+            else:
+                self.ledger.cancel_before_send(operation_id)
             if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                 raise
             # Transport implementations may include raw request/key material in
             # exceptions. No third-party exception is displayed or chained.
+            if not submitted:
+                raise ProviderError('Provider operation stopped before transmission. No request was sent.') from None
             raise ProviderError('Provider operation did not complete. Review its uncertain charge status before retrying.') from None
         finally:
             headers.clear()
+            secret = None
