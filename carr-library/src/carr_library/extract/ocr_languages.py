@@ -150,10 +150,13 @@ def parse_language_report(report, *, expected_directory=None):
     if expected_directory is not None and (
             os.path.normcase(os.path.abspath(header[1])) != os.path.normcase(os.path.abspath(expected_directory))):
         raise OcrLanguageError('The OCR runtime reported a different model directory.')
-    # Tesseract 5.5 emits std::filesystem::path::string() identifiers, so
-    # Windows uses a backslash for script packs. Normalize only this native
-    # report boundary; user-supplied model selectors keep their strict grammar.
-    codes = tuple(code.replace('\\', '/') for code in lines[1:])
+    # Tesseract 5.5.4 emits std::filesystem::path::string() in --list-langs,
+    # so Windows reports script\Name. Canonicalize only this native response
+    # prefix; user selections and manifest paths still reject backslashes.
+    # https://github.com/tesseract-ocr/tesseract/blob/5.5.4/src/api/baseapi.cpp
+    codes = tuple('script/' + code[len('script\\'):]
+                  if os.name == 'nt' and code.startswith('script\\') else code
+                  for code in lines[1:])
     if (int(header[2]) != len(codes) or len(codes) > MAX_MODELS
             or any(not valid_model_code(code) for code in codes)
             or len({code.casefold() for code in codes}) != len(codes)):
