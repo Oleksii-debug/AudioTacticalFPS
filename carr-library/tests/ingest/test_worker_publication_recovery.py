@@ -51,10 +51,19 @@ def blocked(self, *args, **kwargs):
 application._CatalogPublisher.publish_revision = blocked
 runpy.run_module('carr_library.ingest.worker', run_name='__main__')
 '''.replace('PHASE', repr(phase)).replace('MODE', repr(mode)).replace('MARKER', repr(str(marker)))
+    bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
+                 "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
 
     def start(command, *args, **kwargs):
+        # subprocess.run also calls this shared Popen on Windows for taskkill.
+        # Only instrument the exact worker entrypoint; cleanup and unrelated
+        # launches must execute through the original subprocess implementation.
+        if not isinstance(command, (list, tuple)) or bootstrap not in command:
+            return original(command, *args, **kwargs)
         command = list(command)
+        assert command[0] == worker.sys.executable
         assert command[1:6] == ['-I', '-B', '-X', 'utf8', '-c']
+        assert command[6] == bootstrap
         command[6] = code
         return original(command, *args, **kwargs)
 
@@ -74,6 +83,44 @@ runpy.run_module('carr_library.ingest.worker', run_name='__main__')
             changed = True
         return ready and mode == 'cancel'
     return cancelled
+
+
+def test_publication_barrier_delegates_real_unrelated_python_process(tmp_path, monkeypatch):
+    marker = tmp_path / 'publication-barrier'
+    _barrier(monkeypatch, marker, 'after', 'cancel')
+    result = worker.subprocess.run(
+        [worker.sys.executable, '-I', '-c', "print('unrelated process completed')"],
+        capture_output=True, check=True, timeout=5)
+    assert result.stdout.strip() == b'unrelated process completed'
+    assert result.stderr == b'' and not marker.exists()
+
+
+def test_publication_barrier_delegates_windows_taskkill_unchanged(tmp_path, monkeypatch):
+    calls, result = [], object()
+
+    def original(command, *args, **kwargs):
+        calls.append((command, args, kwargs))
+        return result
+
+    monkeypatch.setattr(worker.subprocess, 'Popen', original)
+    _barrier(monkeypatch, tmp_path / 'publication-barrier', 'after', 'cancel')
+    command = ['taskkill', '/PID', '123456', '/T', '/F']
+    options = dict(stdout=worker.subprocess.DEVNULL, stderr=worker.subprocess.DEVNULL)
+    assert worker.subprocess.Popen(command, **options) is result
+    assert calls == [(command, (), options)]
+    assert calls[0][0] is command
+
+
+def test_publication_barrier_still_rejects_nonisolated_worker_bootstrap(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(worker.subprocess, 'Popen', lambda *args, **kwargs: calls.append(args))
+    _barrier(monkeypatch, tmp_path / 'publication-barrier', 'after', 'cancel')
+    bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
+                 "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+    command = [worker.sys.executable, '-E', '-B', '-X', 'utf8', '-c', bootstrap, str(tmp_path)]
+    with pytest.raises(AssertionError):
+        worker.subprocess.Popen(command)
+    assert calls == []
 
 
 @pytest.mark.parametrize('kind', ['pdf', 'docx'])
