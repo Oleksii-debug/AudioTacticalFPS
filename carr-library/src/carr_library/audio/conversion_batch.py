@@ -371,6 +371,8 @@ class AudioConversionBatch:
         TemporaryDirectory cleanup can leave exactly these two owned names.
         Unknown links, replacement staging, changed bytes or extra links refuse.
         """
+        self._validate_candidate(candidate, output)
+        integer(candidate['size'], 'Prepared audio recovery bytes', 1, self.runtime.budget.max_output_bytes)
         saved = candidate['staging']
         staged = destination / saved['relative']
         local_path(staged.parent, exists=True)
@@ -425,6 +427,7 @@ class AudioConversionBatch:
         if candidate is None:
             raise FileExistsError('An unbound existing output was preserved: ' + row['output'])
         self._validate_candidate(candidate, output)
+        integer(candidate['size'], 'Prepared audio recovery bytes', 1, self.runtime.budget.max_output_bytes)
         if output.lstat().st_nlink != 1:
             self._retire_published_staging(destination, output, candidate, cancelled)
         identity = _identity(output, maximum=self.runtime.budget.max_output_bytes, cancelled=cancelled)
@@ -502,6 +505,7 @@ class AudioConversionBatch:
                             self._validate_candidate(candidate, target)
                             row.update(status='prepared', candidate=candidate, error='')
                             checksum = self._save(destination, value, expected=checksum, directory_identity=directory_identity)
+                        stop_after_publication = False
                         try:
                             old_budget = self.runtime.budget
                             remaining = max(.05, deadline - time.monotonic())
@@ -514,6 +518,7 @@ class AudioConversionBatch:
                             if not self._recover(destination, row, directory_identity=directory_identity):
                                 raise AudioError('The validated conversion was not durably published.')
                         except (AudioError, InterruptedError, OSError, ValueError, KeyboardInterrupt) as exc:
+                            stop_after_publication = isinstance(exc, (AudioCancelled, InterruptedError, KeyboardInterrupt)) or stopped()
                             # A post-link flush/cleanup/cancellation exception
                             # cannot erase exact committed output. Reconcile only
                             # this row's previously persisted candidate.
@@ -535,7 +540,7 @@ class AudioConversionBatch:
                                 return _copy(value)
                             raise
                         _notify(progress, value['done'], len(value['items']), row['status'] + ': ' + row['output'])
-                        if row['status'] == 'cancelled':
+                        if row['status'] == 'cancelled' or stop_after_publication:
                             raise AudioCancelled('Audio batch stopped after retaining completed outputs.')
                     value['status'] = ('completed' if value['done'] == len(value['items'])
                                        else 'partial' if value['done'] else 'failed')

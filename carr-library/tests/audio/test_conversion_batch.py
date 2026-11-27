@@ -5,6 +5,7 @@ stands in for measured files. Failure seams preserve the real encoder/publisher.
 """
 from array import array
 from contextlib import contextmanager
+from dataclasses import replace
 from hashlib import sha256
 import json
 import math
@@ -335,3 +336,69 @@ def test_prepublication_cancel_refuses_new_output_and_keeps_prepared_receipt(pee
     assert not (Path(plan['directory']) / plan['sources'][0]['output']).exists()
     assert result['items'][0]['candidate'] is not None
     assert peer.broker.snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('interruption', [AudioCancelled, InterruptedError, KeyboardInterrupt])
+def test_actual_published_output_is_retained_but_interrupt_stops_next_file(peer, monkeypatch, interruption):
+    plan = chosen(peer)
+    publish = dsp.publish_file
+    committed = []
+    def stop_after_link(staged, target, *args, **kwargs):
+        value = publish(staged, target, *args, **kwargs)
+        committed.append(Path(target))
+        raise interruption('Stop after this exact durable publication.')
+    monkeypatch.setattr(dsp, 'publish_file', stop_after_link)
+    result = peer.service.run(plan)
+    assert result['status'] == 'cancelled' and result['done'] == 1
+    assert [row['status'] for row in result['items']] == ['completed', 'pending']
+    assert committed == [Path(plan['directory']) / plan['sources'][0]['output']]
+    first = committed[0]
+    original = first.read_bytes()
+    assert sha256(original).hexdigest() == result['items'][0]['candidate']['sha256']
+    assert not (Path(plan['directory']) / plan['sources'][1]['output']).exists()
+    assert read_json(Path(plan['directory']) / module.MANIFEST)['status'] == 'cancelled'
+    assert peer.broker.snapshot()['leases'] == []
+    monkeypatch.setattr(dsp, 'publish_file', publish)
+    calls = []
+    convert = peer.runtime.convert
+    def resume_remaining(source, *args, **kwargs):
+        calls.append(str(source))
+        return convert(source, *args, **kwargs)
+    monkeypatch.setattr(peer.runtime, 'convert', resume_remaining)
+    resumed = peer.service.run(plan, resume=True)
+    assert resumed['status'] == 'completed' and resumed['done'] == 2
+    assert calls == [str(peer.second)]
+    assert first.read_bytes() == original
+
+
+@pytest.mark.parametrize('entry', ['recover', 'retire'])
+def test_oversized_two_link_candidate_refuses_before_any_read_or_alias_retirement(peer, monkeypatch, entry):
+    directory = peer.outputs / 'oversized recovery'
+    private = directory / '.audio-oversized'
+    private.mkdir(parents=True)
+    staged = private / 'render.wav'
+    with staged.open('wb') as stream:
+        stream.truncate(8192)
+    output = directory / '001-first.wav'
+    os.link(staged, output)
+    before = staged.stat()
+    peer.runtime.budget = replace(peer.runtime.budget, max_output_bytes=4096)
+    candidate = {'path': str(output), 'duration': 1.0, 'sample_rate': 24000, 'channels': 1,
+        'codec': 'pcm_s16le', 'format': 'wav', 'frames': 24000, 'size': before.st_size,
+        'sha256': '0' * 64,
+        'staging': {'relative': staged.relative_to(directory).as_posix(),
+            'device': before.st_dev, 'inode': before.st_ino, 'size': before.st_size,
+            'mtime_ns': before.st_mtime_ns}}
+    monkeypatch.setattr(module, '_open_json_read',
+                        lambda *a, **k: pytest.fail('Over-budget candidate content was read.'))
+    row = {'index': 0, 'output': output.name, 'status': 'prepared', 'candidate': candidate, 'error': ''}
+    with pytest.raises(ValueError, match='Prepared audio recovery bytes'):
+        if entry == 'recover':
+            peer.service._recover(directory, row)
+        else:
+            peer.service._retire_published_staging(directory, output, candidate, lambda: False)
+    assert row['status'] == 'prepared'
+    for path in (staged, output):
+        current = path.stat()
+        assert (current.st_dev, current.st_ino, current.st_size, current.st_nlink) == (
+            before.st_dev, before.st_ino, 8192, 2)
