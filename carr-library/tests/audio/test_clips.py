@@ -74,7 +74,7 @@ def test_clip_count_and_sample_trim_bounds_are_not_silent_clamps():
     window = clip_window(clip, info, 16000)
     assert (window.source_start, window.source_end, window.frames, window.start_frame) == (800, 4000, 6400, 3200)
     for invalid in (replace(clip, trim_start=1), replace(clip, duration=2),
-                    replace(clip, trim_start=.999999, duration=.000001)):
+                    replace(clip, trim_start=.999999, duration=.000001, fade_in=0, fade_out=0)):
         with pytest.raises(ValueError, match='samples'):
             clip_window(invalid, info, 16000)
 

@@ -14,7 +14,6 @@ import os
 from pathlib import Path, PurePosixPath
 import stat
 import struct
-import subprocess
 import sys
 from tempfile import TemporaryDirectory
 import wave
@@ -181,22 +180,32 @@ def unpack_validator(archive, tools, pin):
     return jar
 
 
+def run_checker(arguments, report, environment, *, timeout=180):
+    """Keep the validator's whole process family inside bounded local ownership."""
+    from carr_library.audio.capture_process import run_process, wait_for_cleanup
+    from carr_library.audio.capture_types import AudioBudget, AudioCleanupPending
+    try:
+        return run_process(arguments, env=environment, owned_tree=True, allow_failure=True,
+            budget=AudioBudget(timeout=timeout, max_log_bytes=1024 * 1024,
+                               max_output_bytes=MAX_REPORT, max_staging_files=1),
+            watch=(report,))
+    except AudioCleanupPending as exc:
+        # Do not let the caller's temporary publication/report scope unwind
+        # while a native descendant can still write into it.
+        wait_for_cleanup(exc)
+        raise
+
+
 def validate(java, jar, publication, report, *, expected_valid=True):
     identity = digest(publication)
     env = {key: value for key, value in os.environ.items()
            if key.upper() not in {'JAVA_TOOL_OPTIONS', '_JAVA_OPTIONS', 'JDK_JAVA_OPTIONS', 'CLASSPATH'}}
-    with TemporaryDirectory(prefix='epubcheck-logs-') as temporary:
-        log = Path(temporary)
-        with (log / 'stdout').open('wb') as out, (log / 'stderr').open('wb') as err:
-            run = subprocess.run([str(java), '-Xmx512m', '-jar', str(jar), '--failonwarnings',
-                                  '--json', str(report), str(publication)],
-                                 stdout=out, stderr=err, timeout=180, env=env, shell=False)
-        if not report.is_file():
-            with (log / 'stderr').open('rb') as stream:
-                stream.seek(max(0, os.fstat(stream.fileno()).st_size - 4000))
-                tail = stream.read(4000).decode('utf-8', errors='replace')
-            raise RuntimeError('EPUBCheck did not publish its actual report: ' + tail)
-        result = _read_json(report)
+    run = run_checker([str(java), '-Xmx512m', '-jar', str(jar), '--failonwarnings',
+                       '--json', str(report), str(publication)], report, env)
+    if not report.is_file():
+        tail = run.stderr[-4000:].decode('utf-8', errors='replace')
+        raise RuntimeError('EPUBCheck did not publish its actual report: ' + tail)
+    result = _read_json(report)
     checker = result['checker']
     if checker['checkerVersion'] != '5.3.0' or digest(publication) != identity:
         raise RuntimeError('The actual EPUBCheck version or publication identity changed.')

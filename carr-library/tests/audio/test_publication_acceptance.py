@@ -1,7 +1,9 @@
 """Acceptance-tool boundary tests; these do not replace actual checker runs."""
 import importlib.util
 import json
+import os
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -56,13 +58,13 @@ def test_zero_or_forged_success_cannot_satisfy_checker_gate(tmp_path, monkeypatc
     checker = load_script('epubcheck_acceptance.py')
     publication, report = tmp_path / 'fixture.epub', tmp_path / 'report.json'
     publication.write_bytes(b'synthetic harness bytes')
-    def invoke(arguments, **kwargs):
-        assert kwargs['shell'] is False and kwargs['timeout'] == 180
+    def invoke(arguments, report_path, environment, **kwargs):
+        assert report_path == report
         assert arguments[1] == '-Xmx512m'
         report.write_text(json.dumps({'checker': {'checkerVersion': version, 'nFatal': 0,
             'nError': errors, 'nWarning': warnings, 'nUsage': 0}, 'messages': []}), encoding='utf-8')
         return SimpleNamespace(returncode=exit_code)
-    monkeypatch.setattr(checker.subprocess, 'run', invoke)
+    monkeypatch.setattr(checker, 'run_checker', invoke)
     with pytest.raises(RuntimeError):
         checker.validate(tmp_path / 'java', tmp_path / 'validator.jar', publication, report)
 
@@ -74,3 +76,33 @@ def test_acceptance_report_does_not_replace_an_existing_report(tmp_path):
     with pytest.raises(FileExistsError):
         checker._write_report(path, {'status': 'PASS'})
     assert path.read_bytes() == b'previous evidence'
+
+
+@pytest.mark.parametrize('program,timeout,message', [
+    ("import os; os.write(1, b'x' * (2 * 1024 * 1024))", 10, 'diagnostic output budget'),
+    ('import time; time.sleep(30)', .25, 'time allowance'),
+], ids=['bounded-real-child-diagnostics', 'bounded-real-child-deadline'])
+def test_checker_owns_and_bounds_the_actual_child(tmp_path, program, timeout, message):
+    from carr_library.audio.capture_types import AudioError
+    checker = load_script('epubcheck_acceptance.py')
+    with pytest.raises(AudioError, match=message):
+        checker.run_checker([sys.executable, '-I', '-B', '-c', program],
+                            tmp_path / 'report.json', dict(os.environ), timeout=timeout)
+
+
+def test_checker_settles_retained_child_before_its_caller_can_remove_files(tmp_path, monkeypatch):
+    from carr_library.audio import capture_process
+    from carr_library.audio.capture_types import AudioCleanupPending
+    checker = load_script('epubcheck_acceptance.py')
+    pending = AudioCleanupPending('synthetic retained child', cleanup_owner=object())
+    calls = []
+    def running(*args, **kwargs):
+        assert kwargs['owned_tree'] is True
+        assert kwargs['allow_failure'] is True
+        assert kwargs['watch'] == (tmp_path / 'report.json',)
+        raise pending
+    monkeypatch.setattr(capture_process, 'run_process', running)
+    monkeypatch.setattr(capture_process, 'wait_for_cleanup', lambda owner: calls.append(owner))
+    with pytest.raises(AudioCleanupPending) as raised:
+        checker.run_checker(['selected-java'], tmp_path / 'report.json', {})
+    assert raised.value is pending and calls == [pending]
