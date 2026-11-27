@@ -10,7 +10,7 @@ import stat
 import wx
 
 from ..catalog.reference_exchange import preview_references
-from ..research.export_file import write_export
+from ..research.export_file import capture_export_destination, write_export
 from .catalog_metadata_dialog import MetadataDialog, metadata_values
 
 
@@ -283,7 +283,7 @@ def export_bibliography(frame):
             chooser.Destroy()
         dialog = wx.FileDialog(frame, 'Save bibliography', defaultFile='bibliography.json',
             wildcard='CSL-JSON (*.json)|*.json|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib',
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            style=wx.FD_SAVE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -294,6 +294,11 @@ def export_bibliography(frame):
             format = ('csl-json', 'ris', 'bibtex')[index]
         finally:
             dialog.Destroy()
+        approval = capture_export_destination(path, private_root=library.root)
+        if approval.state is not None and wx.MessageBox(
+                f'Replace the existing export {path.name}?', 'Replace export',
+                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, frame) != wx.YES:
+            return
         if not _current_scope(frame, library, workspace):
             raise ValueError('Library selection changed. Open the bibliography command again.')
 
@@ -302,7 +307,8 @@ def export_bibliography(frame):
                                                cancelled=frame.cancel_event.is_set)
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
-            write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set)
+            write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set,
+                         approval=approval)
 
         def done(result):
             if _current_scope(frame, library, workspace):
@@ -320,13 +326,18 @@ def export_research_outline(frame):
         library = frame.library
         dialog = wx.FileDialog(frame, 'Export active topic and its nonarchived subtopics',
             defaultFile='research-outline.md', wildcard='Markdown (*.md)|*.md',
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            style=wx.FD_SAVE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
             path = Path(dialog.GetPath())
         finally:
             dialog.Destroy()
+        approval = capture_export_destination(path, private_root=library.root)
+        if approval.state is not None and wx.MessageBox(
+                f'Replace the existing export {path.name}?', 'Replace export',
+                wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, frame) != wx.YES:
+            return
         if not _current_scope(frame, library, workspace) or frame.active != (workspace, topic):
             raise ValueError('Topic selection changed. Open the outline command again.')
 
@@ -334,7 +345,8 @@ def export_research_outline(frame):
             text = library.export_outline(workspace, topic, cancelled=frame.cancel_event.is_set)
             if frame.cancel_event.is_set():
                 raise InterruptedError('Export cancelled; the destination was not changed.')
-            write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set)
+            write_export(path, text, private_root=library.root, cancelled=frame.cancel_event.is_set,
+                         approval=approval)
 
         def done(result):
             if frame.library is library and frame.active == (workspace, topic):

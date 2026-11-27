@@ -153,7 +153,7 @@ def test_older_storage_has_no_implicit_guessed_upgrade(tmp_path, version):
 
 
 @pytest.mark.parametrize('manifest_version', [1, 2])
-@pytest.mark.parametrize('old_version', [3, 4])
+@pytest.mark.parametrize('old_version', [3, 4, 5])
 def test_previous_backups_restore_unchanged_then_migrate_normally(tmp_path, manifest_version, old_version):
     path = v3_library(tmp_path / 'source')
     backup = tmp_path / 'legacy-backup'
@@ -279,7 +279,7 @@ def test_process_exit_during_v4_migration(tmp_path, mode, committed):
     project_root = str(Path(source_root).parent)
     env["PYTHONPATH"] = os.pathsep.join(filter(None, (source_root, project_root, env.get("PYTHONPATH"))))
     result = subprocess.run(
-        [sys.executable, str(Path(__file__).resolve()), str(path), str(int(committed))],
+        [sys.executable, '-B', str(Path(__file__).resolve()), str(path), str(int(committed))],
         env=env, capture_output=True, text=True, timeout=30,
     )
     assert result.returncode == 73, (result.returncode, result.stdout, result.stderr)
@@ -350,7 +350,7 @@ def test_process_exit_during_import_receipt_migration_preserves_exact_old_data(
             academic = ()
     source_root = str(Path(revisions.__file__).resolve().parents[2])
     env = dict(os.environ, PYTHONPATH=os.pathsep.join((source_root, str(Path(source_root).parent))))
-    result = subprocess.run([sys.executable, str(Path(__file__).resolve()), str(path),
+    result = subprocess.run([sys.executable, '-B', str(Path(__file__).resolve()), str(path),
                              str(int(committed)), '5'],
                             env=env, capture_output=True, text=True, timeout=30)
     assert result.returncode == 73, (result.returncode, result.stdout, result.stderr)
@@ -371,6 +371,86 @@ def test_process_exit_during_import_receipt_migration_preserves_exact_old_data(
         assert current.db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
 
 
+
+@pytest.mark.parametrize('old_version', (3, 4, 5))
+def test_registration_upgrade_preserves_sources_and_existing_publication_receipts(tmp_path, old_version):
+    path = v3_library(tmp_path / 'data')
+    receipt = ('current', 'a' * 32, 'b' * 32, 'c' * 64)
+    with closing(Storage(path, schema_version=old_version)) as old:
+        before = source_rows(old.db)
+        if old_version >= 4:
+            with old.transaction():
+                AcademicLibrary(old.db, 'a').create(title='Existing reading record',
+                    notes='Preserved private note.')
+        if old_version == 5:
+            with old.transaction():
+                old.db.execute('INSERT INTO import_publication VALUES(?,?,?,?)', receipt)
+        academic = (tuple(tuple(row) for row in old.db.execute('SELECT * FROM academic_reference'))
+                    if old_version >= 4 else ())
+    with closing(Storage(path, schema_version=6)) as upgraded:
+        upgraded.check()
+        assert source_rows(upgraded.db) == before
+        assert _schema_signature(upgraded.db) == _expected_signature(6)
+        assert tuple(tuple(row) for row in upgraded.db.execute('SELECT * FROM academic_reference')) == academic
+        assert tuple(tuple(row) for row in upgraded.db.execute('SELECT * FROM import_publication')) == (
+            (receipt,) if old_version == 5 else ())
+        assert upgraded.db.execute('SELECT count(*) FROM import_registration').fetchone()[0] == 0
+    with closing(Storage(path, schema_version=6)) as reopened:
+        reopened.check()
+        assert source_rows(reopened.db) == before
+
+
+@pytest.mark.parametrize('damage', ('layout', 'research_data'))
+def test_invalid_v5_is_not_upgraded_to_registration_receipts(tmp_path, damage):
+    path = v3_library(tmp_path / 'data')
+    with closing(Storage(path, schema_version=5)):
+        pass
+    with sqlite3.connect(path) as db:
+        if damage == 'layout':
+            db.execute('CREATE TABLE unknown_extension(value TEXT)')
+        else:
+            db.execute('UPDATE research_evidence SET note=?', (b'Invalid binary note',))
+    before = path.read_bytes()
+    with pytest.raises(ValueError):
+        Storage(path, schema_version=6)
+    assert path.read_bytes() == before
+    with sqlite3.connect(path) as db:
+        assert db.execute('PRAGMA user_version').fetchone()[0] == 5
+        assert db.execute("SELECT 1 FROM sqlite_master WHERE name='import_registration'").fetchone() is None
+
+
+@pytest.mark.parametrize('mode', ('DELETE', 'WAL'))
+@pytest.mark.parametrize('committed', (False, True))
+def test_process_exit_during_registration_upgrade_preserves_v5_receipts(
+        tmp_path, mode, committed):
+    path = v3_library(tmp_path / 'data')
+    receipt = ('current', 'a' * 32, 'b' * 32, 'c' * 64)
+    with closing(Storage(path, schema_version=5)) as old:
+        assert old.db.execute('PRAGMA journal_mode=' + mode).fetchone()[0] == mode.lower()
+        with old.transaction():
+            old.db.execute('INSERT INTO import_publication VALUES(?,?,?,?)', receipt)
+        before = source_rows(old.db)
+    source_root = str(Path(revisions.__file__).resolve().parents[2])
+    env = dict(os.environ, PYTHONPATH=os.pathsep.join((source_root, str(Path(source_root).parent))))
+    result = subprocess.run([sys.executable, '-B', str(Path(__file__).resolve()), str(path),
+                             str(int(committed)), '6'],
+                            env=env, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 73, (result.returncode, result.stdout, result.stderr)
+    expected = 6 if committed else 5
+    with closing(Storage(path, schema_version=expected)) as recovered:
+        recovered.check()
+        assert source_rows(recovered.db) == before
+        assert _schema_signature(recovered.db) == _expected_signature(expected)
+        assert tuple(recovered.db.execute('SELECT * FROM import_publication').fetchone()) == receipt
+        assert bool(recovered.db.execute(
+            "SELECT 1 FROM sqlite_master WHERE name='import_registration'").fetchone()) == committed
+    with closing(Storage(path, schema_version=6)) as current:
+        current.check()
+        assert source_rows(current.db) == before
+        assert tuple(current.db.execute('SELECT * FROM import_publication').fetchone()) == receipt
+        assert current.db.execute('SELECT count(*) FROM import_registration').fetchone()[0] == 0
+
+
 if __name__ == "__main__":
     path, committed, *target = sys.argv[1:]
     target_version = int(target[0]) if target else 4
@@ -381,8 +461,10 @@ if __name__ == "__main__":
             if self.in_transaction and self.execute("PRAGMA user_version").fetchone()[0] == target_version:
                 # Both DDL and version must already be visible in the transaction.
                 assert self.execute("SELECT 1 FROM sqlite_master WHERE name='academic_reference'").fetchone()
-                if target_version == 5:
+                if target_version >= 5:
                     assert self.execute("SELECT 1 FROM sqlite_master WHERE name='import_publication'").fetchone()
+                if target_version >= 6:
+                    assert self.execute("SELECT 1 FROM sqlite_master WHERE name='import_registration'").fetchone()
                 if committed == "1":
                     super().commit()
                 os._exit(73)

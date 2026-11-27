@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..catalog.insights import analyze_catalog, display_value, format_checklist, format_overview, report_collections
 from ..catalog.membership import Catalog
-from ..research.export_file import write_export
+from ..research.export_file import capture_export_destination, write_export
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -33,13 +33,19 @@ class InsightsDialogs(NativeDialogs):
         _, _, extension, wildcard = next(row for row in FORMATS if row[0] == format)
         dialog = wx.FileDialog(parent, 'Save source comparison matrix',
             defaultFile='source-comparison-matrix.' + extension, wildcard=wildcard,
-            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+            style=wx.FD_SAVE)
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return None
             return Path(dialog.GetPath())
         finally:
             dialog.Destroy()
+
+    def confirm_export(self, parent, path):
+        import wx
+
+        return wx.MessageBox(f'Replace the existing export {path.name}?', 'Replace export',
+                             wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, parent) == wx.YES
 
 
 @dataclass(frozen=True)
@@ -232,6 +238,10 @@ class CatalogInsightsActions:
                 self._cancel(scope)
                 return
             path = Path(path)
+            approval = capture_export_destination(path, private_root=scope.library.root)
+            if approval.state is not None and not self.dialogs.confirm_export(self.frame, path):
+                self._cancel(scope)
+                return
             self._idle()
             self._authorize(scope, collection)
 
@@ -245,7 +255,7 @@ class CatalogInsightsActions:
                 # atomic publication. No reads of frame.library occur here.
                 self._authorize(scope, collection, cancellable=True)
                 write_export(path, text, private_root=scope.library.root,
-                             cancelled=scope.cancel_event.is_set)
+                             cancelled=scope.cancel_event.is_set, approval=approval)
                 # Once publication succeeds, cancellation cannot undo it. A
                 # receipt lets the callback describe that outcome truthfully.
                 return _ExportReceipt(path, format)

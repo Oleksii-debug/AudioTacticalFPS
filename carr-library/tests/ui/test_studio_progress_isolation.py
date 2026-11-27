@@ -12,6 +12,8 @@ from unittest.mock import Mock
 
 import pytest
 
+import carr_library
+
 from carr_library.audio.models import AudioCancelled
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
 
@@ -49,7 +51,7 @@ class Progress:
 
 @pytest.fixture
 def studio():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    source = Path(carr_library.__file__).resolve().parent / 'ui/studio_dialog.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     run = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'run')
@@ -210,7 +212,7 @@ def test_start_failure_never_finalizes_callback_started_new_operation(studio, mo
 
 def test_studio_close_retains_parent_observer_when_device_and_local_feedback_both_fail():
     """A local view cannot hide uncertain native audio from the surviving parent."""
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    source = Path(carr_library.__file__).resolve().parent / 'ui/studio_dialog.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     close = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'close')

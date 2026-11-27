@@ -26,6 +26,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         progress.register_player(player)
     document = ReadingDocument(text, title=title)
     registry = None
+    owned_registries = set()
     voices = ()
     alive = True
     busy = False
@@ -189,12 +190,19 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
                 from ..runtime_settings import voice_registry
-                return voice_registry(Path(library_root) / 'state')
-            return VoiceRegistry.discover()
+                found = voice_registry(Path(library_root) / 'state', cancelled=cancel.is_set)
+            else:
+                found = VoiceRegistry.discover(cancelled=cancel.is_set)
+            owned_registries.add(found)
+            return found
 
         def loaded(value):
             nonlocal registry, voices, document, source_loaded, draft_store, recovered, recovery_notice
+            previous = registry
             registry, source = value
+            if previous is not None and previous is not registry:
+                previous.close()
+                owned_registries.discard(previous)
             voices = registry.voices()
             if source is not None:
                 source_guard()
@@ -229,8 +237,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             else:
                 report(recovery_notice + 'No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
-        run(lambda: (discover_configured(),
-                     source_loader(cancel.is_set) if not source_loaded else None), loaded)
+        def load():
+            source = source_loader(cancel.is_set) if not source_loaded else None
+            return discover_configured(), source
+        run(load, loaded)
 
     def sync_document():
         document.set_text(editor.GetValue())
@@ -536,6 +546,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 worker_finished = True
             except (OSError, RuntimeError) as exc:
                 notices.append(f'The reading worker has not confirmed shutdown: {exc}')
+            for owned in owned_registries:
+                try:
+                    owned.close()
+                except (OSError, RuntimeError) as exc:
+                    notices.append(f'A local voice provider could not be closed: {exc}')
             removed = False
             if silence_confirmed and worker_finished:
                 try:

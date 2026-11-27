@@ -11,6 +11,7 @@ from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+import carr_library
 
 
 class Control:
@@ -49,7 +50,8 @@ def module():
         setattr(wx, name, Control)
     for n, name in enumerate(('VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'LEFT', 'RIGHT',
             'TOP', 'ALIGN_RIGHT', 'TE_MULTILINE', 'TE_READONLY', 'ID_CANCEL', 'ID_OK',
-            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT')):
+            'EVT_BUTTON', 'EVT_CLOSE', 'EVT_CHOICE', 'FD_SAVE', 'FD_OVERWRITE_PROMPT',
+            'YES_NO', 'NO_DEFAULT', 'ICON_QUESTION', 'YES', 'NO')):
         setattr(wx, name, 1 << n)
     wx.callbacks = []
     wx.CallAfter = lambda callback: wx.callbacks.append(callback)
@@ -57,6 +59,16 @@ def module():
     wx.file_result = wx.ID_OK
     wx.file_path = ''
     wx.file_hook = None
+    wx.confirmations = []
+    wx.confirm_result = wx.YES
+    wx.confirm_hook = None
+
+    def message_box(message, caption, style, parent):
+        wx.confirmations.append((message, caption, style, parent))
+        if wx.confirm_hook:
+            wx.confirm_hook()
+        return wx.confirm_result
+    wx.MessageBox = message_box
 
     class FileDialog(Control):
         def __init__(self, *args, **kwargs):
@@ -69,7 +81,7 @@ def module():
             return wx.file_result
         def GetPath(self): return wx.file_path
     wx.FileDialog = FileDialog
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/catalog_tools_dialog.py'
+    path = Path(carr_library.__file__).resolve().parent / 'ui/catalog_tools_dialog.py'
     spec = importlib.util.spec_from_file_location('carr_library.ui._catalog_tools_independent', path)
     mod = importlib.util.module_from_spec(spec)
     with patch.dict(sys.modules, {'wx': wx}):
@@ -207,7 +219,8 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert getattr(form, 'export_' + kind)()
     assert module.wx.files[0].destroyed
     style = module.wx.files[0].options['style']
-    assert style & module.wx.FD_SAVE and style & module.wx.FD_OVERWRITE_PROMPT
+    assert style & module.wx.FD_SAVE and not style & module.wx.FD_OVERWRITE_PROMPT
+    assert not module.wx.confirmations
     destination = Path(module.wx.file_path)
     assert not destination.exists() and library.calls == []
     frame.finish()
@@ -224,6 +237,52 @@ def test_cancel_file_dialog_restores_initiating_button_without_job(module, setup
     assert form.export_inventory() is False
     assert module.wx.files[0].destroyed and frame.jobs == [] and library.calls == []
     assert form.inventory_button.focused and 'No file was written' in form.status.GetValue()
+
+
+def test_destination_change_during_replacement_confirmation_preserves_newer_file(module, setup):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    destination.write_bytes(b'Original file shown for approval')
+    newer = b'Newer independently saved file'
+    module.wx.confirm_hook = lambda: destination.write_bytes(newer)
+
+    assert form.export_inventory()
+    frame.finish()
+
+    assert destination.read_bytes() == newer
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(destination.parent.glob('.research-export-*'))
+    assert library.original.read_bytes() == b'unchanged original source'
+
+
+def test_declined_replacement_preserves_file_and_does_not_start_job(module, setup):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    destination.write_bytes(b'Existing independent document')
+    module.wx.confirm_result = module.wx.NO
+
+    assert form.export_inventory() is False
+
+    assert destination.read_bytes() == b'Existing independent document'
+    assert frame.jobs == [] and library.calls == []
+    assert form.inventory_button.focused and 'not changed' in form.status.GetValue()
+    assert module.wx.files[0].destroyed
+    _, _, style, parent = module.wx.confirmations[0]
+    assert style & module.wx.YES_NO and style & module.wx.NO_DEFAULT
+    assert parent is form
+
+
+def test_unchanged_confirmed_destination_is_replaced(module, setup):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    destination.write_bytes(b'Explicitly selected previous export')
+
+    assert form.export_inventory()
+    frame.finish()
+
+    assert len(module.wx.confirmations) == 1
+    assert destination.read_bytes() == library.export_value.encode('utf-8')
+    assert 'exported to' in form.status.GetValue()
 
 
 @pytest.mark.parametrize('change', ['workspace', 'library', 'collection', 'invalid_collection'])
@@ -253,6 +312,69 @@ def test_cancellation_during_export_keeps_existing_file_unchanged(module, setup)
     assert not form.pending
 
 
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+@pytest.mark.parametrize('change', ['created', 'modified'])
+@pytest.mark.parametrize('phase', ['queued', 'rendering'])
+def test_destination_changed_after_selection_preserves_newer_bytes(module, setup, kind, change, phase):
+    form, frame, library = setup
+    destination = Path(module.wx.file_path)
+    if change == 'modified':
+        destination.write_bytes(b'Approved previous export')
+    assert getattr(form, 'export_' + kind)()
+    newer = 'Незалежно збережена новіша робота'.encode('utf-8')
+    if phase == 'queued':
+        destination.write_bytes(newer)
+    else:
+        library.hook = lambda: destination.write_bytes(newer)
+
+    frame.finish()
+
+    assert destination.read_bytes() == newer
+    assert 'destination changed' in form.status.GetValue()
+    assert 'exported to' not in form.status.GetValue()
+    assert not list(destination.parent.glob('.research-export-*'))
+    assert library.original.read_bytes() == b'unchanged original source'
+    assert not form.pending and form.close_button.enabled
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_actual_library_bibliography_render_preserves_concurrent_destination(module, tmp_path, monkeypatch, existing):
+    from carr_library.application import LibraryApp
+
+    library = LibraryApp(tmp_path / 'actual-private-library')
+    workspace = library.create_workspace('Actual bibliography export')
+    library.add_text(workspace, 'Точне джерело', 'Original source bytes remain unchanged.',
+                     authors=('Literal Author',))
+    originals = {path.name: path.read_bytes() for path in library.assets_dir.iterdir()}
+    frame = Host(library, module.wx)
+    frame.active = (workspace, None)
+    form = module.LibraryToolsDialog(frame, workspace, ())
+    destination = tmp_path / 'bibliography.json'
+    module.wx.file_path = str(destination)
+    if existing:
+        destination.write_bytes(b'Explicitly approved previous export')
+    original_export = library.export_catalog
+    newer = b'Independent newer document must survive'
+    rendered = []
+
+    def render_then_change(*args, **kwargs):
+        value = original_export(*args, **kwargs)
+        assert 'Точне джерело' in value and 'Literal Author' in value
+        rendered.append(value)
+        destination.write_bytes(newer)
+        return value
+
+    monkeypatch.setattr(library, 'export_catalog', render_then_change)
+    assert form.export_bibliography()
+    frame.finish()
+
+    assert len(rendered) == 1
+    assert destination.read_bytes() == newer
+    assert 'destination changed' in form.status.GetValue()
+    assert not list(tmp_path.glob('.research-export-*'))
+    assert {path.name: path.read_bytes() for path in library.assets_dir.iterdir()} == originals
+
+
 def test_changed_library_before_publication_prevents_stale_export(module, setup):
     form, frame, library = setup
     library.hook = lambda: setattr(frame, 'active', ('other', None))
@@ -275,8 +397,8 @@ def test_late_report_callback_does_not_display_foreign_scope_data(setup):
 def test_checked_writer_refuses_private_source_overwrite(module, setup):
     form, frame, library = setup
     module.wx.file_path = str(library.original)
-    assert form.export_inventory()
-    frame.finish()
+    assert form.export_inventory() is False
+    assert frame.jobs == []
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled

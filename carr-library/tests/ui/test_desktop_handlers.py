@@ -12,6 +12,7 @@ import pytest
 
 from carr_library.citations.anchors import Identity, Locator, Metadata, make_anchor, format_citation
 from carr_library.application import LibraryApp
+from carr_library import application
 from carr_library.catalog.read_views import active_collections
 from carr_library.reader.context import open_context
 from carr_library.research.topic_tree import TopicTree
@@ -31,7 +32,7 @@ class BaseFrame:
 
 @pytest.fixture
 def classes():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    source = Path(application.__file__).resolve().parent / 'ui' / 'desktop_app.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and
              node.name in {'DesktopFrame','DesktopSearchPanel','format_topic_results'}]
@@ -100,23 +101,48 @@ def panel(classes):
     return value
 
 
-def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collision(classes, monkeypatch):
+def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collision(classes, monkeypatch, tmp_path):
+    from carr_library.ui.keyboard_settings import KeyboardSettings
+
     env, _ = classes
     value = frame(classes)
     value.host, value.layout, value.Bind, value.SetMenuBar = Mock(), Mock(), Mock(), Mock()
+    value.library = SimpleNamespace(root=tmp_path)
+    value.SetAcceleratorTable = Mock()
     menus = {}
+    identities = iter(range(200, 1000))
+
+    class Item:
+        def __init__(self, title):
+            self.title, self.identity = title, next(identities)
+        def GetItemLabel(self): return self.title
+        def SetItemLabel(self, title): self.title = title
+        def GetId(self): return self.identity
+        def GetSubMenu(self): return None
+        def IsSeparator(self): return False
 
     class Menu:
         def __init__(self):
             self.items = []
 
         def Append(self, identity, title):
-            item = SimpleNamespace(title=title)
+            item = Item(title)
             self.items.append(item)
             return item
 
+        def GetMenuItems(self):
+            return self.items
+
     env['wx'].Menu = Menu
-    env['wx'].MenuBar = lambda: SimpleNamespace(Append=lambda menu, label: menus.update({label: menu}))
+    env['wx'].MenuBar = lambda: SimpleNamespace(
+        Append=lambda menu, label: menus.update({label: menu}),
+        GetMenuCount=lambda: len(menus),
+        GetMenuLabel=lambda index: list(menus)[index],
+        GetMenu=lambda index: list(menus.values())[index])
+    env['wx'].ACCEL_CTRL, env['wx'].ACCEL_ALT, env['wx'].ACCEL_SHIFT = 1, 2, 4
+    env['wx'].AcceleratorTable = tuple
+    for index in range(1, 25):
+        setattr(env['wx'], 'WXK_F' + str(index), 1000 + index)
     env['wx'].Button = Mock(return_value=Mock())
     env['wx'].ID_ANY, env['wx'].ALL = -1, 1
     env['wx'].EVT_MENU, env['wx'].EVT_BUTTON = 'menu', 'button'
@@ -145,6 +171,15 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                             SimpleNamespace(**{installer: callback}))
 
     value._menus()
+
+    # Use the real preference controller: a label with a path separator must
+    # fail here, just as it does during actual desktop startup.
+    keyboard = KeyboardSettings(value, wx_module=env['wx'])
+    acquisition, = [command for command in keyboard.commands
+                   if command.action == 'academic/doi and isbn lookup and open-access sources']
+    assert acquisition.original_label == 'DOI and ISBN lookup and open-access sources...'
+    assert any(call.args[2].GetId() == acquisition.menu_id for call in value.Bind.call_args_list)
+    value.SetAcceleratorTable.assert_called_once()
 
     labels = [item.title for menu in menus.values() for item in menu.items]
     shortcuts = [label.split('\t', 1)[1].casefold() for label in labels if '\t' in label]

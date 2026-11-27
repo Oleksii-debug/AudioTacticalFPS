@@ -5,7 +5,7 @@ Version 4 includes resumable import journals and their pinned unpublished source
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Legacy version 1 backups and version 2 backups are accepted only for an exact
-supported V3, V4 or V5 schema. Older snapshots are restored unchanged; opening
+supported V3, V4, V5 or V6 schema. Older snapshots are restored unchanged; opening
 the restored library performs the normal checked upgrade to the current schema.
 Restoration always creates a new data directory and never merges or overwrites.
 """
@@ -191,7 +191,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         raise RestoreError('unexpected pending imports in legacy backup')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
-            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
+            or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5, 6)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
     if manifest['version'] >= 2:

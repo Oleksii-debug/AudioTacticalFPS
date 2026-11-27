@@ -2,7 +2,10 @@ name: CARR V3 local studio and assistant
 
 on:
   pull_request:
-    branches: [carr-library]
+    branches: [carr-library, carr/v3-integrated-studio-20261126]
+    paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
+  push:
+    branches: [carr/v3-dordiai-primary-411a-20261126, carr/v3-academic-acquisition-20261126]
     paths: ['carr-library/**', '.github/workflows/carr-v3.yml']
   workflow_dispatch:
 
@@ -10,7 +13,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: carr-v3-${{ github.head_ref || github.ref_name }}
+  group: carr-v3-${{ github.event_name }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -30,7 +33,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Match the workflow definition: PR merge source or exact pushed source.
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
@@ -40,7 +44,10 @@ jobs:
         id: install-runtime
         run: |
           New-Item -ItemType Directory -Force 'ci-v3-results' | Out-Null
-          git rev-parse HEAD | Set-Content 'ci-v3-results/tested-commit.txt'
+          $testedCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($testedCommit -ne '${{ github.sha }}') { throw 'Checkout does not match the event source commit.' }
+          $testedCommit | Set-Content 'ci-v3-results/tested-commit.txt'
           python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5 et-xmlfile==2.0.0
@@ -110,6 +117,7 @@ jobs:
                     'tests/storage/test_complete_pending_backup.py',
                     'tests/storage/test_academic_migration.py',
                     'tests/storage/test_backup_schema_identity.py',
+                    'tests/storage/test_atomic_state_publication.py',
                     'tests/e2e/test_import_worker_publication.py',
                     'tests/ingest/test_import_replay_identity.py',
                     'tests/speech/test_reading.py',
@@ -146,6 +154,10 @@ jobs:
             $env:PATH = $previousPath
             $env:CARR_OCR_DIR = $previousOcr
           }
+      - name: Require reviewed local voice bridge and saved configuration checks
+        run: |
+          python scripts/ci_check.py tests/integrations/test_dordiai_voices.py tests/integrations/test_dordiai_speech.py tests/integrations/test_dordiai_settings.py tests/integrations/test_dordiai_probe_cancellation.py tests/integrations/test_dordiai_convergence.py tests/speech/test_discovery_cancellation.py tests/storage/test_state_snapshot_identity.py 2>&1 | Tee-Object 'ci-v3-results/dordiai-tests.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prepare explicitly pinned private test audio runtime
         id: audio-runtime
         run: |

@@ -12,7 +12,7 @@ import threading
 
 from ..reader.reading_desk import ReadingDesk
 from ..reader.reading_state import MAX_BYTES, ReadingState
-from ..research.export_file import write_export
+from ..research.export_file import capture_export_destination, write_export
 from ..research.topic_tree import TopicTree
 from .research_actions import NativeDialogs
 
@@ -450,9 +450,18 @@ class ReadingDialogs(NativeDialogs):
             'Export reading positions and bookmarks' if save else 'Import reading positions and bookmarks',
             defaultFile='reading-bookmarks.json' if save else '',
             wildcard='Reading state JSON (*.json)|*.json',
-            style=(wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
+            style=wx.FD_SAVE if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
         try:
             return Path(dialog.GetPath()) if dialog.ShowModal() == wx.ID_OK else None
+        finally:
+            dialog.Destroy()
+
+    def confirm(self, parent, title, message):
+        import wx
+        dialog = wx.MessageDialog(parent, message, title,
+                                  wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+        try:
+            return dialog.ShowModal() == wx.ID_YES
         finally:
             dialog.Destroy()
 
@@ -563,12 +572,24 @@ class ReadingActions:
             if path is None:
                 return
             self._guard(scope)
+            approval = capture_export_destination(path, private_root=scope.library.root)
+            if not approval.require_absent and not self.dialogs.confirm(
+                    self.frame, 'Replace reading state export',
+                    f'Replace the existing file?\n\n{path}'):
+                self.frame.report('Reading state export cancelled. The existing file was not changed.')
+                return
+            self._guard(scope)
+
+            def cancelled():
+                self._guard(scope)
+                return self.frame.cancel_event.is_set()
 
             def save():
                 self._authorize(scope)
                 state = self.state_factory(scope.library.root)
                 content = state.export_state(scope.workspace)
-                return self._run(scope, lambda: write_export(path, content, private_root=scope.library.root))
+                return self._run(scope, lambda: write_export(path, content,
+                    private_root=scope.library.root, cancelled=cancelled, approval=approval))
             self.frame.run_job('Exporting reading state', lambda: self._run(scope, save),
                 lambda _: self.frame.report('Reading positions and page bookmarks exported.'))
         except Exception as exc:

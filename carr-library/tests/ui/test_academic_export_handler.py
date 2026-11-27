@@ -16,7 +16,7 @@ import pytest
 from carr_library import application
 from carr_library.application import LibraryApp
 from carr_library.research import export_file
-from carr_library.research.export_file import write_binary_export, write_export
+from carr_library.research.export_file import capture_export_destination, write_binary_export, write_export
 
 
 FORMATS = [(5, 'docx', '.docx'), (6, 'html', '.html')]
@@ -55,7 +55,7 @@ def harness(research, monkeypatch):
         wx = SimpleNamespace(ID_OK=100, ID_CANCEL=101, YES=102, NO=103,
                              FD_SAVE=1, FD_OVERWRITE_PROMPT=2,
                              YES_NO=4, NO_DEFAULT=8, ICON_QUESTION=16)
-        wx.MessageBox = Mock(return_value=wx.NO)
+        wx.MessageBox = Mock(return_value=wx.YES)
 
         class FileDialog:
             def __init__(self, *args, **kwargs):
@@ -95,6 +95,7 @@ def harness(research, monkeypatch):
         method = next(node for node in frame.body
                       if isinstance(node, ast.FunctionDef) and node.name == 'export_topic')
         namespace = {'Path': Path, 'wx': wx, 'write_export': write_export,
+                     'capture_export_destination': capture_export_destination,
                      'write_binary_export': write_binary_export}
         exec(compile(ast.Module(body=[method], type_ignores=[]), str(source), 'exec'), namespace)
         h.invoke = lambda: namespace['export_topic'](h, None)
@@ -120,6 +121,46 @@ def payload_bytes(format):
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
+@pytest.mark.parametrize('existing', [False, True])
+@pytest.mark.parametrize('phase', ['queued', 'rendering'])
+def test_destination_changed_after_selection_survives_document_export(
+        harness, tmp_path, index, format, suffix, existing, phase):
+    target = tmp_path / ('concurrent' + suffix)
+    if existing:
+        target.write_bytes(b'Previously approved document.')
+    h = harness(target, index)
+    h.wx.MessageBox.return_value = h.wx.YES
+    h.invoke()
+    newer = b'A newer independent document must remain.'
+    if phase == 'queued':
+        target.write_bytes(newer)
+    else:
+        h.after_render = lambda: target.write_bytes(newer)
+    h.run()
+    assert target.read_bytes() == newer
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_document_approval_does_not_accept_a_file_changed_during_confirmation(
+        harness, tmp_path, index, format, suffix):
+    target = tmp_path / ('confirmed' + suffix)
+    target.write_bytes(b'Previously selected document.')
+    h = harness(target, index)
+    newer = b'Independently saved while confirmation was visible.'
+    def confirm(*args):
+        target.write_bytes(newer)
+        return h.wx.YES
+    h.wx.MessageBox.side_effect = confirm
+    h.invoke()
+    h.wx.MessageBox.assert_called_once()
+    h.run()
+    assert target.read_bytes() == newer
+    assert 'destination changed' in h.reports[-1]
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
 def test_document_filter_appends_its_suffix_and_publishes_exact_payload(
         harness, research, tmp_path, index, format, suffix):
     requested = tmp_path / 'research-topic'
@@ -130,7 +171,7 @@ def test_document_filter_appends_its_suffix_and_publishes_exact_payload(
     assert len(h.jobs) == 1 and not target.exists()
     dialog, = h.dialogs
     assert dialog.destroyed and dialog.options['defaultFile'] == 'research-topic'
-    assert dialog.options['style'] & h.wx.FD_OVERWRITE_PROMPT
+    assert not dialog.options['style'] & h.wx.FD_OVERWRITE_PROMPT
     assert dialog.options['wildcard'].split('|')[index * 2 + 1] == '*' + suffix
     h.wx.MessageBox.assert_not_called()
     h.run()
@@ -200,13 +241,13 @@ def test_invalid_filter_index_does_not_select_another_format(harness, tmp_path, 
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
-def test_existing_uppercase_suffix_is_kept_and_uses_native_overwrite_prompt(
+def test_existing_uppercase_suffix_is_kept_and_requires_snapshot_bound_confirmation(
         harness, tmp_path, index, format, suffix):
     target = tmp_path / ('Existing' + suffix.upper())
     target.write_bytes(b'Native file dialog accepted replacement of this exact path.')
     h = harness(target, index)
     h.invoke()
-    h.wx.MessageBox.assert_not_called()
+    h.wx.MessageBox.assert_called_once()
     h.run()
     assert target.read_bytes() == payload_bytes(format)
 
@@ -292,7 +333,7 @@ def test_new_document_cannot_be_written_inside_private_library(
     original = research.original.read_bytes()
     h = harness(target, index)
     h.invoke()
-    h.run()
+    assert not h.jobs
     assert not target.exists()
     assert research.app.database.read_bytes() == database
     assert research.original.read_bytes() == original

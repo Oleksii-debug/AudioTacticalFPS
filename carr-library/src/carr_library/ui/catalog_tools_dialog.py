@@ -8,7 +8,7 @@ from pathlib import Path
 
 import wx
 
-from ..research.export_file import write_export
+from ..research.export_file import capture_export_destination, write_export
 
 
 REPORT_MAX_CHARACTERS = 500_000
@@ -244,12 +244,19 @@ class LibraryToolsDialog(wx.Dialog):
             self._collection = collection
             dialog = wx.FileDialog(self, f'Export {name}', defaultFile=f'{kind}{extension}',
                 wildcard=f'{name} (*{extension})|*{extension}',
-                style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                style=wx.FD_SAVE)
             if dialog.ShowModal() != wx.ID_OK:
                 self.status.SetValue('Export cancelled. No file was written.')
                 button.SetFocus()
                 return False
             path = Path(dialog.GetPath())
+            approval = capture_export_destination(path, private_root=self.private_root)
+            if (not approval.require_absent and wx.MessageBox(
+                    f'Replace the existing file?\n\n{path}', 'Replace export file',
+                    wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES):
+                self.status.SetValue('Export cancelled. The existing file was not changed.')
+                button.SetFocus()
+                return False
         except Exception as exc:
             self._message(f'Export was not started: {exc}')
             return False
@@ -272,7 +279,8 @@ class LibraryToolsDialog(wx.Dialog):
                                                      format=format, cancelled=cancelled)
             if cancelled():
                 raise TimeoutError('Export cancelled; the destination was not changed.')
-            write_export(path, value, private_root=self.private_root, cancelled=cancelled)
+            write_export(path, value, private_root=self.private_root, cancelled=cancelled,
+                         approval=approval)
             return path
 
         def exported(destination):

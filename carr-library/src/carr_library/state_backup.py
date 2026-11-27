@@ -44,6 +44,34 @@ def _include(path, generated):
             and (generated or 'cache' not in path.parts))
 
 
+def _verify_copied_state_file(source, entry, expected_stamp, cancelled):
+    """Recheck earlier source bytes even when filesystem timestamps coincide."""
+    if cancelled():
+        raise InterruptedError('Backup cancelled.')
+    if _stamp(regular(source)) != expected_stamp:
+        raise ValueError('Application state changed during backup; retry after saving.')
+    digest, count = sha256(), 0
+    expected_size = entry['size_bytes']
+    with source.open('rb') as read:
+        if _stamp(os.fstat(read.fileno())) != expected_stamp:
+            raise ValueError('Application state changed during backup; retry after saving.')
+        while True:
+            if cancelled():
+                raise InterruptedError('Backup cancelled.')
+            block = read.read(min(1024 * 1024, expected_size - count + 1))
+            if not block:
+                break
+            count += len(block)
+            if count > expected_size:
+                raise ValueError('Application state grew during backup; retry after saving.')
+            digest.update(block)
+        if _stamp(os.fstat(read.fileno())) != expected_stamp:
+            raise ValueError('Application state changed during backup; retry after saving.')
+    if (count != expected_size or digest.hexdigest() != entry['sha256']
+            or _stamp(regular(source)) != expected_stamp):
+        raise ValueError('Application state changed during backup; retry after saving.')
+
+
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
                    cancelled=lambda: False):
     root = Path(root)
@@ -105,33 +133,10 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
-    # File metadata is not a content identity: on Windows an equal-size write
-    # can retain the observed timestamps. Recheck every copied source against
-    # its manifest hash before the caller can publish this snapshot.
     for entry in entries:
-        if cancelled():
-            raise InterruptedError('Backup cancelled.')
         relative = Path(entry['filename'])
-        source = root / relative
-        expected_stamp = before_inventory[relative]
-        if _stamp(regular(source)) != expected_stamp:
-            raise ValueError('Application state changed during backup; retry after saving.')
-        digest, count = sha256(), 0
-        with source.open('rb') as read:
-            if _stamp(os.fstat(read.fileno())) != expected_stamp:
-                raise ValueError('Application state changed during backup; retry after saving.')
-            while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
-                if cancelled():
-                    raise InterruptedError('Backup cancelled.')
-                count += len(block)
-                if count > entry['size_bytes']:
-                    raise ValueError('Application state grew during backup; retry after saving.')
-                digest.update(block)
-            if _stamp(os.fstat(read.fileno())) != expected_stamp:
-                raise ValueError('Application state changed during backup; retry after saving.')
-        if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
-                or _stamp(regular(source)) != expected_stamp):
-            raise ValueError('Application state changed during backup; retry after saving.')
+        source = local_path(root / relative, root=root, exists=True)
+        _verify_copied_state_file(source, entry, before_inventory[relative], cancelled)
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
     # A snapshot must pass the same portable manifest checks as a restore.

@@ -389,6 +389,24 @@ def test_explicit_equals_model_directory_is_not_overridden(tmp_path):
     assert runtime.command(command) == command
 
 
+@pytest.mark.parametrize('drive', ['C:', 'D:'], ids=['short-profile-alias', 'other-drive'])
+def test_ascii_absolute_native_paths_avoid_alias_traversal_and_drive_rebinding(drive):
+    import ntpath
+    from pathlib import PureWindowsPath
+    from carr_library.extract.ocr_process import _ascii_path
+    directory = PureWindowsPath(
+        'C:/Users/runneradmin/AppData/Local/Temp/pytest-of-runneradmin/pytest-1/'
+        'test_real_pdf_managed_profile_0/managed models Україна/'
+        'fast-87416418657359cb625c412a48b6e1d6d41c29bd/tessdata')
+    source = PureWindowsPath(drive + '/Users/RUNNER~1/AppData/Local/Temp/tmp01234567/baseline.png')
+    output = source.with_suffix('')
+    if drive == 'C:':
+        relative = ntpath.relpath(str(source), str(directory))
+        assert len(str(directory) + '\\' + relative) >= 260
+    assert _ascii_path(source, directory) == str(source)
+    assert _ascii_path(output, directory) == str(output)
+
+
 
 def test_relative_unicode_model_directory_uses_the_original_child_cwd(tmp_path, monkeypatch):
     from types import SimpleNamespace

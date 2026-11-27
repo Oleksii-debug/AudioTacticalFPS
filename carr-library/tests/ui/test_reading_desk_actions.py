@@ -228,8 +228,10 @@ class Frame:
 
 
 class Dialogs:
-    def __init__(self, answer=None, path=None, during=None):
+    def __init__(self, answer=None, path=None, during=None, *, confirm=True, on_confirm=None):
         self.answer, self.chosen_path, self.during = answer, path, during
+        self.confirm_result, self.on_confirm = confirm, on_confirm
+        self.confirmations = []
     def choose(self, *args):
         if self.during:
             callback, self.during = self.during, None
@@ -240,6 +242,12 @@ class Dialogs:
             callback, self.during = self.during, None
             callback()
         return self.chosen_path
+
+    def confirm(self, *args):
+        self.confirmations.append(args)
+        if self.on_confirm:
+            self.on_confirm()
+        return self.confirm_result
 
 
 def test_open_selected_book_preserves_unsaved_notes_and_restores_focus(source):
@@ -291,6 +299,57 @@ def test_reading_export_import_uses_real_guarded_writer_and_retains_notes(source
     actions.import_state()
     assert state.bookmarks(workspace, book['edition'])[0].label == 'Seminar'
     assert frame.evidence.note == 'Unsaved private note'
+
+
+@pytest.mark.parametrize('existing', [False, True])
+@pytest.mark.parametrize('phase', ['queued', 'rendering'])
+def test_reading_export_preserves_destination_changed_after_selection(
+        source, tmp_path, existing, phase):
+    app, workspace, _, desk, _ = source
+    state = ReadingState(app.root)
+    state.add_bookmark(desk.page(2).location, 'Saved bookmark')
+    target = tmp_path / 'reading.json'
+    if existing:
+        target.write_bytes(b'Approved old export')
+    newer = 'Нові незалежні записи'.encode('utf-8')
+    frame = Frame(app, workspace)
+
+    class RacingState(ReadingState):
+        def export_state(self, selected_workspace):
+            content = super().export_state(selected_workspace)
+            assert 'Saved bookmark' in content
+            if phase == 'rendering':
+                target.write_bytes(newer)
+            return content
+
+    if phase == 'queued':
+        frame.before_operation = lambda: target.write_bytes(newer)
+    dialogs = Dialogs(path=target)
+    ReadingActions(frame, dialogs=dialogs, state_factory=RacingState).export_state()
+    assert target.read_bytes() == newer
+    assert 'destination changed' in frame.messages[-1]
+    assert not list(tmp_path.glob('.research-export-*'))
+    assert frame.evidence.note == 'Unsaved private note'
+
+
+@pytest.mark.parametrize('accepted', [False, True])
+def test_reading_export_confirmation_is_bound_to_captured_file(
+        source, tmp_path, accepted):
+    app, workspace, _, _, _ = source
+    target = tmp_path / 'reading.json'
+    target.write_bytes(b'Existing work')
+    newer = b'Independent work saved during confirmation'
+    dialogs = Dialogs(path=target, confirm=accepted,
+                      on_confirm=lambda: target.write_bytes(newer))
+    frame = Frame(app, workspace)
+    ReadingActions(frame, dialogs=dialogs).export_state()
+    assert target.read_bytes() == newer
+    assert len(dialogs.confirmations) == 1
+    if accepted:
+        assert 'destination changed' in frame.messages[-1]
+    else:
+        assert frame.jobs == []
+        assert 'cancelled' in frame.messages[-1].lower()
 
 
 def test_state_export_does_not_overwrite_private_database(source):

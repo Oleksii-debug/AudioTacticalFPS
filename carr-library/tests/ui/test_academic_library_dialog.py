@@ -158,6 +158,29 @@ def test_export_uses_existing_destination_guard(controller, tmp_path):
     assert private.read_text() == 'Existing private file'
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_export_keeps_file_changed_during_real_bibliography_generation(
+        controller, tmp_path, monkeypatch, existing):
+    controller.create(form_values(draft()))
+    target = tmp_path / 'bibliography.txt'
+    if existing:
+        target.write_text('Approved old bibliography')
+    generate = controller.export
+    newer = 'Нова незалежна робота'.encode('utf-8')
+
+    def changed(**kwargs):
+        content = generate(**kwargs)
+        assert 'Research methods' in content
+        target.write_bytes(newer)
+        return content
+
+    monkeypatch.setattr(controller, 'export', changed)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == newer
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 def test_reference_pages_have_distinct_labels_and_all_active_export(controller):
     with controller.library.write(controller.workspace) as db:
         service = AcademicLibrary(db, controller.workspace)
@@ -361,6 +384,74 @@ def native_handlers(monkeypatch):
             callback(*args, **kwargs)
 
     return SimpleNamespace(make=make, destroy=destroy, drain=drain, queued=queued, wx=wx)
+
+
+def _bibliography_export_window(controller, native_handlers, target):
+    ui = native_handlers
+    chooser = Mock()
+    chooser.ShowModal.return_value = ui.wx.ID_OK
+    chooser.GetPath.return_value = str(target)
+    ui.wx.FileDialog = Mock(return_value=chooser)
+    ui.wx.FD_SAVE, ui.wx.FD_OVERWRITE_PROMPT = 1, 2
+    ui.wx.YES_NO, ui.wx.NO_DEFAULT, ui.wx.ICON_QUESTION = 4, 8, 16
+    ui.wx.YES, ui.wx.NO = 32, 64
+    ui.wx.MessageBox = Mock(return_value=ui.wx.YES)
+    window = ui.make('academic', controller)
+    window.controller = controller
+    window._export_options = Mock(return_value=(('text', 'Plain text', 'txt'), None, False))
+    return window, chooser
+
+
+def test_native_export_binds_confirmation_before_real_generation(
+        controller, native_handlers, tmp_path):
+    controller.create(form_values(draft()))
+    target = tmp_path / 'bibliography.txt'
+    target.write_text('Approved old bibliography')
+    window, chooser = _bibliography_export_window(controller, native_handlers, target)
+    newer = b'Independent work saved while confirmation is open'
+
+    def confirm(*args):
+        assert args[2] & native_handlers.wx.YES_NO
+        assert args[2] & native_handlers.wx.NO_DEFAULT
+        target.write_bytes(newer)
+        return native_handlers.wx.YES
+
+    native_handlers.wx.MessageBox.side_effect = confirm
+    window.on_export()
+    assert target.read_bytes() == newer
+    assert 'destination changed' in window.status.value
+    assert 'exported to' not in window.status.value
+    native_handlers.wx.MessageBox.assert_called_once()
+    assert native_handlers.wx.FileDialog.call_args.kwargs['style'] == native_handlers.wx.FD_SAVE
+    chooser.Destroy.assert_called_once()
+
+
+def test_native_export_decline_preserves_existing_file_without_generation(
+        controller, native_handlers, tmp_path, monkeypatch):
+    target = tmp_path / 'bibliography.txt'
+    target.write_bytes(b'Existing work')
+    window, _ = _bibliography_export_window(controller, native_handlers, target)
+    native_handlers.wx.MessageBox.return_value = native_handlers.wx.NO
+    generate = Mock(side_effect=AssertionError('Declined export must not render'))
+    monkeypatch.setattr(controller, 'export', generate)
+    window.on_export()
+    assert target.read_bytes() == b'Existing work'
+    generate.assert_not_called()
+    assert 'cancelled' in window.status.value.lower()
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_native_export_success_requires_confirmation_only_for_existing_file(
+        controller, native_handlers, tmp_path, existing):
+    controller.create(form_values(draft()))
+    target = tmp_path / 'bibliography.txt'
+    if existing:
+        target.write_text('Approved old bibliography')
+    window, _ = _bibliography_export_window(controller, native_handlers, target)
+    window.on_export()
+    assert 'Research methods' in target.read_text()
+    assert 'exported to' in window.status.value
+    assert native_handlers.wx.MessageBox.call_count == int(existing)
 
 
 def test_preview_budget_error_preserves_native_selection_and_imports_nothing(

@@ -48,7 +48,7 @@ def test_backup_restores_exact_state_sources_and_evidence_without_cache(populate
     original_files = {p.name: p.read_bytes() for p in app.assets_dir.iterdir()}
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
-    manifest = json.loads((folder / 'manifest.json').read_text())
+    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     assert manifest['version'] == 4 and manifest['generated_audio_included'] is False
     assert {entry['filename'] for entry in manifest['state']} == set(values)
     for entry in manifest['state']:
@@ -71,7 +71,7 @@ def test_optional_generated_cache_roundtrips_exactly(populated, tmp_path):
     app, *_ = populated
     folder = tmp_path / 'with-cache'
     digest = create_backup(app, folder, include_generated=True)
-    manifest = json.loads((folder / 'manifest.json').read_text())
+    manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     assert manifest['generated_audio_included'] is True
     destination = restore_backup(folder, tmp_path / 'restored-with-cache', digest)
     assert (destination / 'state/studio/cache/chunk.wav').read_bytes() == b'synthetic-generated-audio-cache'
@@ -95,7 +95,7 @@ def test_corrupt_state_never_publishes_usable_restore(populated, tmp_path, damag
         import shutil
         shutil.rmtree(folder / 'state')
     else:
-        manifest = json.loads((folder / 'manifest.json').read_text())
+        manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
         manifest['state'][0]['size_bytes'] += 1
         raw = json.dumps(manifest).encode()
         (folder / 'manifest.json').write_bytes(raw)
@@ -242,6 +242,57 @@ def test_snapshot_revalidation_can_be_cancelled_before_publication(populated, tm
     assert not destination.exists()
 
 
+def test_snapshot_rechecks_copied_bytes_when_metadata_stamps_do_not_change(tmp_path, monkeypatch):
+    from carr_library import state_backup
+
+    # Keep real files, identity, size and link checks. Equal timestamps must
+    # not make a same-length content change invisible on any filesystem.
+    original_stamp = state_backup._stamp
+    monkeypatch.setattr(state_backup, '_stamp', lambda info: original_stamp(info)[:3] + (0, 0))
+    root, target = tmp_path / 'source', tmp_path / 'stage'
+    root.mkdir()
+    target.mkdir()
+    first = root / 'a.json'
+    first.write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'b' * (2 * 1024 * 1024))
+    modified = False
+
+    def concurrent_writer():
+        nonlocal modified
+        if not modified and (target / 'a.json').exists() and (target / 'b.json').exists():
+            first.write_bytes(b'new')
+            modified = True
+        return False
+
+    with pytest.raises((ValueError, OSError), match='changed|snapshot|backup'):
+        snapshot_state(root, target, cancelled=concurrent_writer)
+    assert modified and first.read_bytes() == b'new'
+    assert (target / 'a.json').read_bytes() == b'old'
+
+
+@pytest.mark.parametrize('size', [0, 2 * 1024 * 1024])
+def test_snapshot_cancellation_during_final_content_verification(tmp_path, monkeypatch, size):
+    root, target = tmp_path / 'source', tmp_path / 'stage'
+    root.mkdir()
+    target.mkdir()
+    source = root / 'state.json'
+    source.write_bytes(b'x' * size)
+    original_open, reads = Path.open, 0
+
+    def observed_open(path, *args, **kwargs):
+        nonlocal reads
+        stream = original_open(path, *args, **kwargs)
+        if path == source and (args[0] if args else kwargs.get('mode')) == 'rb':
+            reads += 1
+        return stream
+
+    monkeypatch.setattr(Path, 'open', observed_open)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        snapshot_state(root, target, cancelled=lambda: reads >= 2)
+    assert reads == 2
+    assert (target / 'state.json').read_bytes() == b'x' * size
+
+
 @pytest.mark.parametrize('state_kind', ['absent', 'empty', 'zero-byte'])
 def test_cancelled_backup_never_publishes_success_for_empty_state(tmp_path, state_kind):
     app = LibraryApp(tmp_path / 'data')
@@ -282,7 +333,7 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     # Construct the historical v2 shape from the same verified catalog bytes.
     # New backups also preserve the import journal, which did not exist in v2.
     import shutil
-    manifest = json.loads((backup / 'manifest.json').read_text())
+    manifest = json.loads((backup / 'manifest.json').read_text(encoding='utf-8'))
     manifest['version'] = 2
     for key in ('state', 'generated_audio_included', 'pending'):
         manifest.pop(key, None)

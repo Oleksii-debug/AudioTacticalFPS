@@ -8,6 +8,8 @@ from unittest.mock import Mock
 
 import pytest
 
+import carr_library
+
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
 
 
@@ -35,7 +37,7 @@ class Progress:
 
 @pytest.fixture
 def desktop():
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    path = Path(carr_library.__file__).resolve().parent / 'ui/desktop_app.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'DesktopFrame')
     functions = [node for node in cls.body if isinstance(node, ast.FunctionDef) and node.name in ('run_job', '_finish_job_controls')]
@@ -281,7 +283,7 @@ def test_measurements_use_captured_token_and_late_updates_do_not_touch_next_job(
 @pytest.fixture
 def studio():
     """Exercise the actual nested Studio job handler without an audio device."""
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    path = Path(carr_library.__file__).resolve().parent / 'ui/studio_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     window = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     run = next(node for node in window.body if isinstance(node, ast.FunctionDef) and node.name == 'run')
@@ -373,18 +375,22 @@ def test_studio_executor_start_failure_is_terminal_and_unlocks_controls(studio):
 
 @pytest.mark.parametrize('device_failure', [False, True])
 def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(device_failure):
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/speech_dialog.py'
+    path = Path(carr_library.__file__).resolve().parent / 'ui/speech_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     reader = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_speech_reader')
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
                                       'executor', 'audio_files', 'dialog')}
+    registries = [Mock(), Mock()]
+    env['owned_registries'] = registries
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    for registry in registries:
+        registry.close.assert_called_once_with()
     if device_failure:
         env['audio_files'].cleanup.assert_not_called()
         assert env['parent']._reader_playback_retained == [(env['player'], env['audio_files'])]
@@ -397,7 +403,7 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
 
 @pytest.mark.parametrize('device_failure', [False, True])
 def test_studio_close_releases_device_and_both_observers_even_after_device_failure(device_failure):
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
+    path = Path(carr_library.__file__).resolve().parent / 'ui/studio_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     studio = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
     close = next(node for node in studio.body if isinstance(node, ast.FunctionDef) and node.name == 'close')

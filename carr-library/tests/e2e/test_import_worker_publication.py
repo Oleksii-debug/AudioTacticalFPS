@@ -10,6 +10,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -71,6 +72,15 @@ def _after(self, *args, **kwargs):
     _pause()
 _CatalogPublisher.publish_revision = _after
 '''
+    elif boundary == 'after-registration':
+        code += '''
+_import = LibraryApp._import_file
+def _after_registration(self, *args, **kwargs):
+    result = _import(self, *args, **kwargs)
+    _pause()
+    return result
+LibraryApp._import_file = _after_registration
+'''
     else:
         assert boundary == 'replay'
         code += '''
@@ -105,7 +115,7 @@ LibraryApp._import_file = _replay
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
     _barrier(monkeypatch, marker, boundary='after')
-    result = subprocess.run([sys.executable, *arguments], capture_output=True,
+    result = subprocess.run([sys.executable, '-B', *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr
     assert not marker.exists()
@@ -121,9 +131,12 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
     _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash')
+    started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=15.0)
+    if termination == 'timeout':
+        assert time.monotonic() - started < 23.0
     assert marker.exists(), result
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
@@ -156,9 +169,12 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
     _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash')
+    started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=15.0)
+    if termination == 'timeout':
+        assert time.monotonic() - started < 23.0
     assert marker.exists(), result
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()
@@ -387,3 +403,125 @@ def test_recovered_commit_with_pending_extraction_journal_survives_backup(tmp_pa
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
         assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == receipt
     assert restored.search(workspace, 'Railway')[0].quote == 'Railway'
+
+
+@pytest.mark.parametrize('kind', ('txt', 'pdf', 'docx'))
+@pytest.mark.parametrize('competitor_kind', ('direct', 'second-request', 'forged-sidecar'))
+def test_competing_membership_replay_cannot_complete_rolled_back_request(
+        tmp_path, monkeypatch, kind, competitor_kind):
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Replay transaction ownership')
+    source = _source(tmp_path, kind)
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    assert first['state'] == 'complete'
+    with app.read(workspace) as db:
+        original_receipt = tuple(db.execute('SELECT * FROM import_publication').fetchone())
+    collection = app.create_collection(workspace, 'Membership requested by both imports')
+    metadata = _metadata((collection,))
+    planned = worker.prepare_request(app.root, workspace, source, metadata, Config())
+    marker = tmp_path / 'registration-before-commit'
+    real_popen, real_stop = worker.subprocess.Popen, worker._stop
+    _barrier(monkeypatch, marker, boundary='before')
+    competing = []
+
+    def stop_then_register(process):
+        real_stop(process)
+        if marker.exists() and not competing:
+            competing.append(None)
+            with monkeypatch.context() as clean_launch:
+                clean_launch.setattr(worker.subprocess, 'Popen', real_popen)
+                if competitor_kind == 'direct':
+                    competing[0] = app._import_file(
+                        workspace, source, config=Config(), **metadata)
+                else:
+                    competing[0] = worker.run_request(
+                        app.root, workspace, source, metadata, Config(), timeout=15.0)
+            if competitor_kind == 'forged-sidecar':
+                stopped = worker.load_request(app.root, planned['request_id'])
+                other = worker.load_request(app.root, competing[0]['request_id'])
+                stopped['publication_candidate'] = dict(other['publication_candidate'],
+                                                       attempt=stopped['attempt'])
+                worker._store(app.root, planned['request_id'], stopped)
+
+    monkeypatch.setattr(worker, '_stop', stop_then_register)
+    result = worker.run_request(app.root, workspace, source, metadata, Config(),
+        cancelled=marker.exists, timeout=15.0, request_id=planned['request_id'], _app=app)
+    assert marker.exists() and competing[0]['state'] == 'complete', competing
+    assert result['state'] == 'cancelled', result
+    assert not result.get('publication_recovered') and not result.get('publication_reconciled')
+    assert len(app.browse(workspace, collection=collection)) == 1
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == original_receipt
+        assert db.execute('SELECT count(*) FROM import_registration WHERE request_id=?',
+                          (planned['request_id'],)).fetchone()[0] == 0
+        receipts = tuple(db.execute('SELECT request_id,attempt FROM import_registration'))
+        if competitor_kind == 'direct':
+            assert receipts == ()
+        else:
+            other = worker.load_request(app.root, competing[0]['request_id'])
+            assert tuple(tuple(row) for row in receipts) == ((other['request_id'], other['attempt']),)
+
+
+def test_committed_noop_replay_has_its_own_recoverable_transaction_receipt(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Committed idempotent registration')
+    source = _source(tmp_path, 'txt')
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    with app.read(workspace) as db:
+        original = tuple(db.execute('SELECT * FROM import_publication').fetchone())
+    marker = tmp_path / 'registration-after-commit'
+    _barrier(monkeypatch, marker, boundary='after-registration')
+    result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
+                                cancelled=marker.exists, timeout=15.0, _app=app)
+    assert marker.exists() and result['state'] == 'complete', result
+    assert result['id'] == first['id']
+    assert result['publication_recovered'] and result['publication_reconciled']
+    request = worker.load_request(app.root, result['request_id'])
+    with app.read(workspace) as db:
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == original
+        assert tuple(db.execute('SELECT * FROM import_registration').fetchone()) == (
+            result['id'], result['request_id'], request['attempt'],
+            request['publication_candidate']['sha256'])
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+
+
+def test_registration_receipt_is_immutable_and_survives_full_backup(tmp_path):
+    from carr_library.library_backup import create_backup, restore_backup
+    from carr_library.storage.revisions import Storage
+
+    app = LibraryApp(tmp_path / 'private')
+    workspace = app.create_workspace('Registration backup')
+    source = _source(tmp_path, 'txt')
+    original = source.read_bytes()
+    first = worker.run_request(app.root, workspace, source, _metadata(), Config())
+    collection = app.create_collection(workspace, 'Added collection')
+    result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config())
+    assert first['state'] == result['state'] == 'complete' and first['id'] == result['id']
+    with app.read(workspace) as db:
+        publication = tuple(db.execute('SELECT * FROM import_publication').fetchone())
+        receipt = tuple(db.execute('SELECT * FROM import_registration').fetchone())
+    with closing(Storage(app.database)) as storage:
+        for sql, values in (
+                ('UPDATE import_registration SET attempt=?', ('f' * 32,)),
+                ('DELETE FROM import_registration', ()),
+                ('INSERT OR REPLACE INTO import_registration VALUES(?,?,?,?)', receipt),
+                ('INSERT INTO import_registration VALUES(?,?,?,?)',
+                 ('f' * 64, 'e' * 32, 'f' * 32, 'a' * 64))):
+            with pytest.raises(sqlite3.IntegrityError), storage.transaction():
+                storage.db.execute(sql, values)
+        assert tuple(storage.db.execute('SELECT * FROM import_registration').fetchone()) == receipt
+        storage.check()
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    source.unlink()
+    restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
+    with restored.read(workspace) as db:
+        assert tuple(db.execute('SELECT * FROM import_publication').fetchone()) == publication
+        assert tuple(db.execute('SELECT * FROM import_registration').fetchone()) == receipt
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+    assert restored.assets.resolve(
+        worker.load_request(restored.root, result['request_id'])['asset_sha256']).read_bytes() == original
+    assert restored.resume_import(workspace, result['request_id']) == result
+    assert len(restored.browse(workspace, collection=collection)) == 1
+    assert restored.search(workspace, 'Railway')[0].revision == first['id']
