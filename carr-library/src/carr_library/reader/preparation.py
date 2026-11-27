@@ -76,6 +76,8 @@ class PreparationContext:
             raise ValueError('Choose number, date, unit or symbol preparation.')
         if self.number_mode not in ('cardinal', 'ordinal', 'digits', 'year'):
             raise ValueError('Choose an explicit number-reading mode.')
+        if self.language == 'sk' and self.number_mode == 'ordinal':
+            raise ValueError('The pinned Slovak num2words adapter does not implement ordinal readings.')
         if self.date_order not in ('ymd', 'dmy', 'mdy'):
             raise ValueError('Choose the explicit year/month/day order.')
         if self.gender not in ('masculine', 'feminine'):
@@ -320,6 +322,8 @@ def _call_worker(request, *, check, remaining):
         }
         raise ValueError(messages.get(result['error'], 'The preparation worker could not complete.')
                          if type(result['error']) is str else 'Invalid preparation worker error.')
+    if result.pop('isolated', None) is not True or result.pop('no_site', None) is not True:
+        raise ValueError('The optional worker did not confirm isolated execution without host site-packages.')
     return result
 
 
@@ -351,9 +355,21 @@ def prepare_selection(project, start, end, context, manifest_path, *,
         result = _call_worker(dict(version=1, operation='normalize', selected=selected,
             context=asdict(context), packages=str(manifest.directory(manifest.settings['packages']))),
             check=check, remaining=remaining)
-    if (set(result) != {'replacement', 'engine_version'} or type(result['replacement']) is not str
+    if (set(result) != {'replacement', 'engine_version', 'module_origins'} or type(result['replacement']) is not str
             or result['engine_version'] != 'num2words 0.5.14; Babel 2.18.0; Unicode ' + unicodedata.unidata_version):
         raise ValueError('Invalid normalization result identity.')
+    expected = {'num2words': 'num2words/__init__.py', 'babel': 'babel/__init__.py',
+                'babel.dates': 'babel/dates.py', 'babel.numbers': 'babel/numbers.py', 'babel.units': 'babel/units.py'}
+    origins = result['module_origins']
+    if type(origins) is not dict or set(origins) != set(expected):
+        raise ValueError('The normalizer did not report its actual optional package origins.')
+    inventory = dict(manifest.files)
+    for name, relative in expected.items():
+        row = origins[name]
+        asset = manifest.settings['packages'] + '/' + relative
+        if (type(row) is not dict or set(row) != {'path', 'sha256'} or type(row['path']) is not str
+                or Path(row['path']) != manifest.asset(asset) or row['sha256'] != inventory.get(asset)):
+            raise ValueError('The normalizer imported code outside its reviewed optional package selection.')
     return _proposal(project, start, end, result['replacement'], manifest=manifest,
                      engine_version=result['engine_version'], settings=asdict(context))
 

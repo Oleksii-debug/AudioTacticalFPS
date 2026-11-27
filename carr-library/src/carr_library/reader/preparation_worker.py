@@ -5,6 +5,7 @@ added for normalization; host site-packages and PATH tools are never fallback.
 The parent owns deadlines, cancellation, immutable runtime readers and results.
 """
 from decimal import Decimal, InvalidOperation
+from hashlib import sha256
 import ctypes
 from datetime import date
 import importlib.metadata
@@ -145,7 +146,12 @@ def normalizer(value):
         replacement = prefix + replacement + suffix
         if not replacement or '\x00' in replacement or len(replacement.encode('utf-8')) > 16 * 1024:
             return {'error': 'work-limit'}
-        return {'replacement': replacement, 'engine_version': 'num2words 0.5.14; Babel 2.18.0; Unicode ' + unicodedata.unidata_version}
+        origins = {}
+        for name in ('num2words', 'babel', 'babel.dates', 'babel.numbers', 'babel.units'):
+            path = Path(sys.modules[name].__file__).absolute()
+            origins[name] = {'path': str(path), 'sha256': sha256(path.read_bytes()).hexdigest()}
+        return {'replacement': replacement, 'engine_version': 'num2words 0.5.14; Babel 2.18.0; Unicode ' + unicodedata.unidata_version,
+                'module_origins': origins}
     except (ValueError, TypeError, OverflowError, InvalidOperation, NotImplementedError, IndexError):
         return {'error': 'invalid-selection'}
 
@@ -254,6 +260,8 @@ def main():
         result = {'error': 'unavailable'}
     except (ValueError, TypeError, KeyError, UnicodeError):
         result = {'error': 'invalid-request'}
+    if 'error' not in result:
+        result.update(isolated=bool(sys.flags.isolated), no_site=bool(sys.flags.no_site))
     raw = json.dumps(result, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode('utf-8')
     if len(raw) > MAX_BYTES:
         raw = b'{"error":"work-limit"}'

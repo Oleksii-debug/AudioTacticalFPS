@@ -623,7 +623,7 @@ def decode_project(raw):
         return NarrationProject(value['id'], value['title'], value['original_text'], value['original_sha256'],
                                 location, revisions, value['cursor'], rules, value.get('original_path'),
                                 decode_origin(value['legacy_origin'], value['original_text'])
-                                if value['version'] in (4, 5) and value['legacy_origin'] is not None else None)
+                                if value['version'] == 4 or (value['version'] == 5 and value['legacy_origin'] is not None) else None)
     except (UnicodeError, TypeError, KeyError, RecursionError, ValueError) as exc:
         raise ValueError(f'The reading project is invalid; existing files were kept. {exc}') from exc
 

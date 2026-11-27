@@ -22,29 +22,33 @@ class PreparationDialog:
     """The enclosing editor stays unchanged until this modal returns an acceptance."""
     def __init__(self, parent, project, start, end, *, guard=lambda: None):
         import wx
+        from wx.lib.scrolledpanel import ScrolledPanel
         from .narration_editor import PronunciationPreviewTask
         self.wx, self.project, self.start, self.end, self.guard = wx, project, start, end, guard
         self.result = self.rule = self.preview = self.report = None
         self.closed = self.close_pending = False
         self.dialog = wx.Dialog(parent, title='Prepare selected reading text', size=(900, 860),
                                 style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        self.panel = ScrolledPanel(self.dialog, style=wx.TAB_TRAVERSAL)
         layout = wx.BoxSizer(wx.VERTICAL)
         self.fields = []
 
         def text(label, value='', *, readonly=False, multiline=False):
-            layout.Add(wx.StaticText(self.dialog, label=label), 0, wx.ALL, 5)
+            layout.Add(wx.StaticText(self.panel, label=label), 0, wx.ALL, 5)
             style = (wx.TE_READONLY if readonly else 0) | (wx.TE_MULTILINE if multiline else 0)
-            control = wx.TextCtrl(self.dialog, value=value, style=style)
+            control = wx.TextCtrl(self.panel, value=value, style=style)
             control.SetName(label.replace('&', ''))
-            layout.Add(control, 1 if multiline else 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
+            if multiline:
+                control.SetMinSize((-1, 90))
+            layout.Add(control, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
             if not readonly:
                 self.fields.append(control)
                 control.Bind(wx.EVT_TEXT, self.changed)
             return control
 
         def choice(label, options, selected=0, *, context=True):
-            layout.Add(wx.StaticText(self.dialog, label=label), 0, wx.ALL, 5)
-            control = wx.Choice(self.dialog, choices=list(options))
+            layout.Add(wx.StaticText(self.panel, label=label), 0, wx.ALL, 5)
+            control = wx.Choice(self.panel, choices=list(options))
             control.SetName(label.replace('&', ''))
             control.SetSelection(selected)
             layout.Add(control, 0, wx.EXPAND | wx.LEFT | wx.RIGHT, 6)
@@ -66,17 +70,17 @@ class PreparationDialog:
                            ('Nominative', 'Genitive', 'Dative', 'Accusative', 'Instrumental', 'Locative'))
         self.normal_manifest = text('Reviewed optional number/date/unit package manifest')
         self.spell_manifest = text('Reviewed Hunspell runtime and dictionary manifest')
-        self.issues = wx.ListBox(self.dialog)
+        self.issues = wx.ListBox(self.panel)
+        self.issues.SetMinSize((-1, 100))
         self.issues.SetName('Spelling occurrences with exact reading offsets')
         self.issues.Bind(wx.EVT_LISTBOX, self.selected_issue)
-        layout.Add(self.issues, 1, wx.EXPAND | wx.ALL, 6)
+        layout.Add(self.issues, 0, wx.EXPAND | wx.ALL, 6)
         self.suggestions = choice('Hunspell suggestions for selected occurrence', (), context=False)
         self.details = text('Preparation preview, provenance and operation status',
             'Select reviewed local tool manifests. Preview first; Apply changes only this reading copy. '
             'Date/number grammar and spelling suggestions require human review. No language-quality claim.',
             readonly=True, multiline=True)
         buttons = wx.WrapSizer(wx.HORIZONTAL)
-        layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 5)
         self.buttons = {}
         actions = (
             ('normal_browse', 'Select number tool...', lambda event: self.pick(self.normal_manifest)),
@@ -96,7 +100,12 @@ class PreparationDialog:
             self.buttons[key] = button
             buttons.Add(button, 0, wx.ALL, 4)
         self.task = PronunciationPreviewTask(dispatch=wx.CallAfter, completed=self.completed)
-        self.dialog.SetSizer(layout)
+        self.panel.SetSizer(layout)
+        self.panel.SetupScrolling(scroll_x=False, scroll_y=True, scrollToTop=False)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(self.panel, 1, wx.EXPAND)
+        outer.Add(buttons, 0, wx.EXPAND | wx.ALL, 5)
+        self.dialog.SetSizer(outer)
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
         self.dialog.SetEscapeId(self.buttons['close'].GetId())
         self.dialog.SetAcceleratorTable(wx.AcceleratorTable([
@@ -183,7 +192,8 @@ class PreparationDialog:
         self.case.Enable(idle and uk_cardinal)
         for key in ('normal_browse', 'spell_browse'):
             self.buttons[key].Enable(idle)
-        supported = kind != 3 or language == 0
+        unsupported_ordinal = kind == 0 and language == 2 and self.number.GetSelection() == 1
+        supported = (kind != 3 or language == 0) and not unsupported_ordinal
         self.buttons['normalize'].Enable(idle and supported and bool(self.normal_manifest.GetValue().strip()))
         self.buttons['spell'].Enable(idle and bool(self.spell_manifest.GetValue().strip()))
         self.buttons['cancel'].Enable(self.task.busy and not self.task.cancel.is_set())
@@ -195,7 +205,9 @@ class PreparationDialog:
         self.buttons['spelling_preview'].Enable(idle and has_issue and self.suggestions.GetSelection() >= 0)
         self.issues.Enable(idle)
         self.suggestions.Enable(idle and has_issue)
-        if idle and not supported:
+        if idle and unsupported_ordinal:
+            self.say('The pinned Slovak number adapter does not implement ordinals. Choose cardinal, digits or year.')
+        elif idle and not supported:
             self.say('Unicode symbol names are English only. Use the existing scoped pronunciation dictionary '
                      'for Ukrainian or Slovak; no untranslated symbol names will be applied.')
 
