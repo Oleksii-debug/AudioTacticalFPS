@@ -95,6 +95,11 @@ def panel(classes):
     value.collection.GetSelection.return_value = 0
     value.collection_ids = [None]
     value.filters = {}
+    value._search_page = None
+    value._source_history = []
+    value.search_navigation = {}
+    value.search_timeout = Mock()
+    value.search_timeout.GetValue.return_value = '300'
     value.grid,value.details,value.status = Mock(),Mock(),Mock()
     value._load_context,value._refresh_details = Mock(),Mock()
     value.verified_copy_service = Mock(return_value=hit.quote)
@@ -154,7 +159,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('citation_formatting', 'install_citation_actions'),
                               ('transcription_dialog', 'install_transcription_actions'),
                               ('trust_status', 'install_trust_actions'),
-                              ('operations_dialog', 'install_operations_actions')]:
+                              ('operations_dialog', 'install_operations_actions'),
+                              ('audio_playback', 'install_audio_playback'),
+                              ('backup_incremental_dialog', 'install_incremental_backup_actions')]:
         callback = Mock(side_effect=lambda frame, name=installer: install_order.append(name))
         new_installers.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
@@ -196,6 +203,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert install_order.index('install_book_audio_actions') < install_order.index('install_keyboard_settings')
     assert install_order.index('install_transcription_actions') < install_order.index('install_keyboard_settings')
     assert install_order.index('install_operations_actions') < install_order.index('install_keyboard_settings')
+    assert install_order.index('install_audio_playback') < install_order.index('install_keyboard_settings')
+    assert install_order.index('install_incremental_backup_actions') < install_order.index('install_keyboard_settings')
     assert value.operation_progress is value.progress_panel
     value.help(None)
     guide = env['show_text'].call_args.args[2]

@@ -163,6 +163,24 @@ def test_advanced_cli_pages_keep_originals_and_selected_libraries(cli):
     invalid = run('--search', 'NOT memory', '--search-mode', 'advanced',
                   '--workspace', ids[0], expected=1)
     assert not invalid.stdout.strip()
-    invalid = run('--search', 'memory', '--workspace', ids[0],
-                  '--offset-per-library', '1', expected=1)
-    assert not invalid.stdout.strip()
+    continued = json.loads(run('--search', 'memory', '--workspace', ids[0],
+                  '--offset-per-library', '1').stdout)
+    assert continued['offset_per_library'] == 1
+    assert continued['libraries'][0]['results'][0]['quote'] == source.split('\f')[1]
+
+
+def test_cli_passive_source_cursor_continues_beyond_one_hundred_segments(cli):
+    app, ids, run = cli
+    text = '\f'.join(f'Continuation segment {number:03d}.' for number in range(105))
+    app.add_text(ids[0], 'CLI source continuation', text, edition_id='cursor-source')
+    args = ('--search', 'Continuation', '--workspace', ids[0], '--search-mode', 'terms',
+            '--limit-per-library', '100', '--search-timeout', '300')
+    first = json.loads(run(*args).stdout)
+    cursor = json.dumps(first['next_source_cursors'])
+    second = json.loads(run(*args, '--source-cursors', cursor).stdout)
+    records = first['libraries'][0]['results'] + second['libraries'][0]['results']
+    assert len(records) == 105 and len({row['page'] for row in records}) == 105
+    assert second['next_source_cursors'][ids[0]] is None
+    stale = run('--search', 'Different query', '--workspace', ids[0],
+                '--search-mode', 'terms', '--source-cursors', cursor, expected=1)
+    assert not stale.stdout.strip() and 'cursor' in stale.stderr.lower()

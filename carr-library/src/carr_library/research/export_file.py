@@ -322,6 +322,10 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
     requested, private = _export_paths(path, private_root)
     if approval is not None and type(approval) is not ExportDestination:
         raise ValueError('A captured export destination approval is required.')
+    # An approval for another requested path or private library grants no
+    # authority to open this destination, even just to compare its bytes.
+    if approval is not None and (approval.requested != requested or approval.private_root != private):
+        raise ValueError('The export destination changed. Choose the destination again.')
     reject_existing = None
     if approval is not None and approval.require_absent:
         reject_existing = ValueError('The export destination changed. Choose the destination again.')

@@ -84,7 +84,8 @@ def _name(value):
 class _SearchBudget:
     """One cooperative deadline, including source loading and verification."""
     def __init__(self, timeout, cancelled):
-        if (type(timeout) not in (int, float) or not 0 < timeout <= 60
+        from .search.paging import MAX_TIMEOUT_SECONDS
+        if (type(timeout) not in (int, float) or not 0 < timeout <= MAX_TIMEOUT_SECONDS
                 or not callable(cancelled)):
             raise ValueError('Invalid search operation budget.')
         self.timeout = timeout
@@ -957,7 +958,7 @@ class LibraryApp:
     def search(self, workspace, query, *, mode='phrase', collection=None, title=None,
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
-               result_mode=None, offset=0):
+               result_mode=None, offset=0, _source_page=None, _page_info=None):
         if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
@@ -966,39 +967,56 @@ class LibraryApp:
             raise ValueError('Invalid search operation budget.')
         if type(offset) is not int or offset < 0:
             raise ValueError('Invalid search page offset.')
-        if offset and mode not in ('terms', 'advanced'):
-            raise ValueError('Result pages are available for All words and Advanced searches.')
+        if offset and mode not in ('terms', 'advanced') and _page_info is None:
+            raise ValueError('Use search_page for bounded result/source navigation in this mode.')
         if on_status is not None and not callable(on_status):
             raise ValueError('Search status callback must be callable.')
         with self._search_read(workspace, timeout, cancelled) as (db, budget):
             if authorized_topic is not None:
                 TopicTree(db, workspace)._visible(authorized_topic)
             catalog = Catalog(db, workspace)
-            views = browse_editions(catalog, collection=collection, title=title, author=author,
-                                    language=language, edition=edition, limit=500)
-            budget.check()
-            if len(views) == 500:
-                more = browse_editions(catalog, collection=collection, title=title, author=author,
-                    language=language, edition=edition, after=views[-1].edition_id, limit=1)
+            window = None
+            if _page_info is not None:
+                if type(_page_info) is not dict:
+                    raise ValueError('Invalid source navigation receiver.')
+                from .search.paging import scope_identity, select_window
+                filters = dict(collection=collection, title=title, author=author,
+                               language=language, edition=edition)
+                scope = scope_identity(self.root, workspace, query, mode, result_mode,
+                                       {**filters, 'authorized_topic': authorized_topic})
+                window = select_window(db, catalog, scope=scope, cursor=_source_page,
+                                       check=budget.check, **filters)
+                allowed = window.editions
+            else:
+                views = browse_editions(catalog, collection=collection, title=title, author=author,
+                                        language=language, edition=edition, limit=500)
                 budget.check()
-                if more:
-                    raise ValueError('Narrow the search to at most 500 editions using filters.')
-            allowed = {v.edition_id: v.work_id for v in views}
+                if len(views) == 500:
+                    more = browse_editions(catalog, collection=collection, title=title, author=author,
+                        language=language, edition=edition, after=views[-1].edition_id, limit=1)
+                    budget.check()
+                    if more:
+                        raise ValueError('Use source-page navigation to search beyond this bounded legacy selection.')
+                allowed = {v.edition_id: v.work_id for v in views}
+            source_options = {'page_ids': window.page_ids} if window is not None else {}
+            ranking_limit = 100 if window is not None and mode in ('thematic', 'semantic') else limit
             if mode in ('thematic', 'semantic'):
                 if mode == 'semantic' and self.semantic_ranker is not None:
                     from .semantic import search_snapshot
                     hits = search_snapshot(db, workspace, allowed, query, self.semantic_ranker,
-                                           limit=limit, timeout=budget.remaining(), cancelled=budget.stopped,
-                                           on_status=on_status, cache=self.semantic_cache)
+                                           limit=ranking_limit, timeout=budget.remaining(), cancelled=budget.stopped,
+                                           on_status=on_status, cache=self.semantic_cache, **source_options)
                 else:
                     if mode == 'semantic' and on_status is not None:
                         on_status('Local model unavailable; keyword search used.')
-                    hits = thematic.search_active(db, workspace, allowed, query, limit=limit,
-                                                  timeout=budget.remaining(), cancelled=budget.stopped)
+                    hits = thematic.search_active(db, workspace, allowed, query, limit=ranking_limit,
+                                                  timeout=budget.remaining(), cancelled=budget.stopped, **source_options)
+                if window is not None:
+                    hits = hits[offset:offset + limit]
             else:
                 hits = literal.search(db, workspace, query, edition_ids=tuple(allowed),
                                       mode=mode, limit=limit, offset=offset,
-                                      timeout=budget.remaining(), cancelled=budget.stopped)
+                                      timeout=budget.remaining(), cancelled=budget.stopped, **source_options)
             # Catalog selection, active source selection, and metadata materialization
             # all share this read transaction. No cached edition filters cross snapshots.
             loader, metadata, attestor = self._loaders(db, workspace, cancelled=budget.stopped)
@@ -1045,12 +1063,55 @@ class LibraryApp:
                 results.append(SearchResult(workspace, ref, identity.revision, identity.edition_id,
                     meta.title, meta.author or 'Unknown author', meta.edition or '', locator.display(),
                     raw[selected.start:selected.end], citation, verified, reason))
+        if _page_info is not None:
+            _page_info.update(window=window, raw_hits=len(hits))
         # A stopped or failed operation must neither publish partial selections
         # nor evict selections belonging to the previous completed search.
         self._selections.update(selections)
         while len(self._selections) > 2000:
             del self._selections[next(iter(self._selections))]
         return tuple(results)
+
+
+    def search_page(self, workspace, query, *, cursor=None, limit=100, offset=0,
+                    timeout=300.0, cancelled=lambda: False, **options):
+        """Read one bounded source window and its current result page.
+
+        The next source cursor can advance beyond any number of editions/pages.
+        Ranking stays within this window; every action still resolves its exact
+        active source. No failed lookahead publishes or evicts action handles.
+        """
+        from copy import copy
+        from .search.paging import SearchPage
+        if any(key in options for key in ('_source_page', '_page_info')):
+            raise ValueError('Internal source-page receivers cannot be supplied.')
+        budget = _SearchBudget(timeout, cancelled)
+        budget.check()
+        working = copy(self)
+        working._selections = {}
+        info = {}
+        results = working.search(workspace, query, limit=limit, offset=offset,
+            timeout=budget.remaining(), cancelled=budget.stopped,
+            _source_page=cursor, _page_info=info, **options)
+        window = info['window']
+        more = False
+        if info['raw_hits'] == limit:
+            probe = copy(working)
+            probe._selections = {}
+            probe_info = {}
+            found = probe.search(workspace, query, limit=1, offset=offset + limit,
+                timeout=budget.remaining(), cancelled=budget.stopped,
+                _source_page=cursor, _page_info=probe_info, **options)
+            if probe_info['window'].identity != window.identity:
+                raise ValueError('The source window changed during result lookahead. Restart search.')
+            more = bool(found)
+        budget.check()
+        self._selections.update(working._selections)
+        while len(self._selections) > 2000:
+            del self._selections[next(iter(self._selections))]
+        return SearchPage(tuple(results), window.cursor, window.next_cursor, more,
+                          offset, len(window.page_ids), len(window.editions),
+                          window.characters, window.identity)
 
     def _anchor(self, db, workspace, ref, revision, *, cancelled=lambda: False):
         selected, identity, locator, raw, metadata = self._selected(

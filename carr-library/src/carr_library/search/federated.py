@@ -24,6 +24,7 @@ from uuid import uuid4
 from ..application import LibraryApp, SearchResult, _SearchBudget
 from ..catalog.membership import _identity, _metadata
 from .literal import MAX_QUERY
+from .paging import LIBRARIES_PER_PAGE, MAX_SELECTED_SCOPE_BYTES
 
 
 @dataclass(frozen=True)
@@ -57,6 +58,11 @@ class FederatedSession:
     groups: tuple[LibraryResults, ...]
     offset_per_library: int = 0
     has_more: bool = False
+    selected_workspaces: tuple = ()
+    library_offset: int = 0
+    has_more_libraries: bool = False
+    next_source_cursors: tuple = ()
+    source_windows: tuple = ()
 
     @property
     def hits(self):
@@ -80,16 +86,18 @@ def _data_identity(app):
 
 def _workspaces(values, check):
     if not isinstance(values, (tuple, list)) or not values:
-        raise ValueError('Explicitly select between 1 and 20 libraries.')
-    selected = {}
+        raise ValueError('Explicitly select at least one library.')
+    selected, size = {}, 0
     for value in values:
         check()
         value = _identity(value)
         if not value.strip():
             raise ValueError('A library identity cannot be blank.')
-        selected.setdefault(value, None)
-        if len(selected) > 20:
-            raise ValueError('Select at most 20 distinct libraries.')
+        if value not in selected:
+            size += len(value.encode('utf-8')) + 128
+            if size > MAX_SELECTED_SCOPE_BYTES:
+                raise ValueError('The selected library identities exceed the bounded navigation memory budget.')
+            selected[value] = None
     return tuple(selected)
 
 
@@ -151,13 +159,15 @@ class FederatedSearch:
     def search(self, workspace_ids, query, *, mode='phrase', result_mode=None,
                title=None, author=None, language=None, edition=None, collections=None,
                limit_per_library=50, offset_per_library=0, timeout=60.0,
-               cancelled=lambda: False, on_status=None):
+               cancelled=lambda: False, on_status=None, paged=False,
+               source_cursors=None, library_offset=0):
         """Replace current only after every selected library succeeds.
 
         collections optionally maps selected workspace IDs to their own active
         collection IDs. Metadata filters use LibraryApp's existing semantics.
-        The total cooperative timeout is 0 < timeout <= 60 seconds, with at most
-        100 results per library and 20 distinct explicitly selected libraries.
+        A cooperative caller budget covers the complete invocation. At most
+        20 selected libraries and 100 results per library are retained per page;
+        library_offset and passive source_cursors continue the remaining scope.
         A failed/cancelled attempt preserves current; clear() is explicit.
         Status callbacks receive one string labelled with library name and ID.
         Terms/advanced modes permit bounded result pages because they produce
@@ -183,7 +193,7 @@ class FederatedSearch:
                 raise ValueError('Choose between 1 and 100 results per library.')
             if type(offset_per_library) is not int or offset_per_library < 0:
                 raise ValueError('Choose a nonnegative integer result-page offset.')
-            if offset_per_library and mode not in ('terms', 'advanced'):
+            if offset_per_library and mode not in ('terms', 'advanced') and not paged:
                 raise ValueError('Result-page navigation is available for All words and Advanced searches.')
             if on_status is not None and not callable(on_status):
                 raise ValueError('Search status callback must be callable.')
@@ -198,6 +208,14 @@ class FederatedSearch:
                 from .advanced import compile_query
                 compile_query(query, check=budget.check)
             selected = _workspaces(workspace_ids, budget.check)
+            if (type(paged) is not bool or type(library_offset) is not int
+                    or not 0 <= library_offset < len(selected)):
+                raise ValueError('Choose an existing selected-library navigation page.')
+            if source_cursors is not None and (not paged or not isinstance(source_cursors, Mapping)
+                    or any(key not in selected for key in source_cursors)):
+                raise ValueError('Source cursors must belong to explicitly selected libraries.')
+            cursors = dict(source_cursors or {})
+            page_selected = selected[library_offset:library_offset + LIBRARIES_PER_PAGE]
             filters = dict(zip(('title', 'author', 'language', 'edition'),
                                map(_metadata, (title, author, language, edition))))
             if any(value == '' for value in filters.values()):
@@ -212,12 +230,14 @@ class FederatedSearch:
                     _identity(collection)
 
             # copy.copy does not invoke LibraryApp.__init__ or open/migrate a DB.
-            # At most 20 * 100 refs fit the host's existing 2000-selection budget.
+            # Only this library page can own action handles; continuations
+            # replace it rather than expanding the existing 2000-handle budget.
             working = copy(self._host)
             working._selections = {}
             session_id = uuid4().hex
             groups, owned_hits, has_more = [], {}, False
-            for workspace in selected:
+            next_sources, source_windows = [], []
+            for workspace in page_selected:
                 budget.check()
                 with working._search_read(workspace, budget.remaining(), budget.stopped) as (db, _):
                     name = db.execute('SELECT name FROM workspace_meta WHERE workspace=?',
@@ -234,8 +254,22 @@ class FederatedSearch:
                     limit=limit_per_library, cancelled=budget.stopped, on_status=report)
                 if offset_per_library:
                     options['offset'] = offset_per_library
-                rows = _bounded_rows(working.search(workspace, query, **options,
-                    timeout=budget.remaining()), limit_per_library, budget.check)
+                if paged:
+                    if workspace in cursors and cursors[workspace] is None:
+                        rows = ()
+                        next_sources.append((workspace, None))
+                        source_windows.append((workspace, 0, 0, 0))
+                    else:
+                        page = working.search_page(workspace, query, cursor=cursors.get(workspace),
+                            **options, timeout=budget.remaining())
+                        rows = _bounded_rows(page.results, limit_per_library, budget.check)
+                        has_more = has_more or page.has_more_results
+                        next_sources.append((workspace, page.next_source_cursor))
+                        source_windows.append((workspace, page.source_pages,
+                                               page.source_editions, page.source_characters))
+                else:
+                    rows = _bounded_rows(working.search(workspace, query, **options,
+                        timeout=budget.remaining()), limit_per_library, budget.check)
                 budget.check()
                 if len(rows) > limit_per_library:
                     raise ValueError('The library search exceeded its result limit.')
@@ -249,7 +283,7 @@ class FederatedSearch:
                     owned_hits[result.ref] = hit
                     hits.append(hit)
                 groups.append(LibraryResults(workspace, name, tuple(hits)))
-                if mode in ('terms', 'advanced') and len(rows) == limit_per_library:
+                if not paged and mode in ('terms', 'advanced') and len(rows) == limit_per_library:
                     next_offset = offset_per_library + limit_per_library
                     # Lookahead must not evict any published page handle from
                     # the existing 2000-selection host budget (20 * 100 hits).
@@ -267,7 +301,9 @@ class FederatedSearch:
 
             session = FederatedSession(session_id, self._identity[0], query, mode, result_mode,
                 tuple(filters.items()), tuple((w, scopes.get(w)) for w in selected),
-                limit_per_library, tuple(groups), offset_per_library, has_more)
+                limit_per_library, tuple(groups), offset_per_library, has_more,
+                selected, library_offset, library_offset + len(page_selected) < len(selected),
+                tuple(next_sources), tuple(source_windows))
             completed = _Completed(session, working, owned_hits)
             with self._search_state():
                 budget.check()

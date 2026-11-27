@@ -10,6 +10,8 @@ import pytest
 
 from carr_library.speech.player import WavePlayer
 from carr_library.ui import audio_playback as module
+from carr_library.ui.save_all import SaveCoordinator
+from carr_library.speech.playlist import PlaylistStore, SavedPlaylist, retain_playlist, prepare_playlist
 
 
 class Hold:
@@ -40,6 +42,7 @@ class Frame:
         self.progress_panel = Progress()
         self.working = self._closing = False
         self.cancel_event = Event()
+        self._save_coordinator = SaveCoordinator()
         self.executor = ThreadPoolExecutor(max_workers=1)
         self.completed, self.jobs = [], []
     def run_job(self, title, work, done, failed=None):
@@ -123,7 +126,9 @@ def test_shared_worker_returns_passive_actual_file_review_on_ui(owner, frame, pc
     assert owner.player.path is None
     frame.drain()
     assert threads and threads[0] != caller and not errors
-    assert len(results) == 1 and results[0][0].path == pcm
+    assert len(results) == 1 and results[0][0].display_name == pcm.name
+    assert results[0][0].path.parent == frame.library.root / 'state' / 'studio' / 'inputs'
+    assert results[0][0].path.read_bytes() == pcm.read_bytes()
     assert owner.player.path is None and owner.review_cancel is None
 
 
@@ -220,3 +225,131 @@ def test_native_timer_failure_cannot_skip_player_close(frame, monkeypatch, failu
         module.show_audio_playback(frame)
     assert 'player-close' in calls and frame._playback_owner is None
     assert frame.progress_panel.removed[-1][1] is True
+
+
+def _retained(owner, pcm):
+    return retain_playlist(owner.root, prepare_playlist((pcm,)))
+
+
+def test_save_all_confirms_exact_queue_after_durable_cas_write(owner, frame, pcm):
+    items = _retained(owner, pcm)
+    owner.player.set_playlist(items)
+    owner.player.select_queue(0)
+    owner.player.seek(.0375, start_if_stopped=False)
+    summaries = []
+    assert owner.dirty()
+    assert frame._save_coordinator.save_all(summaries.append)
+    assert len(summaries) == 1 and summaries[0].complete
+    saved, token = PlaylistStore(owner.root).load()
+    assert token == owner.token and saved.frame == 300
+    assert not owner.dirty() and not owner.player.queue_active
+    assert saved.items[0].sha256 == items[0].sha256
+
+
+def test_failed_save_all_keeps_dirty_queue_and_reports_incomplete(owner, frame, pcm, monkeypatch):
+    owner.player.set_playlist(_retained(owner, pcm))
+    def fail(*args, **kwargs):
+        raise OSError('synthetic disk full')
+    monkeypatch.setattr(owner.store, 'save', fail)
+    summaries = []
+    frame._save_coordinator.save_all(summaries.append)
+    assert len(summaries) == 1 and not summaries[0].complete and owner.dirty()
+    assert 'disk full' in summaries[0].remaining[0][1]
+    assert owner.token is None and not owner.store.path.exists()
+
+
+def test_close_flushes_actual_current_frame_before_native_stop_resets_it(owner, frame, pcm):
+    owner.player.set_playlist(_retained(owner, pcm))
+    owner.player.select_queue(0)
+    owner.queue_changed()
+    owner.player.seek(.0625, start_if_stopped=False)
+    owner.close()
+    saved, _ = PlaylistStore(owner.root).load()
+    assert saved.frame == 500 and owner.player.position_seconds == 0
+    assert 'audio.playback' not in frame._save_coordinator.participants
+
+
+def test_reopen_does_not_overwrite_or_read_saved_media_until_explicit_review(owner, frame, pcm, monkeypatch):
+    owner.player.set_playlist(_retained(owner, pcm))
+    owner.player.select_queue(0)
+    owner.player.seek(.025, start_if_stopped=False)
+    owner.queue_changed()
+    expected = owner.store.path.read_bytes()
+    owner.close()
+    pcm.unlink()
+    real_open = Path.open
+    def no_media(path, *args, **kwargs):
+        if path.suffix == '.audio':
+            pytest.fail('Metadata-only reopen opened saved audio')
+        return real_open(path, *args, **kwargs)
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'open', no_media)
+        reopened = module.PlaybackOwner(frame, schedule=lambda *args: None)
+        try:
+            assert reopened.pending_saved is not None
+            assert reopened.player.playlist == () and reopened.player.path is None
+            reopened.poll()
+            reopened.save_now()
+            assert reopened.store.path.read_bytes() == expected
+        finally:
+            reopened.close()
+    active = module.PlaybackOwner(frame, schedule=lambda *args: None)
+    completed, failed = [], []
+    try:
+        active.review_saved(lambda: completed.append(True), failed.append, active=lambda: True)
+        assert active.player.path is None
+        frame.drain()
+        assert completed == [True] and not failed and active.pending_saved is None
+        assert active.player.position_seconds == .025
+        assert active.player.state == 'stopped' and not active.player.queue_active
+        assert active.player._wave is None and not active.player._open
+    finally:
+        active.close()
+
+
+def test_cancelled_saved_review_cannot_adopt_or_change_passive_bytes(owner, frame, pcm):
+    owner.player.set_playlist(_retained(owner, pcm))
+    owner.queue_changed()
+    expected = owner.store.path.read_bytes()
+    owner.close()
+    active = module.PlaybackOwner(frame, schedule=lambda *args: None)
+    done, errors = [], []
+    try:
+        active.review_saved(lambda: done.append(True), errors.append, active=lambda: True)
+        frame.jobs[-1].result(timeout=5)
+        active.stop()
+        frame.drain()
+        assert not done and len(errors) == 1
+        assert active.player.playlist == () and active.pending_saved is not None
+        assert active.store.path.read_bytes() == expected
+    finally:
+        active.close()
+
+
+def test_bounded_existing_timer_autosaves_resume_without_another_worker(owner, frame, pcm, monkeypatch):
+    owner.player.set_playlist(_retained(owner, pcm))
+    owner.player.select_queue(0)
+    owner.queue_changed()
+    owner.player.seek(.05, start_if_stopped=False)
+    before_jobs = len(frame.jobs)
+    now = owner.last_saved_at + 5.1
+    monkeypatch.setattr(module.time, 'monotonic', lambda: now)
+    owner.poll()
+    saved, _ = owner.store.load()
+    assert saved.frame == 400 and len(frame.jobs) == before_jobs
+    assert not owner.dirty()
+
+
+def test_explicit_discard_does_not_retry_save_during_native_cleanup(owner, frame, pcm, monkeypatch):
+    owner.player.set_playlist(_retained(owner, pcm))
+    writes = []
+    def fail(*args, **kwargs):
+        writes.append(True)
+        raise OSError('synthetic unavailable storage')
+    monkeypatch.setattr(owner.store, 'save', fail)
+    with pytest.raises(OSError):
+        owner.before_close()
+    owner.discard_changes()
+    owner.close()
+    assert writes == [True] and not owner.store.path.exists()
+    assert owner.silence_confirmed

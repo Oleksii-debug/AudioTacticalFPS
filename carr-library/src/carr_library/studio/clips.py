@@ -14,6 +14,65 @@ from .project import Cue, Project, Scene, _timeline_effects
 from .render import ProductionService
 
 
+def retain_audio_input(inputs, selected, *, inspect, expected_sha256=None,
+                       cancelled=lambda: False, progress=None):
+    """Retain reviewed audio in the existing Studio content-addressed inputs.
+
+    The caller validates its supported audio format through inspect. This is the
+    same selected-file copy transaction used by ClipEditor, not path approval
+    for any sibling file or a decoder invocation during passive state restore.
+    """
+    if not callable(inspect):
+        raise ValueError('An audio-format review is required before retention.')
+    source = local_path(selected, exists=True)
+    before = regular(source)
+    if not 0 < before.st_size <= 8 * 1024**3:
+        raise ValueError('Select a nonempty local audio file of at most 8 GiB.')
+    if shutil.disk_usage(inputs).free < before.st_size + 64 * 1024**2:
+        raise ValueError('Not enough free disk space to retain the selected original audio.')
+    inputs = local_path(inputs, exists=True)
+    staged = inputs / ('.pending-' + uuid4().hex + '.audio')
+    with state_lock(inputs, 'selected-clip'):
+        try:
+            digest, count = sha256(), 0
+            with source.open('rb') as reader, staged.open('xb') as writer:
+                if _stamp(os.fstat(reader.fileno())) != _stamp(before):
+                    raise ValueError('Selected audio changed before retention.')
+                while block := reader.read(1024 * 1024):
+                    if cancelled():
+                        raise AudioCancelled('Audio clip import cancelled.')
+                    count += len(block)
+                    if count > before.st_size:
+                        raise ValueError('Selected audio grew during retention.')
+                    writer.write(block)
+                    digest.update(block)
+                    if progress:
+                        progress(f'Retaining selected audio: {count} of {before.st_size} bytes')
+                writer.flush()
+                os.fsync(writer.fileno())
+                if _stamp(os.fstat(reader.fileno())) != _stamp(before):
+                    raise ValueError('Selected audio changed during retention.')
+            identity = digest.hexdigest()
+            if count != before.st_size or _checked_digest(source, before, cancelled) != identity:
+                raise ValueError('Selected audio changed during retention.')
+            if expected_sha256 is not None and expected_sha256 != identity:
+                raise ValueError('The selected recording differs from its verified receipt.')
+            inspect(staged, cancelled=cancelled)
+            if _checked_digest(staged, regular(staged), cancelled) != identity:
+                raise ValueError('Retained audio changed during decoder verification.')
+            target = inputs / (identity + '.audio')
+            if target.exists():
+                retained = regular(target)
+                if retained.st_size != count or _checked_digest(target, retained, cancelled) != identity:
+                    raise ValueError('Previously retained audio differs from its content identity.')
+            else:
+                publish_file(staged, target, cancelled=cancelled)
+        finally:
+            staged.unlink(missing_ok=True)
+    return local_path(target, exists=True)
+
+
+
 class ClipEditor:
     """Retain the exact selected bytes; edits only change project instructions."""
     def __init__(self, library_root, *, service=None):
@@ -58,55 +117,13 @@ class ClipEditor:
         """Make a verified private copy, without granting access to its neighbours."""
         if self._closed:
             raise ValueError('This clip editor is closed.')
-        source = local_path(selected, exists=True)
-        before = regular(source)
-        if not 0 < before.st_size <= 8 * 1024**3:
-            raise ValueError('Select a nonempty local audio file of at most 8 GiB.')
-        if shutil.disk_usage(self.service.inputs).free < before.st_size + 64 * 1024**2:
-            raise ValueError('Not enough free disk space to retain the selected original audio.')
-        inputs = local_path(self.service.inputs, exists=True)
-        staged = inputs / ('.pending-' + uuid4().hex + '.audio')
-        with state_lock(inputs, 'selected-clip'):
-            try:
-                digest, count = sha256(), 0
-                with source.open('rb') as reader, staged.open('xb') as writer:
-                    if _stamp(os.fstat(reader.fileno())) != _stamp(before):
-                        raise ValueError('Selected audio changed before retention.')
-                    while block := reader.read(1024 * 1024):
-                        if cancelled():
-                            raise AudioCancelled('Audio clip import cancelled.')
-                        count += len(block)
-                        if count > before.st_size:
-                            raise ValueError('Selected audio grew during retention.')
-                        writer.write(block)
-                        digest.update(block)
-                        if progress:
-                            progress(f'Retaining selected audio: {count} of {before.st_size} bytes')
-                    writer.flush()
-                    os.fsync(writer.fileno())
-                    if _stamp(os.fstat(reader.fileno())) != _stamp(before):
-                        raise ValueError('Selected audio changed during retention.')
-                identity = digest.hexdigest()
-                if count != before.st_size or _checked_digest(source, before, cancelled) != identity:
-                    raise ValueError('Selected audio changed during retention.')
-                if expected_sha256 is not None and expected_sha256 != identity:
-                    raise ValueError('The selected recording differs from its verified receipt.')
-                runtime = self.service._runtime(reviewed_roots=(inputs,))
-                info = runtime.inspect(staged, cancelled=cancelled)
-                if info.duration <= 0 or info.channels not in (1, 2):
-                    raise ValueError('Select readable mono or stereo audio.')
-                if _checked_digest(staged, regular(staged), cancelled) != identity:
-                    raise ValueError('Retained audio changed during decoder verification.')
-                target = inputs / (identity + '.audio')
-                if target.exists():
-                    retained = regular(target)
-                    if retained.st_size != count or _checked_digest(target, retained, cancelled) != identity:
-                        raise ValueError('Previously retained audio differs from its content identity.')
-                else:
-                    publish_file(staged, target, cancelled=cancelled)
-            finally:
-                staged.unlink(missing_ok=True)
-        return local_path(target, exists=True)
+        def inspect(path, *, cancelled):
+            runtime = self.service._runtime(reviewed_roots=(path.parent,))
+            info = runtime.inspect(path, cancelled=cancelled)
+            if info.duration <= 0 or info.channels not in (1, 2):
+                raise ValueError('Select readable mono or stereo audio.')
+        return retain_audio_input(self.service.inputs, selected, inspect=inspect,
+            expected_sha256=expected_sha256, cancelled=cancelled, progress=progress)
 
     def add(self, project, scene_id, selected, *, expected_sha256=None,
             cancelled=lambda: False, progress=None, **settings):

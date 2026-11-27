@@ -48,6 +48,9 @@ def run_native_federated_smoke(frame, completed, failed):
     for number in range(11):
         app.add_text(workspace, f'Native result page {number:02}',
                      f'Paging sequence document {number}.', authors=('Page fixture author',))
+    app.add_text(workspace, 'Windowed native source',
+                 '\f'.join(f'Cursorcontinuation exact segment {number:03d}.' for number in range(105)),
+                 edition_id='zz-windowed-source')
     host_selections = dict(app._selections)
     native = federated_search.NativeSearchCenter(frame, app.workspaces())
     controller = native.controller
@@ -329,7 +332,7 @@ def run_native_federated_smoke(frame, completed, failed):
         assert hit_identity(hit) not in state['first_page']
         assert native.previous_button.IsEnabled() and not native.next_button.IsEnabled()
         assert 'Page 2.' in native.status.GetValue()
-        assert 'No further matching page' in native.status.GetValue()
+        assert 'No further matching result page' in native.status.GetValue()
         click(native.previous_button)
         assert_busy()
         later(previous_page_ready)
@@ -344,7 +347,52 @@ def run_native_federated_smoke(frame, completed, failed):
         checks.extend(['native Next and Previous pages preserve unchanged source order',
                        'last page stops navigation without duplicate source results',
                        'page navigation reuses the selected libraries and query'])
+        for control in native.filters.values():
+            control.SetValue('')
+        native.filters['title'].SetValue('Windowed native source')
+        native.retrieval.SetSelection(federated_search.MODES.index('terms'))
+        native.limit.SetSelection(3)
+        native.timeout.SetValue('300')
+        native.query.SetValue('Cursorcontinuation')
+        click(native.search_button)
+        assert_busy()
+        later(first_source_window_ready)
+
+    def first_source_window_ready():
+        if frame.working:
+            later(first_source_window_ready)
+            return
+        assert len(controller.rows) == 100, native.status.GetValue()
+        assert native.scope_buttons['source_next'].IsEnabled()
+        assert not native.scope_buttons['source_previous'].IsEnabled()
+        state['source_window'] = tuple(map(hit_identity, controller.rows))
+        click(native.scope_buttons['source_next'])
+        assert_busy()
+        later(next_source_window_ready)
+
+    def next_source_window_ready():
+        if frame.working:
+            later(next_source_window_ready)
+            return
+        assert len(controller.rows) == 5, native.status.GetValue()
+        assert not set(map(hit_identity, controller.rows)) & set(state['source_window'])
+        assert native.scope_buttons['source_previous'].IsEnabled()
+        assert not native.scope_buttons['source_next'].IsEnabled()
+        click(native.scope_buttons['source_previous'])
+        assert_busy()
+        later(previous_source_window_ready)
+
+    def previous_source_window_ready():
+        if frame.working:
+            later(previous_source_window_ready)
+            return
+        assert tuple(map(hit_identity, controller.rows)) == state['source_window']
+        assert_scope()
+        checks.extend(['actual native source-window continuation across 105 retained segments',
+                       'source-window Previous restores exact source order without autoplay or scope change',
+                       'explicit native 300-second search budget'])
         # A subsequent attempt cannot close the modal while completion is pending.
+        native.filters['title'].SetValue('')
         native.query.SetValue('source')
         assert controller.rows == () and not native.quote_button.IsEnabled()
         assert not native.previous_button.IsEnabled() and not native.next_button.IsEnabled()
@@ -370,11 +418,11 @@ def run_native_federated_smoke(frame, completed, failed):
 
     def timed_out():
         if not state['completed'] and not errors:
-            errors.append('Research Search Center native smoke exceeded 30 seconds.')
+            errors.append('Research Search Center native smoke exceeded 90 seconds.')
             controller.cancel()
             wait_failure_close()
 
-    timeout = wx.CallLater(30000, timed_out)
+    timeout = wx.CallLater(90000, timed_out)
     later(begin)
     try:
         native.show()

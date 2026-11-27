@@ -34,6 +34,9 @@ class View:
     def set_navigation(self, previous, next_page):
         self.navigation = previous, next_page
 
+    def set_scope_navigation(self, source_previous, source_next, library_previous, library_next):
+        self.scope_navigation = source_previous, source_next, library_previous, library_next
+
     def query_value(self):
         return self.query
 
@@ -895,3 +898,44 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
     assert 'Unknown edition' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.messages[-1]
+
+
+def test_source_windows_continue_on_existing_worker_and_keep_exact_library(center):
+    text = '\f'.join(f'Continuation witness {number:03d}.' for number in range(105))
+    imported = center.app.add_text(center.one, 'Source window test', text, edition_id='page-window')
+    options = SearchOptions((center.one,), 'Continuation', mode='terms', limit_per_library=100, timeout=300)
+    center.controller.search(options)
+    first = tuple((hit.result.edition_id, hit.result.page, hit.result.quote) for hit in center.controller.rows)
+    assert first and center.view.scope_navigation == (False, True, False, False)
+    old = center.controller.rows[0]
+    center.controller.navigate_scope('sources', 1)
+    second = tuple((hit.result.edition_id, hit.result.page, hit.result.quote) for hit in center.controller.rows)
+    assert len(first) + len(second) == 105 and not set(first) & set(second)
+    assert center.view.scope_navigation == (True, False, False, False)
+    assert center.frame.worker_threads and all(value != get_ident() for value in center.frame.worker_threads)
+    with pytest.raises(ValueError, match='latest completed'):
+        center.controller.service.copy(old)
+    center.controller.navigate_scope('sources', -1)
+    assert tuple((hit.result.edition_id, hit.result.page, hit.result.quote)
+                 for hit in center.controller.rows) == first
+    assert center.app.assets.resolve(imported['asset']).read_bytes() == text.encode('utf-8')
+    center.controller.options_changed()
+    assert center.controller.source_history == [] and center.controller.rows == ()
+    assert center.view.scope_navigation == (False, False, False, False)
+
+
+def test_selected_library_pages_preserve_user_selection_and_unsaved_notebook(center):
+    extra = tuple(center.app.create_workspace(f'Additional search library {number}') for number in range(20))
+    center.app.add_text(extra[-1], 'Last selected source', 'Continuation in the final selected library.')
+    selected = (center.one, *extra)
+    center.controller.search(SearchOptions(selected, 'Continuation', mode='terms', timeout=300))
+    assert center.view.scope_navigation[2:] == (False, True)
+    center.controller.navigate_scope('libraries', 1)
+    assert center.controller.options.workspaces == selected
+    assert center.controller.options.library_offset == 20
+    assert len(center.controller.rows) == 1 and center.controller.rows[0].workspace == extra[-1]
+    assert center.view.scope_navigation[2:] == (True, False)
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == 'An unsaved notebook draft — retain exactly.'
+    center.controller.navigate_scope('libraries', -1)
+    assert center.controller.options.library_offset == 0 and center.controller.rows == ()

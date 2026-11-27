@@ -77,6 +77,7 @@ jobs:
             tests/search/test_advanced_search.py \
             tests/search/test_federated_advanced.py \
             tests/search/test_federated.py \
+            tests/search/test_search_paging.py \
             tests/search/test_federated_independent.py \
             tests/search/test_literal_long_source.py \
             tests/search/test_literal_unicode_memory.py \
@@ -159,9 +160,9 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/ci_check.py --jobs 2 \
-            tests/audio/test_capture_admission.py tests/audio/test_recording.py tests/audio/test_conversion_batch.py tests/ui/test_audio_conversion_dialog.py tests/studio/test_audio_conversion_cli.py \
+            tests/assistant/test_local_tools.py tests/audio/test_capture_admission.py tests/audio/test_recording.py tests/audio/test_conversion_batch.py tests/ui/test_audio_conversion_dialog.py tests/studio/test_audio_conversion_cli.py \
             tests/ui/test_recording_dialog.py tests/studio/test_clip_editing.py \
-            tests/studio/test_clip_dialog.py tests/studio/test_project_effects.py tests/studio/test_studio_controller.py tests/speech/test_source.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/ui/test_trust_lifetime.py tests/speech/test_player_controls.py tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/ui/test_audio_playback.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/studio/test_publishing.py \
+            tests/studio/test_clip_dialog.py tests/studio/test_project_effects.py tests/studio/test_studio_controller.py tests/speech/test_source.py tests/studio/test_book_audio.py tests/ui/test_book_audio_dialog.py tests/ui/test_worker_lifetime.py tests/ui/test_trust_lifetime.py tests/speech/test_player_controls.py tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/speech/test_playlist_recovery.py tests/ui/test_audio_playback.py tests/ui/test_reader_playback.py tests/ui/test_reader_playback_actions.py tests/studio/test_publishing.py \
             tests/studio/test_publishing_boundaries.py tests/studio/test_publishing_cli.py \
             tests/studio/test_publishing_handlers.py \
             tests/studio/test_daisy_publishing.py tests/studio/test_daisy_boundaries.py tests/packaging/test_installer_process.py tests/packaging/test_standard_installer.py \

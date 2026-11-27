@@ -116,7 +116,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
         try:
             if selected_inputs != input_identity():
                 raise ValueError('The goal or selected scope changed. Preview the current inputs again.')
-            if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids') and 'script' not in step.arguments
+            if any(step.tool in ('audio.produce', 'audio.render') and not step.arguments.get('voice_ids') and 'script' not in step.arguments
                    for step in candidate.steps):
                 if voice_inventory is None:
                     # Cold private voice discovery can load model metadata.
@@ -164,7 +164,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
                 if not 0 <= selected < len(voices):
                     raise ValueError('Install and choose a local voice before narration.')
                 steps = tuple(Step(s.tool, {**s.arguments, 'voice_ids': [voices[selected].id]})
-                              if s.tool == 'audio.produce' and 'script' not in s.arguments else s for s in candidate.steps)
+                              if s.tool in ('audio.produce', 'audio.render') and 'script' not in s.arguments else s for s in candidate.steps)
                 candidate = Plan(candidate.scope, steps, candidate.summary)
                 service.validate(candidate)
             if selected_inputs != input_identity():

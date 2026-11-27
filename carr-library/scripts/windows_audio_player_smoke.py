@@ -1,4 +1,4 @@
-"""Actual Windows session queue, owned live mixer and native modal cleanup.
+"""Actual Windows saved queue, owned live mixer and native modal cleanup.
 
 Uses silent synthetic stereo PCM and the canonical WavePlayer. Requires real
 WinMM and wx; missing native prerequisites fail this probe. No listening-quality
@@ -28,6 +28,7 @@ def main():
     from carr_library.application import LibraryApp
     from carr_library.speech import player, playlist, _wave_output
     from carr_library.ui import audio_playback, reader_playback, desktop_app
+    from carr_library.studio import clips
 
     checks, errors, destroyed = [], [], []
     def check(label, value):
@@ -39,7 +40,7 @@ def main():
     checkout = Path(__file__).resolve().parents[1]
     installed = (Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR')
                  else Path(sysconfig.get_path('purelib')).resolve())
-    for module in (player, playlist, _wave_output, audio_playback, reader_playback, desktop_app):
+    for module in (player, playlist, _wave_output, audio_playback, reader_playback, desktop_app, clips):
         actual = Path(module.__file__).resolve()
         identities[module.__name__] = sha256(actual.read_bytes()).hexdigest()
         if options.installed:
@@ -131,7 +132,7 @@ def main():
             try:
                 popup, = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.Dialog) and window.IsModal()
-                           and window.GetTitle() == 'Audio playback and session playlist']
+                           and window.GetTitle() == 'Audio playback and saved playlist']
                 owner = frame._playback_owner
                 current = owner.player
                 check('standalone opens without a source or native sound',
@@ -143,11 +144,13 @@ def main():
                 pump(lambda: not frame.working and len(current.playlist) == 2,
                      'Second native selected file was not reviewed')
                 check('actual file picker order and original hashes',
-                      picked == files and tuple(item.path for item in current.playlist) == tuple(files)
-                      and all(item.sha256 == originals[item.path.name] for item in current.playlist))
+                      picked == files and tuple(item.display_name for item in current.playlist) == tuple(path.name for path in files)
+                      and all(item.sha256 == originals[item.display_name]
+                              and item.path.parent == library.root / 'state' / 'studio' / 'inputs'
+                              for item in current.playlist))
                 check('review is passive', current.path is None and current._wave is None and not current._open)
                 press(named(popup, 'Stop and select item'))
-                check('queue selection is silent', current.path == files[0] and current.state == 'stopped'
+                check('queue selection is silent', current.path == current.playlist[0].path and current.state == 'stopped'
                       and current._wave is None)
                 named(popup, 'This player volume, 0 to 100').ChangeValue('43')
                 press(named(popup, 'Apply player volume, mute and balance'))
@@ -193,14 +196,60 @@ def main():
                 press(named(popup, 'Play queue from selected item'))
                 pump(lambda: current.playlist_index == 1, 'Real EOF did not admit the next reviewed item', timeout=10)
                 check('actual queue transition keeps levels and exact next file',
-                      current.path == files[1] and current.levels.volume == 43 and current.queue_active)
+                      current.path == current.playlist[1].path and current.playlist[1].display_name == files[1].name
+                      and current.levels.volume == 43 and current.queue_active)
                 press(named(popup, 'Stop current recording'))
                 settle(.2)
                 check('Stop closes owned native output and cancels queue',
                       current.state == 'stopped' and not current.queue_active and current._wave is None)
                 press(named(popup, 'Stop and move item down'))
-                check('native reorder is passive', current.playlist[0].path == files[1]
+                check('native reorder is passive', current.playlist[0].display_name == files[1].name
                       and current.path is None and not current.queue_active)
+                press(named(popup, 'Stop and select item'))
+                named(popup, 'Forward skip in seconds, 0.1 to 600').ChangeValue('.375')
+                press(named(popup, 'Apply skip intervals'))
+                press(named(popup, 'Skip forward'))
+                check('silent original-frame cursor before save', current.position_seconds == .375
+                      and current.state == 'stopped' and current._wave is None)
+                save = named(popup, 'Save playback queue')
+                save.SetFocus()
+                pump(lambda: wx.Window.FindFocus() is save, 'Save queue keyboard focus')
+                check('actual Ctrl+S down', simulator.KeyDown(wx.WXK_CONTROL))
+                try:
+                    check('actual Ctrl+S character', simulator.Char(ord('S')))
+                finally:
+                    check('actual Ctrl+S up', simulator.KeyUp(wx.WXK_CONTROL))
+                settle()
+                saved, token = playlist.PlaylistStore(library.root).load()
+                check('Ctrl+S durably saved order and exact original-frame cursor',
+                      token is not None and saved.frame == 9000 and saved.index == 0
+                      and [item.label for item in saved.items] == [files[1].name, files[0].name])
+                press(named(popup, 'Close playback controls'))
+            except Exception:
+                errors.append(traceback.format_exc())
+                for window in wx.GetTopLevelWindows():
+                    if isinstance(window, wx.Dialog) and window.IsModal():
+                        window.EndModal(wx.ID_CANCEL)
+
+        def recovery_controls():
+            try:
+                popup, = [window for window in wx.GetTopLevelWindows()
+                           if isinstance(window, wx.Dialog) and window.IsModal()
+                           and window.GetTitle() == 'Audio playback and saved playlist']
+                owner = frame._playback_owner
+                current = owner.player
+                check('restart loads passive metadata without opening audio',
+                      owner.pending_saved is not None and current.playlist == ()
+                      and current.path is None and current._wave is None and not current._open)
+                press(named(popup, 'Review saved queue without playing'))
+                pump(lambda: not frame.working and owner.pending_saved is None
+                     and len(current.playlist) == 2, 'Retained queue review after original relocation')
+                check('explicit review restores original cursor and settings without autoplay',
+                      current.state == 'stopped' and not current.queue_active
+                      and current.position_seconds == .375 and current.playlist_index == 0
+                      and current.levels.volume == 43 and current.levels.balance == -.25
+                      and current._wave is None and not current._open
+                      and [item.display_name for item in current.playlist] == [files[1].name, files[0].name])
                 press(named(popup, 'Close playback controls'))
             except Exception:
                 errors.append(traceback.format_exc())
@@ -226,6 +275,12 @@ def main():
                     renamed = path.with_name('Closed ' + path.name)
                     path.rename(renamed)
                     check('closed source handle is released', renamed.is_file())
+                wx.CallLater(100, recovery_controls)
+                frame.GetEventHandler().ProcessEvent(wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId()))
+                if errors:
+                    raise RuntimeError('\n'.join(errors))
+                check('saved queue reopens after original files moved', frame._playback_owner is None
+                      and not _wave_output._UNRELEASED_OUTPUTS)
                 frame.Close()
                 pump(lambda: bool(destroyed), 'Desktop did not acknowledge native Close')
             except Exception:

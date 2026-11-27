@@ -11,9 +11,15 @@ Import folder "C:/Books" / Імпортуй папку "C:/Books"
 Search "railway transport" / Знайди "залізничний транспорт"
 List books / Покажи книги
 List libraries / Покажи бібліотеки
+List voices / Покажи голоси
+Audio effects / Покажи аудіоефекти
+Inspect audio "C:/Audio/source.wav" / Перевір аудіо "C:/Audio/source.wav"
+Search evidence "railway" / Знайди докази "залізниця"
 Extract "EDITION_ID" as "reading.txt" / Експортуй текст "EDITION_ID" як "reading.txt"
 Backup "backup-name" / Резервна копія "backup-name"
 Produce audio: [script text] / Озвуч: [текст сценарію]
+Use typed JSON for exact reader edition/revision/range, saved evidence IDs/exports,
+reviewed audio conversion hashes/settings, and structured audio.render scripts.
 Paths must be inside your selected input/output folders. No delete, shell or remote tools are available.'''
 
 
@@ -36,6 +42,8 @@ def preview(value, scope):
             (r'(?:import|імпортуй)\s+"([^"]+)"\.?', 'library.import', 'path'),
             (r'(?:search(?:\s+for)?|знайди|пошук)\s+"([^"]+)"\.?', 'library.search', 'query'),
             (r'(?:backup|резервна\s+копія)\s+"([^"]+)"\.?', 'library.backup', 'name'),
+            (r'(?:inspect\s+audio|перевір\s+аудіо)\s+"([^"]+)"\.?', 'audio.inspect', 'path'),
+            (r'(?:search\s+evidence|знайди\s+докази)\s+"([^"]+)"\.?', 'evidence.search', 'query'),
         )
         matched = False
         for pattern, tool, key in patterns:
@@ -51,6 +59,12 @@ def preview(value, scope):
             continue
         if re.fullmatch(r'(?:list\s+books|покажи\s+книги)\.?', line, re.IGNORECASE):
             steps.append(Step('library.catalog'))
+            continue
+        if re.fullmatch(r'(?:list\s+voices|покажи\s+голоси)\.?', line, re.IGNORECASE):
+            steps.append(Step('voice.list'))
+            continue
+        if re.fullmatch(r'(?:audio\s+effects|покажи\s+аудіоефекти)\.?', line, re.IGNORECASE):
+            steps.append(Step('audio.effects'))
             continue
         match = re.fullmatch(r'(?:extract|експортуй\s+текст)\s+"([^"]+)"\s+(?:as|як)\s+"([^"]+)"\.?', line, re.IGNORECASE)
         if match:
