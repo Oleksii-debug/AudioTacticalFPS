@@ -73,7 +73,7 @@ def main():
         from hashlib import sha256
         from .office import office_records, PROFILE
         from .formats import TextOutput
-        from ..audio.jobs import file_identity, regular_file, verified_reader
+        from .office import file_identity, regular_file, verified_reader
         info = regular_file(source)
         if info.st_nlink != 1 or not 0 < info.st_size <= budget.max_source_bytes:
             raise ValueError('The selected office source exceeds its retained snapshot budget.')

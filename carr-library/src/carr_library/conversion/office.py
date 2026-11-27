@@ -169,6 +169,22 @@ def _remaining(deadline):
     return value
 
 
+def _bounded_digest(stream, expected, check):
+    digest, consumed = sha256(), 0
+    while True:
+        check()
+        block = stream.read(min(1024 * 1024, expected - consumed + 1))
+        if not block:
+            break
+        consumed += len(block)
+        if consumed > expected:
+            raise ConversionError('A selected conversion component grew beyond its captured byte allowance.')
+        digest.update(block)
+    if consumed != expected:
+        raise ConversionError('A selected conversion component was truncated during verification.')
+    return digest.hexdigest()
+
+
 def _executable(selection, deadline):
     if (not isinstance(selection, dict) or set(selection) != {'path', 'bytes', 'sha256'}
             or not isinstance(selection['path'], str) or '\x00' in selection['path']
@@ -183,12 +199,9 @@ def _executable(selection, deadline):
     info = regular_file(path)
     if info.st_nlink != 1 or info.st_size != selection['bytes']:
         raise ConversionError('The selected converter identity changed.')
-    digest = sha256()
     with verified_reader(path, expected_identity=file_identity(info)) as stream:
-        while block := stream.read(1024 * 1024):
-            _remaining(deadline)
-            digest.update(block)
-    if digest.hexdigest() != selection['sha256']:
+        digest = _bounded_digest(stream, info.st_size, lambda: _remaining(deadline))
+    if digest != selection['sha256']:
         raise ConversionError('The selected converter bytes changed.')
     return path
 
@@ -263,12 +276,9 @@ class OfficeSelection:
             path, info = _component(root, name)
             if file_identity(info) != identity:
                 raise ConversionError('The selected LibreOffice component changed after selection.')
-            digest = sha256()
             with verified_reader(path, expected_identity=identity) as stream:
-                while block := stream.read(1024 * 1024):
-                    _cancel(cancelled)
-                    digest.update(block)
-            rows.append(dict(name=name, bytes=info.st_size, sha256=digest.hexdigest()))
+                digest = _bounded_digest(stream, info.st_size, lambda: _cancel(cancelled))
+            rows.append(dict(name=name, bytes=info.st_size, sha256=digest))
         _cancel(cancelled)
         self._unchanged()
         return dict(root=str(root), root_identity=list(self.root_identity),

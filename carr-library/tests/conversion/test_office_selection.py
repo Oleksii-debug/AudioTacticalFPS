@@ -227,3 +227,29 @@ else:
     result = subprocess.run([sys.executable, '-I', '-B', '-c', program, str(tmp_path)],
         capture_output=True, text=True, timeout=10, check=True)
     assert result.stdout.strip() == 'refused-before-consumption'
+
+
+def test_real_growing_component_never_consumes_beyond_captured_bytes(tmp_path):
+    path = tmp_path / 'growing-component.bin'
+    original = b'a' * (2 * 1024 * 1024)
+    path.write_bytes(original)
+    consumed = 0
+    class GrowingReader:
+        def __init__(self, stream):
+            self.stream, self.grown = stream, False
+        def read(self, maximum):
+            nonlocal consumed
+            block = self.stream.read(maximum)
+            consumed += len(block)
+            if not self.grown:
+                self.grown = True
+                with path.open('ab') as writer:
+                    writer.write(b'b' * (2 * 1024 * 1024))
+            return block
+    # This deliberately ordinary readable stream tests the consumer's bound on
+    # both operating systems; immutable Windows admission has its separate test.
+    with path.open('rb') as stream:
+        with pytest.raises(ConversionError, match='captured byte allowance'):
+            office._bounded_digest(GrowingReader(stream), len(original), lambda: None)
+    assert consumed == len(original) + 1
+    assert path.stat().st_size == 2 * len(original)
