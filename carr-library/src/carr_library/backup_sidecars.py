@@ -168,6 +168,9 @@ def validate_sidecar(db, name, raw):
         else:
             match = _STUDIO.fullmatch(name)
             project = _model('studio.project').Project.from_dict(_json(raw))
+            if any(scene.cues for scene in project.scenes):
+                raise ValueError('Studio projects with external media cues require a validated '
+                                 'media backup adapter; source audio was not captured.')
             if project.id != match[1] or (match[2] is not None and
                     (project.revision != int(match[2]) or project.fingerprint != match[3])):
                 raise ValueError('Audio project disagrees with its stored identity or revision.')
