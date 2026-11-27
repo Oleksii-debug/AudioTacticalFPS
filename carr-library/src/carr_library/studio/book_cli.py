@@ -117,6 +117,17 @@ def main(argv=None):
     parser.add_argument('--workspace', required=True, help='Existing library identity')
     parser.add_argument('--topic', help='Exact existing topic scope, if selected')
     operations = parser.add_subparsers(dest='operation', required=True)
+    for operation in ('duration-review', 'duration-publish'):
+        measured = operations.add_parser(operation, help='Review/publish exact frames of an already completed Book part')
+        measured.add_argument('plan_id')
+        measured.add_argument('--part', type=int, required=True, help='Exact completed Book part index')
+        measured.add_argument('--output', type=Path, required=True, help='New PCM-parts .zip outside private library data')
+        measured.add_argument('--milliseconds', type=int, required=True, help='Maximum measured PCM interval; never a text estimate')
+        measured.add_argument('--name-template', default='{index:04d} - {book} - {part}')
+        measured.add_argument('--timeout', type=float, default=3600)
+        measured.add_argument('--max-bytes', type=int, default=32 * 1024**3)
+        if operation == 'duration-publish':
+            measured.add_argument('--approval', required=True, help='Exact current duration-review SHA-256')
     bookmarks = operations.add_parser('bookmarks', help='List existing reading bookmark IDs; no jobs or speech')
     bookmarks.add_argument('edition', help='Existing library edition identity')
     bookmarks.add_argument('--revision', help='Exact source revision to review')
@@ -147,7 +158,20 @@ def main(argv=None):
         app = LibraryApp(data_directory(args.data_dir))
         books = BookAudioService(app, args.workspace)
         groups = BookBatchService(books)
-        if args.operation == 'bookmarks':
+        if args.operation in ('duration-review', 'duration-publish'):
+            from ..audio import AudioBudget
+            selected = books.load(args.plan_id)
+            if selected.source['source_topic'] != args.topic:
+                raise ValueError('Choose the completed Book plan in its exact library/topic scope.')
+            options = dict(maximum_ms=args.milliseconds, name_template=args.name_template,
+                budget=AudioBudget(timeout=args.timeout, max_output_bytes=args.max_bytes),
+                cancelled=cancelled.is_set,
+                progress=lambda message: print(message, file=sys.stderr, flush=True))
+            if args.operation == 'duration-review':
+                result = books.review_duration(selected.id, args.part, args.output, **options)
+            else:
+                result = books.publish_duration(selected.id, args.part, args.output, approval=args.approval, **options)
+        elif args.operation == 'bookmarks':
             from .book_landmarks import available_bookmarks
             result = [{'bookmark': asdict(row['bookmark']), 'current_revision': row['current_revision']}
                       for row in available_bookmarks(app, args.workspace, args.edition,

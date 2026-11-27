@@ -461,7 +461,20 @@ def main():
                 'Installed local voice', 'Part name template', 'Book split preview and saved job status',
                 'Saved voice profile', 'Voice rate', 'Voice volume', 'Multiple books',
                 'Selected bookmark boundaries', 'Choose reading bookmarks',
-                'Prepare saved items', 'Run or resume saved items'), wx.ID_CANCEL)
+                'Prepare saved items', 'Run or resume saved items', 'Measured duration parts'), wx.ID_CANCEL)
+
+            from carr_library.ui.book_duration_dialog import create_book_duration_dialog
+            def measured_dialog(host):
+                dialog, close = create_book_duration_dialog(host, service=books, plan=plan)
+                try:
+                    dialog.ShowModal()
+                finally:
+                    close()
+                    dialog.Destroy()
+            inspect_dialog(measured_dialog, ('Completed Book part', 'Maximum measured part milliseconds',
+                'Measured part name template', 'Reviewed measured-parts ZIP',
+                'Measured audio preview and publication status', 'Preview measured parts',
+                'Publish reviewed parts', 'Cancel current operation'), wx.ID_CANCEL)
 
             def exercise_book_batch():
                 """Actual shared desktop worker and native batch review/Run controls."""

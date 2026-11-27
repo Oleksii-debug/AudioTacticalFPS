@@ -169,6 +169,8 @@ def content_review(project, timeline, source, pcm, maximum_ms, name_template, ch
             raise ValueError('A selected PCM part exceeds RIFF WAV size; choose a shorter interval.')
         label = 'Frames %d to %d' % (start, end)
         name = 'audio/' + _output_name(selected.title(index, project.title, label)) + '.wav'
+        from ..state_backup import relative_name
+        relative_name(name)  # Includes Windows device aliases even on POSIX.
         if name.casefold() in names:
             raise ValueError('The measured part names collide on a case-insensitive filesystem.')
         names.add(name.casefold())

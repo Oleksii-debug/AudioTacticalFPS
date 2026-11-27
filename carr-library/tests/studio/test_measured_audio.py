@@ -325,3 +325,10 @@ def test_measured_receipt_typed_backup_delete_restore_has_no_output_or_render_au
     finally:
         books.close()
         production.close()
+
+
+@pytest.mark.parametrize('template', ['COM{index}', 'LPT{index}'])
+def test_measured_member_names_reject_windows_device_aliases_on_every_host(rendered, template):
+    with pytest.raises(ValueError):
+        review(rendered, 1000, name_template=template)
+    assert not rendered.output.exists() and not rendered.publisher.publications()
