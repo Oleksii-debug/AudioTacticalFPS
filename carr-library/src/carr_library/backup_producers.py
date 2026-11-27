@@ -80,6 +80,58 @@ def validate_primary_collection(root, entries, records, *, cancelled):
     _validate_managed_clip_inputs(root / 'state', state_entries, cancelled=cancelled)
 
 
+def validate_translation_collection(db, records, *, cancelled):
+    """Recheck copied translation jobs/ledgers and source slices, with no I/O."""
+    from types import SimpleNamespace
+    from .assistant.translation import TranslationService
+    from .backup_sidecars import _validate_original_text
+    from .reader.reading_state import ReadingLocation
+    for name, job in records.items():
+        match = TRANSLATION.fullmatch(name)
+        if not match or match[2] is not None:
+            continue
+        if cancelled():
+            raise InterruptedError('Backup operation cancelled.')
+        identity = match[1]
+        def load_job(wanted):
+            if wanted != identity:
+                raise ValueError('The copied translation identity changed.')
+            return job
+        def load_usage(authorization):
+            value = records.get('state/translation/provider/usage/' + authorization + '.usage.json')
+            if value is None:
+                raise ValueError('Accepted translation usage evidence is unavailable.')
+            return value
+        # Do not call either constructor: both normally create directories and
+        # configure runtime gateways. _load uses only these two passive readers.
+        service = object.__new__(TranslationService)
+        service.jobs = SimpleNamespace(load=load_job)
+        service.gateway = SimpleNamespace(ledger=SimpleNamespace(get=load_usage))
+        checked = service._load(identity)
+        binding = TranslationService._binding(checked)
+        if binding is None:
+            continue
+        anchor = binding['anchor']
+        if binding['topic'] is not None and db.execute(
+                'SELECT 1 FROM research_topic WHERE workspace=? AND id=?',
+                (anchor['workspace'], binding['topic'])).fetchone() is None:
+            raise ValueError('Translation topic does not belong to its saved library.')
+        for position in anchor['positions']:
+            if cancelled():
+                raise InterruptedError('Backup operation cancelled.')
+            location = ReadingLocation(anchor['workspace'], anchor['edition'], anchor['revision'],
+                position['kind'], position['index'], position['text_sha256'], anchor['asset_sha256'])
+            _validate_original_text(db, location,
+                job['source_text'][position['start']:position['end']])
+            row = db.execute('SELECT physical,digest FROM page WHERE revision=? AND ordinal=?',
+                             (anchor['revision'], position['ordinal'])).fetchone()
+            physical = position['index'] if position['kind'] == 'physical_page' else None
+            if row is None or tuple(row) != (physical, position['text_sha256']):
+                raise ValueError('Translation source position differs from the copied library.')
+            # text_verified_at_capture is historical evidence, not a fresh
+            # quote approval. Do not relabel it from a later live attestation.
+
+
 def fields(value, required, optional=()):
     if (type(value) is not dict or not set(required) <= value.keys()
             or not value.keys() <= set(required) | set(optional)):
@@ -376,11 +428,11 @@ def _translation_languages(value, identity):
     from .assistant.translation import ENDPOINT
     fields(value, {'schema', 'profile', 'endpoint', 'model', 'fetched_at', 'languages',
                    'languages_sha256', 'qualification'})
+    advanced = value['endpoint'] != ENDPOINT
     if (value['schema'] != 'carr-translation-languages/1' or value['profile'] != identity
-            or value['model'] != 'nmt'
+            or value['model'] != ('general/nmt' if advanced else 'nmt')
             or value['qualification'] != 'provider-declared; not acoustic or translation-quality verification'):
         raise ValueError('Invalid translation language inventory identity.')
-    advanced = value['endpoint'] != ENDPOINT
     if advanced:
         google_v3_parent(value['endpoint'])
     text(value['fetched_at'], 128)

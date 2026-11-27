@@ -110,10 +110,12 @@ def load_style_file(path):
     return load_custom_style(data)
 
 
-def records_for_style(snapshot, *, name_mode='literal'):
+def records_for_style(snapshot, *, name_mode='literal', preserve_literal_text=False):
     """Prepare CSL data from the existing exporter, without guessing names."""
     if name_mode not in dict(NAME_MODES):
         raise ValueError('Choose a supported author-name convention.')
+    if type(preserve_literal_text) is not bool:
+        raise ValueError('The literal-author policy must be explicit.')
     if not isinstance(snapshot, str) or len(snapshot.encode('utf-8')) > 8 * 1024 * 1024:
         raise ValueError('Select fewer references for one formatting preview (8 MiB budget).')
     try:
@@ -127,7 +129,7 @@ def records_for_style(snapshot, *, name_mode='literal'):
         for record in records:
             for author in record.get('author', []):
                 value = author.get('literal', '')
-                if value.startswith('{') and value.endswith('}'):
+                if not preserve_literal_text and value.startswith('{') and value.endswith('}'):
                     author['literal'] = value[1:-1]
         notes.append('Author names are kept literally. Personal-name initials and inversion '
                      'require an explicit Family, Given convention or structured CSL input.')
@@ -172,7 +174,11 @@ class BibliographyWorkbench:
     def preview(self, *, identity=None, style='apa', locale='en-US', name_mode='literal'):
         from .csl import render
         snapshot = self._snapshot(identity)
-        records, warnings = records_for_style(snapshot, name_mode=name_mode)
+        # AcademicLibrary already stores literal display text. Its actual braces
+        # are data, not the optional parser markers accepted by the lower-level
+        # CSL adapter. A different personal-name convention remains opt-in.
+        records, warnings = records_for_style(snapshot, name_mode=name_mode,
+                                             preserve_literal_text=True)
         result = render(records, style=style, locale=locale, output='text')
         preview = StylePreview(self.controller.workspace, identity,
             sha256(snapshot.encode('utf-8')).hexdigest(), style, locale, name_mode,
@@ -212,7 +218,8 @@ class BibliographyWorkbench:
             writer = write_export
         elif format in ('html', 'docx'):
             from .csl import render
-            records, _ = records_for_style(snapshot, name_mode=preview.name_mode)
+            records, _ = records_for_style(snapshot, name_mode=preview.name_mode,
+                                          preserve_literal_text=True)
             rendered = render(records, style=preview.style, locale=preview.locale, output='html')
             if format == 'html':
                 content = html_document(rendered)

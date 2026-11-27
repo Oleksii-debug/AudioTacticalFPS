@@ -428,6 +428,57 @@ def safe_markup(value: str) -> tuple[str, str]:
 
 
 
+
+_WORKER_PHASES = frozenset(('input', 'style', 'render', 'reply'))
+_WORKER_FAILURES = frozenset(('invalid-input', 'runtime', 'memory', 'import', 'io', 'unexpected',
+                              'javascript-memory', 'javascript-time', 'javascript-null', 'javascript'))
+
+
+def _failure_category(error):
+    cause = error.__cause__
+    if (cause is not None and type(cause).__module__ == '_quickjs'
+            and type(cause).__name__ == 'JSException'):
+        # Inspect only to choose a fixed category; never return exception text,
+        # source fragments, paths or a processor traceback to the caller.
+        first = (str(cause).splitlines() or [''])[0][:200]
+        if first == 'InternalError: interrupted':
+            return 'javascript-time'
+        if 'out of memory' in first.lower():
+            return 'javascript-memory'
+        if first == 'null':
+            return 'javascript-null'
+        return 'javascript'
+    if isinstance(error, MemoryError):
+        return 'memory'
+    if isinstance(error, ImportError):
+        return 'import'
+    if isinstance(error, OSError):
+        return 'io'
+    if isinstance(error, (ValueError, TypeError, KeyError)):
+        return 'invalid-input'
+    if isinstance(error, RuntimeError):
+        return 'runtime'
+    return 'unexpected'
+
+
+def _failure_details(path):
+    """Accept only a tiny fixed-vocabulary child diagnostic, never raw stderr."""
+    try:
+        with path.open('rb') as stream:
+            raw = stream.read(4097)
+        if len(raw) > 4096:
+            return ''
+        report = json.loads(raw)
+        if (type(report) is dict and set(report) == {'schema', 'phase', 'category'}
+                and report['schema'] == 'carr-csl-error/1'
+                and report['phase'] in _WORKER_PHASES
+                and report['category'] in _WORKER_FAILURES):
+            return '; ' + report['phase'] + '/' + report['category']
+    except (OSError, ValueError, TypeError):
+        pass
+    return ''
+
+
 def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[], bool] | None,
          timeout: float) -> dict:
     if cancelled and cancelled():
@@ -492,7 +543,7 @@ def _run(payload: dict, *, node_path: Path | str | None, cancelled: Callable[[],
                         process.kill()
                     process.wait(timeout=5)
             if process.returncode:
-                raise CitationError('The local CSL processor could not format this input; check the runtime and style.')
+                raise CitationError(f'The local CSL processor failed (exit {process.returncode}{_failure_details(error_path)}); check the runtime and style.')
         if output_path.stat().st_size > _MAX_BYTES:
             raise CitationError('The local citation processor exceeded its output budget.')
         try:
@@ -561,19 +612,29 @@ def render_citations(csl_items: Sequence[Mapping], *, style: str = 'apa', locale
 
 def _worker_main():
     """Fixed local transport to the canonical CSL processor; no second engine."""
-    payload = json.loads(sys.stdin.buffer.read(_MAX_BYTES + 1))
-    style = (_csl.load_custom_style(payload['style_source'])
-             if payload['style_source'] is not None else payload['style'])
-    clusters = payload['clusters']
-    result = _csl.render(payload['references'], style=style, locale=payload['locale'],
-        citations=[row['items'] for row in clusters], output='html',
-        note_indices=[row['note_index'] for row in clusters],
-        budget=_csl.RenderBudget(max_records=_MAX_REFERENCES, max_citations=_MAX_CLUSTERS,
-            max_input_bytes=_MAX_BYTES, max_output_bytes=_MAX_BYTES,
-            memory_bytes=256 * 1024 * 1024, cpu_seconds=payload['timeout']))
-    parameters = dict(result.bibliography_parameters)
-    parameters['entry_ids'] = result.entry_ids
-    output = dict(processor_version=result.processor_reported_version,
-        bibliography=result.entries, citations=result.citations,
-        parameters=parameters, warnings=result.warnings)
-    sys.stdout.write(json.dumps(output, ensure_ascii=True, allow_nan=False))
+    phase = 'input'
+    try:
+        payload = json.loads(sys.stdin.buffer.read(_MAX_BYTES + 1))
+        phase = 'style'
+        style = (_csl.load_custom_style(payload['style_source'])
+                 if payload['style_source'] is not None else payload['style'])
+        clusters = payload['clusters']
+        phase = 'render'
+        result = _csl.render(payload['references'], style=style, locale=payload['locale'],
+            citations=[row['items'] for row in clusters], output='html',
+            note_indices=[row['note_index'] for row in clusters],
+            budget=_csl.RenderBudget(max_records=_MAX_REFERENCES, max_citations=_MAX_CLUSTERS,
+                max_input_bytes=_MAX_BYTES, max_output_bytes=_MAX_BYTES,
+                memory_bytes=_csl.RenderBudget().memory_bytes, cpu_seconds=payload['timeout']))
+        parameters = dict(result.bibliography_parameters)
+        parameters['entry_ids'] = result.entry_ids
+        output = dict(processor_version=result.processor_reported_version,
+            bibliography=result.entries, citations=result.citations,
+            parameters=parameters, warnings=result.warnings)
+        phase = 'reply'
+        sys.stdout.write(json.dumps(output, ensure_ascii=True, allow_nan=False))
+
+    except Exception as error:
+        report = dict(schema='carr-csl-error/1', phase=phase, category=_failure_category(error))
+        sys.stderr.write(json.dumps(report, ensure_ascii=True, separators=(',', ':')))
+        raise SystemExit(1) from None

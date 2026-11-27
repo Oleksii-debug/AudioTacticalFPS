@@ -149,16 +149,13 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         self.destination = self.root / 'matrix.csv'
         self.approve_overwrite = True
         owner = self
-        class Confirmation:
-            def __init__(self, *args, **kwargs):
-                assert threading.get_ident() == owner.frame.main_thread
-            def ShowModal(self): return 1 if owner.approve_overwrite else 0
-            def Destroy(self): pass
-        wx = SimpleNamespace(MessageDialog=Confirmation, ID_YES=1,
-                             YES_NO=2, NO_DEFAULT=4, ICON_QUESTION=8)
+        def confirm(*args):
+            assert threading.get_ident() == owner.frame.main_thread
+            return self.wx.YES if owner.approve_overwrite else self.wx.NO
+        self.wx.MessageBox.side_effect = confirm
         missing = object()
         previous_wx = sys.modules.get('wx', missing)
-        sys.modules['wx'] = wx
+        sys.modules['wx'] = self.wx
         def restore_wx():
             if previous_wx is missing:
                 sys.modules.pop('wx', None)

@@ -591,7 +591,7 @@ jobs:
           assistant_modules = ('carr_library.assistant.profiles', 'carr_library.assistant.providers', 'carr_library.assistant.state', 'carr_library.assistant.translation', 'carr_library.assistant.translation_cli', 'carr_library.assistant.llm', 'carr_library.assistant.service', 'carr_library.studio.cli', 'carr_library.ui.assistant_dialog', 'carr_library.ui.translation_dialog')
           publication_modules = ('carr_library.studio.publishing', 'carr_library.ui.publishing_dialog', 'carr_library.ui.studio_dialog')
           recording_modules = ('carr_library.audio.models', 'carr_library.audio.process', 'carr_library.audio.windows_job', 'carr_library.audio.cleanup', 'carr_library.audio.recording', 'carr_library.speech.runtime', 'carr_library.ui.recording_dialog', 'carr_library.ui.desktop_app')
-          clip_modules = ('carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup')
+          clip_modules = ('carr_library.studio.project', 'carr_library.studio.managed_inputs', 'carr_library.studio.clips', 'carr_library.studio.render', 'carr_library.ui.studio_clips', 'carr_library.state_backup', 'carr_library.backup_transcription', 'carr_library.backup_sidecars', 'carr_library.backup_producers', 'carr_library.durable_state')
           for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules):
               importlib.import_module(module_name)
           def installed_assistant_origins():
@@ -624,6 +624,8 @@ jobs:
               'tests/assistant/test_providers.py',
               'tests/assistant/test_translation.py',
               'tests/storage/test_backup_primary_producers.py',
+              'tests/storage/test_backup_retained_audio.py',
+              'tests/storage/test_state_json_reader.py',
               'tests/storage/test_backup_generated_audio.py',
               'tests/storage/test_backup_translation.py',
               'tests/audio/test_bundled_runtime_settings.py',
@@ -716,10 +718,13 @@ jobs:
           publication_expected = {'test_publishing': 48, 'test_publishing_cli': 5, 'test_publishing_handlers': 7}
           publication_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in publication_expected}
           assert publication_counts == publication_expected, publication_counts
-          clip_expected = {"test_clip_editing":20,"test_clip_restoration":16,"test_clip_dialog":32,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
+          clip_expected = {"test_clip_editing":20,"test_clip_restoration":16,"test_clip_dialog":35,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
           clip_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in clip_expected}
-          clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work'}
+          clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[completed]', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[cancelled-before-start]', 'test_borrowed_clip_editor_service_is_not_closed_by_dialog'}
           assert clip_counts == clip_expected, clip_counts
+          recovery_expected = {'test_backup_retained_audio': 22, 'test_state_json_reader': 11, 'test_durable_state_publication': 19}
+          recovery_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in recovery_expected}
+          assert recovery_counts == recovery_expected, recovery_counts
           assert clip_required <= {case.get('name') for case in publication_cases}, clip_counts
           recording_expected_modules = ["test_recording","test_recording_cleanup","test_recording_compatibility","test_recording_export","test_recording_dialog","test_audio_process","test_publication_fsync","test_dsp","test_production_cancellation_outcomes","test_runtime","test_python_helper","test_windows_audio_ownership"]
           recording_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in recording_expected_modules}
@@ -1040,6 +1045,8 @@ jobs:
             'tests/packaging/test_native_checks_manifest.py',
             'tests/test_delivery_contract.py',
             'tests/storage/test_backup_primary_producers.py',
+            'tests/storage/test_backup_retained_audio.py',
+            'tests/storage/test_state_json_reader.py',
             'tests/storage/test_engine_settings_backup.py',
             'tests/storage/test_engine_settings_dordiai_backup.py',
             'tests/audio/test_bundled_runtime_settings.py',

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 import os
 from pathlib import Path
 import shutil
@@ -12,6 +13,66 @@ import threading
 import time
 
 from .models import AudioBudget, AudioCancelled, AudioError
+
+
+# Query current Windows metadata without retaining a Python file handle.
+# Directory enumeration can report a stale size until the writer closes.
+# Native filters can still perform transient opens, so atomic producers need
+# bounded Windows publication. The final check still uses fresh lstat.
+_USE_WINDOWS_LIVE_FILE_STATS = os.name == 'nt'
+
+
+@dataclass(frozen=True)
+class _FileObservation:
+    st_mode: int
+    st_size: int
+    st_file_attributes: int
+
+
+@lru_cache(maxsize=1)
+def _windows_metadata_query():
+    """Bind the current Win32 file metadata query once."""
+    import ctypes
+
+    class FileAttributeData(ctypes.Structure):
+        _fields_ = [('attributes', ctypes.c_uint32),
+                    ('timestamps', ctypes.c_uint32 * 6),
+                    ('size_high', ctypes.c_uint32), ('size_low', ctypes.c_uint32)]
+
+    try:
+        query = ctypes.WinDLL('kernel32', use_last_error=True).GetFileAttributesExW
+    except (AttributeError, OSError) as error:
+        raise AudioError('Windows live file-size observation is unavailable.') from error
+    query.argtypes = [ctypes.c_wchar_p, ctypes.c_int32, ctypes.POINTER(FileAttributeData)]
+    query.restype = ctypes.c_int32
+
+    def observe(path):
+        text = os.path.abspath(os.fspath(path))
+        if '\x00' in text:
+            raise ValueError('Invalid watched path.')
+        # Preserve long Unicode and UNC paths without changing their target.
+        if not text.startswith('\\\\?\\'):
+            text = ('\\\\?\\UNC\\' + text[2:] if text.startswith('\\\\')
+                    else '\\\\?\\' + text)
+        result = FileAttributeData()
+        if not query(text, 0, ctypes.byref(result)):  # GetFileExInfoStandard
+            error = ctypes.WinError(ctypes.get_last_error())
+            error.filename = os.fspath(path)
+            raise error
+        mode = stat.S_IFDIR if result.attributes & 0x10 else stat.S_IFREG
+        if result.attributes & 0x40:  # FILE_ATTRIBUTE_DEVICE is not regular output.
+            mode = 0
+        return _FileObservation(mode, (result.size_high << 32) | result.size_low,
+                                result.attributes)
+
+    return observe
+
+
+def _live_file_info(path):
+    if os.name == 'nt':
+        return _windows_metadata_query()(path)
+    # Tests exercise the same walker on POSIX without simulating the Windows ABI.
+    return os.stat(path, follow_symlinks=False)
 
 
 @dataclass(frozen=True)
@@ -159,11 +220,12 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         if time.monotonic() - started > budget.timeout:
             raise AudioError('Audio worker exceeded its time allowance; completed chunks remain reusable.')
         total, count = 0, 0
+        live_files = _USE_WINDOWS_LIVE_FILE_STATS and process.poll() is None
         pending = list(watched)
         while pending:
             path = pending.pop()
             try:
-                info = path.lstat()
+                info = _live_file_info(path) if live_files else path.lstat()
             except FileNotFoundError:
                 continue
             if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:

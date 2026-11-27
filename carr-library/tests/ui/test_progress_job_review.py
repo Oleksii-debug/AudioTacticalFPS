@@ -72,6 +72,8 @@ def desktop():
     ({'state': 'complete', 'rows': [{'state': 'duplicate'}, {'state': 'excluded'}]}, 'succeeded'),
     ([{'raw_text': 'failed'}, {'raw_text': 'cancelled'}], 'succeeded'),
     ({'state': 'unrecognized-future-status'}, 'paused'),
+    ({'status': 'stopped'}, 'cancelled'),
+    ({'raw_text': 'stopped'}, 'succeeded'),
 ])
 def test_batch_receipts_require_actual_completion(receipt, outcome):
     assert operation_outcome(receipt) == outcome

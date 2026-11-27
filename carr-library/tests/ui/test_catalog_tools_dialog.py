@@ -221,6 +221,25 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert form.close_button.enabled and not form.pending
 
 
+def test_completed_export_keeps_cleanup_warning_visible(module, setup, monkeypatch):
+    from dataclasses import replace
+
+    form, frame, library = setup
+    actual_write = module.write_export
+    warning = 'Synthetic private staging cleanup needs attention.'
+
+    def write_with_warning(*args, **kwargs):
+        return replace(actual_write(*args, **kwargs), cleanup_warning=warning)
+
+    monkeypatch.setattr(module, 'write_export', write_with_warning)
+    assert form.export_inventory()
+    frame.finish()
+    assert Path(module.wx.file_path).read_bytes() == library.export_value.encode('utf-8')
+    assert library.original.read_bytes() == b'unchanged original source'
+    assert 'exported to' in form.status.GetValue() and warning in form.status.GetValue()
+    assert form.status.focused and not form.pending
+
+
 def test_cancel_file_dialog_restores_initiating_button_without_job(module, setup):
     form, frame, library = setup
     module.wx.file_result = module.wx.ID_CANCEL

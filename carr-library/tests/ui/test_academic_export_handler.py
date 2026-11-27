@@ -123,6 +123,28 @@ def payload_bytes(format):
 
 
 @pytest.mark.parametrize('index,format,suffix', FORMATS)
+def test_completed_document_export_keeps_cleanup_warning(
+        harness, tmp_path, monkeypatch, index, format, suffix):
+    from dataclasses import replace
+
+    name = 'write_binary_export' if format == 'docx' else 'write_export'
+    actual_write = globals()[name]
+    warning = 'Synthetic private staging cleanup needs attention.'
+
+    def write_with_warning(*args, **kwargs):
+        return replace(actual_write(*args, **kwargs), cleanup_warning=warning)
+
+    monkeypatch.setitem(globals(), name, write_with_warning)
+    destination = tmp_path / ('complete' + suffix)
+    h = harness(destination, index)
+    h.invoke()
+    h.run()
+    assert destination.read_bytes() == payload_bytes(format)
+    assert len(h.reports) == 1 and h.reports[0].startswith('Research document exported')
+    assert warning in h.reports[0] and 'not completed' not in h.reports[0]
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
 def test_document_filter_appends_its_suffix_and_publishes_exact_payload(
         harness, research, tmp_path, index, format, suffix):
     requested = tmp_path / 'research-topic'

@@ -232,11 +232,12 @@ def _validate_engine_settings(value):
             fields(helper, {'executable', 'sha256', 'engine_name'}, {'enabled', 'max_voices', 'script', 'script_sha256'})
             path(helper['executable'])
             checksum(helper['sha256'])
-            if ('script' in helper) != ('script_sha256' in helper):
+            script, script_digest = helper.get('script'), helper.get('script_sha256')
+            if (script is None) != (script_digest is None):
                 raise ValueError('A local helper script and its identity must be configured together.')
-            if 'script' in helper:
-                path(helper['script'], absolute=True)
-                checksum(helper['script_sha256'])
+            if script is not None:
+                path(script)
+                checksum(script_digest)
             text(helper['engine_name'], 128)
             if 'enabled' in helper:
                 boolean(helper['enabled'])
@@ -579,11 +580,12 @@ def _allows_empty(name):
             or bool(backup_producers.SUBTITLE.fullmatch(name)) and name.endswith('.srt'))
 
 
-def _validate_collections(root, entries, records, *, cancelled):
+def _validate_collections(db, root, entries, records, *, cancelled):
     try:
         backup_generated.validate_collection(entries, {name: value for name, value in records.items()
                                                        if name.startswith(backup_generated.PREFIX)})
         backup_producers.validate_primary_collection(root, entries, records, cancelled=cancelled)
+        backup_producers.validate_translation_collection(db, records, cancelled=cancelled)
         backup_transcription.validate_collection(root, entries, records, cancelled=cancelled)
     except InterruptedError:
         raise
@@ -594,16 +596,16 @@ def _validate_collections(root, entries, records, *, cancelled):
 def _deny_existing_origin(root):
     # This also protects direct uses of restore/publish with an existing root.
     # No local admission identity is deleted or transferred by a backup.
-    state = root / 'state'
-    if not os.path.lexists(state):
-        return
-    _plain(state, directory=True)
-    for studio in state.iterdir():
-        if studio.name.casefold() == 'studio':
-            _plain(studio, directory=True)
-            for item in studio.iterdir():
-                if _local_studio_origin(PurePosixPath('studio', item.name)):
-                    raise RestoreError('Choose a restore target without existing local Studio origin authority.')
+    for state in root.iterdir():
+        if state.name.casefold() != 'state':
+            continue
+        _plain(state, directory=True)
+        for studio in state.iterdir():
+            if studio.name.casefold() == 'studio':
+                _plain(studio, directory=True)
+                for item in studio.iterdir():
+                    if _local_studio_origin(PurePosixPath('studio', item.name)):
+                        raise RestoreError('Choose a restore target without existing local Studio origin authority.')
 
 
 def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, cancelled=lambda: False):
@@ -636,10 +638,11 @@ def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, c
             _write(stage, name, raw)
             size, checksum = len(raw), sha256(raw).hexdigest()
             if (name.startswith(backup_generated.PREFIX) or backup_producers.RECORDING.fullmatch(name)
+                    or backup_producers.TRANSLATION.fullmatch(name) or backup_producers.USAGE.fullmatch(name)
                     or name.startswith(backup_transcription.PREFIX)):
                 receipts[name] = _json(raw)
         entries.append(dict(filename=name, size_bytes=size, sha256=checksum))
-    _validate_collections(stage, entries, receipts, cancelled=cancelled)
+    _validate_collections(db, stage, entries, receipts, cancelled=cancelled)
     if _capture(root, include_generated=include_generated, cancelled=cancelled) != before:
         raise RestoreError('application state changed during backup; pause its producer and retry')
     # Windows/coarse timestamp filesystems can conceal a same-size rewrite.
@@ -701,9 +704,10 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False):
             validate_sidecar(db, name, raw)
             _write(stage, name, raw)
             if (name.startswith(backup_generated.PREFIX) or backup_producers.RECORDING.fullmatch(name)
+                    or backup_producers.TRANSLATION.fullmatch(name) or backup_producers.USAGE.fullmatch(name)
                     or name.startswith(backup_transcription.PREFIX)):
                 receipts[name] = _json(raw)
-    _validate_collections(stage, inventory.entries, receipts, cancelled=cancelled)
+    _validate_collections(db, stage, inventory.entries, receipts, cancelled=cancelled)
     _check_cancelled(cancelled)
 
 

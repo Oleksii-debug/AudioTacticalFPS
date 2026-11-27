@@ -270,6 +270,31 @@ def finish(frame):
         job.done(result)
 
 
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+def test_completed_export_retains_cleanup_warning_without_reporting_failure(
+        module, edition, tmp_path, monkeypatch, action):
+    from dataclasses import replace
+
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'completed-export.txt'
+    choose(module, monkeypatch, path=destination)
+    actual_write = module.write_export
+    warning = 'Synthetic private staging cleanup needs attention.'
+
+    def write_with_warning(*args, **kwargs):
+        return replace(actual_write(*args, **kwargs), cleanup_warning=warning)
+
+    monkeypatch.setattr(module, 'write_export', write_with_warning)
+    (module.export_bibliography if action == 'bibliography'
+     else module.export_research_outline)(frame)
+    finish(frame)
+    expected = ('Bibliography — Україна\n' if action == 'bibliography'
+                else '# Research — Україна\n')
+    assert destination.read_text(encoding='utf-8') == expected
+    assert len(frame.reports) == 1 and 'exported' in frame.reports[0]
+    assert warning in frame.reports[0] and 'not completed' not in frame.reports[0]
+
+
 def test_import_handler_uses_actual_preview_and_exact_optimistic_book_binding(
         module, edition, reference_file, tmp_path, monkeypatch):
     frame, panel, library = host(tmp_path, edition)

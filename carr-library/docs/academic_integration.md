@@ -1,11 +1,14 @@
 # Offline CSL citations, bibliography and Word documents
 
 The `carr_library.academic_integration` package formats actual CSL JSON references
-with a pinned, unmodified **citeproc-js** processor. It creates in-text citations,
+through the canonical `citations.csl` module with its pinned, unmodified
+**citeproc-js** processor and bounded **QuickJS** interpreter. It creates in-text citations,
 numbered citations, note citations and bibliographies. It does not approximate
-these formats with handwritten templates. The local processor needs an installed
-**Node.js 18 or newer** executable; use an administrator-supported current Node
-runtime. CARR neither downloads Node nor runs npm during citation formatting.
+these formats with handwritten templates. The compatibility package retains the
+verified-pinpoint, editable DOCX and regeneration API; the canonical bibliography
+workbench uses the same processor, styles and locales. No Node runtime or second
+vendor tree is required. Missing QuickJS is an explicit error; there is no download
+or online formatting fallback.
 
 The existing Python `python-docx` dependency creates editable DOCX output. There
 is no Python `citeproc-py` production dependency. Evaluation of that engine found
@@ -18,30 +21,37 @@ not used as a fallback.
 | --- | --- |
 | `apa` | APA Style 7th edition |
 | `chicago-author-date` | Chicago Manual of Style 18th edition (author-date) |
-| `chicago-notes` | Chicago Manual of Style 17th edition (full note) |
+| `chicago-notes` | Chicago Manual of Style 18th edition (notes and bibliography) |
 | `mla` | MLA Handbook 9th edition (in-text citations) |
 | `harvard` | Cite Them Right 12th edition (author-date/Harvard) |
 | `vancouver` | NLM/Vancouver: Citing Medicine 2nd edition (citation-sequence) |
 | `ieee` | IEEE Reference Guide version 11.29.2023 |
 
-Locales `en-US`, `uk-UA` and `sk-SK` are bundled. Unavailable locale lookups made
+Locales `en-US`, `en-GB`, `uk-UA` and `sk-SK` are bundled. The compatibility
+ID `chicago-notes` refers to the canonical `chicago-note` style. Existing documents
+retain their original style digest; regeneration refuses to relabel old pins as
+the newly installed style without an explicit style choice. Unavailable locale lookups made
 inside a style use the installed matching language or English; they never fetch
 remote XML. The public API rejects an uninstalled selected locale. Locale rules
 come from the selected style and CSL locale, so they need not translate every
 literal string embedded in a style.
 
-Exact source revisions:
+Exact source revisions are declared once in
+`citations/_vendor_citeproc/UPSTREAM.json` and the digest allowlist in `citations/csl.py`:
 
-- Processor: [Juris-M/citeproc-js commit 56e7ef3](https://github.com/Juris-M/citeproc-js/tree/56e7ef310154748368665cc8a2be124e3c141832),
-  reported processor version `1.4.61`, git blob `31b4f533c4bb4816d91dd61f79b4aa54ff520ac2`,
-  SHA256 `8d80b2d4ad5d249178ddfa4c535bb72bbd1883521a88e9362686558e2f82029d`.
-- Styles: [Citation Style Language commit cf90f6c](https://github.com/citation-style-language/styles/tree/cf90f6ce72b67c14c7a5b40a612f32869cd92d36).
-- Locales: [Citation Style Language commit f637c83](https://github.com/citation-style-language/locales/tree/f637c83f6267b761513bcc1cb0e95571172e768c).
+- citeproc package `2.4.63`, reported engine `1.4.61`, git revision
+  `73bc1b44bc7d54d0bfec4e070fd27f5efe024ff9`; processor SHA256
+  `55abba1a8b8b48c14323fd053f9646013b4b7a0c977938064ecf5195a502b9f1`.
+- Styles: `citation-style-language/styles` revision
+  `e27b9b7e204b1a40998f774ff05c8a6ed6a5f7d8`.
+- Locales: `citation-style-language/locales` revision
+  `2a7d750cb8b1d01ad838b42a2309d58a4d695c1b`.
+- QuickJS-ng Python binding `0.18.0.2`; exact platform wheels belong to the
+  dependency locks and the installed distribution's source/notice inventory.
 
-`academic_integration/UPSTREAM.json` records each file's installed hash, exact
-source URL and license. Installed processor, styles and locales are checked
-before use. These hashes detect unexpected installed-file changes; the manifest
-itself belongs to the trusted application distribution. They are not signatures.
+Processor, styles and locales are digest-checked before execution. These hashes
+identify installed resources; they are not release signatures. The compatibility
+result exposes this current provenance and preserves each document's saved pins.
 
 ## Formatting API
 
@@ -70,7 +80,6 @@ result = render_citations(
                          locator_verified=True),),
         id="claim-4-citation",
     )],
-    # node_path=r"C:\Program Files\nodejs\node.exe",  # Optional explicit local runtime.
     cancelled=lambda: False,
 )
 print(result.citations[0].text)
@@ -121,21 +130,21 @@ basename and SHA256; private parent-directory paths are not exported. Its rights
 metadata and correctness remain the style supplier's concern;
 bundled-style test coverage is not a promise that every custom style is correct.
 
-Remote style parents and dependent styles are unsupported. Styles/locales must
-be UTF-8, at most 1 MB and at most 20,000 XML elements. DTDs, entities, unknown
-macros, recursive macros and excessive macro depth are rejected. lxml does not
-resolve network resources. JavaScript code is never constructed from style XML
-or reference text.
+Remote style parents and dependent styles are unsupported. The canonical loader
+requires an explicitly selected regular local UTF-8 CSL file, at most 512 KiB,
+10,000 XML nodes and 64 structural/macro dependency levels. DTDs, entities,
+unknown macros and recursive macros are rejected before execution. The stricter
+shared style parser is also used by the compatibility API.
 
-Default operation bounds are 1,000 references, 5,000 clusters, 100 citation items
-per cluster, 16 MB of input/output, a 256 MB Node heap and a 30-second overall
-deadline (configurable up to 60 seconds). Parent cancellation terminates the
-worker. Fixed argv is passed without a shell. `NODE_OPTIONS` and environment
-preload settings are excluded. Node's VM receives only JSON data and the pinned
-processor, with dynamic string-code generation disabled; `process`, `require`,
-filesystem and networking objects are not exposed to it. This is a constrained
-data-processing design with process resource limits, not a claim that Node VM
-is a general hostile-JavaScript security sandbox.
+Compatibility operation bounds remain 1,000 references, 5,000 clusters, 100
+citation items per cluster and 16 MB of input/output. The canonical QuickJS
+memory budget is 512 MiB. A supervised fixed Python command (`-I -B`) enforces
+the existing 30-second overall deadline (configurable from 0.1 to 60 seconds)
+and cancellation, using the exact same `citations.csl.render` implementation.
+The interpreter receives no host/network/filesystem callbacks. Ambient Python
+and Node preload settings are not inherited as launch authority. The obsolete
+`node_path` override is rejected explicitly. These are bounded processing and
+process-isolation controls, not an OS security sandbox.
 
 Errors expose short operational explanations rather than raw processor traces
 or source passages. Returned HTML retains only a small formatting allowlist;
@@ -273,7 +282,7 @@ it neither downloads a paper nor imports a reference automatically. See
 The unmodified citeproc-js source is dual-licensed upstream under **CPAL-1.0 OR
 AGPL-3.0-or-later**. This distribution selects CPAL-1.0. Preserve its copyright,
 license, upstream source identity and user-visible attribution. The full CPAL
-text and the upstream alternative AGPL text are in `vendor/`; do not relabel
+text and the upstream alternative AGPL text are in `citations/_vendor_citeproc/`; do not relabel
 the vendored processor as MIT or as application-owned code.
 
 Bundled styles and locales are **CC BY-SA 3.0**. Their upstream author,
@@ -283,16 +292,17 @@ newlines may have been normalized on retrieval. UI and exported documents show
 `result.attribution`, crediting citeproc-js/Frank Bennett and the
 [Citation Style Language project](https://citationstyles.org/).
 
-Package data must include `UPSTREAM.json`, `csl_worker.cjs`, `styles/*.csl`,
-`locales/*.xml`, and **all** `vendor/*` files. Python code also needs the existing
-`python-docx`/lxml runtime dependencies. A separate Node installer/runtime is an
-explicit deployment prerequisite; app startup and the offline library remain
-available when citation formatting cannot find it.
+Package data comes only from the canonical `citations/_vendor_citeproc/*` and
+`citations/styles/*` resources, including their complete notices and provenance.
+`academic_integration` contains Python compatibility/DOI/DOCX code only; it must
+not restore a second engine, worker script, style directory or notice tree.
+Runtime dependencies include pinned QuickJS, `python-docx` and lxml.
 
 ## Acceptance evidence
 
-Run `python -m pytest -q tests/academic_integration` with actual Node installed.
-Tests run the vendored processor for every bundled style and verify actual
+Run `python -B -m pytest -q tests/academic_integration` with the pinned QuickJS
+runtime installed. Missing runtime is a failure, not a skip. Tests run the one
+canonical processor for every bundled style and verify actual
 names, dates, publication page extents, verified pinpoints, disambiguation,
 numeric ordering, repeated notes, Ukrainian/Slovak locales, native DOCX endnote
 parts, editable italic runs, stable metadata roundtrip and original preservation.
@@ -301,3 +311,7 @@ timeout, runtime preload isolation, path safety and corruption handling.
 Online adapter tests exercise the explicit transport boundary without querying
 a user's account or claiming a real external lookup. Native Windows Word/NVDA
 interaction remains a separate platform acceptance check.
+
+The current reconciliation changes the runtime and style pins. Historical Node
+results remain historical; final source, installed Windows, native keyboard and
+manual NVDA outcomes must name the current exact candidate independently.

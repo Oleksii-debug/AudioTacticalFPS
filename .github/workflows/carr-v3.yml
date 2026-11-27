@@ -78,6 +78,7 @@ jobs:
           $installedRecovery = @'
           import json, pathlib, sys, xml.etree.ElementTree as ET
           import carr_library, carr_library.state_backup, carr_library.ingest.worker
+          import carr_library.backup_transcription, carr_library.backup_sidecars, carr_library.backup_producers, carr_library.durable_state
           import carr_library.application, carr_library.pending_backup, carr_library.library_backup
           import carr_library.speech.reading, carr_library.speech.source, carr_library.ui.speech_dialog
           import carr_library.speech.runtime, carr_library.acquisition.providers, carr_library.academic_integration.doi
@@ -93,6 +94,7 @@ jobs:
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           names = ('carr_library', 'carr_library.state_backup', 'carr_library.ingest.worker',
+                   'carr_library.backup_transcription', 'carr_library.backup_sidecars', 'carr_library.backup_producers', 'carr_library.durable_state',
                    'carr_library.application', 'carr_library.pending_backup', 'carr_library.library_backup',
                    'carr_library.speech.reading', 'carr_library.speech.source', 'carr_library.ui.speech_dialog',
                    'carr_library.speech.runtime', 'carr_library.acquisition.providers', 'carr_library.academic_integration.doi',
@@ -118,6 +120,9 @@ jobs:
           policy = RejectExpectedFailures()
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
           suites = ['tests/storage/test_state_clip_inputs.py',
+                    'tests/storage/test_backup_retained_audio.py',
+                    'tests/storage/test_state_json_reader.py',
+                    'tests/storage/test_durable_state_publication.py',
                     'tests/storage/test_v3_state_backup.py',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
@@ -163,10 +168,13 @@ jobs:
           state_inventory_exact = required_state <= {c.get('name') for c in cases}
           clip_backup_cases = [c.get('name') for c in cases if c.get('classname', '').rsplit('.', 1)[-1] == 'test_state_clip_inputs']
           clip_backup_exact = len(clip_backup_cases) == len(set(clip_backup_cases)) == 17
-          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and state_inventory_exact and clip_backup_exact
+          recovery_expected = {'test_backup_retained_audio': 22, 'test_state_json_reader': 11, 'test_durable_state_publication': 19}
+          recovery_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in recovery_expected}
+          ok = status == 0 and passed > 0 and failed == skipped == 0 and not policy.seen and portable_complete and ocr_exact and state_inventory_exact and clip_backup_exact and recovery_counts == recovery_expected
           result = dict(status='PASS' if ok else 'FAIL', passed=passed, failed=failed,
                         skipped=skipped, pytest_exit=int(status), expected_failures=policy.seen,
                         origins=installed_origins(), portable_complete=portable_complete, portable_cases=len(portable),
+                        recovery_counts=recovery_counts,
                         ocr_inventory_cases=sorted(ocr_cases),
                         ocr_inventory_exact=ocr_exact, state_inventory_exact=state_inventory_exact,
                         clip_backup_exact=clip_backup_exact, clip_backup_cases=clip_backup_cases,
@@ -356,9 +364,9 @@ jobs:
           recording_modules = ["test_recording","test_recording_cleanup","test_recording_compatibility","test_recording_export","test_recording_dialog","test_audio_process","test_publication_fsync","test_dsp","test_production_cancellation_outcomes","test_runtime","test_python_helper","test_windows_audio_ownership"]
           recording_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in recording_modules}
           recording_required = {'test_actual_graceful_stop_finalizes_short_pcm', 'test_actual_cancel_discards_incomplete_capture', 'test_actual_capture_backup_delete_original_root_restore_and_verify', 'test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks', 'test_streamed_export_verifies_original_and_needs_no_microphone_or_engine', 'test_competing_destination_create_at_publication_is_never_overwritten', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[same-path-new-library]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[root-changed]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[frame-closing]', 'test_owned_descendant_cannot_outlive_parent_or_failure[cancel]', 'test_owned_descendant_cannot_outlive_parent_or_failure[timeout]', 'test_owned_descendant_cannot_outlive_parent_or_failure[overflow]', 'test_owned_descendant_cannot_outlive_parent_or_failure[orphan]', 'test_owned_process_preserves_exact_diagnostic_bytes_and_environment', 'test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned', 'test_cancellation_during_flush_does_not_publish'}
-          clip_expected = {"test_clip_editing":20,"test_clip_restoration":16,"test_clip_dialog":32,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
+          clip_expected = {"test_clip_editing":20,"test_clip_restoration":16,"test_clip_dialog":35,"test_clip_cli":8,"test_state_clip_inputs":17,"test_studio_controller":8}
           clip_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in cases) for name in clip_expected}
-          clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work'}
+          clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[completed]', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[cancelled-before-start]', 'test_borrowed_clip_editor_service_is_not_closed_by_dialog'}
           ok = (status == 0 and failed == skipped == 0 and not policy.seen
                 and counts == expected and all(recording_counts.values())
                 and recording_counts['test_windows_audio_ownership'] == 5

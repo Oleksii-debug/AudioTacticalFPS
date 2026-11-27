@@ -37,7 +37,7 @@ def test_studio_queues_named_commands_before_final_keyboard_install(monkeypatch)
         def GetMenu(self, index):
             return self.menus[index][0]
 
-    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(Menu=Menu, ID_ANY=-1, EVT_MENU='menu'))
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(Menu=Menu, Dialog=object, ID_ANY=-1, EVT_MENU='menu'))
     frame = SimpleNamespace(Bind=Mock(), menu_bar=MenuBar())
     frame.GetMenuBar = lambda: frame.menu_bar
     install_speech_actions(frame)

@@ -171,12 +171,14 @@ def main():
                     check('language completion retains readable native status focus', wx.Window.FindFocus() is status)
                     press(find('Preview'))
                     check('preview contains exact endpoint and glossary', address in status.GetValue() and glossary in status.GetValue())
+                    check('preview status focus', wx.Window.FindFocus() is status)
                     press(find('Translate / resume'))
                     pump(lambda: not frame.working and '"status": "complete"' in status.GetValue(), 'Translation completion')
                     check('translation completion status focus', wx.Window.FindFocus() is status)
                     check('confirmation binds exact glossary', glossary in approvals[-1] and address in approvals[-1])
                     press(find('Export'))
                     pump(lambda: not frame.working and status.GetValue().startswith('Saved new files in:'), 'Derivative export')
+                    check('export completion status focus', wx.Window.FindFocus() is status)
                     output, = root.glob('Translation-*')
                     reading = ReadingDocument.load(output / 'translation.reading.json')
                     report = json.loads((output / 'translation-provenance.json').read_text(encoding='utf-8'))
@@ -185,9 +187,12 @@ def main():
                     check('verified glossary provenance', report['chunks'][0]['glossary_config']['glossary'] == glossary)
                     check('original selected text unchanged', selected.GetValue() == original)
                     before = len(calls)
+                    before_approvals = len(approvals)
                     check('completed job retains its approved scope',
                           not glossary_input.IsEnabled() and not find('Preview').IsEnabled())
                     press(find('New translation'))
+                    check('new translation returns focus to editable selected text',
+                          wx.Window.FindFocus() is selected and selected.IsEditable())
                     selected.ChangeValue(original)
                     find('Source language code; auto detects').ChangeValue('en')
                     find('Target language code').ChangeValue('uk')
@@ -197,9 +202,17 @@ def main():
                     check('new translation preview restores the exact reviewed scope',
                           address in status.GetValue() and glossary in status.GetValue()
                           and selected.GetValue() == original and len(calls) == before)
-                    glossary_input.ChangeValue(glossary + '-changed-after-review')
+                    check('new translation preview status focus', wx.Window.FindFocus() is status)
+                    glossary_input.SetFocus()
+                    pump(lambda: wx.Window.FindFocus() is glossary_input, 'Glossary edit focus')
+                    glossary_input.SetInsertionPointEnd()
+                    check('native glossary edit', simulator.Text('-changed-after-review'))
+                    pump(lambda: glossary_input.GetValue() == glossary + '-changed-after-review', 'Glossary keyboard edit')
                     press(find('Translate / resume'))
-                    check('changed glossary requires fresh review without transfer', 'Preview this exact' in status.GetValue() and len(calls) == before)
+                    check('changed glossary requires fresh review without transfer or approval',
+                          'Preview this exact' in status.GetValue() and len(calls) == before
+                          and len(approvals) == before_approvals)
+                    check('stale preview error status focus', wx.Window.FindFocus() is status)
                     press(find('Close'))
                 except Exception:
                     errors.append(traceback.format_exc())
