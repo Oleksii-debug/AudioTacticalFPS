@@ -22,6 +22,8 @@ from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 from . import backup_producers, backup_generated, backup_transcription
 
 MAX_FILES = 100_000
+# Count all visited entries, including excluded cache roots and ignored transients.
+MAX_SCAN_ENTRIES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 ENGINE_SETTINGS_BYTES = 32 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
@@ -511,28 +513,38 @@ def _capture(root, *, include_generated=False, cancelled=lambda: False):
         _check_cancelled(cancelled)
         if _optional_present(root / name):
             pending.append(name)
+    scanned = len(files) + len(pending)
+    if scanned > MAX_SCAN_ENTRIES:
+        raise RestoreError('sidecar scan exceeds its entry budget')
     while pending:
         _check_cancelled(cancelled)
         name = pending.pop()
         portable_name(name)
         directory = root / name
         directories[name] = _identity(_plain(directory, directory=True))
-        for path in directory.iterdir():
-            _check_cancelled(cancelled)
-            relative = path.relative_to(root).as_posix()
-            info = path.lstat()
-            if stat.S_ISDIR(info.st_mode):
-                _plain(path, directory=True)
-                if include_generated or (relative != 'state/studio/cache'
-                                          and not backup_transcription.is_cache_directory(relative)):
-                    pending.append(relative)
-            else:
-                _regular(path)
-                if not _ignored(relative):
-                    sidecar_limit(relative)
-                    files[relative] = _identity(info)
-            if len(files) + len(directories) + len(pending) > MAX_FILES:
-                raise RestoreError('sidecar inventory exceeds its file budget')
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                _check_cancelled(cancelled)
+                scanned += 1
+                if scanned > MAX_SCAN_ENTRIES:
+                    raise RestoreError('sidecar scan exceeds its entry budget')
+                path = directory / entry.name
+                relative = path.relative_to(root).as_posix()
+                info = path.lstat()
+                if stat.S_ISDIR(info.st_mode):
+                    _plain(path, directory=True)
+                    if include_generated or (relative != 'state/studio/cache'
+                                              and not backup_transcription.is_cache_directory(relative)):
+                        pending.append(relative)
+                else:
+                    _regular(path)
+                    if not _ignored(relative):
+                        sidecar_limit(relative)
+                        files[relative] = _identity(info)
+                if len(files) + len(directories) + len(pending) > MAX_FILES:
+                    raise RestoreError('sidecar inventory exceeds its file budget')
+        _check_cancelled(cancelled)
+    _check_cancelled(cancelled)
     return files, directories
 
 

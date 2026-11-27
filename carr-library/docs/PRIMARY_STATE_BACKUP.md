@@ -98,3 +98,15 @@ and retry. Restore always requires a fresh destination and an independently
 retained manifest digest. This does not establish encrypted backups,
 incremental/multi-device migration or recovery of external credentials,
 engines or published files.
+
+
+## Typed sidecar scan resource boundary
+
+Each typed capture pass streams directory entries and visits at most 100,000
+names, counting present registered root paths, included directories and files,
+ignored transient names and excluded cache roots. Excluded cache contents are
+not traversed. This independent scan bound prevents an unbounded ignored-name
+inventory; the existing retained-file, per-format and byte limits still apply.
+A scan that exceeds the bound or is cancelled cannot publish a backup. Pause
+the producer and clear only its known transient files before retrying. This
+does not raise the supported corpus size or claim measured Windows latency.
