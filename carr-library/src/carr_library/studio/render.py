@@ -360,7 +360,7 @@ class ProductionService:
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
         self._check_open()
-        from ..audio import AudioCancelled, AudioCleanupPending, Track, MusicSpec
+        from ..audio import AudioCancelled, AudioCleanupPending, AudioError, Track, MusicSpec
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
         with retained_state_lock(job_root, 'render'), ExitStack() as reservations:
