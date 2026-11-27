@@ -126,7 +126,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions', 'install_audio_studio_actions',
-        'install_api_connection_actions')}
+        'install_api_connection_actions', 'install_assistant_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
