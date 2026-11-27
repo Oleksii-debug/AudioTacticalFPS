@@ -11,6 +11,13 @@ import time
 
 import pytest
 
+# Support both the script entry point and source-only importlib test loading.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from ci_watchdog import CaseWatchdog, without_scheduled_faulthandler
+finally:
+    sys.path.pop(0)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 WINDOWS_CASES = frozenset({
@@ -52,6 +59,8 @@ class CaseProgress:
         self.required = frozenset(required)
         self.passed = set()
         self.expected_failure = False
+        self.watchdog = CaseWatchdog()
+        self.case_token = None
 
     def pytest_sessionstart(self, session):
         self.reporter = session.config.pluginmanager.get_plugin("terminalreporter")
@@ -62,12 +71,17 @@ class CaseProgress:
         self.started = time.monotonic()
         label = nodeid.partition("[")[0][:240]
         self.reporter.write_line(f"CASE_START {self.number:03d} {label}")
+        self.case_token = self.watchdog.start(nodeid)
 
     def pytest_runtest_logfinish(self, nodeid, location):
+        self.watchdog.finish(self.case_token)
+        self.case_token = None
         elapsed = time.monotonic() - self.started
         self.reporter.write_line("")
         self.reporter.write_line(f"CASE_END {self.number:03d} {elapsed:.3f}s")
 
+    def pytest_sessionfinish(self, session, exitstatus):
+        self.watchdog.close()
 
     def pytest_runtest_logreport(self, report):
         if hasattr(report, 'wasxfail'):
@@ -82,7 +96,11 @@ def main(arguments=None):
         os.environ.pop(name, None)
     os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
     policy = CaseProgress(required_cases(arguments))
-    status = pytest.main(['-o', 'addopts=', '-o', 'xfail_strict=true', *arguments], plugins=[policy])
+    try:
+        status = pytest.main(without_scheduled_faulthandler(
+            ['-o', 'addopts=', '-o', 'xfail_strict=true', *arguments]), plugins=[policy])
+    finally:
+        policy.watchdog.close()
     missing = policy.required - policy.passed
     if policy.expected_failure:
         print('FAIL: audio acceptance reported XFAIL or XPASS', flush=True)
