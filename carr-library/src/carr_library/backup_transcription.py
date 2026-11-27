@@ -6,6 +6,7 @@ credential store. Recognition cache is optional; accepted receipts and the
 retained source audio are always part of the ordinary backup.
 """
 from hashlib import sha256
+from itertools import chain
 import json
 from pathlib import PurePosixPath
 import re
@@ -15,6 +16,7 @@ from .ingest.restore import RestoreError
 from .transcription.models import (AUDIO_EXTENSIONS, DEFAULT_SETTINGS, FORMATS,
                                    encoded_outputs, fingerprint, settings,
                                    validated_result)
+from .transcription.runtime import MAX_RUNTIME_FILES
 
 PREFIX = 'state/transcription/'
 MAX_INPUT_BYTES = 64 * 1024**3
@@ -134,12 +136,30 @@ def _settings(value, *, worker=False, partial=False):
             raise ValueError('Unsupported worker translation target.')
 
 
+def _additional_packages(core, additional):
+    """Validate the outer admission inventory without widening worker checkpoints."""
+    if (type(additional) is not dict or not additional
+            or len(additional) > MAX_RUNTIME_FILES or _PACKAGES.intersection(additional)):
+        raise ValueError('Invalid additional transcription distribution inventory.')
+    total = 0
+    for name, entry in chain(core.items(), additional.items()):
+        if type(name) is not str or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', name):
+            raise ValueError('Invalid additional transcription distribution name.')
+        fields(entry, {'version', 'file_count', 'installed_files_sha256'})
+        text(entry['version'], 1024)
+        number(entry['file_count'], 1, 65536, integer=True)
+        digest(entry['installed_files_sha256'])
+        total += entry['file_count']
+        if total > MAX_RUNTIME_FILES:
+            raise ValueError('Excessive transcription runtime file inventory.')
+
+
 def _profile(value, identity):
     fields(value, {'schema', 'protocol', 'python_executable', 'python_resolved', 'python_identity',
         'python_configuration', 'runtime_distributions', 'runtime_auxiliary', 'runtime_capability',
         'worker_path', 'worker_identity', 'model_directory', 'model_name', 'model_files', 'model_bytes',
         'model_content_fingerprint', 'fingerprint', 'id', 'name', 'trusted', 'qualification',
-        'registered', 'restored'}, {'python_support'})
+        'registered', 'restored'}, {'python_support', 'runtime_additional_distributions'})
     if (value['schema'] != 'resonance-transcription-runtime/1' or value['protocol'] != 'local-file-job/1'
             or value['id'] != identity or identity != value['fingerprint'][:32]
             or value['qualification'] != 'unqualified'
@@ -155,6 +175,8 @@ def _profile(value, identity):
     if not {'model.bin', 'config.json', 'tokenizer.json'} <= value['model_files'].keys():
         raise ValueError('Incomplete reviewed model declaration.')
     _packages(value['runtime_distributions'])
+    if 'runtime_additional_distributions' in value:
+        _additional_packages(value['runtime_distributions'], value['runtime_additional_distributions'])
     for name in ('trusted', 'restored'):
         _bool(value[name])
     for name in ('name', 'model_name'):
