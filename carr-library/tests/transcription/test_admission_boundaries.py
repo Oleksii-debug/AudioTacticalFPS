@@ -347,3 +347,71 @@ def test_cancelled_post_admission_check_preserves_committed_valid_receipt(setup,
     resumed = service.resume(state['id'])
     assert resumed['status'] == 'complete' and resumed['results'] == [accepted], resumed
     assert starts(runtime) == 1
+
+
+@pytest.mark.parametrize('intent', ['pause', 'cancel', 'callback'])
+@pytest.mark.parametrize('completed', [False, True])
+def test_stop_during_historical_receipt_hash_preserves_durable_results(setup, monkeypatch, intent, completed):
+    service, runtime, profile, sources = setup
+    if completed:
+        state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+        assert state['status'] == 'complete', state
+    else:
+        state = historical_job(setup)
+    previous = list(state['results'])
+    before_starts = starts(runtime)
+    target = service._job_root(state['id']) / previous[0]['receipt']
+    entered, release, token = threading.Event(), threading.Event(), threading.Event()
+    original = module.file_identity
+    callbacks, outcome = [], {}
+
+    def controlled_hash(path, *, cancel=None, maximum=64 * 1024**3):
+        if Path(path) == target:
+            callbacks.append(cancel)
+            entered.set()
+            while not release.wait(.01):
+                module.stopped(cancel)
+        return original(path, cancel=cancel, maximum=maximum)
+
+    monkeypatch.setattr(module, 'file_identity', controlled_hash)
+
+    def run():
+        try:
+            outcome['state'] = service.resume(state['id'], cancel=token.is_set)
+        except BaseException as error:
+            outcome['error'] = error
+
+    runner = threading.Thread(target=run)
+    runner.start()
+    promptly_stopped = False
+    try:
+        assert entered.wait(4), 'Historical receipt verification was not reached.'
+        if intent == 'callback':
+            token.set()
+        else:
+            getattr(service, intent)(state['id'])
+        runner.join(1.5)
+        promptly_stopped = not runner.is_alive()
+    finally:
+        release.set()
+        runner.join(6)
+    assert not runner.is_alive()
+    assert promptly_stopped, 'Historical receipt verification blocked stop.'
+    assert callbacks and all(callable(callback) for callback in callbacks)
+    saved = service.get_job(state['id'])
+    assert saved['results'] == previous and saved['done'] == len(previous)
+    assert starts(runtime) == before_starts
+    assert not ResourceBroker.for_app(service.library_root).snapshot()['leases']
+    if completed:
+        assert isinstance(outcome.get('error'), InterruptedError), outcome
+        assert saved['status'] == 'complete'
+    else:
+        assert 'error' not in outcome, outcome
+        expected = 'paused' if intent == 'pause' else 'cancelled'
+        assert saved['status'] == outcome['state']['status'] == expected
+    # A fresh explicit resume revalidates the original receipt; no accepted
+    # historical source is transcribed twice.
+    resumed = service.resume(state['id'])
+    assert resumed['status'] == 'complete', resumed
+    assert resumed['results'][:len(previous)] == previous
+    assert starts(runtime) == before_starts + (0 if completed else 1)

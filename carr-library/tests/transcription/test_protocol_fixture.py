@@ -161,4 +161,4 @@ def test_native_windows_reader_preserves_atomic_status(worker, tmp_path, monkeyp
         close()
     assert rejected and set(rejected) <= {5, 32, 33}
     assert len(set(attempts)) == 1
-    assert sum(delays) <= 0.63
+    assert sum(delays) == pytest.approx(0.01 if release_reader else 0.63)

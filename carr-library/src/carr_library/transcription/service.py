@@ -596,12 +596,39 @@ class TranscriptionService:
                 state.update(status='interrupted', recovery_review_required=True)
                 self._save(state)
                 raise RuntimeError('The prior runner did not close; confirm its worker stopped before resuming.')
-            for result in state['results']:
-                self._receipt(state, result)
+            if state.get('recovery_review_required') and not state.get('restored') and state['status'] != 'complete':
+                raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
+
+            def action():
+                selected = self._control(identity)
+                if selected == 'run' and cancel is not None and cancel():
+                    atomic_json(job_root / 'control.json', {'action': 'cancel'}, replace=True)
+                    selected = 'cancel'
+                return selected
+
+            # Historical receipts are read before any worker or resource lease
+            # starts. A stop must interrupt their existing chunked hash reader.
+            try:
+                for result in state['results']:
+                    self._receipt(state, result, cancel=lambda: action() != 'run')
+                stopped(lambda: action() != 'run')
+            except InterruptedError:
+                selected = action()
+                if selected == 'run' or state['status'] == 'complete':
+                    # Do not return an unverified completed result or downgrade
+                    # its durable committed status because this read was stopped.
+                    raise
+                state['status'] = 'paused' if selected == 'pause' else 'cancelled'
+                state['error'] = 'Completed verified files are retained; resume restarts only unfinished sources.'
+                self._save(state)
+                if progress:
+                    progress({'phase': 'Transcript job ' + state['status'],
+                              'status': state['status'], 'done': state['done'],
+                              'total': state['total'], 'current': state.get('current', ''),
+                              'indeterminate': False})
+                return state
             if state['status'] == 'complete':
                 return state
-            if state.get('recovery_review_required') and not state.get('restored'):
-                raise RuntimeError('Confirm the interrupted external worker stopped before resuming.')
             profile = self._profile(state['profile_id'])
             previous_results = list(state['results'])
             if state.get('worker_cache_rejected'):
@@ -626,13 +653,6 @@ class TranscriptionService:
                 if progress and key != last_report:
                     progress(event)
                     last_report = key
-
-            def action():
-                selected = self._control(identity)
-                if selected == 'run' and cancel is not None and cancel():
-                    atomic_json(job_root / 'control.json', {'action': 'cancel'}, replace=True)
-                    selected = 'cancel'
-                return selected
 
             def poll():
                 nonlocal stop_started, last_admit
