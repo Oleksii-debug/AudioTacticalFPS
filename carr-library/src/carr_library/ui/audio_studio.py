@@ -709,6 +709,7 @@ class AudioStudioDialog:
         self._progress_unregister_player = (self.operation_progress.register_player(self.playback)
             if self.operation_progress is not None else lambda: None)
         self.voice_rows = []
+        self._voice_inventory_rows = []
         self.controls = []
         self.windows_playback_controls = []
         self._loading = True
@@ -749,6 +750,7 @@ class AudioStudioDialog:
         from .legacy_studio_import import import_canonical_project
         self._button(script_page, script_buttons, 'Import canonical project',
                      lambda event: import_canonical_project(self, event))
+        self._button(script_page, script_buttons, 'Edit roles and voices', self.edit_roles)
         self._button(script_page, script_buttons, 'Role and master effect chains', self.add_effect)
         self._button(script_page, script_buttons, 'Script and keyboard help', self.help)
         script_layout.Add(script_buttons, 0, wx.ALL, 5)
@@ -778,6 +780,7 @@ class AudioStudioDialog:
         output_row = wx.BoxSizer(wx.HORIZONTAL)
         self._button(production_page, output_row, 'Choose output folder', self.choose_output)
         self._button(production_page, output_row, 'Choose FFmpeg executable', self.choose_ffmpeg)
+        self._button(production_page, output_row, 'Final format and stems', self.edit_output)
         prod_layout.Add(output_row, 0, wx.ALL, 5)
         self.runtime = wx.StaticText(production_page, label=_runtime_description(controller.ffmpeg))
         self.runtime.SetName('Local FFmpeg runtime path')
@@ -994,12 +997,7 @@ class AudioStudioDialog:
         self.script.ChangeValue(self.controller.script)
         self.output.ChangeValue(str(self.controller.output_dir or ''))
         self.differences.ChangeValue(self.controller.draft.difference_text())
-        for index, item in enumerate(self.voice_rows):
-            if item['id'] == self.controller.voice:
-                self.voice.SetSelection(index)
-                break
-        else:
-            self.voice.SetSelection(self.wx.NOT_FOUND)
+        self._show_voice_choices(self._voice_inventory_rows)
         self.editing_dirty = self.controller.dirty
         self._script_dirty = False
         self.dialog.SetTitle('Audio Studio — Local only' + (' — unsaved changes' if self.editing_dirty else ''))
@@ -1104,20 +1102,103 @@ class AudioStudioDialog:
             self.wx.CallAfter(apply)
         future.add_done_callback(complete)
 
+    def _show_voice_choices(self, rows):
+        from ..audio.studio_controls import saved_voice_options, voice_options
+        options = saved_voice_options(voice_options(rows), self.controller.voice)
+        self._voice_inventory_rows = [dict(row) for row in rows]
+        self.voice_rows = [{'id': item.id, 'name': item.name, 'languages': item.languages,
+                            'controls': item.controls, 'available': item.available,
+                            'reason': item.reason} for item in options]
+        self.voice.SetItems([
+            ('Unavailable — ' if not item.available else '') + item.name
+            + ' — ' + ', '.join(item.languages) + ' — ' + item.id for item in options])
+        self.voice.SetSelection(next(index for index, item in enumerate(options)
+                                     if item.id == self.controller.voice))
+
+    def _production_form_state(self):
+        controller = self.controller
+        return (_json_text(controller.to_dict()), controller.project_path,
+                controller.private_root, controller.ffmpeg, controller.trust_controller,
+                self.title.GetValue(), self.language.GetValue(), self.input_kind.GetSelection(),
+                self.voice.GetSelection(), self.script.GetValue(), self.output.GetValue())
+
+    def _production_form_focus(self, target):
+        if self.closed or self.close_pending:
+            return
+        for candidate in (target, self.script):
+            if (isinstance(candidate, self.wx.Window) and not candidate.IsBeingDeleted()
+                    and candidate.IsShown() and candidate.IsEnabled()
+                    and self.wx.GetTopLevelParent(candidate) is self.dialog):
+                candidate.SetFocus()
+                return
+
+    def edit_roles(self, event=None):
+        self._edit_production_controls(event, focus_output=False)
+
+    def edit_output(self, event=None):
+        self._edit_production_controls(event, focus_output=True)
+
+    def _edit_production_controls(self, event=None, *, focus_output=False):
+        try:
+            self._capture()
+            if self.closed or self.close_pending:
+                raise ValueError('The Studio is closing.')
+            controller, draft = self.controller, self.controller.draft
+            if controller.input_kind != 'script':
+                raise ValueError('Choose Structured production script before editing roles or final audio settings. '
+                                 'Literal narration remains literal text.')
+            from ..audio.studio_controls import ScriptProductionEditor, validate_role_voice, voice_options
+            from .studio_controls import show_production_editor
+            editor = ScriptProductionEditor(controller.script, voice=controller.voice,
+                                            language=controller.language)
+            snapshot = self._production_form_state()
+            selected_registry = None
+            focus = event.GetEventObject() if event is not None else self.script
+
+            def current():
+                return (not self.closed and not self.close_pending and not self.busy
+                        and not self.cancelled.is_set() and self.controller is controller
+                        and controller.draft is draft
+                        and (selected_registry is None or controller.registry is selected_registry)
+                        and self._production_form_state() == snapshot)
+
+            def discover():
+                rows = controller.voices(cancelled=self.cancelled.is_set)
+                return rows, controller.registry
+
+            def loaded(value):
+                nonlocal selected_registry
+                rows, selected_registry = value
+                if not current():
+                    raise ValueError('The Studio draft or voice selection changed while controls were loading.')
+                updated = show_production_editor(self.dialog, editor, rows, current=current,
+                                                 focus_output=focus_output)
+                if updated is None:
+                    if current():
+                        self._production_form_focus(focus)
+                    return
+                if not current() or type(updated) is not str or updated != editor.script():
+                    raise ValueError('The Studio draft or voice selection changed while settings were open.')
+                options = voice_options(rows)
+                for role in editor.changed_roles():
+                    validate_role_voice(editor.role(role.name), options)
+                changed = updated != controller.script
+                if changed:
+                    controller.edit_script(updated)
+                    self._refresh_text()
+                    self.plan_text.ChangeValue('Role or output settings changed. Preview the current plan before rendering.')
+                self._message(('Role and output settings updated in one draft edit. Save and preview before rendering.'
+                               if changed else 'Role and output settings are unchanged.'), focus=False)
+                self._production_form_focus(focus)
+
+            self._run('Reading installed voices for Studio settings', discover, loaded)
+        except Exception as exc:
+            self._error(exc)
+
     def reload_voices(self, event=None):
         def loaded(value):
             rows, details = value
-            self.voice_rows = [item for item in rows if item.get('available', True)]
-            self.voice.SetItems([f"{item['name']} — {', '.join(item.get('languages') or ())} — {item['id']}"
-                                 for item in self.voice_rows])
-            chosen = next((index for index, item in enumerate(self.voice_rows)
-                           if item['id'] == self.controller.voice), None)
-            if chosen is not None:
-                self.voice.SetSelection(chosen)
-            elif self.voice_rows:
-                # Discovery is an explicit setup action; show the choice and
-                # mark it as unsaved, never silently switch a saved voice.
-                self.voice.SetSelection(self.wx.NOT_FOUND)
+            self._show_voice_choices(rows)
             self._message(('Local voices loaded. Choose a voice for this project.' if rows else
                            'No local voice is available. Install/configure a supported local voice and reload.') +
                           ('\n' + details if details else ''), focus=True)
