@@ -456,6 +456,13 @@ class AudioRuntime:
                             rate=sample_rate, channels=channels, bit_depth=bit_depth, bitrate=bitrate,
                             sources=(source,), cancelled=cancelled, progress=progress)
 
+    def audiobook(self, source, output, *, chapters, title, sample_rate=24000,
+                  channels=2, bitrate=192, cancelled=lambda: False, progress=None):
+        from .audiobook import publish_m4b
+        return publish_m4b(self, source, output, chapters=chapters, title=title,
+                           sample_rate=sample_rate, channels=channels, bitrate=bitrate,
+                           cancelled=cancelled, progress=progress)
+
     def mix(self, tracks, output, *, duration=None, sample_rate=24000, channels=2,
             duck_music=True, effects=(), bit_depth=16, bitrate=192,
             cancelled=lambda: False, progress=None):

@@ -19,6 +19,10 @@ spec = importlib.util.spec_from_file_location('transcription_protocol_fixture',
     source_root / 'tests' / 'transcription' / 'test_supplied_worker_bridge.py')
 fixture = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixture)
+v5_spec = importlib.util.spec_from_file_location('transcription_v5_protocol_fixture',
+    source_root / 'tests' / 'transcription' / 'test_v5_worker_profile.py')
+v5_fixture = importlib.util.module_from_spec(v5_spec)
+v5_spec.loader.exec_module(v5_fixture)
 desktop = wx.App(False)
 with TemporaryDirectory(prefix='transcription-native-') as temporary:
     root = Path(temporary).resolve()
@@ -30,6 +34,12 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
     worker = root / 'synthetic-worker.py'
     worker.write_text(fixture.SYNTHETIC_WORKER.replace('__MODE__', repr('complete')), encoding='utf-8')
     service.configure(Path(sys.executable).resolve(), worker, models)
+    v5_runtime = root / 'synthetic-v5-runtime'
+    v5_runtime.mkdir()
+    v5_worker = v5_runtime / 'worker.py'
+    v5_worker.write_text(v5_fixture.SYNTHETIC_V5_WORKER, encoding='utf-8')
+    for name in ('local_models.py', 'transcript_features.py'):
+        (v5_runtime / name).write_text('# Synthetic V5 protocol fixture only.\n', encoding='utf-8')
     recordings = root / 'recordings'
     (recordings / 'nested').mkdir(parents=True)
     original = recordings / 'nested' / 'Запис.wav'
@@ -63,6 +73,34 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 control = wx.FindWindowByName(name, dialog)
                 assert control is not None, 'Missing named control: ' + name
                 return control
+            def configure_profile(index, chosen_worker):
+                # Construct the actual native choice dialog, controlling only
+                # its answer. Runtime/model pickers also use synthetic answers.
+                class ProfileAnswer(wx.SingleChoiceDialog):
+                    def ShowModal(self):
+                        def accept():
+                            self.SetSelection(index)
+                            button = self.FindWindow(wx.ID_OK)
+                            assert button is not None, 'The native profile dialog has no OK action.'
+                            click(button)
+                        wx.CallAfter(accept)
+                        result = super().ShowModal()
+                        expected = ('receipts-v1', 'whisper-v5-manifest-v1')[index]
+                        assert result == wx.ID_OK and self.GetSelection() == index
+                        assert self.GetStringSelection().startswith(expected), self.GetStringSelection()
+                        return result
+                answers = iter((str(Path(sys.executable).resolve()), str(chosen_worker)))
+                class RuntimeAnswer(FolderAnswer):
+                    def __init__(self, *args, **kwargs):
+                        self.path = next(answers)
+                    def GetPath(self): return self.path
+                class ModelsAnswer(FolderAnswer):
+                    def GetPath(self): return str(models)
+                with patch.object(wx, 'SingleChoiceDialog', ProfileAnswer), \
+                        patch.object(wx, 'FileDialog', RuntimeAnswer), \
+                        patch.object(wx, 'DirDialog', ModelsAnswer):
+                    click(find('Підключити Whisper'))
+                assert frame.working
             if state['phase'] == 0:
                 assert frame.active[0] == workspace
                 assert service.list() == ()
@@ -71,6 +109,18 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
                 assert find('Часові мітки кожного слова').GetValue()
                 assert not find('Зупинити').IsEnabled()
                 assert not find('Текст: редагування зберігається окремою версією').IsEnabled()
+                configure_profile(1, v5_worker)
+                state['phase'] = 'configured-v5'
+            elif state['phase'] == 'configured-v5' and not frame.working:
+                configured = service.configuration(verify=True)
+                assert configured['protocol'] == 'whisper-v5-manifest-v1'
+                assert set(configured['wrapper_sources_sha256']) == {
+                    'worker.py', 'local_models.py', 'transcript_features.py'}
+                assert 'whisper-v5-manifest-v1' in find('Стан транскрипції').GetValue()
+                configure_profile(0, worker)
+                state['phase'] = 'configured-legacy'
+            elif state['phase'] == 'configured-legacy' and not frame.working:
+                assert service.configuration(verify=True)['protocol'] == 'receipts-v1'
                 folder_button = find('Додати папку з підпапками')
                 assert folder_button.IsEnabled()
                 find('Назва нового завдання').SetValue('Native transcript workflow')
@@ -134,7 +184,10 @@ with TemporaryDirectory(prefix='transcription-native-') as temporary:
         frame.Destroy()
         desktop.Yield()
 print(json.dumps({'status':'PASS', 'checks':['actual named wx controls','shared background operation',
+    'actual native profile choice and configure action','V5 three-source binding','explicit legacy reconfiguration',
     'actual named folder action','background folder intake','relative source and exclusion count',
     'actual isolated child protocol','six verified formats','separate edit revision','original unchanged'],
     'folder_picker_interaction':'NOT_RUN', 'folder_picker_answer':'controlled synthetic directory',
+    'profile_picker_interaction':'programmatic native selection and OK; manual interaction NOT_RUN',
+    'profile_picker_answer':'controlled selections on an actual wx choice dialog',
     'whisper_acoustic_inference':'NOT_RUN', 'manual_NVDA':'NOT_RUN'}, ensure_ascii=False))

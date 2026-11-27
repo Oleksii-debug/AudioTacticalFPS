@@ -87,7 +87,7 @@ def test_atomic_replacement_keeps_a_complete_open_snapshot(tmp_path, monkeypatch
     path.write_bytes(b'{"generation":1}')
     stage.write_bytes(b'{"generation":2}')
     with monkeypatch.context() as patch:
-        streams = _track_read(patch, lambda: os.replace(stage, path))
+        streams = _track_read(patch, lambda: durable_state.replace_file(stage, path))
         assert durable_state.read_json(path) == {'generation': 1}
     assert len(streams) == 1 and streams[0].closed
     assert durable_state.read_json(path) == {'generation': 2}

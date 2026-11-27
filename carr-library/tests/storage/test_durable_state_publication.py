@@ -102,7 +102,7 @@ def test_create_only_primitive_failure_cleans_stage_without_publishing(tmp_path,
 def test_replace_true_keeps_the_existing_atomic_replacement_contract(tmp_path, monkeypatch, fail):
     target = tmp_path / 'state.bin'
     target.write_bytes(b'Previous state')
-    original = os.replace
+    original = durable_state.replace_file
     calls = []
 
     def replacement(*args, **kwargs):
@@ -111,7 +111,7 @@ def test_replace_true_keeps_the_existing_atomic_replacement_contract(tmp_path, m
             raise PermissionError('Synthetic replacement refusal')
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(os, 'replace', replacement)
+    monkeypatch.setattr(durable_state, 'replace_file', replacement)
     if fail:
         with pytest.raises(PermissionError, match='replacement refusal'):
             durable_state.atomic_bytes(target, PAYLOAD, replace=True)

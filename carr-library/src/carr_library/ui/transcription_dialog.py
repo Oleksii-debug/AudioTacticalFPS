@@ -119,8 +119,15 @@ def show_transcription(frame):
         load_source()
         if current:
             job = service.get(current)
+            originals = {item['filename']: item['original_name'] for item in job['sources']}
+            actual = '\n'.join(
+                f"{originals.get(item['source'], item['source'])}: {item['attempt']}; "
+                f"beam={item['settings']['beam_size']}, VAD={item['settings']['vad_filter']}, "
+                f"previous_text={item['settings']['condition_on_previous_text']}"
+                for item in job.get('effective_runs', ()))
             report(f"{job['title']}: {job['status']}; {job['done']}/{len(job['sources'])}.\n" +
-                   job.get('last_error', '') +
+                   f"Профіль: {job['protocol']}; межа спроб: {job['settings']['max_attempts']}.\n" +
+                   job.get('last_error', '') + ('\nФактичні параметри:\n' + actual if actual else '') +
                    '\nПравки тексту не змінюють аудіо та початкові часові мітки.')
     def refresh(select=None):
         nonlocal rows
@@ -161,6 +168,16 @@ def show_transcription(frame):
         return cancel.is_set() or frame.cancel_event.is_set()
     def configure(event):
         try:
+            from ..transcription import PROTOCOLS
+            with wx.SingleChoiceDialog(dialog,
+                    'Оберіть контракт саме встановленого worker.py. V5 потребує також local_models.py і transcript_features.py; '
+                    'виконує до трьох спроб зі збереженням мови. Старі завдання зберігають свій профіль.',
+                    'Профіль локального Whisper',
+                    ['receipts-v1 — worker із квитанціями результатів',
+                     'whisper-v5-manifest-v1 — виправлений приватний V5']) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                protocol = PROTOCOLS[chooser.GetSelection()]
             with wx.FileDialog(dialog, 'Оберіть Python локального Whisper', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as chooser:
                 if chooser.ShowModal() != wx.ID_OK:
                     return
@@ -174,8 +191,9 @@ def show_transcription(frame):
                 if chooser.ShowModal() != wx.ID_OK:
                     return
                 models_dir = chooser.GetPath()
-            begin('Підключення локального Whisper', lambda: service.configure(python, worker, models_dir),
-                  lambda value: report('Рушій підключено. Якість і доступність моделі перевіряються під час фактичного розпізнавання.'))
+            begin('Підключення локального Whisper', lambda: service.configure(python, worker, models_dir, protocol=protocol),
+                  lambda value: report('Профіль підключено: ' + value['protocol'] + '. ' + value.get('retry_policy', '') +
+                      ' Якість моделі ще не підтверджена фактичним розпізнаванням.'))
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
     def create_selected(selected, *, folder=False):

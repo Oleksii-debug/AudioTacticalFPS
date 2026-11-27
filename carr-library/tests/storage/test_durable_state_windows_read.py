@@ -1,8 +1,7 @@
 """Actual Windows handle/child barriers: run as a strict, zero-skip Windows gate.
 
-Non-Windows collection is explicitly unsupported evidence. The replacement test
-also works against the original reader, where it exposes WinError 5/32 rather
-than merely failing because the new private opener does not yet exist.
+Non-Windows collection is explicitly unsupported evidence. Explicit legacy
+cases establish why both delete sharing and native replacement are required.
 """
 import ctypes
 from ctypes import wintypes
@@ -19,9 +18,13 @@ from carr_library import durable_state
 pytestmark = pytest.mark.skipif(os.name != 'nt', reason='Requires actual Windows file sharing.')
 
 
-def _replace_in_child(source, destination):
+def _replace_in_child(source, destination, *, native=False):
+    code = ('import os, sys; os.replace(sys.argv[1], sys.argv[2])' if not native else
+            'import sys; sys.path.insert(0, sys.argv[3]); '
+            'from carr_library.windows_state import replace_file; '
+            'replace_file(sys.argv[1], sys.argv[2])')
     return subprocess.run([sys.executable, '-I', '-B', '-c',
-        'import os, sys; os.replace(sys.argv[1], sys.argv[2])', str(source), str(destination)],
+        code, str(source), str(destination), str(Path(durable_state.__file__).resolve().parents[1])],
         capture_output=True, text=True, timeout=10, check=False)
 
 
@@ -65,7 +68,7 @@ def test_windows_json_reader_allows_atomic_child_replace_and_keeps_old_snapshot(
 
         def read(self, count):
             assert not self.stream.closed
-            result = _replace_in_child(stage, target)
+            result = _replace_in_child(stage, target, native=True)
             child_results.append(result)
             assert result.returncode == 0, result.stderr
             return self.stream.read(count)
@@ -146,3 +149,19 @@ def test_windows_json_handle_is_not_inheritable(tmp_path):
     with durable_state._open_json_read(target) as stream:
         assert not os.get_inheritable(stream.fileno())
         assert stream.read() == b'{}'
+
+
+def test_windows_legacy_replace_still_refuses_a_delete_shared_target(tmp_path):
+    """FILE_SHARE_DELETE alone cannot repair the MoveFileEx overwrite contract."""
+    target, stage = tmp_path / 'state.json', tmp_path / 'status.tmp'
+    target.write_bytes(b'old')
+    stage.write_bytes(b'new')
+    with durable_state._open_json_read(target) as stream:
+        legacy = _replace_in_child(stage, target)
+        assert legacy.returncode != 0 and 'PermissionError' in legacy.stderr
+        assert stream.read() == b'old' and target.read_bytes() == b'old'
+        replacement = _replace_in_child(stage, target, native=True)
+        assert replacement.returncode == 0, replacement.stderr
+        stream.seek(0)
+        assert stream.read() == b'old' and target.read_bytes() == b'new'
+    assert not stage.exists()

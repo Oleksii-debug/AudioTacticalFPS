@@ -227,7 +227,7 @@ def test_final_result_page_after_ten_thousand_matches_is_not_rejected(tmp_path):
     # journal. Publish the synthetic originals through the existing retention,
     # catalog and sealed-revision APIs, in one transaction per edition, without
     # 10,001 per-page extraction checkpoints and their durable writes.
-    with exclusive_writer(app.root), closing(Storage(app.database, schema_version=4)) as storage:
+    with exclusive_writer(app.root), closing(Storage(app.database)) as storage:
         for edition, count in enumerate([1000] * 10 + [1]):
             pages = tuple(f'alpha beta edition {edition:02d} page {page:03d}'
                           for page in range(count))

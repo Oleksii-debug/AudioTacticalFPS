@@ -95,6 +95,11 @@ class Cue:
     gain_db: float = -6
     pan: float = 0
     role: str = 'sfx'
+    trim_start: float = 0
+    duration: float | None = None
+    fade_in: float = 0
+    fade_out: float = 0
+    title: str = ''
 
     def __post_init__(self):
         _id(self.id)
@@ -102,8 +107,16 @@ class Cue:
         _number(self.start, 'Cue start', 0, 31_536_000)
         _number(self.gain_db, 'Cue gain', -60, 12)
         _number(self.pan, 'Cue pan', -1, 1)
-        if self.role not in ('sfx', 'ambience', 'music'):
+        if self.role not in ('sfx', 'ambience', 'music', 'microphone'):
             raise ValueError('Invalid cue track role.')
+        _number(self.trim_start, 'Clip source start', 0, 31_536_000)
+        if self.duration is not None:
+            _number(self.duration, 'Clip duration', .000001, 31_536_000)
+        _number(self.fade_in, 'Clip fade in', 0, 31_536_000)
+        _number(self.fade_out, 'Clip fade out', 0, 31_536_000)
+        _text(self.title, 'clip title', 512, True)
+        if self.duration is not None and max(self.fade_in, self.fade_out) > self.duration:
+            raise ValueError('A clip fade exceeds its selected duration.')
 
 
 @dataclass(frozen=True)
@@ -126,6 +139,8 @@ class Scene:
             raise ValueError('Invalid music cue.')
         if not isinstance(self.cues, tuple) or not all(isinstance(x, Cue) for x in self.cues):
             raise ValueError('Scene cues must be typed.')
+        if len({cue.id for cue in self.cues}) != len(self.cues):
+            raise ValueError('Duplicate scene clip ID.')
         if not self.lines and not self.cues and not self.music and self.minimum_duration <= 0:
             raise ValueError('A scene needs text, a local cue, music, or an explicit silence duration.')
         _number(self.minimum_duration, 'Scene duration', 0, 31_536_000)
@@ -147,7 +162,7 @@ class Project:
         _id(self.id)
         _text(self.title, 'project title', 512)
         _text(self.original_script, 'original script', 16_000_000, True)
-        if self.schema != 1 or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
+        if self.schema not in (1, 2) or type(self.schema) is not int or type(self.revision) is not int or self.revision < 1:
             raise ValueError('Unsupported project schema or revision.')
         if self.mode not in ('faithful', 'authored'):
             raise ValueError('Choose faithful narration or explicitly authored production.')
@@ -162,13 +177,25 @@ class Project:
             raise ValueError('Duplicate role or scene ID.')
         if any(line.role not in roles for scene in self.scenes for line in scene.lines):
             raise ValueError('A line uses an unknown role.')
+        if self.schema == 1 and any(cue.role == 'microphone' or cue.trim_start or
+                cue.duration is not None or cue.fade_in or cue.fade_out or cue.title
+                for scene in self.scenes for cue in scene.cues):
+            raise ValueError('Edited clip timing and microphone tracks require project schema 2.')
 
     @property
     def fingerprint(self):
         return sha256(encode(self.to_dict())).hexdigest()
 
     def to_dict(self):
-        return asdict(self)
+        value = asdict(self)
+        if self.schema == 1:
+            # Keep every pre-editor project/job fingerprint stable. Schema 2
+            # explicitly carries the new optional clip selection and fade data.
+            for scene in value['scenes']:
+                for cue in scene['cues']:
+                    for name in ('trim_start', 'duration', 'fade_in', 'fade_out', 'title'):
+                        cue.pop(name)
+        return value
 
     @classmethod
     def from_dict(cls, value):
@@ -276,15 +303,21 @@ class ProjectStore:
     def directory(self, project_id):
         return self.root / _id(project_id)
 
-    def save(self, project, *, expected_revision=None):
+    def save(self, project, *, expected_revision=None, expected_fingerprint=None):
         if not isinstance(project, Project):
             raise ValueError('A typed audio project is required.')
+        if expected_fingerprint is not None and (not isinstance(expected_fingerprint, str)
+                or re.fullmatch(r'[0-9a-f]{64}', expected_fingerprint) is None):
+            raise ValueError('Invalid expected project fingerprint.')
         directory = self.directory(project.id)
         with state_lock(directory):
             path = directory / 'project.json'
             previous = Project.from_dict(read_json(path)) if path.exists() else None
             if expected_revision is not None and (previous is None or previous.revision != expected_revision):
                 raise ValueError('Project changed since it was opened. Reload before saving.')
+            if expected_fingerprint is not None and (previous is None
+                    or previous.fingerprint != expected_fingerprint):
+                raise ValueError('Project content changed since it was opened. Reload before saving.')
             if previous:
                 if project.to_dict() == previous.to_dict():
                     return project

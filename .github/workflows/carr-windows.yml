@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 65
     defaults:
       run:
         shell: pwsh
@@ -123,6 +123,16 @@ jobs:
           }
           "CARR_CI_CITATIONS=$citations" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           $citations | Out-File $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Prepare pinned EPUB and DAISY conformance inputs
+        timeout-minutes: 5
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'carr-publication-validation'
+          & $env:CARR_PYTHON -I -B scripts/prepare_publication_tools.py --output $tools --download | Tee-Object 'ci-results/publication-validation-inputs.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_PUBLICATION_TOOLS=$tools" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          $java = (Get-Command java.exe -ErrorAction Stop).Source
+          "CARR_PUBLICATION_JAVA=$java" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Check the installed application through its self-test entrypoint
         timeout-minutes: 3
@@ -248,11 +258,24 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_progress_smoke.py 2>&1 | Tee-Object 'ci-results/native-operation-progress.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed native signed-client review controls
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_trust_status_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-trusted-client.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Exercise installed supplied-worker transcription controls
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_transcription_smoke.py 2>&1 | Tee-Object 'ci-results/native-transcription.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed Studio, proposal and translation controls
+        timeout-minutes: 8
+        run: |
+          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py')) {
+            & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-results ('native-' + $probe + '.txt'))
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
 
       - name: Exercise native command search and restored edit focus
         timeout-minutes: 3
@@ -427,7 +450,7 @@ jobs:
           New-Item -ItemType Directory -Force $testWheels | Out-Null
           & $env:CARR_PYTHON -m pip download --only-binary=:all: --dest $testWheels pytest==9.0.2 reportlab==4.4.9
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $programs = @($bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ResearchLibrary.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio/bin/ffmpeg.exe'), (Join-Path $bundle 'audio/bin/ffprobe.exe'), (Join-Path $bundle 'citation-runtime/node.exe'), (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'), (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
+          $programs = @($env:CARR_PUBLICATION_JAVA, $bundledPython, (Join-Path $bundle 'runtime/pythonw.exe'), $installedPython, (Join-Path $bundle '.venv/Scripts/pythonw.exe'), (Join-Path $bundle 'ResearchLibrary.exe'), (Join-Path $bundle 'ocr/tesseract.exe'), (Join-Path $bundle 'audio/bin/ffmpeg.exe'), (Join-Path $bundle 'audio/bin/ffprobe.exe'), (Join-Path $bundle 'citation-runtime/node.exe'), (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'), (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe')) | ForEach-Object { [System.IO.Path]::GetFullPath($_) }
           $rulePrefix = 'CARR-offline-' + [guid]::NewGuid().ToString('N')
           $ruleNames = @()
           $profilesBefore = @(Get-NetFirewallProfile -ErrorAction Stop | Select-Object Name, Enabled)
@@ -492,6 +515,16 @@ jobs:
           # The synthetic supplied-worker fixture imports pytest; production install already passed.
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_transcription_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-transcription-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path tests/ui/native_trust_status_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-trusted-client-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py')) {
+            & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path (Join-Path scripts $probe)).Path 2>&1 | Tee-Object (Join-Path ci-results ('full-bundle-' + $probe + '.txt'))
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          & $installedPython -I -B scripts/epubcheck_acceptance.py --archive (Join-Path $env:CARR_PUBLICATION_TOOLS 'epubcheck-5.3.0.zip') --java $env:CARR_PUBLICATION_JAVA --report 'ci-results/installed-epubcheck.json' --require-installed
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/daisy_schema_acceptance.py --schemas (Join-Path $env:CARR_PUBLICATION_TOOLS 'daisy-schemas') --report 'ci-results/installed-daisy-schemas.json' --require-installed
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:CARR_TEST_MODEL_DIR = Join-Path $bundle 'models/minilm'
           $env:CARR_OCR_DIR = Join-Path $bundle 'ocr'
           # The real PDF-mapping contradiction suite uses this sealed OCR runtime.
@@ -525,6 +558,47 @@ jobs:
           contents_suites = [
               'tests/reader/test_ebook_contents.py',
               'tests/transcription/test_supplied_worker_bridge.py',
+              'tests/transcription/test_v5_worker_profile.py',
+              'tests/audio/test_recording.py',
+              'tests/audio/test_capture_admission.py',
+              'tests/audio/test_capture_windows_lifetime.py',
+              'tests/ui/test_recording_dialog.py',
+              'tests/studio/test_clip_editing.py',
+              'tests/studio/test_clip_dialog.py',
+              'tests/studio/test_publishing.py',
+              'tests/studio/test_publishing_boundaries.py',
+              'tests/studio/test_publishing_cli.py',
+              'tests/studio/test_publishing_handlers.py',
+              'tests/studio/test_daisy_publishing.py',
+              'tests/studio/test_daisy_boundaries.py',
+              'tests/reader/test_ebook_audio.py',
+              'tests/speech/test_pronunciation_review.py',
+              'tests/speech/test_pronunciation_handlers.py',
+              'tests/speech/test_pronunciation_reader_hook.py',
+              'tests/studio/test_pronunciation.py',
+              'tests/studio/test_pronunciation_dialog.py',
+              'tests/studio/test_pronunciation_render.py',
+              'tests/assistant/test_translation_source.py',
+              'tests/packaging/test_installer_process.py',
+              'tests/packaging/test_standard_installer.py',
+              'tests/packaging/test_prepare_publication_tools.py',
+              'tests/assistant/test_local_planning.py',
+              'tests/assistant/test_planning_handlers.py',
+              'tests/assistant/test_translation_v3.py',
+              'tests/audio/test_audiobook.py',
+              'tests/studio/test_audiobook_publication.py',
+              'tests/storage/test_state_replacement.py',
+              'tests/security/test_anchor_locking.py',
+              'tests/security/test_canonical_boundary.py',
+              'tests/security/test_controller.py',
+              'tests/security/test_entitlements.py',
+              'tests/security/test_idle_renewal.py',
+              'tests/security/test_independent_review_boundaries.py',
+              'tests/security/test_installation.py',
+              'tests/security/test_publication_integrity.py',
+              'tests/security/test_refresh.py',
+              'tests/security/test_updates.py',
+              'tests/security/test_update_polling.py',
               'tests/ui/test_academic_tools.py',
               'tests/e2e/test_epub_library.py',
               'tests/e2e/test_epub_reading_desk.py',
@@ -559,9 +633,12 @@ jobs:
               'tests/acquisition/test_providers.py',
               'tests/ui/test_native_acquisition.py',
               'tests/e2e/test_import_commit_supervisor.py',
+              'tests/e2e/test_import_worker_publication.py',
+              'tests/e2e/test_import_publication_receipt_integrity.py',
               'tests/assistant/test_translation.py',
               'tests/assistant/test_providers.py',
               'tests/assistant/test_provider_deadline.py',
+              'tests/assistant/test_local_planning_loopback.py',
               'tests/assistant/test_provider_resolution.py',
               'tests/ui/test_keyboard_settings.py',
               'tests/ui/test_command_palette.py',
@@ -606,7 +683,7 @@ jobs:
           '@
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/catalog/test_ris_apply.py tests/catalog/test_ris_apply_v4.py tests/reader/test_topic_literature_matrix.py tests/reader/test_outline_export.py tests/catalog/test_quality.py tests/citations/test_pdf_mapping_contradiction.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/search/test_federated_advanced.py tests/storage/test_library_backup_reading_state.py tests/e2e/test_research_search_cli.py tests/extract/test_ocr_model_catalog.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_windows_unshared_reader_reproduces_atomic_child_replace_denial','test_windows_json_reader_allows_atomic_child_replace_and_keeps_old_snapshot','test_windows_real_handle_is_closed_if_descriptor_transfer_fails','test_windows_real_descriptor_is_closed_if_stream_construction_fails','test_windows_json_handle_is_not_inheritable','test_changed_reviewed_manifest_requires_explicit_reconfiguration','test_failed_reprobe_invalidates_previous_music_inference_evidence','test_real_pinned_multilingual_and_osd','test_real_default_model_change_and_pinned_rejection','test_child_barrier_preserves_unrelated_real_subprocesses[script]','test_child_barrier_preserves_unrelated_real_subprocesses[inline]','test_approved_content_change_with_identical_metadata_is_never_replaced[text]','test_approved_content_change_with_identical_metadata_is_never_replaced[binary]','test_actual_persistent_embeddings_reopen_without_reinference','test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes','test_actual_installed_tesseract_inventory','test_real_unicode_image_output_and_temp_use_exact_managed_models','test_real_unicode_pinned_stage_preserves_review_and_model_provenance','test_real_unicode_inventory_keeps_bounded_native_discovery','test_real_list_languages_uses_managed_model_directory','test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance','test_actual_official_english_install_selection_and_inference','test_cli_actual_official_model_install_verify_and_list','test_real_selected_bytes_execute_even_with_wrong_base_directory_and_environment','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication','test_remaining_budget_is_forwarded_and_timeout_is_not_relabelled','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_real_ocr_detects_contradiction','test_reference_edit_after_ris_review_is_preserved','test_failed_shared_ris_publication_rolls_back_with_populated_v4_tables','test_language_only_import_keeps_exact_unchecked_metadata_and_sibling_revision','test_repeated_titles_and_historical_metadata_are_distinct_sources','test_filtered_outline_keeps_structure_and_current_scope','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata','test_doi_metadata_child_preserves_runtime_without_network','test_real_subprocess_preserves_original_and_exports_separate_edits','test_portable_manifest_allows_distinct_siblings','test_owned_selection_copies_release_real_child_only_after_final_close','test_final_close_during_synthesis_waits_for_worker_acknowledgement','test_actual_installed_local_voice_generates_private_progress_pcm','test_existing_saved_shortcut_keeps_ownership_when_palette_default_is_added','test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources','test_long_xml_paragraph_import_is_readable_without_character_loss','test_real_pdf_download_import_receipt_dedup_and_backup','test_windows_native_dialog_async_lookup_focus_and_close[doi]','test_windows_native_dialog_async_lookup_focus_and_close[isbn]','test_restore_rebinds_retained_paths_without_modifying_recognition_receipts','test_progress_observer_failure_during_actual_child_does_not_kill_recognition','test_fresh_committed_import_survives_lost_child_reply[cancel-pdf]','test_fresh_committed_import_survives_lost_child_reply[cancel-docx]','test_cancelled_replay_does_not_adopt_existing_publication_or_add_membership','test_pending_intent_backup_restores_original_identity_and_resumes[before_commit]','test_pending_intent_backup_restores_original_identity_and_resumes[after_commit]','test_upgrade_preserves_saved_keys_and_disables_only_conflicting_default','test_duplicate_explicit_saved_bindings_are_not_repaired_by_upgrade','test_single_chunk_export_preserves_the_exact_provider_text','test_native_sapi_child_preserves_runtime','test_regex_pronunciation_child_preserves_runtime','test_source_save_as_reauthorizes_after_picker[authorized]','test_source_save_as_reauthorizes_after_picker[late-topic-archive]'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; shape_cases=[c for c in cases if c.get('classname')=='tests.ingest.test_import_metadata_shape']; assert required<={c.get('name') for c in cases} and failed==skipped==0 and len(shape_cases)==58; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',concurrent_scope_revocation='PASS',pdf_mapping_contradiction='PASS',managed_ocr='PASS',pending_ocr_backup='PASS',language_inventory='PASS',import_metadata_shape='PASS',import_metadata_shape_cases=len(shape_cases),academic_tools_v4='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_real_windows_vault_anchor_roundtrip','test_recovery_rechecks_immutable_receipt_after_coherent_source_tamper','test_v5_actual_child_retains_sources_and_validated_requested_exports','test_v5_partial_backup_preserves_receipts_and_resumes_only_retained_sources','test_v5_stop_preserves_cache_and_resume_inputs_then_completes','test_live_progress_reader_allows_actual_worker_status_replacement','test_windows_unshared_reader_reproduces_atomic_child_replace_denial','test_windows_json_reader_allows_atomic_child_replace_and_keeps_old_snapshot','test_windows_real_handle_is_closed_if_descriptor_transfer_fails','test_windows_real_descriptor_is_closed_if_stream_construction_fails','test_windows_json_handle_is_not_inheritable','test_windows_legacy_replace_still_refuses_a_delete_shared_target','test_windows_owner_exit_before_admission_never_activates_capture','test_windows_capture_is_killed_after_abrupt_owner_exit','test_changed_reviewed_manifest_requires_explicit_reconfiguration','test_failed_reprobe_invalidates_previous_music_inference_evidence','test_real_pinned_multilingual_and_osd','test_real_default_model_change_and_pinned_rejection','test_child_barrier_preserves_unrelated_real_subprocesses[script]','test_child_barrier_preserves_unrelated_real_subprocesses[inline]','test_approved_content_change_with_identical_metadata_is_never_replaced[text]','test_approved_content_change_with_identical_metadata_is_never_replaced[binary]','test_actual_persistent_embeddings_reopen_without_reinference','test_actual_reviewed_ocr_checkpoint_retains_attestation_and_resumes','test_actual_installed_tesseract_inventory','test_real_unicode_image_output_and_temp_use_exact_managed_models','test_real_unicode_pinned_stage_preserves_review_and_model_provenance','test_real_unicode_inventory_keeps_bounded_native_discovery','test_real_list_languages_uses_managed_model_directory','test_real_pdf_managed_profile_preserves_review_boundary_and_exact_provenance','test_actual_official_english_install_selection_and_inference','test_cli_actual_official_model_install_verify_and_list','test_real_selected_bytes_execute_even_with_wrong_base_directory_and_environment','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication','test_remaining_budget_is_forwarded_and_timeout_is_not_relabelled','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_real_ocr_detects_contradiction','test_reference_edit_after_ris_review_is_preserved','test_failed_shared_ris_publication_rolls_back_with_populated_v4_tables','test_language_only_import_keeps_exact_unchecked_metadata_and_sibling_revision','test_repeated_titles_and_historical_metadata_are_distinct_sources','test_filtered_outline_keeps_structure_and_current_scope','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata','test_doi_metadata_child_preserves_runtime_without_network','test_real_subprocess_preserves_original_and_exports_separate_edits','test_portable_manifest_allows_distinct_siblings','test_owned_selection_copies_release_real_child_only_after_final_close','test_final_close_during_synthesis_waits_for_worker_acknowledgement','test_actual_installed_local_voice_generates_private_progress_pcm','test_existing_saved_shortcut_keeps_ownership_when_palette_default_is_added','test_mixed_document_batch_pause_reopen_and_backup_preserve_exact_sources','test_long_xml_paragraph_import_is_readable_without_character_loss','test_real_pdf_download_import_receipt_dedup_and_backup','test_windows_native_dialog_async_lookup_focus_and_close[doi]','test_windows_native_dialog_async_lookup_focus_and_close[isbn]','test_restore_rebinds_retained_paths_without_modifying_recognition_receipts','test_progress_observer_failure_during_actual_child_does_not_kill_recognition','test_fresh_committed_import_survives_lost_child_reply[cancel-pdf]','test_fresh_committed_import_survives_lost_child_reply[cancel-docx]','test_cancelled_replay_does_not_adopt_existing_publication_or_add_membership','test_pending_intent_backup_restores_original_identity_and_resumes[before_commit]','test_pending_intent_backup_restores_original_identity_and_resumes[after_commit]','test_upgrade_preserves_saved_keys_and_disables_only_conflicting_default','test_duplicate_explicit_saved_bindings_are_not_repaired_by_upgrade','test_single_chunk_export_preserves_the_exact_provider_text','test_native_sapi_child_preserves_runtime','test_regex_pronunciation_child_preserves_runtime','test_source_save_as_reauthorizes_after_picker[authorized]','test_source_save_as_reauthorizes_after_picker[late-topic-archive]'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; shape_cases=[c for c in cases if c.get('classname','').rsplit('.',1)[-1]=='test_import_metadata_shape']; v5_cases=[c for c in cases if c.get('classname')=='tests.transcription.test_v5_worker_profile']; assert required<={c.get('name') for c in cases} and failed==skipped==0 and len(shape_cases)==58 and len({c.get('name') for c in shape_cases})==58 and len(v5_cases)==40; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',concurrent_scope_revocation='PASS',pdf_mapping_contradiction='PASS',managed_ocr='PASS',pending_ocr_backup='PASS',language_inventory='PASS',import_metadata_shape='PASS',import_metadata_shape_cases=len(shape_cases),academic_tools_v4='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -647,6 +724,35 @@ jobs:
 
       # Evidence and public source wheel: no model, native DLLs, OCR source payload, or user documents
       # are uploaded. NVDA and final-download identity remain separate acceptance.
+      - name: Build pinned standard setup and execute actual install, repair and uninstall
+        timeout-minutes: 20
+        shell: pwsh
+        working-directory: carr-library
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $bundle = $env:CARR_CI_BUNDLE
+          if (-not $bundle -or -not (Test-Path (Join-Path $bundle 'bundle-manifest.json') -PathType Leaf)) { throw 'The previously verified full bundle is required.' }
+          $python = Join-Path $bundle '.venv/Scripts/python.exe'
+          if (-not (Test-Path $python -PathType Leaf)) { throw 'The verified bundle must already be installed.' }
+          $identity = [Guid]::NewGuid().ToString('N')
+          $compilerRoot = Join-Path $env:RUNNER_TEMP ('carr-inno-' + $identity)
+          $buildRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-setup-' + $identity)
+          $workRoot = Join-Path $env:RUNNER_TEMP ('carr-standard-lifecycle-' + $identity)
+          $report = Join-Path (Resolve-Path 'ci-results').Path 'standard-installer'
+          $manifest = (Get-FileHash -LiteralPath (Join-Path $bundle 'bundle-manifest.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+          & ./packaging/windows_installer/prepare_inno.ps1 -OutputDirectory $compilerRoot
+          & $python -I -B -X utf8 packaging/windows_installer/build_setup.py --bundle $bundle --bundle-manifest-sha256 $manifest --installed-bundle --output $buildRoot --iscc (Join-Path $compilerRoot 'tools/ISCC.exe') --toolchain-receipt (Join-Path $compilerRoot 'toolchain-receipt.json') 2>&1 | Tee-Object 'ci-results/standard-installer-build.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -X utf8 scripts/windows_standard_installer_smoke.py --setup (Join-Path $buildRoot 'compiled/ResonanceSetup.exe') --build-evidence (Join-Path $buildRoot 'setup-build.json') --work $workRoot --report $report 2>&1 | Tee-Object 'ci-results/standard-installer-native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $result = Get-Content (Join-Path $report 'result.json') -Raw | ConvertFrom-Json
+          $build = Get-Content (Join-Path $buildRoot 'setup-build.json') -Raw | ConvertFrom-Json
+          if ($result.status -ne 'PASS' -or -not $result.actual_inno_install -or -not $result.actual_repair -or -not $result.actual_uninstall -or -not $result.live_job_preserved -or -not $result.populated_library_bytes_preserved -or -not $result.fresh_shortcut_collision_refused -or -not $result.uninstaller_wrapper_removed) { throw 'The complete native standard installation lifecycle did not pass.' }
+          if ($result.bundle_manifest_sha256 -ne $manifest -or $result.setup_sha256 -ne $build.setup_sha256 -or $result.source_commit -ne $build.source_commit) { throw 'Native lifecycle evidence is not bound to this exact setup and source.' }
+          if ($result.authenticode_verified -or $result.nvda_verified -or $result.native_network_trace -ne 'NOT_RUN' -or $result.unprivileged_account_qualification -ne 'NOT_RUN') { throw 'This gate cannot claim unrelated release qualifications.' }
+          Copy-Item (Join-Path $buildRoot 'setup-build.json') (Join-Path $report 'setup-build.json')
+          Copy-Item (Join-Path $compilerRoot 'toolchain-receipt.json') (Join-Path $report 'toolchain-receipt.json')
+
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
         timeout-minutes: 20
@@ -671,6 +777,47 @@ jobs:
             'tests/e2e/test_application.py',
             'tests/e2e/test_import_progress.py',
             'tests/transcription/test_supplied_worker_bridge.py',
+            'tests/transcription/test_v5_worker_profile.py',
+            'tests/audio/test_recording.py',
+            'tests/audio/test_capture_admission.py',
+            'tests/audio/test_capture_windows_lifetime.py',
+            'tests/ui/test_recording_dialog.py',
+            'tests/studio/test_clip_editing.py',
+            'tests/studio/test_clip_dialog.py',
+            'tests/studio/test_publishing.py',
+            'tests/studio/test_publishing_boundaries.py',
+            'tests/studio/test_publishing_cli.py',
+            'tests/studio/test_publishing_handlers.py',
+            'tests/studio/test_daisy_publishing.py',
+            'tests/studio/test_daisy_boundaries.py',
+            'tests/reader/test_ebook_audio.py',
+            'tests/speech/test_pronunciation_review.py',
+            'tests/speech/test_pronunciation_handlers.py',
+            'tests/speech/test_pronunciation_reader_hook.py',
+            'tests/studio/test_pronunciation.py',
+            'tests/studio/test_pronunciation_dialog.py',
+            'tests/studio/test_pronunciation_render.py',
+            'tests/assistant/test_translation_source.py',
+            'tests/packaging/test_installer_process.py',
+            'tests/packaging/test_standard_installer.py',
+            'tests/packaging/test_prepare_publication_tools.py',
+            'tests/assistant/test_local_planning.py',
+            'tests/assistant/test_planning_handlers.py',
+            'tests/assistant/test_translation_v3.py',
+            'tests/audio/test_audiobook.py',
+            'tests/studio/test_audiobook_publication.py',
+            'tests/storage/test_state_replacement.py',
+            'tests/security/test_anchor_locking.py',
+            'tests/security/test_canonical_boundary.py',
+            'tests/security/test_controller.py',
+            'tests/security/test_entitlements.py',
+            'tests/security/test_idle_renewal.py',
+            'tests/security/test_independent_review_boundaries.py',
+            'tests/security/test_installation.py',
+            'tests/security/test_publication_integrity.py',
+            'tests/security/test_refresh.py',
+            'tests/security/test_updates.py',
+            'tests/security/test_update_polling.py',
             'tests/ui/test_command_palette.py',
             'tests/ui/test_operation_progress.py',
             'tests/ui/test_progress_numeric_limits.py',
@@ -821,6 +968,8 @@ jobs:
             'tests/speech/test_discovery_cancellation.py',
             'tests/storage/test_state_snapshot_identity.py',
             'tests/e2e/test_import_commit_supervisor.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/e2e/test_import_publication_receipt_integrity.py',
             'tests/assistant/test_translation.py',
             'tests/ui/test_keyboard_settings.py',
             'tests/ingest/test_import_replay_identity.py',

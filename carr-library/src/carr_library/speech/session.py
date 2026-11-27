@@ -47,6 +47,8 @@ class ReaderDraftStore:
                   'voice_id': resume.voice_id, 'rate': resume.rate, 'volume': resume.volume,
                   'cursor': resume.cursor, 'audio_seconds': resume.audio_seconds}
         with state_lock(self.root, self.key):
+            if resume.document.format_notice and self.path.exists():
+                raise ValueError('Use Save As to preserve the original pre-release reading draft.')
             atomic_json(self.path, record, replace=True)
         return self.path
 

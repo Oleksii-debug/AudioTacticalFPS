@@ -268,7 +268,7 @@ def test_uncertain_publication_remains_resumable_when_recovery_budget_is_exhaust
         _child_barrier(patch, marker, 'after_commit')
         result = app.import_file(workspace, source, cancelled=marker.exists)
     assert marker.exists() and result['state'] == 'failed'
-    assert 'could not be verified' in result['message'] and monotonic() - started < 5
+    assert 'could not verify' in result['message'] and monotonic() - started < 5
     assert len(app.browse(workspace)) == 1
     source.unlink()
     resumed = app.resume_import(workspace, result['request_id'])

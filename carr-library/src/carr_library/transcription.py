@@ -7,6 +7,7 @@ No model is downloaded and a protocol test is never acoustic qualification.
 """
 from hashlib import sha256
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -18,12 +19,21 @@ from .audio.models import AudioBudget, AudioCancelled, AudioError, finite
 from .audio.process import run_process
 from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
                             read_json, regular, state_lock, sync_directory)
+from .ingest.writer_guard import exclusive_writer
 from .state_backup import relative_name
 
 MAX_FILES = 64
 MAX_SOURCE_BYTES = 8 * 1024**3
 MAX_BATCH_BYTES = 32 * 1024**3
 MAX_TEXT_BYTES = 16 * 1024**2
+RECEIPTS_PROTOCOL = 'receipts-v1'
+V5_PROTOCOL = 'whisper-v5-manifest-v1'
+PROTOCOLS = (RECEIPTS_PROTOCOL, V5_PROTOCOL)
+V5_SOURCES = ('worker.py', 'local_models.py', 'transcript_features.py')
+V5_RECOGNITION_KEYS = ('task', 'language', 'multilingual', 'model', 'model_path',
+                       'model_cache_dir', 'device', 'compute_type', 'beam_size',
+                       'vad_filter', 'condition_on_previous_text')
+V5_PROVENANCE = 'package_versions_only_not_a_qualified_runtime_pack'
 MEDIA_SUFFIXES = frozenset(('.wav', '.flac', '.mp3', '.m4a', '.mp4', '.mkv',
                            '.webm', '.ogg', '.opus', '.aac', '.wma', '.aiff',
                            '.aif', '.m4b', '.mov', '.avi'))
@@ -44,11 +54,28 @@ DEFAULT_SETTINGS = {
 }
 
 
-def settings(value=None):
+def _protocol(value):
+    if value not in PROTOCOLS:
+        raise ValueError('Unsupported transcription worker protocol; select an explicit supported profile.')
+    return value
+
+
+def settings(value=None, *, protocol=RECEIPTS_PROTOCOL):
+    _protocol(protocol)
     value = value or {}
     if not isinstance(value, dict) or set(value) - set(DEFAULT_SETTINGS):
         raise ValueError('Unknown transcription setting.')
     result = {**DEFAULT_SETTINGS, **value}
+    if protocol == V5_PROTOCOL:
+        result['max_attempts'] = value.get('max_attempts', 3)
+        if result['model_revision'] is not None or result['max_attempts'] != 3:
+            raise ValueError('Whisper V5 requires an exact local model directory and its fixed retry policy (max_attempts=3); model_revision is unsupported.')
+        if result['multilingual'] and result['language'] != 'auto':
+            raise ValueError('Whisper V5 multilingual mode requires language=auto; an explicit language cannot be silently replaced.')
+        if result['translation_target'] != 'en':
+            raise ValueError('Whisper V5 retains the original language and does not support translation settings.')
+        if result['include_headers']:
+            raise ValueError('Whisper V5 separate-file exports do not support include_headers.')
     if result['output_mode'] != 'separate' or result['task'] != 'transcribe':
         raise ValueError('Library transcription requires separate original-language outputs.')
     if not isinstance(result['language'], str) or not re.fullmatch(r'auto|[a-z]{2,3}', result['language']):
@@ -85,6 +112,19 @@ def _identity(value):
     if value.get('sha256') != actual:
         raise ValueError('Recognition identity checksum does not match.')
     return actual
+
+
+def _bound(value):
+    value = dict(value)
+    value['sha256'] = sha256(json.dumps(value, sort_keys=True, ensure_ascii=True,
+        allow_nan=False, separators=(',', ':')).encode('utf-8')).hexdigest()
+    return value
+
+
+def _v5_digest(value):
+    """The supplied manifest profile uses JSON's default separators."""
+    return sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                             allow_nan=False).encode('utf-8')).hexdigest()
 
 
 def _identifier(value):
@@ -176,6 +216,114 @@ def _checked_digest(path, size, cancelled):
     return digest.hexdigest()
 
 
+def _v5_file(path, cancelled):
+    path = local_path(path, exists=True)
+    before = regular(path)
+    if before.st_size > 32 * 1024**3:
+        raise ValueError('A Whisper V5 identity exceeds its file size budget.')
+    digest = _checked_digest(path, before.st_size, cancelled)
+    if _stamp(regular(path)) != _stamp(before):
+        raise ValueError('A Whisper V5 identity changed during verification.')
+    return {'path': os.path.normcase(str(path)), 'size': before.st_size,
+            'mtime_ns': before.st_mtime_ns, 'ctime_ns': before.st_ctime_ns,
+            'device': before.st_dev, 'inode': before.st_ino, 'sha256': digest}
+
+
+def _v5_model(path, cancelled):
+    path = local_path(path, exists=True)
+    regular(path, directory=True)
+    result, count, total = {}, 0, 0
+    for folder, directories, names in os.walk(path, followlinks=False):
+        for name in sorted(directories + names):
+            if cancelled():
+                raise AudioCancelled('Local transcription model verification was cancelled.')
+            count += 1
+            if count > 4096:
+                raise ValueError('Choose an exact local model folder with at most 4096 entries.')
+            candidate = local_path(Path(folder) / name, root=path, exists=True)
+            if name in directories:
+                regular(candidate, directory=True)
+                continue
+            record = _v5_file(candidate, cancelled)
+            total += record['size']
+            if total > 64 * 1024**3:
+                raise ValueError('The selected local model exceeds its total size budget.')
+            result[candidate.relative_to(path).as_posix()] = record
+    if not {'model.bin', 'config.json', 'tokenizer.json'} <= set(result):
+        raise ValueError('Whisper V5 requires an installed CTranslate2 model.bin, config.json and tokenizer.json in the selected model folder.')
+    return {'path': str(path), 'files': result}
+
+
+def _v5_settings(chosen, model_path):
+    # Only settings implemented by this exact worker profile are sent. Public
+    # word_timestamps maps to V5 output_words; retries are a fixed capability.
+    result = {key: chosen[key] for key in (
+        'output_mode', 'task', 'language', 'model', 'device', 'compute_type',
+        'beam_size', 'parallel_files', 'vad_filter', 'include_headers', 'output_txt',
+        'output_srt', 'output_vtt', 'output_json', 'multilingual', 'condition_on_previous_text')}
+    result.update(model_path=model_path, model_cache_dir='', output_phrases=False,
+                  output_words=chosen['word_timestamps'])
+    return result
+
+
+def _v5_attempts(requested):
+    result = {'original': dict(requested)}
+    for name, changes in (
+            ('beam1_no_previous', {'beam_size': 1, 'condition_on_previous_text': False}),
+            ('beam1_no_vad', {'beam_size': 1, 'condition_on_previous_text': False, 'vad_filter': False})):
+        value = {**requested, **changes}
+        if value not in result.values():
+            result[name] = value
+    return result
+
+
+def _v5_timing(meta, words_required):
+    """Validate actual model timings before deriving any word subtitles."""
+    segments = meta.get('segments')
+    if not isinstance(segments, list) or len(segments) > 100000:
+        raise ValueError('Invalid or excessive Whisper V5 timed segments.')
+    words, previous, count = [], 0.0, 0
+    for segment in segments:
+        if not isinstance(segment, dict) or not isinstance(segment.get('text'), str):
+            raise ValueError('Invalid Whisper V5 segment text.')
+        start, end = segment.get('start'), segment.get('end')
+        if (type(start) not in (int, float) or type(end) not in (int, float)
+                or not math.isfinite(start) or not math.isfinite(end)
+                or not 0 <= start <= end <= 365 * 86400 or start < previous):
+            raise ValueError('Invalid or out-of-order Whisper V5 segment timing.')
+        previous = start
+        segment_words = segment.get('words', [])
+        if (not isinstance(segment_words, list)
+                or words_required and segment['text'].strip() and not segment_words):
+            raise ValueError('Whisper V5 cannot export word subtitles without actual word timings.')
+        word_previous = start
+        for word in segment_words:
+            count += 1
+            if count > 1000000 or not isinstance(word, dict) or not isinstance(word.get('word'), str):
+                raise ValueError('Invalid or excessive Whisper V5 timed words.')
+            first, last = word.get('start'), word.get('end')
+            if (type(first) not in (int, float) or type(last) not in (int, float)
+                    or not math.isfinite(first) or not math.isfinite(last)
+                    or not start <= first <= last <= end or first < word_previous):
+                raise ValueError('Invalid or out-of-order Whisper V5 word timing.')
+            word_previous = first
+            if word['word'].strip():
+                words.append({'start': first, 'end': last, 'text': word['word'].strip()})
+    if words_required and meta.get('text', '').strip() and not words:
+        raise ValueError('Whisper V5 cannot export word subtitles without actual word timings.')
+    return words
+
+
+def _word_subtitles(words, *, vtt):
+    from .studio.render import _stamp as subtitle_stamp
+    lines = ['WEBVTT', ''] if vtt else []
+    for index, word in enumerate(words, 1):
+        lines.extend((str(index),
+            f"{subtitle_stamp(word['start'], comma=not vtt)} --> {subtitle_stamp(word['end'], comma=not vtt)}",
+            word['text'], ''))
+    return ('\n'.join(lines) + ('\n' if lines else '')).encode('utf-8')
+
+
 # Installed model code is explicitly trusted local code. These guards constrain
 # Python-visible network, child commands and writes; they are not an OS sandbox
 # for arbitrary native libraries. The worker must also require offline assets.
@@ -207,9 +355,33 @@ def audit(event, args):
         writable(args[1])
 sys.dont_write_bytecode = True
 sys.addaudithook(audit)
+if os.name == 'nt':
+    # Only the declared live-status name uses the host's native publication
+    # primitive. Other worker replacements keep their normal implementation.
+    original_replace = os.replace
+    def publish_status(source, destination, *arguments, **keywords):
+        if (not arguments and not keywords
+                and pathlib.Path(os.fsdecode(destination)).absolute() == job / 'job_status.json'):
+            writable(source)
+            writable(destination)
+            return replace_file(source, destination)
+        return original_replace(source, destination, *arguments, **keywords)
+    os.replace = publish_status
+if len(sys.argv) > 3 and sys.argv[3] == 'whisper-v5-manifest-v1':
+    sys.path.insert(0, str(worker.parent))
 sys.argv = [str(worker), '--job-dir', str(job)]
 runpy.run_path(str(worker), run_name='__main__')
 '''
+
+
+def _worker_bootstrap():
+    from .audio.music import _SITE_BOOTSTRAP
+    publication = ''
+    if os.name == 'nt':
+        from inspect import getsource
+        from .windows_state import replace_file
+        publication = getsource(replace_file) + '\n'
+    return _SITE_BOOTSTRAP + publication + _WORKER_BOOTSTRAP
 
 
 class TranscriptionService:
@@ -225,8 +397,9 @@ class TranscriptionService:
         with self.app.read(self.workspace):
             pass
 
-    def configure(self, python, worker, models_dir):
+    def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL):
         self._authorize()
+        protocol = _protocol(protocol)
         python, python_binding, python_sha256 = _python_runtime(python)
         worker = local_path(worker, exists=True)
         models_dir = local_path(models_dir, exists=True)
@@ -236,12 +409,17 @@ class TranscriptionService:
             raise ValueError('Select the reviewed local Whisper worker Python file.')
         if models_dir.is_relative_to(self.app.root):
             raise ValueError('Keep model/runtime assets outside the backed-up library data directory.')
-        value = {'version': 1, 'python': str(python), 'worker': str(worker),
-                 'models_dir': str(models_dir), 'python_sha256': python_sha256,
-                 'python_binding': python_binding,
+        value = {'version': 1, 'protocol': protocol, 'python': str(python), 'worker': str(worker),
+                  'models_dir': str(models_dir), 'python_sha256': python_sha256,
+                  'python_binding': python_binding,
                  'worker_sha256': digest_file(worker),
                  'network': 'local-files-only; Python network calls denied',
                  'inference_qualified': False}
+        if protocol == V5_PROTOCOL:
+            if worker.name != 'worker.py':
+                raise ValueError('The Whisper V5 profile requires worker.py beside its two reviewed helpers.')
+            value['wrapper_sources_sha256'] = self._wrapper_sources(worker)
+            value['retry_policy'] = 'At most 3 distinct attempts; same language/model, then beam=1 without previous text, then VAD disabled.'
         with state_lock(self.root, 'engine'):
             atomic_json(self.root / 'engine.json', value, replace=True)
         return value
@@ -252,8 +430,17 @@ class TranscriptionService:
         if not path.exists():
             raise ValueError('Configure the supplied local Whisper worker and offline models first.')
         value = read_json(path)
-        if value.get('version') != 1:
+        if not isinstance(value, dict) or value.get('version') != 1:
             raise ValueError('Unsupported transcription engine configuration.')
+        # Version-1 engine files written before profiles are unambiguously the
+        # existing receipt contract. Unknown explicit profiles never fall back.
+        value['protocol'] = _protocol(value.get('protocol', RECEIPTS_PROTOCOL))
+        if value['protocol'] == V5_PROTOCOL:
+            hashes = value.get('wrapper_sources_sha256')
+            if (not isinstance(hashes, dict) or set(hashes) != set(V5_SOURCES)
+                    or any(not isinstance(v, str) or not re.fullmatch(r'[a-f0-9]{64}', v) for v in hashes.values())
+                    or hashes['worker.py'] != value.get('worker_sha256')):
+                raise ValueError('Whisper V5 requires all three reviewed source identities.')
         if verify:
             if 'python_binding' in value:
                 _, binding, digest = _python_runtime(value['python'])
@@ -266,7 +453,27 @@ class TranscriptionService:
             if digest_file(local_path(value['worker'], exists=True)) != value['worker_sha256']:
                 raise ValueError('The configured transcription runtime changed; select and review it again.')
             regular(local_path(value['models_dir'], exists=True), directory=True)
+            if value['protocol'] == V5_PROTOCOL and self._wrapper_sources(Path(value['worker'])) != value['wrapper_sources_sha256']:
+                raise ValueError('A configured Whisper V5 helper changed; select and review it again.')
         return value
+
+    @staticmethod
+    def _wrapper_sources(worker):
+        result = {}
+        for name in V5_SOURCES:
+            source = local_path(Path(worker).parent / name, exists=True)
+            size = regular(source).st_size
+            if size > 4 * 1024**2:
+                raise ValueError('A Whisper V5 source exceeds its size budget.')
+            result[name] = _checked_digest(source, size, lambda: False)
+        return result
+
+    def _selected_protocol(self, protocol):
+        if protocol is not None:
+            return _protocol(protocol)
+        if not os.path.lexists(self.root / 'engine.json'):
+            return RECEIPTS_PROTOCOL
+        return self.configuration()['protocol']
 
     def _path(self, identity):
         return local_path(self.jobs_root / _identifier(identity))
@@ -284,7 +491,8 @@ class TranscriptionService:
             raise ValueError('Transcription job belongs to another library or schema.')
         if not isinstance(value.get('sources'), list) or not 1 <= len(value['sources']) <= MAX_FILES:
             raise ValueError('Invalid retained transcription source manifest.')
-        settings(value['settings'])
+        value['protocol'] = _protocol(value.get('protocol', RECEIPTS_PROTOCOL))
+        settings(value['settings'], protocol=value['protocol'])
         names = set()
         for item in value['sources']:
             name = item.get('filename')
@@ -309,11 +517,13 @@ class TranscriptionService:
             result.append(self.get(path.name))
         return tuple(sorted(result, key=lambda x: (x['created'], x['id']), reverse=True))
 
-    def submit_folder(self, folder, *, title='Transcription', options=None, cancelled=lambda: False):
+    def submit_folder(self, folder, *, title='Transcription', options=None, cancelled=lambda: False,
+                      protocol=None):
         """Retain one explicitly selected folder through the shared bounded scanner."""
         from .ingest.batch_scan import scan_paths
         self._authorize()
-        settings(options)
+        protocol = self._selected_protocol(protocol)
+        settings(options, protocol=protocol)
         if cancelled():
             raise AudioCancelled('Transcription folder intake was cancelled.')
         folder = local_path(folder, exists=True)
@@ -347,13 +557,14 @@ class TranscriptionService:
         if not files:
             raise ValueError(f'No supported audio or video files were found; {excluded} unsupported files excluded.')
         identity = self.submit(files, title=title, options=options, cancelled=cancelled,
-                               source_root=folder, source_manifests=source_manifests)
+                               source_root=folder, source_manifests=source_manifests, protocol=protocol)
         return {'id': identity, 'files': len(files), 'excluded_files': excluded}
 
     def submit(self, files, *, title='Transcription', options=None, cancelled=lambda: False,
-               source_root=None, source_manifests=None):
+               source_root=None, source_manifests=None, protocol=None):
         self._authorize()
-        chosen = settings(options)
+        protocol = self._selected_protocol(protocol)
+        chosen = settings(options, protocol=protocol)
         files = tuple(files)
         if not 1 <= len(files) <= MAX_FILES:
             raise ValueError('Choose between 1 and 64 local audio or video files.')
@@ -395,7 +606,7 @@ class TranscriptionService:
                     sources.append({'filename': name, 'original_name': original_name, **record})
                 value = {'version': 1, 'id': identity, 'workspace': self.workspace,
                          'title': title.strip(), 'created': time.time(), 'updated': time.time(),
-                         'status': 'ready', 'sources': sources, 'settings': chosen,
+                         'status': 'ready', 'sources': sources, 'settings': chosen, 'protocol': protocol,
                          'done': 0, 'failed': 0, 'receipts': [], 'artifacts': [],
                          'run_context': None, 'last_error': ''}
                 if cancelled():
@@ -422,10 +633,191 @@ class TranscriptionService:
                 raise ValueError('A retained original changed; recognition cannot resume.')
         return expected
 
+    def _v5_manifest(self, path, job, cancelled):
+        context = job['run_context']
+        results = local_path(path / 'results' / relative_name(context['result_directory']),
+                             root=path / 'results', exists=True)
+        manifest_path = results / 'result_manifest.json'
+        manifest = read_json(manifest_path)
+        if not isinstance(manifest, dict):
+            raise ValueError('Invalid Whisper V5 manifest object.')
+        manifest_hash = _checked_digest(manifest_path, regular(manifest_path).st_size, cancelled)
+        if context.get('manifest_sha256', manifest_hash) != manifest_hash:
+            raise ValueError('The saved Whisper V5 manifest changed.')
+        rows, files = manifest.get('records'), manifest.get('artifacts')
+        total, failed = manifest.get('total'), manifest.get('failed')
+        if (manifest.get('format') != 'whisper-result-manifest' or manifest.get('version') != 1
+                or manifest.get('app_version') != '5.0.0'
+                or manifest.get('runtime_provenance') != V5_PROVENANCE
+                or manifest.get('wrapper_sources_sha256') != context['wrapper_sources_sha256']
+                or type(total) is not int or total != len(job['sources'])
+                or type(failed) is not int or not 0 <= failed <= total
+                or type(manifest.get('complete')) is not bool or manifest['complete'] != (failed == 0)
+                or not isinstance(rows, list) or len(rows) != total - failed
+                or not isinstance(files, list) or len(files) > total * 5):
+            raise ValueError('Invalid or incomplete current-run Whisper V5 manifest.')
+        outputs = {}
+        for item in files:
+            if not isinstance(item, dict):
+                raise ValueError('Invalid Whisper V5 manifest artifact.')
+            relative = relative_name(item.get('path'))
+            name = relative.as_posix()
+            target = local_path(results / relative, root=results, exists=True)
+            if (name in outputs or type(item.get('bytes')) is not int
+                    or not 0 <= item['bytes'] <= 512 * 1024**2
+                    or _checked_digest(target, item['bytes'], cancelled) != item.get('sha256')):
+                raise ValueError('A Whisper V5 requested output is duplicated, incomplete or changed.')
+            outputs[name] = item
+        return results, manifest, outputs, manifest_hash
+
+    def _admit_v5(self, path, job, config, worker_status, cancelled):
+        """Adapt verified V5 outputs into this service's existing durable receipts."""
+        context, requested = job['run_context'], job['run_context']['worker_settings']
+        # Admission rebinds the actual installed files; later reading/restoring a
+        # completed job uses its recorded identities and needs no old runtime.
+        current = self.configuration(verify=True)
+        if current != config or _v5_model(context['model_identity']['path'], cancelled) != context['model_identity']:
+            raise ValueError('The configured Whisper V5 runtime or local model changed during recognition.')
+        for name, expected in context['source_identities'].items():
+            if _v5_file(path / 'input' / name, cancelled) != expected:
+                raise ValueError('A retained source changed during Whisper V5 recognition.')
+        results, manifest, outputs, manifest_hash = self._v5_manifest(path, job, cancelled)
+        if (not isinstance(worker_status, dict)
+                or type(worker_status.get('done')) is not int
+                or type(worker_status.get('total')) is not int
+                or type(worker_status.get('failed')) is not int
+                or worker_status.get('done') != len(manifest['records'])
+                or worker_status.get('total') != manifest['total']
+                or worker_status.get('failed') != manifest['failed']
+                or os.path.normcase(str(worker_status.get('results_dir'))) != os.path.normcase(str(results))):
+            raise ValueError('Whisper V5 status does not match its current result manifest.')
+        seen, used, pending, effective_runs = set(), set(), [], []
+        required = {'txt', 'srt', 'vtt', 'json'} | ({'words.txt'} if requested['output_words'] else set())
+        attempts = _v5_attempts(requested)
+        for index, row in enumerate(manifest['records']):
+            if not isinstance(row, dict) or not isinstance(row.get('source_identity'), dict):
+                raise ValueError('Invalid Whisper V5 source record.')
+            name = next((key for key, value in context['source_identities'].items()
+                         if value == row['source_identity']), None)
+            if name is None or name in seen or row.get('model_identity') != context['model_identity']:
+                raise ValueError('A Whisper V5 result belongs to another source or model.')
+            selected = attempts.get(row.get('attempt'))
+            effective = ({key: selected[key] for key in V5_RECOGNITION_KEYS}
+                         | {'word_timestamps': requested['output_words']}) if selected else None
+            if (selected is None or row.get('requested_settings') != requested
+                    or row.get('effective_settings') != effective):
+                raise ValueError('Whisper V5 requested or effective recognition settings changed.')
+            backend = row.get('backend')
+            if (not isinstance(backend, dict) or len(backend) > 32
+                    or any(not isinstance(k, str) or not isinstance(v, str) or len(v) > 4096 for k, v in backend.items())):
+                raise ValueError('Invalid Whisper V5 backend provenance.')
+            runtime = {'device': requested['device'], 'compute_type': requested['compute_type'],
+                       'parallel_files': requested['parallel_files']}
+            if runtime['compute_type'] == 'auto':
+                runtime['compute_type'] = 'float16' if runtime['device'] == 'cuda' else 'int8'
+            if row.get('model_runtime') != runtime:
+                raise ValueError('Whisper V5 used another device, compute type or concurrency setting.')
+            names = row.get('artifacts')
+            if (not isinstance(names, list) or len(names) != len(required)
+                    or any(not isinstance(item, str) for item in names)
+                    or len(set(names)) != len(names) or set(names) & used):
+                raise ValueError('Whisper V5 did not produce every requested source export.')
+            kinds = {}
+            for item in names:
+                kind = next((kind for kind in ('words.txt', 'txt', 'srt', 'vtt', 'json')
+                             if item.endswith('.' + kind)), None)
+                if item not in outputs or kind not in required or kind in kinds:
+                    raise ValueError('Whisper V5 did not produce every requested export format.')
+                kinds[kind] = outputs[item]
+            if set(kinds) != required:
+                raise ValueError('A requested Whisper V5 output format is missing.')
+            meta = read_json(results / relative_name(kinds['json']['path']))
+            if not isinstance(meta, dict):
+                raise ValueError('Invalid Whisper V5 timed metadata object.')
+            cache = meta.get('cache_identity', {})
+            expected_cache = {'schema': 5, 'content_identity_version': 1,
+                'source': row['source_identity'], 'model': context['model_identity'],
+                'recognition': {key: requested[key] for key in V5_RECOGNITION_KEYS},
+                'backend': backend, 'wrapper_sources_sha256': context['wrapper_sources_sha256'],
+                'runtime_provenance': V5_PROVENANCE}
+            if (cache != expected_cache or row.get('fingerprint') != _v5_digest(cache)
+                    or meta.get('fingerprint') != row['fingerprint']
+                    or meta.get('metadata_sha256') != row.get('metadata_sha256')
+                    or _v5_digest({key: value for key, value in meta.items() if key != 'metadata_sha256'}) != row.get('metadata_sha256')
+                    or meta.get('cache_schema') != 5 or meta.get('complete') is not True
+                    or meta.get('source_identity') != row['source_identity']
+                    or meta.get('model_identity') != context['model_identity']
+                    or meta.get('requested_settings') != requested or meta.get('settings') != selected
+                    or meta.get('attempt') != row['attempt'] or meta.get('model_runtime') != runtime
+                    or meta.get('task') != 'transcribe' or meta.get('selected_language') != requested['language']
+                    or meta.get('multilingual') is not requested['multilingual']
+                    or meta.get('word_timestamps') is not requested['output_words']):
+                raise ValueError('Whisper V5 timed JSON does not match its current source, model, settings or metadata identity.')
+            text = meta.get('text')
+            if not isinstance(text, str) or '\0' in text or len(text.encode('utf-8')) > MAX_TEXT_BYTES:
+                raise ValueError('Invalid or excessive Whisper V5 transcript text.')
+            text_hash = sha256((text + ('\n' if text else '')).encode('utf-8')).hexdigest()
+            if meta.get('text_sha256') != text_hash or kinds['txt']['sha256'] != text_hash:
+                raise ValueError('Whisper V5 text and timed metadata disagree.')
+            words = _v5_timing(meta, requested['output_words'])
+            identity = _bound({'version': 1, 'protocol': V5_PROTOCOL, 'host_run_id': context['host_run_id'],
+                'source': {'root': context['input_root'], 'path': row['source_identity']['path'],
+                           'relative': name, 'size_bytes': row['source_identity']['size'],
+                           'sha256': row['source_identity']['sha256']},
+                'model': _bound({'selected': job['settings']['model'], 'identity': context['model_identity']}),
+                'runtime': _bound({'worker_sha256': context['worker_sha256'],
+                    'executable': {'sha256': context['python_sha256']},
+                    'wrapper_sources_sha256': context['wrapper_sources_sha256'],
+                    'backend': backend, 'runtime_provenance': V5_PROVENANCE}),
+                'recognition': {key: job['settings'][key] for key in RECOGNITION_KEYS},
+                'effective_settings': effective, 'attempt': row['attempt'], 'execution': runtime})
+            artifacts = [{'path': (results / relative_name(kinds[kind]['path'])).relative_to(path / 'results').as_posix(),
+                          'size_bytes': kinds[kind]['bytes'], 'sha256': kinds[kind]['sha256']}
+                         for kind in ('txt', 'srt', 'vtt', 'json')]
+            if requested['output_words']:
+                for kind in ('srt', 'vtt'):
+                    if cancelled():
+                        raise AudioCancelled('Whisper V5 subtitle export was cancelled.')
+                    target = results / 'host-derived' / (name + '.words.' + kind)
+                    data = _word_subtitles(words, vtt=kind == 'vtt')
+                    # Bound memory to one source's subtitle buffer. These
+                    # files stay unaccepted until every manifest row passes.
+                    atomic_bytes(target, data)
+                    artifacts.append({'path': target.relative_to(path / 'results').as_posix(),
+                                      'size_bytes': len(data), 'sha256': sha256(data).hexdigest()})
+            receipt = {'version': 1, 'state': 'complete', 'run_id': context['host_run_id'], 'identity': identity,
+                'requested_exports': {key: job['settings'][key] for key in EXPORT_KEYS},
+                'outcome': 'speech' if text.strip() else 'no_speech', 'artifacts': artifacts,
+                'result_metadata_sha256': kinds['json']['sha256'],
+                'v5_manifest_sha256': manifest_hash, 'v5_record': index,
+                'word_subtitle_provenance': 'Host formatting of validated original JSON word timings; no inferred alignment.'}
+            pending.append(('receipts/' + identity['sha256'] + '.result.json', receipt))
+            effective_runs.append({'source': name, 'attempt': row['attempt'], 'settings': effective})
+            seen.add(name)
+            used.update(names)
+        if used != set(outputs):
+            raise ValueError('Whisper V5 manifest has unassigned or shared artifacts.')
+        context['manifest_sha256'] = manifest_hash
+        job['effective_runs'] = effective_runs
+        for name, receipt in pending:
+            if cancelled():
+                raise AudioCancelled('Whisper V5 result admission was cancelled.')
+            atomic_json(path / name, receipt)
+        status = {'run_id': context['host_run_id'], 'result_state': 'completed' if manifest['complete'] else 'partial',
+                  'done': len(pending), 'total': manifest['total'], 'failed': manifest['failed'],
+                  'receipts': [item[0] for item in pending]}
+        atomic_json(path / 'host_status.json', status, replace=True)
+        return status
+
     def _receipts(self, path, job, status, cancelled=lambda: False):
         context = job.get('run_context')
-        if not isinstance(context, dict) or not re.fullmatch(r'[a-f0-9]{32}', status.get('run_id', '')):
+        if (not isinstance(context, dict) or not isinstance(status, dict)
+                or not re.fullmatch(r'[a-f0-9]{32}', status.get('run_id', ''))):
             raise ValueError('No current worker run identity was recorded.')
+        if job['protocol'] == V5_PROTOCOL:
+            if context.get('protocol') != V5_PROTOCOL or context.get('host_run_id') != status['run_id']:
+                raise ValueError('A Whisper V5 result belongs to a previous host run.')
+            self._v5_manifest(path, job, cancelled)
         rows = status.get('receipts')
         if not isinstance(rows, list) or len(rows) > len(job['sources']) or any(not isinstance(row, str) for row in rows) or len(set(rows)) != len(rows):
             raise ValueError('Invalid current-run transcription receipt list.')
@@ -458,6 +850,15 @@ class TranscriptionService:
                     or identity['runtime'].get('executable', {}).get('sha256') != context['python_sha256']
                     or identity['model'].get('selected') != job['settings']['model']):
                 raise ValueError('A transcription receipt belongs to another engine or model.')
+            if job['protocol'] == V5_PROTOCOL:
+                effective = next((item for item in job.get('effective_runs', ()) if item['source'] == name), None)
+                if (identity.get('protocol') != V5_PROTOCOL or identity.get('host_run_id') != context['host_run_id']
+                        or identity['runtime'].get('wrapper_sources_sha256') != context['wrapper_sources_sha256']
+                        or identity['model'].get('identity') != context['model_identity']
+                        or receipt.get('v5_manifest_sha256') != context.get('manifest_sha256')
+                        or effective is None or identity.get('effective_settings') != effective['settings']
+                        or identity.get('attempt') != effective['attempt']):
+                    raise ValueError('A normalized Whisper V5 receipt changed its host run or provenance.')
             if identity.get('recognition') != {key: job['settings'][key] for key in RECOGNITION_KEYS}:
                 raise ValueError('Recognition settings changed without a new job.')
             if receipt.get('requested_exports') != {key: job['settings'][key] for key in EXPORT_KEYS}:
@@ -505,11 +906,13 @@ class TranscriptionService:
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
             job = self.get(identity)
-            config = self.configuration(verify=True)
-            self._sources(path, job, cancelled)
             if job['status'] == 'completed':
-                self.verify(identity)
+                self.verify(identity, cancelled=cancelled)
                 return job
+            config = self.configuration(verify=True)
+            if config['protocol'] != job['protocol']:
+                raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
+            self._sources(path, job, cancelled)
             for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
                 candidate = path / name
                 if candidate.exists():
@@ -522,6 +925,22 @@ class TranscriptionService:
             context = {'input_root': str((path / 'input').resolve()),
                        'worker_sha256': config['worker_sha256'],
                        'python_sha256': config['python_sha256']}
+            worker_settings, results_root = job['settings'], path / 'results'
+            if job['protocol'] == V5_PROTOCOL:
+                model = local_path(config['models_dir'], exists=True)
+                if not all((model / name).is_file() for name in ('model.bin', 'config.json', 'tokenizer.json')):
+                    model = local_path(model / job['settings']['model'], root=model, exists=True)
+                model_identity = _v5_model(model, cancelled)
+                host_run_id = uuid4().hex
+                results_root = path / 'results' / 'runs' / host_run_id
+                results_root.mkdir(parents=True, mode=0o700)
+                worker_settings = _v5_settings(job['settings'], model_identity['path'])
+                context.update(protocol=V5_PROTOCOL, host_run_id=host_run_id,
+                    wrapper_sources_sha256=config['wrapper_sources_sha256'], model_identity=model_identity,
+                    worker_settings=worker_settings,
+                    source_identities={row['filename']: _v5_file(path / 'input' / row['filename'], cancelled)
+                                       for row in job['sources']},
+                    result_directory=(results_root / 'Whisper_V5' / path.name).relative_to(path / 'results').as_posix())
             job.update(status='running', done=0, failed=0, receipts=[], artifacts=[],
                        run_context=context, last_error='')
             self._save(path, job)
@@ -529,8 +948,8 @@ class TranscriptionService:
                 (path / name).mkdir(exist_ok=True, mode=0o700)
             atomic_json(path / 'job_config.json', {
                 'job_name': job['title'], 'folders': [context['input_root']],
-                'results_root': str(path / 'results'), 'models_dir': config['models_dir'],
-                'settings': job['settings']}, replace=True)
+                'results_root': str(results_root), 'models_dir': config['models_dir'],
+                'settings': worker_settings}, replace=True)
             environment = {key: os.environ[key] for key in (
                 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
                 'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
@@ -576,10 +995,10 @@ class TranscriptionService:
                         pass
                 return stop_at is not None and now - stop_at >= 3
             failure = None
-            from .audio.music import _SITE_BOOTSTRAP
             try:
                 run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
-                    _SITE_BOOTSTRAP + _WORKER_BOOTSTRAP, config['worker'], str(path)],
+                    _worker_bootstrap(),
+                    config['worker'], str(path), config['protocol']],
                     cwd=path, env=environment, cancelled=poll, watch=(path,),
                     budget=AudioBudget(timeout=timeout,
                         max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
@@ -599,6 +1018,8 @@ class TranscriptionService:
                 return job
             try:
                 status = read_json(prior) if prior.exists() else {}
+                if job['protocol'] == V5_PROTOCOL:
+                    status = self._admit_v5(path, job, config, status, cancelled)
                 receipts, artifacts = self._receipts(path, job, status, cancelled)
                 complete = (failure is None and stop_at is None
                             and status.get('result_state') == 'completed'
@@ -624,7 +1045,7 @@ class TranscriptionService:
 
     def verify(self, identity, *, cancelled=lambda: False):
         path, job = self._path(identity), self.get(identity)
-        status = read_json(path / 'job_status.json')
+        status = read_json(path / ('host_status.json' if job['protocol'] == V5_PROTOCOL else 'job_status.json'))
         if status.get('run_id') != job.get('worker_run_id'):
             raise ValueError('The recognized transcript no longer belongs to the saved run.')
         receipts, artifacts = self._receipts(path, job, status, cancelled)
@@ -662,7 +1083,11 @@ class TranscriptionService:
                      'kind': 'user-edited derivative; source and timed recognition remain unchanged'}
             if cancelled():
                 raise AudioCancelled('Saving the transcript edit was cancelled.')
-            atomic_json(path / 'edits' / (revision + '.json'), value)
+            # Serialize only publication with archival. Receipt/media hashing
+            # above never holds the application writer or a write transaction.
+            with exclusive_writer(self.app.root):
+                self._authorize()
+                atomic_json(path / 'edits' / (revision + '.json'), value)
             return revision
 
     def edits(self, identity):
@@ -707,8 +1132,9 @@ class TranscriptionService:
                     atomic_bytes(temporary / name, edit['text'].encode('utf-8'))
                 atomic_json(temporary / 'transcription-manifest.json', {
                     'version': 1, 'job': identity, 'title': job['title'],
-                    'status': job['status'], 'sources': job['sources'],
+                    'status': job['status'], 'protocol': job['protocol'], 'sources': job['sources'],
                     'settings': job['settings'], 'artifacts': exported,
+                    'effective_runs': job.get('effective_runs', []),
                     'edits': edits,
                     'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'})
                 self._authorize()

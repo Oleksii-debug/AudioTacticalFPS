@@ -515,8 +515,9 @@ class DesktopSearchPanel(PagedSearchPanel):
 
 
 class DesktopFrame(WorkspaceFrame):
-    def __init__(self, library, remember_data_dir=None):
+    def __init__(self, library, remember_data_dir=None, *, trust_controller=None):
         self.library = library
+        self.trust_controller = trust_controller
         self.remember_data_dir = remember_data_dir
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
         self.cancel_event = threading.Event()
@@ -614,6 +615,8 @@ class DesktopFrame(WorkspaceFrame):
         install_transcription_actions(self)
         from .command_palette import install_command_palette
         install_command_palette(self)
+        from .trust_status import install_trust_actions
+        install_trust_actions(self)
         install_keyboard_settings(self)
 
     def build_advanced_query(self, event=None):

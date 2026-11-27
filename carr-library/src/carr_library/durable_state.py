@@ -7,6 +7,8 @@ from pathlib import Path
 import stat
 import tempfile
 
+from .windows_state import replace_file
+
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
 
@@ -63,7 +65,7 @@ def _unique(pairs):
 
 
 def _open_windows_read(path):
-    """Keep atomic publishers independent of the lifetime of a JSON reader."""
+    """Allow the native state publisher to replace an open read snapshot."""
     import ctypes
     from ctypes import wintypes
     import msvcrt
@@ -150,7 +152,7 @@ def atomic_bytes(path, raw, *, replace=False):
             stream.flush()
             os.fsync(stream.fileno())
         if replace:
-            os.replace(temporary, path)
+            replace_file(temporary, path)
         elif os.name == 'nt':
             # Windows rename refuses an existing destination and leaves no
             # second hard link if the process exits immediately after success.

@@ -46,6 +46,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 document = recovered.document
                 text = document.text
                 recovery_notice = 'Recovered your saved reading draft and voice settings. '
+            if recovered is not None and recovered.document.format_notice:
+                recovery_notice += recovered.document.format_notice
+                # The earlier dialect is imported in memory; retain its saved
+                # recovery bytes until the user explicitly writes a new copy.
+                draft_store = None
     except (OSError, ValueError, RuntimeError) as exc:
         recovery_notice = f'Reading-draft recovery is unavailable: {exc}. Save As remains available. '
         draft_store = None
@@ -103,8 +108,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     row = wx.BoxSizer(wx.HORIZONTAL)
     seek = wx.Button(dialog, label='Seek to &time')
     cleanup = wx.Button(dialog, label='Normalize s&paces')
+    pronunciation = wx.Button(dialog, label='Pronunciatio&n rules')
+    pronunciation.SetName('Pronunciation rules')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (seek, cleanup, close):
+    for control in (seek, cleanup, pronunciation, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     dialog.SetSizer(layout)
@@ -128,15 +135,16 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         for button in (read, cursor, export_audio):
             button.Enable(bool(current) and not busy)
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
+        pronunciation.Enable(source_loaded and not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
 
-    def run(work, on_done):
+    def run(work, on_done, *, on_failed=None):
         nonlocal busy
         if busy:
             report('A speech operation is running. Stop it before starting another.', focus=True)
-            return
+            return False
         busy = True
         cancel.clear()
         capabilities()
@@ -151,9 +159,22 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             try:
                 on_done(future.result())
             except Exception as exc:
-                report(f'Operation did not complete. {exc}', focus=True)
+                if on_failed is not None:
+                    on_failed(exc)
+                else:
+                    report(f'Operation did not complete. {exc}', focus=True)
             capabilities()
-        executor.submit(work).add_done_callback(lambda future: wx.CallAfter(finish, future))
+        try:
+            executor.submit(work).add_done_callback(lambda future: wx.CallAfter(finish, future))
+        except Exception as exc:
+            busy = False
+            reload_button.Enable(); capabilities()
+            if on_failed is not None:
+                on_failed(exc)
+            else:
+                report(f'Operation did not start. {exc}', focus=True)
+            return False
+        return True
 
     def select_progress_voice(event=None):
         selected = voice_choice.GetSelection()
@@ -211,8 +232,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         # Keep the prior recovery file unchanged; Save As is still available.
                         draft_store = None
                         recovered = None
-                        recovery_notice = ('Previous draft has no matching source lineage and was preserved. '
-                                           'Use Save As for this new copy. ')
+                        recovery_notice += ('Previous draft has no matching source lineage and was preserved. '
+                                            'Use Save As for this new copy. ')
                     document = fresh
                 editor.ChangeValue(document.text)
                 source_loaded = True
@@ -230,7 +251,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
-                report('No local voice is available. Install a SAPI 5 voice on Windows or an optional '
+                report(recovery_notice + 'No local voice is available. Install a SAPI 5 voice on Windows or an optional '
                        'local engine. ' + ' '.join(registry.notices), focus=True)
         def load():
             source = source_loader(cancel.is_set) if not source_loaded else None
@@ -275,6 +296,81 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return editor.GetValue()[editor.GetInsertionPoint():]
         selected = editor.GetStringSelection()
         return selected or editor.GetValue()
+
+    def pronunciations(event=None):
+        try:
+            if busy or not source_loaded:
+                raise ValueError('Wait for the reader operation to finish before editing pronunciation rules.')
+            from ..durable_state import local_path
+            from .pronunciation_dialog import (ReadingSnapshot, apply_pronunciation_preview,
+                                               create_pronunciation_dialog)
+            selected_library = parent.library
+            selected_root = local_path(selected_library.root, exists=True)
+
+            def guard():
+                if (not alive or getattr(parent, '_closing', False) or parent.library is not selected_library
+                        or local_path(parent.library.root, exists=True) != selected_root):
+                    raise ValueError('The library changed or the reader closed. Reopen pronunciation rules.')
+                source_guard()
+
+            def capture():
+                guard(); sync_document()
+                # wx positions are not Python character indexes on every native
+                # text control. Convert the actual ranges, including Unicode/CRLF.
+                native_start, native_end = editor.GetSelection()
+                prefix = editor.GetRange(0, native_start)
+                selected = editor.GetRange(native_start, native_end)
+                start, end = len(prefix), len(prefix) + len(selected)
+                if not document.text.startswith(prefix) or document.text[start:end] != selected:
+                    raise ValueError('The native text selection changed. Select the reading range again.')
+                index = voice_choice.GetSelection()
+                voice = voices[index] if 0 <= index < len(voices) else None
+                return ReadingSnapshot.capture(document, (start, end),
+                    language=voice.language if voice else '', voice_id=voice.id if voice else '')
+
+            def synchronize():
+                nonlocal last_audio, playback_generation
+                playback_generation += 1; last_audio = None
+                editor.ChangeValue(document.text); sync_document()
+                try:
+                    save_recovery(force=True)
+                except Exception as exc:
+                    return f'The reading change is in memory, but recovery save failed: {exc}. Use Save As before closing.'
+                return ''
+
+            def apply(preview):
+                guard(); current = capture()
+                player.stop()
+                if progress is not None:
+                    progress.refresh_audio_state()
+                apply_pronunciation_preview(document, preview, current)
+                warning = synchronize()
+                return capture(), warning
+
+            def undo_pronunciation(expected):
+                guard()
+                if capture() != expected:
+                    raise ValueError('The reading copy changed after applying. Use the reader undo history explicitly.')
+                player.stop()
+                if progress is not None:
+                    progress.refresh_audio_state()
+                if not document.undo():
+                    raise ValueError('The pronunciation change is no longer available to undo.')
+                return synchronize()
+
+            review = create_pronunciation_dialog(dialog, library_root=selected_root, capture=capture,
+                apply=apply, undo=undo_pronunciation, guard=guard, run=run, cancel=cancel)
+            try:
+                review.on_load()
+                review.ShowModal()
+            finally:
+                if review.alive:
+                    review.finish_close()
+                review.Destroy()
+            if alive:
+                capabilities(); editor.SetFocus()
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def speak(event=None, *, from_cursor=False, destination=None):
         nonlocal last_audio, playback_generation
@@ -394,7 +490,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             return False
 
     def open_project(event=None):
-        nonlocal document, save_path
+        nonlocal document, save_path, draft_store, recovery_notice
         if busy:
             report('Stop the current render before opening another document.', focus=True)
             return
@@ -425,10 +521,14 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if progress is not None:
                 progress.refresh_audio_state()
             document, save_path = loaded, selected
+            if document.format_notice:
+                draft_store = None
+                save_path = None
+                recovery_notice = document.format_notice
             editor.ChangeValue(document.text)
             sync_document()
             editor.SetFocus()
-            report('Reading copy opened. Original text is retained separately; no quotation was approved.')
+            report(recovery_notice + 'Reading copy opened. Original text is retained separately; no quotation was approved.')
         except Exception as exc:
             report(str(exc), focus=True)
 
@@ -490,7 +590,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (export_audio, save_audio), (save_button, save_project),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
-        (original, compare), (seek, seek_audio), (cleanup, clean), (close, closing)):
+        (original, compare), (seek, seek_audio), (cleanup, clean), (pronunciation, pronunciations), (close, closing)):
         control.Bind(wx.EVT_BUTTON, handler)
     voice_choice.Bind(wx.EVT_CHOICE, capabilities)
     dialog.Bind(wx.EVT_CLOSE, closing)
