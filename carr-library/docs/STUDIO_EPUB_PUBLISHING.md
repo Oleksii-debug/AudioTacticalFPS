@@ -11,7 +11,7 @@ start a model or open a reading application.
 Open the publication dialog and choose **Load jobs / receipts**. Select a
 completed job explicitly. Enter a publication language such as `uk`, `en` or
 `und` for undetermined, an optional creator, and a new EPUB filename in an
-existing directory. **Export EPUB3** performs source verification, local MP3
+existing directory. With EPUB3 selected, **Export publication** performs source verification, local MP3
 encoding if necessary, packaging and final byte verification in the shared
 background job lifecycle. The cancel control remains available; source and
 destination permissions are checked again before publication.
@@ -127,6 +127,10 @@ and FFmpeg execution, real CLI subprocesses, and ZIP/XML/audio inspection.
 `scripts/windows_publishing_smoke.py` adds installed-package native wx acceptance.
 Its output explicitly separates these checks from actual speech quality,
 EPUBCheck, external readers and manual assistive-technology qualification.
+
+The same dialog also supports DAISY 2.02 with explicit publisher metadata.
+See [STUDIO_DAISY_PUBLISHING.md](STUDIO_DAISY_PUBLISHING.md) for its file set,
+measured heading/line contract, structural validation and separate reader limits.
 
 ## Canonical integration qualification
 

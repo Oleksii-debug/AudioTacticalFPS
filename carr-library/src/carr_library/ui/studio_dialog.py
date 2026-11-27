@@ -721,6 +721,7 @@ def install_studio_actions(frame):
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
                             ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
                             ('Publish synchronized EPUB3...', lambda e: show_publishing(frame)),
+                            ('Publish DAISY 2.02...', lambda e: show_publishing(frame, initial_format='daisy-2.02')),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)

@@ -24,6 +24,7 @@ def main():
     from carr_library.application import LibraryApp
     from carr_library.studio.render import ProductionService
     from carr_library.studio.publishing import inspect_epub
+    from carr_library.studio.daisy import inspect_daisy
     from carr_library.ui import publishing_dialog as ui
     from carr_library.ui.desktop_app import DesktopFrame
     errors, checks, audio_proof = [], [], {}
@@ -118,6 +119,29 @@ def main():
                     original = target.read_bytes(); press(dialog.buttons['export']); until(lambda: not dialog.busy)
                     check('native duplicate export cannot overwrite completed bytes',target.read_bytes()==original
                           and 'not be overwritten' in dialog.status.GetValue())
+                    daisy_target = root/'talking-book.zip'
+                    check('publication format and publisher are native named controls',
+                          isinstance(dialog.format_choice, wx.Choice) and isinstance(dialog.publisher, wx.TextCtrl)
+                          and dialog.format_choice.GetName() == 'Publication format'
+                          and 'Publisher' in dialog.publisher.GetName())
+                    dialog.format_choice.SetSelection(1)
+                    dialog.output.ChangeValue(str(daisy_target))
+                    press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    check('DAISY requires explicitly supplied publisher metadata',
+                          not daisy_target.exists() and 'publisher metadata' in dialog.status.GetValue())
+                    dialog.publisher.ChangeValue('Synthetic native acceptance publisher')
+                    press(dialog.buttons['export']); until(lambda: not dialog.busy)
+                    check('native DAISY export commits the second durable receipt',
+                          daisy_target.exists() and len(dialog.receipts) == 2
+                          and dialog.receipts[-1]['format'] == 'daisy-2.02')
+                    daisy_provenance = inspect_daisy(daisy_target)
+                    check('DAISY preserves exact script, measured audio and explicit publisher',
+                          daisy_provenance['original_script'] == script and daisy_provenance['audio']['codec'] == 'mp3'
+                          and daisy_provenance['publisher'] == 'Synthetic native acceptance publisher')
+                    dialog.format_choice.SetSelection(0)
+                    press(dialog.buttons['verify']); until(lambda: not dialog.busy)
+                    check('native DAISY verification follows the selected receipt',
+                          'Verified exact saved DAISY bytes' in dialog.status.GetValue())
                     press(dialog.buttons['close'])
                     check('native keyboard close completes', not dialog.alive)
                 except Exception:
@@ -145,7 +169,8 @@ def main():
         if errors: raise RuntimeError('\n'.join(errors))
     print(json.dumps({'result':'PASS','checks':checks,'audio':'Synthetic PCM tones through actual FFmpeg',
         'audio_runtime':audio_proof,'native_keyboard':'PASS','epubcheck':'NOT_RUN',
-        'reader_interoperability':'NOT_RUN','manual_keyboard':'NOT_RUN','nvda':'NOT_RUN'},indent=2))
+        'daisy_2_02_interchange':'PASS','reader_interoperability':'NOT_RUN',
+        'independent_daisy_validation':'NOT_RUN','manual_keyboard':'NOT_RUN','nvda':'NOT_RUN'},indent=2))
     return 0
 
 

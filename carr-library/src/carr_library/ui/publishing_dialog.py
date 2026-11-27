@@ -1,4 +1,4 @@
-"""Native EPUB publication through the shared Desktop background job lifecycle."""
+"""Native synchronized publication through the shared background job lifecycle."""
 import json
 from pathlib import Path
 from threading import Event
@@ -17,7 +17,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
 
     class PublishingDialog(wx.Dialog):
         def __init__(self):
-            super().__init__(frame, title='EPUB3 publication — measured Studio line synchronization',
+            super().__init__(frame, title='EPUB3 and DAISY publication — measured Studio line synchronization',
                 size=(920, 760), style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
             self.library_root = local_path(frame.library.root, exists=True)
             self.production = ProductionService(self.library_root / 'state' / 'studio')
@@ -38,9 +38,12 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 box.Add(control, proportion, wx.ALL | wx.EXPAND, 4)
                 return control
             self.job_choice = field('Completed Studio &job — choose explicitly', choices=[])
+            self.format_choice = field('Publication &format', choices=['EPUB3 (.epub)', 'DAISY 2.02 file set (.zip)'])
+            self.format_choice.SetSelection(0)
             self.language = field('Publication &language tag; und means undetermined', value='und')
             self.creator = field('&Creator (optional)')
-            self.output = field('Chosen new EPUB &file, or existing EPUB for receipt verification')
+            self.publisher = field('&Publisher (required for DAISY 2.02)')
+            self.output = field('Chosen new publication &file, or existing file for receipt verification')
             self.max_gib = field('Maximum source/staging size in &GiB', value='32')
             self.minutes = field('Operation time budget in &minutes', value='60')
             self.receipt_choice = field('Saved publication &receipts — verify to check current bytes', choices=[])
@@ -51,14 +54,15 @@ def create_publishing_dialog(frame, *, wx_module=None):
             self.buttons = {}
             for key, label, handler in (
                 ('refresh', '&Load jobs / receipts', self.on_refresh), ('choose', 'Choose &destination', self.on_choose),
-                ('export', '&Export EPUB3', self.on_export), ('verify', '&Verify receipt', self.on_verify),
+                ('export', '&Export publication', self.on_export), ('verify', '&Verify receipt', self.on_verify),
                 ('cancel', '&Cancel operation', self.on_cancel), ('close', '&Close', self.on_close)):
                 button = wx.Button(self, label=label); button.Bind(wx.EVT_BUTTON, handler)
                 self.buttons[key] = button; row.Add(button, 0, wx.ALL, 3)
             layout.Add(row, 0, wx.ALL, 3); self.SetSizer(layout)
             panel.FitInside()
             self.Bind(wx.EVT_CLOSE, self.on_close)
-            self.report('Load saved Studio jobs, explicitly choose a completed job and a new EPUB destination. '
+            self.report('Load saved Studio jobs, choose a completed job, publication format and new destination. '
+                        'DAISY requires explicit publisher metadata; extract its ZIP for a compatible reader. '
                         'Export verifies all source receipts and does not open a reader.')
             self.controls()
 
@@ -69,7 +73,8 @@ def create_publishing_dialog(frame, *, wx_module=None):
         def controls(self):
             if not self.alive:
                 return
-            for control in (self.job_choice,self.language,self.creator,self.output,self.max_gib,self.minutes,self.receipt_choice):
+            for control in (self.job_choice,self.format_choice,self.language,self.creator,self.publisher,
+                            self.output,self.max_gib,self.minutes,self.receipt_choice):
                 control.Enable(not self.busy)
             for key in ('refresh','choose','export','verify'):
                 self.buttons[key].Enable(not self.busy)
@@ -87,7 +92,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
             if self.busy or not self.alive:
                 return False
             if local_path(frame.library.root, exists=True) != self.library_root:
-                raise ValueError('The library location changed. Reopen EPUB publication for the selected library.')
+                raise ValueError('The library location changed. Reopen publication for the selected library.')
             if getattr(frame, 'working', False) or getattr(frame, '_closing', False):
                 self.report('Another operation is active. Finish or cancel it before publishing.')
                 return False
@@ -98,7 +103,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
                     if frame.library.root == self.library_root:
                         complete(value)
                     else:
-                        self.report('The library location changed. Reopen EPUB publication to review its records.')
+                        self.report('The library location changed. Reopen publication to review its records.')
                     self.controls(); self.status.SetFocus()
             def failed(error):
                 self.busy = False
@@ -113,15 +118,17 @@ def create_publishing_dialog(frame, *, wx_module=None):
                     self.jobs, self.receipts = value
                     self.job_choice.Set([f'{row["title"]}; {row["lines"]} measured lines; {row["id"]}' for row in self.jobs])
                     self.receipt_choice.Set([f'{row["status"]}; {row["id"]}; {Path(row["output"]).name}' for row in self.receipts])
-                    self.report('Choose a completed job and a new output filename. Saved receipt status is metadata; '
-                                'Verify receipt checks the current EPUB bytes.')
+                    self.report('Choose a completed job, format and new output filename. Saved receipt status is metadata; '
+                                'Verify receipt checks the current publication bytes.')
                 self.begin('Loading Studio publication records', lambda: (self.service.jobs(), self.service.publications()), done)
             except Exception as exc:
                 self.report(exc)
 
         def on_choose(self, event=None):
-            picker = wx.FileDialog(self, 'Choose a new EPUB, or the existing file whose receipt you will verify',
-                                   defaultFile='publication.epub', wildcard='EPUB (*.epub)|*.epub', style=wx.FD_SAVE)
+            is_daisy = self.format_choice.GetSelection() == 1
+            picker = wx.FileDialog(self, 'Choose a new publication, or the existing file whose receipt you will verify',
+                                   defaultFile='publication.zip' if is_daisy else 'publication.epub',
+                                   wildcard='DAISY file set (*.zip)|*.zip' if is_daisy else 'EPUB (*.epub)|*.epub', style=wx.FD_SAVE)
             try:
                 if picker.ShowModal() == wx.ID_OK:
                     selected = picker.GetPath()
@@ -137,31 +144,44 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 index = self.job_choice.GetSelection()
                 if not 0 <= index < len(self.jobs):
                     raise ValueError('Load and explicitly choose a completed Studio job first.')
+                format_index = self.format_choice.GetSelection()
+                if format_index not in (0, 1):
+                    raise ValueError('Choose the publication format.')
+                label = 'DAISY' if format_index == 1 else 'EPUB'
                 if not self.output.GetValue().strip():
-                    raise ValueError('Choose a new EPUB file before export.')
+                    raise ValueError(f'Choose a new {label} file before export.')
                 identity, output = self.jobs[index]['id'], Path(self.output.GetValue())
                 current = capture_export_destination(output, private_root=self.library_root)
                 approval = self.output_approval
                 if approval is None or approval.requested != current.requested:
-                    # Typed destinations are captured on this explicit click,
-                    # before the shared worker can begin encoding.
+                    # Capture typed destinations on the explicit click, before
+                    # queued encoding can begin. Picker approvals stay pinned.
                     approval = current
                 self.output_approval = approval
                 language, creator = language_tag(self.language.GetValue().strip()), self.creator.GetValue()
+                publisher = self.publisher.GetValue().strip()
+                if format_index == 1:
+                    from ..studio.daisy import language_tag as daisy_language
+                    daisy_language(language)
+                    if not publisher:
+                        raise ValueError('Enter the publisher metadata explicitly for this DAISY publication.')
                 service = PublicationService(self.production, budget=self.budget())
                 def operation():
                     token = frame.operation_progress.event.token
                     def progress(message):
                         frame.operation_progress.update(phase=message, token=token)
                         wx.CallAfter(self.report, message)
+                    if format_index == 1:
+                        return service.export_daisy(identity, output, publisher=publisher, language=language, creator=creator,
+                                                    cancelled=self.stopping, progress=progress, approval=approval)
                     return service.export_epub(identity, output, language=language, creator=creator,
                                                cancelled=self.stopping, progress=progress, approval=approval)
                 def done(value):
                     self.receipts = (*self.receipts, value)
                     self.receipt_choice.Set([f'{row["status"]}; {row["id"]}; {Path(row["output"]).name}' for row in self.receipts])
                     self.receipt_choice.SetSelection(len(self.receipts) - 1)
-                    self.report('EPUB saved and its bytes verified.\n' + json.dumps(value, ensure_ascii=False, indent=2))
-                self.begin('Publishing synchronized EPUB3', operation, done)
+                    self.report(f'{label} saved and its bytes verified.\n' + json.dumps(value, ensure_ascii=False, indent=2))
+                self.begin('Publishing synchronized ' + label, operation, done)
             except Exception as exc:
                 self.report(exc)
 
@@ -171,11 +191,12 @@ def create_publishing_dialog(frame, *, wx_module=None):
                 if not 0 <= index < len(self.receipts):
                     raise ValueError('Load and choose a saved publication receipt first.')
                 identity = self.receipts[index]['id']
+                label = 'DAISY' if self.receipts[index].get('format') == 'daisy-2.02' else 'EPUB'
                 selected = Path(self.output.GetValue()) if self.output.GetValue().strip() else None
                 service = PublicationService(self.production, budget=self.budget())
-                self.begin('Verifying saved EPUB publication',
+                self.begin('Verifying saved ' + label + ' publication',
                     lambda: service.verify(identity, output=selected, cancelled=self.stopping),
-                    lambda result: self.report('Verified exact saved EPUB bytes and media overlay graph.\n' +
+                    lambda result: self.report(f'Verified exact saved {label} bytes and media overlay graph.\n' +
                                                json.dumps(result, ensure_ascii=False, indent=2)))
             except Exception as exc:
                 self.report(exc)
@@ -183,7 +204,7 @@ def create_publishing_dialog(frame, *, wx_module=None):
         def on_cancel(self, event=None):
             if self.busy:
                 self.cancel.set(); frame.cancel_event.set()
-                self.report('Cancellation requested. A completed EPUB and its prepared receipt remain available for verification.')
+                self.report('Cancellation requested. A completed publication and its prepared receipt remain available for verification.')
 
         def on_close(self, event=None):
             if not self.alive:
@@ -197,8 +218,11 @@ def create_publishing_dialog(frame, *, wx_module=None):
     return PublishingDialog()
 
 
-def show_publishing(frame):
+def show_publishing(frame, *, initial_format='epub'):
+    if initial_format not in ('epub', 'daisy-2.02'):
+        raise ValueError('Choose EPUB3 or DAISY 2.02 publication.')
     dialog = create_publishing_dialog(frame)
+    dialog.format_choice.SetSelection(1 if initial_format == 'daisy-2.02' else 0)
     try:
         dialog.ShowModal()
     finally:

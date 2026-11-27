@@ -127,3 +127,38 @@ def test_invalid_budget_does_not_start_native_export(desktop, tmp_path):
     dialog.on_refresh(); dialog.job_choice.SetSelection(0); dialog.output.ChangeValue(str(tmp_path / 'invalid.epub'))
     dialog.minutes.ChangeValue('nan'); dialog.on_export()
     assert len(frame.operations) == 1 and not (tmp_path / 'invalid.epub').exists()
+
+
+def test_daisy_handler_requires_publisher_and_verifies_selected_receipt(desktop, tmp_path):
+    from carr_library.studio.daisy import inspect_daisy
+    frame, dialog, _ = desktop
+    dialog.on_refresh(); dialog.job_choice.SetSelection(0); dialog.format_choice.SetSelection(1)
+    output = tmp_path / 'native-handler-daisy.zip'; dialog.output.ChangeValue(str(output))
+    dialog.on_export()
+    assert not output.exists() and len(frame.operations) == 1 and 'publisher metadata' in dialog.status.GetValue()
+    dialog.publisher.ChangeValue('Synthetic publisher chosen in the UI')
+    dialog.on_export()
+    assert output.exists(), dialog.status.GetValue()
+    assert len(dialog.receipts) == 1 and dialog.receipts[0]['format'] == 'daisy-2.02'
+    assert inspect_daisy(output)['publisher'] == 'Synthetic publisher chosen in the UI'
+    dialog.format_choice.SetSelection(0)  # Verification follows its receipt, not a changed export preference.
+    dialog.on_verify()
+    assert 'Verified exact saved DAISY bytes' in dialog.status.GetValue()
+
+
+def test_queued_daisy_handler_captures_reviewed_format_and_publisher(desktop, tmp_path):
+    from carr_library.studio.daisy import inspect_daisy
+    frame, dialog, _ = desktop
+    dialog.on_refresh(); dialog.job_choice.SetSelection(0); dialog.format_choice.SetSelection(1)
+    output = tmp_path / 'captured-daisy.zip'; dialog.output.ChangeValue(str(output))
+    dialog.publisher.ChangeValue('Reviewed publisher')
+    pending = []
+    frame.run_job = lambda title, operation, done, failed: pending.append((operation, done, failed))
+    dialog.on_export()
+    assert dialog.busy and not dialog.format_choice.IsEnabled() and not dialog.publisher.IsEnabled()
+    dialog.format_choice.SetSelection(0); dialog.publisher.ChangeValue('Later value')
+    operation, done, failed = pending[0]
+    try: done(operation())
+    except Exception as exc: failed(exc)
+    assert output.exists(), dialog.status.GetValue()
+    assert inspect_daisy(output)['publisher'] == 'Reviewed publisher'
