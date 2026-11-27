@@ -394,3 +394,125 @@ def test_actual_native_review_driver_checks_canonical_book_paths_and_settings(ha
     assert not list(e.output.iterdir()) and not list(actual_output.iterdir())
     assert all(state['status'] == 'pending' and not state['artifacts']
                for state in e.production.jobs())
+
+
+@pytest.mark.parametrize('stage, approvals, verified', [
+    ('opened', 0, False), ('loaded', 0, False), ('reviewed', 0, False),
+    ('rendered', 1, False), ('rendered', 2, True),
+])
+def test_native_batch_deadline_records_pending_phase_without_driving_work(
+        tmp_path, monkeypatch, capsys, stage, approvals, verified):
+    """The actual timer keeps its deadline and exposes the real held worker stack."""
+    import ast
+    import faulthandler
+    import json
+    import traceback
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    driver, = [node for node in ast.walk(tree)
+               if isinstance(node, ast.FunctionDef) and node.name == 'exercise_book_batch']
+    functions = [node for node in driver.body if isinstance(node, ast.FunctionDef)
+                 and node.name in ('diagnose', 'later')]
+    assert {node.name for node in functions} == {'diagnose', 'later'}
+    module = ast.fix_missing_locations(ast.Module(body=functions, type_ignores=[]))
+    entered, release = threading.Event(), threading.Event()
+
+    def held_book_worker():
+        entered.set()
+        assert release.wait(10)
+
+    worker = threading.Thread(target=held_book_worker, name='actual-book-diagnostic-barrier')
+    pending, closed, calls, errors = [], [], [], []
+    deadline = 100.0
+    clock = [deadline - 1]
+    frame = SimpleNamespace(working=True, status=SimpleNamespace(
+        GetValue=lambda: 'Rendering reviewed books through existing Studio jobs'))
+    controls = {
+        'Multiple book review and existing Studio checkpoints': SimpleNamespace(
+            GetValue=lambda: 'Book 2/2: exact retained source. ' + 'x' * 5000),
+        'Ordered books; review each book before Preview': SimpleNamespace(GetCount=lambda: 2),
+        'Run or resume batch': SimpleNamespace(IsEnabled=lambda: False),
+        'Preview entire batch': SimpleNamespace(IsEnabled=lambda: False),
+        'Close': SimpleNamespace(IsEnabled=lambda: True),
+    }
+
+    def named(name, kind):
+        return controls[name]
+
+    def callback():
+        calls.append('must not start or resume work after deadline')
+    callback.__name__ = stage
+    environment = dict(frame=frame, dialog=SimpleNamespace(Close=lambda: closed.append(True)),
+        named=named, wx=SimpleNamespace(TextCtrl=object, Choice=object, Button=object,
+            CallLater=lambda delay, fn: pending.append((delay, fn))),
+        monotonic=lambda: clock[0], deadline=deadline, approvals=['explicit Run'] * approvals,
+        before={'accepted output': ('sha256', 1)} if verified else {}, passed=[],
+        observed_phase=[None], gui_errors=errors, json=json, traceback=traceback)
+    exec(compile(module, str(script), 'exec'), environment)
+    dump = faulthandler.dump_traceback
+    stacks = tmp_path / 'actual-worker-stacks.txt'
+    worker.start()
+    try:
+        assert entered.wait(5)
+        with stacks.open('w', encoding='utf-8') as output:
+            monkeypatch.setattr(faulthandler, 'dump_traceback',
+                lambda *, all_threads: dump(file=output, all_threads=all_threads))
+            environment['later'](callback)
+            assert pending[0][0] == 40 and not closed and not calls
+            clock[0] = deadline
+            pending.pop()[1]()
+        assert not pending and not calls and closed == [True]
+        assert len(errors) == 1
+        assert 'TimeoutError: Native multi-book review/Run did not finish.' in errors[0]
+        assert 'held_book_worker' in stacks.read_text(encoding='utf-8')
+        records = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
+        assert [record['native_book_batch'] for record in records] == ['STAGE', 'FAIL']
+        assert all(record['stage'] == stage for record in records)
+        failure = records[-1]
+        assert failure['elapsed_seconds'] == 90 and failure['desktop_working']
+        assert failure['run_approvals'] == approvals and failure['first_result_verified'] is verified
+        assert failure['selected_books'] == 2 and failure['close_enabled']
+        assert not failure['run_enabled'] and not failure['preview_enabled']
+        assert len(failure['batch_status']) == 2048 and not failure['scenario_passed']
+    finally:
+        release.set()
+        worker.join(10)
+    assert not worker.is_alive()
+
+
+def test_native_batch_diagnostic_failure_cannot_replace_primary_error_or_skip_close(monkeypatch):
+    import ast
+    import faulthandler
+    import traceback
+
+    script = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_v3_smoke.py'
+    tree = ast.parse(script.read_text(encoding='utf-8'), filename=str(script))
+    driver, = [node for node in ast.walk(tree)
+               if isinstance(node, ast.FunctionDef) and node.name == 'exercise_book_batch']
+    later, = [node for node in driver.body if isinstance(node, ast.FunctionDef) and node.name == 'later']
+    module = ast.fix_missing_locations(ast.Module(body=[later], type_ignores=[]))
+    pending, observed, closed, errors = [], [], [], []
+
+    def diagnose(stage, *, failed=False):
+        observed.append((stage, failed))
+        if failed:
+            raise OSError('injected diagnostic observation error')
+
+    def render_callback():
+        raise ValueError('original native callback failure')
+
+    monkeypatch.setattr(faulthandler, 'dump_traceback',
+                        lambda **kwargs: pytest.fail('unreached after diagnostic error'))
+    environment = dict(diagnose=diagnose, monotonic=lambda: 1.0, deadline=90.0,
+        gui_errors=errors, traceback=traceback,
+        dialog=SimpleNamespace(Close=lambda: closed.append(True)),
+        wx=SimpleNamespace(CallLater=lambda delay, fn: pending.append((delay, fn))))
+    exec(compile(module, str(script), 'exec'), environment)
+    environment['later'](render_callback)
+    assert pending[0][0] == 40
+    pending.pop()[1]()
+    assert closed == [True] and not pending
+    assert observed == [('render_callback', False), ('render_callback', True)]
+    assert len(errors) == 2 and 'ValueError: original native callback failure' in errors[0]
+    assert 'OSError: injected diagnostic observation error' in errors[1]

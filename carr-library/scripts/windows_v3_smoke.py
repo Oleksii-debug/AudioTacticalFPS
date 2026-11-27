@@ -540,7 +540,38 @@ def main():
                     event.SetEventObject(control)
                     assert control.GetEventHandler().ProcessEvent(event)
 
+                observed_phase = [None]
+
+                def diagnose(stage, *, failed=False):
+                    """Observe only this synthetic native scenario; never drive its state."""
+                    phase = (stage, len(approvals))
+                    if not failed and observed_phase[0] == phase:
+                        return
+                    observed_phase[0] = phase
+                    observed = {
+                        'native_book_batch': 'FAIL' if failed else 'STAGE',
+                        'stage': stage, 'elapsed_seconds': round(90 - (deadline - monotonic()), 3),
+                        'desktop_working': bool(frame.working), 'run_approvals': len(approvals),
+                        'first_result_verified': bool(before), 'scenario_passed': bool(passed),
+                    }
+                    if failed:
+                        def read(label, operation):
+                            try:
+                                observed[label] = operation()
+                            except Exception as error:
+                                observed[label] = {'unavailable': type(error).__name__ + ': ' + str(error)[:256]}
+                        read('desktop_status', lambda: frame.status.GetValue()[:2048])
+                        read('batch_status', lambda: named(
+                            'Multiple book review and existing Studio checkpoints', wx.TextCtrl).GetValue()[:2048])
+                        read('selected_books', lambda: named(
+                            'Ordered books; review each book before Preview', wx.Choice).GetCount())
+                        read('run_enabled', lambda: named('Run or resume batch', wx.Button).IsEnabled())
+                        read('preview_enabled', lambda: named('Preview entire batch', wx.Button).IsEnabled())
+                        read('close_enabled', lambda: named('Close', wx.Button).IsEnabled())
+                    print(json.dumps(observed, ensure_ascii=True, allow_nan=False), flush=True)
+
                 def later(callback):
+                    diagnose(callback.__name__)
                     def guarded():
                         try:
                             assert not gui_errors, '\n'.join(gui_errors)
@@ -549,7 +580,14 @@ def main():
                             callback()
                         except BaseException:
                             gui_errors.append(traceback.format_exc())
-                            dialog.Close()
+                            try:
+                                diagnose(callback.__name__, failed=True)
+                                import faulthandler
+                                faulthandler.dump_traceback(all_threads=True)
+                            except BaseException:
+                                gui_errors.append('Native book diagnostics failed:\n' + traceback.format_exc())
+                            finally:
+                                dialog.Close()
                     wx.CallLater(40, guarded)
 
                 def opened():
