@@ -1,3 +1,5 @@
+comtypes==1.5.0 \
+    --hash=sha256:c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5
 defusedxml==0.7.1 \
     --hash=sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61
 filelock==3.29.0 \
@@ -406,5 +408,3 @@ bibtexparser==2.1.0 \
     --hash=sha256:3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e
 pylatexenc==2.11 \
     --hash=sha256:e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0
-quickjs-ng==0.18.0.2 \
-    --hash=sha256:b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d

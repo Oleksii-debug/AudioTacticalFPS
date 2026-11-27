@@ -124,8 +124,8 @@ def write_export(path, content, *, private_root, cancelled=lambda: False,
     Library paths, linked ancestors/targets and hard-linked files are rejected.
     Failure or cancellation before publication preserves an existing target
     and removes the temporary file. An optional captured approval also rejects
-    changes since the caller selected and confirmed the destination. A captured
-    absent destination always uses atomic no-clobber publication. Once atomic
+    changes since the caller selected and confirmed the destination. An absent
+    destination always uses atomic no-clobber publication. Once atomic
     replacement completes, the save is complete. CR, LF and CRLF remain unchanged.
     """
     if not isinstance(content, str):
@@ -161,6 +161,10 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
     check_cancelled()
     requested, private = _export_paths(path, private_root)
     target, parent_identity, previous = _destination(requested, private)
+    # A caller approving ordinary replacement cannot approve a file that did
+    # not exist at this snapshot. Protect every existing caller from a last-
+    # moment competing create, even without the new explicit policy argument.
+    require_absent = require_absent or previous is None
     if approval is not None:
         if type(approval) is not ExportDestination:
             raise ValueError('A captured export destination approval is required.')
@@ -188,12 +192,26 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
         if require_absent:
-            # Unlike replace(), creating a hard link fails atomically if any
-            # file appeared after the last check. Both paths are on the same
-            # filesystem. If that filesystem lacks this operation, fail without
-            # weakening the caller's explicit no-replacement policy.
-            os.link(temporary, target, follow_symlinks=False)
-            os.unlink(temporary)
+            if os.name == 'nt':
+                # Windows rename refuses an existing destination. Moving the
+                # staged file also leaves no second hard link if the process
+                # exits immediately after the filesystem operation succeeds.
+                # POSIX rename may overwrite, so it must never use this path.
+                os.rename(temporary, target)
+            else:
+                # Both paths share a filesystem; link fails atomically if a
+                # competitor creates the destination after the final check.
+                # Unsupported filesystems fail without weakening this policy.
+                os.link(temporary, target, follow_symlinks=False)
+                published_stage, temporary = temporary, None
+                try:
+                    published_stage.unlink()
+                except OSError:
+                    try:
+                        published_stage.unlink(missing_ok=True)
+                    except OSError as exc:
+                        raise OSError('Export was published, but its temporary '
+                                      'link could not be removed.') from exc
         else:
             os.replace(temporary, target)
         temporary = None

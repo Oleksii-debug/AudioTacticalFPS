@@ -185,9 +185,9 @@ class LibraryApp:
                                      isolation_level=None, timeout=0 if budget is not None else 5)) as db:
             db.row_factory = sqlite3.Row
             if budget is not None:
-                # Opening/authorizing a snapshot is part of the search too.
-                # SQLite's busy wait cannot consult its progress callback;
-                # searches report contention promptly instead of waiting 5s.
+                # Schema validation and authorization belong to the same
+                # cancellable operation as retrieval. A SQLite busy handler
+                # would otherwise sleep for five seconds without checking it.
                 db.set_progress_handler(lambda: int(budget.stopped()), 1000)
             try:
                 db.execute('PRAGMA foreign_keys=ON')
@@ -202,8 +202,8 @@ class LibraryApp:
                     budget.check()
                 yield db
             finally:
-                # Remove the callback before rolling back the read snapshot.
                 if budget is not None:
+                    # Cleanup must work even when cancellation remains latched.
                     db.set_progress_handler(None, 0)
                 db.rollback()
 
@@ -231,7 +231,8 @@ class LibraryApp:
                 raise TimeoutError('Search cancelled or timed out.') from exc
             raise
         except sqlite3.OperationalError as exc:
-            # Extended SQLite errors retain the primary result in the low byte.
+            # Include SQLite's extended BUSY/LOCKED codes in the same retry
+            # policy while preserving unrelated database errors.
             code = (getattr(exc, 'sqlite_errorcode', 0) or 0) & 0xff
             if budget.stopped() or code == sqlite3.SQLITE_INTERRUPT:
                 raise TimeoutError('Search cancelled or timed out.') from exc
@@ -361,7 +362,7 @@ class LibraryApp:
 
     def update_metadata(self, workspace, edition_id, *, title, authors=(),
                         language=None, edition=None, volume=None, expected_metadata=None,
-                        selected_fields=None):
+                        selected_fields=None, cancelled=lambda: False):
         """Publish a metadata revision without changing any original source bytes.
 
         Already saved evidence keeps the previous metadata and source revision.
@@ -374,6 +375,11 @@ class LibraryApp:
         Unselected values are retained exactly from the locked current catalog;
         only explicitly selected values receive the usual edit validation.
         """
+        def check_cancelled():
+            if cancelled():
+                raise InterruptedError('Metadata update cancelled; no catalog changes were committed.')
+
+        check_cancelled()
         allowed_fields = frozenset(('title', 'authors', 'language', 'edition', 'volume'))
         if selected_fields is None:
             fields = allowed_fields
@@ -400,6 +406,7 @@ class LibraryApp:
             volume = _metadata(volume)
         revision = uuid4().hex
         with exclusive_writer(self.root):
+            check_cancelled()
             self._check_database_paths()
             with closing(Storage(self.database, schema_version=4)) as storage:
                 with storage.transaction():
@@ -435,6 +442,7 @@ class LibraryApp:
                     db.execute('UPDATE catalog_edition SET language=?,edition=?,volume=? WHERE workspace=? AND id=?',
                         (language, edition, volume, workspace, edition_id))
                     for affected_row in affected:
+                        check_cancelled()
                         eid, asset, previous, config, previous_label, previous_volume = affected_row
                         source_pages = tuple(db.execute(
                             'SELECT * FROM page WHERE revision=? ORDER BY ordinal', (previous,)))
@@ -451,6 +459,7 @@ class LibraryApp:
                         db.execute('INSERT INTO source_metadata VALUES(?,?,?,?,?,?,?)',
                             (workspace, eid, next_revision, '; '.join(authors) or None,
                              title, next_volume, next_label))
+                    check_cancelled()
         return revision
 
     def rename_collection(self, workspace, collection, name):
@@ -667,38 +676,40 @@ class LibraryApp:
                             ingest.retry(workspace, job)
                     else:
                         job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
-                    published = storage.db.execute('SELECT 1 FROM revision WHERE id=?',
-                                                   (job,)).fetchone() is not None
+                    was_published = storage.db.execute('SELECT 1 FROM revision WHERE id=?',
+                                                       (job,)).fetchone() is not None
                     record_progress(self.root, _request_id, job=job)
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
                     if result['state'] in ('complete', 'superseded'):
-                        # A terminal journal state is not proof of publication.
-                        # Validate the sealed source and active/result identity
-                        # even when the journal has no previously stored revision.
+                        # A terminal journal state alone cannot establish a
+                        # published source. Always validate the sealed revision
+                        # and its current authorized identity before returning.
                         with storage.transaction():
                             self._authorize(storage.db, workspace)
-                            current = storage.db.execute(
+                            published = storage.db.execute(
                                 'SELECT r.workspace,r.edition,r.asset,a.revision FROM revision r '
                                 'JOIN sealed s ON s.revision=r.id LEFT JOIN active a '
                                 'ON a.workspace=r.workspace AND a.edition=r.edition WHERE r.id=?',
                                 (job,)).fetchone()
-                            if (current is None or tuple(current[:3]) !=
+                            if (published is None or tuple(published[:3]) !=
                                     (workspace, record.edition_id, asset.digest)
-                                    or current[3] is None):
+                                    or published[3] is None):
                                 raise ValueError('Completed import is missing its sealed source revision.')
-                            if (current[3] == job) != (result['state'] == 'complete'):
+                            if (published[3] == job) != (result['state'] == 'complete'):
                                 raise ValueError('Completed import active revision changed.')
-                            if published:
+                            if was_published:
                                 if cancelled():
                                     raise InterruptedError('Import cancelled before catalog registration.')
-                                # A replay may add membership with exact current
-                                # metadata, including after a metadata revision.
-                                # Registration rejects stale metadata atomically;
-                                # it never reactivates the old source revision.
+                                # Replay can add membership only with matching
+                                # current metadata, without reactivating an old
+                                # source revision. Keep the existing pre-commit
+                                # cancellation check inside this transaction.
                                 register_batch(Catalog(storage.db, workspace), (record,))
                                 storage._check()
-                            # Initial publication already registered and checked
-                            # this request inside the source publication transaction.
+                                if cancelled():
+                                    raise InterruptedError('Import registration cancelled before commit.')
+                            # First publication already registered and checked
+                            # the request atomically with its source revision.
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     return result
 
@@ -842,7 +853,7 @@ class LibraryApp:
                author=None, language=None, edition=None, limit=100, timeout=60.0,
                cancelled=lambda: False, authorized_topic=None, on_status=None,
                result_mode=None):
-        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic', 'advanced'):
+        if mode not in ('word', 'phrase', 'terms', 'thematic', 'semantic'):
             raise ValueError('Unknown search mode.')
         if result_mode not in (None, 'short', 'thematic'):
             raise ValueError('Choose Short quotations or Thematic excerpts.')

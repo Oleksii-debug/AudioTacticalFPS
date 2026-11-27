@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "processor": {
+    "name": "citeproc-js",
+    "version": "1.4.61",
+    "revision": "56e7ef310154748368665cc8a2be124e3c141832",
+    "git_blob": "31b4f533c4bb4816d91dd61f79b4aa54ff520ac2",
+    "sha256": "8d80b2d4ad5d249178ddfa4c535bb72bbd1883521a88e9362686558e2f82029d",
+    "license": "CPAL-1.0 OR AGPL-3.0-or-later",
+    "chosen_license": "CPAL-1.0",
+    "source": "https://github.com/Juris-M/citeproc-js/blob/56e7ef310154748368665cc8a2be124e3c141832/citeproc.js"
+  },
+  "styles_revision": "cf90f6ce72b67c14c7a5b40a612f32869cd92d36",
+  "locales_revision": "f637c83f6267b761513bcc1cb0e95571172e768c",
+  "styles": [
+    {
+      "id": "apa",
+      "filename": "apa.csl",
+      "title": "APA Style 7th edition",
+      "kind": "in-text",
+      "sha256": "41b4f3c9c61b58b7428ab21d653891995db7b4648d2f0a906eabcb8b2742e7ae",
+      "license": "CC-BY-SA-3.0",
+      "source": "https://github.com/citation-style-language/styles/blob/cf90f6ce72b67c14c7a5b40a612f32869cd92d36/apa.csl"
+    },
+    {
+      "id": "chicago-author-date",
+      "filename": "chicago-author-date.csl",
+      "title": "Chicago Manual of Style 18th edition (author-date)",
+      "kind": "in-text",
+      "sha256": "635db8db1d0feca7fae37999470f0b56b51c208a71482e5ff4c45c30bdfb32bf",
+      "license": "CC-BY-SA-3.0",
+      "source": "https://github.com/citation-style-language/styles/blob/cf90f6ce72b67c14c7a5b40a612f32869cd92d36/chicago-author-date.csl"
+    },
+    {
+      "id": "chicago-notes",
+      "filename": "chicago-fullnote-bibliography.csl",
+      "title": "Chicago Manual of Style 17th edition (full note)",
+      "kind": "note",
+      "sha256": "28c47961cbcc1ead1137d67daf9f8acfcc2079be48eab10d3036120f33e1d231",
+      "license": "CC-BY-SA-3.0",
+      "source": "https://github.com/citation-style-language/styles/blob/cf90f6ce72b67c14c7a5b40a612f32869cd92d36/chicago-fullnote-bibliography.csl"
+    },
+    {
+      "id": "mla",
+      "filename": "modern-language-association.csl",
+      "title": "MLA Handbook 9th edition (in-text citations)",
+      "kind": "in-text",
+      "sha256": "ad5398ee478760737ad04ec6f95ead6dfbea7d2ae5252fc21f337110dd564b58",
+      "license": "CC-BY-SA-3.0",
+      "source": "https://github.com/citation-style-language/styles/blob/cf90f6ce72b67c14c7a5b40a612f32869cd92d36/modern-language-association.csl"
+    },
+    {
+      "id": "harvard",
+      "filename": "harvard-cite-them-right.csl",
+      "title": "Cite Them Right 12th edition (author-date/Harvard)",
+      "kind": "in-text",
+      "sha256": "6053e3448b5e7da4a814f2a8610c1bf29cc5a243c24c9e2e5c3e7cd225230df7",
+      "license": "CC-BY-SA-3.0",
+      "source": "https://github.com/citation-style-language/styles/blob/cf90f6ce72b67c14c7a5b40a612f32869cd92d36/harvard-cite-them-right.csl"
+    },
+    {
+      "id": "vancouver",
+      "filename": "nlm-citation-sequence.csl",
+      "title": "NLM/Vancouver: Citing Medicine 2nd edition (citation-sequence)",
+      "kind": "in-text",
+      "sha256": "42759650b00306c02aa5786db843c8ed67128a86b2ec0a1825a1f4e6387d51cc",
+      "license": "CC-BY-SA-3.0",
+      "source": "https://github.com/citation-style-language/styles/blob/cf90f6ce72b67c14c7a5b40a612f32869cd92d36/nlm-citation-sequence.csl"
+    },
+    {
+      "id": "ieee",
+      "filename": "ieee.csl",
+      "title": "IEEE Reference Guide version 11.29.2023",
+      "kind": "in-text",
+      "sha256": "6dee2b87ce90a7ab86f232d78a9216f47adc6193f13b6307b4a83c65594e721a",
+      "license": "CC-BY-SA-3.0",
+      "source": "https://github.com/citation-style-language/styles/blob/cf90f6ce72b67c14c7a5b40a612f32869cd92d36/ieee.csl"
+    }
+  ],
+  "locales": {
+    "locales-en-US.xml": "6f2cd3d1d5527ff07a2981f7ec237753e3b6787568d053c08485802cc3d04ac0",
+    "locales-sk-SK.xml": "c2e06d3c6c6e40c0e1cf1ceebe6e773c5029b2f96bbd3cab17e00c050728fca0",
+    "locales-uk-UA.xml": "a6480ab86a39b9eac0a474c15db7e91499b2cf1ff20871da37e9a3f86a467b36"
+  },
+  "attribution": "Citations formatted with citeproc-js by Frank Bennett. Styles and locales from the Citation Style Language project, https://citationstyles.org/ (CC BY-SA 3.0).",
+  "runtime": {
+    "name": "Node.js",
+    "minimum_major": 18,
+    "network": "none",
+    "automatic_download": false
+  }
+}

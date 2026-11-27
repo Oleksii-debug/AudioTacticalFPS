@@ -53,8 +53,8 @@ in `@string` is accepted. No executable macro evaluation is involved.
 
 The upstream brace-aware coauthor splitter and strict name parser are reused.
 The adapter retains unstructured name order. Explicit BibTeX comma names are
-shown as `Family, Given, Suffix` to match the application's explicit name mode.
-Protected corporate names retain a surrounding brace marker, for example
+shown as `Family, Given, Suffix` without assigning new name components.
+The low-level parser marks protected corporate names with braces, for example
 `{Research and Development, Inc.}`. Protected punctuation inside a person name
 also receives this literal marker to prevent a comma from being mistaken for a
 suffix separator. A preview warning describes these transformations.
@@ -63,6 +63,20 @@ as brace-marked literal text with an explicit review warning. For example,
 `, Jr., John` remains `{, Jr., John}`; its suffix is never promoted to a given
 name and John is never promoted to a family name. This check occurs after
 text decoding, so an empty protected component such as `{}` cannot evade it.
+
+The existing Academic Library selects the parser's `literal_names=True` mode,
+which omits parser-generated markers while preserving actual decoded braces.
+It never strips guessed markers from a name. Its CSL export and the
+canonical citation formatter continue to use literal names; they do not guess
+personal-name roles from commas. The full original entry remains in inert
+import provenance. This extends the existing bibliography preview/import and
+CSL/DOCX workflow, with no second citation processor, style registry or dialog.
+
+Open **Academic library**, choose **Import bibliography**, select a `.bib` file,
+review the entries and warnings, and explicitly import the selected records.
+The existing **Academic > Format bibliography and citations** workflow then formats those
+records with the same installed citeproc-js engine and DOCX exporter. No source
+book is imported and no attachment is opened by this metadata-only action.
 An empty optional suffix is omitted only when both required personal-name
 components are present. Structurally invalid trailing-comma names fail the
 existing strict upstream parser. The original entry remains in provenance
@@ -131,8 +145,8 @@ metadata constraints may reject a field earlier than these parser budgets.
 Linux CPython 3.12 with the actual pinned distributions:
 
 ```text
-PYTHONPATH=src python -m pytest -q tests/research/test_bibtex_import.py
-57 passed
+python scripts/ci_check.py tests/research/test_bibtex_import.py
+76 passed, 0 failed, 0 skipped
 ```
 
 The cases exercise actual parser/decoder calls, accents and Unicode, name
@@ -141,6 +155,13 @@ raw provenance, no file/network/process access, malformed/duplicate rejection,
 private-log suppression, memory/expansion limits, and disk-backed SQLite
 metadata persistence and workspace isolation across reopening. They include
 source invariance and explicit note-export behavior.
+
+The canonical formatter integration also exercises actual selected BibTeX
+import, closing and reopening the SQLite library, citeproc-js rendering and
+DOCX export/readback. Corporate names, incomplete names, Unicode and genuine
+literal braces survive without assigning guessed personal-name roles.
+The corresponding required path is
+`tests/academic_integration/test_end_to_end.py` (11 passing cases).
 
 These are functional parser/storage checks. Native Windows/NVDA acceptance,
 arbitrary BibLaTeX compatibility, and all CSL style combinations are separate

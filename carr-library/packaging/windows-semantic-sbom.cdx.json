@@ -1,10 +1,10 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "version": 3,
+  "version": 4,
   "serialNumber": "urn:uuid:c0a01d9e-f9a9-47ef-87cd-48907b46d55b",
   "metadata": {
-    "timestamp": "2026-11-26T22:19:05.628511Z",
+    "timestamp": "2026-11-26T17:54:24.006257631Z",
     "tools": [
       {
         "vendor": "Astral Software Inc.",
@@ -26,8 +26,8 @@
     },
     "properties": [
       {
-        "name": "carr:academic-additions",
-        "value": "bibtexparser 2.1.0, pylatexenc 2.11, quickjs-ng 0.18.0.2; verified Windows wheel hashes; prior uv inventory retained"
+        "name": "carr:reviewed-bibtex-addition",
+        "value": "bibtexparser 2.1.0 and pylatexenc 2.11; exact inspected wheel identities; 2026-11-27"
       }
     ]
   },
@@ -658,6 +658,32 @@
     },
     {
       "type": "library",
+      "bom-ref": "comtypes@1.5.0",
+      "name": "comtypes",
+      "version": "1.5.0",
+      "purl": "pkg:pypi/comtypes@1.5.0",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "c648ed3b243b1eb3b7cb893a873d1b35104ca1c8922061f4b1efafeb255bacb5"
+        }
+      ],
+      "properties": [
+        {
+          "name": "uv:package:marker",
+          "value": "sys_platform == 'win32'"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "bom-ref": "carr-academic-bibtexparser@2.1.0",
       "name": "bibtexparser",
       "version": "2.1.0",
@@ -699,32 +725,6 @@
         {
           "alg": "SHA-256",
           "content": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
-        }
-      ],
-      "properties": [
-        {
-          "name": "carr:target",
-          "value": "CPython 3.11 Windows x64"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "bom-ref": "carr-academic-quickjs-ng@0.18.0.2",
-      "name": "quickjs-ng",
-      "version": "0.18.0.2",
-      "purl": "pkg:pypi/quickjs-ng@0.18.0.2",
-      "licenses": [
-        {
-          "license": {
-            "id": "MIT"
-          }
-        }
-      ],
-      "hashes": [
-        {
-          "alg": "SHA-256",
-          "content": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d"
         }
       ],
       "properties": [
@@ -1007,9 +1007,9 @@
         "urllib3-45@2.8.0",
         "win32-setctime-46@1.2.1",
         "wxpython-47@4.2.4",
+        "comtypes@1.5.0",
         "carr-academic-bibtexparser@2.1.0",
-        "carr-academic-pylatexenc@2.11",
-        "carr-academic-quickjs-ng@0.18.0.2"
+        "carr-academic-pylatexenc@2.11"
       ]
     },
     {
@@ -1025,6 +1025,9 @@
       ]
     },
     {
+      "ref": "comtypes@1.5.0"
+    },
+    {
       "ref": "carr-academic-bibtexparser@2.1.0",
       "dependsOn": [
         "carr-academic-pylatexenc@2.11"
@@ -1032,9 +1035,6 @@
     },
     {
       "ref": "carr-academic-pylatexenc@2.11"
-    },
-    {
-      "ref": "carr-academic-quickjs-ng@0.18.0.2"
     }
   ]
 }

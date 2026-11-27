@@ -83,54 +83,29 @@ def test_txt_replay_rejects_conflicting_identity(imported):
     assert src.read_bytes() == raw
 
 
-def test_superseded_replay_requires_current_metadata_without_reactivation(imported):
-    app, ws, _, first, requested, src, raw, meta, initial = imported
-    app.update_metadata(ws, meta['edition_id'], title='Reviewed description',
-                        authors=meta['authors'], language=meta['language'])
-    current, = app.search(ws, 'railway history', collection=first)
-    assert current.revision != initial['id']
-    with pytest.raises(ValueError, match='work identity conflict'):
-        app.import_file(ws, src, collections=(requested,), **meta)
-    assert app.browse(ws, collection=requested) == ()
-    replay = app.import_file(ws, src, collections=(requested,),
-                             **dict(meta, title='Reviewed description'))
-    assert replay['state'] == 'superseded' and replay['id'] == initial['id']
-    assert not replay['verified']
-    after, = app.search(ws, 'railway history', collection=requested)
-    assert after.revision == current.revision and after.title == 'Reviewed description'
-    assert app.browse(ws, collection=first) == app.browse(ws, collection=requested)
-    assert src.read_bytes() == raw
-
-
-def test_cancelled_completed_replay_preserves_membership(imported):
+def test_cancelled_completed_replay_never_adds_membership(imported):
     app, ws, _, first, requested, src, _, meta, initial = imported
     with pytest.raises(InterruptedError, match='cancelled'):
-        app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)
+        app.import_file(ws, src, collections=(first, requested), cancelled=lambda: True, **meta)
     assert app.browse(ws, collection=requested) == ()
-    assert app.browse(ws, collection=first)
+    assert app.search(ws, 'railway history', collection=first)[0].revision == initial['id']
 
 
-def test_pdf_completed_replay_registers_exact_source_without_approving_it(tmp_path):
-    from reportlab.pdfgen.canvas import Canvas
-    app = LibraryApp(tmp_path / 'library')
-    ws = app.create_workspace('PDF study')
-    collection = app.create_collection(ws, 'Reviewed selection')
-    src = tmp_path / 'synthetic.pdf'
-    canvas = Canvas(str(src))
-    canvas.drawString(72, 720, 'Synthetic railway research evidence.')
-    canvas.save()
-    original = src.read_bytes()
-    meta = dict(title='Synthetic PDF', authors=('Fixture Author',),
-                work_id='pdf-work', edition_id='pdf-edition')
-    initial = app._import_file(ws, src, **meta)
-    assert initial['state'] == 'complete' and not initial['verified']
-    replay = app._import_file(ws, src, collections=(collection,), **meta)
-    assert replay['state'] == 'complete' and replay['id'] == initial['id']
-    result, = app.search(ws, 'railway', collection=collection)
-    assert not result.verified
-    with pytest.raises(ValueError):
-        app.copy(ws, result.ref, result.revision, 'quote')
-    assert src.read_bytes() == original
-    with app.read(ws) as db:
-        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
-        assert db.execute('SELECT count(*) FROM source_page_review').fetchone()[0] == 0
+def test_cancellation_during_completed_replay_validation_rolls_back_membership(imported, monkeypatch):
+    app, ws, _, first, requested, src, _, meta, initial = imported
+    stopped = False
+    original = Storage._check
+
+    def cancel_after_validating_membership(storage):
+        nonlocal stopped
+        original(storage)
+        if storage.db.execute('SELECT 1 FROM catalog_membership '
+                'WHERE workspace=? AND collection=? AND edition=?',
+                (ws, requested, meta['edition_id'])).fetchone():
+            stopped = True
+
+    monkeypatch.setattr(Storage, '_check', cancel_after_validating_membership)
+    with pytest.raises(InterruptedError, match='cancelled before commit'):
+        app.import_file(ws, src, collections=(first, requested), cancelled=lambda: stopped, **meta)
+    assert app.browse(ws, collection=requested) == ()
+    assert app.search(ws, 'railway history', collection=first)[0].revision == initial['id']

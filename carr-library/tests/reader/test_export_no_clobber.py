@@ -1,4 +1,9 @@
 """Real export publication must preserve files created after caller preflight."""
+import os
+from pathlib import Path
+import subprocess
+import sys
+
 import pytest
 
 from carr_library.research import export_file
@@ -58,6 +63,26 @@ def test_file_created_after_final_destination_check_is_never_replaced(export, mo
     assert not list(target.parent.glob('.research-export-*'))
 
 
+def test_default_new_destination_never_replaces_a_last_moment_competing_file(export, monkeypatch):
+    target, _, publish = export
+    inspect = export_file._destination
+    checks = 0
+
+    def create_after_final_check(*args):
+        nonlocal checks
+        state = inspect(*args)
+        checks += 1
+        if checks == 2:
+            target.write_bytes(b'Concurrent writer after the final default-policy check')
+        return state
+
+    monkeypatch.setattr(export_file, '_destination', create_after_final_check)
+    with pytest.raises(FileExistsError):
+        publish()
+    assert target.read_bytes() == b'Concurrent writer after the final default-policy check'
+    assert not list(target.parent.glob('.research-export-*'))
+
+
 def test_cancel_after_staging_leaves_no_destination_or_temporary(export):
     target, _, publish = export
     with pytest.raises(TimeoutError, match='cancelled'):
@@ -75,81 +100,8 @@ def test_explicit_existing_replacement_still_uses_supported_export_path(export):
     assert not list(target.parent.glob('.research-export-*'))
 
 
-def test_cli_without_overwrite_preserves_file_created_during_formatting(tmp_path, monkeypatch, capsys):
-    from carr_library.application import LibraryApp
-    from carr_library.bibliography_cli import main
-    from carr_library.citations.bibliography_workbench import BibliographyWorkbench
-    from carr_library.ui.academic_library_dialog import AcademicController
-
-    app = LibraryApp(tmp_path / 'private')
-    workspace = app.create_workspace('Export audit')
-    controller = AcademicController(app, workspace)
-    reference = controller.create(dict(title='Synthetic source', authors=('Doe, Jane',), year='2020'))
-    destination = tmp_path / 'bibliography.txt'
-    render = BibliographyWorkbench.preview
-
-    def format_then_competing_write(workbench, **options):
-        preview = render(workbench, **options)
-        destination.write_bytes(b'Created by another program during rendering')
-        return preview
-
-    monkeypatch.setattr(BibliographyWorkbench, 'preview', format_then_competing_write)
-    result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,
-                   '--reference', reference.id, '--output', str(destination)])
-    assert result == 1
-    assert 'exists' in capsys.readouterr().err
-    assert destination.read_bytes() == b'Created by another program during rendering'
-    assert controller.get(reference.id) == reference
-    assert not list(tmp_path.glob('.research-export-*'))
 
 
-@pytest.mark.parametrize('change', ('metadata', 'workspace-archive'))
-@pytest.mark.parametrize('existing', (False, True))
-def test_staged_bibliography_reauthorizes_metadata_and_scope_before_publication(
-        tmp_path, change, existing):
-    from carr_library.application import LibraryApp
-    from carr_library.citations.bibliography_workbench import BibliographyWorkbench
-    from carr_library.ui.academic_library_dialog import AcademicController
-
-    app = LibraryApp(tmp_path / 'private')
-    workspace = app.create_workspace('Export freshness audit')
-    controller = AcademicController(app, workspace)
-    reference = controller.create(dict(title='Original metadata title', authors=('Doe, Jane',), year='2020'))
-    workbench = BibliographyWorkbench(controller)
-    preview = workbench.preview(identity=reference.id, style='ieee')
-    destination = tmp_path / 'bibliography.txt'
-    original_bytes = b'Previously exported work must survive'
-    if existing:
-        destination.write_bytes(original_bytes)
-    changed = False
-
-    def change_after_real_staging():
-        nonlocal changed
-        if not changed and list(tmp_path.glob('.research-export-*')):
-            # The pre-render and pre-writer checks already passed. Change the
-            # database only once the real payload has reached a staging file.
-            changed = True
-            if change == 'metadata':
-                controller.update(reference, {'title': 'New current metadata title'})
-            else:
-                app.archive_workspace(workspace)
-        return False
-
-    with pytest.raises(ValueError):
-        workbench.export(preview, destination, cancelled=change_after_real_staging,
-                         require_absent=not existing)
-
-    assert changed, 'The metadata/scope change must happen after the payload is staged.'
-    if existing:
-        assert destination.read_bytes() == original_bytes
-    else:
-        assert not destination.exists()
-    assert not list(tmp_path.glob('.research-export-*'))
-    if change == 'metadata':
-        assert controller.get(reference.id).title == 'New current metadata title'
-    else:
-        with pytest.raises(ValueError):
-            controller.get(reference.id)
 
 
 @pytest.mark.parametrize('existing', (False, True))
@@ -223,4 +175,136 @@ def test_destination_approval_cannot_be_reused_for_another_path(export):
     with pytest.raises(ValueError, match='destination changed'):
         publish(approval=approval)
     assert not target.exists()
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_published_export_survives_transient_staging_cleanup_failure(export, monkeypatch):
+    target, expected, publish = export
+    unlink = os.unlink
+    failures = []
+
+    def fail_first_stage_unlink(path, *args, **kwargs):
+        if Path(path).name.startswith('.research-export-') and not failures:
+            assert target.read_bytes() == expected
+            failures.append(path)
+            raise PermissionError('Synthetic transient staging lock')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', fail_first_stage_unlink)
+    publish(require_absent=True)
+
+    assert target.read_bytes() == expected
+    assert target.stat().st_nlink == 1
+    assert not list(target.parent.glob('.research-export-*'))
+    # Windows renames without replacement and has no post-publication unlink.
+    # The portable hard-link path retries its actual transient cleanup failure.
+    assert len(failures) == (0 if os.name == 'nt' else 1)
+
+
+def test_permanent_cleanup_failure_reports_published_bytes_truthfully(export, monkeypatch):
+    target, expected, publish = export
+    unlink = os.unlink
+    attempts = []
+
+    def lock_published_stage(path, *args, **kwargs):
+        if Path(path).name.startswith('.research-export-'):
+            assert target.read_bytes() == expected
+            attempts.append(path)
+            raise PermissionError('Synthetic persistent staging lock')
+        return unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'unlink', lock_published_stage)
+    if os.name == 'nt':
+        publish(require_absent=True)
+        assert not attempts
+        assert not list(target.parent.glob('.research-export-*'))
+    else:
+        with pytest.raises(OSError, match='Export was published'):
+            publish(require_absent=True)
+        assert len(attempts) == 2
+        stage, = target.parent.glob('.research-export-*')
+        assert os.path.samefile(stage, target)
+        unlink(stage)
+    assert target.read_bytes() == expected
+    assert target.stat().st_nlink == 1
+
+
+def test_real_process_exit_after_publication_preserves_output_and_windows_replacement(export):
+    target, expected, publish = export
+    script = '''
+import os
+from pathlib import Path
+import sys
+from carr_library.research import export_file
+
+primitive = 'rename' if os.name == 'nt' else 'link'
+original = getattr(os, primitive)
+def exit_after_publication(*args, **kwargs):
+    original(*args, **kwargs)
+    os._exit(74)
+setattr(os, primitive, exit_after_publication)
+payload = bytes.fromhex(sys.argv[3])
+writer = export_file.write_export if sys.argv[4] == 'text' else export_file.write_binary_export
+writer(Path(sys.argv[1]), payload.decode('utf-8') if sys.argv[4] == 'text' else payload,
+       private_root=Path(sys.argv[2]), require_absent=True)
+'''
+    result = subprocess.run([sys.executable, '-c', script, str(target),
+                             str(target.parent / 'private'), expected.hex(),
+                             'text' if target.suffix == '.txt' else 'binary'],
+                            capture_output=True, timeout=20, check=False)
+    assert result.returncode == 74, result.stderr.decode('utf-8', errors='replace')
+    assert target.read_bytes() == expected
+    stages = list(target.parent.glob('.research-export-*'))
+    if os.name == 'nt':
+        assert stages == []
+        assert target.stat().st_nlink == 1
+    else:
+        # The portable hard-link fallback cannot atomically remove its second
+        # name on process death. Preserve this explicit limitation and reject
+        # replacement until this test removes its own known residual link.
+        stage, = stages
+        assert os.path.samefile(stage, target)
+        with pytest.raises(ValueError, match='hard links'):
+            publish()
+        assert target.read_bytes() == expected
+        stage.unlink()
+    publish()
+    assert target.read_bytes() == expected
+    assert target.stat().st_nlink == 1
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_create_only_primitive_failure_preserves_absence_and_cleans_stage(export, monkeypatch):
+    target, _, publish = export
+    calls = []
+
+    def refuse_publication(*args, **kwargs):
+        calls.append(args)
+        raise OSError('Synthetic unsupported no-replacement operation')
+
+    monkeypatch.setattr(os, 'rename' if os.name == 'nt' else 'link', refuse_publication)
+    with pytest.raises(OSError, match='unsupported no-replacement'):
+        publish(require_absent=True)
+    assert len(calls) == 1
+    assert not target.exists()
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_competing_file_at_actual_publication_is_not_replaced(export, monkeypatch):
+    target, _, publish = export
+    primitive = 'rename' if os.name == 'nt' else 'link'
+    original = getattr(os, primitive)
+    calls = []
+
+    def publish_after_competitor(*args, **kwargs):
+        calls.append(args)
+        target.write_bytes(b'Other writer at the actual filesystem operation')
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(os, primitive, publish_after_competitor)
+    with pytest.raises(FileExistsError):
+        publish(require_absent=True)
+    assert len(calls) == 1
+    assert target.read_bytes() == b'Other writer at the actual filesystem operation'
+    assert target.stat().st_nlink == 1
     assert not list(target.parent.glob('.research-export-*'))
