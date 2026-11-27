@@ -1,11 +1,43 @@
 """Advanced queries retain Search Center's real-source and session guarantees."""
+from contextlib import closing
 from dataclasses import replace
+from hashlib import sha256
 from threading import Event
+from uuid import uuid4
 
 import pytest
 
-from carr_library.application import LibraryApp
+from carr_library.application import LibraryApp, _CatalogPublisher
+from carr_library.catalog.registration import Registration
+from carr_library.citations.text_attestation import CONFIG as STRICT_TEXT_CONFIG
+from carr_library.ingest.writer_guard import exclusive_writer
 from carr_library.search.federated import FederatedSearch
+from carr_library.storage.revisions import Page, Storage
+
+
+def _publish_scale_source(app, workspace, title, text, *, edition_id=None, work_id=None):
+    """Build real sealed pages and retained originals for search-scale checks.
+
+    These cases exercise result offsets and handle capacity, not the resumable
+    import journal. Use the actual atomic catalog publisher so ten thousand
+    checkpoint commits do not consume the suite's Windows execution deadline.
+    Search, index validation, source attestation and copy remain unmodified.
+    """
+    segments = text.split('\f')
+    assert 1 <= len(segments) <= 1000
+    data = text.encode('utf-8')
+    digest = sha256(data).hexdigest()
+    record = Registration(work_id or uuid4().hex, edition_id or uuid4().hex,
+        {'sha256': digest, 'mime': 'text/plain', 'size': len(data)}, title)
+    with exclusive_writer(app.root):
+        app._check_database_paths()
+        with closing(Storage(app.database, schema_version=4)) as storage:
+            LibraryApp._authorize(storage.db, workspace)
+            app.assets.retain(data, 'text/plain', digest)
+            publisher = _CatalogPublisher(storage, record)
+            publisher.publish_revision(workspace, record.edition_id, uuid4().hex,
+                digest, STRICT_TEXT_CONFIG, tuple(Page(segment) for segment in segments))
+            publisher.check()
 
 
 @pytest.fixture
@@ -217,8 +249,11 @@ def test_final_result_page_after_ten_thousand_matches_is_not_rejected(tmp_path):
     for edition, count in enumerate([1000] * 10 + [1]):
         pages = '\f'.join(f'alpha beta edition {edition:02d} page {page:03d}'
                           for page in range(count))
-        app.add_text(workspace, f'Source {edition:02d}', pages,
-                     edition_id=f'edition-{edition:02d}', work_id=f'work-{edition:02d}')
+        _publish_scale_source(app, workspace, f'Source {edition:02d}', pages,
+                              edition_id=f'edition-{edition:02d}', work_id=f'work-{edition:02d}')
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM active_page WHERE workspace=?',
+                          (workspace,)).fetchone()[0] == 10001
     service = FederatedSearch(app)
     session = service.search([workspace], 'alpha AND beta', mode='advanced',
         result_mode='short', limit_per_library=1, offset_per_library=10000)
@@ -247,7 +282,7 @@ def test_lookahead_isolated_from_two_thousand_retained_selection_handles(tmp_pat
     workspaces = tuple(app.create_workspace(f'Library {i}') for i in range(20))
     pages = '\f'.join(f'alpha beta source page {i}' for i in range(101))
     for workspace in workspaces:
-        app.add_text(workspace, 'Source', pages)
+        _publish_scale_source(app, workspace, 'Source', pages)
     service = FederatedSearch(app)
     session = service.search(workspaces, 'alpha AND beta', mode='advanced',
                              limit_per_library=100)

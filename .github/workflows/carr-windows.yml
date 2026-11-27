@@ -152,6 +152,23 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_OCR_DIR=$ocr" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+
+      - name: Verify real OCR Unicode paths and review provenance before the full source gate
+        timeout-minutes: 5
+        run: |
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          try {
+            $env:PATH = "$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/extract/test_managed_ocr.py tests/e2e/test_managed_ocr_import.py tests/ui/test_ocr_selection.py tests/extract/test_ocr_runtime.py tests/extract/test_runtime_identity.py
+            if ($LASTEXITCODE -ne 0) { throw 'The actual OCR Unicode and provenance regression gate failed.' }
+          }
+          finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+          }
+
       - name: Prepare the pinned shared audio runtime before its source regressions
         timeout-minutes: 10
         run: |
