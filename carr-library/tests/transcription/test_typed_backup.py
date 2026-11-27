@@ -190,7 +190,7 @@ def test_copied_payload_hardlink_is_rejected_before_restore(prepared, tmp_path):
     assert not (tmp_path / 'restored').exists()
 
 
-@pytest.mark.parametrize('changed', ['source', 'beam_size', 'parallel_files', 'vad_filter', 'extra', 'boolean_type'])
+@pytest.mark.parametrize('changed', ['source', 'beam_size', 'parallel_files', 'vad_filter', 'extra', 'boolean_type', 'protocol'])
 def test_resigned_receipt_job_and_outer_inventory_still_reject_unbound_provenance(prepared, tmp_path, changed):
     app, _, _, _, _, job = prepared
     backup = tmp_path / 'backup'
@@ -202,6 +202,9 @@ def test_resigned_receipt_job_and_outer_inventory_still_reject_unbound_provenanc
     receipt = read_json(receipt_path)
     if changed == 'source':
         receipt['provenance']['source_sha256'] = '0' * 64
+    elif changed == 'protocol':
+        receipt['provenance']['worker_protocol'] = 'verified-file-job/1'
+        receipt['provenance']['worker_export_receipt_sha256'] = 'a' * 64
     elif changed == 'extra':
         receipt['provenance']['effective_settings']['unreviewed_override'] = True
     elif changed == 'boolean_type':
@@ -269,3 +272,31 @@ def test_cancelled_snapshot_never_publishes_completion_manifest(prepared, tmp_pa
     with pytest.raises(InterruptedError):
         create_backup(app, tmp_path / 'backup', cancelled=lambda: bool(copied))
     assert not (tmp_path / 'backup/manifest.json').exists()
+
+
+def test_verified_protocol_effective_int8_variant_and_headers_restore(tmp_path):
+    import importlib.util
+    specification = importlib.util.spec_from_file_location('backup_verified_fixture',
+        Path(__file__).with_name('fixture_verified_runtime.py'))
+    builder = importlib.util.module_from_spec(specification)
+    specification.loader.exec_module(builder)
+    runtime = builder.make_runtime(tmp_path / 'verified-runtime',
+        options={'effective_compute_type': 'int8_bfloat16'})
+    app = LibraryApp(tmp_path / 'library')
+    service = TranscriptionService(app.root / 'state/transcription')
+    profile = builder.register(service, runtime)
+    source = tmp_path / 'synthetic.wav'
+    source.write_bytes(b'Synthetic file-protocol input; no inference quality claim.')
+    job = service.create_job(profile['id'], [source], settings={
+        'compute_type': 'int8', 'include_headers': True, 'output_srt': True, 'output_vtt': True})
+    accepted = service.run(job['id'])
+    assert accepted['status'] == 'complete', accepted['error']
+    original = service.read_transcript(job['id'])
+    assert original['provenance']['worker_protocol'] == 'verified-file-job/1'
+    assert original['provenance']['effective_settings']['compute_type'] == 'int8_bfloat16'
+    backup = tmp_path / 'backup'
+    checksum = create_backup(app, backup)
+    restored_root = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored = TranscriptionService(restored_root / 'state/transcription')
+    assert restored.read_transcript(job['id']) == original
+    assert restored.list_runtimes()[0]['trusted'] is False

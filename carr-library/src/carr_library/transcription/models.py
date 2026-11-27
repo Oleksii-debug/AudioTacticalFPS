@@ -74,7 +74,7 @@ def validate_effective_settings(value, requested, model_name, *, verified=False)
     if any(type(value[name]) is not type(expected[name]) for name in expected):
         raise ValueError('The worker changed the type of an approved setting.')
     if verified and expected['compute_type'] == 'int8':
-        if value['compute_type'] not in ('int8', 'int8_float16', 'int8_float32'):
+        if value['compute_type'] not in ('int8', 'int8_float16', 'int8_float32', 'int8_bfloat16'):
             raise ValueError('The worker changed the approved compute type.')
         expected['compute_type'] = value['compute_type']
     if value != expected:

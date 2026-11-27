@@ -119,7 +119,7 @@ def main():
         result = {'text': text, 'segments': [
             {'id': 0, 'seek': 0, 'start': 0.0, 'end': 1.0, 'text': text, 'words': []}],
             'detected_language': 'en' if settings['language'] == 'auto' else settings['language'],
-            'duration': 1.0, 'execution': {'device': settings['device'], 'compute_type': settings['compute_type']}}
+            'duration': 1.0, 'execution': {'device': settings['device'], 'compute_type': options.get('effective_compute_type', settings['compute_type'])}}
         if options.get('invalid_timing'):
             result['segments'][0]['end'] = -1.0
         cache = {'kind': 'whisper-transcribe-result', 'version': 1, 'request': request,

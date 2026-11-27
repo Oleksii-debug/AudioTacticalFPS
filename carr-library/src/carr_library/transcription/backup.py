@@ -280,6 +280,9 @@ def _provenance(value, source, profiles, options):
         raise ValueError('ASR result lost its original runtime provenance.')
     _hash(value['runtime_identity_sha256'])
     _hash(value['worker_checkpoint_sha256'])
+    verified = profile['protocol'] == 'verified-file-job/1'
+    if verified != ('worker_protocol' in value or 'worker_export_receipt_sha256' in value):
+        raise ValueError('ASR result protocol differs from its original runtime provenance.')
     if 'worker_protocol' in value or 'worker_export_receipt_sha256' in value:
         if value.get('worker_protocol') != 'verified-file-job/1':
             raise ValueError('Invalid verified ASR provenance protocol.')
