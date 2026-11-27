@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import re
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from time import monotonic
+from time import perf_counter_ns
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from .models import JobReport, Plan, Scope, canonical, local_path, text
@@ -219,10 +219,14 @@ class AssistantService:
     def run(self, identity, *, cancelled=lambda: False, progress=None):
         with self.store.lock(identity):
             record, plan = self._load(identity)
-            started = monotonic()
+            # Integer high-resolution time avoids a same-tick admission on
+            # Windows and float rounding of very small explicit budgets. Round
+            # down: a sub-nanosecond allowance cannot authorize a new step.
+            numerator, denominator = plan.scope.max_seconds.as_integer_ratio()
+            deadline = perf_counter_ns() + numerator * 1_000_000_000 // denominator
             def stopped():
                 return (bool(cancelled()) or self.store.control(identity) != 'run'
-                        or monotonic() - started > plan.scope.max_seconds)
+                        or perf_counter_ns() >= deadline)
             def persist():
                 self.store.save(record)
             record['status'] = 'running'
@@ -247,6 +251,8 @@ class AssistantService:
                     persist()
                     if progress:
                         progress(index, len(plan.steps), step.tool)
+                    if stopped():
+                        raise InterruptedError('Assistant job stopped before dispatch; completed steps are preserved.')
                     result = self._execute(step, plan.scope, record, checkpoint, persist, stopped, progress, index)
                     result = _plain(result)
                     if not isinstance(result, dict):

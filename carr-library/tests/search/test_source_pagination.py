@@ -1,6 +1,7 @@
 """Real scoped SQLite catalogs and retained bytes, not fake search row counts."""
 from contextlib import closing
 from hashlib import sha256
+import sqlite3
 from uuid import uuid4
 
 import pytest
@@ -201,12 +202,23 @@ def test_mismatched_active_asset_is_not_silently_filtered_from_complete_search(a
     digest = sha256(data).hexdigest()
     app.assets.retain(data, 'text/plain', digest)
     revision = uuid4().hex
-    with closing(Storage(app.database, schema_version=CURRENT_SCHEMA_VERSION)) as storage:
-        with storage.transaction():
-            storage.stage_revision(workspace, edition, revision, digest, CONFIG, (Page(raw),))
-            storage.db.execute('INSERT INTO source_metadata '
-                '(workspace,edition,revision,author,title,volume,edition_label) VALUES(?,?,?,?,?,?,?)',
-                (workspace, edition, revision, 'Synthetic author', 'Inconsistent active source', None, None))
+    # Normal Storage writes correctly refuse this composite foreign-key
+    # violation. Model a damaged database without altering its schema/triggers.
+    with closing(sqlite3.connect(app.database)) as db:
+        assert db.execute('PRAGMA foreign_keys').fetchone()[0] == 0
+        db.execute('INSERT INTO catalog_asset VALUES(?,?,?)', (digest, 'text/plain', len(data)))
+        db.execute('INSERT INTO revision VALUES(?,?,?,?,?)', (revision, workspace, edition, digest, CONFIG))
+        page = db.execute('INSERT INTO page(revision,ordinal,physical,printed,verified,raw,digest) '
+                          'VALUES(?,1,NULL,NULL,0,?,?)', (revision, raw, digest)).lastrowid
+        db.execute('INSERT INTO sealed VALUES(?)', (revision,))
+        db.execute('UPDATE active SET revision=? WHERE workspace=? AND edition=?',
+                   (revision, workspace, edition))
+        db.execute('INSERT INTO indexed VALUES(?,?)', (page, raw))
+        db.execute('INSERT INTO source_metadata '
+                   '(workspace,edition,revision,author,title,volume,edition_label) VALUES(?,?,?,?,?,?,?)',
+                   (workspace, edition, revision, 'Synthetic author', 'Inconsistent source', None, None))
+        db.commit()
+        assert db.execute('PRAGMA foreign_key_check').fetchall()
     with pytest.raises(ValueError):
         app.search(workspace, 'Railway')
     with pytest.raises(ValueError, match='catalog identity'):

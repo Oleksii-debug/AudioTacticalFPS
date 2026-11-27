@@ -147,6 +147,7 @@ jobs:
             'tests/assistant/test_translation_advanced.py',
             'tests/ui/test_translation_advanced.py',
             'tests/assistant/test_local_llm.py',
+            'tests/assistant/test_execution_deadline.py',
             'tests/assistant/test_planning_handlers.py',
             'tests/assistant/test_planning_runtime.py',
             'tests/assistant/test_canonical_backup.py',
@@ -454,6 +455,8 @@ jobs:
             'tests/storage/test_finish_workspace_integrity.py',
             'tests/extract/test_docx_hidden_styles.py',
             'tests/packaging/test_windows_bundle.py',
+            'tests/packaging/test_native_checks.py',
+            'tests/packaging/test_local_audio_setup.py',
             'tests/ingest/test_txt_replay_registration.py',
             'tests/ui/test_federated_labels.py',
             'tests/search/test_literal_unicode_memory.py',
@@ -746,6 +749,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -m carr_library --self-test | Tee-Object 'ci-results/core-bundle-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Run the exact sealed source helper with installed-package isolation
+          # and the existing outbound firewall block. Plan mode must not acquire
+          # or prepare audio and must not create its proposed external folder.
+          $localAudioPlan = Join-Path $bundleWork 'local-audio-plan-only'
+          if (Test-Path -LiteralPath $localAudioPlan) { throw 'The local audio plan target must start absent.' }
+          & $installedPython -I -B -X utf8 (Join-Path $bundle 'tools/audio-setup/setup_local_audio.py') --output $localAudioPlan 2>&1 | Tee-Object 'ci-results/full-bundle-local-audio-plan.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (Test-Path -LiteralPath $localAudioPlan) { throw 'Plan-only local audio setup created an output directory.' }
           & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
@@ -885,6 +896,7 @@ jobs:
                             'tests/storage/test_backup_pending_integration.py',
                             'tests/storage/test_pending_backup_ocr.py',
                             'tests/assistant/test_local_llm.py',
+                            'tests/assistant/test_execution_deadline.py',
                             'tests/assistant/test_translation.py',
                             'tests/e2e/test_google_translation_gateway.py',
                             'tests/ui/test_translation_dialog.py',
@@ -920,7 +932,7 @@ jobs:
           '@
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py tests/search/test_source_pagination.py tests/search/test_federated_pagination.py tests/e2e/test_search_pages_cli.py tests/ui/test_search_paging.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_isolated_cli_reopens_and_reaches_every_retained_source_segment','test_cli_pages_all_twenty_five_explicitly_selected_libraries','test_real_601_edition_catalog_all_results_reachable_and_exact','test_real_desktop_handlers_reach_all_segments_and_go_back_to_exact_page','test_real_existing_ocr_bridge_reads_every_selected_image_frame[unicode-png]','test_real_existing_ocr_bridge_reads_every_selected_image_frame[two-frame-tiff]','test_cancel_settles_existing_ocr_family_before_removing_its_private_files','test_unreadable_directory_rejects_entire_inventory','test_empty_directory_inventory_has_a_bound','test_directory_inventory_checks_budget_between_entries','test_valid_unicode_metadata_is_stored_by_real_import[list]','test_valid_unicode_metadata_is_stored_by_real_import[tuple]','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_subnanosecond_budget_cannot_authorize_a_same_tick_mutation','test_exact_deadline_before_dispatch_expires_inclusively','test_positive_available_budget_still_completes_a_real_operation[1]','test_positive_available_budget_still_completes_a_real_operation[1.0]','test_positive_available_budget_still_completes_a_real_operation[1e+300]','test_progress_cannot_spend_the_deadline_then_admit_a_new_mutation','test_completed_step_is_retained_and_resumed_without_duplicate_mutation','test_isolated_cli_reopens_and_reaches_every_retained_source_segment','test_cli_pages_all_twenty_five_explicitly_selected_libraries','test_real_601_edition_catalog_all_results_reachable_and_exact','test_real_desktop_handlers_reach_all_segments_and_go_back_to_exact_page','test_real_existing_ocr_bridge_reads_every_selected_image_frame[unicode-png]','test_real_existing_ocr_bridge_reads_every_selected_image_frame[two-frame-tiff]','test_cancel_settles_existing_ocr_family_before_removing_its_private_files','test_unreadable_directory_rejects_entire_inventory','test_empty_directory_inventory_has_a_bound','test_directory_inventory_checks_budget_between_entries','test_valid_unicode_metadata_is_stored_by_real_import[list]','test_valid_unicode_metadata_is_stored_by_real_import[tuple]','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1233,12 +1245,14 @@ jobs:
             tests/assistant/test_canonical_backup.py \
             tests/assistant/test_dialog_lifecycle.py \
             tests/assistant/test_local_assistant.py \
+            tests/assistant/test_execution_deadline.py \
             tests/assistant/test_production_bridge.py \
             tests/e2e/test_provider_gateway.py \
             tests/e2e/test_google_translation_gateway.py \
             tests/assistant/test_translation.py \
             tests/ui/test_translation_dialog.py \
             tests/packaging/test_ci_check.py \
+            tests/packaging/test_local_audio_setup.py \
             tests/ui/test_desktop_handlers.py \
             2>&1 | tee portable-shared-results/strict-contracts.txt
       - name: Require actual local HTTP and separate reviewed CLI execution

@@ -95,7 +95,7 @@ jobs:
       - name: Require source recovery, authority and publication regressions without skips
         timeout-minutes: 8
         run: |
-          & $env:CARR_MANAGED_PYTHON scripts/ci_check.py --jobs 3 tests/security/test_managed_installation.py tests/security/test_managed_registration.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_managed_update_native_policy.py tests/packaging/test_native_checks.py tests/packaging/test_windows_bundle.py 2>&1 | Tee-Object 'managed-update-results/strict-managed-contracts.txt'
+          & $env:CARR_MANAGED_PYTHON scripts/ci_check.py --jobs 3 tests/security/test_managed_installation.py tests/security/test_managed_registration.py tests/packaging/test_standard_installer.py tests/packaging/test_managed_launch_boundary.py tests/packaging/test_managed_update_native_policy.py tests/packaging/test_native_checks.py tests/packaging/test_windows_bundle.py tests/packaging/test_local_audio_setup.py 2>&1 | Tee-Object 'managed-update-results/strict-managed-contracts.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Acquire the existing pinned compilers and original Python/native runtime

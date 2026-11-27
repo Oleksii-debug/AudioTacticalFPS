@@ -59,7 +59,6 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertIn("universal-research-library==1.0", (self.output / "install.lock").read_text())
         self.assertEqual((self.output / "wheelhouse" / self.app.name).read_bytes(), self.app.read_bytes())
 
-
     def test_actual_sealed_builder_manifest_reaches_native_installation_checks(self):
         # Build and verify the real bundle format with public synthetic wheels.
         # Only extension loading is substituted; the manifest is never filtered,
@@ -92,6 +91,29 @@ class WindowsBundleTests(unittest.TestCase):
         self.assertEqual(report["semantic"]["status"], "NOT_INCLUDED")
         self.assertEqual(report["ocr"]["status"], "NOT_INCLUDED")
         self.assertEqual(path.read_bytes(), raw)
+
+    def test_core_seals_source_only_local_audio_setup_and_keeps_transfer_gate(self):
+        self.build()
+        manifest = json.loads((self.output / "bundle-manifest.json").read_text())
+        expected = {
+            "SetupLocalAudio.cmd": ROOT / "packaging" / "SetupLocalAudio.cmd",
+            "tools/audio-setup/setup_local_audio.py": ROOT / "packaging" / "setup_local_audio.py",
+            "tools/audio-setup/prepare_ffmpeg_runtime.py": ROOT / "packaging" / "prepare_ffmpeg_runtime.py",
+            "tools/audio-setup/audio-runtime/source-lock.json": ROOT / "packaging" / "audio-runtime" / "source-lock.json",
+            "LOCAL_AUDIO_SETUP.txt": ROOT / "docs" / "LOCAL_AUDIO_SETUP.md",
+        }
+        for relative, source in expected.items():
+            actual = (self.output / relative).read_bytes()
+            self.assertEqual(actual, source.read_bytes())
+            self.assertEqual(manifest["files"][relative], hashlib.sha256(actual).hexdigest())
+        self.assertIs(manifest["bundled_audio_runtime"], False)
+        self.assertFalse(any(name.split("/", 1)[0].casefold() in ("audio", "audio-runtime")
+                             for name in manifest["files"]))
+        module("create_delivery")._require_transferable_audio_inventory(manifest)
+        installer.verify(self.output)
+        (self.output / "tools/audio-setup/setup_local_audio.py").write_bytes(b"changed helper")
+        with self.assertRaisesRegex(ValueError, "checksum"):
+            installer.verify(self.output)
 
     def sbom(self, version="1.0"):
         path = self.root / "input-sbom.json"
