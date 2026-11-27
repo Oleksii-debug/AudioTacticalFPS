@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import shutil
 import stat
+import struct
 import sys
 from tempfile import TemporaryDirectory
 from time import monotonic
@@ -69,6 +70,12 @@ def failure_frames(error):
                 rows.append({'function': frame.f_code.co_name, 'line': trace.tb_lineno,
                     'tag': str(element.tag)[:512],
                     'child_tags': [str(child.tag)[:512] for child in list(element)[:32]],
+                    'children': [{'tag': str(child.tag)[:512],
+                        'attributes': {str(key)[:512]: str(value)[:256]
+                            for key, value in list(child.attrib.items())[:16]},
+                        'text': (child.text or '')[:256], 'tail': (child.tail or '')[:256],
+                        'child_tags': [str(item.tag)[:512] for item in list(child)[:16]]}
+                        for child in list(element)[:16]],
                     'attribute_names': sorted(str(key)[:512] for key in element.attrib)[:32],
                     'attributes': {str(key)[:512]: str(value)[:256]
                                    for key, value in list(element.attrib.items())[:32]},
@@ -156,7 +163,7 @@ def observations(root, extension='odt'):
 def child(mode, root, kind='doc'):
     from carr_library.conversion import office
     from carr_library.conversion.models import ConversionBudget
-    assert mode in MODES and root.is_dir() and kind in ('doc', 'ppt', 'xls')
+    assert mode in MODES and root.is_dir() and kind in ('doc', 'ppt', 'xls', 'wri')
     selected = json.loads((root / 'selection.json').read_text('utf-8'))
     source = root / ('source.' + kind)
     before = sha256(source.read_bytes()).hexdigest()
@@ -196,7 +203,7 @@ def child(mode, root, kind='doc'):
     finally:
         assert sha256(source.read_bytes()).hexdigest() == before
         office._admit(selected, '.' + kind, monotonic() + 20)
-        result.update(observations(root, {'doc': 'odt', 'ppt': 'odp', 'xls': 'ods'}[kind]))
+        result.update(observations(root, {'doc': 'odt', 'ppt': 'odp', 'xls': 'ods', 'wri': 'odt'}[kind]))
         result['source_sha256'] = before
         print(json.dumps(result, ensure_ascii=True), flush=True)
 
@@ -221,7 +228,7 @@ def worker_observation(stage, selected, native, time_left, kind='doc'):
     from carr_library.conversion.service import _read_bytes
     from carr_library.conversion.office import MAX_STAGE_ENTRIES, PROFILE_BYTES
     budget = ConversionBudget(timeout=min(60, time_left), memory_bytes=4 * 1024**3)
-    assert kind in ('doc', 'ppt', 'xls')
+    assert kind in ('doc', 'ppt', 'xls', 'wri')
     source, output, report = stage / ('source.' + kind), stage / 'reading.txt', stage / 'details.json'
     service = ConversionService(stage, input_roots=(source,), office=native, budget=budget)
     assert service.office.snapshot() == selected
@@ -245,6 +252,35 @@ def worker_observation(stage, selected, native, time_left, kind='doc'):
             json.dumps(selected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return outcome
 
+
+
+def authored_write_with_fod(text):
+    """One bounded text run and its required character/paragraph FOD pages.
+
+    Layout follows the actual libwps MSWriteParser readFIB/readFOD/readStructures
+    entry fields, mirrored at immutable a5ad3a399e52ff174e188edfca170a7689232d0b
+    in deepin-community/libwps/src/lib/MSWrite.cpp. This is authored fixture data,
+    with no embedded object, macro, nondefault property or third-party document.
+    """
+    body = text.encode('cp1252') + b'\r\n'
+    assert 0 < len(body) <= 1024
+    end = 128 + len(body)
+    character_page = (end + 127) // 128
+    paragraph_page = character_page + 1
+    page_count = paragraph_page + 1
+    header = bytearray(128)
+    header[:6] = b'\x31\xbe\x00\x00\x00\xab'
+    struct.pack_into('<I', header, 14, end)
+    struct.pack_into('<H', header, 18, paragraph_page)
+    for offset in (20, 22, 24, 26, 28, 96):
+        struct.pack_into('<H', header, offset, page_count)
+    fod = bytearray(128)
+    struct.pack_into('<IIH', fod, 0, 128, end, 0xffff)
+    fod[127] = 1
+    result = (bytes(header) + body).ljust(character_page * 128, b'\0')
+    result += bytes(fod) + bytes(fod)
+    assert len(result) == page_count * 128
+    return result
 
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == '--format-child':
@@ -357,6 +393,40 @@ def main():
                     'stdout': outcome.stdout.decode('utf-8', 'replace')[:65536],
                     'stderr': outcome.stderr.decode('utf-8', 'replace')[:8192],
                     **observations(stage, extension)}, ensure_ascii=True), flush=True)
+        # Keep the actual failing header-only input as a negative observation.
+        # Compare only the two required one-run FOD pages, with the exact same
+        # selected MS_Write import filter, profile, worker and process owner.
+        for variant, format_bytes in (
+                ('header_only', fixture.microsoft_write(TEXT)),
+                ('one_run_fod', authored_write_with_fod(TEXT))):
+            for route in ('direct', 'worker'):
+                remaining = diagnostic_deadline - monotonic()
+                if remaining < 1:
+                    raise TimeoutError('The bounded Microsoft Write census did not finish.')
+                stage = matrix_stage(root, 'wri-' + variant + '-' + route[0],
+                                     max(short_length, len(str(root)) + 48), False)
+                source = stage / 'source.wri'
+                source.write_bytes(format_bytes)
+                (stage / 'selection.json').write_text(json.dumps(selected), encoding='utf-8')
+                if route == 'worker':
+                    outcome = worker_observation(stage, selected, native, remaining, 'wri')
+                else:
+                    outcome = run_process([sys.executable, '-I', '-B', '-X', 'utf8',
+                        str(Path(__file__).resolve()), '--format-child', 'wri', str(stage)],
+                        budget=AudioBudget(timeout=min(90, remaining),
+                            max_output_bytes=128 * 1024**2, max_staging_files=4096),
+                        owned_tree=True, cwd=stage, watch=(stage,), allow_failure=True)
+                assert source.read_bytes() == format_bytes
+                from carr_library.conversion.office import _admit
+                _admit(selected, '.wri', monotonic() + 20)
+                print(json.dumps({'case': 'actual_write_fixture', 'variant': variant,
+                    'route': route, 'exit': outcome.returncode,
+                    'source_bytes': len(format_bytes),
+                    'source_sha256': sha256(format_bytes).hexdigest(),
+                    'source_header_hex': format_bytes[:128].hex(),
+                    'stdout': outcome.stdout.decode('utf-8', 'replace')[:65536],
+                    'stderr': outcome.stderr.decode('utf-8', 'replace')[:8192],
+                    **observations(stage, 'odt')}, ensure_ascii=True), flush=True)
     assert identities() == installed
     assert sha256(fixture_path.read_bytes()).hexdigest() == fixture_before
     print('OBSERVATIONS_COMPLETE: exact installed sources and authored input unchanged', flush=True)
