@@ -195,6 +195,110 @@ def main():
                 raise RuntimeError('\n'.join(errors))
             check('native named workflow completed without a second job store', len(created) == 1)
 
+            # Hold only the inventory admission to prove that the actual native
+            # dialog remains responsive. After release the installed, configured
+            # registry still performs its real local voice enumeration.
+            from carr_library import runtime_settings
+            from threading import Event
+            preview_output = base / 'voice-preview-output'
+            preview_output.mkdir()
+            original_registry = runtime_settings.voice_registry
+            main_thread = get_ident()
+            for cancel_preview in (False, True):
+                entered, release, registry_closed = Event(), Event(), Event()
+                inventory_threads, close_threads, actual_voices = [], [], []
+                before_jobs = set(service.store.identities())
+
+                def observed_registry(state_root):
+                    inventory_threads.append(get_ident())
+                    entered.set()
+                    if not release.wait(20):
+                        raise TimeoutError('Native voice inventory was not released.')
+                    registry = original_registry(state_root)
+                    actual_voices.extend(registry.voices())
+                    original_close = registry.close
+                    def close_registry():
+                        close_threads.append(get_ident())
+                        try:
+                            original_close()
+                        finally:
+                            registry_closed.set()
+                    registry.close = close_registry
+                    return registry
+
+                def production_chooser():
+                    return next((window for window in wx.GetTopLevelWindows()
+                        if isinstance(window, wx.SingleChoiceDialog)
+                        and window.GetTitle() == 'Production voice' and window.IsModal()), None)
+
+                def voice_preview_ready(dialog):
+                    try:
+                        goal = named(dialog, 'Goal — guided English/Ukrainian commands or typed JSON plan')
+                        review = named(dialog, 'Plan preview and actual results')
+                        named(dialog, 'Chosen output folder (required for audio, extraction or backup)').SetValue(
+                            str(preview_output))
+                        goal.SetValue(json.dumps({'steps': [{'tool': 'audio.produce',
+                            'arguments': {'text': 'Native inventory preview only.'}}]}))
+                        click(button(dialog, 'Preview plan'))
+
+                        def held():
+                            check('voice inventory runs outside the native GUI thread',
+                                  len(inventory_threads) == 1 and inventory_threads[0] != main_thread)
+                            check('native preview stays cancellable before voice review finishes',
+                                  button(dialog, 'Pause').IsEnabled()
+                                  and not button(dialog, 'Run / resume').IsEnabled())
+                            if cancel_preview:
+                                click(button(dialog, 'Pause'))
+                                click(button(dialog, 'Close'))
+                                check('native Close returns while voice inventory is still held',
+                                      not release.is_set() and not registry_closed.is_set())
+                                release.set()
+                            else:
+                                release.set()
+                                later(lambda: production_chooser() is not None, choose_voice)
+
+                        def choose_voice():
+                            choice = production_chooser()
+                            check('the installed voice chooser contains actual local voices', bool(actual_voices))
+                            choice.SetSelection(0)
+                            choice.EndModal(wx.ID_OK)
+                            later(lambda: button(dialog, 'Run / resume').IsEnabled(), reviewed_voice)
+
+                        def reviewed_voice():
+                            value = json.loads(review.GetValue().split('\n\n')[1])
+                            check('native preview retains the selected actual voice ID',
+                                  value['steps'][0]['arguments']['voice_ids'] == [actual_voices[0].id])
+                            check('native voice preview starts no production or persisted job',
+                                  set(service.store.identities()) == before_jobs
+                                  and list(preview_output.iterdir()) == [])
+                            click(button(dialog, 'Close'))
+
+                        later(entered.is_set, held)
+                    except Exception:
+                        release.set()
+                        fail()
+
+                runtime_settings.voice_registry = observed_registry
+                watchdog = wx.CallLater(45000, lambda: (
+                    release.set(), errors.append('Native voice preview exceeded its deadline.'),
+                    [window.EndModal(wx.ID_CANCEL) for window in wx.GetTopLevelWindows()
+                     if isinstance(window, wx.Dialog) and window.IsModal()]))
+                try:
+                    show_assistant(frame, on_ready=voice_preview_ready)
+                    release.set()
+                    pump(registry_closed.is_set)
+                    check('native preview closes its owned registry once after worker completion',
+                          len(close_threads) == 1 and close_threads[0] != main_thread)
+                    check('closed or cancelled native preview leaves no authority or output',
+                          set(service.store.identities()) == before_jobs
+                          and list(preview_output.iterdir()) == [] and production_chooser() is None)
+                finally:
+                    release.set()
+                    watchdog.Stop()
+                    runtime_settings.voice_registry = original_registry
+                if errors:
+                    raise RuntimeError('\n'.join(errors))
+
             observed_threads, preview_closed = [], []
             original_collect = diagnostics.collect_diagnostics
             def observed_collect(*, cancelled):

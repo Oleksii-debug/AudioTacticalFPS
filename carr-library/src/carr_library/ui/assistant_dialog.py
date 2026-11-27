@@ -16,6 +16,7 @@ def show_assistant(frame, *, on_ready=None):
     from ..studio.render import ProductionService
     library, active_scope = frame.library, frame.active
     production = ProductionService(frame.library.root / 'state' / 'studio')
+    owns_production_registry = production._voices is None
     service = AssistantService(frame.library, production=production.assistant_callback)
     workflows = WorkflowAccess(service)
     dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
@@ -24,6 +25,7 @@ def show_assistant(frame, *, on_ready=None):
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
     cancel = threading.Event()
     alive, busy, running, plan, job_id = True, False, False, None, None
+    preview_generation = 0
     workspaces = frame.library.workspaces()
 
     def field(label, cls=wx.TextCtrl, proportion=0, **kwargs):
@@ -91,51 +93,85 @@ def show_assistant(frame, *, on_ready=None):
             review.ChangeValue(str(value))
 
     def invalidate(event=None):
-        nonlocal plan, job_id
+        nonlocal plan, job_id, preview_generation
         plan, job_id = None, None
+        preview_generation += 1
         buttons['run'].Disable()
         buttons['save'].Disable()
         if event is not None:
             event.Skip()
 
     def preview(event=None):
-        nonlocal plan, job_id
         if busy:
             return
         try:
             guard()
+            invalidate()
+            cancel.clear()
+            generation = preview_generation
             index = scope_choice.GetSelection()
             scope = Scope(workspaces[index - 1].id if index > 0 else None,
                           (Path(input_folder.GetValue()),) if input_folder.GetValue().strip() else (),
                           Path(output_folder.GetValue()) if output_folder.GetValue().strip() else None,
                           allow_create=index == 0, allow_full_backup=full_backup.GetValue())
             candidate = service.preview(instruction.GetValue(), scope)
+            name = saved_name.GetValue()
+
+            def current_preview():
+                guard()
+                if cancel.is_set():
+                    raise InterruptedError('Plan preview was cancelled; no workflow was authorized.')
+                if generation != preview_generation:
+                    raise ValueError('The plan changed during review. Preview the current instructions again.')
+
+            def reviewed(value):
+                nonlocal plan, job_id
+                current_preview()
+                if name.strip():
+                    value = replace(value, summary=workflow_name(name))
+                plan, job_id = value, None
+                report('LOCAL ONLY — no remote services or charges.\n\n' +
+                       json.dumps(plan.to_dict(), ensure_ascii=False, indent=2) +
+                       '\n\nChoose Run to authorize these operations inside these directories.')
+                buttons['run'].Enable()
+                buttons['save'].Enable()
+                review.SetFocus()
+
             if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids') and 'script' not in step.arguments
                    for step in candidate.steps):
-                voices = production.voices.voices()
-                choice = wx.SingleChoiceDialog(dialog, 'Choose the default local voice for this production.',
-                                                'Production voice', [v.name + '; ' + v.language for v in voices])
-                try:
-                    if choice.ShowModal() != wx.ID_OK:
+                def discover():
+                    current_preview()
+                    voices = production.voices.voices()
+                    current_preview()
+                    return voices
+
+                def choose_voice(voices):
+                    current_preview()
+                    if not voices:
+                        raise ValueError('Install and choose a local voice before narration.')
+                    choice = wx.SingleChoiceDialog(dialog, 'Choose the default local voice for this production.',
+                        'Production voice', [v.name + '; ' + v.language for v in voices])
+                    try:
+                        answer = choice.ShowModal()
+                        selected = choice.GetSelection()
+                    finally:
+                        choice.Destroy()
+                    current_preview()
+                    if answer != wx.ID_OK:
                         return
-                    selected = choice.GetSelection()
-                finally:
-                    choice.Destroy()
-                if not 0 <= selected < len(voices):
-                    raise ValueError('Install and choose a local voice before narration.')
-                steps = tuple(Step(s.tool, {**s.arguments, 'voice_ids': [voices[selected].id]})
-                              if s.tool == 'audio.produce' and 'script' not in s.arguments else s for s in candidate.steps)
-                candidate = Plan(scope, steps, candidate.summary)
-                service.validate(candidate)
-            if saved_name.GetValue().strip():
-                candidate = replace(candidate, summary=workflow_name(saved_name.GetValue()))
-            plan, job_id = candidate, None
-            report('LOCAL ONLY — no remote services or charges.\n\n' +
-                   json.dumps(plan.to_dict(), ensure_ascii=False, indent=2) +
-                   '\n\nChoose Run to authorize these operations inside these directories.')
-            buttons['run'].Enable()
-            buttons['save'].Enable()
-            review.SetFocus()
+                    if not 0 <= selected < len(voices):
+                        raise ValueError('Install and choose a local voice before narration.')
+                    steps = tuple(Step(s.tool, {**s.arguments, 'voice_ids': [voices[selected].id]})
+                        if s.tool == 'audio.produce' and not s.arguments.get('voice_ids')
+                        and 'script' not in s.arguments else s for s in candidate.steps)
+                    selected_plan = Plan(scope, steps, candidate.summary)
+                    service.validate(selected_plan)
+                    reviewed(selected_plan)
+
+                review_task(discover, choose_voice,
+                    'Reviewing the configured local voices. Pause or Close cancels this preview; no audio is rendered.')
+            else:
+                reviewed(candidate)
         except Exception as exc:
             invalidate()
             report(str(exc))
@@ -228,8 +264,9 @@ def show_assistant(frame, *, on_ready=None):
                     guard()
                     complete(result.result())
                 except Exception as exc:
-                    report(str(exc))
-                    review.SetFocus()
+                    if alive:
+                        report(str(exc))
+                        review.SetFocus()
             wx.CallAfter(apply)
         future.add_done_callback(finished)
 
@@ -313,11 +350,20 @@ def show_assistant(frame, *, on_ready=None):
 
     def close(event=None):
         nonlocal alive
+        if not alive:
+            return
         cancel.set()
         # The running service observes this same cancellation token and owns
         # its checkpoint. Closing must not block on a second filesystem review.
         alive = False
-        executor.shutdown(wait=False, cancel_futures=True)
+        def release_owned_registry():
+            # This service was constructed here without a borrowed registry.
+            # Its single worker serializes cleanup after every active probe or
+            # render, including a probe that finishes after the window closes.
+            if owns_production_registry and production._voices is not None:
+                production._voices.close()
+        executor.submit(release_owned_registry)
+        executor.shutdown(wait=False, cancel_futures=False)
         dialog.EndModal(wx.ID_CLOSE)
 
     def help_text(event):
