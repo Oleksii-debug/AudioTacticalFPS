@@ -114,6 +114,7 @@ for index, source in enumerate(sources):
     status['done'] += 1
     if MODE == 'cancel-after-first' and index == 0:
         publish()
+        (job / 'first-result-ready').touch()
         while not (job / 'stop.flag').exists():
             time.sleep(.02)
         status.update(state='stopped', result_state='stopped')
@@ -366,8 +367,7 @@ def test_stop_does_not_rehash_inputs_and_preserves_completed_worker_files(prepar
         raise AssertionError('Stop must defer verification until explicit resume.')
     monkeypatch.setattr(service, '_receipts', must_not_rehash)
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return (path / 'first-result-ready').exists()
     stopped = service.run(identity, timeout=30, cancelled=cancelled)
     assert stopped['status'] == 'stopped'
     assert stopped['artifacts'] == [] and stopped['done'] == 0
@@ -407,6 +407,10 @@ def test_progress_observer_failure_during_actual_child_does_not_kill_recognition
     notices = []
 
     def broken(done, total, phase):
+        # Windows may announce indeterminate work before launching the child.
+        # Detach only after the real waiting child has published its first state.
+        if not (service._path(identity) / 'job_status.json').exists():
+            return
         notices.append((done, total, phase))
         (service._path(identity) / 'progress-observed').write_text('release synthetic worker')
         raise RuntimeError('Synthetic detached progress observer')
@@ -446,8 +450,7 @@ def test_stopped_progress_observer_failure_preserves_actual_child_resume_inputs(
     notices = []
 
     def cancelled():
-        status = path / 'job_status.json'
-        return status.exists() and read_json(status).get('done') == 1
+        return (path / 'first-result-ready').exists()
 
     def broken(done, total, phase):
         if phase == 'stopped':
@@ -480,7 +483,14 @@ def test_progress_observer_failure_preserves_real_child_or_receipt_failure(prepa
     assert 'observer' not in result['last_error'] and result['artifacts'] == []
 
 
-def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prepared, tmp_path):
+@pytest.mark.parametrize('indeterminate', [False, True])
+def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prepared, tmp_path,
+                                                                         monkeypatch, indeterminate):
+    import carr_library.transcription as transcription
+
+    if indeterminate:
+        monkeypatch.setattr(transcription, '_READ_LIVE_WORKER_STATUS', False)
+    live_counts = transcription._READ_LIVE_WORKER_STATUS
     _, _, service, original, configure = prepared
     configure('cancel-after-first')
     second = tmp_path / 'second-progress-boundary.wav'
@@ -500,9 +510,8 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
             raise
 
     def cancelled():
-        status = path / 'job_status.json'
-        return (any(done == 1 for done, _, _ in calls) and status.exists()
-                and read_json(status).get('done') == 1)
+        observed = any(done == 1 for done, _, _ in calls) if live_counts else bool(calls)
+        return observed and (path / 'first-result-ready').exists()
 
     result = service.run(identity, timeout=30, cancelled=cancelled, progress=progress)
     durable, worker = service.get(identity), read_json(path / 'job_status.json')
@@ -513,13 +522,17 @@ def test_stop_keeps_worker_counts_monotonic_and_unverified_results_distinct(prep
     assert len(saved) == 1 and read_json(saved[0])['run_id'] == worker['run_id']
     assert len(list((path / 'results').rglob('*.*'))) == 6
     assert len(list((path / 'input').iterdir())) == 2
-    measured = [done for done, total, _ in calls]
-    assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
-    assert measured == sorted(measured), f'Progress regressed: {calls!r}; {observer_errors!r}'
-    assert calls[-1] == (1, 2, 'stopped')
+    if live_counts:
+        measured = [done for done, total, _ in calls]
+        assert measured and max(measured) == 1 and all(total == 2 for _, total, _ in calls)
+        assert measured == sorted(measured), f'Progress regressed: {calls!r}; {observer_errors!r}'
+        assert calls[-1] == (1, 2, 'stopped')
+    else:
+        assert calls[:-1] and all(done is None and total is None for done, total, _ in calls[:-1])
+        assert calls[-1] == (0, 2, 'stopped')
     assert observer_errors == []
     assert operation_outcome(result) == 'cancelled'
-    assert all(event.percent < 100 for event in events)
+    assert all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.transition('cancelled', 'Stopped; saved files await verification').percent < 100
 
 
@@ -538,7 +551,7 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     partial = service.run(identity, timeout=30, progress=progress)
     assert partial['status'] == 'partial' and partial['done'] == 1
     assert operation_outcome(partial) == 'paused'
-    assert events and all(event.percent < 100 for event in events)
+    assert events and all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.transition(operation_outcome(partial), 'Review remaining input').percent < 100
 
     configure('complete')
@@ -546,7 +559,7 @@ def test_partial_progress_requires_verified_resume_before_host_success(prepared,
     completed = service.run(identity, timeout=30, progress=progress)
     assert completed['status'] == 'completed' and completed['done'] == 2
     assert operation_outcome(completed) == 'succeeded'
-    assert all(event.percent < 100 for event in events)
+    assert all(event.percent is None or event.percent < 100 for event in events)
     assert tracker.event.percent == 99
     assert tracker.transition(operation_outcome(completed), 'Host accepted all results').percent == 100
 
@@ -587,6 +600,8 @@ def test_actual_job_publication_error_propagates_after_observer_detaches(prepare
     publish = transcription.atomic_json
 
     def broken(done, total, phase):
+        if not (path / 'job_status.json').exists():
+            return
         notices.append((done, total, phase))
         (path / 'progress-observed').write_text('release actual synthetic worker')
         raise RuntimeError('Synthetic detached observer')
@@ -601,7 +616,10 @@ def test_actual_job_publication_error_propagates_after_observer_detaches(prepare
     with pytest.raises(OSError, match='durable job publication refusal'):
         service.run(identity, timeout=10, progress=broken)
 
-    assert notices == [(0, 1, 'running')]
+    if transcription._READ_LIVE_WORKER_STATUS:
+        assert notices == [(0, 1, 'running')]
+    else:
+        assert len(notices) == 1 and notices[0][:2] == (None, None)
     assert len(attempted) == 1 and attempted[0]['done'] == 1
     assert len(attempted[0]['artifacts']) == 6
     worker = read_json(path / 'job_status.json')
@@ -609,3 +627,86 @@ def test_actual_job_publication_error_propagates_after_observer_detaches(prepare
     saved = service.get(identity)
     assert saved['status'] == 'running'
     assert saved['receipts'] == [] and saved['artifacts'] == []
+
+
+@pytest.mark.parametrize('mode,error', [
+    ('progress-wait', None),
+    ('missing-output', 'export is missing'),
+    ('timeout', 'time allowance'),
+])
+def test_windows_indeterminate_progress_never_opens_live_worker_status(prepared, monkeypatch, mode, error):
+    """Run the actual child; retain its raw replacement and terminal verifier."""
+    import carr_library.transcription as transcription
+
+    monkeypatch.setattr(transcription, '_READ_LIVE_WORKER_STATUS', False)
+    _, _, service, original, configure = prepared
+    configure(mode)
+    identity = service.submit([original])
+    path = service._path(identity)
+    status = path / 'job_status.json'
+    original_bytes = original.read_bytes()
+    active, status_reads, notices, events = [False], [], [], []
+    actual_run, actual_read = transcription.run_process, transcription.read_json
+    tracker = ProgressTracker()
+    tracker.start('Recognizing retained inputs')
+
+    def run_child(*args, **kwargs):
+        active[0] = True
+        try:
+            return actual_run(*args, **kwargs)
+        finally:
+            active[0] = False
+
+    def read_after_exit(selected):
+        if Path(selected) == status:
+            assert not active[0], 'The host opened worker-owned status while its publisher was alive.'
+            status_reads.append(Path(selected))
+        return actual_read(selected)
+
+    def progress(done, total, phase):
+        notices.append((done, total, phase))
+        events.append(tracker.update(done, total, phase))
+        if phase not in ('completed', 'failed', 'partial', 'stopped'):
+            assert done is None and total is None
+            assert events[-1].percent is None and events[-1].eta_seconds is None
+            # In progress-wait mode the child cannot finish until a real
+            # indeterminate notice arrives after its initial publication.
+            if status.exists():
+                (path / 'progress-observed').touch()
+
+    monkeypatch.setattr(transcription, 'run_process', run_child)
+    monkeypatch.setattr(transcription, 'read_json', read_after_exit)
+    result = service.run(identity, timeout=1 if mode == 'timeout' else 10, progress=progress)
+    assert status_reads and notices[0][:2] == (None, None)
+    assert not active[0] and original.read_bytes() == original_bytes
+    assert all(event.percent is None or event.percent < 100 for event in events)
+    if error is None:
+        assert (path / 'progress-observed').exists()
+        assert result == service.get(identity) == service.verify(identity)
+        assert result['status'] == 'completed' and result['done'] == 1
+        assert len(result['artifacts']) == 6 and result['last_error'] == ''
+        assert notices[-1] == (1, 1, 'completed')
+        assert tracker.transition(operation_outcome(result), 'Verified results').percent == 100
+    else:
+        assert result == service.get(identity)
+        assert result['status'] == 'failed' and error in result['last_error']
+        assert result['artifacts'] == [] and notices[-1] == (0, 1, 'failed')
+        assert operation_outcome(result) == 'failed'
+
+
+def test_actual_cli_preserves_json_and_reports_indeterminate_progress(prepared, monkeypatch, capsys):
+    import carr_library.transcription as transcription
+    from carr_library.transcription_cli import main
+
+    monkeypatch.setattr(transcription, '_READ_LIVE_WORKER_STATUS', False)
+    app, workspace, service, original, _ = prepared
+    identity = service.submit([original])
+    result_code = main(['--data-dir', str(app.root), '--workspace', workspace,
+                        'run', identity, '--timeout', '10'])
+    captured = capsys.readouterr()
+    result = json.loads(captured.out)
+    assert result_code == 0 and result['status'] == 'completed'
+    assert result == service.get(identity) == service.verify(identity)
+    assert 'Progress indeterminate:' in captured.err and 'None' not in captured.err
+    assert f"{result['done']}/{len(result['sources'])}: completed" in captured.err
+    assert 'Progress indeterminate:' not in captured.out

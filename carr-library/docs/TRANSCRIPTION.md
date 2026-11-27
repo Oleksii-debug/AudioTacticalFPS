@@ -15,7 +15,7 @@ Open a library, then **Library → Transcription: local audio and video...**.
 
 The window uses named native controls, keyboard mnemonics and the application's existing background/progress service. Unsaved changes must be saved or explicitly discarded before switching or closing. Actual NVDA usability is a separate manual acceptance step.
 
-The running indicator counts files reported by the worker; these are not accepted exports until their receipts are verified. After Stop, the indicator retains the measured count while the job can truthfully show zero verified results pending explicit resume. Only a completed, verified job reaches 100 percent. Optional progress failures cannot undo a saved job, trigger a second transcription, or interrupt cooperative cancellation.
+On Windows, live transcription progress is indeterminate: the application shows activity without inferring a file percentage or remaining-time estimate while the worker is running. It reads the completed worker status after the process exits and verifies receipts before counting accepted results. On other platforms, the indicator can retain file counts reported by the worker; these observations are not accepted exports. Stop leaves saved worker files for explicit resume and verification, so the job can truthfully show zero verified results even when files have been written. Only a completed, verified job reaches 100 percent. Optional progress failures cannot undo a saved job, trigger a second transcription, or interrupt cooperative cancellation. The command line reports unknown progress on stderr and keeps its result JSON on stdout.
 
 ## Durable jobs and restoration
 

@@ -367,7 +367,13 @@ def test_closed_modal_releases_captured_coordinator_before_late_callback(transcr
     assert not successor.busy
 
 
-def test_run_uses_shared_progress_facade_and_keeps_reported_count_explanation(transcript_view):
+@pytest.mark.parametrize('indeterminate', [False, True])
+def test_run_uses_shared_progress_facade_and_keeps_reported_count_explanation(transcript_view,
+                                                                           monkeypatch, indeterminate):
+    import carr_library.transcription as transcription
+
+    if indeterminate:
+        monkeypatch.setattr(transcription, '_READ_LIVE_WORKER_STATUS', False)
     state = transcript_view
     class NoDirectProgressAccess:
         @property
@@ -378,11 +384,22 @@ def test_run_uses_shared_progress_facade_and_keeps_reported_count_explanation(tr
     def drive(dialog):
         assert not state.pending  # The fresh job has no transcript to read yet.
         assert state.named('Збережені завдання').items[0].startswith('Run through shared facade')
+        status = state.named('Стан транскрипції')
+        shown = []
+        actual_set_value = status.SetValue
+        def capture(value):
+            shown.append(value)
+            actual_set_value(value)
+        monkeypatch.setattr(status, 'SetValue', capture)
         state.action('Запустити / продовжити')
         assert state.pending[0][-1] is True
         state.execute()
         state.flush_ui()
         assert 'Кількість файлів повідомляє рушій' in state.named('Стан транскрипції').GetValue()
+        if not transcription._READ_LIVE_WORKER_STATUS:
+            assert state.progress_calls[0][:2] == (None, None)
+            assert any('Поточна кількість оброблених файлів невідома' in value for value in shown)
+            assert all('None' not in value for value in shown)
         state.deliver()
         assert state.progress_calls
         if state.pending:  # The completed job refreshes its verified transcript.

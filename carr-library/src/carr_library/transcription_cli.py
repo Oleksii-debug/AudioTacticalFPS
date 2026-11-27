@@ -59,8 +59,12 @@ def main(argv=None):
                 'language': args.language, 'device': args.device, 'compute_type': args.compute_type,
                 'multilingual': args.multilingual, 'word_timestamps': not args.no_word_timestamps})}
         elif args.operation == 'run':
+            def report_progress(done, total, state):
+                count = (f'{done}/{total}' if done is not None and total is not None
+                         else 'Progress indeterminate')
+                print(f'{count}: {state}', file=sys.stderr, flush=True)
             result = service.run(args.job, timeout=args.timeout,
-                progress=lambda done, total, state: print(f'{done}/{total}: {state}', file=sys.stderr, flush=True))
+                                 progress=report_progress)
         elif args.operation == 'show':
             result = service.get(args.job)
         elif args.operation == 'verify':

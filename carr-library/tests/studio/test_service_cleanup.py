@@ -21,7 +21,8 @@ class WarmProvider:
     def voices(self):
         if self.process is None:
             self.process = subprocess.Popen([sys.executable, '-I', '-u', '-c',
-                'import sys; print("ready", flush=True); sys.stdin.buffer.read()'],
+                'import sys; sys.stdout.buffer.write(b"ready\\n"); '
+                'sys.stdout.buffer.flush(); sys.stdin.buffer.read()'],
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             assert self.process.stdout.readline() == b'ready\n'
         return (Voice('fixture:warm', 'Synthetic warm voice', 'fixture', 'en'),)

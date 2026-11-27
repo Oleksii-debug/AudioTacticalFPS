@@ -24,6 +24,10 @@ MAX_FILES = 64
 MAX_SOURCE_BYTES = 8 * 1024**3
 MAX_BATCH_BYTES = 32 * 1024**3
 MAX_TEXT_BYTES = 16 * 1024**2
+# The separately supplied worker may publish status with Windows MoveFileEx.
+# Even delete-sharing readers can prevent that replacement while open. Keep
+# live work indeterminate there; receipts are read after the process has exited.
+_READ_LIVE_WORKER_STATUS = os.name != 'nt'
 MEDIA_SUFFIXES = frozenset(('.wav', '.flac', '.mp3', '.m4a', '.mp4', '.mkv',
                            '.webm', '.ogg', '.opus', '.aac', '.wma', '.aiff',
                            '.aif', '.m4b', '.mov', '.avi'))
@@ -484,7 +488,7 @@ class TranscriptionService:
                     reported_done = max(reported_done, done)
                 if observer_available:
                     try:
-                        progress(reported_done, total, phase)
+                        progress(reported_done if total is not None else None, total, phase)
                     except Exception:
                         # A detached UI must not kill the worker or reverse a
                         # durable result. Disable only this optional observer.
@@ -495,14 +499,18 @@ class TranscriptionService:
                 if cancelled() and stop_at is None:
                     atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
                     stop_at = now
-                if observer_available and now - notice_at >= .5 and prior.exists():
+                if (observer_available and now - notice_at >= .5
+                        and (not _READ_LIVE_WORKER_STATUS or prior.exists())):
                     notice_at = now
-                    try:
-                        current = read_json(prior)
-                        notify(current.get('done', 0), len(job['sources']),
-                               str(current.get('state', 'running'))[:200])
-                    except (ValueError, OSError):
-                        pass
+                    if not _READ_LIVE_WORKER_STATUS:
+                        notify(None, None, 'Recognizing retained files; live progress is unavailable on Windows.')
+                    else:
+                        try:
+                            current = read_json(prior)
+                            notify(current.get('done', 0), len(job['sources']),
+                                   str(current.get('state', 'running'))[:200])
+                        except (ValueError, OSError):
+                            pass
                 return stop_at is not None and now - stop_at >= 3
             failure = None
             from .audio.music import _SITE_BOOTSTRAP

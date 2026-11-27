@@ -29,6 +29,25 @@ production, output verification, restart, CSL/DOCX, isolated text conversion and
 named native dialogs while the selected runtime executables have outbound
 firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 
+## Package profiles
+
+The library transfer profile contains Python, the local search model, OCR and
+its corresponding source archive, the verified native launcher/runtime and the
+local citation processor. It omits FFmpeg. Library, research, OCR, bibliography
+and reading through installed Windows SAPI voices remain separate from Studio
+mixing, music and media conversion that require an explicitly selected local
+FFmpeg/FFprobe installation.
+
+The existing transfer helper rejects both current FFmpeg payload layouts and
+audio declarations until their exact corresponding-source/notices review is
+complete. A private destination does not override that guard. The locally
+assembled audio profile retains its full native audio acceptance. The library
+transfer profile must separately pass fresh offline installation, native
+launcher/reader/catalog, actual semantic/OCR/citation and absent-audio checks
+before its own manifest and installed wheel are captured. Evidence for one
+profile does not certify the other, and a captured wheel never substitutes for
+success of the complete workflow at the exact source commit.
+
 ## Requirements still open
 
 The following cannot be labelled DONE by passing the current core tests:

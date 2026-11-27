@@ -56,6 +56,17 @@ select its local Python runtime, worker and complete model folder. It does not
 download those components. See [Local transcription](TRANSCRIPTION.md) for setup,
 retained execution evidence and the remaining installed Windows acceptance limits.
 
+The transferable library package includes the local citation processor but omits
+FFmpeg. Library search, OCR, bibliography and reading with installed Windows
+voices remain available. Studio rendering, music and media processing need a
+separately installed local FFmpeg and FFprobe. Select their executables in
+**Audio Studio → Local voice and music engines...** using **Choose FFmpeg
+executable** and **Choose FFprobe executable**. Keep that installation outside
+the verified program folder. The locally assembled audio profile and the
+transferable library profile have separate installed Windows evidence; a pass
+for one profile does not establish the other. The current audio packs are not
+included in transfer archives while their corresponding-source review is open.
+
 The default data location is `%LOCALAPPDATA%\Universal Research Library`.
 The portable launcher identifies its program folder. The application rejects
 library data and backup/restore destinations inside that folder, including paths
@@ -205,8 +216,11 @@ positions for every library. Restore preserves their exact source revision,
 names and timestamps in the new data folder. The backup checksums cover this
 reading state as well as the database and retained originals. Older backups
 without reading state still restore; use a separate reading-state export to
-transfer those older bookmarks. Interrupted import queues are not part of the
-backup. See [reading desk](READING_DESK.md) for historical-position handling.
+transfer those older bookmarks. Complete backups also include supported pending
+import requests and queues, with verified retained input files and saved request
+settings. Restore validates those identities before explicit resume; required
+OCR runtimes and models must be available separately. See
+[reading desk](READING_DESK.md) for historical-position handling.
 
 ## Review the source catalog
 

@@ -1,9 +1,9 @@
 # Save All in Resonance
 
 **File → Save all** saves the active research note and registered open reading
-copies and Audio Studio projects. The voice reader and Audio Studio also offer
-**Save all open drafts**, so this action is available while their modal windows
-are open.
+copies, Audio Studio projects and transcript edits. The voice reader and Audio
+Studio also offer **Save all open drafts**; the transcription window offers
+**Зберегти все**. These actions remain available while their modal windows are open.
 
 The action uses one shared `SaveCoordinator`, adopted from the existing primary
 implementation. Each document keeps its own storage service and validation.
@@ -19,6 +19,10 @@ background save is not reported as a completed save.
   Save As still exports a separate reading project.
 - Audio Studio validates and saves a project revision in its existing project
   store. An automatic recovery draft does not count as a saved project revision.
+- Transcript edits use the existing transcription service and create a separate
+  edit version for the captured library, job and source. Original recognition,
+  media and timestamps remain intact; newer edits made during a background save
+  remain unsaved. See [local transcription](TRANSCRIPTION.md).
 
 The existing research-note recovery timer and recovery command remain available.
 Save All does not start speech, render audio, change a source document, or approve

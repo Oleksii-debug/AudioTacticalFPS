@@ -71,8 +71,8 @@ class Frame:
         self.library = SimpleNamespace(root=root)
         self.menu_bar, self.bindings, self.reports = MenuBar(), {}, []
         self.choice, self.status = Focus(), Focus()
-    def Bind(self, event, callback, item):
-        self.bindings[item.GetId()] = callback
+    def Bind(self, event, callback, item=None):
+        self.bindings[item.GetId() if item is not None else event] = callback
     def SetAcceleratorTable(self, table):
         self.table = table
     def report(self, message):
@@ -82,7 +82,8 @@ class Frame:
 @pytest.fixture
 def wx():
     return SimpleNamespace(ACCEL_CTRL=1, ACCEL_ALT=2, ACCEL_SHIFT=4, ID_ANY=-1,
-                           EVT_MENU='menu', Menu=Menu, AcceleratorTable=lambda entries: tuple(entries),
+                           EVT_MENU='menu', EVT_WINDOW_DESTROY='destroy',
+                           Menu=Menu, AcceleratorTable=lambda entries: tuple(entries),
                            **{'WXK_F' + str(index): 1000 + index for index in range(1, 25)})
 
 
@@ -114,7 +115,9 @@ def test_save_all_uses_existing_menu_path_and_preserves_custom_shortcuts(frame, 
             self.identity = next(_ids)
             timers.append(self)
         def GetId(self): return self.identity
-        def Start(self, interval): self.interval = interval
+        def Start(self, interval): self.interval, self.running = interval, True
+        def Stop(self): self.running = False
+        def IsRunning(self): return self.running
     wx.Timer, wx.EVT_TIMER, wx.ID_EXIT = Timer, 'timer', 9999
     wx.Window = SimpleNamespace(FindFocus=lambda: None)
     monkeypatch.setitem(sys.modules, 'wx', wx)
@@ -139,6 +142,11 @@ def test_save_all_uses_existing_menu_path_and_preserves_custom_shortcuts(frame, 
     assert frame.reports[-1] == 'All 1 open drafts saved.'
     assert not frame._save_coordinator.busy and profile.read_bytes() == before
     assert timers[0].interval == 3000  # Canonical recovery autosave is retained.
+    assert timers[0].IsRunning()
+    skipped = []
+    frame.bindings[wx.EVT_WINDOW_DESTROY](SimpleNamespace(
+        GetEventObject=lambda: frame, Skip=lambda: skipped.append(True)))
+    assert skipped == [True] and not timers[0].IsRunning()
 
 
 @pytest.mark.parametrize('raw', ['Insert', 'Ctrl+Insert', 'Shift+Insert', 'Caps Lock', 'NVDA+F9',

@@ -98,7 +98,9 @@ def show_studio(frame):
     formats = ['wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma']
     format_choice = field('Final audio &format (WAV master is always retained)', wx.Choice, choices=formats)
     format_choice.SetSelection(0)
-    stems = wx.CheckBox(dialog, label='Export separate &speaker and music stems')
+    stems_label = 'Export separate &speaker and music stems'
+    stems = wx.CheckBox(dialog, label=stems_label)
+    stems.SetName(stems_label.replace('&', ''))
     stems.SetValue(True)
     layout.Add(stems, 0, wx.ALL, 6)
     status = field('Production and save status', style=wx.TE_MULTILINE | wx.TE_READONLY,

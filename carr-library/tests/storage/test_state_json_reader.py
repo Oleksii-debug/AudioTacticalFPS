@@ -19,6 +19,10 @@ assert hashlib.sha256(module_path.read_bytes()).hexdigest() == sys.argv[3]
 spec = importlib.util.spec_from_file_location('exact_durable_state', module_path)
 state = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(state)
+if sys.argv[4] == 'legacy':
+    # Reproduce the former MoveFileEx publisher independently of the corrected
+    # production fallback; the rest of atomic_json still owns stage cleanup.
+    state._replace_file = os.replace
 try:
     state.atomic_json(target, {'done': 1}, replace=True)
 except OSError as error:
@@ -29,10 +33,11 @@ else:
 '''
 
 
-def replace_in_child(path):
+def replace_in_child(path, *, legacy=False):
     process = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c',
                               REPLACE_ONCE, str(path), str(Path(state.__file__).resolve()),
-                              sha256(Path(state.__file__).read_bytes()).hexdigest()], capture_output=True,
+                              sha256(Path(state.__file__).read_bytes()).hexdigest(),
+                              'legacy' if legacy else 'production'], capture_output=True,
                              text=True, encoding='utf-8', timeout=15)
     assert process.returncode in (0, 2), process.stderr
     return json.loads(process.stdout)
@@ -41,10 +46,12 @@ def replace_in_child(path):
 def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch):
     target = tmp_path / 'стан 🌿.json'
     target.write_bytes(b'{"done":0}')
-    # This negative control demonstrates the real Windows sharing collision.
-    # POSIX permits replacement with either kind of reader, without a skip.
+    # Raw os.replace is the legacy negative control. The production publisher
+    # can succeed even with an ordinary reader on current Windows; requiring it
+    # to fail would reject the fix before testing the shared reader below.
+    # POSIX permits both replacements without a skip.
     with target.open('rb'):
-        ordinary = replace_in_child(target)
+        ordinary = replace_in_child(target, legacy=True)
     if os.name == 'nt':
         assert ordinary['published'] is False
         assert ordinary['winerror'] in (5, 32, 33)
