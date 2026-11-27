@@ -72,3 +72,9 @@ multi-page coverage, stale-cursor rejection, current quotation actions,
 cancellation, native Next/Previous controls and CLI/tool parity. Any generated
 small corpus is synthetic. A 1k/10k/50k real-corpus benchmark, latency percentiles,
 hardware profile and NVDA usability must be measured before being reported.
+
+The [measured catalogue profile and query-shape fix](LIBRARY_CAPACITY.md)
+preserve the exact source identities, complete 1k/10k observations, original
+50k timeout, explicitly interrupted baseline and optimized progress boundary.
+The report separates synthetic registration from actual small TXT imports and
+does not turn a partial 50k traversal into full or native/NVDA qualification.
