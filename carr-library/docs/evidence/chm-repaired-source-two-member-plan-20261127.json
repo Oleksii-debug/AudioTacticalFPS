@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "status": "NOT_RUN",
+  "source_component": "a0082f9f732c8e7e80fcf7dcfb8717e2af9885f9",
+  "composition_base": "65ae1e9cac0352ae950b92f0f58ad6449728a0a9",
+  "helper_origin": {
+    "commit": "6b3125c33efe03566419055e31d39a90d9359929",
+    "blob": "df8f8be2b9a5435c6ab9efdf88c2a1427ec8b18e"
+  },
+  "source_sha256": {
+    "src/carr_library/conversion/legacy.py": "a0ba909c4fea88b6af84154701586a80021f73eb33d3a33acbf460ecce66a1c1",
+    "src/carr_library/extract/document_formats_text.py": "0e81fa6b2c22e8ff1745fc474484cf879fdf6b1c3fcd69d804f1bf78d1e78d7f",
+    "src/carr_library/conversion/models.py": "c1c6e9ca9f969d1c68c72c22174391240919506ce5118db52a9894fb0324211c"
+  },
+  "changes": "Reuses exact reviewed inert publisher archive/member reader. Update source hashes for the actual CHM repair and EML metadata model; unchanged generic HTML hash. The diagnostic now requires both fixed members to RETURN through the existing strict final parser/ordered-word guard, retaining full refused traces on failure.",
+  "scope": "Two exact public HTML members on Ubuntu through source-hash-bound extraction of the existing3 CHM functions. No extracted binary execution. This is not Windows native/source/installed or complete70-member qualification.",
+  "full_required_gate": {
+    "portable_each": 235,
+    "native_chm_each": 4,
+    "publisher_members": 70
+  }
+}
