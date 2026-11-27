@@ -17,6 +17,8 @@ restored job requires a new review of its current permissions before execution.
 Version 5 adds a typed pending-import component to the exact version-4 shape.
 Backups without ASR/resource-policy state use version 5, including an empty pending manifest.
 Version 6 adds a nonempty typed ASR/resource-policy component under the same aggregate ceilings.
+Version 7 additionally preserves incompatible canonical state in an inert, review-needed component.
+Canonical V3/V4 manifests are recognized by their exact disjoint field sets; their state is never activated.
 Legacy version 1/2/3/4/5 backups and version 6 backups are accepted only for an exact
 supported V3, V4 or V5 database schema. Older snapshots are restored unchanged;
 opening the restored library performs the normal checked upgrade to the current schema.
@@ -40,6 +42,13 @@ from .ingest.restore import RestoreError
 from .ingest.writer_guard import _regular_if_present, exclusive_writer
 from .data_paths import guard_data_directory
 from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
+from .durable_state import local_path
+from .preserved_state import (
+    DIRECTORY as PRESERVED_STATE, MAX_FILES as MAX_PRESERVED_FILES, MAX_BYTES as MAX_PRESERVED_BYTES,
+    live_layout as canonical_live_layout, snapshot as snapshot_preserved_state,
+    validate_manifest as validate_preserved_manifest, preserve_canonical,
+    restore as restore_preserved_state, validate_canonical_state, validate_canonical_namespace,
+)
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
     FILENAME as READING_STATE, MAX_BYTES as MAX_READING_STATE, ReadingState,
@@ -180,16 +189,17 @@ def _optional_sidecar(path, maximum):
     return raw
 
 
-def _snapshot_sidecars(root, *, live=False):
+def _snapshot_sidecars(root, *, live=False, preserve_legacy=False):
     # Keep translation receipts frozen through the shared ledger snapshot; an
     # archive is checked read-only and must never acquire/create live lock files.
-    guard = translation_snapshot_guard(root) if live else nullcontext()
+    guard = translation_snapshot_guard(root) if live and not preserve_legacy else nullcontext()
     with guard:
         raw = ReadingState(root).snapshot()
         sidecars = {} if raw is None else {READING_STATE: raw}
         sidecars.update(snapshot_narration_files(root))
-        sidecars.update(snapshot_assistant_files(root, live=live))
-        sidecars.update(snapshot_translation_files(root, live=live))
+        if not preserve_legacy:
+            sidecars.update(snapshot_assistant_files(root, live=live))
+            sidecars.update(snapshot_translation_files(root, live=live))
         for name, (maximum, validate) in (_SIMPLE_SIDECARS | _V4_SIMPLE_SIDECARS).items():
             raw = _optional_sidecar(Path(root) / name, maximum)
             if raw is not None:
@@ -282,7 +292,7 @@ def _publish_sidecars(stage, destination, sidecars, *, cancelled=lambda: False):
         _sync_directory(parent)
 
 
-def _check_backup_namespace(directory, names, *, pending=False, transcription=False):
+def _check_backup_namespace(directory, names, *, pending=False, transcription=False, preserved=False):
     names = set(names)
     directories = {str(parent) for name in names for parent in PurePosixPath(name).parents
                    if str(parent) != '.'}
@@ -294,6 +304,9 @@ def _check_backup_namespace(directory, names, *, pending=False, transcription=Fa
     if transcription:
         expected_roots.add(TRANSCRIPTION)
         _plain(directory / TRANSCRIPTION, directory=True)
+    if preserved:
+        expected_roots.add(PRESERVED_STATE)
+        _plain(directory / PRESERVED_STATE, directory=True)
     if set(p.name for p in directory.iterdir()) != expected_roots:
         raise RestoreError('incomplete backup or unexpected files')
     for name in sorted(directories):
@@ -396,7 +409,11 @@ def create_backup(app, destination, *, max_bytes=None, max_files=None,
                     include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
                 _check_cancelled(cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
-                sidecars = _snapshot_sidecars(app.root, live=True)
+                try:
+                    legacy_state = canonical_live_layout(app.root)
+                except (ValueError, TypeError, KeyError) as exc:
+                    raise RestoreError('application state requires compatibility review: ' + str(exc)) from exc
+                sidecars = _snapshot_sidecars(app.root, live=True, preserve_legacy=legacy_state)
                 _validate_sidecars(snapshot_storage.db, sidecars)
             _check_cancelled(cancelled)
             sidecar_bytes = sum(len(raw) for raw in sidecars.values())
@@ -422,14 +439,27 @@ def create_backup(app, destination, *, max_bytes=None, max_files=None,
             total_bytes += sum(entry['size_bytes'] for entry in transcription['files'])
             total_files += len(transcription['files'])
             _check_backup_budget(total_bytes, total_files, maximum_bytes, maximum_files)
-            manifest = dict(version=6 if transcription['files'] else 5,
+            try:
+                preserved = snapshot_preserved_state(app.root, stage / PRESERVED_STATE,
+                    preserve_live=legacy_state, cancelled=cancelled,
+                    max_bytes=min(MAX_PRESERVED_BYTES, maximum_bytes - total_bytes),
+                    max_files=min(MAX_PRESERVED_FILES, maximum_files - total_files))
+            except (ValueError, TypeError, KeyError) as exc:
+                raise RestoreError('application state could not be preserved for review: ' + str(exc)) from exc
+            if preserved is not None:
+                total_bytes += sum(entry['size_bytes'] for entry in preserved['files'])
+                total_files += len(preserved['files'])
+            _check_backup_budget(total_bytes, total_files, maximum_bytes, maximum_files)
+            manifest = dict(version=7 if preserved is not None else 6 if transcription['files'] else 5,
                 kind='carr-library', schema_version=CURRENT_SCHEMA_VERSION,
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries), sidecars=_sidecar_manifest(sidecars),
                 provider_restore_mode='LOCAL_ONLY', pending=pending)
-            if transcription['files']:
+            if transcription['files'] or preserved is not None:
                 manifest['transcription'] = transcription
+            if preserved is not None:
+                manifest['preserved_state'] = preserved
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
             if len(raw) > MAX_MANIFEST:
@@ -457,12 +487,25 @@ def create_backup(app, destination, *, max_bytes=None, max_files=None,
             if transcription['files']:
                 _check_cancelled(cancelled)
                 (stage / TRANSCRIPTION).rename(destination / TRANSCRIPTION)
+            if preserved is not None:
+                _check_cancelled(cancelled)
+                (stage / PRESERVED_STATE).rename(destination / PRESERVED_STATE)
             _sync_directory(destination / ORIGINALS)
             _check_cancelled(cancelled)
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
             _sync_directory(destination.parent)
     return sha256(raw).hexdigest()
+
+def _canonical_manifest(manifest):
+    if type(manifest) is not dict or type(manifest.get('version')) is not int or manifest['version'] not in (3, 4):
+        return False
+    fields = {'version', 'kind', 'schema_version', 'schema_fingerprint', 'database',
+              'assets', 'state', 'generated_audio_included'}
+    if manifest['version'] == 4:
+        fields.add('pending')
+    return set(manifest) == fields
+
 
 def _read_manifest(directory, expected_manifest_sha256):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
@@ -483,38 +526,57 @@ def _read_manifest(directory, expected_manifest_sha256):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise RestoreError('invalid manifest') from exc
     if (type(manifest) is not dict or type(manifest.get('version')) is not int
-            or manifest['version'] not in (1, 2, 3, 4, 5, 6)):
+            or manifest['version'] not in (1, 2, 3, 4, 5, 6, 7)):
         raise RestoreError('unsupported library manifest')
+    canonical = _canonical_manifest(manifest)
     fields = {'version','kind','schema_version','database','assets'}
     if manifest['version'] >= 2:
         fields.add('schema_fingerprint')
-    if manifest['version'] >= 3:
-        fields.add('sidecars')
-    if manifest['version'] >= 4:
-        fields.add('provider_restore_mode')
-    if manifest['version'] >= 5:
-        fields.add('pending')
-    if manifest['version'] == 6:
-        fields.add('transcription')
+    if canonical:
+        fields.update(('state', 'generated_audio_included'))
+        if manifest['version'] == 4:
+            fields.add('pending')
+        if type(manifest['generated_audio_included']) is not bool or manifest['schema_version'] not in (3, 4):
+            raise RestoreError('invalid canonical state backup schema')
+        try:
+            validate_canonical_state(manifest['state'])
+        except (ValueError, TypeError, KeyError) as exc:
+            raise RestoreError('invalid canonical state inventory: ' + str(exc)) from exc
+    else:
+        if manifest['version'] >= 3:
+            fields.add('sidecars')
+        if manifest['version'] >= 4:
+            fields.add('provider_restore_mode')
+        if manifest['version'] >= 5:
+            fields.add('pending')
+        if manifest['version'] >= 6:
+            fields.add('transcription')
+        if manifest['version'] == 7:
+            fields.add('preserved_state')
     if (set(manifest) != fields
             or manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
         raise RestoreError('unsupported library manifest')
-    if manifest['version'] >= 4 and manifest['provider_restore_mode'] != 'LOCAL_ONLY':
+    if not canonical and manifest['version'] >= 4 and manifest['provider_restore_mode'] != 'LOCAL_ONLY':
         raise RestoreError('restored provider state requires LOCAL ONLY mode')
-    if manifest['version'] >= 5:
+    if 'pending' in manifest:
         try:
             validate_pending(manifest['pending'])
         except (ValueError, TypeError, KeyError) as exc:
             raise RestoreError('invalid pending import backup manifest') from exc
-    if manifest['version'] == 6:
+    if manifest['version'] >= 6:
         try:
             validate_transcription_manifest(manifest['transcription'])
-            if not manifest['transcription']['files']:
+            if manifest['version'] == 6 and not manifest['transcription']['files']:
                 raise ValueError('version 6 requires typed transcription or resource-policy state')
         except (ValueError, TypeError, KeyError) as exc:
             raise RestoreError('invalid transcription backup manifest') from exc
+    if manifest['version'] == 7:
+        try:
+            validate_preserved_manifest(manifest['preserved_state'])
+        except (ValueError, TypeError, KeyError) as exc:
+            raise RestoreError('invalid preserved-state backup manifest') from exc
     if manifest['version'] >= 2:
         fingerprint = manifest['schema_fingerprint']
         if (not isinstance(fingerprint, str) or not re.fullmatch(r'[0-9a-f]{64}', fingerprint)
@@ -564,7 +626,7 @@ def _read_manifest(directory, expected_manifest_sha256):
             raise RestoreError('narration backup byte limit')
         if total > MAX_SIDECAR_BYTES:
             raise RestoreError('backup sidecar byte limit')
-    if manifest['version'] == 4 and not (names.intersection(_V4_SIDECARS)
+    if not canonical and manifest['version'] == 4 and not (names.intersection(_V4_SIDECARS)
                                         or any(is_assistant_sidecar(name) or is_translation_sidecar(name) for name in names)):
         raise RestoreError('version 4 backup manifest has no version 4 state')
     # Pending state shares the existing aggregate resource contract on read as
@@ -572,8 +634,28 @@ def _read_manifest(directory, expected_manifest_sha256):
     inventory = declared_backup_files(manifest)
     _check_backup_budget(size + sum(entry['size_bytes'] for entry in inventory.values()),
                          1 + len(inventory), MAX_BACKUP_BYTES, MAX_BACKUP_FILES)
-    _check_backup_namespace(directory, names, pending=manifest['version'] >= 5,
-                            transcription=manifest['version'] == 6)
+    if canonical:
+        roots = {DATABASE, ORIGINALS, MANIFEST, 'state'}
+        if 'pending' in manifest:
+            roots.add(PENDING)
+        actual = set()
+        for path in directory.iterdir():
+            actual.add(path.name)
+            if len(actual) > len(roots):
+                raise RestoreError('unexpected canonical backup files')
+        if actual != roots:
+            raise RestoreError('incomplete canonical backup')
+        _plain(directory / 'state', directory=True)
+        if 'pending' in manifest:
+            _plain(directory / PENDING, directory=True)
+        try:
+            validate_canonical_namespace(directory / 'state', manifest['state'])
+        except (ValueError, TypeError, KeyError) as exc:
+            raise RestoreError('invalid canonical state namespace: ' + str(exc)) from exc
+    else:
+        _check_backup_namespace(directory, names, pending='pending' in manifest,
+            transcription=bool(manifest.get('transcription', {}).get('files')),
+            preserved=manifest['version'] == 7)
     return manifest
 
 
@@ -591,7 +673,9 @@ def declared_backup_files(manifest):
             (ORIGINALS + '/', manifest['assets']),
             ('', manifest.get('sidecars', [])),
             (PENDING + '/', manifest.get('pending', {}).get('files', [])),
-            (TRANSCRIPTION + '/', manifest.get('transcription', {}).get('files', []))):
+            (TRANSCRIPTION + '/', manifest.get('transcription', {}).get('files', [])),
+            (PRESERVED_STATE + '/', manifest.get('preserved_state', {}).get('files', [])),
+            ('state/', manifest.get('state', []))):
         for entry in entries:
             files[prefix + entry['filename']] = {
                 key: entry[key] for key in ('size_bytes', 'sha256')}
@@ -637,11 +721,12 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     if not callable(cancelled):
         raise RestoreError('invalid restore cancellation callback')
     _check_cancelled(cancelled)
-    source = Path(source).absolute()
+    source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
     manifest = _read_manifest(source, expected_manifest_sha256)
+    canonical = _canonical_manifest(manifest)
     _plain(source / ORIGINALS, directory=True)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
@@ -649,7 +734,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)
         with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:
             storage.check()
-            sidecars = _snapshot_sidecars(source)
+            sidecars = {} if canonical else _snapshot_sidecars(source)
             if _sidecar_manifest(sidecars) != manifest.get('sidecars', []):
                 raise RestoreError('backup sidecar size or digest mismatch')
             _validate_sidecars(storage.db, sidecars)
@@ -664,13 +749,29 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
             copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,
                 include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)
         pending = (restore_pending(source / PENDING, stage, destination, manifest['pending'],
-                                   cancelled=cancelled) if manifest['version'] >= 5
+                                   cancelled=cancelled) if 'pending' in manifest
                    else {'assets': [], 'paths': []})
         try:
             transcription_paths = (restore_transcription(source / TRANSCRIPTION, stage,
-                manifest['transcription'], cancelled=cancelled) if manifest['version'] == 6 else [])
+                manifest['transcription'], cancelled=cancelled)
+                if manifest.get('transcription', {}).get('files') else [])
         except (ValueError, TypeError, KeyError) as exc:
             raise RestoreError('invalid or incomplete transcription backup: ' + str(exc)) from exc
+        preserved = None
+        try:
+            if canonical:
+                declared = declared_backup_files(manifest)
+                other = [item for name, item in declared.items() if not name.startswith('state/')]
+                preserved = preserve_canonical(source, stage / PRESERVED_STATE, manifest,
+                    expected_manifest_sha256, cancelled=cancelled,
+                    max_bytes=min(MAX_PRESERVED_BYTES, MAX_BACKUP_BYTES - sum(item['size_bytes'] for item in other)
+                                  - _plain(source / MANIFEST).st_size),
+                    max_files=min(MAX_PRESERVED_FILES, MAX_BACKUP_FILES - len(other) - 1))
+            elif manifest['version'] == 7:
+                preserved = restore_preserved_state(source / PRESERVED_STATE, stage / PRESERVED_STATE,
+                    manifest['preserved_state'], cancelled=cancelled)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise RestoreError('application state preservation failed: ' + str(exc)) from exc
         _check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
@@ -692,6 +793,9 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
             (destination / name).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             (stage / name).rename(destination / name)
             _sync_directory((destination / name).parent)
+        if preserved is not None:
+            _check_cancelled(cancelled)
+            (stage / PRESERVED_STATE).rename(destination / PRESERVED_STATE)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.
