@@ -406,3 +406,103 @@ def test_metadata_snapshot_cancelled(root):
     _, info = install(site, 'extra-dep')
     with pytest.raises(InterruptedError):
         module._distribution_metadata(info / 'METADATA', cancel=lambda: True)
+
+
+# ASR-07: recorded cache exclusions must still bind actual present payloads.
+def _append_recorded_path(info, label):
+    import csv
+    with (info / 'RECORD').open('a', encoding='utf-8', newline='') as stream:
+        csv.writer(stream).writerow([label, '', ''])
+
+
+@pytest.mark.parametrize('where', ['site', 'outside-site'])
+def test_real_sourceless_recorded_import_identity(root, where):
+    import py_compile
+    import subprocess
+    import sys
+    base, site = root
+    _, info = install(site, 'extra')
+    location = site if where == 'site' else base / 'other-modules'
+    location.mkdir(exist_ok=True)
+    if where != 'site':
+        (site / 'local-extra.pth').write_text('../../other-modules\n', encoding='ascii')
+    source = location / 'qa_marker.py'
+    cache = location / 'qa_marker.pyc'
+
+    def compile_marker(value):
+        source.write_text(f'MARKER = {value!r}\n', encoding='utf-8')
+        py_compile.compile(str(source), cfile=str(cache), doraise=True)
+        source.unlink()
+
+    def marker():
+        command = f'import site; site.addsitedir({str(site)!r}); import qa_marker; print(qa_marker.MARKER)'
+        return subprocess.check_output([sys.executable, '-I', '-B', '-c', command], text=True).strip()
+
+    compile_marker('safe')
+    _append_recorded_path(info, cache.as_posix())
+    assert marker() == 'safe'
+    before, auxiliary = module._runtime_inventory([base])
+    compile_marker('changed')
+    assert marker() == 'changed'
+    after, changed = module._runtime_inventory([base])
+    assert before == after  # Supplied worker checkpoint dialect unchanged.
+    assert auxiliary[str(cache)] != changed[str(cache)]
+
+
+@pytest.mark.parametrize('leaf', ['module.py', 'data.json', 'native.pyd'])
+def test_explicit_nonbytecode_cache_payload_is_bound(root, leaf):
+    base, site = root
+    _, info = install(site, 'extra')
+    payload = site / '__pycache__' / leaf
+    payload.parent.mkdir()
+    payload.write_bytes(b'one')
+    _append_recorded_path(info, payload.relative_to(site).as_posix())
+    before, auxiliary = module._runtime_inventory([base])
+    payload.write_bytes(b'two')
+    after, changed = module._runtime_inventory([base])
+    assert before == after
+    assert auxiliary[str(payload)] != changed[str(payload)]
+
+
+@pytest.mark.parametrize('suffix', ['.pyc', '.pyo'])
+@pytest.mark.parametrize('case', ['absent-in-root', 'absent-outside-root', 'dangling-link',
+                                 'hardlink', 'duplicate-alias'])
+def test_explicit_excluded_record_boundaries(root, suffix, case):
+    import os
+    base, site = root
+    _, info = install(site, 'extra')
+    other = base / 'other'
+    other.mkdir()
+    payload = other / ('file' + suffix)
+    if case == 'absent-outside-root':
+        payload = base.parent / ('outside' + suffix)
+    elif case == 'dangling-link':
+        try:
+            payload.symlink_to(other / 'absent')
+        except OSError:
+            pytest.skip('No symlink permission')
+    elif case == 'hardlink':
+        target = other / 'target'
+        target.write_bytes(b'bytes')
+        try:
+            os.link(target, payload)
+        except OSError:
+            pytest.skip('No hardlink support')
+    elif case == 'duplicate-alias':
+        payload.write_bytes(b'bytes')
+        _append_recorded_path(info, '../../other/' + payload.name)
+    _append_recorded_path(info, payload.as_posix())
+    if case == 'absent-in-root':
+        module._runtime_inventory([base])
+    else:
+        with pytest.raises((ValueError, FileNotFoundError)):
+            module._runtime_inventory([base])
+
+
+@pytest.mark.parametrize('leaf', ['file.py', 'file.json', 'file.pyd'])
+def test_absent_explicit_nonbytecode_cache_record_rejected(root, leaf):
+    base, site = root
+    _, info = install(site, 'extra')
+    _append_recorded_path(info, '__pycache__/' + leaf)
+    with pytest.raises((ValueError, FileNotFoundError)):
+        module._runtime_inventory([base])

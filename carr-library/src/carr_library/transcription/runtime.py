@@ -195,7 +195,7 @@ def _record_labels(record_path, *, cancel=None):
 
 
 
-def _bytecode_inventory(directories, *, cancel=None):
+def _bytecode_inventory(directories, *, recorded=(), cancel=None):
     """Pin executable bytecode that RECORD commonly omits.
 
     Python -I -B prevents writes, not reading existing __pycache__ files,
@@ -206,6 +206,15 @@ def _bytecode_inventory(directories, *, cancel=None):
     discovered = {}
     seen = set()
     scanned = total_bytes = 0
+    for path in sorted(recorded):
+        stopped(cancel)
+        if len(seen) >= MAX_RUNTIME_BYTECODE_FILES:
+            raise ValueError('The selected runtime exceeds its bytecode file budget.')
+        identity = file_identity(path, cancel=cancel,
+                                 maximum=MAX_RUNTIME_BYTECODE_BYTES - total_bytes)
+        total_bytes += identity['size']
+        seen.add(path)
+        discovered[str(path)] = identity
     for root in directories:
         pending = [root]
         while pending:
@@ -231,6 +240,8 @@ def _bytecode_inventory(directories, *, cancel=None):
                         continue
                     path = local_path(entry.path, root=root, exists=True)
                     if path in seen:
+                        if path in recorded:
+                            continue  # Already bound by the explicit RECORD walk.
                         raise ValueError('Duplicate installed bytecode identity.')
                     if len(seen) >= MAX_RUNTIME_BYTECODE_FILES:
                         raise ValueError('The selected runtime exceeds its bytecode file budget.')
@@ -284,6 +295,7 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
                          + ', '.join(missing) + '. No installation or download was attempted.')
     result = {}
     total_files = total_bytes = 0
+    recorded_auxiliary = set()
     # The required seven SDK distributions are a minimum, not an exhaustive
     # dependency closure. Include every recorded distribution in the selected
     # environment; do not ignore installed transitive dependencies like tqdm.
@@ -300,7 +312,20 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
         for relative in sorted(entries):
             stopped(cancel)
             label = str(relative)
-            if '__pycache__' in Path(label).parts or label.endswith(('.pyc', '.pyo')):
+            is_bytecode = label.endswith(('.pyc', '.pyo'))
+            if '__pycache__' in Path(label).parts or is_bytecode:
+                # Preserve the worker's historical digest dialect but bind
+                # recorded executable/data files outside the scanned tree.
+                path = local_path(Path(distribution.locate_file(relative)), exists=not is_bytecode)
+                if not any(path.is_relative_to(root.resolve()) for root in roots):
+                    raise ValueError('An installed-file record escapes the explicitly selected Python environment.')
+                if path in recorded_paths:
+                    raise ValueError('A selected distribution has duplicate resolved installed-file records.')
+                recorded_paths.add(path)
+                if path.exists():
+                    recorded_auxiliary.add(path)
+                    if len(recorded_auxiliary) > MAX_RUNTIME_BYTECODE_FILES:
+                        raise ValueError('The selected runtime exceeds its bytecode file budget.')
                 continue
             if label in files:
                 raise ValueError('A selected distribution has a duplicate installed-file record.')
@@ -334,7 +359,7 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
         result[name] = {'version': version, 'file_count': len(files),
             'installed_files_sha256': sha256(json.dumps(files, ensure_ascii=False,
                 sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()}
-    auxiliary.update(_bytecode_inventory(search, cancel=cancel))
+    auxiliary.update(_bytecode_inventory(search, recorded=recorded_auxiliary, cancel=cancel))
     return result, auxiliary
 
 
