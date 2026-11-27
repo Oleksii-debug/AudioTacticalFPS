@@ -341,3 +341,29 @@ def test_late_native_failed_callback_preserves_verified_actual_result(prepared):
     assert service.verify(identity)['status'] == 'completed'
     completed.assert_called_once_with(service.get(identity))
     report.assert_called_once_with(error)
+
+def test_live_worker_status_reader_allows_atomic_replacement(tmp_path, monkeypatch):
+    import os
+    from carr_library import transcription_host
+    status = tmp_path / 'job_status.json'
+    stage = tmp_path / 'status.tmp'
+    old = b'{"state":"running","done":0}\n'
+    new = b'{"state":"finished","done":1}\n'
+    status.write_bytes(old)
+    stage.write_bytes(new)
+    actual_open = transcription_host._open_worker_status
+
+    def replace_after_open(path):
+        stream = actual_open(path)
+        try:
+            os.replace(stage, status)
+        except BaseException:
+            stream.close()
+            raise
+        return stream
+
+    with monkeypatch.context() as scope:
+        scope.setattr(transcription_host, '_open_worker_status', replace_after_open)
+        assert transcription_host.read_worker_status(status) == {'state': 'running', 'done': 0}
+    assert transcription_host.read_worker_status(status) == {'state': 'finished', 'done': 1}
+    assert status.read_bytes() == new and not stage.exists()
