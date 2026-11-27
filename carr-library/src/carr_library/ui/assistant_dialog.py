@@ -100,7 +100,8 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
     template_row = wx.BoxSizer(wx.HORIZONTAL)
     for identity, label in [('templates', 'Named &templates...'),
                             ('save_template', '&Save reviewed template'),
-                            ('delete_template', '&Delete selected template')]:
+                            ('delete_template', '&Delete selected template'),
+                            ('edit_template', 'Typed &parameters / project...')]:
         button = wx.Button(dialog, label=label)
         buttons[identity] = button
         template_row.Add(button, 0, wx.ALL, 4)
@@ -344,7 +345,57 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
             raise ValueError('The library location changed. Reopen the assistant before using templates.')
         template_store._guard()
 
-    def load_template(event=None):
+    def refresh_template_commands():
+        # A saved recipe can only expose an existing semantic review command.
+        # Registration failure cannot undo a committed catalogue or run a job.
+        from .workflow_templates import refresh_template_macros
+        try:
+            refresh_template_macros(frame, wx_module=wx)
+        except (ValueError, OSError, RuntimeError) as exc:
+            return ' Shortcut inventory needs attention: ' + str(exc)
+        return ''
+
+    def edit_template(event=None):
+        nonlocal template_selection
+        if not alive or busy: return
+        try:
+            template_guard()
+            records, token = template_store.list()
+            selected = template_selection
+            if selected is not None:
+                initial, token = template_store.get(selected[0], expected_token=selected[1])
+            elif plan is not None and approved_inputs == input_identity():
+                initial = WorkflowTemplate.capture(template_name.GetValue() or 'New workflow', plan,
+                    kind=KINDS[max(0, template_kind.GetSelection())])
+            else:
+                initial = WorkflowTemplate.define(template_name.GetValue() or 'New workflow',
+                    [{'tool': 'library.list', 'arguments': {}}],
+                    kind=KINDS[max(0, template_kind.GetSelection())])
+            from .workflow_templates import edit_template as edit_settings
+            candidate = edit_settings(dialog, initial, guard=template_guard, wx_module=wx)
+            if candidate is None: return
+            template_guard()
+            # A new name creates a separate recipe, as in Save reviewed template.
+            previous = next((row for row in records if name_key(row.name) == name_key(candidate.name)), None)
+            candidate = replace(candidate, id=previous.id if previous is not None else uuid4().hex)
+            if previous is not None and wx.MessageBox(
+                    f'Replace the passive typed settings for "{previous.name}"?',
+                    'Replace named template', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, dialog) != wx.YES:
+                return
+            template_guard()
+            if selected != template_selection:
+                raise ValueError('The selected template changed during authoring.')
+            token = template_store.save(candidate, expected_token=token)
+            template_selection = candidate.id, token
+            template_name.ChangeValue(candidate.name)
+            template_kind.SetSelection(KINDS.index(candidate.kind))
+            invalidate()
+            notice = refresh_template_commands()
+            report('Typed template saved. Load its values, choose the current scope, then Preview and Run separately.' + notice)
+        except Exception as exc:
+            report(str(exc))
+
+    def load_template(event=None, *, identity=None):
         nonlocal template_selection
         if not alive or busy:
             return
@@ -354,27 +405,38 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
             if not records:
                 report('No named templates. Preview a plan, enter a name, then choose Save reviewed template.')
                 return
-            choice = wx.SingleChoiceDialog(dialog,
-                'Choose saved steps to review in a fresh plan. Loading executes nothing.',
-                'Named assistant templates',
-                [f'{record.name}; {record.kind}; {len(record.steps)} steps' for record in records])
-            try:
-                if choice.ShowModal() != wx.ID_OK:
-                    return
-                index = choice.GetSelection()
-            finally:
-                choice.Destroy()
+            if identity is None:
+                choice = wx.SingleChoiceDialog(dialog,
+                    'Choose saved steps to review in a fresh plan. Loading executes nothing.',
+                    'Named assistant templates',
+                    [f'{record.name}; {record.kind}; {len(record.steps)} steps' for record in records])
+                try:
+                    if choice.ShowModal() != wx.ID_OK:
+                        return
+                    index = choice.GetSelection()
+                finally:
+                    choice.Destroy()
+            else:
+                index = next((i for i, item in enumerate(records) if item.id == identity), -1)
             template_guard()
             if not 0 <= index < len(records):
                 raise ValueError('Select a named template.')
             record, token = template_store.get(records[index].id, expected_token=token)
+            if record.parameters:
+                from .workflow_templates import choose_values
+                proposed = choose_values(dialog, record, guard=template_guard, wx_module=wx)
+                if proposed is None: return
+                template_guard()
+                template_store.get(record.id, expected_token=token)
+            else:
+                proposed = record.proposal()
             # Paths in step arguments are editable references, never renewed
             # permissions. Every folder/complete-backup approval is selected anew.
             input_folder.ChangeValue('')
             output_folder.ChangeValue('')
             full_backup.SetValue(False)
             planning_source.SetSelection(0)
-            instruction.ChangeValue(json.dumps(record.proposal(), ensure_ascii=False, indent=2))
+            instruction.ChangeValue(json.dumps(proposed, ensure_ascii=False, indent=2))
             template_name.ChangeValue(record.name)
             template_kind.SetSelection(KINDS.index(record.kind))
             template_selection = (record.id, token)
@@ -425,8 +487,9 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
             service.validate(selected_plan)
             token = template_store.save(record, expected_token=token)
             template_selection = (record.id, token)
+            notice = refresh_template_commands()
             report(f'Saved "{record.name}" as {record.kind}. Only typed steps were saved; '
-                   'loading it requires fresh scope review and a separate Run.')
+                   'loading it requires fresh scope review and a separate Run.' + notice)
         except Exception as exc:
             report(str(exc))
 
@@ -449,9 +512,10 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
                 raise ValueError('The selected template changed.')
             template_store.delete(record.id, expected_token=token)
             template_selection = None
+            notice = refresh_template_commands()
             template_name.ChangeValue('')
             invalidate()
-            report('Named template deleted. Existing jobs were preserved.')
+            report('Named template deleted. Existing jobs were preserved.' + notice)
         except Exception as exc:
             report(str(exc))
 
@@ -479,7 +543,7 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
     for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
                                'jobs': jobs, 'help': help_text, 'close': close,
                                'templates': load_template, 'save_template': save_template,
-                               'delete_template': delete_template}.items():
+                               'delete_template': delete_template, 'edit_template': edit_template}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -492,16 +556,17 @@ def create_assistant_dialog(frame, *, wx_module=None, reader_owner=None):
         review=review, buttons=buttons, template_name=template_name, template_kind=template_kind)
     dialog.assistant_handlers = dict(preview=preview, run=run, invalidate=invalidate,
                                     close=close, cancel=cancel.set, templates=load_template,
-                                    save_template=save_template, delete_template=delete_template)
+                                    save_template=save_template, delete_template=delete_template,
+                                    edit_template=edit_template)
     dialog.assistant_service = service
     return dialog
 
 
-def show_assistant(frame, *, reader_owner=None, templates=False):
+def show_assistant(frame, *, reader_owner=None, templates=False, template_id=None):
     dialog = create_assistant_dialog(frame, reader_owner=reader_owner)
-    if templates:
+    if templates or template_id is not None:
         import wx
-        wx.CallAfter(dialog.assistant_handlers['templates'])
+        wx.CallAfter(lambda: dialog.assistant_handlers['templates'](identity=template_id))
     try:
         dialog.ShowModal()
     finally:
@@ -708,3 +773,5 @@ def install_assistant_actions(frame):
         frame.Bind(wx.EVT_MENU, handler, item)
         register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
     frame.menu_bar.Append(menu, '&Tools')
+    from .workflow_templates import install_template_macros
+    install_template_macros(frame, menu, wx_module=wx)

@@ -1,4 +1,5 @@
 """Common backup closure using the canonical interrupted-import producer."""
+from contextlib import closing
 from hashlib import sha256
 import json
 import os
@@ -28,14 +29,27 @@ def partial(tmp_path):
         volume=None, collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
     planned = snapshot(source.parent, source.name).manifest()
     request = prepare_request(app.root, workspace, source, metadata, Config(), expected_manifest=planned)
-    calls = 0
+    committed = []
     def stop():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+        # Source verification now cooperates with cancellation too. Arm this
+        # fixture only after the exact job's first checkpoint is durably visible
+        # to an independent SQLite reader, never by callback invocation count.
+        job = load_request(app.root, request['request_id']).get('job')
+        if job is None:
+            return False
+        with closing(sqlite3.connect(app.root / 'imports.sqlite')) as observer:
+            rows = observer.execute('SELECT ordinal,payload FROM checkpoint WHERE job=? ORDER BY ordinal',
+                                    (job,)).fetchall()
+        if not rows:
+            return False
+        assert len(rows) == 1 and rows[0][0] == 1
+        assert json.loads(rows[0][1])['raw_text'] == 'First exact page.'
+        committed.append(job)
+        return True
     result = app._import_file(workspace, source, **metadata, cancelled=stop,
         _request_id=request['request_id'], _expected_manifest=planned)
     assert result['state'] == 'cancelled' and result['completed'] == 1
+    assert committed and set(committed) == {result['id']}
     record_progress(app.root, request['request_id'], state='cancelled', result=result)
     return app, workspace, source, load_request(app.root, request['request_id']), result
 

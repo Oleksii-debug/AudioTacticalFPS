@@ -412,7 +412,7 @@ class ImportBatchStore:
                 try:
                     request = prepare_request(self.root, workspace, row['source'],
                         self._metadata(row, record), config, request_id=row['request_id'],
-                        expected_manifest=row['manifest'])
+                        expected_manifest=row['manifest'], request_config=record['config'])
                 except (ValueError, OSError, sqlite3.Error, RuntimeError) as exc:
                     self._result(row, {'state': 'failed', 'message': str(exc)[:4000]})
                     save(record)

@@ -20,6 +20,7 @@ from ..research.export_file import _filename, write_binary_export
 SIDECAR = 'state/audio-metadata/choices.json'
 MAX_BYTES = 12 * 1024**2
 SCHEMA = 'carr-audio-metadata-choices/1'
+COVER_IDENTITY_FIELDS = ('codec', 'size', 'sha256', 'width', 'height')
 
 
 def _fields(value, expected):
@@ -143,13 +144,19 @@ def save_choices(root, runtime, plan, *, cancelled=lambda: False):
     return value
 
 
-def export_saved_cover(root, destination, *, cancelled=lambda: False):
-    """Explicitly export inert retained artwork; it is not a metadata approval."""
+def export_saved_cover(root, destination, *, expected_cover=None, cancelled=lambda: False):
+    """Export current inert artwork, optionally bound to a displayed cover identity."""
     _check(cancelled)
     value = load_choices(root)
     if value is None or value['cover'] is None:
         raise ValueError('The last saved review has no retained replacement artwork.')
     raw = validate_choices(value)
+    if expected_cover is not None:
+        cover = value['cover']
+        if (type(expected_cover) is not dict or set(expected_cover) != set(COVER_IDENTITY_FIELDS)
+                or any(type(expected_cover[key]) is not type(cover[key])
+                       or expected_cover[key] != cover[key] for key in COVER_IDENTITY_FIELDS)):
+            raise ValueError('Saved artwork changed since it was displayed. Load its choices again.')
     suffix = Path(destination).suffix.casefold()
     if suffix not in (('.png',) if value['cover']['codec'] == 'png' else ('.jpg', '.jpeg')):
         raise ValueError('Choose the saved artwork\'s actual PNG or JPEG extension.')

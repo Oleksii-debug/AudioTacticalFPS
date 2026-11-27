@@ -327,6 +327,13 @@ jobs:
           & $env:CARR_PYTHON -I -B scripts/windows_audio_metadata_smoke.py 2>&1 | Tee-Object 'ci-results/native-audio-metadata.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed typed template values, projects and semantic review commands
+        if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' }}
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_workflow_templates_smoke.py --installed 2>&1 | Tee-Object 'ci-results/native-workflow-templates.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Require portable state manifests on Windows
         timeout-minutes: 3
         run: |
@@ -623,6 +630,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_audio_metadata_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-audio-metadata.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_workflow_templates_smoke.py --installed 2>&1 | Tee-Object 'ci-results/full-bundle-workflow-templates.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/ocr_catalog_smoke.py --model-directory (Join-Path $bundle 'ocr/tessdata') | Tee-Object 'ci-results/offline-bundle-ocr-catalogue.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_installer_launchers_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/installed-launchers.json'
@@ -850,6 +859,7 @@ jobs:
               'tests/acquisition/test_providers.py',
               'tests/ui/test_native_acquisition.py',
               'tests/e2e/test_import_commit_supervisor.py',
+              'tests/e2e/test_import_legacy_config.py',
               'tests/e2e/test_import_worker_publication.py',
               'tests/e2e/test_import_publication_receipt_integrity.py',
               'tests/assistant/test_translation.py',
@@ -933,6 +943,9 @@ jobs:
               'tests/assistant/test_local_tools.py',
               'tests/assistant/test_workflow_templates.py',
               'tests/assistant/test_workflow_template_handlers.py',
+              'tests/assistant/test_workflow_template_parameters.py',
+              'tests/assistant/test_workflow_templates_cli.py',
+              'tests/assistant/test_workflow_template_editor.py',
               'tests/assistant/test_player_tools.py',
               'tests/assistant/test_search_paging.py',
               'tests/assistant/test_supplied_transcription.py',
@@ -1378,6 +1391,9 @@ jobs:
               'tests/assistant/test_local_tools.py',
               'tests/assistant/test_workflow_templates.py',
               'tests/assistant/test_workflow_template_handlers.py',
+              'tests/assistant/test_workflow_template_parameters.py',
+              'tests/assistant/test_workflow_templates_cli.py',
+              'tests/assistant/test_workflow_template_editor.py',
               'tests/assistant/test_player_tools.py',
               'tests/assistant/test_search_paging.py',
             'tests/assistant/test_supplied_transcription.py',
@@ -1527,6 +1543,7 @@ jobs:
             'tests/storage/test_backup_v4_review.py',
             'tests/speech/test_discovery_cancellation.py',
             'tests/e2e/test_import_commit_supervisor.py',
+            'tests/e2e/test_import_legacy_config.py',
             'tests/e2e/test_import_publication_receipt_integrity.py',
             'tests/ingest/test_initial_publication_completion.py',
             'tests/ui/test_export_destination.py',
@@ -1653,6 +1670,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'keyboard-results/native-evidence-drafts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual typed template keyboard review and project controls
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_workflow_templates_smoke.py --installed 2>&1 | Tee-Object 'keyboard-results/native-workflow-templates.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Preserve actual keyboard and recovery evidence

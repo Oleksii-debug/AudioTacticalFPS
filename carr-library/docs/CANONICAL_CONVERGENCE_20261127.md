@@ -132,3 +132,19 @@ The exact `ad679edd` reader-completion job passed 396 cases in 22 isolated suite
 The authoring executor became unavailable during this session. Recovery and further source work were preserved through immutable Git objects and expected-head branch updates; no unexecuted Python, native test or model inference is labelled executed. Runtime evidence comes from returned completed CI jobs.
 
 The updated specification also identified finite additions beyond main convergence: playback queue/live levels, audio conversion batches, translation document batches, larger bounded intake and typed assistant tool breadth. Their source components and exact validation are tracked separately in candidate readiness. Private model/voice inputs, actual device/NVDA review, signing authority and approved redistribution remain separate qualification requirements.
+
+## Canonical PR191 follow-up
+
+Canonical main advanced from `e3cf74c243d4ef930b526b5648ca9003c0900057` to
+`a333f0723df107aa60b60b8ee2c5ba9f85b25475` through PR191 and source commit
+`c3db8a858430506d97c30ebe94f512e1863982a9`. Only the following two paths changed.
+The reviewed reconciliation is `230dfe09c3f4451d6f5e6355d506d46386101b5a`.
+
+| Canonical path | Canonical blob | Composed behavior |
+| --- | --- | --- |
+| `src/carr_library/research/export_file.py` | `c4608af444fbdb7a1b5c6feb32be82e8b19f3af5` | Add expected target/parent/basic-file checks before native metadata or byte reads, then compare native ChangeTime before hashing. Keep the candidate's existing `_inspect_destination`/`_recheck_scope`, cancellation, bounded fingerprints, no-clobber publication and cleanup receipt. |
+| `tests/reader/test_export_reconciliation.py` | `d29682c151a0566d298116b8b422e412f8abd55f` | Retain all 16 existing candidate cases and the canonical four actual replacement cases; additionally observe native metadata calls. Both pre-write and post-staging replacement must be rejected without opening unrelated content. |
+
+The canonical main commit is retained as integration ancestry. Source review is
+complete; the 20-case composed regression selection must execute on the new
+candidate. Earlier export PASS records do not qualify this changed file.

@@ -373,3 +373,49 @@ def test_actual_named_load_controls_never_restore_paths_or_save_approval(native_
     view.state.scenario = scenario
     assert ui.show_audio_metadata(session.frame) is None
     assert all(widget.destroyed for widget in view.widgets.values())
+
+
+def test_saved_cover_picker_keeps_its_displayed_identity_when_record_is_replaced(native_view):
+    from carr_library.audio import metadata_review
+    from carr_library.durable_state import atomic_json
+    view, session = native_view, native_view.session
+    reviewed(session)
+    root = session.frame.library.root
+    first = metadata_review.load_choices(root)
+    source_before = session.source.read_bytes()
+    def chunk(kind, data):
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
+    second_cover = session.root / 'different-reviewed-cover.png'
+    second_cover.write_bytes(b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', 2, 2, 8, 2, 0, 0, 0))
+        + chunk(b'IDAT', zlib.compress((b'\0' + b'\x80\x40\x20' * 2) * 2)) + chunk(b'IEND', b''))
+    second_plan = ui.review_metadata(session.runtime, session.source, session.form.output,
+        MetadataChanges(dict(session.form.changes.tags), 'replace', str(second_cover)))
+    second = metadata_review.save_choices(root, session.runtime, second_plan)
+    assert first['cover']['codec'] == second['cover']['codec'] == 'png'
+    assert (first['cover']['width'], first['cover']['height']) == (second['cover']['width'], second['cover']['height'])
+    assert first['cover']['sha256'] != second['cover']['sha256']
+    atomic_json(root / metadata_review.SIDECAR, first, replace=True)
+    destination = session.output / 'displayed-artwork.png'
+    view.pickers.append(destination)
+    def scenario(dialog):
+        view.press('Load saved tag choices for a new review')
+        assert session.perform()[1] is None
+        assert dialog.metadata_controller.saved_choices == first
+        def replace_while_picker_is_open(picker):
+            assert not destination.exists()
+            atomic_json(root / metadata_review.SIDECAR, second, replace=True)
+            # Even a nested UI delivery may not retarget the already open picker.
+            dialog.metadata_controller.saved_choices = second
+        view.state.picker_scenario = replace_while_picker_is_open
+        view.press('Export saved artwork to a new file')
+        value, error, _ = session.perform()
+        assert value is None and isinstance(error, ValueError)
+        assert 'changed since it was displayed' in str(error)
+        assert not destination.exists()
+        assert dialog.metadata_controller.plan is None
+        assert not view.widgets['Save reviewed audio copy'].enabled
+    view.state.scenario = scenario
+    assert ui.show_audio_metadata(session.frame) is None
+    assert not destination.exists() and not Path(session.form.output).exists()
+    assert metadata_review.load_choices(root) == second and session.source.read_bytes() == source_before
+    assert all(widget.destroyed for widget in view.widgets.values()) and not view.forbidden

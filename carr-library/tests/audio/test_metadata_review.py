@@ -138,3 +138,32 @@ def test_passive_cover_byte_bound_is_checked_before_base64_decode(actual, tmp_pa
     monkeypatch.setattr(saved, 'b64decode', lambda *a, **k: pytest.fail('An oversized cover was decoded.'))
     with pytest.raises(ValueError, match='byte count'):
         saved.validate_choices(value)
+
+
+def test_displayed_cover_identity_refuses_a_second_actual_review_before_destination_open(
+        actual, tmp_path, monkeypatch):
+    app, runtime, source, _cover, plan = reviewed(actual, tmp_path)
+    first = saved.save_choices(app.root, runtime, plan)
+    expected = {key: first['cover'][key] for key in saved.COVER_IDENTITY_FIELDS}
+    source_before = source.read_bytes()
+    second_cover = tmp_path / 'second-reviewed-cover.png'
+    second_cover.write_bytes(_helpers['png'](width=31, height=23))
+    second_plan = review_metadata(runtime, source, plan.output,
+        MetadataChanges(dict(plan.changes.tags), 'replace', str(second_cover)))
+    second = saved.save_choices(app.root, runtime, second_plan)
+    assert first['cover']['codec'] == second['cover']['codec'] == 'png'
+    assert first['cover']['sha256'] != second['cover']['sha256']
+    destination = tmp_path / 'displayed-cover.png'
+    with monkeypatch.context() as refused:
+        refused.setattr(saved, 'write_binary_export',
+            lambda *a, **k: pytest.fail('A changed saved cover reached destination publication.'))
+        with pytest.raises(ValueError, match='changed since it was displayed'):
+            saved.export_saved_cover(app.root, destination, expected_cover=expected)
+    assert not destination.exists() and not plan.output.exists()
+    assert source.read_bytes() == source_before and saved.load_choices(app.root) == second
+
+    # A separate explicit API request without a displayed identity still means
+    # the current record; it does not authorize an audio conversion or overwrite.
+    receipt = saved.export_saved_cover(app.root, destination)
+    assert receipt.path == destination and destination.read_bytes() == second_cover.read_bytes()
+    assert source.read_bytes() == source_before and not plan.output.exists()

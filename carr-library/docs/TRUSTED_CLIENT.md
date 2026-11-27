@@ -1,9 +1,12 @@
 # Signed permissions and offline updates
 
-This supplies neutral client contracts for V3-16, V3-17, V3-18 and V3-22.
-It does not select a production issuer, endpoint, account system, billing rule,
-signing key or update host. No private owner runtime or signing service was
-copied. No model payload is downloaded.
+The client implements signed permission verification, offline signed updates and
+an explicitly selected portable activation profile for V3-16, V3-17, V3-18 and
+V3-22. The product-neutral `delivery_contract` remains the provider boundary;
+the `security` modules implement the verification and transaction behavior below.
+No production issuer, endpoint, account system, billing rule, signing key or
+update host is selected. No private owner runtime, signing service or model
+payload is supplied.
 
 The current private installation remains perpetual and offline. Importing the
 module does not gate existing application operations, start a network task or
@@ -20,8 +23,8 @@ only when trusted host code supplies configured clients.
 | Renewal | Explicitly enabled idle scheduler, one background request, synthetic 7/14-day cadence, separate expiry/grace, nonce binding, persistent backoff and changed-terms review | Configured signed-renewal provider and canonical OS-vault profile/reference |
 | Update | Real python-tuf verification of roles, signatures, version chains, expiry, target lengths/hashes | Independent bootstrap root/digest and product/channel/build policy |
 | Offline repository | Bounded local metadata/target fetcher without network or redirect fallback | Owner-produced signed repository and application bundle |
-| Installation | Bounded ZIP staging, existing installer verifier, full-library backup, program activation, health check and rollback recovery | External restart supervisor and real idle lease preventing new jobs |
-| Native UI | Named status/terms controls, explicit acceptance before import, background offline check/download | Actual production authority and activation supervisor remain unconfigured |
+| Installation | Bounded ZIP staging, complete-library backup, activation/health/recovery, plus the external portable handoff with real installation leases, owned child cleanup and explicit restart | Owner-configured external helper, independently retained current manifest identity and qualified signed bundle; a managed setup requires its separate authenticated handoff |
+| Native UI | Named status/terms controls, explicit acceptance before import, background offline check/download and portable activation status | Production authority remains unconfigured; activation is a separate external-helper action |
 
 ## Permission format
 
@@ -210,17 +213,21 @@ responsibility. Manual review and download remain separate explicit actions.
 
 `UpdateTransaction` requires disjoint program, update-work and data directories,
 with program/work on the same filesystem. Its host idle lease must prevent
-new library/audio/jobs for the entire transaction. A running application must
-use an external restart supervisor outside the program directory. A no-op
-lease is permitted only in explicit synthetic fixtures.
+new library/audio/jobs for the entire transaction. The implemented
+`security.handoff.PortableUpdateHandoff` provides this boundary for the explicitly
+sealed portable profile. The helper, its interpreter, verifier and working
+directory must remain outside the program, update workspace and research data.
+A no-op lease is permitted only in explicit synthetic fixtures.
 
 B is verified/staged, the existing complete-library backup is created, the
 transaction is journaled, A is retained, and B is placed at its final program
 path. The installer runs there, followed by health and exact installed-version
-checks. Only then does the protected build anchor advance. Failure before that
-anchor restores A and retains backup/failed candidate. Crash recovery
-distinguishes an uncommitted B from a committed build; it cannot silently roll
-back a protected committed version.
+checks. Only then does the protected build anchor advance. An ordinary failure
+with acknowledged child cleanup before that anchor restores A and retains the
+backup/failed candidate. Unconfirmed native launch or cleanup preserves the
+journal and program paths instead of moving files through a potentially live
+child. Crash recovery distinguishes an uncommitted B from a committed build;
+it cannot silently roll back a protected committed version.
 
 `WindowsBundleAdapter` receives the existing reviewed
 `packaging/install_windows.py:verify` from the installed host. Proposed code is
@@ -233,12 +240,29 @@ commit. When the canonical refresh producer supplies `application-source.json`,
 its inventoried hash, source commit, project version and application wheel digest
 must also agree. This uses existing provenance, not a second signature format.
 
-A production restart/idle supervisor is not implemented by this adoption.
-Independent root material, a real signed Windows bundle and its qualification
-are also still required before managed activation can be exposed. UI exposes
-working check/download, without an unimplemented activation button. Update
-server transport is absent; explicit manual or configured automatic local
-metadata checks use the same verified repository client.
+The portable handoff acquires the persistent installation lease exclusively;
+the launcher and application entries hold it shared. It refuses active or
+unconfirmed owners and requires the sealed `Protocol=2`,
+`Owner=windows-job-receipt-v1` profile. The guardian and installer/health paths
+retain exact process handles through bounded cleanup; durable owner receipts
+veto later activation when termination was not acknowledged. An explicit
+`restart()` after verified activation launches the existing native launcher.
+A returned PID means restart was requested, not that desktop, devices or NVDA
+have passed acceptance. See [portable activation and recovery](PORTABLE_UPDATES.md)
+for the profile, helper configuration and recovery procedure.
+
+This is implemented source, but production deployment still needs independent
+root material, a provisioned protected anchor, reviewed owner policy and an actual
+signed Windows bundle. The portable helper deliberately refuses standard managed
+installations: their authenticated setup handoff must preserve Repair, Uninstall
+and installation ownership together. The existing standard installer lifecycle
+does not make a generic portable folder swap a managed updater.
+
+The native trust dialog exposes working review/check/download and activation
+status; it does not activate or restart from an idle poll. Signed local repository
+transport is implemented by `LocalRepositoryClient`. A publisher-specific online
+renewal adapter or HTTP update repository remains separate owner integration;
+there is no default online endpoint or automatic account/signing service.
 
 This transaction delegates backup and restoration to the current canonical
 complete-library backup. It does not introduce a competing journal, media
@@ -246,8 +270,10 @@ producer or reading-session schema. Application-only updates retain external
 input/output paths rather than silently retargeting them. Tests verify quotation text, research notes,
 bookmarks/resume, saved/recovery reading derivatives, unchanged retained
 queue/voice/license/output bytes and restoration of the pre-update backup.
-The tiny synthetic executable and real subprocess health check do not
-represent an actual Windows application wheel installation.
+The original synthetic transaction fixtures remain distinct from the later
+compiled-launcher, real-process, lease and installed-origin Windows gates.
+Neither fixture keys nor an installed test wheel establish a production issuer,
+publisher signature or approved rollout.
 
 ## Running and verification
 
@@ -288,7 +314,12 @@ read-only status, actual terms and checkbox acceptance; its synthetic signing
 key does not establish production authority. Native `NOT_RUN` exits nonzero
 and cannot count as passing. Linux skips the native vault test explicitly.
 Read exact-commit CI artifacts before claiming Windows acceptance; manual NVDA
-use and production bundle activation remain separate gates.
+use and production bundle activation remain separate gates. The current
+[source and execution readiness ledger](V3_RELEASE_READINESS.md) records the
+applicable commit and historical evidence. The additional
+[portable/installed lifetime gates](PORTABLE_UPDATES.md#required-qualification)
+cover the implemented activation owner; they do not provision an issuer or
+qualify a later bundle automatically.
 
 Primary upstream APIs reviewed:
 

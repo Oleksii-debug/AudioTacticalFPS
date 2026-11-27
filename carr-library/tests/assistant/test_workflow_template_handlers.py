@@ -200,3 +200,89 @@ def test_template_actions_do_not_run_while_proposal_worker_is_active(native_hand
     assert TemplateStore(e.app.root).path.read_bytes() == before
     assert e.dialog.assistant_service.jobs() == ()
     e.handlers['cancel'](); e.executor.complete(); e.drain()
+
+
+def test_parameterized_macro_load_clears_scope_and_requires_fresh_preview(native_handlers, monkeypatch):
+    from carr_library.assistant.templates import review_request
+    from carr_library.ui import workflow_templates
+    e = native_handlers
+    record = WorkflowTemplate.define('Typed new library', [
+        {'tool': 'library.create', 'arguments': {'name': {'$parameter': 'name'}}}],
+        {'name': {'kind': 'text', 'label': 'Library name', 'example': 'Example only'}})
+    TemplateStore(e.app.root).save(record, expected_token=None)
+    monkeypatch.setattr(workflow_templates, 'choose_values',
+        lambda *args, **kwargs: review_request(record, {'name': 'New explicit use'}))
+    e.controls['input'].ChangeValue('/old/permission')
+    e.controls['full_backup'].SetValue(True)
+    e.handlers['templates'](identity=record.id)
+    assert not e.controls['buttons']['run'].IsEnabled()
+    assert not e.dialog.assistant_service.jobs() and not e.app.workspaces()
+    assert e.controls['input'].GetValue() == '' and e.controls['full_backup'].GetValue() is False
+    e.handlers['preview']()
+    assert e.controls['buttons']['run'].IsEnabled()
+    assert not e.dialog.assistant_service.jobs() and not e.calls
+
+
+def test_catalogue_changed_during_parameter_choice_cannot_load_old_recipe(native_handlers, monkeypatch):
+    from dataclasses import replace
+    from carr_library.assistant.templates import review_request
+    from carr_library.ui import workflow_templates
+    e = native_handlers
+    record = WorkflowTemplate.define('Typed recipe', [
+        {'tool': 'library.create', 'arguments': {'name': {'$parameter': 'name'}}}],
+        {'name': {'kind': 'text', 'label': 'Name', 'example': 'Example'}})
+    store = TemplateStore(e.app.root); token = store.save(record, expected_token=None)
+    old_goal = e.controls['instruction'].GetValue()
+    def changed(*args, **kwargs):
+        store.save(replace(record, summary='New authoritative settings'), expected_token=token)
+        return review_request(record, {'name': 'Old review'})
+    monkeypatch.setattr(workflow_templates, 'choose_values', changed)
+    e.handlers['templates'](identity=record.id)
+    assert e.controls['instruction'].GetValue() == old_goal
+    assert 'changed' in e.controls['review'].GetValue()
+    assert not e.dialog.assistant_service.jobs()
+
+
+def test_typed_editor_replacement_has_default_no_and_catalogue_cas(native_handlers, monkeypatch):
+    from dataclasses import replace
+    from carr_library.ui import workflow_templates
+    e = native_handlers; original, token = reviewed_template(e)
+    store = TemplateStore(e.app.root); before = store.path.read_bytes()
+    monkeypatch.setattr(workflow_templates, 'edit_template',
+        lambda *a, **k: replace(original, summary='Edited typed definition'))
+    confirmation(e, False)
+    e.handlers['edit_template']()
+    assert store.path.read_bytes() == before
+    confirmation(e, callback=lambda: store.save(replace(original, summary='Concurrent copy'), expected_token=token))
+    e.handlers['edit_template']()
+    assert store.get(original.id)[0].summary == 'Concurrent copy'
+    assert 'changed' in e.controls['review'].GetValue()
+    assert not e.dialog.assistant_service.jobs()
+
+
+@pytest.mark.parametrize('operation', ['save_template', 'edit_template', 'delete_template'])
+def test_committed_template_action_keeps_shortcut_registration_failure_visible(
+        native_handlers, monkeypatch, operation):
+    from dataclasses import replace
+    from carr_library.ui import workflow_templates
+    e = native_handlers
+    record, old_token = reviewed_template(e, 'Explicit saved recipe')
+    def refused(*args, **kwargs):
+        raise ValueError('Synthetic registry capacity boundary')
+    monkeypatch.setattr(workflow_templates, 'refresh_template_macros', refused)
+    monkeypatch.setattr(workflow_templates, 'edit_template',
+        lambda *args, **kwargs: replace(record, summary='Edited typed definition'))
+    confirmation(e)
+    e.handlers[operation]()
+    rows, token = TemplateStore(e.app.root).list()
+    if operation == 'delete_template':
+        assert rows == ()
+        assert 'Named template deleted.' in e.controls['review'].GetValue()
+    else:
+        assert len(rows) == 1 and rows[0].id == record.id
+        assert ('Saved "' if operation == 'save_template' else 'Typed template saved.') in e.controls['review'].GetValue()
+        if operation == 'edit_template':
+            assert rows[0].summary == 'Edited typed definition' and token != old_token
+    assert 'Shortcut inventory needs attention' in e.controls['review'].GetValue()
+    assert 'capacity boundary' in e.controls['review'].GetValue()
+    assert e.dialog.assistant_service.jobs() == ()
