@@ -1,6 +1,9 @@
 """Accepted ASR and shared policy use the one typed private-state inventory."""
 from hashlib import sha256
 import json
+from pathlib import Path
+import runpy
+from types import SimpleNamespace
 
 import pytest
 
@@ -112,3 +115,76 @@ def test_backup_obeys_existing_asr_lock_before_reading_mutable_status(retained, 
     with pytest.raises(ValueError):
         create_backup(app, tmp_path / 'malformed-after-release')
     assert opened and not (tmp_path / 'malformed-after-release').exists()
+
+
+@pytest.fixture(params=('receipts-v1', 'whisper-v5-manifest-v1'))
+def assistant_retained(request, tmp_path):
+    # Reuse the actual accepted runner fixtures: synthetic children, exact
+    # configuration/model identities, real receipts and the one ASR job store.
+    helpers = runpy.run_path(str(Path(__file__).parents[1] /
+                                'assistant' / 'test_library_transcription.py'))
+    return helpers['prepared'].__wrapped__(SimpleNamespace(param=request.param), tmp_path)
+
+
+@pytest.mark.parametrize('state', ('paused', 'complete'))
+def test_shared_assistant_asr_backup_keeps_child_but_not_relocated_plan_authority(
+        assistant_retained, tmp_path, monkeypatch, state):
+    from carr_library import transcription
+    from carr_library.assistant import AssistantService
+
+    app, workspace, native, service, source, outputs, plan, worker, models = assistant_retained
+    original_source = source.read_bytes()
+    identity = service.submit(plan)
+
+    def stopped_after_actual_child():
+        # Metadata existence is permitted on Windows; never open live status.
+        return state == 'paused' and native.jobs_root.exists() and any(
+            (directory / 'job_status.json').exists() for directory in native.jobs_root.iterdir()
+            if not directory.name.startswith('.'))
+
+    result = service.run(identity, cancelled=stopped_after_actual_child)
+    assert result.status == state, result
+    saved = service.store.load(identity)
+    intent = saved['steps'][0]['intent']
+    child_id = intent['transcription_job']
+    child = native.get(child_id)
+    assert child['status'] == ('stopped' if state == 'paused' else 'completed')
+    assert len(native.list()) == 1
+    if state == 'complete':
+        assert native.verify(child_id)['done'] == 1
+        assert intent['transcription_export']
+    else:
+        assert 'transcription_export' not in intent
+        assert child['receipts'] == []  # Stopped cache is not accepted output.
+    destination = outputs / 'Approved transcript'
+    exported = ({path.relative_to(outputs): path.read_bytes()
+                 for path in destination.rglob('*') if path.is_file()}
+                if destination.exists() else {})
+    source.unlink()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Passive backup or relocated assistant plan started another ASR child.')
+
+    monkeypatch.setattr(transcription, 'run_process', forbidden)
+    folder = tmp_path / 'backup'
+    digest = create_backup(app, folder)
+    target = restore_backup(folder, tmp_path / 'restored-assistant', digest)
+    restored_app = LibraryApp(target)
+    restored = AssistantService(restored_app)
+    assert restored.store.load(identity) == saved
+    recovered = restored_app.transcription(workspace)
+    assert recovered.get(child_id) == child
+    retained_source = recovered._path(child_id) / 'input' / child['sources'][0]['filename']
+    assert retained_source.read_bytes() == original_source
+    if state == 'complete':
+        assert recovered.verify(child_id)['receipts'] == child['receipts']
+    # The plan's original data root/output scope is not rewritten by restore.
+    with pytest.raises(PermissionError, match='another data directory'):
+        restored.resume(identity)
+    assert restored.store.load(identity) == saved
+    assert len(recovered.list()) == 1
+    assert recovered.get(child_id) == child
+    assert not (target / 'Approved transcript').exists()
+    assert ({path.relative_to(outputs): path.read_bytes()
+             for path in destination.rglob('*') if path.is_file()}
+            if destination.exists() else {}) == exported
