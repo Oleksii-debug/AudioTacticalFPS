@@ -385,6 +385,18 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
     record_progress(root, request_id, state='running')
     result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
                       'timeout': timeout}, timeout=timeout, cancelled=cancelled)
+    if result.get('state') in ('cancelled', 'timed_out'):
+        # A stop request can race the durable commit and precede only the reply.
+        # Reconcile after _invoke has stopped/reaped the child; never replay work.
+        from .publication import completed_request
+        try:
+            completed = completed_request(root, workspace, request_id, timeout=min(timeout, 1.0))
+        except (OSError, ValueError, sqlite3.Error):
+            completed = None
+            result = dict(result, message=result.get('message', '') +
+                          ' Publication could not be verified within the recovery bound; resume to check it.')
+        if completed is not None:
+            result = completed
     result = dict(result, request_id=request_id, isolated=True)
     record_progress(root, request_id, state=result.get('state', 'failed'), result=result)
     return result

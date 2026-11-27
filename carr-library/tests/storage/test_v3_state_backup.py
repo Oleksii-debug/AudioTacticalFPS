@@ -185,27 +185,61 @@ def test_snapshot_detects_changes_to_already_copied_tree(tmp_path, mutation):
     assert modified
 
 
-def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_path, monkeypatch):
+def test_snapshot_rejects_same_metadata_content_change_before_publication(populated, tmp_path, monkeypatch):
+    """Windows timestamps can leave an in-place, equal-length update invisible."""
     from carr_library import state_backup
-    root, target = tmp_path / 'source', tmp_path / 'snapshot'
-    root.mkdir()
-    target.mkdir()
-    source = root / 'a.json'
-    source.write_bytes(b'old')
-    (root / 'b.json').write_bytes(b'other file')
-    # Windows can keep creation-time and last-write metadata stable until an
-    # open writer closes. Model that stat behavior while changing real bytes.
-    monkeypatch.setattr(state_backup, '_stamp', lambda st: (st.st_dev, st.st_ino, st.st_size))
-    changed = False
-    def mutate_after_copy():
-        nonlocal changed
-        if not changed and (target / 'b.json').exists():
-            source.write_bytes(b'new')
-            changed = True
+
+    app, *_ = populated
+    source = app.root / 'state/speech/settings.json'
+    original = source.read_bytes()
+    replacement = original.replace(b'installed-voice', b'different-voice')
+    assert replacement != original and len(replacement) == len(original)
+    before = source.stat()
+    # Windows st_ctime is creation time; POSIX ctime is not restorable. Model
+    # that distinction while retaining real file identity, size and mtime.
+    monkeypatch.setattr(state_backup, '_stamp', lambda value:
+        (value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns))
+    modified = False
+
+    def concurrent_writer():
+        nonlocal modified
+        stages = list(tmp_path.glob('.carr-library-backup-*'))
+        copied = bool(stages and (stages[0] / 'state/studio/projects/project.json').exists())
+        if copied and not modified:
+            modified = True
+            source.write_bytes(replacement)
+            os.utime(source, ns=(before.st_atime_ns, before.st_mtime_ns))
         return False
-    with pytest.raises(ValueError, match='changed during backup'):
-        snapshot_state(root, target, cancelled=mutate_after_copy)
-    assert changed and (target / 'a.json').read_bytes() == b'old'
+
+    destination = tmp_path / 'backup'
+    with pytest.raises((ValueError, OSError), match='changed|snapshot|backup'):
+        create_backup(app, destination, cancelled=concurrent_writer)
+    assert modified and source.read_bytes() == replacement
+    assert not destination.exists()
+
+
+def test_snapshot_revalidation_can_be_cancelled_before_publication(populated, tmp_path, monkeypatch):
+    app, *_ = populated
+    source = app.root / 'state/speech/settings.json'
+    source_reads = 0
+    original_open = Path.open
+
+    def observe_source_read(path, mode='r', *args, **kwargs):
+        nonlocal source_reads
+        if path == source and mode == 'rb':
+            source_reads += 1
+        return original_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', observe_source_read)
+
+    def cancel_during_revalidation():
+        return source_reads >= 2
+
+    destination = tmp_path / 'backup'
+    with pytest.raises(InterruptedError, match='cancelled'):
+        create_backup(app, destination, cancelled=cancel_during_revalidation)
+    assert source_reads == 2
+    assert not destination.exists()
 
 
 @pytest.mark.parametrize('state_kind', ['absent', 'empty', 'zero-byte'])
@@ -261,3 +295,26 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
     assert restored.search(workspace, 'Legacy')[0].quote == 'Legacy'
     assert not (restored.root / 'state').exists()
+
+
+def test_same_size_changed_bytes_are_rechecked_when_metadata_is_unchanged(tmp_path, monkeypatch):
+    from carr_library import state_backup
+    root, target = tmp_path / 'source', tmp_path / 'snapshot'
+    root.mkdir()
+    target.mkdir()
+    source = root / 'a.json'
+    source.write_bytes(b'old')
+    (root / 'b.json').write_bytes(b'other file')
+    # Windows can keep creation-time and last-write metadata stable until an
+    # open writer closes. Model that stat behavior while changing real bytes.
+    monkeypatch.setattr(state_backup, '_stamp', lambda st: (st.st_dev, st.st_ino, st.st_size))
+    changed = False
+    def mutate_after_copy():
+        nonlocal changed
+        if not changed and (target / 'b.json').exists():
+            source.write_bytes(b'new')
+            changed = True
+        return False
+    with pytest.raises(ValueError, match='changed during backup'):
+        snapshot_state(root, target, cancelled=mutate_after_copy)
+    assert changed and (target / 'a.json').read_bytes() == b'old'

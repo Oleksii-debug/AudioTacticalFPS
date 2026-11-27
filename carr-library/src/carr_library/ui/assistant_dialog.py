@@ -6,7 +6,8 @@ from pathlib import Path
 import threading
 from uuid import uuid4
 
-from ..durable_state import atomic_bytes
+from ..research.export_file import write_export
+from .export_destination import confirm_export_destination
 
 
 def show_assistant(frame):
@@ -325,9 +326,10 @@ def show_provider_settings(frame):
         status.SetFocus()
 
     def exchange(event, *, importing=False):
+        library = frame.library
         picker = wx.FileDialog(dialog, 'Import non-secret profiles' if importing else 'Export non-secret profiles',
             defaultFile='provider-profiles.json', wildcard='JSON (*.json)|*.json',
-            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else (wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT))
+            style=(wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) if importing else wx.FD_SAVE)
         try:
             if picker.ShowModal() != wx.ID_OK:
                 return
@@ -339,7 +341,15 @@ def show_provider_settings(frame):
                 refresh()
                 status.ChangeValue('Profiles imported disabled. Reconnect each account to its credential.')
             else:
-                atomic_bytes(path, store.export_json().encode('utf-8'), replace=path.exists())
+                if store.directory != (library.root / 'state' / 'providers').resolve():
+                    raise ValueError('The library changed. Reopen provider settings before exporting.')
+                approval = confirm_export_destination(dialog, path, private_root=library.root,
+                                                       title='Replace provider profiles')
+                if approval is None:
+                    return
+                if frame.library is not library:
+                    raise ValueError('The library changed. Reopen provider settings before exporting.')
+                write_export(path, store.export_json(), private_root=library.root, approval=approval)
                 status.ChangeValue('Exported non-secret profiles. No API keys or vault references are included.')
         except Exception as exc:
             status.ChangeValue(str(exc))
