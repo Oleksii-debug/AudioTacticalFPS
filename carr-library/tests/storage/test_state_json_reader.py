@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 
 import pytest
 
@@ -18,7 +19,10 @@ try:
         stream.write(b'{"done":1}')
         stream.flush()
         os.fsync(stream.fileno())
-    os.replace(staged, target)
+    if sys.argv[2] == 'move-current':
+        os.replace(target, target.with_suffix('.moved'))
+    else:
+        os.replace(staged, target)
 except OSError as error:
     print(json.dumps({'published': False, 'winerror': getattr(error, 'winerror', None)}))
     raise SystemExit(2)
@@ -29,15 +33,16 @@ finally:
 '''
 
 
-def replace_in_child(path):
+def replace_in_child(path, *, move_current=False):
     process = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8', '-c',
-                              REPLACE_ONCE, str(path)], capture_output=True,
+                              REPLACE_ONCE, str(path),
+                              'move-current' if move_current else 'replace'], capture_output=True,
                              text=True, encoding='utf-8', timeout=15)
     assert process.returncode in (0, 2), process.stderr
     return json.loads(process.stdout)
 
 
-def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path, monkeypatch):
+def test_production_json_reader_releases_coherent_snapshot_for_atomic_replacement(tmp_path, monkeypatch):
     target = tmp_path / 'стан.json'
     target.write_bytes(b'{"done":0}')
     # This negative control demonstrates the real Windows sharing collision.
@@ -51,28 +56,74 @@ def test_production_json_reader_allows_actual_atomic_child_replacement(tmp_path,
         assert ordinary == {'published': True}
     target.write_bytes(b'{"done":0}')
 
-    original = state._open_json_file
-    observed, streams = [], []
+    original, streams, results, errors = state._open_json_file, [], [], []
+    reading, release = threading.Event(), threading.Event()
 
-    def publish_while_production_handle_is_open(path):
+    class HeldSnapshot:
+        def __init__(self, stream):
+            self.stream = stream
+        def fileno(self):
+            return self.stream.fileno()
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            self.stream.close()
+        def read(self, maximum):
+            reading.set()
+            assert release.wait(10), 'The test did not release the live snapshot.'
+            return self.stream.read(maximum)
+
+    def hold_snapshot(path):
         stream = original(path)
         streams.append(stream)
-        try:
-            assert not os.get_inheritable(stream.fileno())
-            observed.append(replace_in_child(path))
-            assert observed[-1] == {'published': True}
-        except BaseException:
-            stream.close()
-            raise
-        return stream
+        assert not os.get_inheritable(stream.fileno())
+        return HeldSnapshot(stream)
 
-    monkeypatch.setattr(state, '_open_json_file', publish_while_production_handle_is_open)
-    # The already-open snapshot remains coherent after the new state is published.
-    assert state.read_json(target) == {'done': 0}
-    assert observed == [{'published': True}]
+    def read_snapshot():
+        try:
+            results.append(state.read_json(target))
+        except BaseException as error:
+            errors.append(error)
+
+    monkeypatch.setattr(state, '_open_json_file', hold_snapshot)
+    reader = threading.Thread(target=read_snapshot)
+    reader.start()
+    try:
+        assert reading.wait(10), 'The production reader never opened its snapshot.'
+        observed = replace_in_child(target)
+        if os.name == 'nt':
+            # Legacy MoveFileEx replacement can reject an open target even
+            # when its handle permits delete sharing. It must remain atomic.
+            assert observed['published'] is False and observed['winerror'] in (5, 32, 33)
+        else:
+            assert observed == {'published': True}
+    finally:
+        release.set()
+        reader.join(timeout=15)
+    assert not reader.is_alive() and errors == []
+    assert results == [{'done': 0}]
     assert all(stream.closed for stream in streams)
     monkeypatch.setattr(state, '_open_json_file', original)
+    assert replace_in_child(target) == {'published': True}
     assert state.read_json(target) == {'done': 1}
+
+
+def test_production_handle_shares_delete_for_actual_child_name_move(tmp_path):
+    target = tmp_path / 'state.json'
+    target.write_bytes(b'{"done":0}')
+    with target.open('rb'):
+        ordinary = replace_in_child(target, move_current=True)
+    if os.name == 'nt':
+        assert ordinary['published'] is False and ordinary['winerror'] in (5, 32, 33)
+    else:
+        assert ordinary == {'published': True}
+        target.with_suffix('.moved').replace(target)
+    with state._open_json_file(target) as stream:
+        assert not os.get_inheritable(stream.fileno())
+        assert replace_in_child(target, move_current=True) == {'published': True}
+        assert stream.read() == b'{"done":0}'
+    assert stream.closed and not target.exists()
+    assert target.with_suffix('.moved').read_bytes() == b'{"done":0}'
 
 
 @pytest.mark.parametrize('kind', ['file', 'ancestor', 'hardlink'])

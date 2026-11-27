@@ -381,7 +381,7 @@ def _cleanup(stage, identity, parent_fd):
 def _start_here(application_name, source_name, reused):
     source_note = ("Архів джерел використано повторно: він залишається у попередньому місці. "
                    "Візьміть його разом з архівом програми.\n" if reused else "")
-    return ("Universal Research Library — встановлення у Windows x64\n\n"
+    return ("РЕЗОНАНС / RESONANCE — встановлення у Windows x64\n\n"
             "1. Потрібні обидва ZIP-архіви:\n"
             + application_name + "\n" + source_name + "\n" + source_note + "\n"
             "2. Розпакуйте ОБИДВА архіви в ОДНУ Й ТУ САМУ НОВУ папку призначення. "
@@ -390,10 +390,32 @@ def _start_here(application_name, source_name, reused):
             "3. У спільній папці повинні бути Install.cmd та ocr-corresponding-source.tar. "
             "Лише після розпакування обох архівів запустіть Install.cmd і дочекайтеся "
             "успішного завершення встановлення. Самого архіву програми недостатньо.\n\n"
-            "4. Запускайте програму через ResearchLibrary.cmd. Для перевірки встановлення "
-            "використовуйте CheckInstallation.cmd.\n\n"
+            "4. Після успішного встановлення відкрийте ResearchLibrary.exe, якщо він є; "
+            "інакше ResearchLibrary.cmd. CheckInstallation.cmd перевіряє встановлені компоненти. "
+            "Інтерфейс переважно англійською: Alt відкриває меню, Tab переміщує фокус.\n\n"
+            "5. Для першої перевірки відкрийте Voice → Voice reader and reading copy... "
+            "(початково Ctrl+Alt+V). Дочекайтеся списку голосів, виберіть установлений "
+            "SAPI 5 голос і введіть короткий текст його мовою. Для цього читання FFmpeg не потрібний. "
+            "F6 читає, F7 ставить на паузу або продовжує, F8 зупиняє. "
+            "Save reading copy / Ctrl+S зберігає чернетку для відновлення; "
+            "Save as створює окремий читальний проєкт. Якщо потрібного голосу немає, "
+            "перегляньте Audio Studio → Local voice engines... Нові голоси й нейромоделі "
+            "автоматично не встановлюються.\n\n"
+            "6. FFmpeg не входить до передаваних ZIP. Для функцій аудіостудії, яким він потрібний, "
+            "відкрийте Audio Studio → Local audio runtime setup... → "
+            "Download and install reviewed runtime... Перегляньте джерело, SHA256 й умови "
+            "в діалозі та явно підтвердьте завантаження, якщо згодні. Дочекайтеся повідомлення "
+            "verified and active for this library. Пакет установлюється окремо від програми "
+            "й не додається до цих архівів або резервної копії бібліотеки.\n"
+            "Якщо точний ZIP або повна перевірена папка вже є локально, виберіть "
+            "Exact reviewed full-build ZIP або Existing complete runtime folder, "
+            "потім Browse local source... і Verify and select local source. "
+            "Під час роботи доступні Current operation progress (типово Ctrl+Alt+G) "
+            "та Cancel current setup. Прочитайте остаточний стан після скасування: "
+            "уже збережена реєстрація залишається збереженою.\n\n"
+            "Докладніше — START_UK.txt та START_V3_UK.txt у спільній папці програми. "
             "delivery-verification.json містить точну версію коду й контрольні суми архівів. "
-            "Цей приватний пакет призначений для локального встановлення.\n")
+            "Цей приватний тестовий пакет призначений для локального встановлення.\n")
 
 
 def _require_transferable_audio_inventory(data):

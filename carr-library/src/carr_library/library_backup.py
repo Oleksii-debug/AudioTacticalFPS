@@ -114,12 +114,20 @@ def create_backup(app, destination, *, include_generated=False, cancelled=lambda
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries))
-            if os.path.lexists(app.root / 'state'):
+            state_root = app.root / 'state'
+            # lexists suppresses access errors, which could omit all user work.
+            # Only genuine absence is optional; disappearance after this probe fails.
+            try:
+                state_root.lstat()
+            except FileNotFoundError:
+                pass
+            else:
                 from .state_backup import snapshot_state
                 from .state_recovery import validate_state_documents
                 (stage / 'state').mkdir()
-                state = snapshot_state(app.root / 'state', stage / 'state',
-                                       include_generated=include_generated, cancelled=cancelled)
+                state = snapshot_state(state_root, stage / 'state',
+                                       include_generated=include_generated, cancelled=cancelled,
+                                       missing_ok=False)
                 validate_state_documents(stage / 'state', state, cancelled=cancelled)
                 manifest.update(version=3, state=state, generated_audio_included=include_generated)
             if any(os.path.lexists(app.root / name) for name in

@@ -32,12 +32,14 @@ firewall rules. Its evidence explicitly labels manual NVDA as NOT_RUN.
 ## Current completion pass
 
 The authoritative specification was rechecked at accepted source
-`1eff701fe848a3bd9eb088c85e5372a7c0a73861`. The next candidate retains the
+`4b6f8169986c4a58b43e4a23bc081fbefadbbdcb`. The next candidate retains the
 full requested platform scope. It adds native A/B and sleep controls, retained
 document/range translation, explicit owner voice profiles, accessible local
 audio-runtime setup and an optional provider-injected delivery lifecycle.
-Those implementations are **INTEGRATED source / portable component gates passed /
-Windows execution pending** until the exact successor Windows result is recorded. Private engine/authority source,
+Those implementations are **INTEGRATED source**. Executed portable evidence is
+recorded per change; the latest adopted backup, publication and preparation
+safeguards still await composed execution. **Exact final Windows execution is
+pending** until the complete successor result is recorded. Private engine/authority source,
 weights, voice recordings, signing material and actual service policy are not
 part of public source.
 

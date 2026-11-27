@@ -44,18 +44,28 @@ def _include(path, generated):
             and (generated or 'cache' not in path.parts))
 
 
+def _walk_error(error):
+    # os.walk silently suppresses directory enumeration errors by default.
+    # An unreadable subtree is not evidence that it contains no user state.
+    raise error
+
+
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, missing_ok=True):
     root = Path(root)
     if cancelled():
         raise InterruptedError('Backup cancelled.')
-    if not os.path.lexists(root):
+    try:
+        root.lstat()
+    except FileNotFoundError:
+        if not missing_ok:
+            raise
         return []
     root = local_path(root, exists=True)
     regular(root, directory=True)
     def inventory():
         found = {}
-        for directory, dirs, files in os.walk(root, followlinks=False):
+        for directory, dirs, files in os.walk(root, followlinks=False, onerror=_walk_error):
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
             for name in dirs:
@@ -179,8 +189,8 @@ def restore_state(source, target, entries, *, cancelled=lambda: False):
         raise InterruptedError('Restore cancelled.')
     source = local_path(source, exists=True)
     regular(source, directory=True)
-    found = []
-    for directory, dirs, files in os.walk(source, followlinks=False):
+    missing = {item['filename'] for item in entries}
+    for directory, dirs, files in os.walk(source, followlinks=False, onerror=_walk_error):
         if cancelled():
             raise InterruptedError('Restore cancelled.')
         for name in dirs:
@@ -188,10 +198,13 @@ def restore_state(source, target, entries, *, cancelled=lambda: False):
         for name in files:
             path = Path(directory) / name
             regular(path)
-            found.append(path.relative_to(source).as_posix())
-            if len(found) > MAX_STATE_FILES:
-                raise ValueError('Application state restore exceeds its file budget.')
-    if set(found) != {item['filename'] for item in entries}:
+            # Reject the first unexpected file rather than accumulating an
+            # attacker-controlled inventory beyond the manifest's file budget.
+            relative = path.relative_to(source).as_posix()
+            if relative not in missing:
+                raise ValueError('Backup has missing or unlisted application state.')
+            missing.remove(relative)
+    if missing:
         raise ValueError('Backup has missing or unlisted application state.')
     target = Path(target)
     target.mkdir(parents=True, exist_ok=True)

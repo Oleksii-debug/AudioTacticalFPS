@@ -4,11 +4,12 @@ from concurrent.futures import Future
 from pathlib import Path
 import threading
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, create_autospec
 
 import pytest
 
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
+from carr_library.ui.reader_playback import ReaderPlaybackControls
 
 
 class Progress:
@@ -379,9 +380,15 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
                                       'executor', 'audio_files', 'dialog')}
+    # The extracted finally block closes the controls created before the modal
+    # try. Preserve that closure binding and its real keyword-only signature.
+    env['transport'] = create_autospec(ReaderPlaybackControls, instance=True, spec_set=True)
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
+    env['transport'].close.assert_called_once_with(stop=False)
+    env['autosave_timer'].Stop.assert_called_once_with()
+    env['cancel'].set.assert_called_once_with()
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)

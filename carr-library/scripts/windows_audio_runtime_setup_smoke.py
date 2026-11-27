@@ -5,6 +5,7 @@ observer holds an actual verification boundary long enough to dispatch Cancel;
 the verifier, settings publication and application worker remain production code.
 """
 import argparse
+import faulthandler
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -15,13 +16,7 @@ from time import monotonic
 import traceback
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--runtime', type=Path, required=True)
-    parser.add_argument('--report', type=Path, required=True)
-    args = parser.parse_args()
-    if sys.platform != 'win32':
-        raise RuntimeError('This probe requires actual installed Windows execution.')
+def _run_probe(args, report):
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
     import wx
@@ -31,12 +26,11 @@ def main():
     from carr_library.ui import audio_runtime_setup, desktop_app
     from carr_library.audio.render import tool_path
 
-    checks, failures, timers, source_hashes = [], [], [], {}
-    report = {'status': 'FAILED', 'checks': checks, 'network_download': 'NOT_REQUESTED',
-              'neural_inference': 'NOT_RUN', 'human_listening': 'NOT_RUN', 'nvda': 'NOT_RUN'}
+    checks = report['checks']
+    failures, timers, source_hashes = [], [], {}
     frame = None
     original_prepare = audio_runtime_setup.prepare_local_audio_runtime
-    deadline = monotonic() + 240
+    deadline = monotonic() + report['independent_deadline_seconds']
     state = {}
 
     def check(name, condition):
@@ -244,6 +238,30 @@ def main():
     args.report.write_text(payload + '\n', encoding='utf-8')
     print(payload)
     return 0 if report['status'] == 'PASS' else 1
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--runtime', type=Path, required=True)
+    parser.add_argument('--report', type=Path, required=True)
+    args = parser.parse_args()
+    if sys.platform != 'win32':
+        raise RuntimeError('This probe requires actual installed Windows execution.')
+    report = {'status': 'FAILED', 'checks': [], 'network_download': 'NOT_REQUESTED',
+              'neural_inference': 'NOT_RUN', 'human_listening': 'NOT_RUN', 'nvda': 'NOT_RUN',
+              'independent_deadline_seconds': 240}
+    # A failed initial receipt survives an unhandled native modal or cleanup.
+    # This watchdog is independent of all wx callback-based waits.
+    initial = {**report, 'count': 0, 'failure': 'The native audio setup probe did not reach final reporting. '
+               'An independent 240-second watchdog records timeout stacks in stderr and exits nonzero.'}
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    args.report.write_text(json.dumps(initial, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print('Independent native audio setup deadline: 240 seconds; incomplete execution remains FAILED.', flush=True)
+    faulthandler.dump_traceback_later(240, exit=True)
+    try:
+        return _run_probe(args, report)
+    finally:
+        faulthandler.cancel_dump_traceback_later()
 
 
 if __name__ == '__main__':

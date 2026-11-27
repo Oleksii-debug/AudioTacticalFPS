@@ -657,7 +657,7 @@ def test_progress_observer_failure_preserves_real_child_or_receipt_failure(prepa
 
     result = service.run(identity, timeout=1, progress=broken)
     assert result == service.get(identity) and result['status'] == 'failed'
-    assert error in result['last_error']
+    assert error in result['last_error'], result['last_error']
     assert 'observer' not in result['last_error'] and result['artifacts'] == []
 
 
@@ -942,4 +942,312 @@ def test_actual_job_publication_error_propagates_after_observer_detaches(prepare
     saved = service.get(identity)
     assert saved['status'] == 'running'
     assert saved['receipts'] == [] and saved['artifacts'] == []
+
+
+class _ReplaceClock:
+    def __init__(self):
+        self.value = 10.0
+        self.sleeps = []
+
+    def monotonic(self):
+        return self.value
+
+    def sleep(self, seconds):
+        assert 0 < seconds <= .005
+        self.sleeps.append(seconds)
+        self.value += seconds
+
+
+def _production_shared_replace(original, clock, *, job, platform='nt'):
+    """Compile the actual production function, without installing a global hook."""
+    import ast
+    from types import SimpleNamespace
+    from carr_library.transcription import _WORKER_BOOTSTRAP
+
+    tree = ast.parse(_WORKER_BOOTSTRAP)
+    functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
+                 and node.name == '_carr_shared_replace']
+    assert len(functions) == 1
+    namespace = {'os': SimpleNamespace(name=platform, path=os.path, fspath=os.fspath),
+                 'time': clock, 'job': job,
+                 '_carr_original_replace': original}
+    exec(compile(ast.Module(body=functions, type_ignores=[]),
+                 '<production transcription bootstrap>', 'exec'), namespace)
+    return namespace['_carr_shared_replace']
+
+
+def _sharing_error(code):
+    error = PermissionError('Synthetic Windows file sharing control')
+    if code is not None:
+        error.winerror = code
+    return error
+
+
+def test_shared_replace_retries_only_sharing_errors_with_exact_arguments_and_bytes(tmp_path):
+    source, destination = tmp_path / 'status.tmp', tmp_path / 'job_status.json'
+    source.write_bytes(b'{"state":"new"}\n')
+    destination.write_bytes(b'{"state":"old"}\n')
+    clock, calls = _ReplaceClock(), []
+    result_token = object()
+
+    def original(src, dst, *, src_dir_fd, dst_dir_fd):
+        calls.append((src, dst, src_dir_fd, dst_dir_fd))
+        assert src is source and dst is destination
+        assert source.read_bytes() == b'{"state":"new"}\n'
+        assert destination.read_bytes() == b'{"state":"old"}\n'
+        if len(calls) <= 2:
+            raise _sharing_error((32, 33)[len(calls) - 1])
+        # Real publication proves the retry did not unlink, copy, or truncate.
+        os.replace(src, dst)
+        return result_token
+
+    replace = _production_shared_replace(original, clock, job=tmp_path)
+    assert replace(source, destination, src_dir_fd=37, dst_dir_fd=41) is result_token
+    assert calls == [(source, destination, 37, 41)] * 3
+    assert len(clock.sleeps) == 2
+    assert destination.read_bytes() == b'{"state":"new"}\n' and not source.exists()
+
+
+@pytest.mark.parametrize('code', [32, 33, 5], ids=['sharing', 'lock', 'persistent-status-denial'])
+def test_shared_replace_deadline_retains_original_exception_and_both_files(tmp_path, code):
+    source, destination = tmp_path / 'status.tmp', tmp_path / 'job_status.json'
+    source.write_bytes(b'complete new status')
+    destination.write_bytes(b'complete old status')
+    clock, calls = _ReplaceClock(), []
+    refusal = _sharing_error(code)
+
+    def original(src, dst, **kwargs):
+        calls.append((src, dst, kwargs))
+        assert len(calls) < 150, 'A sharing retry lost its monotonic bound.'
+        raise refusal
+
+    with pytest.raises(PermissionError) as failure:
+        _production_shared_replace(original, clock, job=tmp_path)(source, destination)
+    assert failure.value is refusal
+    assert 1 < len(calls) < 150 and .5 <= clock.value - 10 < .51
+    assert all(call == (source, destination, {'src_dir_fd': None, 'dst_dir_fd': None})
+               for call in calls)
+    assert source.read_bytes() == b'complete new status'
+    assert destination.read_bytes() == b'complete old status'
+
+
+@pytest.mark.parametrize(('platform', 'code'), [
+    ('nt', None), ('nt', 2), ('nt', 17), ('posix', 32), ('posix', 33), ('posix', 5),
+], ids=['generic-permission', 'missing-file', 'cross-device',
+        'posix-sharing-code', 'posix-lock-code', 'posix-status-denial'])
+def test_shared_replace_does_not_retry_other_failures(tmp_path, platform, code):
+    source, destination = tmp_path / 'status.tmp', tmp_path / 'job_status.json'
+    source.write_bytes(b'new status remains staged')
+    destination.write_bytes(b'old status remains published')
+    clock, calls = _ReplaceClock(), []
+    refusal = _sharing_error(code)
+
+    def original(src, dst, **kwargs):
+        calls.append((src, dst, kwargs))
+        raise refusal
+
+    with pytest.raises(PermissionError) as failure:
+        _production_shared_replace(original, clock, job=tmp_path, platform=platform)(source, destination)
+    assert failure.value is refusal
+    assert len(calls) == 1 and clock.sleeps == []
+    assert source.read_bytes() == b'new status remains staged'
+    assert destination.read_bytes() == b'old status remains published'
+
+
+@pytest.mark.parametrize('relative', [False, True], ids=['absolute', 'relative'])
+def test_shared_replace_retries_transient_access_denial_only_for_exact_live_status(tmp_path, monkeypatch, relative):
+    monkeypatch.chdir(tmp_path)
+    source = Path('status.tmp') if relative else tmp_path / 'status.tmp'
+    destination = Path('job_status.json') if relative else tmp_path / 'job_status.json'
+    source.write_bytes(b'complete new status')
+    destination.write_bytes(b'complete old status')
+    clock, calls = _ReplaceClock(), []
+
+    def original(src, dst, **kwargs):
+        calls.append((src, dst, kwargs))
+        assert src is source and dst is destination
+        assert kwargs == {'src_dir_fd': None, 'dst_dir_fd': None}
+        assert source.read_bytes() == b'complete new status'
+        assert destination.read_bytes() == b'complete old status'
+        if len(calls) == 1:
+            raise _sharing_error(5)
+        return os.replace(src, dst, **kwargs)
+
+    assert _production_shared_replace(original, clock, job=tmp_path)(source, destination) is None
+    assert len(calls) == 2 and len(clock.sleeps) == 1
+    assert not source.exists() and destination.read_bytes() == b'complete new status'
+
+
+@pytest.mark.parametrize('scope', [
+    'other-target', 'nested-target', 'outside-target', 'nested-source',
+    'outside-source', 'source-dirfd', 'destination-dirfd',
+])
+def test_shared_replace_unrelated_access_denial_remains_immediate(tmp_path, scope):
+    job, outside = tmp_path / 'job', tmp_path / 'outside'
+    (job / 'nested').mkdir(parents=True)
+    outside.mkdir()
+    source, destination = job / 'status.tmp', job / 'job_status.json'
+    options = {}
+    if scope == 'other-target':
+        destination = job / 'result.json'
+    elif scope == 'nested-target':
+        destination = job / 'nested' / 'job_status.json'
+    elif scope == 'outside-target':
+        destination = outside / 'job_status.json'
+    elif scope == 'nested-source':
+        source = job / 'nested' / 'status.tmp'
+    elif scope == 'outside-source':
+        source = outside / 'status.tmp'
+    elif scope == 'source-dirfd':
+        options['src_dir_fd'] = 37
+    elif scope == 'destination-dirfd':
+        options['dst_dir_fd'] = 41
+    source.write_bytes(b'new unpublished bytes')
+    destination.write_bytes(b'old unchanged bytes')
+    clock, calls = _ReplaceClock(), []
+    refusal = _sharing_error(5)
+
+    def original(src, dst, **kwargs):
+        calls.append((src, dst, kwargs))
+        raise refusal
+
+    with pytest.raises(PermissionError) as failure:
+        _production_shared_replace(original, clock, job=job)(source, destination, **options)
+    assert failure.value is refusal
+    assert len(calls) == 1 and clock.sleeps == []
+    assert calls[0] == (source, destination,
+                        {'src_dir_fd': None, 'dst_dir_fd': None, **options})
+    assert source.read_bytes() == b'new unpublished bytes'
+    assert destination.read_bytes() == b'old unchanged bytes'
+
+
+def test_shared_replace_success_is_not_reclassified_after_atomic_publication(tmp_path):
+    source, destination = tmp_path / 'status.tmp', tmp_path / 'job_status.json'
+    source.write_bytes(b'committed status')
+    destination.write_bytes(b'old status')
+    clock = _ReplaceClock()
+
+    def original(src, dst, **kwargs):
+        os.replace(src, dst)
+        clock.value += 1  # A successful OS call is authoritative despite lateness.
+        return None
+
+    assert _production_shared_replace(original, clock, job=tmp_path)(source, destination) is None
+    assert not source.exists() and destination.read_bytes() == b'committed status'
+    assert clock.sleeps == []
+
+
+def test_shared_replace_actual_child_with_held_file_handle(tmp_path):
+    """Windows live-status access retry; POSIX keeps ordinary open-file behavior."""
+    from carr_library.transcription import _WORKER_BOOTSTRAP
+
+    job = tmp_path / 'job'
+    job.mkdir()
+    source, destination = job / 'status.tmp', job / 'job_status.json'
+    source.write_bytes(b'{"state":"new"}\n')
+    destination.write_bytes(b'{"state":"old"}\n')
+    worker = tmp_path / 'sharing-worker.py'
+    worker.write_text(r'''
+import json, os, pathlib, sys
+job = pathlib.Path(sys.argv[sys.argv.index('--job-dir') + 1])
+source, destination = job / 'status.tmp', job / 'job_status.json'
+failures = []
+wrapped = getattr(os.replace, '__name__', '') == '_carr_shared_replace'
+if os.name == 'nt':
+    assert wrapped
+    namespace = os.replace.__globals__
+    original = namespace['_carr_original_replace']
+    def observed(src, dst, **kwargs):
+        try:
+            return original(src, dst, **kwargs)
+        except OSError as error:
+            failures.append(getattr(error, 'winerror', None))
+            (job / 'sharing-blocked').write_text('observed', encoding='utf-8')
+            raise
+    namespace['_carr_original_replace'] = observed
+else:
+    assert not wrapped
+os.replace(source, destination)
+assert destination.read_bytes() == b'{"state":"new"}\n'
+assert not source.exists()
+print(json.dumps({'wrapped': wrapped, 'failures': failures}))
+''', encoding='utf-8')
+    process, handle, stream = None, None, None
+    if os.name == 'nt':
+        import ctypes
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+        kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
+            ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+        kernel.CreateFileW.restype = wintypes.HANDLE
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel.CloseHandle.restype = wintypes.BOOL
+        # Ordinary readable file handle permits reads/writes, but not deletion.
+        handle = kernel.CreateFileW(str(destination), 0x80000000, 0x3,
+                                    None, 3, 0x80, None)
+        if handle == ctypes.c_void_p(-1).value:
+            raise ctypes.WinError(ctypes.get_last_error())
+    else:
+        stream = destination.open('rb')
+    try:
+        process = subprocess.Popen([sys.executable, '-I', '-S', '-B', '-X', 'utf8',
+            '-c', _WORKER_BOOTSTRAP, str(worker), str(job)], cwd=job,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if os.name == 'nt':
+            deadline = time.monotonic() + 10
+            blocked = job / 'sharing-blocked'
+            while not blocked.exists() and process.poll() is None and time.monotonic() < deadline:
+                time.sleep(.002)
+            assert blocked.exists(), 'The actual child never observed the held Windows handle.'
+            assert kernel.CloseHandle(handle)
+            handle = None
+        stdout, stderr = process.communicate(timeout=10)
+        assert process.returncode == 0, stderr.decode('utf-8', errors='replace')
+        result = json.loads(stdout)
+        assert result['wrapped'] is (os.name == 'nt')
+        if os.name == 'nt':
+            # Replacing an open TARGET can return access denied, even when its
+            # read handle permits read/write sharing. Only exact live status
+            # receives the bounded retry for this documented Windows outcome.
+            assert 5 in result['failures'] and set(result['failures']) <= {5, 32, 33}
+        else:
+            assert result['failures'] == [] and stream.read() == b'{"state":"old"}\n'
+        assert not source.exists() and destination.read_bytes() == b'{"state":"new"}\n'
+    finally:
+        if handle is not None:
+            kernel.CloseHandle(handle)
+        if stream is not None:
+            stream.close()
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+
+
+def test_shared_replace_actual_child_keeps_the_write_scope_guard(tmp_path):
+    from carr_library.transcription import _WORKER_BOOTSTRAP
+
+    job = tmp_path / 'job'
+    job.mkdir()
+    source, outside = job / 'status.tmp', tmp_path / 'outside.json'
+    source.write_bytes(b'new private status')
+    outside.write_bytes(b'outside original')
+    worker = tmp_path / 'scope-worker.py'
+    worker.write_text(r'''
+import json, os, pathlib, sys
+job = pathlib.Path(sys.argv[sys.argv.index('--job-dir') + 1])
+try:
+    os.replace(job / 'status.tmp', job.parent / 'outside.json')
+except PermissionError as error:
+    assert getattr(error, 'winerror', None) not in (32, 33)
+    print(json.dumps({'scope_rejected': True}))
+else:
+    raise AssertionError('An outside destination escaped the existing audit hook.')
+''', encoding='utf-8')
+    result = subprocess.run([sys.executable, '-I', '-S', '-B', '-X', 'utf8',
+        '-c', _WORKER_BOOTSTRAP, str(worker), str(job)], cwd=job,
+        capture_output=True, timeout=10)
+    assert result.returncode == 0, result.stderr.decode('utf-8', errors='replace')
+    assert json.loads(result.stdout) == {'scope_rejected': True}
+    assert source.read_bytes() == b'new private status'
+    assert outside.read_bytes() == b'outside original'
 

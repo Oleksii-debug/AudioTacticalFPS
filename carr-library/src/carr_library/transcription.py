@@ -167,7 +167,37 @@ def _checked_digest(path, size, cancelled):
 # Python-visible network, child commands and writes; they are not an OS sandbox
 # for arbitrary native libraries. The worker must also require offline assets.
 _WORKER_BOOTSTRAP = r'''
-import os, pathlib, runpy, sys
+import os, pathlib, runpy, sys, time
+# A concurrent Windows file handle may briefly deny atomic replacement of live
+# state. Legacy target replacement can report access denial while a reader is
+# open, so that exception is retried only for this job's status publication.
+# Every attempt still uses the original audited rename, without permission
+# changes, unlink/copy fallback, or a success claim after an unsuccessful call.
+_carr_original_replace = os.replace
+def _carr_shared_replace(source, destination, *, src_dir_fd=None, dst_dir_fd=None):
+    deadline = time.monotonic() + .5
+    while True:
+        try:
+            return _carr_original_replace(source, destination,
+                src_dir_fd=src_dir_fd, dst_dir_fd=dst_dir_fd)
+        except OSError as error:
+            remaining = deadline - time.monotonic()
+            code = getattr(error, 'winerror', None)
+            retryable = code in (32, 33)
+            if os.name == 'nt' and code == 5 and src_dir_fd is None and dst_dir_fd is None:
+                try:
+                    src = os.path.normcase(os.path.abspath(os.fspath(source)))
+                    dst = os.path.normcase(os.path.abspath(os.fspath(destination)))
+                    root = os.path.normcase(os.path.abspath(os.fspath(job)))
+                    retryable = (dst == os.path.join(root, 'job_status.json')
+                                 and os.path.dirname(src) == root)
+                except (TypeError, ValueError, OSError):
+                    retryable = False
+            if os.name != 'nt' or not retryable or remaining <= 0:
+                raise
+            time.sleep(min(.005, remaining))
+if os.name == 'nt':
+    os.replace = _carr_shared_replace
 job = pathlib.Path(sys.argv[2]).resolve(strict=True)
 worker = pathlib.Path(sys.argv[1]).resolve(strict=True)
 def writable(value):

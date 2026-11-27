@@ -72,6 +72,12 @@ def transport(tmp_path, monkeypatch, request):
     platform = SimpleNamespace(name='nt' if request.param == 'mci' else 'posix',
                                kill=lambda pid, signal: signals.append((pid, signal)))
     monkeypatch.setattr(module, 'os', platform)
+    signal_protocol = None
+    if request.param == 'ffplay':
+        # Model the POSIX signal namespace with the modeled POSIX process API.
+        # Windows has no SIGSTOP/SIGCONT; these opaque tokens never reach an OS.
+        signal_protocol = SimpleNamespace(SIGSTOP=object(), SIGCONT=object())
+        monkeypatch.setattr(module, 'signal', signal_protocol)
     def popen(argv, **options):
         assert options['shell'] is False and options['start_new_session'] is True
         process = Process(argv)
@@ -92,7 +98,7 @@ def transport(tmp_path, monkeypatch, request):
             processes[-1].returncode = 0
     value = SimpleNamespace(player=player, clock=clock, source=source, native=native,
                             processes=processes, starts=starts, complete=complete,
-                            backend=request.param, signals=signals)
+                            backend=request.param, signals=signals, signal_protocol=signal_protocol)
     yield value
     player.close()
     assert sha256(source.read_bytes()).hexdigest() == original
@@ -146,6 +152,23 @@ def test_ffplay_waits_for_actual_child_completion_not_estimated_position(transpo
     assert player.repeat_count == 0
     transport.processes[-1].returncode = 0
     assert player.poll(restart=False) == 'repeat_due'
+
+
+def test_pause_resume_uses_its_backend_protocol_without_reopening(transport):
+    player = transport.player
+    player.play(transport.source)
+    transport.clock.advance(.2)
+    assert player.pause() and player.state == 'paused'
+    assert player.resume() and player.state == 'playing'
+    assert transport.starts() == 1
+    if transport.backend == 'ffplay':
+        pid = transport.processes[0].pid
+        assert transport.signals == [(pid, transport.signal_protocol.SIGSTOP),
+                                     (pid, transport.signal_protocol.SIGCONT)]
+    else:
+        assert transport.signals == []
+        assert any(command.startswith('pause ') for command in transport.native.commands)
+        assert any(command.startswith('resume ') for command in transport.native.commands)
 
 
 def test_paused_range_change_never_opens_or_briefly_plays_a_device(transport):

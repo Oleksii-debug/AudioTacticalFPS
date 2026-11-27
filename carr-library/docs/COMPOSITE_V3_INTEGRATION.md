@@ -1,7 +1,7 @@
 # Resonance composite V3 integration
 
 This candidate reconciles the accepted platform source at
-1eff701fe848a3bd9eb088c85e5372a7c0a73861 with the reviewed integration
+4b6f8169986c4a58b43e4a23bc081fbefadbbdcb with the reviewed integration
 lineage recorded in PR127. The current
 UNIVERSAL_SCOPE_V3_FINALIZATION.md remains authoritative. This record is not
 full-platform acceptance or distribution clearance.
@@ -79,6 +79,65 @@ pytest-ID-only change targets a different host and its absent modules are not
 introduced here. Source and full installed suites retain strict no-skip/no-XFAIL
 acceptance. Actual audio model inference, human NVDA, signing and final private
 delivery identity remain independent gates.
+
+## Follow-up Windows corrections
+
+The intermediate commit `f62a024424c489f90e5d123e3239bca56dc41889`
+passed both native launcher toolchains and bibliography acceptance: 985 strict
+cases with no skips, plus 69 native citation assertions. Installed V3 recovery
+passed 457 cases without skips. This does not qualify its aggregate delivery.
+
+Installed V3 exposed two test-fixture assumptions: modeled POSIX ffplay used
+the Windows signal namespace, and extracted reader cleanup omitted the new
+transport closure. Those fixtures now preserve the actual backend/cleanup
+contracts without skipping Windows cases. The real Windows JSON test also
+showed that legacy atomic replacement can reject an open target with error 5,
+even when its read handle shares delete access. The reader tests now distinguish
+snapshot coherence, delete sharing for a source-name move and target replacement
+after the reader closes; they do not assume POSIX replacement semantics.
+
+The existing isolated transcription bootstrap bounds Windows sharing retries
+for errors 32/33. Error 5 is eligible only for the exact current job status file,
+with its staging source in the same directory and no directory descriptors.
+Each attempt calls the original audited atomic replacement. Persistent denial,
+other destinations and scope violations still fail; no permissions are changed
+and neither file is unlinked or copied as a fallback. Native child controls
+exercise the actual Windows handle boundary in the next complete gate. The
+original private worker source remains separate and unchanged.
+
+The combined portable follow-up completed 235 cases without skips: reader
+transport, cleanup, coherent JSON snapshots and the actual transcription bridge,
+including 22 targeted retry/authority controls. These Linux results do not
+establish the Windows branch of those controls.
+
+The native reader probe now saves through the actual reading-copy control,
+reloads the recovery slot and verifies both reading and original text before
+closing. The application's unsaved-copy confirmation remains intact. Reader
+and local-audio setup probes retain independent 180/240-second watchdogs through
+native entry, modal execution and cleanup; an incomplete run leaves a FAILED
+receipt and a watchdog timeout emits blocked stacks before exiting nonzero.
+
+Canonical `4b6f816` additionally brings bounded, fail-closed OCR and music
+inventory enumeration. The composite retains its existing music compatibility
+APIs and stronger file-identity/size checks. Its four complete portable OCR/music
+suites passed 113 cases without skips, with actual local FFmpeg and Tesseract.
+Three new end-to-end negative controls reject the previous music implementation.
+Both installed Windows lanes keep
+the canonical exact three-case OCR inventory JUnit requirement and source-origin
+checks. A complete successor run and its retained tested wheel remain mandatory.
+
+The follow-up also reconciles the narrow PR166, PR172 and PR174 corrections.
+Unreadable backup inventories and state-root lookup failures abort publication;
+restore rejects an unlisted file before traversing later subtrees. Audio output
+checks cancellation again after the durable flush and before the commit, while
+post-commit cancellation does not reclassify successful publication. Legacy
+FFmpeg preparation validates all three local-only policy flags as explicit
+booleans before acquisition; the current full-runtime facade and native consent
+workflow remain unchanged. Their new composed execution remains pending and is
+not covered by the earlier portable counts. Windows acceptance now selects 241
+source suites and 102 installed contents selectors, including the flush controls
+and the exact six new state-inventory cases in both installed lanes. No
+POSIX-only portability fixture is added to the strict Windows inventory.
 
 ## Preserved contracts
 

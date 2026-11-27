@@ -166,33 +166,53 @@ def _fluidsynth(runtime, spec, output, *, sample_rate, channels, cancelled, prog
                                duration=spec.duration, cancelled=cancelled, progress=progress)
 
 
+_MAX_INVENTORY_ENTRIES = 100000
+
+
 def _plain_model_files(root, *, cancelled=lambda: False):
-    """Inspect each entry without following it, before deciding to descend."""
-    pending = [plain_local(root, directory=True)]
+    """Inspect every entry without following it, or fail the whole inventory."""
     entries = 0
-    while pending:
-        directory = pending.pop()
-        with os.scandir(directory) as children:
-            for entry in children:
-                if cancelled():
-                    raise AudioCancelled('Model verification cancelled.')
-                entries += 1
-                if entries > 200000:
-                    raise ValueError('The local model inventory exceeds its entry budget.')
-                # Windows DirEntry caches can report st_nlink=0 for ordinary
-                # files. Read fresh no-follow identity before trusting it or
-                # descending, retaining the exact one-link materialization rule.
-                path = Path(entry.path)
-                info = path.lstat()
-                if (stat.S_ISLNK(info.st_mode)
-                        or getattr(info, 'st_file_attributes', 0) & 0x400):
-                    raise ValueError('Local model files and code must not use links or reparse points.')
-                if stat.S_ISDIR(info.st_mode):
-                    pending.append(path)
-                elif stat.S_ISREG(info.st_mode) and info.st_nlink == 1:
-                    yield path, info
-                else:
-                    raise ValueError('Local model files and code must be ordinary materialized files.')
+
+    def check_cancel():
+        if cancelled():
+            raise AudioCancelled('Model verification cancelled.')
+
+    try:
+        pending = [plain_local(root, directory=True)]
+        while pending:
+            check_cancel()
+            directory = plain_local(pending.pop(), directory=True)
+            # scandir propagates errors that rglob/os.walk can silently suppress.
+            # Count all entries, including empty directories and non-Python files.
+            with os.scandir(directory) as children:
+                for entry in children:
+                    check_cancel()
+                    entries += 1
+                    if entries > _MAX_INVENTORY_ENTRIES:
+                        raise ValueError('Local music inventory exceeds its entry limit.')
+                    # Windows DirEntry caches can report st_nlink=0 for ordinary
+                    # files. Keep fresh no-follow identity and the one-link rule.
+                    path = Path(entry.path)
+                    info = path.lstat()
+                    if (stat.S_ISLNK(info.st_mode)
+                            or getattr(info, 'st_file_attributes', 0) & 0x400):
+                        raise ValueError('Local model files and code must not use links or reparse points.')
+                    if stat.S_ISDIR(info.st_mode):
+                        pending.append(path)
+                    elif stat.S_ISREG(info.st_mode) and info.st_nlink == 1:
+                        yield path, info
+                    else:
+                        raise ValueError('Local model files and code must be ordinary materialized files.')
+        check_cancel()
+    except OSError as exc:
+        raise ValueError('Local music inventory is unreadable or incomplete.') from exc
+
+
+def _inventory(root, *, cancelled, python_only=False):
+    """Return the bounded complete asset or case-insensitive Python inventory."""
+    return {path.relative_to(root).as_posix()
+            for path, _ in _plain_model_files(root, cancelled=cancelled)
+            if not python_only or path.name.lower().endswith('.py')}
 
 
 def validate_model(config, *, cancelled=lambda: False):
@@ -320,13 +340,7 @@ def probe_model(runtime, engine, *, cancelled=lambda: False):
     if not isinstance(origin, str):
         raise AudioUnavailable(f'The selected Python does not contain the {package} package.')
     root = plain_local(Path(origin).parent, directory=True)
-    actual = set()
-    for path, _ in _plain_model_files(root, cancelled=cancelled):
-        if path.suffix != '.py':
-            continue
-        actual.add(path.relative_to(root).as_posix())
-        if len(actual) > 100000:
-            raise ValueError('The installed engine exceeds the reviewed code inventory allowance.')
+    actual = _inventory(root, cancelled=cancelled, python_only=True)
     if actual != set(records):
         raise ValueError('The installed engine Python file inventory differs from the reviewed manifest.')
     for name, expected_hash in records.items():

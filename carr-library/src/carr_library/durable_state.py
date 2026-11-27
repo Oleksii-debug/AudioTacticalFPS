@@ -63,7 +63,11 @@ def _unique(pairs):
 
 
 def _open_json_file(path):
-    """Read one snapshot without blocking another process's atomic replacement."""
+    """Read a non-inheritable snapshot with Windows delete sharing.
+
+    Legacy Windows replacement can still reject an open destination. Readers
+    close promptly; live writers must bound any sharing-race retry separately.
+    """
     if os.name != 'nt':
         return path.open('rb')
     import ctypes

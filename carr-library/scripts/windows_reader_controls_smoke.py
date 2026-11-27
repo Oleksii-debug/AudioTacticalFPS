@@ -6,6 +6,7 @@ human listening, an output-device matrix or NVDA. Run with python -I -B.
 """
 import argparse
 from array import array
+import faulthandler
 from hashlib import sha256
 import json
 import math
@@ -18,26 +19,20 @@ import traceback
 import wave
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--report', type=Path)
-    args = parser.parse_args()
-    if sys.platform != 'win32':
-        raise RuntimeError('This acceptance probe requires actual Windows.')
+def _run_probe(args, report):
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
     import wx
     from carr_library.speech import player as player_module
     from carr_library.speech.progress_speech import play_when_quiet
+    from carr_library.speech.session import ReaderDraftStore
     from carr_library.ui import reader_playback, speech_dialog
     from carr_library.ui.operation_progress import OperationProgress
 
-    checks, failures, players, views, timers, hashes = [], [], [], [], [], {}
-    deadline = monotonic() + 180
+    checks = report['checks']
+    failures, players, views, timers, hashes = [], [], [], [], {}
+    deadline = monotonic() + report['independent_deadline_seconds']
     active = {}
-    report = {'status': 'FAILED', 'checks': checks, 'fixture': 'synthetic PCM16 tone',
-              'actual_winmm': False, 'actual_native_keys': False,
-              'nvda': 'NOT_RUN', 'human_listening': 'NOT_RUN', 'voice_inference': 'NOT_RUN'}
 
     def check(name, condition):
         if not condition:
@@ -155,9 +150,25 @@ def main():
     def close_reader():
         check('playback leaves the reading copy unchanged',
               active['editor'].GetValue() == active['original_text'])
+        # Fresh input is an unsaved reading copy. Use the real Save workflow
+        # before Close, instead of leaving its native unsaved-copy prompt open.
+        def saved():
+            check('native Save marks the reading copy saved',
+                  '; saved.' in named('Original and reading-copy status').GetValue())
+            recovered = ReaderDraftStore(active['original_library'].root,
+                                         slot='native-controls').load()
+            check('native Save persists the unchanged reading copy',
+                  recovered is not None and recovered.document.text == active['original_text']
+                  and recovered.document.source_text == active['original_text'])
+            button = next(child for child in children(active['dialog'])
+                          if isinstance(child, wx.Button) and child.GetId() == wx.ID_CANCEL)
+            key(button, wx.WXK_SPACE)
         button = next(child for child in children(active['dialog'])
-                      if isinstance(child, wx.Button) and child.GetId() == wx.ID_CANCEL)
-        key(button, wx.WXK_SPACE)
+                      if isinstance(child, wx.Button)
+                      and child.GetLabel().replace('&', '') == 'Save reading copy')
+        key(button, wx.WXK_SPACE,
+            lambda: wait(lambda: 'saved for recovery' in named('Speech and save status').GetValue(),
+                         saved, 'Native Save did not persist the reading copy.'))
 
     def arm_timer(minutes, done):
         later(lambda: entry('Reader sleep timer', str(minutes), lambda: None))
@@ -374,6 +385,32 @@ def main():
         args.report.write_text(payload + '\n', encoding='utf-8')
     print(payload)
     return 0 if report['status'] == 'PASS' else 1
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--report', type=Path)
+    args = parser.parse_args()
+    if sys.platform != 'win32':
+        raise RuntimeError('This acceptance probe requires actual Windows.')
+    report = {'status': 'FAILED', 'checks': [], 'fixture': 'synthetic PCM16 tone',
+              'actual_winmm': False, 'actual_native_keys': False,
+              'nvda': 'NOT_RUN', 'human_listening': 'NOT_RUN', 'voice_inference': 'NOT_RUN',
+              'independent_deadline_seconds': 180}
+    # Leave a failed receipt if native code never returns to final reporting.
+    # faulthandler's own watchdog is independent of wx callbacks and emits the
+    # blocked stacks before terminating, even inside a native modal or cleanup.
+    initial = {**report, 'count': 0, 'failure': 'The native reader probe did not reach final reporting. '
+               'An independent 180-second watchdog records timeout stacks in stderr and exits nonzero.'}
+    if args.report is not None:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
+        args.report.write_text(json.dumps(initial, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    print('Independent native reader deadline: 180 seconds; incomplete execution remains FAILED.', flush=True)
+    faulthandler.dump_traceback_later(180, exit=True)
+    try:
+        return _run_probe(args, report)
+    finally:
+        faulthandler.cancel_dump_traceback_later()
 
 
 if __name__ == '__main__':
