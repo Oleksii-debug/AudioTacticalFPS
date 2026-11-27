@@ -144,6 +144,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_portable_sync_actions', 'install_language_actions')}
     env.update(installers)
     from carr_library.ui.audio_studio import install_audio_studio_actions
+    from carr_library.ui.recording_dialog import install_recording_actions
     from carr_library.ui.api_connections import install_api_connection_actions
     from carr_library.ui.assistant_dialog import install_assistant_actions
     from carr_library.ui.translation_dialog import install_translation_actions
@@ -153,6 +154,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     from carr_library.ui.reading_import import install_reading_import_actions
     real_installers = {
         'install_audio_studio_actions': Mock(wraps=install_audio_studio_actions),
+        'install_recording_actions': Mock(wraps=install_recording_actions),
         'install_api_connection_actions': Mock(wraps=install_api_connection_actions),
         'install_assistant_actions': Mock(wraps=install_assistant_actions),
         'install_translation_actions': Mock(wraps=install_translation_actions),
@@ -175,6 +177,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     mnemonics = [name[name.index('&')+1].casefold() for name in menus if '&' in name]
     assert len(mnemonics) == len(set(mnemonics))
     assert 'Open Audio Studio...\tCtrl+Alt+A' in labels
+    assert labels.count('Record microphone and manage saved inputs...') == 1
     assert 'AI and API &connections...' in labels
     assert labels.count('Local assistant...\tCtrl+Alt+J') == 1
     assert labels.count('Translate selected te&xt...') == 1
@@ -185,7 +188,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert labels.count('Import earlier reading-copy history...') == 1
     assert labels.count('Open retained reading-copy history...') == 1
     assert {spec.command_id for spec, _ in value._pending_keyboard_commands} >= {
-        'translation.text', 'conversion.documents', 'conversion.formats',
+        'audio.recording', 'translation.text', 'conversion.documents', 'conversion.formats',
         'engines.local', 'operations.tasks',
         'reading.import_legacy_copy', 'reading.open_legacy_history'}
     assert 'Documents' not in menus
@@ -314,6 +317,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         menu_globals = env['DesktopFrame']._menus.__code__.co_names
         for module_name, action_name in (
                 ('audio_studio', 'install_audio_studio_actions'),
+                ('recording_dialog', 'install_recording_actions'),
                 ('api_connections', 'install_api_connection_actions'),
                 ('assistant_dialog', 'install_assistant_actions'),
                 ('portable_sync', 'install_portable_sync_actions'),
@@ -354,6 +358,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'File/Open saved reading copy' in bindings
         assert 'library.portable_snapshots' in keyboard.bindings
         assert 'audio.language_evidence' in keyboard.bindings
+        assert 'audio.recording' in keyboard.bindings
+        assert keyboard.shortcut('audio.recording') == ''
         for command in ('translation.text', 'conversion.documents', 'conversion.formats',
                         'engines.local', 'operations.tasks',
                         'reading.import_legacy_copy', 'reading.open_legacy_history'):

@@ -684,7 +684,8 @@ class AudioStudioDialog:
         self.controls.append(self.playlist_choice)
         playback_layout.Add(self.playlist_choice, 0, wx.EXPAND | wx.ALL, 5)
         queue_buttons = wx.WrapSizer(wx.HORIZONTAL)
-        for label, handler in (('Add WAV recordings', self.add_recordings), ('Clear playlist', self.clear_playlist),
+        for label, handler in (('Record microphone or manage retakes', self.record_microphone),
+                               ('Add WAV recordings', self.add_recordings), ('Clear playlist', self.clear_playlist),
                                ('Play selected recording', self.play_selected), ('Previous recording', self.previous_recording),
                                ('Next recording', self.next_recording)):
             self._button(playback_page, queue_buttons, label, handler)
@@ -1540,6 +1541,53 @@ class AudioStudioDialog:
         self.segment_choice.SetItems([f'{seconds:.2f} seconds — {title}' for seconds, title in self.playback.segments])
         if self.playback.segments:
             self.segment_choice.SetSelection(0)
+
+    def record_microphone(self, event=None):
+        if self.busy or self.closed or getattr(self.parent, 'working', False):
+            return
+        try:
+            self._capture()
+            if not self._stop_for_project_change():
+                return
+            from .recording_dialog import show_recording
+            library = self.parent.library
+            project_id, input_kind = self.controller.project_id, self.controller.input_kind
+            managed = (self.controller.private_root == Path(library.root).absolute()
+                       and self.controller.project_path is not None
+                       and ManagedProjects(library.root).locate(
+                           self.controller.project_path, project_id) is not None)
+            cue_project = project_id if managed and input_kind == 'script' else None
+            label = ('Insert selected recording as a Sound cue' if cue_project is not None
+                     else 'Add selected recording to the playback playlist')
+
+            def selected(value):
+                if (self.closed or self.parent.library is not library
+                        or self.controller.project_id != project_id
+                        or self.controller.input_kind != input_kind):
+                    raise ValueError('The Studio project changed. Reopen recording selection.')
+                if cue_project is not None:
+                    retained = value.get('retained')
+                    digest = retained.get('sha256') if isinstance(retained, dict) else None
+                    if (not isinstance(digest, str) or len(digest) != 64
+                            or any(character not in '0123456789abcdef' for character in digest)
+                            or retained.get('project_id') != cue_project
+                            or retained.get('asset') != digest + '.wav'):
+                        raise ValueError('The recording has no verified asset in this managed project.')
+                    current = self.controller.script
+                    separator = '' if not current or current.endswith('\n') else '\n'
+                    self.controller.edit_script(current + separator + '[sound ' + retained['asset'] + ']\n')
+                    self._refresh_text()
+                    self._message('Recording retained and inserted as a Sound cue. '
+                                  'Save the edited production script when ready.', focus=True)
+                else:
+                    self.playback.enqueue([Path(value['path'])])
+                    self._refresh_playback_choices()
+                    self._message('Verified recording added to the playback playlist. '
+                                  'The reading text remains unchanged.', focus=True)
+            show_recording(self.parent, window_parent=self.dialog, project_id=cue_project,
+                           on_selected=selected, selection_label=label, ffmpeg=self.controller.ffmpeg)
+        except Exception as exc:
+            self._error(exc)
 
     def add_recordings(self, event=None):
         wx = self.wx
