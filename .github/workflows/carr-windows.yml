@@ -153,6 +153,42 @@ jobs:
           & $env:CARR_PYTHON -I -B -c "import importlib.metadata as m,json,pathlib,runpy; read_lock=runpy.run_path('packaging/build_windows_bundle.py')['read_lock']; locked=read_lock(pathlib.Path('packaging/windows-semantic-cp311.lock')); pins={name:value[0] for name,value in locked.items()}; actual={name:m.version(name) for name in pins}; assert pins and actual==pins; print(json.dumps(dict(status='PASS',count=len(pins),versions=actual),sort_keys=True))" | Tee-Object 'ci-results/full-lock-source-inventory.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Check UTF-8 resources under the installed Windows code page
+        timeout-minutes: 3
+        run: |
+          $checkCodepage = @'
+          import codecs, json, locale, os, pathlib, runpy, sys, xml.etree.ElementTree as ET
+          import carr_library
+          assert sys.platform == 'win32' and sys.flags.isolated == 1 and sys.flags.utf8_mode == 0
+          assert codecs.lookup(locale.getencoding()).name == 'cp1252'
+          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(pathlib.Path(sys.prefix).resolve())
+          os.environ['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
+          for name in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS'):
+              os.environ.pop(name, None)
+          nodes = [
+              'tests/citations/test_csl.py::test_all_pinned_resources_and_license_notices_match_manifest',
+              'tests/e2e/test_google_translation.py::test_translation_export_is_separate_source_bound_and_secret_free',
+          ]
+          report = pathlib.Path('ci-results/windows-codepage-regressions.xml')
+          sys.argv = ['windows-codepage-regressions', '-o', 'addopts=', '-o', 'pythonpath=',
+                      '--import-mode=importlib', '-o', 'xfail_strict=true', '--junitxml', str(report), *nodes]
+          child = runpy.run_path('scripts/ci_check.py')['PYTEST_CHILD']
+          try:
+              exec(compile(child, 'windows-codepage-regressions', 'exec'), {'__name__': '__main__'})
+          except SystemExit as result:
+              status = int(result.code or 0)
+          else:
+              raise AssertionError('The strict pytest runner did not report an exit status')
+          cases = list(ET.parse(report).iter('testcase'))
+          assert status == 0 and len(cases) == len(nodes) == 2
+          assert {case.get('name') for case in cases} == {node.split('::')[1] for node in nodes}
+          assert all(case.find(tag) is None for case in cases for tag in ('failure', 'error', 'skipped'))
+          print(json.dumps(dict(status='PASS', encoding=locale.getencoding(), isolated=True,
+                                utf8_mode=sys.flags.utf8_mode, passed=2, failed=0, skipped=0)), flush=True)
+          '@
+          $checkCodepage | & $env:CARR_PYTHON -I -B -X utf8=0 - 2>&1 | Tee-Object 'ci-results/windows-codepage-regressions.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare the verified OCR engine before its required source regression
         timeout-minutes: 10
         run: |
