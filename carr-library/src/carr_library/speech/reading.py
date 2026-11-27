@@ -83,12 +83,22 @@ def _unique(pairs):
 
 class ReadingDocument:
     """An editable reading copy with persistent undo/redo, outside evidence APIs."""
-    def __init__(self, source_text, *, title='Reading copy', source_path=None):
+    def __init__(self, source_text, *, title='Reading copy', source_path=None, source_origin=None):
+        from .source import validate_source_origin
         self._source = text_value(source_text, 'source text', empty=True)
         self.title = text_value(title, 'reading-copy title', maximum=512)
         self._source_hash = sha256(self._source.encode('utf-8')).hexdigest()
         self._source_path = Path(source_path).absolute() if source_path is not None else None
-        self._states = [((MappedRun(self._source, 0, len(self._source), True),) if self._source else ())]
+        self._source_origin = validate_source_origin(source_origin, self._source)
+        runs, cursor = [], 0
+        for separator in (self._source_origin or {}).get('derived_separators', ()):
+            if cursor < separator['start']:
+                runs.append(MappedRun(self._source[cursor:separator['start']], cursor, separator['start'], True))
+            runs.append(MappedRun(self._source[separator['start']:separator['end']], None, None, False))
+            cursor = separator['end']
+        if cursor < len(self._source):
+            runs.append(MappedRun(self._source[cursor:], cursor, len(self._source), True))
+        self._states = [tuple(runs)]
         self._edits = []
         self._position = 0
         self._saved_path = None
@@ -102,6 +112,17 @@ class ReadingDocument:
     @property
     def source_sha256(self):
         return self._source_hash
+
+    @property
+    def source_origin(self):
+        """A defensive portable lineage copy; it never grants source access."""
+        from .source import validate_source_origin
+        return validate_source_origin(self._source_origin, self._source)
+
+    @property
+    def source_bound(self):
+        """Whether a library identity was recorded, not whether it is authorized."""
+        return self._source_origin is not None
 
     @property
     def text(self):
@@ -239,9 +260,12 @@ class ReadingDocument:
         return self.set_text(clone.text, label='Pronunciation reading layer')
 
     def to_dict(self):
-        return {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
+        result = {'schema': 'carr.reading-copy.v1', 'title': self.title, 'source_text': self._source,
                 'source_sha256': self._source_hash, 'edits': [dict(edit) for edit in self._edits],
                 'revision': self._position}
+        if self._source_origin is not None:
+            result.update(schema='carr.reading-copy.v2', source_origin=self.source_origin)
+        return result
 
     def save(self, path, *, cancelled=lambda: False):
         """Create or update this very project with optimistic concurrency checks."""
@@ -295,11 +319,16 @@ class ReadingDocument:
     @classmethod
     def from_dict(cls, data):
         """Validate an exported reading object without approving its source."""
-        if not isinstance(data, dict) or set(data) != {'schema', 'title', 'source_text', 'source_sha256', 'edits', 'revision'}:
+        if not isinstance(data, dict):
             raise ValueError('Invalid reading-project fields.')
-        if data['schema'] != 'carr.reading-copy.v1':
+        if data.get('schema') not in ('carr.reading-copy.v1', 'carr.reading-copy.v2'):
             raise ValueError('Unsupported reading-project version.')
-        document = cls(data['source_text'], title=data['title'])
+        fields = {'schema', 'title', 'source_text', 'source_sha256', 'edits', 'revision'}
+        if data['schema'] == 'carr.reading-copy.v2':
+            fields.add('source_origin')
+        if set(data) != fields or (data['schema'] == 'carr.reading-copy.v2' and data['source_origin'] is None):
+            raise ValueError('Invalid reading-project fields.')
+        document = cls(data['source_text'], title=data['title'], source_origin=data.get('source_origin'))
         if document.source_sha256 != data['source_sha256']:
             raise ValueError('Reading-project original-source checksum mismatch.')
         if not isinstance(data['edits'], list) or len(data['edits']) > MAX_HISTORY:
