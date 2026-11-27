@@ -201,6 +201,8 @@ def run_native():
 
     with TemporaryDirectory(prefix='carr-native-platform-') as temporary:
         root = Path(temporary)
+        source = root / 'synthetic.wav'
+        source.write_bytes(b'Synthetic UI fixture; not audio inference.')
         library = LibraryApp(root / 'library')
         library.create_workspace('Synthetic platform acceptance')
         frame = DesktopFrame(library)
@@ -238,8 +240,6 @@ def run_native():
                 check('explicit inspected fingerprint trust registers one profile',
                       pump(lambda: not view.pending) and service.calls == ['inspect', 'register'])
                 view.pages.SetSelection(0)
-                source = root / 'synthetic.wav'
-                source.write_bytes(b'Synthetic UI fixture; not audio inference.')
                 view.sources = (source,)
                 view.source_paths.ChangeValue(str(source))
                 view.language.SetValue('uk')

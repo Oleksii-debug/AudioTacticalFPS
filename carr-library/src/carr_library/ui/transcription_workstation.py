@@ -627,7 +627,13 @@ def build_profile_page(parent, frame, *, controller=None, close_window=lambda: N
             new.SetScrollRate(0, 16)
             runtimes = wx.ScrolledWindow(self.pages)
             runtimes.SetScrollRate(0, 16)
-            results = wx.Panel(self.pages)
+            results = wx.ScrolledWindow(self.pages)
+            results.SetScrollRate(0, 16)
+            # The embedded page shares its window with the manifest controls
+            # and shared progress. Keep page content scrollable at the dialog's
+            # minimum size instead of imposing the old standalone height.
+            for page in (new, runtimes, results):
+                page.SetMinSize((560, 220))
             self.pages.AddPage(new, 'New transcription')
             self.pages.AddPage(runtimes, 'Local runtime')
             self.pages.AddPage(results, 'Saved jobs and results')
@@ -795,7 +801,7 @@ def build_profile_page(parent, frame, *, controller=None, close_window=lambda: N
                 row.Add(control, 0, wx.ALL, 5)
             layout.Add(row, 0, wx.ALIGN_RIGHT)
             self.SetSizer(layout)
-            self.SetMinSize((700, 620))
+            self.SetMinSize((700, 460))
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
             self.configure(frame, controller)
             for control in (self.python_path, self.worker_path, self.model_path):

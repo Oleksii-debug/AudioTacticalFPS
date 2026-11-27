@@ -2,10 +2,11 @@
 from dataclasses import dataclass
 from hashlib import sha256
 import os
+import stat
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from ..durable_state import atomic_bytes, local_path, regular, state_lock
+from ..durable_state import _open_json_file, atomic_bytes, local_path, regular, state_lock
 from ..speech._io import check_cancelled, text_value
 from ..research.export_file import (ExportReceipt, capture_export_destination,
                                     export_completion, write_binary_export)
@@ -82,25 +83,43 @@ def _stamp(value):
 
 
 def read_dictionary(path, *, cancelled=lambda: False):
-    """Snapshot bounded selected bytes before calling the existing dictionary parser."""
+    """Capture bounded ordinary bytes before calling the existing parser.
+
+    The shared descriptor opener refuses a substituted FIFO or link before a
+    read can block. Only this captured snapshot is parsed; source files are
+    never rewritten by dictionary import.
+    """
     check_cancelled(cancelled)
     path = local_path(path, exists=True)
+    parent = regular(path.parent, directory=True)
+    parent_identity = parent.st_dev, parent.st_ino
     before = regular(path)
     if before.st_size > MAX_DICTIONARY_BYTES:
         raise ValueError('The pronunciation dictionary exceeds its size budget.')
     chunks, size = [], 0
-    with path.open('rb') as source:
-        if _stamp(os.fstat(source.fileno())) != _stamp(before):
+    with _open_json_file(path) as source:
+        opened = os.fstat(source.fileno())
+        if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+                or getattr(opened, 'st_file_attributes', 0) & 0x400
+                or _stamp(opened) != _stamp(before)):
             raise ValueError('The dictionary changed while opening it.')
-        while chunk := source.read(64 * 1024):
+        selected_parent = regular(path.parent, directory=True)
+        if (selected_parent.st_dev, selected_parent.st_ino) != parent_identity:
+            raise ValueError('The dictionary parent changed while opening it.')
+        while True:
             check_cancelled(cancelled)
+            chunk = source.read(min(64 * 1024, before.st_size - size + 1))
+            if not chunk:
+                break
             size += len(chunk)
-            if size > MAX_DICTIONARY_BYTES:
-                raise ValueError('The pronunciation dictionary exceeds its size budget.')
+            if size > before.st_size:
+                raise ValueError('The dictionary changed while reading it.')
             chunks.append(chunk)
         if _stamp(os.fstat(source.fileno())) != _stamp(before):
             raise ValueError('The dictionary changed while reading it.')
-    if size != before.st_size or _stamp(regular(path)) != _stamp(before):
+    selected_parent = regular(path.parent, directory=True)
+    if (size != before.st_size or _stamp(regular(path)) != _stamp(before)
+            or (selected_parent.st_dev, selected_parent.st_ino) != parent_identity):
         raise ValueError('The dictionary changed while reading it.')
     raw = b''.join(chunks)
     with TemporaryDirectory(prefix='resonance-pronunciation-import-') as temporary:

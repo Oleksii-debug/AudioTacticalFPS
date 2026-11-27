@@ -246,9 +246,18 @@ def test_revocation_during_response_retains_uncertain_ledger_and_stops_batch(bat
         return document
     transport['response'] = revoke
     before = len(transport['calls'])
-    with pytest.raises(PermissionError):
+    second_bytes = e.service.jobs.path(second).read_bytes()
+    # LibraryApp rejects revoked scope with ValueError. The real Gateway
+    # deliberately sanitizes that failure after transmission; it must still
+    # retain the uncertain charge and never start the next document.
+    with pytest.raises(ProviderError, match=r'Provider communication failed \(ValueError\)') as failed:
         e.batches.resume(identity)
+    assert TOKEN not in str(failed.value) and e.original not in str(failed.value)
+    with pytest.raises(ValueError, match='archived'):
+        with e.app.read(e.workspace):
+            pass
     assert len(transport['calls']) == before + 1
+    assert e.service.jobs.path(second).read_bytes() == second_bytes
     assert e.service.jobs.load(first)['status'] == 'attention'
     assert e.service.jobs.load(first)['receipts'] == []
     assert e.service.jobs.load(second)['status'] == 'queued'
@@ -342,18 +351,61 @@ def test_resigned_backup_rejects_a_child_that_no_longer_matches_parent(batch_env
     assert not destination.exists()
 
 
-def test_dashboard_keeps_existing_child_jobs_without_a_second_execution_queue(batch_env, transport):
+def test_dashboard_keeps_existing_child_jobs_without_a_second_execution_queue(batch_env, transport, monkeypatch):
     e = batch_env
     identity, manifest = prepared(e)
     before = len(transport['calls']), len(e.vault.calls)
-    rows = OperationFacade(e.app).list(workspace=e.workspace)
+    retained = {child['job']['id']: e.service.jobs.path(child['job']['id']).read_bytes()
+                for child in manifest['members']}
+    def forbidden(*args, **kwargs):
+        pytest.fail('A stored dashboard view activated translation or source verification.')
+    monkeypatch.setattr(TranslationService, '__init__', forbidden)
+    monkeypatch.setattr(TranslationService, '_source_context', forbidden)
+    monkeypatch.setattr(Gateway, '__init__', forbidden)
+    monkeypatch.setattr(Gateway, 'request', forbidden)
+    facade = OperationFacade(e.app)
+    rows = facade.list(workspace=e.workspace)
     children = {member['job']['id'] for member in manifest['members']}
     selected = [row for row in rows if row.kind == 'translation' and row.id in children]
     assert len(selected) == 2
     assert all(row.controls == () and row.workspace == e.workspace for row in selected)
+    assert all(row.status == 'queued' and row.completed == 0 and row.total > 0 for row in selected)
+    assert e.original not in repr(selected) and TOKEN not in repr(selected)
+    other = e.app.create_workspace('An unrelated authorized workspace')
+    assert not children.intersection(row.id for row in facade.list(workspace=other))
+    with pytest.raises(PermissionError, match='another selected library'):
+        facade.get('translation', next(iter(children)), workspace=other)
+    assert all(e.service.jobs.path(child).read_bytes() == content for child, content in retained.items())
     assert not any(row.id == identity for row in rows)
     assert (len(transport['calls']), len(e.vault.calls)) == before
     assert e.batches.get(identity)['control'] == 'pause'
+
+
+@pytest.mark.parametrize('mutation', ['unknown-kind', 'missing-binding', 'different-workspace'])
+def test_dashboard_refuses_malformed_source_jobs_without_exposing_their_text(
+        batch_env, transport, mutation):
+    e = batch_env
+    identity, manifest = prepared(e)
+    child = manifest['members'][0]['job']['id']
+    stored = e.service.jobs.load(child)
+    if mutation == 'unknown-kind':
+        stored['kind'] = 'translation/3'
+    elif mutation == 'missing-binding':
+        del stored['source_binding']
+    else:
+        stored['source_binding']['anchor']['workspace'] = e.app.create_workspace('Different source')
+    e.service.jobs.save(stored)
+    before = e.service.jobs.path(child).read_bytes()
+    calls = len(transport['calls']), len(e.vault.calls)
+    facade = OperationFacade(e.app)
+    row = next(row for row in facade.list(workspace=e.workspace) if row.id == child)
+    assert row.status == 'attention' and row.workspace is None and row.controls == ()
+    assert row.completed is None and row.total is None
+    assert e.original not in repr(row) and TOKEN not in repr(row)
+    with pytest.raises((ValueError, RuntimeError)):
+        facade.get('translation', child)
+    assert (len(transport['calls']), len(e.vault.calls)) == calls
+    assert e.service.jobs.path(child).read_bytes() == before
 
 def test_plain_single_document_jobs_keep_their_existing_wire_and_execution(batch_env, transport):
     e = batch_env

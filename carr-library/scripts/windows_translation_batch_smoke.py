@@ -485,11 +485,33 @@ def _run():
                            if window and isinstance(window, wx.MultiChoiceDialog)
                            and window.GetTitle() == 'Translation source books')
             check('source multi-selection is an actual owned modal', chooser.IsModal())
-            chooser.SetSelections([0, 1])
-            check('two explicit native source selections', tuple(chooser.GetSelections()) == (0, 1))
-            press(chooser.FindWindow(wx.ID_OK), lambda: until(
-                lambda: not frame.working
-                and find(selection['view'], 'Ordered translation documents').GetCount() == 2, captured))
+            choices = chooser.FindWindow(wx.ID_LISTBOX)
+            check('actual two-row native source picker', choices is not None and choices.GetCount() == 2)
+            chooser.SetSelections([])
+            def confirm():
+                # MultiChoiceDialog.GetSelections() is the accepted result:
+                # wx fills it on OK via TransferDataFromWindow. Before OK,
+                # verify the actual check/selection state, not that old result.
+                chosen = (tuple(index for index in range(choices.GetCount()) if choices.IsChecked(index))
+                    if isinstance(choices, wx.CheckListBox) else tuple(choices.GetSelections()))
+                check('two explicit native source selections', chosen == (0, 1))
+                check('native selected rows identify both retained editions',
+                      all(any(item['edition'] in choices.GetString(index) for index in chosen)
+                          for item in originals))
+                press(chooser.FindWindow(wx.ID_OK), lambda: until(
+                    lambda: not frame.working
+                    and find(selection['view'], 'Ordered translation documents').GetCount() == 2, captured))
+            if isinstance(choices, wx.CheckListBox):
+                # wx builds with checklist support use Space for explicit
+                # checks; all input still goes through the real foreground.
+                key(choices, wx.WXK_HOME, lambda: key(choices, wx.WXK_SPACE,
+                    lambda: key(choices, wx.WXK_DOWN,
+                        lambda: key(choices, wx.WXK_SPACE, confirm))))
+            else:
+                check('native fallback really supports extended selection',
+                      bool(choices.GetWindowStyleFlag() & wx.LB_EXTENDED))
+                key(choices, wx.WXK_HOME,
+                    lambda: key(choices, wx.WXK_DOWN, confirm, wx.MOD_SHIFT))
 
         def captured():
             view = selection['view']
@@ -523,6 +545,9 @@ def _run():
             check('exact native review has two immutable child identities',
                   len(manifest['members']) == 2 and len({row['job']['id'] for row in manifest['members']}) == 2
                   and all(row['job']['kind'] == 'translation/2' for row in manifest['members']))
+            check('accepted native picker hands off those exact retained sources',
+                  {row['job']['source_binding']['anchor']['edition'] for row in manifest['members']}
+                  == {item['edition'] for item in originals})
             check('actual preparation saved approvals but sent no text',
                   not any(row['method'] == 'POST' for row in calls) and snapshot['completed'] == 0)
             check('controlled approval binds the exact displayed immutable review',

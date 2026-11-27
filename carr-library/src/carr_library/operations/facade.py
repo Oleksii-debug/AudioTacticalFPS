@@ -131,12 +131,26 @@ class OperationFacade:
             raise ResourceStateError('Operation checkpoint schema or identity changed.')
         if kind == 'assistant' and data.get('data_dir') != str(self.root):
             raise ResourceStateError('Assistant checkpoint belongs to another data directory.')
-        if kind == 'translation' and data.get('kind') != 'translation/1':
-            raise ResourceStateError('Unsupported translation checkpoint.')
+        source_binding = None
+        if kind == 'translation':
+            if data.get('kind') == 'translation/2':
+                # Validate the saved source identity without constructing a
+                # service, reading source assets or checking provider receipts.
+                # This remains a stored-status view, never new quotation or
+                # translation authority.
+                from ..assistant.translation import TranslationService
+                try:
+                    source_binding = TranslationService._binding(data)
+                except (KeyError, TypeError, ValueError):
+                    raise ResourceStateError('Invalid source-bound translation checkpoint.') from None
+            elif data.get('kind') != 'translation/1':
+                raise ResourceStateError('Unsupported translation checkpoint.')
         status = data.get('state') if kind == 'import' else data.get('status')
         if not isinstance(status, str) or status not in _STATES:
             raise ResourceStateError('Unknown saved operation state; inspect its canonical service.')
         workspace = data.get('workspace') if kind in ('assistant', 'import') else None
+        if source_binding is not None:
+            workspace = source_binding['anchor']['workspace']
         if workspace is not None and (not isinstance(workspace, str) or not workspace or len(workspace) > 200):
             raise ResourceStateError('Invalid saved operation workspace.')
         completed = total = None

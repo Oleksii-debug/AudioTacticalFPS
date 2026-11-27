@@ -402,7 +402,10 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             root_layout = wx.BoxSizer(wx.VERTICAL)
             self.pages = wx.Notebook(self)
             self.pages.SetName('Transcription pages')
-            input_page, job_page = wx.Panel(self.pages), wx.Panel(self.pages)
+            input_page, job_page = wx.ScrolledWindow(self.pages), wx.ScrolledWindow(self.pages)
+            for page in (input_page, job_page):
+                page.SetScrollRate(0, 16)
+                page.SetMinSize((640, 320))
             panel = input_page
             layout = wx.BoxSizer(wx.VERTICAL)
 
@@ -506,7 +509,9 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
                 self.Bind(wx.EVT_MENU, handler, id=identifier)
                 accelerators.append((flags, key, identifier))
             self.SetAcceleratorTable(wx.AcceleratorTable(accelerators))
-            self.SetMinSize((750, 740))
+            self.Layout()
+            minimum = root_layout.GetMinSize()
+            self.SetMinClientSize((max(720, minimum.width), max(660, minimum.height)))
             self.render()
 
         def render(self, focus=False):

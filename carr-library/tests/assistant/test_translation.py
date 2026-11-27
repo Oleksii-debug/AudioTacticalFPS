@@ -1088,11 +1088,12 @@ def translation_window(monkeypatch, tmp_path):
         return state['approval']
 
     identities = itertools.count(100)
+    automatic_menu_ids = itertools.count(200)
     wx = SimpleNamespace(Dialog=Control, TextCtrl=Control, StaticText=Control, Choice=Control,
         Button=Control, BoxSizer=Control, SingleChoiceDialog=ChoiceDialog, DirDialog=DirectoryDialog,
         TextEntryDialog=RangeDialog, DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2, VERTICAL=3,
         HORIZONTAL=4, TE_MULTILINE=8, TE_READONLY=16, EXPAND=32, ALL=64,
-        YES_NO=128, NO_DEFAULT=256, YES=1, NO=0, ID_OK=10, ID_CLOSE=11,
+        YES_NO=128, NO_DEFAULT=256, YES=1, NO=0, ID_OK=10, ID_CLOSE=11, ID_ANY=-1,
         EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu', EVT_WINDOW_DESTROY='destroy',
         MessageBox=message_box, CallAfter=lambda function, *args: function(*args),
         NewIdRef=lambda: next(identities))
@@ -1113,9 +1114,16 @@ def translation_window(monkeypatch, tmp_path):
         panel = SimpleNamespace(workspace=case.workspace, ready=True, rows=rows, books=Control(),
             _selection=lambda: (None, None, case.imported['edition']))
         frame.book = SimpleNamespace(GetPage=lambda index: panel)
+        def append(identity, label):
+            native_id = next(automatic_menu_ids) if int(identity) == wx.ID_ANY else int(identity)
+            return SimpleNamespace(GetId=lambda: native_id, GetItemLabel=lambda: label)
         frame.menu_bar = SimpleNamespace(GetMenuCount=lambda: 1, GetMenuLabel=lambda index: '&Tools',
-            GetMenu=lambda index: SimpleNamespace(Append=lambda *args: None))
-        frame.Bind = lambda event, callback, **kwargs: menu_handlers.update({kwargs['id']: callback})
+            GetMenu=lambda index: SimpleNamespace(Append=append))
+        def bind_menu(event, callback, item=None, **kwargs):
+            native_id = item.GetId() if item is not None else kwargs['id']
+            assert native_id not in menu_handlers
+            menu_handlers[native_id] = callback
+        frame.Bind = bind_menu
         def run_job(title, operation, done=None, failed=None):
             runs.append(title)
             frame.cancel_event.clear()
@@ -1257,6 +1265,9 @@ def test_book_translation_menu_reuses_authorized_reader_and_exact_source_range(
         observed.append(source)
     monkeypatch.setattr(window.ui, 'show_translation', opened)
     window.ui.install_translation_actions(frame)
+    commands = {spec.command_id: item.GetId() for spec, item in frame._pending_keyboard_commands}
+    assert commands == {'tools.translation': 100, 'tools.translation_batch': 200}
+    assert set(window.menu_handlers) == {100, 101, 200}
     window.menu_handlers[101](None)
     if revoked:
         assert not observed and 'archived' in window.errors[-1]

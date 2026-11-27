@@ -41,7 +41,9 @@ jobs:
           python-version: '3.11'
       - name: Install exact source and declared tests
         id: source-runtime
-        run: python -m pip install ".[test,sync]"
+        run: |
+          python -m pip install ".[test,sync]"
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/trusted-client.lock
       - name: Install actual Windows desktop
         id: desktop-runtime
         if: runner.os == 'Windows'
@@ -119,13 +121,23 @@ jobs:
             tests/security/test_standard_update_handoff.py \
             tests/security/test_update_maintenance.py \
             tests/security/test_installation.py \
+            tests/speech/test_dictionary_import_boundary.py \
+            tests/conversion/test_calibre_selection.py \
+            tests/conversion/test_calibre_process_ownership.py \
+            tests/conversion/test_calibre_acceptance.py \
+            tests/ui/test_update_maintenance.py \
+            tests/packaging/test_standard_update_envelope.py \
+            tests/ui/test_transcription_dialog.py \
+            tests/ui/test_transcription_workstation.py \
+            tests/ui/test_ebook_dialog.py \
+            tests/conversion/test_document_batches_ownership.py \
             tests/security/test_updates.py 2>&1 | tee ci-feature-review/boundaries.txt
       - name: Require Windows acquisition and actual native lookup
         if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success'"
         run: python scripts/ci_check.py --jobs 3 tests/ui/test_native_acquisition.py tests/transcription/test_protocol_fixture_windows.py tests/e2e/test_export_destination.py tests/audio/test_recording_process_windows.py 2>&1 | tee ci-feature-review/native-acquisition-boundaries.txt
       - name: Require real POSIX snapshot race refusal
         if: "!cancelled() && runner.os == 'Linux' && steps.source-runtime.outcome == 'success'"
-        run: python scripts/ci_check.py --jobs 3 tests/storage/test_json_snapshot_posix.py tests/operations/test_resources_posix.py tests/conversion/test_document_batches_posix.py tests/transcription/test_runtime_inventory_posix.py 2>&1 | tee ci-feature-review/posix-snapshots.txt
+        run: python scripts/ci_check.py --jobs 3 tests/storage/test_json_snapshot_posix.py tests/operations/test_resources_posix.py tests/conversion/test_document_batches_posix.py tests/transcription/test_runtime_inventory_posix.py tests/conversion/test_office_registry_posix.py tests/speech/test_dictionary_import_boundary_posix.py 2>&1 | tee ci-feature-review/posix-snapshots.txt
       - name: Require installed native feature workflows with egress blocked
         if: "!cancelled() && runner.os == 'Windows' && steps.source-runtime.outcome == 'success' && steps.desktop-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success'"
         shell: pwsh
@@ -163,8 +175,12 @@ jobs:
             @{ status='PASS'; blocked_programs=$filters; scope='tested runtime executables, not a whole-machine network claim' } | ConvertTo-Json -Depth 4 | Set-Content 'ci-feature-review/runtime-firewall.json'
             $probes = @(
               @{ name='native-trust-status'; script='tests/ui/native_trust_status_smoke.py'; arguments=@('--native') },
+              @{ name='native-update-maintenance'; script='scripts/windows_update_maintenance_smoke.py'; arguments=@() },
               @{ name='native-workflow-templates'; script='scripts/windows_workflow_templates_smoke.py'; arguments=@() },
               @{ name='native-translation-batch'; script='scripts/windows_translation_batch_smoke.py'; arguments=@() },
+              @{ name='native-transcription'; script='tests/ui/native_transcription_smoke.py'; arguments=@() },
+              @{ name='native-platform-tools'; script='scripts/windows_platform_tools_smoke.py'; arguments=@() },
+              @{ name='native-epub-reading'; script='scripts/windows_epub_reading_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') },
               @{ name='native-recording'; script='scripts/windows_recording_smoke.py'; arguments=@('--audio-evidence', 'ci-feature-review/external-test-audio-binding.json') }
             )
             $failures = @()

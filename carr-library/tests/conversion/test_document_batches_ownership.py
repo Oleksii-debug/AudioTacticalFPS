@@ -244,3 +244,73 @@ def test_split_outputs_preserve_both_actual_writer_cleanup_notices(tmp_path, mon
     assert 'text cleanup acknowledgement' in result['message']
     assert 'sidecar cleanup acknowledgement' in result['message']
     assert _fixture['receipts'](service, identity, output) == source.read_bytes()
+
+
+def test_slow_actual_studio_accounting_keeps_a_completed_scan_interval_and_live_pause(tmp_path, monkeypatch):
+    """Charge actual scans 250ms without wall-clock sleeps or fake file totals."""
+    from types import SimpleNamespace
+    from carr_library.audio.models import AudioCancelled
+    from carr_library.studio import render
+    batch = _fixture['batch'].__wrapped__(tmp_path)
+    service, identity, source, output = batch
+    clock, totals, observations = [1.0], [], []
+    actual_time = render.time
+    actual_retained = render._retained_bytes
+    def measured_scan(roots, cancelled):
+        total = actual_retained(roots, cancelled)
+        totals.append(total)
+        clock[0] += .25
+        return total
+    monkeypatch.setattr(render, 'time', SimpleNamespace(
+        monotonic=lambda: clock[0], time=actual_time.time))
+    monkeypatch.setattr(render, '_retained_bytes', measured_scan)
+    class MeasuredTone(_fixture['ToneVoices']):
+        first = True
+        def synthesize(self, text, voice_id, destination, *, settings, cancelled):
+            if self.first:
+                self.first = False
+                assert totals  # generate() has already forced real accounting.
+                scans = len(totals)
+                for _ in range(16):
+                    assert not cancelled()
+                assert len(totals) == scans, 'A completed slow scan caused an immediate rescan loop.'
+                before = totals[-1]
+                probe = production.cache / 'accounting-observation.bin'
+                added = b'Actual newly retained private bytes.' * 8
+                try:
+                    probe.write_bytes(added)
+                    clock[0] += .21
+                    assert not cancelled()
+                    assert len(totals) == scans + 1
+                    assert totals[-1] == before + len(added)
+                finally:
+                    probe.unlink(missing_ok=True)
+                # Control remains live even when the disk interval has not
+                # elapsed. This is the real saved parent pause, not a fake flag.
+                service.pause(identity)
+                assert cancelled()
+                assert len(totals) == scans + 1
+                observations.append('actual growth counted; actual pause observed')
+                raise AudioCancelled('Explicit pause after real accounting checks.')
+            return super().synthesize(text, voice_id, destination,
+                                      settings=settings, cancelled=cancelled)
+    voices = MeasuredTone()
+    production = render.ProductionService(service.library / 'state' / 'studio', voices=voices)
+    service.production = production
+    original = source.read_bytes()
+    try:
+        _fixture['reviewed'](batch, SplitOptions(), action='studio', voice_id='synthetic-tone')
+        with pytest.raises(InterruptedError, match='receipts remain available'):
+            service.run(identity)
+        assert observations == ['actual growth counted; actual pause observed']
+        assert service.get(identity)['status'] == 'paused'
+        child, = production.jobs()
+        assert child['status'] == 'paused'
+        result = service.run(identity)
+        assert result['status'] == 'complete' and production.jobs()[0]['id'] == child['id']
+        complete = production.get(child['id'])
+        assert complete['status'] == 'complete' and complete['artifacts']
+        assert source.read_bytes() == original
+        assert service.close() is True
+    finally:
+        production.close()

@@ -210,7 +210,7 @@ def _run_native(options):
     from carr_library.reader.reading_state import ReadingState
     from carr_library.studio.render import ProductionService
     from carr_library.studio.publishing import PublicationService
-    from carr_library.ui import ebook_audio_dialog, reading_desk
+    from carr_library.ui import ebook_audio_dialog, ebook_model, reading_desk
     from carr_library.ui.desktop_app import DesktopFrame
 
     errors, checks, pressed, audio_proof = [], [], set(), {}
@@ -341,7 +341,7 @@ def _run_native(options):
     with TemporaryDirectory(prefix='resonance-native-epub-reading-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
         try:
-            source_identity = binding.verify_installed_sources(ebook_audio, ebook_audio_dialog, reading_desk, live_reading)
+            source_identity = binding.verify_installed_sources(ebook_audio, ebook_audio_dialog, ebook_model, reading_desk, live_reading)
             check('exact installed source and native reader modules', bool(source_identity))
             check('real native Windows controls', wx.Platform == '__WXMSW__')
             library = LibraryApp(root / 'library')
@@ -466,6 +466,9 @@ def _run_native(options):
                     check('reading does not create quotation approval', not expected_page.verified and library._selections == {})
                     check('completed publication receipt still verifies', PublicationService(service).verify(receipt['id']) == receipt)
                     verify_audio(service._runtime())
+                    check('installed source mapping remains unchanged',
+                          binding.verify_installed_sources(ebook_audio, ebook_audio_dialog,
+                              ebook_model, reading_desk, live_reading) == source_identity)
                 gui.ExitMainLoop()
 
             wx.CallAfter(guarded(open_reader))

@@ -175,6 +175,17 @@ def run_native_transcription(frame, directory, *, source=False):
                 assert dialog.profile_view.pages.GetPageCount() == 3
                 assert dialog.GetSizer().GetMinSize().width <= dialog.GetClientSize().width
                 assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
+                initial_size = dialog.GetSize()
+                dialog.SetSize(dialog.GetMinSize())
+                dialog.Layout()
+                assert dialog.GetSizer().GetMinSize().width <= dialog.GetClientSize().width
+                assert dialog.GetSizer().GetMinSize().height <= dialog.GetClientSize().height
+                for page in (dialog.pages.GetPage(0), dialog.pages.GetPage(1),
+                             *(dialog.profile_view.pages.GetPage(i) for i in range(3))):
+                    assert isinstance(page, wx.ScrolledWindow)
+                    assert page.GetScrollPixelsPerUnit()[1] > 0
+                dialog.SetSize(initial_size)
+                dialog.Layout()
                 assert not dialog.pause_button.IsEnabled()
                 controller.set_manifest(manifest)
                 click(dialog.verify)
