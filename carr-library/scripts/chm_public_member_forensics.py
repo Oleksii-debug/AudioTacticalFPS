@@ -188,7 +188,9 @@ def inspect_member(parser, name, raw):
     expected_bytes, expected_hash = MEMBERS[name]
     if len(raw) != expected_bytes or sha256(raw).hexdigest() != expected_hash:
         raise AssertionError('The selected public help member differs from the observed Windows fixture.')
-    result = {'member': name, 'bytes': len(raw), 'sha256': expected_hash}
+    decoded_source = raw.decode('cp1252', 'strict')
+    result = {'member': name, 'bytes': len(raw), 'sha256': expected_hash,
+              'raw_header': '\n'.join(decoded_source.splitlines()[:26])[:2500]}
     try:
         recovered = parser(raw, max_chars=1_000_000, deadline=time.monotonic() + 15, notices=[])
         result.update(status='RETURNED', recovered_sha256=sha256(recovered).hexdigest())
@@ -211,12 +213,27 @@ def inspect_member(parser, name, raw):
                     decoded = raw.decode('cp1252', 'strict')
                     position = decoded.find(needle)
                     result['source_context'] = decoded[max(0, position - 250):position + 500] if position >= 0 else None
+                result['serialization_header'] = '\n'.join(
+                    local.get('serialized', b'').decode('ascii', 'strict').splitlines()[:26])[:2500]
                 result['serialization_context'] = local.get('serialized', b'')[:0].decode('ascii')
                 if first is not None and 'serialized' in local:
                     value = local['serialized'].decode('ascii', 'strict')
                     needle = after[first] if first < len(after) else before[first]
                     position = value.find(needle)
                     result['serialization_context'] = value[max(0, position - 250):position + 500] if position >= 0 else None
+            if code.co_name == '_chm_recovered_html' and 'strict' in local:
+                strict = local['strict']
+                line, column = strict.getpos()
+                result['strict_failure_position'] = [line, column]
+                result['strict_open_elements'] = [item[0] for item in strict.stack]
+                lines = local.get('reading', '').splitlines()
+                result['strict_failure_context'] = '\n'.join(
+                    lines[max(0, line - 18):line + 6])[:4000]
+                result['definition_tag_trace'] = [
+                    {'line': number, 'tags': re.findall(r'</?(?:dl|dt|dd)\b[^>]*>', value,
+                                                       flags=re.IGNORECASE)}
+                    for number, value in enumerate(lines[:line + 6], 1)
+                    if re.search(r'</?(?:dl|dt|dd)\b', value, flags=re.IGNORECASE)][-32:]
             if code.co_name == '_chm_paragraph_ends' and 'parser' in local:
                 current = local['parser']
                 line, column = current.getpos()

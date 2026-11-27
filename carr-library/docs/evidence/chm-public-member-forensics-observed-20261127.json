@@ -1,0 +1,114 @@
+{
+  "schema": 1,
+  "kind": "exact-public-chm-read-only-forensics",
+  "status": "DIAGNOSTIC_COMPLETE",
+  "source_commit": "6c9813adf3e796336b1885acf85061fcbab8aaf7",
+  "source_tree": "c0d3a272f8669ecd626e0cfcb4178d99176c9115",
+  "run": 46052068082,
+  "job": 140685572784,
+  "artifact": {
+    "id": 15224528438,
+    "bytes": 4770,
+    "sha256": "4447c9f3e2bee9ee0dfedbc3e8d44415488683493674a5f500c1125209d82fa2"
+  },
+  "members": [
+    {
+      "bytes": 16035,
+      "error_type": "ValueError",
+      "failure_context": "</BODY>\n</HTML>",
+      "member": "fm/plugins/7-zip/add.htm",
+      "open_elements": [],
+      "ordered_tokens": {
+        "after_count": 1076,
+        "after_window": [
+          "will",
+          "be",
+          "used",
+          "for",
+          "decompression."
+        ],
+        "before_count": 1827,
+        "before_window": [
+          "will",
+          "be",
+          "used",
+          "for",
+          "decompression.",
+          "Split",
+          "to",
+          "volumes",
+          "{Size}[b",
+          "|",
+          "k",
+          "|",
+          "m",
+          "|"
+        ],
+        "first_difference": 1076
+      },
+      "parser_position": [
+        332,
+        0
+      ],
+      "reason": "HTML element nesting is malformed.",
+      "serialization_context": "sed to increase the decompression speed with additional \n       CPU threads. Note: 7-Zip doesn't use additional memory for decompression that exceeds \n       55% of the computer's RAM that will be used for decompression.\n    </p>\n  </dd>\n\n  </dd><dt>Split to volumes</dt>\n  <dd>\n    <pre class=\"syntax\">\n    {Size}[b | k | m | g]\n    </pre>\n\n    <p>Specifies volume sizes in Bytes, Kilobytes (1 Kilobyte = 1024 bytes),\n    Megabytes (1 Megabyte = 1024 Kilobytes) or Gigabytes (1 Gigabyte = 1024 Megabytes).\n    If you specify only {Size}, 7-zip will treat it as bytes. It's possible to specify\n    several values. Example:</p>\n\n    <pre class=\"example\">\n    10k 15k 2m\n    </pre>\n\n    <p>The first volume will be 10 KB, the second will be 15 KB, and ",
+      "sha256": "b6bff175f02f13a83cd585b3b959afa634b85bec8a082d6331ac3663cce41fb0",
+      "source_context": "ed to increase the decompression speed with additional \r\n       CPU threads. Note: 7-Zip doesn't use additional memory for decompression that exceeds \r\n       55% of the computer's RAM that will be used for decompression.\r\n    </P>\r\n  </DD>\r\n\r\n  <DT>Split to volumes</DT>\r\n  <DD>\r\n    <PRE class=\"syntax\">\r\n    {Size}[b | k | m | g]\r\n    </PRE>\r\n\r\n    <P>Specifies volume sizes in Bytes, Kilobytes (1 Kilobyte = 1024 bytes),\r\n    Megabytes (1 Megabyte = 1024 Kilobytes) or Gigabytes (1 Gigabyte = 1024 Megabytes).\r\n    If you specify only {Size}, 7-zip will treat it as bytes. It's possible to specify\r\n    several values. Example:</P>\r\n\r\n    <PRE class=\"example\">\r\n    10k 15k 2m\r\n    </PRE>\r\n\r\n    <P>The first volume will be 10 KB, the second will",
+      "status": "REFUSED"
+    },
+    {
+      "bytes": 7746,
+      "error_type": "ConversionError",
+      "failure_context": "</BODY>\n</HTML>",
+      "member": "cmdline/switches/index.htm",
+      "open_elements": [],
+      "ordered_tokens": {
+        "after_count": 555,
+        "after_window": [
+          "Command",
+          "Line",
+          "Switches",
+          "Syntax",
+          "<switch>::=",
+          "-<switch_characters>[<option>]",
+          "On",
+          "the",
+          "command",
+          "line,",
+          "a",
+          "switch",
+          "consists"
+        ],
+        "before_count": 555,
+        "before_window": [
+          "Command",
+          "Line",
+          "Switches",
+          "Syntax",
+          "<switch;>::=",
+          "-<switch_characters>[<option>]",
+          "On",
+          "the",
+          "command",
+          "line,",
+          "a",
+          "switch",
+          "consists"
+        ],
+        "first_difference": 4
+      },
+      "parser_position": [
+        119,
+        0
+      ],
+      "reason": "CHM HTML recovery changed the ordered visible text.",
+      "serialization_context": null,
+      "sha256": "38308f9d9bbdf73d55b19facdd13f4fe97e30a89141aa08aabe9c7ae0de064e8",
+      "source_context": null,
+      "status": "REFUSED"
+    }
+  ],
+  "temporary_payload_removed": true,
+  "qualification": "Read-only Linux diagnosis of two exact pinned public HTML members, not Windows/product/release qualification.",
+  "followup": "Bounded raw header and actual strict-parser failure context only. Product parser functions and source hashes remain unchanged."
+}
