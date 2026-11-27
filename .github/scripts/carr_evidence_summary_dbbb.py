@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-SOURCES = [[46063682412,"49fe25ade1d91dc4b283fe3b0fd29cc6b4e921ae",15231041750,"266006c1490b967027929a103717bba0d4e5323ee6cf223440eefb7cc02b1144"]]
+SOURCES = [[46063639311,"10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a",15231941184,"ad1e01962aa3a3d18b3fbd5aa65512cc5ee01b5b4248731813246b4d814ec450"]]
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         parsed = urllib.parse.urlsplit(newurl)
@@ -53,7 +53,7 @@ for run, head, identity, digest in SOURCES:
         if len(entries) > 2000 or sum(x.file_size for x in entries) > 128 * 1024 * 1024:
             raise ValueError("Evidence archive exceeds reviewed bound")
         emit("FILES " + json.dumps([(x.filename, x.file_size) for x in entries if not x.is_dir()])[:10000])
-        priority = ("reader-player", "ebook-daisy", "bundle", "reader-navigation", "capture")
+        priority = ("reading-production-source",)
         entries.sort(key=lambda entry: (next((i for i, term in enumerate(priority)
             if term in entry.filename.lower()), len(priority)), entry.filename))
         for entry in entries:
@@ -78,6 +78,6 @@ for run, head, identity, digest in SOURCES:
                             key: value[key] for key in ("status", "result", "passed", "failed_stage",
                             "error", "errors", "manual_nvda", "speech_inference") if key in value})[:2500])
             elif any(term in name for term in priority):
-                emit("NATIVE_TEXT " + name + "\n" + content[-50000:])
+                emit("NATIVE_TEXT " + name + "\n" + content[:190000])
 emit(json.dumps({"summary_complete": True, "remaining_output_budget": remaining,
                  "qualification": "diagnostic only; exact previous source head"}))
