@@ -31,7 +31,7 @@
       "test_create_only_cleanup_cannot_reverse_completed_export": 4,
       "test_cli_reports_completed_export_when_staging_cleanup_is_denied": 1,
       "test_create_only_export_rejects_existing_file_without_touching_it": 2,
-      "test_file_created_after_final_destination_check_is_never_replaced": 2,
+      "test_file_created_after_final_destination_check_is_never_replaced": 4,
       "test_cancel_after_staging_leaves_no_destination_or_temporary": 2,
       "test_explicit_existing_replacement_still_uses_supported_export_path": 2,
       "test_cli_without_overwrite_preserves_file_created_during_formatting": 1,

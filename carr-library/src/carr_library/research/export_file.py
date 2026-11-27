@@ -268,6 +268,9 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
                 or approval.state != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         require_absent = require_absent or approval.require_absent
+    # Observed absence authorizes creation only. It cannot authorize replacing
+    # a different file that appears after the final destination snapshot.
+    require_absent = require_absent or previous is None
     if require_absent and previous is not None:
         raise FileExistsError('The export destination already exists; replacement was not authorized.')
     temporary = None
