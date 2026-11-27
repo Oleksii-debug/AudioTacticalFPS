@@ -44,6 +44,17 @@ DEFAULT_SETTINGS = {
 }
 
 
+def _python_paths(value):
+    # A POSIX venv normally links its Python executable to the base runtime.
+    # Keep the selected launch path for _SITE_BOOTSTRAP's package discovery,
+    # while the executable bytes retain the same strict identity checks.
+    selected = Path(value).absolute()
+    selected = local_path(selected.parent.resolve(strict=True), exists=True) / selected.name
+    executable = local_path(selected.resolve(strict=True), exists=True)
+    regular(executable)
+    return selected, executable
+
+
 def settings(value=None):
     value = value or {}
     if not isinstance(value, dict) or set(value) - set(DEFAULT_SETTINGS):
@@ -212,18 +223,17 @@ class TranscriptionService:
 
     def configure(self, python, worker, models_dir):
         self._authorize()
-        python = local_path(Path(python).resolve(strict=True), exists=True)
+        python, executable = _python_paths(python)
         worker = local_path(worker, exists=True)
         models_dir = local_path(models_dir, exists=True)
         regular(models_dir, directory=True)
-        regular(python)
         regular(worker)
         if worker.suffix.lower() != '.py' or regular(worker).st_size > 4 * 1024**2:
             raise ValueError('Select the reviewed local Whisper worker Python file.')
         if models_dir.is_relative_to(self.app.root):
             raise ValueError('Keep model/runtime assets outside the backed-up library data directory.')
         value = {'version': 1, 'python': str(python), 'worker': str(worker),
-                 'models_dir': str(models_dir), 'python_sha256': digest_file(python),
+                 'models_dir': str(models_dir), 'python_sha256': digest_file(executable),
                  'worker_sha256': digest_file(worker),
                  'network': 'local-files-only; Python network calls denied',
                  'inference_qualified': False}
@@ -241,7 +251,9 @@ class TranscriptionService:
             raise ValueError('Unsupported transcription engine configuration.')
         if verify:
             for key in ('python', 'worker'):
-                if digest_file(local_path(value[key], exists=True)) != value[key + '_sha256']:
+                path = (_python_paths(value[key])[1] if key == 'python'
+                        else local_path(value[key], exists=True))
+                if digest_file(path) != value[key + '_sha256']:
                     raise ValueError('The configured transcription runtime changed; select and review it again.')
             regular(local_path(value['models_dir'], exists=True), directory=True)
         return value
