@@ -381,7 +381,24 @@ class AudioBatchService:
                                                   'plan_sha256': batch.plan_sha256})
                 output = checked_directory(stage / 'publish', create=True)
                 work = checked_directory(stage / 'work', create=True)
-                with media.selected_runtime(self.ffmpeg, batch.runtime, cancelled=lease.cancelled):
+                def bounded_cancelled():
+                    if lease.cancelled():
+                        return True
+                    total, count = 0, 0
+                    # Completed chapter files stay in this same staging tree.
+                    # Enforce the whole reserved item, not only the current
+                    # FFmpeg target, before any next native step/publication.
+                    for directory in (output, work):
+                        for candidate in directory.iterdir():
+                            count += 1
+                            info = regular_file(candidate)
+                            if info.st_nlink != 1 or count > len(item.outputs) + 4:
+                                raise ValueError('The owned audio stage exceeded its file allowance.')
+                            total += info.st_size
+                            if total > request.disk_bytes:
+                                raise ValueError('The cumulative audio item exceeded its reserved output disk allowance.')
+                    return False
+                with media.selected_runtime(self.ffmpeg, batch.runtime, cancelled=bounded_cancelled):
                     files = []
                     original = file_identity(regular_file(source))
                     with verified_reader(source, expected_identity=original):
@@ -389,23 +406,23 @@ class AudioBatchService:
                             on_status(f'Converting item {item.ordinal} of {len(batch.items)}, output {ordinal} of {len(item.outputs)}.')
                             decoded = work / 'decoded.wav'
                             media.decode(source, decoded, demuxer=demuxer, stream_index=stream_index,
-                                         ffmpeg=self.ffmpeg, preset=item.preset, cancelled=lease.cancelled,
+                                         ffmpeg=self.ffmpeg, preset=item.preset, cancelled=bounded_cancelled,
                                          sample_bounds=selection)
                             target = output / filename
-                            media.encode(decoded, target, ffmpeg=self.ffmpeg, preset=item.preset, cancelled=lease.cancelled)
+                            media.encode(decoded, target, ffmpeg=self.ffmpeg, preset=item.preset, cancelled=bounded_cancelled)
                             decoded.unlink()
                             files.append(media.verify_encoded(target, work / 'verified.wav', ffmpeg=self.ffmpeg,
-                                                              preset=item.preset, cancelled=lease.cancelled))
-                        self.verify_sources(batch, item, cancelled=lease.cancelled)
+                                                              preset=item.preset, cancelled=bounded_cancelled))
+                        self.verify_sources(batch, item, cancelled=bounded_cancelled)
                     value = {'schema': 'carr-audio-batch-receipt/1', 'batch_id': batch.id,
                              'item_id': item.id, 'plan_sha256': batch.plan_sha256, 'item_sha256': item.fingerprint,
                              'source_sha256': item.source.sha256, 'runtime_sha256': batch.runtime.sha256,
                              'files': files, 'render': binding}
                     receipt_value(value, batch, item)
                     atomic_json(output / 'receipt.json', value)
-                check_cancelled(lease.cancelled)
+                check_cancelled(bounded_cancelled)
                 publish_noreplace(output, self.path(batch.id) / 'outputs' / item.id,
-                                  cancelled=lease.cancelled)
+                                  cancelled=bounded_cancelled)
                 # Finish the committed result even if Cancel arrives after the
                 # no-replace directory move. Next items still observe the request.
                 return self.verified_receipt(batch, item, durable=True)

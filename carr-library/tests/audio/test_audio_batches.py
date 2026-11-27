@@ -347,3 +347,23 @@ def test_uncommitted_derived_stage_is_recovered_without_touching_completed_outpu
     result = service.run(state.id, action='resume')
     assert result.status == 'complete' and not stage.exists()
     assert service.verified_receipt(result, result.items[0]) is not None
+
+
+def test_cumulative_staged_output_cannot_exceed_the_reserved_item_budget(tmp_path, ffmpeg, monkeypatch):
+    _, service, state, source, original = local_queue(tmp_path, ffmpeg)
+    actual = media_conversion.encode
+    limit = state.items[0].preset.pcm_budget * 4 + 2 * batches.MAX_STATE_BYTES
+    def oversized(source, target, **kwargs):
+        actual(source, target, **kwargs)
+        # A sparse derived fixture tests aggregate accounting without consuming
+        # an equivalent amount of physical runner disk or changing the original.
+        with Path(target).open('r+b') as output:
+            output.seek(limit)
+            output.write(b'\0')
+    monkeypatch.setattr(media_conversion, 'encode', oversized)
+    failed = service.run(state.id)
+    assert failed.status == failed.items[0].state == 'failed'
+    assert 'cumulative' in failed.items[0].error and 'disk allowance' in failed.items[0].error
+    assert not (service.path(state.id) / 'outputs' / state.items[0].id).exists()
+    assert not list(service.path(state.id).glob('.pending-item-*'))
+    assert service.broker.snapshot()['leases'] == [] and source.read_bytes() == original

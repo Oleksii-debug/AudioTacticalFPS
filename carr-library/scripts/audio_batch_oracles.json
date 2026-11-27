@@ -34,7 +34,8 @@
       "test_pending_native_cleanup_keeps_stage_and_resource_lease_until_settled": 1,
       "test_two_books_keep_exact_source_drafts_and_explicit_whole_chapter_previews": 1,
       "test_independent_export_reuses_verified_data_and_refuses_a_changed_destination": 1,
-      "test_uncommitted_derived_stage_is_recovered_without_touching_completed_outputs": 1
+      "test_uncommitted_derived_stage_is_recovered_without_touching_completed_outputs": 1,
+      "test_cumulative_staged_output_cannot_exceed_the_reserved_item_budget": 1
     },
     "tests/storage/test_audio_batch_backup.py": {
       "test_queued_and_completed_media_restore_without_external_sources_or_empty_directory_assumptions": 2,
@@ -78,7 +79,7 @@
       "test_dashboard_checkpoint_is_not_a_false_output_verification_claim": 1
     }
   },
-  "total_cases": 142,
+  "total_cases": 143,
   "fixture_multipliers": 1,
   "fixture_closure": [
     "tests/audio/test_audio_batches.py::ffmpeg",
