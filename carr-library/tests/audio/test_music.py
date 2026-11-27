@@ -199,7 +199,7 @@ def test_actual_dense_score_uses_bounded_portable_filter_command(tmp_path, ffmpe
     assert result['provenance']['sha256'] == digest(result['path'])
     assert result['midi'].read_bytes().startswith(b'MThd')
     info = _wave_frames(result['path'])
-    assert info == {'frames': sample_rate * 4, 'sample_rate': sample_rate, 'channels': 1}
+    assert info == {'frames': sample_rate * 4, 'sample_rate': sample_rate, 'channels': 1, 'sample_width': 2}
     # FFmpeg may use WAVE_FORMAT_EXTENSIBLE at 96 kHz, which Python 3.11's
     # wave reader does not accept. Decode the real result independently.
     pcm = folder / 'decoded.pcm'

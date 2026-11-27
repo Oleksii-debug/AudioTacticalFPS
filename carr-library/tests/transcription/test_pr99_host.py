@@ -194,3 +194,54 @@ def test_live_worker_status_reader_allows_atomic_replacement(tmp_path, monkeypat
         assert transcription_host.read_worker_status(status) == {'state': 'running', 'done': 0}
     assert transcription_host.read_worker_status(status) == {'state': 'finished', 'done': 1}
     assert status.read_bytes() == new and not stage.exists()
+
+
+@pytest.mark.parametrize('release_reader', [True, False], ids=['released-reader', 'persistent-reader'])
+def test_worker_status_publication_handles_reader_lifetime(prepared, release_reader):
+    import os
+    import threading
+    import time
+    _, _, service, original, configure = prepared
+    configure('progress-wait')
+    identity = service.submit([original])
+    path = service._path(identity)
+    held, timers, opened_at = [], [], []
+    original_bytes = original.read_bytes()
+
+    def progress(done, total, phase):
+        if not held:
+            stream = (path / 'job_status.json').open('rb')
+            held.append(stream)
+            opened_at.append(time.monotonic())
+            if release_reader:
+                timer = threading.Timer(.25, stream.close)
+                timers.append(timer)
+                timer.start()
+            (path / 'progress-observed').write_text('release synthetic worker', encoding='utf-8')
+
+    try:
+        result = service.run(identity, timeout=5, progress=progress)
+        finished = time.monotonic()
+    finally:
+        for timer in timers:
+            timer.cancel()
+            timer.join(timeout=2)
+        for stream in held:
+            stream.close()
+    assert held and opened_at
+    assert finished - opened_at[0] < 5
+    assert result == service.get(identity)
+    if release_reader or os.name != 'nt':
+        assert result['status'] == 'completed', result['last_error']
+        assert service.verify(identity)['done'] == 1
+        assert len(result['artifacts']) == 6
+    else:
+        assert result['status'] == 'failed'
+        assert 'exit code 1' in result['last_error']
+        assert 'time allowance' not in result['last_error']
+        assert result['done'] == 0 and result['receipts'] == [] and result['artifacts'] == []
+        assert read_json(path / 'job_status.json')['done'] == 0
+        assert len(list((path / 'receipts').glob('*.result.json'))) == 1
+        assert len(list((path / 'results').rglob('*.*'))) == 6
+    assert original.read_bytes() == original_bytes
+    assert len(list((path / 'input').iterdir())) == 1

@@ -76,51 +76,31 @@ def run_process(args, *, budget, cancelled=lambda: False, watch=(), env=None, cw
 
 
 def _open_worker_status(path):
-    """Read an atomic worker snapshot without preventing Windows replacement."""
-    if os.name != 'nt':
-        return Path(path).open('rb')
-    import ctypes
-    from ctypes import wintypes
-    import msvcrt
-    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
-    create = kernel.CreateFileW
-    create.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD,
-                       wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
-    create.restype = wintypes.HANDLE
-    close = kernel.CloseHandle
-    close.argtypes = [wintypes.HANDLE]
-    close.restype = wintypes.BOOL
-    # A normal CRT read handle denies delete sharing, which can make the
-    # worker's concurrent atomic status rename fail. Keep read/write/delete
-    # sharing while admitting only the already validated regular status file.
-    handle = create(str(path), 0x80000000, 0x1 | 0x2 | 0x4, None, 3,
-                    0x80 | 0x00200000, None)
-    if handle == ctypes.c_void_p(-1).value:
-        raise ctypes.WinError(ctypes.get_last_error())
-    try:
-        descriptor = msvcrt.open_osfhandle(handle, os.O_RDONLY | os.O_BINARY)
-    except BaseException:
-        close(handle)
-        raise
-    try:
-        return os.fdopen(descriptor, 'rb')
-    except BaseException:
-        os.close(descriptor)
-        raise
+    """Capture bounded status bytes and close the OS handle before returning.
 
-
-def read_worker_status(path):
-    """Use the existing bounded JSON contract for a replaceable status file."""
+    Legacy Windows replacement can reject even a delete-shared open target.
+    Keep parsing and observers on an in-memory snapshot; the isolated producer
+    also retries brief Windows sharing conflicts during the bounded read.
+    """
+    from io import BytesIO
     path = local_path(path, exists=True)
     if regular(path).st_size > MAX_JSON_BYTES:
         raise ValueError('State exceeds its configured JSON budget.')
-    with _open_worker_status(path) as stream:
+    with path.open('rb') as stream:
         info = os.fstat(stream.fileno())
-        # An atomic replacement can unlink the already-open old snapshot.
         if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in (0, 1)
                 or getattr(info, 'st_file_attributes', 0) & 0x400):
             raise ValueError('State must use regular local files, without links.')
         raw = stream.read(MAX_JSON_BYTES + 1)
+    if len(raw) > MAX_JSON_BYTES:
+        raise ValueError('State grew beyond its JSON budget.')
+    return BytesIO(raw)
+
+
+def read_worker_status(path):
+    """Use the existing bounded JSON contract for a replaceable status file."""
+    with _open_worker_status(path) as snapshot:
+        raw = snapshot.read(MAX_JSON_BYTES + 1)
     if len(raw) > MAX_JSON_BYTES:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,

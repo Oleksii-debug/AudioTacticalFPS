@@ -165,9 +165,35 @@ def _checked_digest(path, size, cancelled):
 # Python-visible network, child commands and writes; they are not an OS sandbox
 # for arbitrary native libraries. The worker must also require offline assets.
 _WORKER_BOOTSTRAP = r'''
-import os, pathlib, runpy, sys
+import os, pathlib, runpy, sys, time
 job = pathlib.Path(sys.argv[2]).resolve(strict=True)
 worker = pathlib.Path(sys.argv[1]).resolve(strict=True)
+if os.name == 'nt':
+    original_replace = os.replace
+    status_target = os.path.normcase(str(job / 'job_status.json'))
+    status_parent = os.path.normcase(str(job))
+    def replace_worker_status(source, destination, *args, **kwargs):
+        try:
+            target = os.path.normcase(os.path.abspath(os.fspath(destination)))
+            source_parent = os.path.normcase(os.path.dirname(os.path.abspath(os.fspath(source))))
+        except (TypeError, ValueError):
+            return original_replace(source, destination, *args, **kwargs)
+        if (target != status_target or source_parent != status_parent
+                or kwargs.get('src_dir_fd') is not None or kwargs.get('dst_dir_fd') is not None):
+            return original_replace(source, destination, *args, **kwargs)
+        # A short-lived reader may deny legacy Windows atomic replacement.
+        # Retry only this job's same-directory status publication. Keep the
+        # original audited operation and propagate every permanent failure.
+        deadline = time.monotonic() + 1.0
+        while True:
+            try:
+                return original_replace(source, destination, *args, **kwargs)
+            except PermissionError as exc:
+                remaining = deadline - time.monotonic()
+                if getattr(exc, 'winerror', None) not in (5, 32, 33) or remaining <= 0:
+                    raise
+                time.sleep(min(.01, remaining))
+    os.replace = replace_worker_status
 def writable(value):
     if isinstance(value, int):
         return
