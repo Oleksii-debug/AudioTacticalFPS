@@ -75,7 +75,7 @@ on 48e038ef1993879605ecb83e0dfa17794382a851; all eleven backup hunks applied to 
 the incoming workflow-template state. The player, desktop and Studio shared-file base
 blobs were reread and their small hunks applied independently.
 
-The dedicated workflow requires 140 exact source cases, the same 140 installed cases,
+The dedicated workflow requires 141 exact source cases, the same 141 installed cases,
 and 43 actual native-event/retained-data assertions. Function/parameter and native-label
 Counters are committed in scripts/playback_queue_oracles.json. The existing 56-pin Windows
 runtime and source-bound wheel are verified before and after isolated test execution;
@@ -87,3 +87,9 @@ success or failure. No synthetic PCM, user data or model files are uploaded.
 
 Source/installed/native focused qualification is pending. No physical audio-device,
 screen-reader or whole-application PASS is claimed by source review.
+
+The final submission boundary also covers an actual first-thread-start failure: work may
+already be enqueued when ThreadPoolExecutor.submit raises. A one-operation admission gate
+releases that queued callback as refused, so a later successful worker cannot perform an
+unreported stale capture, save or held-reader preparation. The real thread-start regression
+adds one exact case (141 per test lane); no previous case or native assertion is removed.

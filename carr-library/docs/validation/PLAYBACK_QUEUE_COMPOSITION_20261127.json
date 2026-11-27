@@ -104,11 +104,16 @@
   ],
   "conflicts": [],
   "qualification": {
-    "source": 140,
-    "installed": 140,
+    "source": 141,
+    "installed": 141,
     "native": 43,
     "oracle": "scripts/playback_queue_oracles.json",
     "physical_playback": "NOT_RUN",
     "nvda": "NOT_RUN"
-  }
+  },
+  "lifecycle_followups": [
+    "Unstarted deferred progress reviews are released when the existing progress request closes without a callback.",
+    "Native Stop success permits input readers to close before a failed final native handle Close, while the player/window remain for retry.",
+    "An Event admission token prevents a queued but failed executor submission from running during a later submission."
+  ]
 }

@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_PASS_FOR_F0CB_ONLY",
+  "observed": {
+    "commit": "f0cbcca8200fcb0a3ab438e00337ee1583c6d48f",
+    "tree": "702dbf050e6200ad23e0f06590040dd735bf13c3",
+    "run_id": 46009379630,
+    "job_id": 140540675477,
+    "job_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46009379630/job/140540675477",
+    "source_cases": 268,
+    "installed_cases": 268,
+    "native_flows": [
+      "selected-advanced",
+      "document",
+      "chapter",
+      "batch"
+    ],
+    "gate_status": "PASS",
+    "artifact": {
+      "id": 15205168290,
+      "bytes": 4507548,
+      "sha256": "d97b44b8fbd128e4e530b598a637f30b15f41817e39be0bd1c97ab8d97a0ecb7"
+    }
+  },
+  "evidence": {
+    "actual_decoded_job_log": "READ",
+    "artifact_api_and_upload_digest": "MATCH",
+    "strict_source_phase": {
+      "status": "PASS",
+      "cases": 268
+    },
+    "strict_installed_phase": {
+      "status": "PASS",
+      "cases": 268
+    },
+    "strict_final_gate": {
+      "status": "PASS",
+      "source_cases": 268,
+      "installed_cases": 268,
+      "native_flows": 4
+    },
+    "individual_case_gate_and_module_origin_hashes": "Present in the retained artifact and required by the successful strict helper; not exposed by the decoded console summary, so individual values are not reproduced here.",
+    "independent_zip_readback": "PENDING_FIXED_PROVENANCE_DIAGNOSTIC"
+  },
+  "preserved_requirements": {
+    "existing_cases": 215,
+    "new_cases": 53,
+    "synthetic_transport_only": true,
+    "source_immutable": true,
+    "no_quotation_attestation": true,
+    "vault_and_runtime_cleanup_required": true
+  },
+  "limits": "This observes the exact f0cb candidate only. It is not evidence for later added local-translation behavior or a later composed head. Historical a68 timeout and ac477 fixture/approval failures remain documented."
+}

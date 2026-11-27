@@ -3,7 +3,7 @@
   "feature": "Retained playback queue with explicit current-player review and Save All",
   "base": "48e038ef1993879605ecb83e0dfa17794382a851",
   "core_checkpoint": "714f982102a070df807252aa2cd7d8d3585f1518",
-  "total_cases": 140,
+  "total_cases": 141,
   "fixture_multipliers": 1,
   "tests": {
     "tests/audio/test_retained_playlist.py": {
@@ -77,7 +77,8 @@
       "test_unreviewed_saved_queue_cannot_be_saved_as_if_its_media_were_checked": 1,
       "test_stale_delayed_play_admission_is_rejected_and_closed_by_ui_owner": 1,
       "test_current_trust_admission_refuses_new_review_or_capture_before_mutation": 2,
-      "test_delayed_play_rechecks_current_trust_and_disposes_refused_admission": 1
+      "test_delayed_play_rechecks_current_trust_and_disposes_refused_admission": 1,
+      "test_real_first_thread_start_failure_cannot_leave_an_unowned_stale_action": 1
     },
     "tests/audio/test_player.py": {
       "test_pcm_preflight_pause_resume_seek_stop_and_close": 2,

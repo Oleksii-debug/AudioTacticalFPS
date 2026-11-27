@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_INDEPENDENT_ARTIFACT_READBACK",
+  "diagnostic": {
+    "commit": "e3832543a03c2fe921bc80fa80d0f97fbb4525e5",
+    "run_id": 46009567373,
+    "job_id": 140541320869,
+    "status": "SUCCESS"
+  },
+  "calibre": {
+    "candidate": "67c717c48660a32080aadcd5cf331de557e890d5",
+    "artifact": {
+      "id": 15202124359,
+      "sha256": "8cbb3ffdb04b7127512efd94de1e214971dfb35086993b1c48a69678e6c3eb41"
+    },
+    "runtime_code_inventory": {
+      "kind": "RUNTIME_CODE_INVENTORY",
+      "artifact": 15202124359,
+      "member": "before-execution.json",
+      "files": 2085,
+      "code_handles": 414,
+      "code_bytes": 501138678,
+      "suffix_counts": {
+        ".dll": 209,
+        ".exe": 32,
+        ".pyd": 170,
+        ".zip": 3
+      },
+      "canonical_sha256": "fdc8e029d9abd55a3708d927e172814c631b7e345baf8a9a74da905daa4e3c28"
+    },
+    "repair_candidate": "65ddc03deacc28a03001e8bf4ad9ebe84acefbf8",
+    "repair_cap": 1024,
+    "repair_native_status": "NOT_RUN_AT_THIS_PROOF"
+  },
+  "junit_readback": [
+    {
+      "artifact": 15202124359,
+      "file": "boundaries/installed-junit.xml",
+      "cases": 137,
+      "failed": 0,
+      "errors": 0,
+      "skips": 0,
+      "counterVerified": true,
+      "missing": [],
+      "extra": []
+    },
+    {
+      "artifact": 15202124359,
+      "file": "boundaries/source-junit.xml",
+      "cases": 137,
+      "failed": 0,
+      "errors": 0,
+      "skips": 0,
+      "counterVerified": true,
+      "missing": [],
+      "extra": []
+    },
+    {
+      "artifact": 15202124359,
+      "file": "native/source-junit.xml",
+      "cases": 9,
+      "failed": 7,
+      "errors": 0,
+      "skips": 0,
+      "counterVerified": null,
+      "missing": [],
+      "extra": []
+    },
+    {
+      "artifact": 15202261396,
+      "file": "boundaries/installed-junit.xml",
+      "cases": 137,
+      "failed": 0,
+      "errors": 0,
+      "skips": 0,
+      "counterVerified": true,
+      "missing": [],
+      "extra": []
+    },
+    {
+      "artifact": 15202261396,
+      "file": "boundaries/source-junit.xml",
+      "cases": 137,
+      "failed": 0,
+      "errors": 0,
+      "skips": 0,
+      "counterVerified": true,
+      "missing": [],
+      "extra": []
+    },
+    {
+      "artifact": 15202261396,
+      "file": "native/source-junit.xml",
+      "cases": 4,
+      "failed": 3,
+      "errors": 0,
+      "skips": 0,
+      "counterVerified": null,
+      "missing": [],
+      "extra": []
+    },
+    {
+      "artifact": 15202676085,
+      "file": "installed-junit.xml",
+      "cases": 268,
+      "failed": 0,
+      "errors": 0,
+      "skips": 0,
+      "counterVerified": true,
+      "missing": [],
+      "extra": []
+    },
+    {
+      "artifact": 15202676085,
+      "file": "source-junit.xml",
+      "cases": 268,
+      "failed": 0,
+      "errors": 0,
+      "skips": 0,
+      "counterVerified": true,
+      "missing": [],
+      "extra": []
+    }
+  ],
+  "limits": "All inspected artifacts were digest-verified and parsed inertly without importing or executing their contents. Failed native cases remain failures. The137 boundary passes and268 translation passes apply only to their recorded67c/ac477 candidates."
+}
