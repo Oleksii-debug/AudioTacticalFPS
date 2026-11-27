@@ -169,6 +169,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('transcription_dialog', 'install_transcription_actions'),
                               ('command_palette', 'install_command_palette'),
                               ('trust_status', 'install_trust_actions'),
+                              ('operations_dialog', 'install_operations_actions'),
                               ('save_actions', 'install_save_actions')]:
         callback = Mock(side_effect=lambda frame, name=installer: install_order.append(name))
         new_installers.append(callback)

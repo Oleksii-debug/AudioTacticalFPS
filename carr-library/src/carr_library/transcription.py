@@ -5,6 +5,7 @@ This service preserves inputs, validates its durable receipts, and reuses the
 application's state, process runner and operation progress infrastructure.
 No model is downloaded and a protocol test is never acoustic qualification.
 """
+from contextlib import contextmanager
 from hashlib import sha256
 import json
 import math
@@ -387,11 +388,56 @@ def _worker_bootstrap():
 class TranscriptionService:
     """The same retained-input and receipt boundary for native UI and CLI."""
 
-    def __init__(self, app, workspace):
+    def __init__(self, app, workspace, *, broker=None):
         self.app, self.workspace = app, workspace
+        self._broker = broker
         self._authorize()
         self.root = local_path(app.root / 'state' / 'transcription')
         self.jobs_root = self.root / sha256(workspace.encode('utf-8')).hexdigest() / 'jobs'
+
+    def _admission_broker(self, cancelled):
+        from .operations import ResourceBroker, ResourceStateError
+        if self.root != Path(self.app.root) / 'state' / 'transcription':
+            raise ResourceStateError('The transcription service belongs to another data folder.')
+        if self._broker is None:
+            self._broker = ResourceBroker.for_app(self.app.root, cancelled=cancelled)
+        if (not isinstance(self._broker, ResourceBroker)
+                or self._broker.root != Path(self.app.root) / 'runtime' / 'resources'
+                or self._broker.policy_path != Path(self.app.root) / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The transcription resource policy belongs to another data folder.')
+        return self._broker
+
+    @contextmanager
+    def _resource_admission(self, path, job, cancelled, timeout):
+        from .operations import ResourceCancelled, ResourceRequest, ResourceUnavailable
+        try:
+            broker = self._admission_broker(cancelled)
+            limits = broker.limits
+            options = job['settings']
+            device = 'cuda:0' if options['device'] == 'cuda' else None
+            capacity = dict(limits.gpu_devices).get(device, 0)
+            if device is not None and not capacity:
+                raise ResourceUnavailable('Configure the selected CUDA device capacity before transcription.')
+            if limits.memory_bytes <= 0:
+                raise ResourceUnavailable('Configure a positive declared memory allowance before transcription.')
+            sizes = [item['size_bytes'] for item in job['sources']]
+            # Bound only the otherwise unspecified host thread default. The
+            # explicit parallel-file count and recognition settings stay fixed.
+            threads = min(2, max(1, limits.cpu_slots // options['parallel_files']))
+            # Reserve the existing output/staging byte ceiling.
+            # Model RAM/VRAM peaks remain unknown, so use the configured pool
+            # exclusively rather than pretending to measure the private model.
+            request = ResourceRequest(cpu_slots=threads * options['parallel_files'],
+                memory_bytes=limits.memory_bytes, gpu_device=device, gpu_memory_bytes=capacity,
+                disk_bytes=sum(sizes) + sum(sorted(sizes, reverse=True)[:options['parallel_files']]) + 512 * 1024**2,
+                disk_path=path)
+            with broker.reserve(request, operation_id='asr:' + job['id'],
+                                cancelled=cancelled, timeout=min(60.0, timeout)) as lease:
+                # AudioBudget retains the existing execution-time authority,
+                # including valid jobs longer than the broker's one-day timer.
+                yield lease, threads
+        except ResourceCancelled as exc:
+            raise AudioCancelled('Transcription cancelled while waiting for local resources.') from exc
 
     def _authorize(self):
         with self.app.read(self.workspace):
@@ -909,139 +955,141 @@ class TranscriptionService:
             if job['status'] == 'completed':
                 self.verify(identity, cancelled=cancelled)
                 return job
-            config = self.configuration(verify=True)
-            if config['protocol'] != job['protocol']:
-                raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
-            self._sources(path, job, cancelled)
-            for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
-                candidate = path / name
-                if candidate.exists():
-                    regular(candidate)
-                    candidate.unlink()
-            prior = path / 'job_status.json'
-            if prior.exists():
-                regular(prior)
-                prior.unlink()
-            context = {'input_root': str((path / 'input').resolve()),
-                       'worker_sha256': config['worker_sha256'],
-                       'python_sha256': config['python_sha256']}
-            worker_settings, results_root = job['settings'], path / 'results'
-            if job['protocol'] == V5_PROTOCOL:
-                model = local_path(config['models_dir'], exists=True)
-                if not all((model / name).is_file() for name in ('model.bin', 'config.json', 'tokenizer.json')):
-                    model = local_path(model / job['settings']['model'], root=model, exists=True)
-                model_identity = _v5_model(model, cancelled)
-                host_run_id = uuid4().hex
-                results_root = path / 'results' / 'runs' / host_run_id
-                results_root.mkdir(parents=True, mode=0o700)
-                worker_settings = _v5_settings(job['settings'], model_identity['path'])
-                context.update(protocol=V5_PROTOCOL, host_run_id=host_run_id,
-                    wrapper_sources_sha256=config['wrapper_sources_sha256'], model_identity=model_identity,
-                    worker_settings=worker_settings,
-                    source_identities={row['filename']: _v5_file(path / 'input' / row['filename'], cancelled)
-                                       for row in job['sources']},
-                    result_directory=(results_root / 'Whisper_V5' / path.name).relative_to(path / 'results').as_posix())
-            job.update(status='running', done=0, failed=0, receipts=[], artifacts=[],
-                       run_context=context, last_error='')
-            self._save(path, job)
-            for name in ('results', 'temporary', 'runtime-home'):
-                (path / name).mkdir(exist_ok=True, mode=0o700)
-            atomic_json(path / 'job_config.json', {
-                'job_name': job['title'], 'folders': [context['input_root']],
-                'results_root': str(results_root), 'models_dir': config['models_dir'],
-                'settings': worker_settings}, replace=True)
-            environment = {key: os.environ[key] for key in (
-                'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
-                'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
-            environment.update({
-                'PATH': os.pathsep.join((str(Path(config['python']).parent), os.defpath)),
-                'HOME': str(path / 'runtime-home'), 'USERPROFILE': str(path / 'runtime-home'),
-                'TEMP': str(path / 'temporary'), 'TMP': str(path / 'temporary'),
-                'TMPDIR': str(path / 'temporary'), 'HF_HOME': str(path / 'runtime-home'),
-                'XDG_CACHE_HOME': str(path / 'runtime-home'),
-                'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
-                'HF_HUB_DISABLE_TELEMETRY': '1', 'DO_NOT_TRACK': '1',
-                'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
-                'OMP_NUM_THREADS': '2', 'OPENBLAS_NUM_THREADS': '2'})
-            stop_at, notice_at = None, 0.0
-            reported_done, observer_available = 0, progress is not None
-            def notify(done, total, phase):
-                nonlocal reported_done, observer_available
-                # Worker-reported files are distinct from verified job.done.
-                # Stop defers receipt verification and must not rewind measured
-                # progress or promote saved files into accepted exports.
-                if type(done) is int and 0 <= done <= len(job['sources']):
-                    reported_done = max(reported_done, done)
-                if observer_available:
-                    try:
-                        progress(reported_done, total, phase)
-                    except Exception:
-                        # A detached UI must not kill the worker or reverse a
-                        # durable result. Disable only this optional observer.
-                        observer_available = False
-            def poll():
-                nonlocal stop_at, notice_at
-                now = time.monotonic()
-                if cancelled() and stop_at is None:
-                    atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
-                    stop_at = now
-                if observer_available and now - notice_at >= .5 and prior.exists():
-                    notice_at = now
-                    try:
-                        current = read_json(prior)
-                        notify(current.get('done', 0), len(job['sources']),
-                               str(current.get('state', 'running'))[:200])
-                    except (ValueError, OSError):
-                        pass
-                return stop_at is not None and now - stop_at >= 3
-            failure = None
-            try:
-                run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
-                    _worker_bootstrap(),
-                    config['worker'], str(path), config['protocol']],
-                    cwd=path, env=environment, cancelled=poll, watch=(path,),
-                    budget=AudioBudget(timeout=timeout,
-                        max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
-                            + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
-                            + 512 * 1024**2),
-                        max_staging_files=10000))
-            except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
-                failure = exc
-            # A stop must not trigger a second potentially multi-gigabyte read.
-            # Keep worker cache/receipts on disk for the next explicit resume;
-            # do not present these unverified files as completed exports yet.
-            if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt)) or cancelled():
-                job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
-                           last_error='Stopped. Saved worker results will be verified on the next resume.')
-                self._save(path, job)
-                notify(0, len(job['sources']), 'stopped')
-                return job
-            try:
-                status = read_json(prior) if prior.exists() else {}
+            with self._resource_admission(path, job, cancelled, timeout) as (lease, worker_threads):
+                cancelled = lease.cancelled
+                config = self.configuration(verify=True)
+                if config['protocol'] != job['protocol']:
+                    raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
+                self._sources(path, job, cancelled)
+                for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
+                    candidate = path / name
+                    if candidate.exists():
+                        regular(candidate)
+                        candidate.unlink()
+                prior = path / 'job_status.json'
+                if prior.exists():
+                    regular(prior)
+                    prior.unlink()
+                context = {'input_root': str((path / 'input').resolve()),
+                           'worker_sha256': config['worker_sha256'],
+                           'python_sha256': config['python_sha256']}
+                worker_settings, results_root = job['settings'], path / 'results'
                 if job['protocol'] == V5_PROTOCOL:
-                    status = self._admit_v5(path, job, config, status, cancelled)
-                receipts, artifacts = self._receipts(path, job, status, cancelled)
-                complete = (failure is None and stop_at is None
-                            and status.get('result_state') == 'completed'
-                            and len(receipts) == len(job['sources'])
-                            and status.get('failed') == 0)
-                job.update(done=len(receipts), failed=len(job['sources']) - len(receipts),
-                           receipts=receipts, artifacts=artifacts,
-                           status='completed' if complete else (
-                               'stopped' if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt))
-                               else 'partial' if receipts else 'failed'),
-                           worker_run_id=status.get('run_id'))
-                if not complete:
-                    job['last_error'] = str(failure or 'The worker did not complete every requested export.')[:3000]
-            except AudioCancelled:
-                job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
-                           last_error='Verification stopped. Saved worker results remain available for resume.')
-            except (ValueError, OSError, KeyError, TypeError) as exc:
-                job.update(status='stopped' if stop_at is not None else 'failed',
-                           last_error=str(failure or exc)[:3000])
-            self._save(path, job)
-            notify(job['done'], len(job['sources']), job['status'])
-            return job
+                    model = local_path(config['models_dir'], exists=True)
+                    if not all((model / name).is_file() for name in ('model.bin', 'config.json', 'tokenizer.json')):
+                        model = local_path(model / job['settings']['model'], root=model, exists=True)
+                    model_identity = _v5_model(model, cancelled)
+                    host_run_id = uuid4().hex
+                    results_root = path / 'results' / 'runs' / host_run_id
+                    results_root.mkdir(parents=True, mode=0o700)
+                    worker_settings = _v5_settings(job['settings'], model_identity['path'])
+                    context.update(protocol=V5_PROTOCOL, host_run_id=host_run_id,
+                        wrapper_sources_sha256=config['wrapper_sources_sha256'], model_identity=model_identity,
+                        worker_settings=worker_settings,
+                        source_identities={row['filename']: _v5_file(path / 'input' / row['filename'], cancelled)
+                                           for row in job['sources']},
+                        result_directory=(results_root / 'Whisper_V5' / path.name).relative_to(path / 'results').as_posix())
+                job.update(status='running', done=0, failed=0, receipts=[], artifacts=[],
+                           run_context=context, last_error='')
+                self._save(path, job)
+                for name in ('results', 'temporary', 'runtime-home'):
+                    (path / name).mkdir(exist_ok=True, mode=0o700)
+                atomic_json(path / 'job_config.json', {
+                    'job_name': job['title'], 'folders': [context['input_root']],
+                    'results_root': str(results_root), 'models_dir': config['models_dir'],
+                    'settings': worker_settings}, replace=True)
+                environment = {key: os.environ[key] for key in (
+                    'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
+                    'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
+                environment.update({
+                    'PATH': os.pathsep.join((str(Path(config['python']).parent), os.defpath)),
+                    'HOME': str(path / 'runtime-home'), 'USERPROFILE': str(path / 'runtime-home'),
+                    'TEMP': str(path / 'temporary'), 'TMP': str(path / 'temporary'),
+                    'TMPDIR': str(path / 'temporary'), 'HF_HOME': str(path / 'runtime-home'),
+                    'XDG_CACHE_HOME': str(path / 'runtime-home'),
+                    'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
+                    'HF_HUB_DISABLE_TELEMETRY': '1', 'DO_NOT_TRACK': '1',
+                    'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
+                    'OMP_NUM_THREADS': str(worker_threads), 'OPENBLAS_NUM_THREADS': str(worker_threads)})
+                stop_at, notice_at = None, 0.0
+                reported_done, observer_available = 0, progress is not None
+                def notify(done, total, phase):
+                    nonlocal reported_done, observer_available
+                    # Worker-reported files are distinct from verified job.done.
+                    # Stop defers receipt verification and must not rewind measured
+                    # progress or promote saved files into accepted exports.
+                    if type(done) is int and 0 <= done <= len(job['sources']):
+                        reported_done = max(reported_done, done)
+                    if observer_available:
+                        try:
+                            progress(reported_done, total, phase)
+                        except Exception:
+                            # A detached UI must not kill the worker or reverse a
+                            # durable result. Disable only this optional observer.
+                            observer_available = False
+                def poll():
+                    nonlocal stop_at, notice_at
+                    now = time.monotonic()
+                    if cancelled() and stop_at is None:
+                        atomic_bytes(path / 'stop.flag', b'stop\n', replace=True)
+                        stop_at = now
+                    if observer_available and now - notice_at >= .5 and prior.exists():
+                        notice_at = now
+                        try:
+                            current = read_json(prior)
+                            notify(current.get('done', 0), len(job['sources']),
+                                   str(current.get('state', 'running'))[:200])
+                        except (ValueError, OSError):
+                            pass
+                    return stop_at is not None and now - stop_at >= 3
+                failure = None
+                try:
+                    run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
+                        _worker_bootstrap(),
+                        config['worker'], str(path), config['protocol']],
+                        cwd=path, env=environment, cancelled=poll, watch=(path,),
+                        budget=AudioBudget(timeout=timeout,
+                            max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
+                                + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
+                                + 512 * 1024**2),
+                            max_staging_files=10000))
+                except (AudioError, OSError, ValueError, KeyboardInterrupt) as exc:
+                    failure = exc
+                # A stop must not trigger a second potentially multi-gigabyte read.
+                # Keep worker cache/receipts on disk for the next explicit resume;
+                # do not present these unverified files as completed exports yet.
+                if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt)) or cancelled():
+                    job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
+                               last_error='Stopped. Saved worker results will be verified on the next resume.')
+                    self._save(path, job)
+                    notify(0, len(job['sources']), 'stopped')
+                    return job
+                try:
+                    status = read_json(prior) if prior.exists() else {}
+                    if job['protocol'] == V5_PROTOCOL:
+                        status = self._admit_v5(path, job, config, status, cancelled)
+                    receipts, artifacts = self._receipts(path, job, status, cancelled)
+                    complete = (failure is None and stop_at is None
+                                and status.get('result_state') == 'completed'
+                                and len(receipts) == len(job['sources'])
+                                and status.get('failed') == 0)
+                    job.update(done=len(receipts), failed=len(job['sources']) - len(receipts),
+                               receipts=receipts, artifacts=artifacts,
+                               status='completed' if complete else (
+                                   'stopped' if stop_at is not None or isinstance(failure, (AudioCancelled, KeyboardInterrupt))
+                                   else 'partial' if receipts else 'failed'),
+                               worker_run_id=status.get('run_id'))
+                    if not complete:
+                        job['last_error'] = str(failure or 'The worker did not complete every requested export.')[:3000]
+                except AudioCancelled:
+                    job.update(status='stopped', done=0, failed=0, receipts=[], artifacts=[],
+                               last_error='Verification stopped. Saved worker results remain available for resume.')
+                except (ValueError, OSError, KeyError, TypeError) as exc:
+                    job.update(status='stopped' if stop_at is not None else 'failed',
+                               last_error=str(failure or exc)[:3000])
+                self._save(path, job)
+                notify(job['done'], len(job['sources']), job['status'])
+                return job
 
     def verify(self, identity, *, cancelled=lambda: False):
         path, job = self._path(identity), self.get(identity)
