@@ -355,6 +355,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_academic_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-academic-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B scripts/windows_save_timer_smoke.py --output 'ci-results/installed-save-timer.json' 2>&1 | Tee-Object 'ci-results/installed-save-timer.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed native draft timer lifetime acceptance failed.' }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
           & $bundledPython -I -B -c "import importlib.util,json,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); manifest=json.loads((root/'bundle-manifest.json').read_text()); assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']; print(json.dumps(dict(status='PASS',python=sys.version,manifest_unchanged=True,sealed_files_verified=True,model='INCLUDED',ocr='INCLUDED',private_native_runtime='INCLUDED',nvda='NOT_RUN')))" $bundle | Tee-Object 'ci-results/full-bundle-verified.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -371,9 +373,12 @@ jobs:
           import ctypes, json, os, pathlib, sys
           from ctypes import wintypes
           import carr_library
+          import carr_library.durable_state, carr_library.ui.save_actions
           from carr_library.native_runtime import activate_bundled_runtime
           root = pathlib.Path(sys.argv[1]).resolve()
-          assert pathlib.Path(carr_library.__file__).resolve().is_relative_to(root / '.venv')
+          installed_origins = {module.__name__: str(pathlib.Path(module.__file__).resolve())
+                               for module in (carr_library, carr_library.durable_state, carr_library.ui.save_actions)}
+          assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in installed_origins.values()), installed_origins
           manifest = json.loads((root / 'bundle-manifest.json').read_text())
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime']
           # Test-only command discovery is scoped to this installed-package child.
@@ -382,13 +387,15 @@ jobs:
           os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
-          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
+          print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit'], 'origins': installed_origins}), flush=True)
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = ['tests/reader/test_ebook_contents.py',
                             'tests/e2e/test_import_progress.py',
                             'tests/ui/test_operation_progress.py',
+                            'tests/ui/test_save_actions.py',
+                            'tests/storage/test_state_json_reader.py',
                             'tests/ui/test_progress_numeric_limits.py',
                             'tests/ui/test_progress_job_review.py',
                             'tests/ui/test_studio_progress_isolation.py',
@@ -473,6 +480,8 @@ jobs:
             'tests/e2e/test_application.py',
             'tests/e2e/test_import_progress.py',
             'tests/ui/test_operation_progress.py',
+            'tests/ui/test_save_actions.py',
+            'tests/storage/test_state_json_reader.py',
             'tests/ui/test_progress_numeric_limits.py',
             'tests/ui/test_progress_job_review.py',
             'tests/ui/test_studio_progress_isolation.py',
