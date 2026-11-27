@@ -23,6 +23,23 @@ _barriers = runpy.run_path(str(Path(__file__).with_name('test_import_commit_supe
 _child_barrier = _barriers['_child_barrier']
 
 
+# Only recognition text is deterministic. The real isolated worker still decodes
+# the image, binds its pixels/checkpoint, quarantines it and requires exact review.
+# This is a source/configuration test, not an OCR-accuracy qualification.
+_RASTER_CHILD_SETUP = r'''
+from carr_library.extract import page_ocr
+def recognize_review_candidate(result, image, config, deadline, **options):
+    assert image.size == (320, 48)
+    raw = 'Legacy railway text.\n'
+    result['raw_text'] = raw
+    result['status'] = 'review_required'
+    result['warnings'].append('ocr_not_verified')
+    result['provenance'].update(method='ocr_candidate', ocr_text=raw)
+    return result
+page_ocr._recognize_image = recognize_review_candidate
+'''
+
+
 def legacy_config():
     value = asdict(Config())
     assert value.pop('automatic_languages') is False
@@ -123,16 +140,53 @@ def test_old_prepared_physical_request_recovers_its_fresh_current_commit(
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Legacy prepared physical source')
     source = physical_source(tmp_path / ('original.' + kind))
+    if kind == 'png':
+        from PIL import Image, ImageDraw
+        with Image.new('RGB', (320, 48), 'white') as image:
+            ImageDraw.Draw(image).text((4, 4), 'Legacy railway text.', fill='black')
+            image.save(source)
     original = source.read_bytes()
     request = prepared(app, workspace, source)
     request_digest = worker._request_digest(request)
     assert request.get('job') is None and not (app.root / 'imports.sqlite').exists()
     marker = tmp_path / 'committed'
+    if kind == 'png':
+        # A raster has no native text. First retain a real current-runtime
+        # candidate, then explicitly review that displayed checkpoint. The
+        # direct no-job first-commit path remains covered by the native-text PDF.
+        with monkeypatch.context() as candidate:
+            _child_barrier(candidate, marker, 'recognizer_only',
+                           child_setup=_RASTER_CHILD_SETUP)
+            candidate_children = track_workers(candidate)
+            initial = app.resume_import(workspace, request['request_id'], timeout=30)
+        assert initial['state'] == 'quarantined' and initial['isolated'] is True, initial
+        assert not marker.exists() and len(candidate_children) == 1
+        assert candidate_children[0].poll() is not None
+        retained = worker.load_request(app.root, request['request_id'])
+        assert retained['config'] == legacy_config()
+        assert worker._request_digest(retained) == request_digest
+        with closing(sqlite3.connect(app.root / 'imports.sqlite')) as db:
+            state, configuration = db.execute(
+                'SELECT state,config FROM job WHERE id=?', (retained['job'],)).fetchone()
+            assert state == 'quarantined'
+            assert json.loads(configuration)['config'] == asdict(Config())
+        with app.read(workspace) as db:
+            assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+            assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
+        pending = app.pending_review(workspace, request['request_id'])
+        assert pending is not None and 'Pillow/' in pending['renderer']
+        assert pending['raw_text'] == 'Legacy railway text.\n'
+        with pytest.raises(ValueError, match='changed'):
+            app.confirm_import_review(workspace, request['request_id'],
+                'Explicit fixture reviewer', confirmed=True, expected_checksum='0' * 64)
+        app.confirm_import_review(workspace, request['request_id'],
+            'Explicit fixture reviewer', confirmed=True, expected_checksum=pending['checksum'])
+        assert app.browse(workspace) == ()
     _child_barrier(monkeypatch, marker, 'after_commit')
     children = track_workers(monkeypatch)
     result = app.resume_import(workspace, request['request_id'],
                                cancelled=marker.exists, timeout=30)
-    assert marker.exists() and len(children) == 1 and children[0].poll() is not None
+    assert marker.exists() and len(children) == 1 and children[0].poll() is not None, result
     assert result['state'] == 'complete' and result['recovered_publication'] is True, result
     assert result['worker_state'] == 'cancelled' and result['isolated'] is True
     assert result['verified'] is False
@@ -149,6 +203,40 @@ def test_old_prepared_physical_request_recovers_its_fresh_current_commit(
         assert tuple(receipt[:2]) == (request['request_id'], saved['attempt'])
         assert worker._publication_state(db, saved, revision)['sha256'] == receipt[2]
         assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        if kind == 'png':
+            page, = db.execute('SELECT raw FROM page WHERE revision=?', (revision,))
+            assert page[0] == pending['raw_text']
+            review, = db.execute(
+                'SELECT raw_sha256,render_sha256,renderer,reviewer FROM source_page_review '
+                'WHERE revision=?', (revision,))
+            assert tuple(review) == (sha256(pending['raw_text'].encode('utf-8')).hexdigest(),
+                                     pending['render_sha256'], pending['renderer'],
+                                     'Explicit fixture reviewer')
+    assert source.read_bytes() == original
+    assert app.assets.resolve(saved['asset_sha256']).read_bytes() == original
+
+
+def test_empty_legacy_png_remains_failed_without_publication(tmp_path, monkeypatch):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Empty raster remains refused')
+    source = physical_source(tmp_path / 'blank.png')
+    original = source.read_bytes()
+    request = prepared(app, workspace, source)
+    children = track_workers(monkeypatch)
+    result = app.resume_import(workspace, request['request_id'], timeout=30)
+    assert result['state'] == 'failed' and result['error'] == 'empty_source', result
+    assert len(children) == 1 and children[0].poll() is not None
+    assert result['isolated'] is True and not result.get('recovered_publication')
+    saved = worker.load_request(app.root, request['request_id'])
+    assert saved['config'] == legacy_config()
+    with closing(sqlite3.connect(app.root / 'imports.sqlite')) as db:
+        checkpoint, = db.execute('SELECT payload FROM checkpoint WHERE job=?', (saved['job'],))
+        payload = json.loads(checkpoint[0])
+        assert payload['status'] == 'blank' and payload['raw_text'] == ''
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0
+        assert db.execute('SELECT count(*) FROM import_publication').fetchone()[0] == 0
+        assert db.execute('SELECT count(*) FROM source_page_review').fetchone()[0] == 0
     assert source.read_bytes() == original
     assert app.assets.resolve(saved['asset_sha256']).read_bytes() == original
 

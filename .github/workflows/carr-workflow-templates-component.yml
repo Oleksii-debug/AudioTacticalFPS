@@ -114,6 +114,11 @@ jobs:
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_workflow_templates_smoke.py --installed 2>&1 | Tee-Object 'template-native-results/native-workflow-templates.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual bibliography overwrite and competing-save review
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_bibliography_interchange_smoke.py 2>&1 | Tee-Object 'template-native-results/native-bibliography-interchange.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Preserve exact native template evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

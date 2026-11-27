@@ -146,5 +146,23 @@ The reviewed reconciliation is `230dfe09c3f4451d6f5e6355d506d46386101b5a`.
 | `tests/reader/test_export_reconciliation.py` | `d29682c151a0566d298116b8b422e412f8abd55f` | Retain all 16 existing candidate cases and the canonical four actual replacement cases; additionally observe native metadata calls. Both pre-write and post-staging replacement must be rejected without opening unrelated content. |
 
 The canonical main commit is retained as integration ancestry. Source review is
-complete; the 20-case composed regression selection must execute on the new
-candidate. Earlier export PASS records do not qualify this changed file.
+complete; all20 composed regression cases passed on exact391beff3. Earlier
+export PASS records alone did not qualify this changed file.
+
+## Final reviewed reading-content and fixture composition
+
+The current source includes the complete12-path Read/Skip chain through
+`11f374a489cf0df1860225ed4b372a1aa815dbd6` (core822, UI78e, fixture4f5 and
+ownership/deferred-play correction11f). Both independent reviews approved
+source identity, owner-only adoption, native Destroy cancellation, saved-WAV
+receipt truthfulness, filtered timing and existing passive recovery. Runtime
+acceptance is tracked against the composed candidate, not inferred from review.
+
+The two test-only successors are `ae1cb7eb2dc599979253730f5f406bd2957cb1eb`
+(nonempty, explicitly reviewed raster recovery plus blank refusal) and
+`1450ac101f1f63bde952ba940ac26759e9efe3ff` (observe the actual bibliography
+receipt export entrypoint). The former passed50 installed cases on exact7a;
+the latter requires its actual Windows probe. Existing strict gates retain all
+old suites and add the two narration suites plus relevant reading/source/session
+preservation. A focused exact-head Windows job exercises the extended existing
+reader keyboard/restart probe; no substitute GUI implementation is introduced.

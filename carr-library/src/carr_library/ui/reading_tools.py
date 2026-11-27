@@ -9,14 +9,18 @@ class ReadingToolSnapshot:
     document: object
     signature: tuple
     cursor: int
+    first: int = 0
+    last: int = 0
 
     @classmethod
-    def capture(cls, document, cursor):
+    def capture(cls, document, cursor, *, selection=None):
         document._range(cursor, cursor)
-        return cls(document, document._signature(), cursor)
+        first, last = (cursor, cursor) if selection is None else selection
+        document._range(first, last)
+        return cls(document, document._signature(), cursor, first, last)
 
 
-def create_reading_tools(parent, *, capture, mutate, goto, guard, wx_module=None):
+def create_reading_tools(parent, *, capture, mutate, goto, guard, content_policy=None, wx_module=None):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
@@ -59,6 +63,12 @@ def create_reading_tools(parent, *, capture, mutate, goto, guard, wx_module=None
                     self.buttons[identity] = button
                     row.Add(button, 0, wx.ALL, 4)
                 layout.Add(row, 0, wx.EXPAND)
+            if content_policy is not None:
+                button = wx.Button(self, label='Read or skip reviewed content...')
+                button.SetName('Read or skip reviewed content')
+                button.Bind(wx.EVT_BUTTON, self.on_content_policy)
+                self.buttons['content_policy'] = button
+                layout.Add(button, 0, wx.ALL | wx.EXPAND, 4)
             self.SetSizer(layout)
             self.Bind(wx.EVT_CLOSE, self.on_close)
             try:
@@ -126,6 +136,18 @@ def create_reading_tools(parent, *, capture, mutate, goto, guard, wx_module=None
                 self.check()
                 goto(self.selected(), self.reviewed)
                 self.on_close()
+            except Exception as exc:
+                if self.alive:
+                    self.status.ChangeValue(str(exc))
+
+        def on_content_policy(self, event=None):
+            if not self.alive or content_policy is None:
+                return
+            try:
+                self.check()
+                content_policy(self)
+                if self.alive:
+                    self.refresh('Content rules apply to this reading copy. Unmarked text is always read.')
             except Exception as exc:
                 if self.alive:
                     self.status.ChangeValue(str(exc))

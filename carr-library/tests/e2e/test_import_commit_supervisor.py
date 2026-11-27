@@ -29,7 +29,7 @@ def _source(path):
     return path
 
 
-def _child_barrier(monkeypatch, marker, phase, *, change=None):
+def _child_barrier(monkeypatch, marker, phase, *, change=None, child_setup=''):
     """Hold a real child at a production boundary, without touching source files."""
     original = worker.subprocess.Popen
     script = '''
@@ -103,8 +103,9 @@ if phase == 'quarantined':
     # retained, but this test does not pretend to execute a scan/OCR engine.
     worker.RuntimeBoundIngest._eligible = lambda self, record: False
     application.LibraryApp._import_file = import_and_pause
+CHILD_SETUP
 raise SystemExit(worker.main())
-'''.replace('MARKER', repr(str(marker))).replace('PHASE', repr(phase)).replace('CHANGE', repr(change))
+'''.replace('MARKER', repr(str(marker))).replace('PHASE', repr(phase)).replace('CHANGE', repr(change)).replace('CHILD_SETUP', child_setup)
 
     def launch(command, *args, **kwargs):
         # subprocess is shared by the real supervisor and Windows taskkill.

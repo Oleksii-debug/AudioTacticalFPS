@@ -246,6 +246,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             rate.SetValue(0)
         if current and 'volume' not in current.capabilities:
             volume.SetValue(100)
+        editor.SetEditable(not busy)
         for button in (read, cursor, export_audio):
             button.Enable(bool(current) and not busy)
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
@@ -336,7 +337,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         def capture():
             guard()
             sync_document()
-            return ReadingToolSnapshot.capture(document, native_insertion_offset(editor, document.text))
+            return ReadingToolSnapshot.capture(document, native_insertion_offset(editor, document.text),
+                                               selection=native_selection(editor, document.text))
         def reviewed(snapshot):
             current = capture()
             if snapshot.document is not document or current.signature != snapshot.signature:
@@ -364,9 +366,76 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             target = document.bookmark_position(identity)
             editor.SetInsertionPoint(native_cursor_position(editor, document.text, target))
             save_recovery(force=True)
+        def content_policy(owner):
+            from hashlib import sha256
+            from .reading_narration import show_reading_narration
+            from ..speech._io import check_cancelled
+
+            def execute(action, arguments, snapshot, completed, failed, *, active):
+                reviewed(snapshot)
+                frozen, target = snapshot.document.to_dict(), snapshot.document
+                if action in ('mark', 'remove', 'read'):
+                    stop_for_reading_tab()
+                request_cancel = threading.Event()
+
+                def stopped():
+                    return request_cancel.is_set() or cancel.is_set() or not alive or not active()
+
+                def check():
+                    check_cancelled(stopped)
+                    if getattr(parent, '_closing', False):
+                        raise InterruptedError('The reader is closing.')
+                    playback_scope()
+                    if document is not target or document._signature() != snapshot.signature:
+                        raise ValueError('The reading text, tab or Read/Skip policy changed. Refresh the review.')
+
+                def work():
+                    check()
+                    clone = ReadingDocument.from_dict(frozen)
+                    if clone._signature() != snapshot.signature:
+                        raise ValueError('The frozen reading snapshot changed.')
+                    preview = None
+                    if action == 'mark':
+                        clone.mark_narration_region(snapshot.first, snapshot.last,
+                            arguments['category'], arguments['label'], cancelled=stopped)
+                    elif action == 'remove':
+                        clone.remove_narration_region(arguments['id'])
+                    elif action == 'read':
+                        clone.set_narration_read(arguments['category'], arguments['read'])
+                    elif action == 'preview':
+                        scope = arguments['scope']
+                        if type(scope) is not int or scope not in (0, 1, 2):
+                            raise ValueError('Choose the whole copy, selected region or cursor preview.')
+                        first, last = ((0, len(clone.text)) if scope == 0 else
+                            (snapshot.first, snapshot.last) if scope == 1 else
+                            (snapshot.cursor, len(clone.text)))
+                        if first == last:
+                            raise ValueError('The chosen preview range is empty. Select reading text first.')
+                        preview = clone.narration_selection(first, last, cancelled=stopped)
+                    elif action != 'inspect':
+                        raise ValueError('Choose an available narration policy action.')
+                    value = {'policy': clone.narration_policy, 'preview': preview,
+                             'text_sha256': sha256(clone.text.encode('utf-8')).hexdigest()}
+                    check()
+                    return value
+
+                def adopted(value):
+                    check()
+                    reviewed(snapshot)  # Native text is checked again on its owner.
+                    if action in ('mark', 'remove', 'read'):
+                        document.set_narration_policy(value['policy'], expected_signature=snapshot.signature)
+                        save_recovery(force=True)
+                    completed(value, capture())
+
+                if not run(work, adopted, on_failed=failed):
+                    request_cancel.set()
+                return request_cancel.set
+
+            show_reading_narration(owner, capture=capture, execute=execute, guard=guard)
         try:
             guard()
-            show_reading_tools(dialog, capture=capture, mutate=mutate, goto=goto, guard=guard)
+            show_reading_tools(dialog, capture=capture, mutate=mutate, goto=goto, guard=guard,
+                               content_policy=content_policy)
         except Exception as exc:
             report(str(exc), focus=True)
         finally:
@@ -748,7 +817,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         sync_document()
         selected = voice_choice.GetSelection()
         voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
-        position = (player.position_seconds if last_audio is not None else
+        position = (0 if document.narration_skips_enabled else
+                    player.position_seconds if last_audio is not None else
                     reader_tabs.saved_audio_position(document) if reader_tabs is not None else 0)
         cursor_offset = native_insertion_offset(editor, document.text)
         signature = (document._signature(), voice_id, rate.GetValue(), volume.GetValue(), cursor_offset,
@@ -968,8 +1038,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             if registry is None or not voices:
                 raise ValueError('Choose an installed local voice first.')
             source_guard()
-            content = selected_text(from_cursor)
+            selected_text(from_cursor)  # Synchronize the visible text before freezing offsets.
             render_document, render_signature = document, document._text_signature()
+            render_state = document.to_dict()
             if from_cursor:
                 render_start, render_end = native_insertion_offset(editor, document.text), len(document.text)
             else:
@@ -987,14 +1058,56 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 progress.refresh_audio_state()
             output = destination or (Path(audio_files.name) / (uuid4().hex + '.wav'))
 
-            def rendered(result):
+            generation = playback_generation
+            def check_render():
+                from ..speech._io import check_cancelled
+                check_cancelled(cancel.is_set)
+                if (not alive or getattr(parent, '_closing', False)
+                        or generation != playback_generation):
+                    raise InterruptedError('Narration was stopped or its owner closed.')
+                playback_scope()
+                if document is not render_document or document._text_signature() != render_signature:
+                    raise ValueError('The reading text, tab or Read/Skip policy changed. Review narration again.')
+
+            def checked_cancel():
+                check_render()
+                return False
+
+            def render():
+                check_render()
+                snapshot = ReadingDocument.from_dict(render_state)
+                if snapshot._text_signature() != render_signature:
+                    raise ValueError('The frozen reading snapshot changed.')
+                selection = snapshot.narration_selection(render_start, render_end, cancelled=checked_cancel)
+                if selection.empty:
+                    raise ValueError('Empty narration after Read/Skip. Choose Read or another text range.')
+                check_render()
+                result = registry.synthesize(selection.text, voice.id, output,
+                    settings=settings, cancelled=checked_cancel)
+                if result.text_sha256 != selection.text_sha256:
+                    raise ValueError('The voice result differs from the reviewed narration text.')
+                return result, selection
+
+            def rendered(value):
                 nonlocal last_audio, last_reading_audio
+                result, selection = value
+                try:
+                    check_render()
+                    # Native editor controls are touched only by this UI callback.
+                    selected_text(from_cursor)
+                    selection.check(document)
+                except Exception as exc:
+                    if destination is None:
+                        raise
+                    report(f'WAV was saved: {result.path}. Recorded SHA-256: {result.sha256}. '
+                           f'The current reader did not adopt it after publication: {exc}', focus=True)
+                    return
                 last_audio, last_reading_audio = result.path, None
-                if destination is None and document is render_document:
+                if destination is None and not selection.filtered and document is render_document:
                     try:
                         from ..speech.focus import ReadingAudio
                         last_reading_audio = ReadingAudio.from_render(render_document, render_signature,
-                            render_start, render_end, content, result)
+                            render_start, render_end, selection.text, result)
                     except (AttributeError, TypeError, ValueError):
                         # A changed reading snapshot cannot acquire audio timing.
                         last_reading_audio = None
@@ -1002,17 +1115,21 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     if cancel.is_set():
                         return
                     def playing():
+                        check_render()
+                        selected_text(from_cursor)
+                        selection.check(document)
                         player.play(result.path)
                         capabilities()
                         report(f'Playing {result.duration_seconds:.1f} seconds. F7 pauses or resumes; F8 stops. '
-                               'Reading focus offers approximate audio follow; this voice has no exact word timings.')
+                               + ('Filtered narration has no text-follow or saved timing; originals are unchanged.'
+                                  if selection.filtered else
+                                  'Reading focus offers approximate audio follow; this voice has no exact word timings.'))
                     start_playback(playing)
                 else:
                     report(f'WAV saved: {result.path}. Duration {result.duration_seconds:.1f} seconds; '
                            f'{result.sample_rate} Hz; {result.channels} channels.', focus=True)
             report('Rendering locally. F8 cancels. Original text is unchanged.')
-            run(lambda: registry.synthesize(content, voice.id, output,
-                                            settings=settings, cancelled=cancel.is_set), rendered)
+            run(render, rendered)
         except Exception as exc:
             report(str(exc), focus=True)
 
@@ -1151,6 +1268,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def history(event=None, *, forward=False):
         try:
+            if busy:
+                raise ValueError('Stop the current narration before changing reading history.')
             sync_document()
             changed = document.redo() if forward else document.undo()
             editor.ChangeValue(document.text)
@@ -1162,6 +1281,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def clean(event=None):
         try:
+            if busy:
+                raise ValueError('Stop the current narration before changing the reading text.')
             sync_document()
             document.cleanup()
             editor.ChangeValue(document.text)
@@ -1217,6 +1338,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
         resume = ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
             native_insertion_offset(editor, document.text),
+            0 if document.narration_skips_enabled else
             player.position_seconds if last_audio is not None else
             reader_tabs.saved_audio_position(document) if reader_tabs is not None else 0)
         return resume, save_path

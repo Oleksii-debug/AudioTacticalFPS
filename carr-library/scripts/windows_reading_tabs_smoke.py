@@ -59,11 +59,13 @@ def _native():
     import carr_library.ui.reading_tools as tools_module
     import carr_library.speech.focus as focus_module
     import carr_library.ui.reading_focus as focus_ui_module
+    import carr_library.speech.narration as narration_module
+    import carr_library.ui.reading_narration as policy_ui_module
 
     checks, errors, identities, evidence = [], [], {}, {}
     held, loop, reentry, aborting, cycles = [None], [None], [False], [False], [0]
     stage = ['starting', monotonic()]
-    deadline = monotonic() + 130
+    deadline = monotonic() + 180
     timer = frame = None
     def check(label, condition):
         if not condition: raise AssertionError(label)
@@ -114,7 +116,7 @@ def _native():
     checkout = Path(__file__).resolve().parents[1]
     installed = (Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR')
                  else Path(sysconfig.get_path('purelib')).resolve())
-    for module in (tabs_module, session_module, reading_module, native_tabs_module, reader_module, marks_module, tools_module, focus_module, focus_ui_module):
+    for module in (tabs_module, session_module, reading_module, native_tabs_module, reader_module, marks_module, tools_module, focus_module, focus_ui_module, narration_module, policy_ui_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         digest = sha256(actual.read_bytes()).hexdigest()
@@ -240,13 +242,109 @@ def _native():
             elif stage[0] == 'second_selected':
                 check('Control Tab restores the second text and cursor', notebook.GetSelection() == 1
                       and editor.GetValue() == 'b' and editor.GetInsertionPoint() == 1)
-                key(wx.FindWindowById(wx.ID_CANCEL, reader), wx.WXK_SPACE, 'first_closing')
+                evidence['policy_round'] = 1
+                key(editor, ord('A'), 'policy_selected', wx.MOD_CONTROL)
             elif stage[0] == 'reopening':
                 index, saved = drafts()
                 check('fresh reader recovers both pages and selected identity', notebook.GetPageCount() == 2
                       and notebook.GetSelection() == 1 and index.active == evidence['second_id'] and editor.GetValue() == 'b')
                 check('restart restores saved cursor with no installed voice', editor.GetInsertionPoint() == 1)
-                key(editor, ord('S'), 'restart_second_saved', wx.MOD_CONTROL)
+                check('restart retains explicit category and Skip without granting audio timing',
+                      saved[1].document.narration_skips_enabled and saved[1].audio_seconds == 0
+                      and saved[1].document.narration_selection().empty
+                      and saved[1].document.narration_policy['regions'][0]['id'] == evidence['region_id']
+                      and saved[1].document.source_text == '' and saved[1].document.text == 'b')
+                evidence['policy_round'] = 2
+                key(named('Reading bookmarks and paragraph tools', reader), wx.WXK_SPACE, 'policy_tools_open')
+            elif stage[0] == 'policy_selected':
+                check('actual Control A selects the exact second reading copy', editor.GetStringSelection() == 'b')
+                key(named('Reading bookmarks and paragraph tools', reader), wx.WXK_SPACE, 'policy_tools_open')
+            elif stage[0] in ('policy_tools_open', 'policy_closed'):
+                tools_dialog = next((item for item in wx.GetTopLevelWindows()
+                    if item and isinstance(item, wx.Dialog) and item.IsShown()
+                    and item.GetTitle() == 'Reading bookmarks and paragraph tools'), None)
+                if tools_dialog is None: return
+                if stage[0] == 'policy_tools_open':
+                    key(named('Read or skip reviewed content', tools_dialog), wx.WXK_SPACE, 'policy_open')
+                else:
+                    key(named('Close reading text tools', tools_dialog), wx.WXK_SPACE, 'policy_tools_closed')
+            elif stage[0] in ('policy_open', 'policy_marked', 'policy_skip_chosen', 'policy_skip_applied',
+                    'policy_skip_previewed', 'policy_read_chosen', 'policy_read_applied',
+                    'policy_read_previewed', 'policy_reskip_chosen', 'policy_reskipped'):
+                policy = next((item for item in wx.GetTopLevelWindows()
+                    if item and isinstance(item, wx.Dialog) and item.IsShown()
+                    and item.GetTitle() == 'Read or skip reviewed reading content'), None)
+                if policy is None or policy.working: return
+                mode = named('Read or skip selected category', policy)
+                if stage[0] == 'policy_open':
+                    check('actual category and Read Skip native choices are accessible',
+                          isinstance(named('Reading content category', policy), wx.Choice)
+                          and isinstance(mode, wx.Choice)
+                          and isinstance(named('Exact narration preview', policy), wx.TextCtrl))
+                    if evidence['policy_round'] == 1:
+                        check('unmarked content is unclassified and Read by default',
+                              not policy.rows and mode.GetSelection() == 0
+                              and named('Mark selected reading content', policy).IsEnabled())
+                        key(named('Mark selected reading content', policy), wx.WXK_SPACE, 'policy_marked')
+                    else:
+                        check('restored native policy exposes the exact selected region',
+                              len(policy.rows) == 1 and policy.rows[0]['id'] == evidence['region_id']
+                              and mode.GetSelection() == 1)
+                        key(mode, wx.WXK_HOME, 'policy_read_chosen')
+                elif stage[0] == 'policy_marked':
+                    index, saved = drafts()
+                    region = saved[1].document.narration_policy['regions'][0]
+                    check('native mark retains explicit selection and unchanged source',
+                          region['start'] == 0 and region['end'] == 1
+                          and region['selected_sha256'] == sha256(b'b').hexdigest()
+                          and saved[1].document.source_text == '' and saved[1].document.text == 'b')
+                    evidence['region_id'] = region['id']
+                    key(mode, wx.WXK_END, 'policy_skip_chosen')
+                elif stage[0] == 'policy_skip_chosen':
+                    check('native keyboard selects Skip', mode.GetSelection() == 1)
+                    key(named('Apply category Read or Skip', policy), wx.WXK_SPACE, 'policy_skip_applied')
+                elif stage[0] == 'policy_skip_applied':
+                    check('native Skip is a saved reading policy', policy.policy['skip'] == ['footnote'])
+                    key(named('Preview exact narration', policy), wx.WXK_SPACE, 'policy_skip_previewed')
+                elif stage[0] == 'policy_skip_previewed':
+                    check('fully skipped native preview is explicitly empty with no engine',
+                          named('Exact narration preview', policy).GetValue() == ''
+                          and 'Empty narration' in named('Reading content policy status', policy).GetValue()
+                          and policy.preview_selection.empty)
+                    key(mode, wx.WXK_HOME, 'policy_read_chosen')
+                elif stage[0] == 'policy_read_chosen':
+                    check('native keyboard explicitly re-enables Read', mode.GetSelection() == 0)
+                    key(named('Apply category Read or Skip', policy), wx.WXK_SPACE, 'policy_read_applied')
+                elif stage[0] == 'policy_read_applied':
+                    key(named('Preview exact narration', policy), wx.WXK_SPACE, 'policy_read_previewed')
+                elif stage[0] == 'policy_read_previewed':
+                    check('Read restores every narration character without text edits',
+                          named('Exact narration preview', policy).GetValue() == 'b'
+                          and not policy.preview_selection.filtered)
+                    if evidence['policy_round'] == 1:
+                        key(mode, wx.WXK_END, 'policy_reskip_chosen')
+                    else:
+                        evidence['policy_recovered'] = True
+                        key(named('Exact narration preview', policy), wx.WXK_ESCAPE, 'policy_closed')
+                elif stage[0] == 'policy_reskip_chosen':
+                    key(named('Apply category Read or Skip', policy), wx.WXK_SPACE, 'policy_reskipped')
+                else:
+                    check('explicit Skip is retained before native restart', policy.policy['skip'] == ['footnote'])
+                    key(named('Exact narration preview', policy), wx.WXK_ESCAPE, 'policy_closed')
+            elif stage[0] == 'policy_tools_closed':
+                check('closing category tools restores actual reader keyboard focus',
+                      wx.Window.FindFocus() is editor and editor.GetValue() == 'b')
+                key(editor, ord('S'), 'policy_saved', wx.MOD_CONTROL)
+            elif stage[0] == 'policy_saved':
+                index, saved = drafts()
+                check('typed policy is retained in the current existing tab draft',
+                      saved[1].document.to_dict()['schema'] == 'carr.reading-copy.v4'
+                      and saved[1].document.narration_policy['regions'][0]['id'] == evidence['region_id']
+                      and saved[1].document.source_text == '')
+                if evidence['policy_round'] == 1:
+                    key(wx.FindWindowById(wx.ID_CANCEL, reader), wx.WXK_SPACE, 'first_closing')
+                else:
+                    advance('restart_second_saved')
             elif stage[0] == 'restart_second_saved':
                 key(editor, wx.WXK_TAB, 'restart_first', wx.MOD_CONTROL)
             elif stage[0] == 'restart_first':
@@ -299,6 +397,8 @@ def _native():
                 index, saved = drafts()
                 check('visual cursor persists through the original reading recovery',
                       saved[0].cursor == evidence['focus_cursor'] and saved[0].document.source_text == source)
+                check('content policy survived native close restart and explicit re-enabling',
+                      evidence.get('policy_recovered', False))
                 evidence['complete'] = True
                 key(wx.FindWindowById(wx.ID_CANCEL, reader), wx.WXK_SPACE, 'finished')
         def tick(event=None):
@@ -319,7 +419,8 @@ def _native():
         check('actual native tabs workflow completed twice', cycles[0] == 2 and evidence.get('complete', False))
     print(json.dumps({'result': 'PASS', 'checks': len(checks), 'check_names': checks,
         'source_identity': identities, 'native_reading_tabs': 'PASS', 'keyboard_and_restart': 'PASS',
-        'voice_inventory': 'EXPLICIT_EMPTY_FIXTURE', 'speech_engine': 'NOT_RUN', 'manual_nvda': 'NOT_RUN'}))
+        'reading_content_policy': 'PASS', 'voice_inventory': 'EXPLICIT_EMPTY_FIXTURE',
+        'speech_engine': 'NOT_RUN', 'manual_nvda': 'NOT_RUN'}))
     return 0
 
 

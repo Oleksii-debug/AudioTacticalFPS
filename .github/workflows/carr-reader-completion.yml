@@ -52,7 +52,7 @@ jobs:
           set -euo pipefail
           python -m compileall -q src scripts
           python scripts/ci_check.py --jobs 2 \
-            tests/speech/test_reading_marks.py tests/speech/test_reading_focus.py tests/ui/test_reading_focus.py tests/ui/test_reader_focus_hook.py tests/ui/test_reading_tools.py \
+            tests/speech/test_reading_marks.py tests/speech/test_reading_focus.py tests/ui/test_reading_focus.py tests/ui/test_reader_focus_hook.py tests/ui/test_reading_tools.py tests/speech/test_narration_policy.py tests/ui/test_reading_narration.py tests/speech/test_reading.py tests/speech/test_source.py tests/speech/test_session.py \
             tests/ui/test_reader_listening_hook.py tests/operations/test_worker_start_cleanup.py tests/speech/test_listening.py \
             tests/speech/test_reading_tabs.py tests/ui/test_reader_tabs.py \
             tests/ui/test_reader_voice_recovery.py tests/ui/test_reader_navigation.py tests/ui/test_reader_playback.py tests/speech/test_wave_output.py tests/speech/test_playlist.py tests/speech/test_playlist_recovery.py tests/ui/test_audio_playback.py tests/speech/test_player_controls.py tests/speech/test_player_transport.py tests/ui/test_progress_job_review.py \

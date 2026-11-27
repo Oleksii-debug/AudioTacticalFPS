@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-11-27T15:27:32Z",
+  "tested_commit": "7a2174520b19dc96271e4a62990c3dd83c3ca4c2",
+  "tested_tree": "1930586566f90d596865021760d7b100adf8cacb",
+  "evidence_source": "Returned completed GitHub Actions job logs; no local execution inferred.",
+  "unique_test_count": "Selections overlap; counts must not be added as unique coverage.",
+  "status": "PASS",
+  "source_component": "ae1cb7eb2dc599979253730f5f406bd2957cb1eb",
+  "source_equivalence": "7a adds only the focused installed acceptance workflow to ae1; application and both test blobs are unchanged.",
+  "run_id": 46023415577,
+  "job_id": 140588559817,
+  "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46023415577/job/140588559817",
+  "suites": [
+    {
+      "suite": "tests/e2e/test_import_legacy_config.py",
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    },
+    {
+      "suite": "tests/e2e/test_import_commit_supervisor.py",
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "exit": 0
+    }
+  ],
+  "totals": {
+    "passed": 50,
+    "failed": 0,
+    "skipped": 0
+  },
+  "installed_modules": {
+    "carr_library.application": {
+      "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/application.py",
+      "sha256": "7bc30d2cf99122afeb60ccdf4b26457697bef187ad623652dd0ab525cc4eec59"
+    },
+    "carr_library.extract.page_ocr": {
+      "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/page_ocr.py",
+      "sha256": "c844e455e4d5c54f7daed7db68ab19628ae8ef1315f1e85acbbae790f81accb1"
+    },
+    "carr_library.extract.raster_pages": {
+      "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/extract/raster_pages.py",
+      "sha256": "6f66306e6b8539501217822d4bc0d608a03930c25f189f30cdf6fe9f6d2208f7"
+    },
+    "carr_library.ingest.worker": {
+      "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/worker.py",
+      "sha256": "d8e9ba1bb965679007481206018ff7aa641ca76d9a52eb0dae0777661f6b64a4"
+    },
+    "carr_library.ingest.pipeline": {
+      "path": "/opt/hostedtoolcache/Python/3.11.18/x64/lib/python3.11/site-packages/carr_library/ingest/pipeline.py",
+      "sha256": "fd77d10f20ba7a8a712a73cf4c1eae6f8f3903a37c97858901b64cb0a4f36f4e"
+    }
+  },
+  "artifact": {
+    "id": 15210990864,
+    "sha256": "6e3d11cdc8f6642f02779fa58ddcacebaa55bc3bb60ade8996ef59dbf0f6c2cc"
+  },
+  "qualification": "Actual isolated worker, retained raster decode, checksum review, SQLite publication and lost-reply recovery; controlled OCR text is not OCR quality qualification."
+}

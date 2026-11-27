@@ -104,6 +104,7 @@ def test_real_speak_binds_only_the_exact_native_selected_rendered_text(tmp_path,
         return True
     player, report = Mock(), Mock()
     values = dict(last_audio=None, last_reading_audio=None, playback_generation=0,
+        alive=True, parent=SimpleNamespace(_closing=False), playback_scope=Mock(),
         registry=SimpleNamespace(synthesize=synthesize), voices=(SimpleNamespace(id='fixture:exact'),),
         source_guard=Mock(), selected_text=selected, document=doc, editor=editor,
         voice_choice=SimpleNamespace(GetSelection=lambda: 0),
@@ -131,6 +132,7 @@ def test_late_render_cannot_attach_timing_to_a_changed_reading_copy(tmp_path):
     result = SpeechResult(tmp_path / 'render.wav', 'f' * 64, 1, 24000, 1, 24000,
                           'fixture:exact', sha256(text.encode('utf-8')).hexdigest(), 1)
     values = dict(last_audio=None, last_reading_audio=None, playback_generation=0,
+        alive=True, parent=SimpleNamespace(_closing=False), playback_scope=Mock(),
         registry=SimpleNamespace(synthesize=lambda *_a, **_k: result),
         voices=(SimpleNamespace(id='fixture:exact'),), source_guard=Mock(),
         selected_text=lambda _from_cursor: text, document=doc, editor=editor,
@@ -142,6 +144,8 @@ def test_late_render_cannot_attach_timing_to_a_changed_reading_copy(tmp_path):
     handler()
     doc.set_text('Different reading revision.')
     callback, done = work.pop()
-    done(callback())
-    assert current()['last_reading_audio'] is None
+    with pytest.raises(ValueError, match='changed'):
+        callback()
+    assert current()['last_reading_audio'] is None and current()['last_audio'] is None
+    values['player'].play.assert_not_called()
     assert doc.source_text == text
