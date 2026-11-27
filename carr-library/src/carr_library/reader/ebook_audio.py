@@ -12,6 +12,7 @@ from decimal import Decimal
 from hashlib import sha256
 from io import BytesIO
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -21,6 +22,7 @@ import threading
 import wave
 import xml.etree.ElementTree as ET
 from zipfile import ZipFile
+from uuid import uuid4
 
 from ..audio.models import AudioBudget, AudioCancelled, AudioCleanupPending
 from ..audio.process import run_process
@@ -28,11 +30,14 @@ from ..catalog.office_archive import validate_office
 from ..durable_state import digest_file, local_path, regular
 from ..extract import epub_ordered as epub
 from ..runtime_settings import audio_runtime
+from ..operations import ResourceBroker, ResourceCancelled, ResourceRequest
 
 SMIL = '{http://www.w3.org/ns/SMIL}'
 MAX_CUES = 2048
 MAX_CUE_SECONDS = 3600
 MAX_REPLY = 2 * 1024 * 1024
+MAX_AUDIO_MEMBER = 32 * 1024 * 1024
+PARSER_MEMORY_BYTES = 512 * 1024 * 1024
 _AUDIO = {'audio/mpeg': '.mp3', 'audio/mp4': '.m4a', 'audio/aac': '.aac',
           'audio/ogg': '.ogg', 'audio/wav': '.wav', 'audio/x-wav': '.wav',
           'audio/flac': '.flac'}
@@ -283,43 +288,57 @@ class EbookAudioSession:
         self._closed = threading.Event()
         self._lock = threading.Lock()
         self._temporary = None
+        self._operation_id = 'epub-audio:' + uuid4().hex
         # Preserve the existing reader's immutable identity/descriptors while
         # giving this child transport its own cancellation lifetime.
         self.desk = desk = copy(desk)
         desk.cancelled = self.stopped
         self.guard(); _check(self.stopped)
-        self.page = desk.page(ordinal)
-        self.guard(); _check(self.stopped)
-        with desk.library._search_read(desk.workspace, desk.timeout, self.stopped) as (db, budget):
-            identity, metadata = desk._header(db)
-            if identity != desk.identity or metadata != desk.metadata:
-                raise ValueError('The EPUB source changed before recorded-audio reading.')
-            self.original, mime, _ = desk.library._retained_source(
-                db, desk.workspace, identity, cancelled=budget.stopped)
-            if mime != 'application/epub+zip':
-                raise ValueError('Recorded media overlays require an imported EPUB source.')
-            data = desk.library._asset_bytes(db, desk.workspace, identity, cancelled=budget.stopped)
-        self.guard(); _check(self.stopped)
         try:
+            self._broker = ResourceBroker.for_app(desk.library.root, cancelled=self.stopped)
             self._temporary = TemporaryDirectory(prefix='carr-epub-audio-')
             self.root = local_path(self._temporary.name, exists=True)
             self.source = self.root / 'source.epub'
-            self.source.write_bytes(data)
-            package_root = Path(__file__).resolve().parents[2]
-            roots = [str(package_root)]
-            if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
-                roots.append(str(package_root.parent))
-            bootstrap = ('import sys,runpy; count=int(sys.argv.pop(1)); '
-                         'sys.path[:0]=[sys.argv.pop(1) for _ in range(count)]; '
-                         "runpy.run_module('carr_library.reader.ebook_audio',run_name='__main__')")
-            result = run_process([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap,
-                str(len(roots)), *roots, str(self.source), identity.asset_sha256, str(ordinal)],
-                budget=AudioBudget(timeout=60, max_log_bytes=MAX_REPLY, max_output_bytes=epub.MAX_SOURCE_BYTES,
-                                   reserve_disk_bytes=0), cancelled=self.stopped,
-                owned_windows_job=os.name == 'nt')
-            value = json.loads(result.stdout)
-            self.chapter = _decode_chapter(value, self.page, identity)
-            self.check()
+            # This is a declared cooperative allowance, not a measured RSS
+            # claim. Existing source/XML/reply bounds and child limits remain.
+            request = ResourceRequest(cpu_slots=1, memory_bytes=PARSER_MEMORY_BYTES,
+                disk_bytes=epub.MAX_SOURCE_BYTES + 2 * MAX_REPLY, disk_path=self.root)
+            with self._broker.reserve(request, operation_id=self._operation_id + ':parse',
+                    cancelled=self.stopped, timeout=60) as lease:
+                # No retained source read or parser launch precedes admission;
+                # the selection may have changed while the worker was waiting.
+                self.guard(); lease.checkpoint()
+                self.page = desk.page(ordinal)
+                self.guard(); lease.checkpoint()
+                with desk.library._search_read(desk.workspace, desk.timeout, lease.cancelled) as (db, budget):
+                    identity, metadata = desk._header(db)
+                    if identity != desk.identity or metadata != desk.metadata:
+                        raise ValueError('The EPUB source changed before recorded-audio reading.')
+                    self.original, mime, _ = desk.library._retained_source(
+                        db, desk.workspace, identity, cancelled=budget.stopped)
+                    if mime != 'application/epub+zip':
+                        raise ValueError('Recorded media overlays require an imported EPUB source.')
+                    data = desk.library._asset_bytes(db, desk.workspace, identity, cancelled=budget.stopped)
+                self.guard(); lease.checkpoint()
+                self.source.write_bytes(data)
+                package_root = Path(__file__).resolve().parents[2]
+                roots = [str(package_root)]
+                if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
+                    roots.append(str(package_root.parent))
+                bootstrap = ('import sys,runpy; count=int(sys.argv.pop(1)); '
+                             'sys.path[:0]=[sys.argv.pop(1) for _ in range(count)]; '
+                             "runpy.run_module('carr_library.reader.ebook_audio',run_name='__main__')")
+                result = run_process([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap,
+                    str(len(roots)), *roots, str(self.source), identity.asset_sha256, str(ordinal)],
+                    budget=AudioBudget(timeout=60, max_log_bytes=MAX_REPLY, max_output_bytes=epub.MAX_SOURCE_BYTES,
+                                       reserve_disk_bytes=0), cancelled=lease.cancelled,
+                    owned_windows_job=os.name == 'nt')
+                value = json.loads(result.stdout)
+                self.chapter = _decode_chapter(value, self.page, identity)
+                self.check(); lease.checkpoint()
+        except ResourceCancelled as error:
+            self.close()
+            raise AudioCancelled('EPUB audio reading cancelled while waiting for resources.') from error
         except AudioCleanupPending as error:
             temporary, self._temporary = self._temporary, None
             if temporary is not None:
@@ -349,39 +368,57 @@ class EbookAudioSession:
         try:
             self.check(); _check(stopped)
             cue = self.chapter.cues[index]
-            if digest_file(self.source) != self.chapter.asset_sha256:
-                raise ValueError('The private EPUB source snapshot changed.')
             temporary = TemporaryDirectory(prefix='carr-epub-clip-')
             root = local_path(temporary.name, exists=True)
-            sound = root / ('recording' + cue.suffix)
-            with ZipFile(self.source) as archive, archive.open(cue.member) as source, sound.open('xb') as target:
-                total = 0
-                while block := source.read(64 * 1024):
-                    _check(stopped)
-                    total += len(block)
-                    if total > 32 * 1024 * 1024:
-                        raise ValueError('The EPUB recorded audio exceeds its member budget.')
-                    target.write(block)
             runtime = audio_runtime(root, state_root=self.desk.library.root / 'state',
                 budget=AudioBudget(timeout=120, max_output_bytes=512 * 1024 * 1024))
-            info = runtime.inspect(sound, cancelled=stopped)
-            finish = info.duration if cue.finish is None else cue.finish
-            if finish > info.duration + 1 / info.sample_rate or not 0 < finish - cue.begin <= MAX_CUE_SECONDS:
-                raise ValueError('The EPUB clip timing exceeds the measured audio or one-hour segment limit.')
-            destination = root / 'clip.wav'
-            runtime.convert(sound, destination, start=cue.begin, duration=finish-cue.begin,
-                            sample_rate=24000, channels=2, cancelled=stopped)
-            self.check(); _check(stopped)
-            with wave.open(str(destination), 'rb') as rendered:
-                frames, sample_rate = rendered.getnframes(), rendered.getframerate()
-            expected = round((finish-cue.begin) * sample_rate)
-            if frames != expected or sample_rate != 24000:
-                raise ValueError('The prepared EPUB clip differs from its authored time interval.')
-            result = PreparedCue(cue, destination, digest_file(destination), frames, sample_rate, temporary)
-            self.admit(result)
-            _check(stopped)
+            # One bounded member, one PCM file (the codec's staging inode is
+            # published in place), both process logs and its free-disk reserve.
+            # Unknown authored end uses the existing one-hour admission bound;
+            # measured duration is still checked before any conversion.
+            duration_bound = MAX_CUE_SECONDS if cue.finish is None else cue.finish - cue.begin
+            pcm_bytes = math.ceil(duration_bound * 24000) * 2 * 2 + 65536
+            request = ResourceRequest(cpu_slots=runtime.budget.threads,
+                memory_bytes=max(PARSER_MEMORY_BYTES, 2 * runtime.budget.max_alloc_bytes),
+                disk_bytes=MAX_AUDIO_MEMBER + pcm_bytes + 2 * runtime.budget.max_log_bytes
+                           + runtime.budget.reserve_disk_bytes,
+                disk_path=root)
+            with self._broker.reserve(request, operation_id=self._operation_id + ':decode',
+                    cancelled=stopped, timeout=60) as lease:
+                stopped = lease.cancelled
+                self.check(); lease.checkpoint()
+                if digest_file(self.source) != self.chapter.asset_sha256:
+                    raise ValueError('The private EPUB source snapshot changed.')
+                sound = root / ('recording' + cue.suffix)
+                with ZipFile(self.source) as archive, archive.open(cue.member) as source, sound.open('xb') as target:
+                    total = 0
+                    while block := source.read(64 * 1024):
+                        _check(stopped)
+                        total += len(block)
+                        if total > MAX_AUDIO_MEMBER:
+                            raise ValueError('The EPUB recorded audio exceeds its member budget.')
+                        target.write(block)
+                info = runtime.inspect(sound, cancelled=stopped)
+                finish = info.duration if cue.finish is None else cue.finish
+                if finish > info.duration + 1 / info.sample_rate or not 0 < finish - cue.begin <= MAX_CUE_SECONDS:
+                    raise ValueError('The EPUB clip timing exceeds the measured audio or one-hour segment limit.')
+                destination = root / 'clip.wav'
+                runtime.convert(sound, destination, start=cue.begin, duration=finish-cue.begin,
+                                sample_rate=24000, channels=2, cancelled=stopped)
+                self.check(); _check(stopped)
+                with wave.open(str(destination), 'rb') as rendered:
+                    frames, sample_rate = rendered.getnframes(), rendered.getframerate()
+                expected = round((finish-cue.begin) * sample_rate)
+                if frames != expected or sample_rate != 24000:
+                    raise ValueError('The prepared EPUB clip differs from its authored time interval.')
+                result = PreparedCue(cue, destination, digest_file(destination), frames, sample_rate, temporary)
+                self.admit(result)
+                _check(stopped)
+            # Passive prepared PCM retains its files, never an active CPU lease.
             temporary = None
             return result
+        except ResourceCancelled as error:
+            raise AudioCancelled('EPUB audio preparation cancelled while waiting for resources.') from error
         except AudioCleanupPending as error:
             if temporary is not None:
                 _retain_temporary(error, temporary)

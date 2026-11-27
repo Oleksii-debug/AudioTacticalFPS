@@ -1,10 +1,14 @@
 """Real retained EPUB/SMIL and FFmpeg preparation; no native acceptance claim."""
+from contextlib import contextmanager
 from hashlib import sha256
 from io import BytesIO
 import math
 from pathlib import Path
 import shutil
 import struct
+import subprocess
+import sys
+import time
 from threading import Event, Thread
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -495,53 +499,130 @@ def test_canonical_backup_restores_recorded_epub_without_original_source_or_old_
         session.close()
 
 
-def test_parser_cleanup_owner_retains_source_until_actual_quiescence(imported, monkeypatch):
-    from carr_library.audio.cleanup import CleanupOwner
-    from carr_library.audio.models import AudioCleanupPending
-    import carr_library.reader.ebook_audio as module
-    release = Event()
-    owner = CleanupOwner(lambda: release.is_set())
-    pending = AudioCleanupPending('controlled parser cleanup', cleanup_owner=owner)
-    held = {}
-    def interrupted(command, **options):
-        source = Path(command[-3])
-        assert source.name == 'source.epub' and source.is_file()
-        assert options['owned_windows_job'] is (module.os.name == 'nt')
-        held['root'] = source.parent
-        raise pending
-    monkeypatch.setattr(module, 'run_process', interrupted)
-    with pytest.raises(AudioCleanupPending) as error:
-        EbookAudioSession(imported[-1], 1)
-    assert error.value is pending and held['root'].is_dir()
-    assert not owner.close() and held['root'].is_dir()
-    release.set()
-    assert owner.close() and owner.quiescent_event.is_set()
-    assert not held['root'].exists()
+def _resource_broker(app, *, cpu_slots=2):
+    from carr_library.operations import ResourceBroker, ResourceLimits
+    broker = ResourceBroker.for_app(app.root)
+    broker.configure(ResourceLimits(cpu_slots=cpu_slots, min_free_disk_bytes=0))
+    return broker
 
 
-def test_decoder_cleanup_owner_retains_pcm_staging_before_session_close(imported, monkeypatch):
+def _assert_capacity_held(broker):
+    from carr_library.operations import ResourceRequest, ResourceTimeout
+    with pytest.raises(ResourceTimeout):
+        with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='epub-test-competitor', timeout=0):
+            pytest.fail('The real native reservation was released before its child exited.')
+
+
+@contextmanager
+def _pending_real_child(tmp_path):
     from carr_library.audio.cleanup import CleanupOwner
-    from carr_library.audio.models import AudioCleanupPending
-    session = EbookAudioSession(imported[-1], 1)
-    release = Event()
-    owner = CleanupOwner(lambda: release.is_set())
-    held = {}
-    def interrupted(runtime, source, destination, **options):
-        Path(destination).write_bytes(b'controlled-incomplete-pcm')
-        held['root'] = Path(destination).parent
-        raise AudioCleanupPending('controlled decoder cleanup', cleanup_owner=owner)
-    monkeypatch.setattr(AudioRuntime, 'convert', interrupted)
+    ready, release = tmp_path / 'child-ready', tmp_path / 'child-release'
+    code = ("import os,sys,time; from pathlib import Path; "
+            "Path(sys.argv[1]).write_text(str(os.getpid()),encoding='ascii'); "
+            "release=Path(sys.argv[2]); "
+            "exec('while not release.exists():\\n time.sleep(.01)')")
+    child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(ready), str(release)],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+    def cleaned():
+        if child.poll() is None:
+            return False
+        child.wait()
+        return True
+    owner = CleanupOwner(cleaned)
     try:
-        with pytest.raises(AudioCleanupPending):
-            session.prepare(0)
-        assert held['root'].is_dir() and not owner.quiescent
-        session.close()
-        assert held['root'].is_dir(), 'Session close cannot discard an unreaped decoder staging directory.'
-        release.set()
-        assert owner.close()
-        assert not held['root'].exists()
+        deadline = time.monotonic() + 10
+        while not ready.exists() and child.poll() is None and time.monotonic() < deadline:
+            time.sleep(.01)
+        assert ready.is_file() and child.poll() is None, 'The controlled real child did not become ready.'
+        yield child, owner, release
     finally:
-        release.set(); owner.close(); session.close()
+        release.write_bytes(b'release')
+        child.wait(timeout=10)
+        assert owner.close()
+
+
+def test_parser_cleanup_owner_retains_source_until_actual_quiescence(imported, monkeypatch, tmp_path):
+    from carr_library.audio.models import AudioCleanupPending
+    from carr_library.operations import ResourceRequest
+    import carr_library.reader.ebook_audio as module
+    broker = _resource_broker(imported[0])
+    held, errors, entered = {}, [], Event()
+    with _pending_real_child(tmp_path) as (child, owner, release):
+        pending = AudioCleanupPending('controlled parser cleanup', cleanup_owner=owner)
+        def interrupted(command, **options):
+            source = Path(command[-3])
+            assert source.name == 'source.epub' and source.is_file()
+            assert options['owned_windows_job'] is (module.os.name == 'nt')
+            held['root'] = source.parent
+            entered.set()
+            raise pending
+        monkeypatch.setattr(module, 'run_process', interrupted)
+        def load():
+            try:
+                EbookAudioSession(imported[-1], 1)
+            except BaseException as error:
+                errors.append(error)
+        worker = Thread(target=load)
+        worker.start()
+        try:
+            assert entered.wait(10)
+            assert child.poll() is None and worker.is_alive()
+            assert held['root'].is_dir() and not owner.close()
+            _assert_capacity_held(broker)
+            release.write_bytes(b'release')
+            worker.join(10)
+            assert not worker.is_alive()
+            assert errors == [pending] and owner.quiescent_event.is_set()
+            assert child.poll() == 0
+            assert not held['root'].exists()
+            with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='epub-after-parser', timeout=0):
+                pass
+        finally:
+            release.write_bytes(b'release')
+            worker.join(10)
+
+
+def test_decoder_cleanup_owner_retains_pcm_staging_before_session_close(imported, monkeypatch, tmp_path):
+    from carr_library.audio.models import AudioCleanupPending
+    from carr_library.operations import ResourceRequest
+    broker = _resource_broker(imported[0])
+    session = EbookAudioSession(imported[-1], 1)
+    held, errors, entered = {}, [], Event()
+    with _pending_real_child(tmp_path) as (child, owner, release):
+        pending = AudioCleanupPending('controlled decoder cleanup', cleanup_owner=owner)
+        def interrupted(runtime, source, destination, **options):
+            Path(destination).write_bytes(b'controlled-incomplete-pcm')
+            held['root'] = Path(destination).parent
+            entered.set()
+            raise pending
+        monkeypatch.setattr(AudioRuntime, 'convert', interrupted)
+        def prepare():
+            try:
+                session.prepare(0)
+            except BaseException as error:
+                errors.append(error)
+        worker = Thread(target=prepare)
+        worker.start()
+        try:
+            assert entered.wait(10)
+            assert child.poll() is None and worker.is_alive()
+            assert held['root'].is_dir() and not owner.quiescent
+            session.close()
+            assert held['root'].is_dir(), 'Session close cannot discard an unreaped decoder staging directory.'
+            assert session.root.is_dir() and not owner.close()
+            _assert_capacity_held(broker)
+            release.write_bytes(b'release')
+            worker.join(10)
+            assert not worker.is_alive()
+            assert errors == [pending] and owner.quiescent and child.poll() == 0
+            assert not held['root'].exists() and not session.root.exists()
+            with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='epub-after-decoder', timeout=0):
+                pass
+        finally:
+            release.write_bytes(b'release')
+            worker.join(10)
+            session.close()
 
 
 def test_recorded_preparation_uses_current_configured_runtime_factory(imported, monkeypatch):
@@ -559,6 +640,178 @@ def test_recorded_preparation_uses_current_configured_runtime_factory(imported, 
         try:
             assert len(calls) == 1 and calls[0][0] == prepared.path.parent
             assert prepared.frames == 4800
+        finally:
+            prepared.close()
+    finally:
+        session.close()
+
+
+@pytest.mark.parametrize('stage', ['parse', 'decode'])
+def test_cancellation_while_waiting_for_shared_capacity_starts_no_source_or_decoder_work(imported, monkeypatch, stage):
+    from carr_library.operations import ResourceBroker, ResourceRequest
+    import carr_library.reader.ebook_audio as module
+    app, _, _, _, desk = imported
+    broker = _resource_broker(app)
+    session = EbookAudioSession(desk, 1) if stage == 'decode' else None
+    entered, cancelled = Event(), Event()
+    work, errors, results = [], [], []
+    reserve = ResourceBroker.reserve
+    @contextmanager
+    def observed(self, request, **options):
+        if options['operation_id'].startswith('epub-audio:'):
+            entered.set()
+        with reserve(self, request, **options) as lease:
+            yield lease
+    monkeypatch.setattr(ResourceBroker, 'reserve', observed)
+    original_asset, original_parser, original_inspect = app._asset_bytes, module.run_process, AudioRuntime.inspect
+    def asset(*args, **kwargs):
+        work.append('asset')
+        return original_asset(*args, **kwargs)
+    def parser(*args, **kwargs):
+        work.append('parser')
+        return original_parser(*args, **kwargs)
+    def inspect(*args, **kwargs):
+        work.append('decoder')
+        return original_inspect(*args, **kwargs)
+    monkeypatch.setattr(app, '_asset_bytes', asset)
+    monkeypatch.setattr(module, 'run_process', parser)
+    monkeypatch.setattr(AudioRuntime, 'inspect', inspect)
+    def waiting():
+        try:
+            results.append(EbookAudioSession(desk, 1, cancelled=cancelled.is_set) if session is None
+                           else session.prepare(0, cancelled=cancelled.is_set))
+        except BaseException as error:
+            errors.append(error)
+    worker = Thread(target=waiting)
+    try:
+        with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='epub-blocking-work', timeout=0):
+            worker.start()
+            assert entered.wait(10)
+            assert worker.is_alive() and work == []
+            cancelled.set()
+            worker.join(10)
+            assert not worker.is_alive()
+            assert len(errors) == 1 and isinstance(errors[0], AudioCancelled)
+            assert results == [] and work == []
+        assert broker.snapshot()['leases'] == []
+    finally:
+        cancelled.set()
+        if worker.ident is not None:
+            worker.join(10)
+        for result in results:
+            result.close()
+        if session is not None:
+            session.close()
+
+
+@pytest.mark.parametrize('stage', ['parse', 'decode'])
+def test_changed_selection_while_waiting_is_rechecked_before_admitted_heavy_work(imported, monkeypatch, stage):
+    from carr_library.operations import ResourceBroker, ResourceRequest
+    import carr_library.reader.ebook_audio as module
+    app, _, _, _, desk = imported
+    broker = _resource_broker(app)
+    selected = [True]
+    def guard():
+        if not selected[0]:
+            raise ValueError('Controlled source selection changed while queued.')
+    session = EbookAudioSession(desk, 1, guard=guard) if stage == 'decode' else None
+    entered, errors, results, work = Event(), [], [], []
+    reserve = ResourceBroker.reserve
+    @contextmanager
+    def observed(self, request, **options):
+        if options['operation_id'].startswith('epub-audio:'):
+            entered.set()
+        with reserve(self, request, **options) as lease:
+            yield lease
+    monkeypatch.setattr(ResourceBroker, 'reserve', observed)
+    def forbidden(*args, **kwargs):
+        work.append('unreviewed source or decoder work')
+        raise AssertionError(work[-1])
+    monkeypatch.setattr(app, '_asset_bytes', forbidden)
+    monkeypatch.setattr(module, 'run_process', forbidden)
+    monkeypatch.setattr(AudioRuntime, 'inspect', forbidden)
+    def waiting():
+        try:
+            results.append(EbookAudioSession(desk, 1, guard=guard) if session is None else session.prepare(0))
+        except BaseException as error:
+            errors.append(error)
+    worker = Thread(target=waiting)
+    try:
+        with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='epub-blocking-selection', timeout=0):
+            worker.start()
+            assert entered.wait(10)
+            assert worker.is_alive() and work == []
+            selected[0] = False
+        worker.join(10)
+        assert not worker.is_alive()
+        assert len(errors) == 1 and isinstance(errors[0], ValueError)
+        assert 'selection changed' in str(errors[0])
+        assert results == [] and work == [] and broker.snapshot()['leases'] == []
+    finally:
+        selected[0] = False
+        if worker.ident is not None:
+            worker.join(10)
+        for result in results:
+            result.close()
+        if session is not None:
+            session.close()
+
+
+def test_configured_two_thread_decoder_is_refused_by_explicit_one_slot_policy(imported, monkeypatch):
+    from carr_library.operations import ResourceUnavailable
+    broker = _resource_broker(imported[0], cpu_slots=1)
+    session = EbookAudioSession(imported[-1], 1)
+    def no_decoder(*args, **kwargs):
+        pytest.fail('The explicitly refused two-thread decoder was launched.')
+    monkeypatch.setattr(AudioRuntime, 'inspect', no_decoder)
+    try:
+        with pytest.raises(ResourceUnavailable):
+            session.prepare(0)
+        assert broker.limits.cpu_slots == 1
+        assert broker.snapshot()['leases'] == []
+    finally:
+        session.close()
+
+
+def test_actual_parser_decoder_and_passive_pcm_use_one_shared_resource_coordinator(imported, monkeypatch):
+    from carr_library.operations import ResourceRequest
+    import carr_library.reader.ebook_audio as module
+    broker = _resource_broker(imported[0])
+    seen = []
+    run, convert = module.run_process, AudioRuntime.convert
+    def parser(command, **options):
+        lease, = broker.snapshot()['leases']
+        request = lease['request']
+        assert lease['operation_id'].endswith(':parse') and request['cpu_slots'] == 1
+        assert request['memory_bytes'] >= 2 * module.epub.MAX_SOURCE_BYTES
+        assert Path(request['disk_path']) == Path(command[-3]).parent
+        assert request['disk_bytes'] >= Path(command[-3]).stat().st_size + 2 * options['budget'].max_log_bytes
+        seen.append('parser')
+        _assert_capacity_held(broker)
+        return run(command, **options)
+    def decoder(runtime, source, destination, **options):
+        lease, = broker.snapshot()['leases']
+        request = lease['request']
+        assert lease['operation_id'].endswith(':decode')
+        assert request['cpu_slots'] == runtime.budget.threads == 2
+        assert request['memory_bytes'] >= 2 * runtime.budget.max_alloc_bytes
+        pcm = math.ceil(options['duration'] * 24000) * 4 + 65536
+        assert request['disk_bytes'] >= Path(source).stat().st_size + pcm + runtime.budget.reserve_disk_bytes
+        assert Path(request['disk_path']) == Path(destination).parent
+        seen.append('decoder')
+        _assert_capacity_held(broker)
+        return convert(runtime, source, destination, **options)
+    monkeypatch.setattr(module, 'run_process', parser)
+    monkeypatch.setattr(AudioRuntime, 'convert', decoder)
+    session = EbookAudioSession(imported[-1], 1)
+    try:
+        prepared = session.prepare(0)
+        try:
+            assert seen == ['parser', 'decoder'] and prepared.frames == 4800
+            assert prepared.path.is_file() and broker.snapshot()['leases'] == []
+            # Playback keeps its verified file but never keeps decoder CPU.
+            with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='epub-passive-playback', timeout=0):
+                assert prepared.path.is_file()
         finally:
             prepared.close()
     finally:

@@ -23,6 +23,11 @@ def _local_studio_origin(path):
     return parts[:2] == ('studio', '.local-origin.json')
 
 
+def _local_transcription_origin(path):
+    parts = tuple(unicodedata.normalize('NFC', part).casefold() for part in path.parts)
+    return parts[:2] == ('transcription', '.local-origin.json')
+
+
 def relative_name(value):
     if (not isinstance(value, str) or not value
             or any(c in '<>:"\\|?*' or ord(c) < 32 for c in value)):
@@ -40,6 +45,8 @@ def relative_name(value):
         raise ValueError('Invalid portable state filename.')
     if _local_studio_origin(path):
         raise ValueError('Local Studio origin authority must not be restored from a backup.')
+    if _local_transcription_origin(path):
+        raise ValueError('Local transcription origin authority must not be restored from a backup.')
     return path
 
 
@@ -48,7 +55,7 @@ def _stamp(value):
 
 
 def _include(path, generated):
-    return (not _local_studio_origin(path)
+    return (not _local_studio_origin(path) and not _local_transcription_origin(path)
             and not any(part.startswith('.pending-') or part.endswith(('.lock', '.tmp')) for part in path.parts)
             and (generated or 'cache' not in path.parts))
 
@@ -153,6 +160,10 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
     # Keep this after content revalidation and before publication.
     validate_state(entries)
     _validate_managed_clip_inputs(target, entries, cancelled=cancelled)
+    from .assistant.templates import validate_copied_templates
+    validate_copied_templates(target, entries, cancelled=cancelled)
+    from .backup_book_audio import validate_collection
+    validate_collection(None, target, entries, cancelled=cancelled)
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
@@ -273,6 +284,8 @@ def restore_state(source, target, entries):
     validate_state(entries)
     if os.path.lexists(Path(target) / 'studio' / '.local-origin.json'):
         raise ValueError('Choose a restore target without existing local Studio origin authority.')
+    if os.path.lexists(Path(target) / 'transcription' / '.local-origin.json'):
+        raise ValueError('Choose a restore target without existing local transcription origin authority.')
     source = local_path(source, exists=True)
     regular(source, directory=True)
     missing = {item['filename'] for item in entries}
@@ -311,6 +324,13 @@ def restore_state(source, target, entries):
         if size != item['size_bytes'] or digest.hexdigest() != item['sha256']:
             raise ValueError('Application state checksum mismatch.')
     _validate_managed_clip_inputs(target, entries)
+    from .assistant.templates import validate_copied_templates
+    validate_copied_templates(target, entries)
+    from .backup_book_audio import validate_collection
+    validate_collection(None, target, entries)
+    if (target / 'transcription').exists():
+        from .integrations.transcription_protocol import prepare_restored_state
+        prepare_restored_state(target)
     sync_directory(target)
 
 

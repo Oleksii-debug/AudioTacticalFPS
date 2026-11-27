@@ -1,35 +1,35 @@
 # Resonance integration checkpoint — 27 November 2026
 
-This is a development checkpoint, not a qualified release or a claim that the complete platform is finished. Its exact commit and subsequent run results are recorded in [PR #173](https://github.com/Oleksii-debug/AudioTacticalFPS/pull/173).
+Status: development checkpoint; not a qualified release or a completed platform.
 
-## Source reconciliation
+This successor is composed from integration head `ec5133b4f102b712b5bbdb9b33527e6b080a4d6b` and reconciles the narrow export-approval change in canonical `e3cf74c243d4ef930b526b5648ca9003c0900057`. Its own exact source identity must come from the new checkout and workflow records. Earlier PASS results are not transferred.
 
-The first parent is candidate 324b087d0de3abd389ee0056d1c8565a473e3c95. The additional canonical parent is e69ba2403515f21509686d66f4bc8b3673756d81, which merged PR #147. The selected tree retains one current transcription.py service. Canonical's same-named transcription/ package is not installed alongside it: Python would otherwise shadow the existing service and break its current V5, receipt, workspace and backup contracts.
+## Composed work
 
-The incompatible canonical local-file-job/1 protocol and historical root-global jobs are being reconciled through internal protocol/state adapters. That union is **not present or qualified in this checkpoint**. Do not package this tree as the final migration from canonical ASR data. Existing original V5 and receipts-v1 source remains intact; there is no conversion of one protocol's receipts into another's evidence.
+- One workspace-scoped transcription facade preserves the supplied V5/receipt protocols and the reviewed local-file-job/1 runtime adapter. Explicit runtime inspection, workspace binding, restored-authority revocation, cancellation/resume, separate edit revisions and verified exports share the existing operation and resource boundaries.
+- External transcript export captures the exact verified bytes. Atomic directory publication and flat partial/uncertain publication retain truthful receipts after commit. Windows subprocess ownership covers the native family; mutable Windows status is read only after quiescence while immutable checkpoints still report progress.
+- Source-bound book narration splits retained editions into ordinary schema2 Studio jobs, preserves literal text and source provenance, requires explicit Prepare and Run, and shares the host worker and cleanup ownership.
+- Named workflow templates store bounded typed draft operations, never execution approval. Loading requires fresh Preview and Run. Save/import/export/update/removal preserve current revision, no-clobber publication and committed-outcome evidence.
+- Typed backup validation now closes book-plan/project/job/provenance/result relationships and admits the actual editable Studio draft, including incomplete and invalid draft text. Full-library validation binds copied source anchors; standalone state does not invent database authority.
+- Recorded EPUB parsing/decoding uses the existing ResourceBroker and retains admission until actual native cleanup finishes.
+- The CI runner frames final strict verdicts after child completion. An actual parallel child-tail regression preserves zero-skip/failure/expected-failure policy. The reader command fixture initializes the actual audio-dialog field.
 
-The application version and all three dependency-inventory root identities follow canonical 0.2.0.dev2. Dependency versions and wheel hashes are unchanged. The optional trusted-client profile still has 56 pinned dependencies.
+## Required execution
 
-Reviewed canonical changes retained here include legacy pending-publication metadata normalization, typed state path preflight, queued bibliography/outline source authorization, post-picker import scope validation, committed-export cleanup messages, the actual source-pinned child export fixture and real worker-start cleanup coverage. Stronger current descriptor-bound JSON, source/target publication, pending inventory, Studio managed inputs and reservation lifetime remain in place.
+All newly composed behavior is **NOT_RUN** until the exact successor is tested. Cloud blob readback and independent static review are not Python parsing, pytest collection, native acceptance or package qualification.
 
-## Added and repaired behavior
+The main source gate preserves all311 previous selectors and adds17 whole suites (328 selectors). The installed workflow list retains every prior selector and adds the same17 modules; fixed existing suite counts remain, with explicitly added durable-state and Windows child-ownership cases. Dedicated cross-platform ASR source/installed gates preserve the legacy suites and add the runtime/export suites. Native book and both ASR protocol reports require exact imported-source identities. Windows publication, recovery, data integrity, updater, launcher and licensing gates remain required.
 
-- Reader playback uses the existing WavePlayer for A–B repeat, sleep timer and configurable skips. Playback controls are distinct from synthesis rate; no new speed/pitch feature is claimed.
-- Recorded EPUB media overlays use the retained original archive, existing source reader, host worker, configured audio runtime, WavePlayer and shared progress/quiet controls. Exact source fragments and measured PCM intervals remain distinct from quotation approval.
-- Every Windows DSP codec child uses the existing native Job owner. Render and concat staging follow its CleanupOwner; ordinary process cleanup failures also retain streams until native shutdown is confirmed.
-- Portable complete-state recovery exercises the actual ReaderDraftStore, Studio project/revision/draft and assistant contracts. Restored assistant approvals are rejected until reviewed and resubmitted.
-- Only two bounded public signed entitlement envelopes join passive backup. Copying them does not import keys, OS trust anchors or executable authorization.
-- Current desktop/palette test hooks, the CRT-free MSVC copy loop, immutable launcher-build sibling imports and independent CI prerequisites are corrected.
-- The two-import cancellation fixture declares enough capacity for both real supervised imports. The small-filesystem publication fixture still independently enforces the actual AudioBudget reserve.
+## Observed predecessor evidence
 
-## Evidence boundary
+Exact `ec513` passed syntax inventory, both Zig/MSVC native launchers, both real Linux Flite paths, and V3 installed recovery. Its trust source suites passed their actual cases, but the enclosing strict verdict parser failed on interleaved console framing. Both Sync platforms failed on the actual Studio draft shape. Keyboard failed on an incomplete `__new__` fixture. Those causes have prepared fixes in this checkpoint.
 
-Candidate324's early syntax gate passed 782 Python files and 31 package declarations. Its Linux Sync run passed 270 cases across seven suites, but the complete-state module failed collection. Trust source gates failed the old desktop fixture and entitlement backup seam. The main desktop lane stopped at the old Tasks probe. The pinned-Zig launcher job passed; MSVC linking failed. V3 recovery showed six competing-import failures and reached its aggregate deadline before detailed summaries; separate citation, translation, planning and loopback selections passed. These results are evidence for 324 only.
+The same predecessor also failed Tasks native acceptance, the complete bundle, managed install-A, and later V3 publication/progress steps. Their complete logs and the exact synthetic installer artifact must determine the causes; exit7 alone is not a diagnosis. Remaining predecessor execution may be cancelled by this new checkpoint. No installer, update, complete bundle or final source acceptance is claimed.
 
-All changed source in this checkpoint is SOURCE_REVIEWED / NOT_RUN at publication. Exact blob readbacks and independent reviews are not parser or runtime evidence. The new candidate must independently pass syntax, source, installed, native Windows, transfer-profile, trusted-client, managed update, launcher and restoration gates. The existing source selection is preserved and expanded from 304 to 311 selectors; installed selection expands from 166 to 173. Strict no-skip/no-xfail policy remains. Only the observed aggregate V3 recovery allowance changes from 10 to 20 minutes; its job limit stays 50.
+## Remaining product and delivery work
 
-No locally rebuilt wheel may replace an exact post-test retained wheel. Final packaging still requires the tested application wheel, current-source native launcher/receipt, exact optional dependencies, archive review and source/hash identity. Transfer artifacts exclude private engines, models, voice samples, secrets, audio binaries and Node.
+Compatible effects/presets, structured/batch and explicit local translation, optional reviewed BRF, authorized voice-profile/cloning lifecycle, professional Studio and the final capability/evidence matrix remain active work. Existing approved private engines stay primary; no private source, recordings, models, caches, credentials or personal jobs are committed.
 
-## Work still in progress
+Actual owner-engine inference, acoustic quality, tactile/layout qualification, manual keyboard/NVDA and the canonical135-language quality matrix remain separately unqualified. Synthetic protocol controls cannot establish those outcomes.
 
-Canonical ASR protocol/state/runtime-trust union, source-bound book batches and remaining finite reader/workflow features continue in this same integration. Local translation, structured/batch translation, optional Braille export, managed cloning-profile lifecycle and other unqualified requirements remain explicit requirements. Actual owner-engine inference, acoustic quality, manual NVDA, language-specific 135-entry acceptance and production signing/service authority are separate evidence dimensions. No registry count, synthetic test, successful subset or source adapter closes those requirements.
+The owner transfer package, canonical merge and final completion decision require actual exact-source gates. No new final package is published here. All15 existing schedules remain unchanged.

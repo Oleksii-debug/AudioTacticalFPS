@@ -313,3 +313,32 @@ def test_persistent_native_snapshot_lock_remains_an_explicit_bounded_failure(tmp
         assert reader.read() == original
     assert target.stat().st_nlink == 1
     assert not list(tmp_path.glob('.pending-*'))
+
+
+@pytest.mark.parametrize('grow_after_check', [False, True])
+def test_json_reader_enforces_callers_smaller_budget_at_opened_handle(tmp_path, monkeypatch, grow_after_check):
+    target = tmp_path / 'small-status.json'
+    target.write_bytes(b'{}')
+    oversized = b'{"message":"' + b'x' * 64 + b'"}'
+    if grow_after_check:
+        original = durable_state._open_json_file
+        def growing(path):
+            target.write_bytes(oversized)
+            return original(path)
+        monkeypatch.setattr(durable_state, '_open_json_file', growing)
+    else:
+        target.write_bytes(oversized)
+    with pytest.raises(ValueError, match='JSON budget'):
+        durable_state.read_json(target, maximum=64)
+    # The existing default remains independent of the smaller caller budget.
+    assert durable_state.read_json(target)['message'] == 'x' * 64
+
+
+@pytest.mark.parametrize('maximum', [0, -1, True, 1.5, '64', 32 * 1024 * 1024 + 1])
+def test_json_reader_refuses_invalid_or_expanded_caller_budget_before_opening(tmp_path, monkeypatch, maximum):
+    target = tmp_path / 'status.json'
+    target.write_bytes(b'{}')
+    monkeypatch.setattr(durable_state, '_open_json_file',
+                        lambda path: pytest.fail('opened before validating the caller budget'))
+    with pytest.raises(ValueError, match='byte budget'):
+        durable_state.read_json(target, maximum=maximum)

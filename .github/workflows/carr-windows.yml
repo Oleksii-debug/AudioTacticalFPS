@@ -815,10 +815,75 @@ jobs:
           # the same offline firewall rules remain active.
           & $python -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; runpy.run_path(sys.argv[1],run_name='__main__')" (Resolve-Path scripts/windows_transcription_smoke.py).Path 2>&1 | Tee-Object 'ci-results/full-bundle-transcription-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyTranscription = @'
+          from hashlib import sha256
+          import json, pathlib, re, sys
+          raw = pathlib.Path('ci-results/full-bundle-transcription-native.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'runtime_profiles' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native transcription report is missing or ambiguous.'
+          report = reports[0]
+          assert report['status'] == 'PASS'
+          assert set(["actual named wx controls","shared background operation","actual native profile choice and configure action","V5 three-source binding","explicit legacy reconfiguration","actual named folder action","background folder intake","relative source and exclusion count","actual isolated child protocol","six verified formats","separate edit revision","original unchanged"]) <= set(report['checks'])
+          assert report['whisper_acoustic_inference'] == report['manual_NVDA'] == 'NOT_RUN'
+          profile = report['runtime_profiles']
+          assert profile['status'] == 'PASS' and profile['protocol'] == 'local-file-job/1'
+          assert set(["actual named runtime inspect/trust/register controls","complete synthetic Python/distribution/model inventory","actual file action and retained originals","actual native Pause and Resume","same accepted receipt across real child restart","actual transcript/edit/export controls","four formats and separate edit","explicit historical workspace binding without execution","legacy workspace list remains separate","exact imported source identities"]) <= set(profile['checks'])
+          assert profile['acoustic_inference'] == profile['manual_NVDA'] == 'NOT_RUN'
+          assert profile['recognition_backend'] == 'public synthetic file protocol fixture'
+          expected = set(["carr_library.transcription","carr_library.backup_transcription","carr_library.integrations.transcription_values","carr_library.integrations.transcription_runtime","carr_library.integrations.transcription_scope","carr_library.integrations.transcription_backup","carr_library.integrations.transcription_protocol","carr_library.ui.transcription_dialog","carr_library.ui.transcription_runtime_dialog","carr_library.integrations.transcription_exports"])
+          assert set(profile['module_origins']) == expected
+          checkout = pathlib.Path.cwd().resolve()
+          for name, evidence in profile['module_origins'].items():
+              actual = pathlib.Path(evidence['path']).resolve(strict=True)
+              source = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
+              assert not actual.is_relative_to(checkout) and actual.is_relative_to(pathlib.Path(sys.prefix).resolve())
+              assert evidence['sha256'] == sha256(actual.read_bytes()).hexdigest() == sha256(source.read_bytes()).hexdigest()
+          pathlib.Path('ci-results/full-bundle-transcription-native.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+          $verifyTranscription | & $python -I -B -
+          if ($LASTEXITCODE -ne 0) { throw 'Unified transcription native evidence is incomplete.' }
           & $python -I -B scripts/windows_recording_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-recording-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -I -B scripts/windows_clip_editor_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-clips-native.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Installed native portable clip editing failed.' }
+          & $python -I -B scripts/windows_book_audio_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-book-audio.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'Actual installed native book narration failed.' }
+          $verifyBookAudio = @'
+          import json, pathlib, re, sys
+          raw = pathlib.Path('ci-results/full-bundle-book-audio.txt').read_text(encoding='utf-8-sig')
+          reports = []
+          for match in re.finditer(r'(?m)^\{', raw):
+              try:
+                  item, _ = json.JSONDecoder().raw_decode(raw[match.start():])
+              except ValueError:
+                  continue
+              if isinstance(item, dict) and 'native_sapi_render' in item:
+                  reports.append(item)
+          assert len(reports) == 1, 'Native book narration report is missing or ambiguous.'
+          report = reports[0]
+          assert report['status'] == report['native_keyboard'] == report['native_sapi_render'] == 'PASS'
+          required = set(["real native Windows controls","actual retained EPUB import completes","existing shared worker owns finalizers","Book audio command is registered in the existing keyboard registry","current Books and Collections exposes the selected retained edition","installed native SAPI voice is actually enumerated","native preview names both real EPUB chapters and original revision","preview and voice discovery do not synthesize","default-No cancellation prepares no jobs or output","Prepare stores one immutable plan and two ordinary schema2 jobs","Prepare still starts no speech or output","native explicit Run completes both source-bound Studio jobs","actual selected SAPI renders the literal source without cues","measured complete chapter PCM: 1","measured complete chapter PCM: 2","published exact non-authorizing source receipt: 1","published exact non-authorizing source receipt: 2","archived source blocks completed-job reuse visibly","source denial preserves every previously committed artifact","original EPUB and retained asset remain byte-identical","book narration never creates quotation approval","native Escape closes the book dialog","native host shutdown has no retained cleanup failure","exact installed source: carr_library.studio.book_audio","exact installed source: carr_library.ui.book_audio_dialog","exact installed source: carr_library.ui.worker_lifetime","exact installed source: carr_library.studio.render","exact installed source: carr_library.studio.project","exact installed source: carr_library.reader.reading_desk","exact installed source: carr_library.speech.source","exact installed source: carr_library.runtime_settings","exact installed source: carr_library.operations.broker","exact installed source: carr_library.audio.dsp","exact installed source: carr_library.audio.process","exact installed source: carr_library.ui.desktop_app"])
+          assert required <= set(report['checks']), sorted(required - set(report['checks']))
+          assert all(report[key] == 'NOT_RUN' for key in ('manual_keyboard', 'nvda', 'listening_quality', 'private_model_inference'))
+          selected = pathlib.Path(sys.argv[1]).resolve(strict=True)
+          pin = json.loads(pathlib.Path('packaging/windows-audio.lock.json').read_text(encoding='utf-8'))
+          assert set(report['audio_runtime']) == {'ffmpeg', 'ffprobe'}
+          for name, evidence in report['audio_runtime'].items():
+              assert evidence['sha256'] == pin['output_files']['bin/' + name + '.exe']['sha256']
+              assert pathlib.Path(evidence['path']).resolve(strict=True) == selected / 'bin' / (name + '.exe')
+          pathlib.Path('ci-results/full-bundle-book-audio.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report), flush=True)
+          '@
+          $verifyBookAudio | & $python -I -B - $env:CARR_PUBLISHING_AUDIO_DIR
+          if ($LASTEXITCODE -ne 0) { throw 'Book narration native evidence is incomplete.' }
           & $python -I -B scripts/windows_epub_reading_smoke.py --audio-directory $env:CARR_PUBLISHING_AUDIO_DIR --audio-lock packaging/windows-audio.lock.json 2>&1 | Tee-Object 'ci-results/full-bundle-recorded-epub.txt'
           if ($LASTEXITCODE -ne 0) { throw 'Actual installed recorded EPUB playback failed.' }
           $verifyRecordedEpub = @'
@@ -973,13 +1038,14 @@ jobs:
           incremental_modules = ('carr_library.incremental_backup', 'carr_library.incremental_backup_cli', 'carr_library.sync.vault', 'carr_library.file_publication', 'carr_library.ui.incremental_backup_dialog')
           operations_modules = ["carr_library.operations.models","carr_library.operations._locks","carr_library.operations.broker","carr_library.operations.facade","carr_library.operations.cli","carr_library.ui.operations_dialog"]
           ebook_modules = ["carr_library.reader.ebook_audio","carr_library.ui.ebook_audio_dialog","carr_library.ui.reading_desk","carr_library.runtime_settings","carr_library.speech.player","carr_library.audio.process","carr_library.audio.cleanup"]
-          for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules, *ebook_modules):
+          completion_modules = ["carr_library.assistant.templates","carr_library.ui.assistant_templates","carr_library.studio.book_audio","carr_library.ui.book_audio_dialog","carr_library.ui.worker_lifetime","carr_library.backup_book_audio","carr_library.integrations.transcription_values","carr_library.integrations.transcription_runtime","carr_library.integrations.transcription_scope","carr_library.integrations.transcription_backup","carr_library.integrations.transcription_protocol","carr_library.transcription","carr_library.backup_transcription","carr_library.ui.transcription_runtime_dialog","carr_library.ui.transcription_dialog","carr_library.transcription_cli","carr_library.integrations.transcription_exports"]
+          for module_name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules, *ebook_modules, *completion_modules):
               importlib.import_module(module_name)
           def installed_assistant_origins():
-              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules, *ebook_modules)}
+              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in (*assistant_modules, *publication_modules, *recording_modules, *clip_modules, *reader_modules, *integrity_modules, *incremental_modules, *operations_modules, *ebook_modules, *completion_modules)}
               assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in origins.values()), origins
               from hashlib import sha256
-              for name in operations_modules:
+              for name in (*operations_modules, *completion_modules):
                   source = pathlib.Path.cwd() / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
                   assert sha256(pathlib.Path(origins[name]).read_bytes()).digest() == sha256(source.read_bytes()).digest(), name
               return origins
@@ -1077,6 +1143,13 @@ jobs:
               'tests/assistant/test_translation_advanced_union.py',
               'tests/assistant/test_local_planning.py',
               'tests/assistant/test_planning_handlers.py',
+              'tests/assistant/test_workflow_templates.py',
+              'tests/assistant/test_workflow_template_handlers.py',
+              'tests/studio/test_book_audio.py',
+              'tests/ui/test_book_audio_dialog.py',
+              'tests/ui/test_worker_lifetime.py',
+              'tests/storage/test_backup_book_audio.py',
+              'tests/storage/test_backup_studio_draft.py',
               'tests/storage/test_backup_v4_review.py',
               'tests/e2e/test_pdf_review_cancellation.py',
               'tests/storage/test_crash_backup.py',
@@ -1087,6 +1160,16 @@ jobs:
               'tests/transcription/test_supplied_worker_bridge.py',
               'tests/transcription/test_v5_worker_profile.py',
               'tests/transcription/test_runtime_interpreter.py',
+              'tests/transcription/test_protocol_fixture.py',
+              'tests/transcription/test_service.py',
+              'tests/transcription/test_admission_boundaries.py',
+              'tests/transcription/test_runtime_admission.py',
+              'tests/transcription/test_restore.py',
+              'tests/storage/test_transcription_backup.py',
+              'tests/ui/test_transcription_dialog.py',
+              'tests/e2e/test_transcription_cli.py',
+              'tests/transcription/test_unified_authority.py',
+              'tests/transcription/test_export_publication.py',
               'tests/ingest/test_initial_publication_completion.py',
               'tests/catalog/test_ris_apply.py',
               'tests/research/test_bibtex_import.py',
@@ -1136,6 +1219,16 @@ jobs:
               raise SystemExit(status)
           import xml.etree.ElementTree as ET
           publication_cases = list(ET.parse('ci-results/full-bundle-workflows.xml').iter('testcase'))
+          completion_suites = ["tests/transcription/test_protocol_fixture.py","tests/transcription/test_service.py","tests/transcription/test_admission_boundaries.py","tests/transcription/test_runtime_admission.py","tests/transcription/test_restore.py","tests/storage/test_transcription_backup.py","tests/ui/test_transcription_dialog.py","tests/e2e/test_transcription_cli.py","tests/transcription/test_unified_authority.py","tests/studio/test_book_audio.py","tests/ui/test_book_audio_dialog.py","tests/ui/test_worker_lifetime.py","tests/assistant/test_workflow_templates.py","tests/assistant/test_workflow_template_handlers.py","tests/storage/test_backup_book_audio.py","tests/storage/test_backup_studio_draft.py","tests/transcription/test_export_publication.py"]
+          completion_counts = {}
+          for suite in completion_suites:
+              module = suite[:-3].replace('/', '.')
+              selected = [case for case in publication_cases
+                          if case.get('classname', '') == module or case.get('classname', '').startswith(module + '.')]
+              assert selected and all(not any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in selected), suite
+              completion_counts[suite] = len(selected)
+          print(json.dumps({'status': 'PASS', 'completion_installed_counts': completion_counts,
+              'manual_nvda': 'NOT_RUN', 'private_model_inference': 'NOT_RUN'}), flush=True)
           publication_expected = {'test_publishing': 48, 'test_audiobook': 17, 'test_audiobook_publication': 1, 'test_daisy_publishing': 29, 'test_daisy_boundaries': 15, 'test_publishing_boundaries': 15, 'test_publishing_handlers': 12, 'test_publishing_cli': 7, 'test_backup_publication_formats': 8}
           publication_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in publication_expected}
           assert publication_counts == publication_expected, publication_counts
@@ -1143,14 +1236,14 @@ jobs:
           clip_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in clip_expected}
           clip_required = {'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[False]', 'test_actual_completed_clip_restore_requires_fresh_output_before_any_old_path_io[True]', 'test_pending_job_and_stale_service_recheck_live_origin_before_output_admission', 'test_actual_trim_position_pan_fades_and_complete_clip_stems', 'test_destroy_discards_preview_when_parent_never_delivers_completion', 'test_destroy_retains_uncertain_native_playback_owner_and_preview', 'test_deferred_clip_playback_rechecks_exact_library', 'test_studio_late_result_cannot_update_replacement_library', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[True-complete]', 'test_waiting_input_preview_never_constructs_or_stats_old_destination[False-waiting-input]', 'test_studio_controller_cannot_replace_a_newer_clip_revision', 'test_render_saved_project_queues_exact_reviewed_revision_and_does_not_play', 'test_render_saved_project_rejects_stale_revision_before_job_creation', 'test_render_saved_project_cancelled_parent_picker_starts_no_work', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[completed]', 'test_owned_service_release_waits_for_its_future_without_stopping_host_executor[cancelled-before-start]', 'test_borrowed_clip_editor_service_is_not_closed_by_dialog'}
           assert clip_counts == clip_expected, clip_counts
-          recovery_expected = {'test_backup_retained_audio': 22, 'test_state_json_reader': 11, 'test_durable_state_publication': 19}
+          recovery_expected = {'test_backup_retained_audio': 22, 'test_state_json_reader': 11, 'test_durable_state_publication': 27}
           recovery_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in recovery_expected}
           assert recovery_counts == recovery_expected, recovery_counts
           assert clip_required <= {case.get('name') for case in publication_cases}, clip_counts
           recording_expected_modules = ["test_recording","test_recording_cleanup","test_recording_compatibility","test_recording_export","test_recording_dialog","test_audio_process","test_publication_fsync","test_dsp","test_production_cancellation_outcomes","test_runtime","test_python_helper","test_windows_audio_ownership"]
           recording_counts = {name: sum(case.get('classname', '').rsplit('.', 1)[-1] == name for case in publication_cases) for name in recording_expected_modules}
           recording_required = {'test_native_windows_sapi_voice_and_pcm_output', 'test_actual_graceful_stop_finalizes_short_pcm', 'test_actual_cancel_discards_incomplete_capture', 'test_actual_capture_backup_delete_original_root_restore_and_verify', 'test_pending_cleanup_returns_worker_and_keeps_staging_and_both_admission_locks', 'test_streamed_export_verifies_original_and_needs_no_microphone_or_engine', 'test_competing_destination_create_at_publication_is_never_overwritten', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[same-path-new-library]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[root-changed]', 'test_queued_capture_loses_admission_when_its_exact_library_scope_changes[frame-closing]', 'test_owned_descendant_cannot_outlive_parent_or_failure[cancel]', 'test_owned_descendant_cannot_outlive_parent_or_failure[timeout]', 'test_owned_descendant_cannot_outlive_parent_or_failure[overflow]', 'test_owned_descendant_cannot_outlive_parent_or_failure[orphan]', 'test_owned_process_preserves_exact_diagnostic_bytes_and_environment', 'test_late_scope_change_keeps_uncertain_native_cleanup_visible_and_owned', 'test_cancellation_during_flush_does_not_publish'}
-          assert all(recording_counts.values()) and recording_counts['test_windows_audio_ownership'] == 5, recording_counts
+          assert all(recording_counts.values()) and recording_counts['test_windows_audio_ownership'] == 7, recording_counts
           assert recording_counts['test_runtime'] == 13, recording_counts
           assert recording_required <= {case.get('name') for case in publication_cases}, recording_counts
           ebook_expected_modules = ('test_ebook_audio', 'test_ebook_audio_lifetime')
@@ -1455,7 +1548,7 @@ jobs:
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' && steps.audio_runtime.conclusion == 'success' }}
         # Run 45971365426/job140412333419 took31m13s for257 suites (09:33:17–10:04:30).
-        # The new311 selectors retain600s per suite and jobs3; only aggregate headroom changes.
+        # All 328 selectors retain the existing 600s per-suite deadline and jobs3.
         timeout-minutes: 45
         run: |
           $suites = @(
@@ -1700,6 +1793,13 @@ jobs:
             'tests/assistant/test_translation_advanced_union.py',
             'tests/assistant/test_local_planning.py',
             'tests/assistant/test_planning_handlers.py',
+            'tests/assistant/test_workflow_templates.py',
+            'tests/assistant/test_workflow_template_handlers.py',
+            'tests/studio/test_book_audio.py',
+            'tests/ui/test_book_audio_dialog.py',
+            'tests/ui/test_worker_lifetime.py',
+            'tests/storage/test_backup_book_audio.py',
+            'tests/storage/test_backup_studio_draft.py',
             'tests/e2e/test_import_worker.py',
             'tests/search/test_federated_advanced.py',
             'tests/storage/test_backup_v4_review.py',
@@ -1713,6 +1813,16 @@ jobs:
             'tests/transcription/test_supplied_worker_bridge.py',
             'tests/transcription/test_v5_worker_profile.py',
             'tests/transcription/test_runtime_interpreter.py',
+            'tests/transcription/test_protocol_fixture.py',
+            'tests/transcription/test_service.py',
+            'tests/transcription/test_admission_boundaries.py',
+            'tests/transcription/test_runtime_admission.py',
+            'tests/transcription/test_restore.py',
+            'tests/storage/test_transcription_backup.py',
+            'tests/ui/test_transcription_dialog.py',
+            'tests/e2e/test_transcription_cli.py',
+            'tests/transcription/test_unified_authority.py',
+            'tests/transcription/test_export_publication.py',
             'tests/ingest/test_initial_publication_completion.py',
             'tests/ui/test_export_destination.py',
             'tests/storage/test_durable_state_publication.py',

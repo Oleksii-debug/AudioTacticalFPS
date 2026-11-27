@@ -3,7 +3,7 @@
 The existing scoped panels and wx data-view grid supply the main workflows.
 Long operations run outside the UI thread; focus returns to readable status.
 """
-from concurrent.futures import ThreadPoolExecutor
+from .worker_lifetime import DesktopExecutor
 from contextlib import contextmanager
 from pathlib import Path
 import threading
@@ -519,7 +519,7 @@ class DesktopFrame(WorkspaceFrame):
     def __init__(self, library, remember_data_dir=None):
         self.library = library
         self.remember_data_dir = remember_data_dir
-        self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='library')
+        self.executor = DesktopExecutor()
         self.cancel_event = threading.Event()
         self.working = False
         self._closing = False
@@ -604,6 +604,8 @@ class DesktopFrame(WorkspaceFrame):
         from .save_actions import install_save_actions
         install_speech_actions(self)
         install_studio_actions(self)
+        from .book_audio_dialog import install_book_audio_actions
+        install_book_audio_actions(self)
         install_recording_actions(self)
         install_assistant_actions(self)
         install_save_actions(self)
@@ -734,6 +736,10 @@ class DesktopFrame(WorkspaceFrame):
     def report(self, text):
         self.status.SetValue(text)
         self.status.SetFocus()
+
+    def register_worker_cleanup(self, callback):
+        """Retain idempotent resource release on the existing serial worker."""
+        return self.executor.register_cleanup(callback)
 
     def cancel_current_operation(self, event=None):
         self.cancel_event.set()

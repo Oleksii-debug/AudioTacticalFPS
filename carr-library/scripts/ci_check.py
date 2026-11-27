@@ -139,10 +139,11 @@ def _report_directory(suite):
             traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
 
 
-def run_suite(suite: str) -> bool:
+def run_suite(suite: str, *, report=None) -> bool:
+    emit = report if report is not None else lambda message: print(message, flush=True)
     path = (ROOT / suite).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
-        print(f'FAIL: missing or out-of-tree required suite: {suite}', flush=True)
+        emit(f'FAIL: missing or out-of-tree required suite: {suite}')
         return False
     env = dict(os.environ)
     for key in ('PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'PYTHONPATH'):
@@ -179,14 +180,14 @@ def run_suite(suite: str) -> bool:
             phase = 'temporary directory cleanup'
         # A passing child is not a completed suite until its temporary report
         # and test data have also been cleaned up successfully.
-        print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-              f'skipped={skipped}, pytest_exit={returncode}', flush=True)
+        emit(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
+             f'skipped={skipped}, pytest_exit={returncode}')
         return ok
     except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
         # Cleanup failures also remain failed required suites, rather than
         # escaping the aggregator and hiding other independently run verdicts.
-        print(f'FAIL: {suite}: required suite did not complete cleanly; '
-              f'last phase={phase}; {type(exc).__name__}: {exc}', flush=True)
+        emit(f'FAIL: {suite}: required suite did not complete cleanly; '
+             f'last phase={phase}; {type(exc).__name__}: {exc}')
         traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
         return False
 
@@ -197,16 +198,30 @@ def main() -> int:
                         help='Run up to four isolated required suites concurrently; default: one')
     parser.add_argument('suites', nargs='+', help='Explicit required test paths relative to carr-library')
     args = parser.parse_args()
+    def execute(suite):
+        messages = []
+        ok = run_suite(suite, report=messages.append)
+        if len(messages) != 1:
+            return False, f'FAIL: {suite}: missing or ambiguous required-suite verdict'
+        return ok, messages[0]
+
     if args.jobs == 1:
-        results = [run_suite(suite) for suite in args.suites]
+        records = [execute(suite) for suite in args.suites]
     else:
         # Every suite retains its own interpreter, offline policy, deadline and
         # JUnit verdict. Consume every future: one failing suite cannot hide
         # another missing, skipped or unfinished required suite.
         with ThreadPoolExecutor(max_workers=args.jobs, thread_name_prefix='required-suite') as executor:
-            results = list(executor.map(run_suite, args.suites))
-    print(f'Required suites complete: {len(results)}; passed={sum(results)}; '
-          f'failed={len(results) - sum(results)}', flush=True)
+            records = list(executor.map(execute, args.suites))
+    # Children inherit the console and can end a progress line without a newline.
+    # Emit machine-consumed verdicts only after all child processes and report
+    # cleanup have ended. A leading newline isolates even an unterminated tail;
+    # every supplied suite still contributes exactly one strict JUnit verdict.
+    results = [ok for ok, _ in records]
+    summary = [message for _, message in records]
+    summary.append(f'Required suites complete: {len(results)}; passed={sum(results)}; '
+                   f'failed={len(results) - sum(results)}')
+    print('\n' + '\n'.join(summary), flush=True)
     return 0 if all(results) else 1
 
 

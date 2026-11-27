@@ -49,6 +49,27 @@ explicit previously selected executable settings. It measures audio duration
 and verifies the exact prepared PCM interval. No codec, model, voice or runtime
 is downloaded.
 
+Parsing and preparation use the application's existing shared resource
+coordinator. The parser requests one CPU slot and a declared 512 MiB memory
+allowance before reading the retained source. It reserves temporary capacity
+for the bounded archive and reply logs. The decoder requests its actual
+configured worker-thread count, a declared memory estimate of at least
+512 MiB or twice the FFmpeg per-allocation limit, and temporary capacity for
+one bounded recorded member, the selected PCM interval, logs and the configured
+free-space reserve. If the authored end is absent, the existing one-hour
+interval limit bounds the PCM estimate until inspection supplies its duration.
+These are cooperative admission allowances, not measured peak memory or a
+machine-performance benchmark; the existing child/output limits still apply.
+
+Waiting can be cancelled before any parser or decoder is launched. Source and
+selection authority are checked again after admission. An explicit resource
+policy which cannot admit the configured decoder fails visibly; the reader
+does not silently reduce its thread count or increase the policy. If native
+cleanup is pending, the operation worker holds the reservation until the
+existing cleanup owner confirms that its child has stopped. The GUI does not
+perform that wait. A prepared clip keeps its verified temporary files for
+playback but holds no active parser/decoder CPU reservation.
+
 Current bounds include the existing EPUB source/archive budgets, at most 2,048
 recorded cues in a source section, 32 MiB per extracted recorded member, one
 hour per selected interval, and a 512 MiB prepared-output allowance. An authored
@@ -71,7 +92,8 @@ old temporary PCM path, an external voice model, or a provider account.
 
 - `tests/reader/test_ebook_audio.py`: actual retained imports, isolated parsing,
   actual FFmpeg intervals, source/metadata/authorization changes, malformed
-  archives/SMIL, owned cleanup, unchanged quotation authority, publication
+  archives/SMIL, real-child cleanup with held resource reservations, cancelled
+  admission and stale queued selections, unchanged quotation authority, publication
   roundtrip and canonical backup/delete/restore without old-source reads.
 - `tests/ui/test_ebook_audio_lifetime.py`: the real host executor, queued scope
   changes, result ownership, callback omission during close, refused admission,

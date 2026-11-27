@@ -6,6 +6,12 @@ application's state, process runner and operation progress infrastructure.
 No model is downloaded and a protocol test is never acoustic qualification.
 """
 from contextlib import contextmanager
+from tempfile import TemporaryDirectory
+from .file_publication import publish_directory_no_replace
+from .research.export_file import capture_export_destination
+from .integrations.transcription_exports import TranscriptionExportedError
+from .integrations.transcription_runtime import inspect_runtime, LOCAL_FILE_PROTOCOL
+from .integrations.transcription_protocol import expand_sources
 from hashlib import sha256
 import json
 import math
@@ -365,9 +371,12 @@ runpy.run_path(str(worker), run_name='__main__')
 class TranscriptionService:
     """The same retained-input and receipt boundary for native UI and CLI."""
 
-    def __init__(self, app, workspace, *, broker=None):
+    def __init__(self, app, workspace, *, broker=None, budget=None, stop_grace=2.0):
         self.app, self.workspace = app, workspace
+        self._library_root = Path(app.root)
         self._broker = broker
+        self._runtime_budget, self._runtime_stop_grace = budget, stop_grace
+        self._local_protocol_cache = None
         self._authorize()
         self.root = local_path(app.root / 'state' / 'transcription')
         self.jobs_root = self.root / sha256(workspace.encode('utf-8')).hexdigest() / 'jobs'
@@ -418,11 +427,16 @@ class TranscriptionService:
             raise AudioCancelled('Transcription cancelled while waiting for local resources.') from exc
 
     def _authorize(self):
+        if Path(self.app.root) != self._library_root:
+            raise PermissionError('The transcription service belongs to the original library object and data folder.')
         with self.app.read(self.workspace):
             pass
 
-    def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL):
+    def configure(self, python, worker, models_dir, *, protocol=RECEIPTS_PROTOCOL,
+                  runtime_profile_id=None, cancelled=lambda: False):
         self._authorize()
+        if cancelled():
+            raise AudioCancelled('Runtime configuration was cancelled before inspection.')
         protocol = _protocol(protocol)
         python, executable = _interpreter(python)
         worker = local_path(worker, exists=True)
@@ -443,11 +457,25 @@ class TranscriptionService:
                 raise ValueError('The Whisper V5 profile requires worker.py beside its two reviewed helpers.')
             value['wrapper_sources_sha256'] = self._wrapper_sources(worker)
             value['retry_policy'] = 'At most 3 distinct attempts; same language/model, then beam=1 without previous text, then VAD disabled.'
+        if runtime_profile_id is not None:
+            profile = self._local_protocol()._profile(runtime_profile_id)
+            self._local_protocol()._verify_profile(profile, cancel=cancelled)
+            if (profile['protocol'] != protocol or profile['python_executable'] != str(python)
+                    or profile['worker_path'] != str(worker)
+                    or not Path(profile['model_directory']).is_relative_to(models_dir)
+                    or profile['python_identity']['sha256'] != value['python_sha256']
+                    or profile['worker_identity']['sha256'] != value['worker_sha256']):
+                raise ValueError('The reviewed runtime profile does not match the selected legacy protocol and files.')
+            value.update(runtime_profile_id=profile['id'],
+                         runtime_profile_fingerprint=profile['fingerprint'])
         with state_lock(self.root, 'engine'):
+            self._authorize()
+            if cancelled():
+                raise AudioCancelled('Runtime configuration was cancelled before publication.')
             atomic_json(self.root / 'engine.json', value, replace=True)
         return value
 
-    def configuration(self, *, verify=False):
+    def configuration(self, *, verify=False, cancelled=lambda: False):
         self._authorize()
         path = self.root / 'engine.json'
         if not path.exists():
@@ -465,6 +493,8 @@ class TranscriptionService:
                     or hashes['worker.py'] != value.get('worker_sha256')):
                 raise ValueError('Whisper V5 requires all three reviewed source identities.')
         if verify:
+            if value.get('review_required'):
+                raise PermissionError('This restored runtime configuration requires explicit review and configuration before execution.')
             _, executable = _interpreter(value['python'])
             for key, path in (('python', executable), ('worker', local_path(value['worker'], exists=True))):
                 if digest_file(path) != value[key + '_sha256']:
@@ -472,6 +502,14 @@ class TranscriptionService:
             regular(local_path(value['models_dir'], exists=True), directory=True)
             if value['protocol'] == V5_PROTOCOL and self._wrapper_sources(Path(value['worker'])) != value['wrapper_sources_sha256']:
                 raise ValueError('A configured Whisper V5 helper changed; select and review it again.')
+            if 'runtime_profile_id' in value:
+                profile = self._local_protocol()._profile(value['runtime_profile_id'])
+                if (profile['protocol'] != value['protocol']
+                        or profile['fingerprint'] != value.get('runtime_profile_fingerprint')
+                        or profile['worker_identity']['sha256'] != value['worker_sha256']
+                        or profile['python_identity']['sha256'] != value['python_sha256']):
+                    raise ValueError('The retained runtime admission does not match this worker configuration.')
+                self._local_protocol()._verify_profile(profile, cancel=cancelled)
         return value
 
     @staticmethod
@@ -492,6 +530,100 @@ class TranscriptionService:
             return RECEIPTS_PROTOCOL
         return self.configuration()['protocol']
 
+
+    inspect_runtime = staticmethod(inspect_runtime)
+    expand_sources = staticmethod(expand_sources)
+
+    def _local_protocol(self):
+        self._authorize()
+        if self._local_protocol_cache is None:
+            from .integrations.transcription_protocol import LocalFileJobProtocol
+            self._local_protocol_cache = LocalFileJobProtocol(self,
+                budget=self._runtime_budget, stop_grace=self._runtime_stop_grace)
+        return self._local_protocol_cache
+
+    def _is_local_job(self, identity):
+        self._authorize()
+        _identifier(identity)
+        canonical = local_path(self.root / 'jobs' / identity / 'job.json', root=self.root)
+        legacy = self._path(identity) / 'job.json'
+        if canonical.exists() and legacy.exists():
+            raise ValueError('Ambiguous transcription identity across retained schemas; no protocol was selected.')
+        return canonical.exists()
+
+    def register_runtime(self, name, python_executable, worker_path, model_directory, *,
+                         owner_trusted=False, expected_fingerprint=None, cancel=None,
+                         progress=None, protocol=LOCAL_FILE_PROTOCOL):
+        return self._local_protocol().register_runtime(name, python_executable, worker_path,
+            model_directory, owner_trusted=owner_trusted, expected_fingerprint=expected_fingerprint,
+            cancel=cancel, progress=progress, protocol=protocol)
+
+    def list_runtimes(self):
+        return self._local_protocol().list_runtimes()
+
+    def create_job(self, profile_id, sources, *, settings=None, title='Transcription',
+                   recursive=False, cancel=None, progress=None):
+        return self._local_protocol().create_job(profile_id, sources, settings=settings,
+            title=title, recursive=recursive, cancel=cancel, progress=progress)
+
+    def get_job(self, identity):
+        return self.get(identity)
+
+    def list_jobs(self):
+        """Canonical-protocol view; never mix global jobs into the V5 workspace list."""
+        return self._local_protocol().list_jobs()
+
+    jobs = list_jobs
+
+    def bind_canonical_job(self, identity, *, reviewed=False, worker_stopped=False, cancel=None):
+        return self._local_protocol().bind_workspace(identity, reviewed=reviewed,
+            worker_stopped=worker_stopped, cancel=cancel)
+
+    def pause(self, identity):
+        if not self._is_local_job(identity):
+            raise ValueError('This legacy protocol uses the existing cooperative Stop callback.')
+        return self._local_protocol().pause(identity)
+
+    def cancel(self, identity):
+        if not self._is_local_job(identity):
+            raise ValueError('This legacy protocol uses the existing cooperative Stop callback.')
+        return self._local_protocol().cancel(identity)
+
+    def acknowledge_interruption(self, identity, *, worker_stopped=False):
+        return self._local_protocol().acknowledge_interruption(identity, worker_stopped=worker_stopped)
+
+    def rebind_runtime(self, identity, profile_id):
+        return self._local_protocol().rebind_runtime(identity, profile_id)
+
+    def continue_job(self, identity):
+        return self._local_protocol().continue_job(identity)
+
+    def resume(self, identity, *, progress=None, cancel=None):
+        if self._is_local_job(identity):
+            return self._local_protocol().resume(identity, progress=progress, cancel=cancel)
+        return self.run(identity, progress=progress, cancelled=cancel or (lambda: False))
+
+    def read_transcript(self, identity, source_id=None, *, edited=False, cancel=None):
+        if self._is_local_job(identity):
+            return self._local_protocol().read_transcript(identity, source_id, edited=edited, cancel=cancel)
+        if cancel is not None and cancel():
+            raise AudioCancelled('Reading the retained transcript was cancelled.')
+        job = self.get(identity)
+        if source_id is None:
+            if len(job['sources']) != 1:
+                raise ValueError('Choose the retained source transcript.')
+            source_id = job['sources'][0]['filename']
+        if edited:
+            values = [item for item in self.edits(identity) if item['source'] == source_id]
+            if not values:
+                raise FileNotFoundError('No edited reading copy exists for this transcript.')
+            self._authorize()
+            if cancel is not None and cancel():
+                raise AudioCancelled('Reading the retained edit was cancelled.')
+            return values[-1]
+        return {'text': self.text(identity, source_id, cancelled=cancel or (lambda: False)), 'source_id': source_id,
+                'edited': False, 'protocol': job['protocol']}
+
     def _path(self, identity):
         return local_path(self.jobs_root / _identifier(identity))
 
@@ -502,6 +634,8 @@ class TranscriptionService:
 
     def get(self, identity):
         self._authorize()
+        if self._is_local_job(identity):
+            return self._local_protocol().get_job(identity)
         value = read_json(self._path(identity) / 'job.json')
         if (value.get('version') != 1 or value.get('id') != identity
                 or value.get('workspace') != self.workspace):
@@ -917,8 +1051,16 @@ class TranscriptionService:
             raise ValueError('Worker completion counters do not match verified receipts.')
         return accepted, artifacts
 
-    def run(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400):
+    def run(self, identity, *, cancelled=lambda: False, progress=None, timeout=86400, cancel=None):
         finite(timeout, 'Transcription time allowance', .05, 365 * 86400)
+        if cancel is not None:
+            if not callable(cancel):
+                raise ValueError('A cancellation callback is required.')
+            prior_cancelled = cancelled
+            cancelled = lambda: prior_cancelled() or cancel()
+        if self._is_local_job(identity):
+            return self._local_protocol().run(identity, progress=progress, cancel=cancelled,
+                                              timeout=timeout)
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
@@ -928,10 +1070,14 @@ class TranscriptionService:
                 return job
             with self._resource_admission(path, job, cancelled, timeout) as lease:
                 cancelled = lease.cancelled
-                config = self.configuration(verify=True)
+                config = self.configuration(verify=True, cancelled=cancelled)
                 if config['protocol'] != job['protocol']:
                     raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
                 self._sources(path, job, cancelled)
+                if 'runtime_profile_id' in config:
+                    profile = self._local_protocol()._profile(config['runtime_profile_id'])
+                    if job['settings']['model'] != profile['model_name']:
+                        raise ValueError('The requested legacy model differs from the fully reviewed model profile.')
                 for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
                     candidate = path / name
                     if candidate.exists():
@@ -1024,6 +1170,7 @@ class TranscriptionService:
                     run_process([config['python'], '-I', '-S', '-B', '-X', 'utf8', '-c',
                         _SITE_BOOTSTRAP + _WORKER_BOOTSTRAP, config['worker'], str(path), config['protocol']],
                         cwd=path, env=environment, cancelled=poll, watch=(path,),
+                        owned_windows_job=os.name == 'nt',
                         budget=AudioBudget(timeout=timeout,
                             max_output_bytes=(sum(x['size_bytes'] for x in job['sources'])
                                 + sum(sorted((x['size_bytes'] for x in job['sources']), reverse=True)[:job['settings']['parallel_files']])
@@ -1087,6 +1234,8 @@ class TranscriptionService:
                 return job
 
     def verify(self, identity, *, cancelled=lambda: False):
+        if self._is_local_job(identity):
+            return self._local_protocol().verify(identity, cancel=cancelled)
         path, job = self._path(identity), self.get(identity)
         status = read_json(path / ('host_status.json' if job['protocol'] == V5_PROTOCOL else 'job_status.json'))
         if status.get('run_id') != job.get('worker_run_id'):
@@ -1097,6 +1246,9 @@ class TranscriptionService:
         return job
 
     def text(self, identity, source, *, cancelled=lambda: False):
+        if self._is_local_job(identity):
+            self._local_protocol().verify(identity, cancel=cancelled)
+            return self._local_protocol().read_transcript(identity, source)['text']
         job = self.verify(identity, cancelled=cancelled)
         row = next((x for x in job['artifacts'] if x['source'] == source and x['format'] == 'txt'), None)
         if row is None:
@@ -1107,6 +1259,10 @@ class TranscriptionService:
         return path.read_text(encoding='utf-8-sig')
 
     def save_edit(self, identity, source, text, *, cancelled=lambda: False):
+        if self._is_local_job(identity):
+            if cancelled():
+                raise AudioCancelled('Saving the transcript edit was cancelled.')
+            return self._local_protocol().save_edit(identity, source, text, cancel=cancelled)
         if not isinstance(text, str) or len(text.encode('utf-8')) > MAX_TEXT_BYTES or '\0' in text:
             raise ValueError('Edited transcript exceeds its text allowance.')
         path = local_path(self._path(identity), exists=True)
@@ -1134,6 +1290,10 @@ class TranscriptionService:
             return revision
 
     def edits(self, identity):
+        if self._is_local_job(identity):
+            state = self._local_protocol().get_job(identity)
+            return tuple(self._local_protocol().read_transcript(identity, source, edited=True)
+                         for source in state.get('edits', {}))
         path = self._path(identity) / 'edits'
         self.get(identity)
         if not path.exists():
@@ -1149,7 +1309,16 @@ class TranscriptionService:
             result.append(value)
         return tuple(sorted(result, key=lambda x: (x['created'], x['id'])))
 
-    def export(self, identity, destination, *, cancelled=lambda: False):
+    def export(self, identity, destination, *, cancelled=lambda: False, formats=None,
+               include_edits=True, cancel=None):
+        if cancel is not None:
+            prior_cancelled = cancelled
+            cancelled = lambda: prior_cancelled() or cancel()
+        if self._is_local_job(identity):
+            return self._local_protocol().export(identity, destination, formats=formats,
+                                                include_edits=include_edits, cancel=cancelled)
+        if formats is not None or include_edits is not True:
+            raise ValueError('Legacy library exports retain all requested base formats and labelled edits together.')
         path = local_path(self._path(identity), exists=True)
         regular(path, directory=True)
         with state_lock(path, 'transcribe'):
@@ -1158,34 +1327,61 @@ class TranscriptionService:
             if os.path.lexists(destination) or destination.is_relative_to(self.app.root):
                 raise ValueError('Choose a new export folder outside the library data directory.')
             regular(local_path(destination.parent, exists=True), directory=True)
-            temporary = destination.parent / ('.pending-' + uuid4().hex)
-            temporary.mkdir(mode=0o700)
+            approval = capture_export_destination(destination, private_root=self.app.root,
+                                                  cancelled=cancelled)
+            published = durable = False
+            publication = None
             try:
-                exported = []
-                edits = self.edits(identity)
-                for artifact in job['artifacts']:
-                    relative = relative_name(artifact['path'])
-                    record = _copy(path / 'results' / relative, temporary / relative,
-                                   maximum=512 * 1024**2, cancelled=cancelled)
-                    if record['sha256'] != artifact['sha256'] or record['size_bytes'] != artifact['size_bytes']:
-                        raise ValueError('A transcription export changed while copying.')
-                    exported.append({'filename': str(relative), **record})
-                for edit in edits:
-                    name = 'edited/' + edit['id'] + '.txt'
-                    atomic_bytes(temporary / name, edit['text'].encode('utf-8'))
-                atomic_json(temporary / 'transcription-manifest.json', {
-                    'version': 1, 'job': identity, 'title': job['title'],
-                    'status': job['status'], 'protocol': job['protocol'], 'sources': job['sources'],
-                    'settings': job['settings'], 'artifacts': exported,
-                    'effective_runs': job.get('effective_runs', []),
-                    'edits': edits,
-                    'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'})
-                self._authorize()
-                if cancelled():
-                    raise AudioCancelled('Transcription export was cancelled.')
-                os.rename(temporary, destination)
-                sync_directory(destination.parent)
-            finally:
-                if temporary.exists():
-                    shutil.rmtree(temporary)
-            return destination
+                with TemporaryDirectory(prefix='.pending-transcription-export-',
+                                        dir=destination.parent) as temporary:
+                    payload = Path(temporary) / 'payload'
+                    payload.mkdir(mode=0o700)
+                    exported = []
+                    edits = self.edits(identity)
+                    for artifact in job['artifacts']:
+                        relative = relative_name(artifact['path'])
+                        record = _copy(path / 'results' / relative, payload / relative,
+                                       maximum=512 * 1024**2, cancelled=cancelled)
+                        if record['sha256'] != artifact['sha256'] or record['size_bytes'] != artifact['size_bytes']:
+                            raise ValueError('A transcription export changed while copying.')
+                        exported.append({'filename': str(relative), **record})
+                    for edit in edits:
+                        if cancelled():
+                            raise AudioCancelled('Transcription export was cancelled before publication.')
+                        name = 'edited/' + edit['id'] + '.txt'
+                        atomic_bytes(payload / name, edit['text'].encode('utf-8'))
+                    atomic_json(payload / 'transcription-manifest.json', {
+                        'version': 1, 'job': identity, 'title': job['title'],
+                        'status': job['status'], 'protocol': job['protocol'], 'sources': job['sources'],
+                        'settings': job['settings'], 'artifacts': exported,
+                        'effective_runs': job.get('effective_runs', []),
+                        'edits': edits,
+                        'notice': 'Machine transcription and separately labelled user edits; original media is retained in the private library.'})
+                    sync_directory(payload)
+                    with exclusive_writer(self.app.root):
+                        self._authorize()
+                        if cancelled():
+                            raise AudioCancelled('Transcription export was cancelled before publication.')
+                        if os.path.lexists(destination):
+                            raise FileExistsError('The transcription export destination already exists.')
+                        current = capture_export_destination(destination, private_root=self.app.root,
+                                                             cancelled=cancelled)
+                        if current != approval:
+                            raise ValueError('The transcription export destination or parent changed.')
+                        publish_directory_no_replace(payload, destination)
+                        published = True
+                        publication = {'schema': 'resonance-transcription-publication/1',
+                            'status': 'published', 'path': str(destination), 'job_id': identity,
+                            'protocol': job['protocol'], 'complete_payload': True,
+                            'files': exported, 'edited_revisions': [edit['id'] for edit in edits]}
+                        sync_directory(destination.parent)
+                        durable = True
+                return destination
+            except BaseException as error:
+                if published:
+                    # The directory commit is irreversible from the caller's
+                    # perspective. Never delete it or label a late stop as an
+                    # unpublished cancellation; preserve the normal Path API.
+                    raise TranscriptionExportedError(publication,
+                        durability_confirmed=durable) from error
+                raise
