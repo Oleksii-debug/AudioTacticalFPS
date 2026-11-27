@@ -12,12 +12,22 @@ from .windows_state import replace_file
 MAX_JSON_BYTES = 32 * 1024 * 1024
 
 
+class UnlinkedRegularFile(ValueError):
+    """A stat snapshot of an ordinary file concurrently unlinked."""
+    def __init__(self, path):
+        self.path = Path(path)
+        super().__init__('State must use regular local files, without links.')
+
+
 def regular(path, *, directory=False):
     path = Path(path)
     value = path.lstat()
     if (stat.S_ISLNK(value.st_mode) or getattr(value, 'st_file_attributes', 0) & 0x400
-            or not (stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode))
-            or (not directory and value.st_nlink != 1)):
+            or not (stat.S_ISDIR(value.st_mode) if directory else stat.S_ISREG(value.st_mode))):
+        raise ValueError('State must use regular local files, without links.')
+    if not directory and value.st_nlink != 1:
+        if value.st_nlink == 0:
+            raise UnlinkedRegularFile(path)
         raise ValueError('State must use regular local files, without links.')
     return value
 
