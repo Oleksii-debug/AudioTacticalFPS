@@ -8,8 +8,11 @@ permissions:
   actions: read
 jobs:
   summarize-existing-evidence:
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     timeout-minutes: 5
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -18,4 +21,4 @@ jobs:
       - name: Verify and summarize immutable prior failure evidence
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 -I -B .github/scripts/carr_evidence_summary_dbbb.py
+        run: python -I -B .github/scripts/carr_evidence_summary_dbbb.py
