@@ -355,3 +355,44 @@ existing approval, source/profile, receipt, batch and export boundaries. They do
 not establish live-server/model quality, native translation accessibility, or
 human linguistic acceptance. All previously stated private-runtime, corpus,
 Windows11/NVDA, language and distribution qualification limits remain.
+
+
+## Exact09c production follow-through and full Book naming review
+
+The actual109-suite production job on `09c312c4106d9abd8248bdd5fa23b9056326998b`
+(tree `cb26477a18c642b6ca4d6687a348a0c9fe185ee6`) completed2091 passing cases,
+one failure and zero skips. The39 publication cases,37 Book core,17 Book batch,
+44 DAISY,27 measured-audio and11 unchanged actual-child transcription-admission
+cases passed. See the [exact production diagnostic](acceptance/20261127-09c312-production-diagnostic.json).
+The downstream official publication validators were not reached after the source
+failure; their earlier results are not assigned to this run.
+
+The remaining existing Book UI case expected a full sanitized name inside a
+directory label now deliberately limited to18 characters plus the full operation
+ID digest. Reviewed component `ac5db5470606c66f1a96f25f38c4058e124284c8` makes
+the full bounded template and each actual expanded part title explicit beside
+the unchanged exact destination. It uses the same pure title helper as the
+production plan. Preview does not persist a plan, create files or start audio.
+The existing worker/handler test now follows an unnotified field change through
+fresh review and explicit Prepare, verifying exact titles and new paths against
+that review, absence from the old review and no generated output. The same19-case
+suite and all workflow selectors remain in force. This correction has full blob
+readback and independent source review; its execution is not inferred from09c.
+
+The finite-source review was also rechecked against the current finalization and
+detailed V3 authority. No additional confirmed mandatory public-source adapter
+or workflow omission was identified beyond the concrete acceptance corrections.
+Unsupported format/cache features stay unsupported, optional features stay
+optional, and private/real engine, language, corpus, human accessibility and
+signing/distribution qualification remain independent. The [readiness record](V3_RELEASE_READINESS.md)
+now links the latest exact evidence rather than presenting older checkpoints as
+current acceptance.
+
+The same09c subsequently completed the full quick composition with2420 passing
+cases in100 offline and2 isolated-loopback suites, zero failures/skips and no
+missing reports. All65 bridge cases completed in77.50seconds within the unchanged
+600-second limit. Its separate reading-source job passed244 cases in12 suites.
+See the [exact separate checkpoints](acceptance/20261127-09c312-source-checkpoints.json).
+These source passes resolve the earlier fixture timeout and Studio quick failures;
+they do not replace the separate one-failure production result, installed/native
+checks or execution of the later full-name presentation correction.
