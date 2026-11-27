@@ -107,3 +107,52 @@ def test_callback_staging_hardlink_alias_cannot_be_published(tmp_path, registry)
     assert not target.exists()
     assert alias.read_bytes() == retained[0]
     assert not list(tmp_path.glob('.speech-*'))
+
+
+@pytest.mark.parametrize('change', ['shorter', 'rate', 'truncated'])
+def test_utterance_geometry_cannot_change_between_measurement_and_copy(tmp_path, registry, monkeypatch, change):
+    from carr_library.speech import runtime
+
+    actual = runtime._wave_info
+
+    def mutate_after_measurement(path, **kwargs):
+        result = actual(path, **kwargs)
+        if path.name == 'utterance.wav':
+            if change == 'truncated':
+                # Preserve the original data-chunk length, remove real PCM.
+                path.write_bytes(path.read_bytes()[:-40])
+            else:
+                with wave.open(str(path), 'wb') as audio:
+                    audio.setnchannels(1)
+                    audio.setsampwidth(2)
+                    audio.setframerate(16000 if change == 'rate' else 22050)
+                    audio.writeframes(b'\x01\x00' * (110 if change == 'shorter' else 220))
+        return result
+
+    monkeypatch.setattr(runtime, '_wave_info', mutate_after_measurement)
+    target = tmp_path / 'speech.wav'
+    with pytest.raises(ValueError, match='voice output (geometry|length) changed'):
+        registry.synthesize('Synthetic narration.', 'publication-fixture', target,
+                            before_publish=lambda staged: None)
+    assert not target.exists()
+    assert not list(tmp_path.glob('.speech-*'))
+
+
+def test_oversized_utterance_container_is_rejected_before_pcm_inspection(tmp_path, registry, monkeypatch):
+    from carr_library.speech import runtime
+
+    provider = registry._selection('publication-fixture')[1]
+    original = provider.render
+
+    def oversized(text, voice, destination, settings, cancelled):
+        original(text, voice, destination, settings, cancelled)
+        with destination.open('ab') as stream:
+            stream.write(b'\0' * 4096)
+
+    monkeypatch.setattr(provider, 'render', oversized)
+    target = tmp_path / 'speech.wav'
+    with pytest.raises(ValueError, match='audio-output budget'):
+        registry.synthesize('Synthetic narration.', 'publication-fixture', target,
+                            settings=runtime.SpeechSettings(max_output_bytes=4096))
+    assert not target.exists()
+    assert not list(tmp_path.glob('.speech-*'))
