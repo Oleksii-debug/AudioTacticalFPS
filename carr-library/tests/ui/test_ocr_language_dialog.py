@@ -1,5 +1,6 @@
 """Ordered language intent and async UI handlers; native/NVDA tested separately."""
 from concurrent.futures import Future
+from dataclasses import replace
 from types import SimpleNamespace
 from threading import Event
 from unittest.mock import Mock
@@ -160,3 +161,41 @@ def test_invalid_preset_file_is_preserved_but_does_not_disable_manual_model_sele
     assert path.read_bytes() == b'not valid presets'
     dialog.accept()
     assert dialog.result == dialog.initial
+
+
+def test_preset_from_other_model_profile_does_not_change_current_controls(dialog):
+    store_preset(dialog.preset_root, 'Best French',
+                 Config(languages='fra+eng', model_profile='best', orientation=True))
+    dialog._presets()
+    index = next(i for i, row in enumerate(dialog.preset_items) if row[2] == 'Best French')
+    assert '[best]' in dialog.preset_items[index][0]
+    dialog.presets.SetSelection(index)
+    before = (list(dialog.selected_codes), dialog.profile.GetSelection(), dialog.orientation.GetValue())
+    dialog.apply_preset()
+    assert (dialog.selected_codes, dialog.profile.GetSelection(), dialog.orientation.GetValue()) == before
+    assert 'profile' in dialog.status.GetValue().lower()
+    assert dialog.result is None
+
+
+def test_preset_keeps_best_profile_language_order_orientation_and_resource_limits(dialog):
+    dialog.initial = replace(dialog.initial, model_profile='best')
+    dialog.catalog = replace(dialog.catalog, model_profile='best', integrity='managed_manifest')
+    store_preset(dialog.preset_root, 'Best script first',
+                 Config(languages='script/Latin+fra', model_profile='best', orientation=True))
+    dialog._presets()
+    dialog.presets.SetSelection(next(i for i, row in enumerate(dialog.preset_items) if row[2] == 'Best script first'))
+    dialog.apply_preset()
+    dialog.accept()
+    assert dialog.result == replace(dialog.initial, languages='script/Latin+fra', orientation=True)
+    assert dialog.result.model_profile == 'best'
+    assert dialog.result.dpi == 200 and dialog.result.timeout == 45
+
+
+def test_managed_inventory_status_does_not_claim_selected_file_verification(dialog):
+    dialog.initial = replace(dialog.initial, model_profile='best')
+    dialog.rescan()
+    dialog.future.set_result(replace(dialog.catalog, model_profile='best', integrity='managed_manifest'))
+    dialog.pending.pop(0)()
+    assert 'Managed model inventory' in dialog.status.GetValue()
+    assert 'each selected file is verified before recognition' in dialog.status.GetValue()
+    assert 'SHA256 checks passed' not in dialog.status.GetValue()

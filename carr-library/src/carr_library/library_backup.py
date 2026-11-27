@@ -320,7 +320,10 @@ def _read_manifest(directory, expected_manifest_sha256):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
-    size = _plain(directory / MANIFEST).st_size
+    try:
+        size = _plain(directory / MANIFEST).st_size
+    except FileNotFoundError as exc:
+        raise RestoreError('incomplete backup: the final manifest was not published') from exc
     if not 0 < size <= MAX_MANIFEST:
         raise RestoreError('manifest size limit')
     with (directory / MANIFEST).open('rb') as stream:

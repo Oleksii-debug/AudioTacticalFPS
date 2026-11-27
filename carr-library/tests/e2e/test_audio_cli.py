@@ -38,6 +38,22 @@ class AudioCliTests(unittest.TestCase):
         with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             main(['--audio-voices', '--backup', 'backup'])
 
+    def test_ocr_audio_and_doi_commands_are_exclusive_before_runtime_activation(self):
+        commands = (
+            ['--audio-voices', '--list-ocr-models'],
+            ['--audio-voices', '--verify-ocr-models', 'eng'],
+            ['--audio-voices', '--install-ocr-models', 'source', '--ocr-model', 'eng'],
+            ['--lookup-doi', '10.1234/synthetic', '--workspace', 'fixture', '--list-ocr-models'],
+            ['--lookup-doi', '10.1234/synthetic', '--workspace', 'fixture', '--audio-voices'],
+        )
+        for options in commands:
+            with self.subTest(options=options), redirect_stderr(io.StringIO()), \
+                    patch('carr_library.native_runtime.activate_bundled_runtime') as activate:
+                with self.assertRaises(SystemExit) as error:
+                    main(options)
+                self.assertEqual(error.exception.code, 2)
+                activate.assert_not_called()
+
     def test_audio_and_doi_are_distinct_operations_with_legacy_namespace_compatibility(self):
         args = SimpleNamespace(audio_voices=True, audio_script=None, audio_plan=None,
             self_test=False, backup=None, restore=None, list_libraries=False, search=None,

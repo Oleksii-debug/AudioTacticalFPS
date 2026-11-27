@@ -15,14 +15,17 @@ requires the applicable Microsoft redistribution grant.
 
 The Windows x64 package targets CPython 3.11. The complete package includes its
 own Python runtime. Extract the complete package into a new folder, then open
-`Install.cmd`. Installation creates a local
+`ResearchLibrary.exe`. Its first launch runs the bundled offline installer and
+opens the application after verification. Installation creates a local
 environment inside that folder and uses only included, hash-checked wheels.
 It does not contact a package index and does not require administrator access.
 The smaller wheel-only variant requires CPython 3.11 through the Windows `py`
 launcher. Its manifest identifies whether Python is included.
 
-After installation, open `ResearchLibrary.cmd`. The terminal stays visible if
-startup fails, so a screen reader can read the error. Installation and
+After installation, use the same `ResearchLibrary.exe` entry. This is an unsigned
+private development candidate; publisher signing remains a release prerequisite.
+`Install.cmd` remains an explicit installation command, and older packages without
+the native entry use `ResearchLibrary.cmd`. Installation and
 `CheckInstallation.cmd` verify that native desktop and document components can
 load before reporting success, then run the synthetic application self-test.
 When OCR is included, the checks also recognize a generated test image.
@@ -30,7 +33,7 @@ These checks do not change your research data.
 
 The launchers require the installation-complete marker created after all install
 checks succeed. If installation fails or is interrupted, extract the package to
-a fresh program folder and run `Install.cmd` there. Keep research data in its
+a fresh program folder and open the native entry there. Keep research data in its
 existing separate location; the installer does not overwrite an environment.
 
 A private complete package may include the verified Microsoft C++ runtime
@@ -167,7 +170,7 @@ already imported book. **Open linked document** opens a checked viewing copy;
 changes in an external viewer do not modify the retained original. Standalone
 references do not fabricate document text or allow source quotation.
 
-Import RIS or CSL JSON files through a preview. Select the records to keep;
+Import BibTeX, RIS or CSL JSON files through a preview. Select the records to keep;
 possible duplicates and unsupported fields are reported before import. Selected
 records are saved in one transaction. DOI and ISBN comparisons and conservative
 title/author/year matches identify possible duplicates for review. Records are
@@ -175,10 +178,18 @@ never automatically merged or deleted. Archive and restore retain their IDs.
 
 Export the selected reference or all active references as RIS, BibTeX, CSL JSON,
 CSV or text. Bibliographic exports omit personal notes by default. Include notes
-only when you deliberately choose that option. The plain bibliography is a
-readable reference list, not a certified APA, MLA or Chicago citation style.
-BibTeX import and online DOI lookup are not part of this version. Entering a DOI
-or URL does not send a network request or download an attachment.
+only when you deliberately choose that option. For formatted citations, choose
+**Citation styles** in the Academic Library. Preview one of the seven bundled
+CSL styles or an explicitly selected local independent CSL file, then copy the
+bibliography or export it as text, HTML or Word DOCX. Formatting runs locally.
+Changed references require a fresh preview. See [citation styles and BibTeX](V3_BIBLIOGRAPHY.md).
+
+For an online metadata request, open **Academic, DOI lookup and open-access
+sources**, select providers and explicitly allow the lookup. Review returned
+metadata before saving it. Downloading a reported open-access PDF requires a
+separate confirmation and enters the ordinary reviewed import process. Entering
+a DOI or URL in a reference alone makes no network request. See
+[DOI acquisition](ACADEMIC_ACQUISITION.md).
 
 Version 0.2 opens the exact supported version-three library layout through a
 transactional upgrade. Existing source documents and citations are preserved.
@@ -186,6 +197,14 @@ Install an update into a new program folder, with a backup of your library saved
 first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
+
+Full library backups also include personal page bookmarks and reading resume
+positions for every library. Restore preserves their exact source revision,
+names and timestamps in the new data folder. The backup checksums cover this
+reading state as well as the database and retained originals. Older backups
+without reading state still restore; use a separate reading-state export to
+transfer those older bookmarks. Interrupted import queues are not part of the
+backup. See [reading desk](READING_DESK.md) for historical-position handling.
 
 ## Review the source catalog
 
@@ -296,6 +315,14 @@ Use **Cancel operation** to stop a long operation before publication. Export des
 use the same checked Save workflow as topic exports.
 
 ### Search and source actions
+
+**Ctrl+Alt+Q** opens the advanced query builder. Its All, Any, Exclude and
+Nearby fields accept one literal word or phrase per line. Build the expression,
+choose Use query, then press Enter in Search. The explicit Advanced search mode
+supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
+through NEAR/100 within one page or text segment. Existing search modes keep
+their original meanings. See `docs/ADVANCED_SEARCH.md` in the source repository
+for syntax, examples, scope and limits.
 
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently

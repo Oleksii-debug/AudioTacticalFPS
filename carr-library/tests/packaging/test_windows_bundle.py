@@ -79,7 +79,10 @@ class WindowsBundleTests(unittest.TestCase):
         with patch.object(runtime, "ARCHIVE_MEMBERS", inventory):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output, audio_dir=audio)
             installer.verify(self.output)
-            self.assertEqual(runtime.verify_bundle_audio(self.output), self.output / "audio-runtime/ffmpeg.exe")
+            # Windows may expand RUNNER~1 to runneradmin during trusted-path
+            # resolution. Verify the actual file identity, not its spelling.
+            resolved = runtime.verify_bundle_audio(self.output)
+            self.assertTrue(resolved.samefile(self.output / "audio-runtime/ffmpeg.exe"))
             sealed = self.output / "audio-runtime/ffmpeg.exe"
             self.assertEqual(sealed.read_bytes(), (audio / "ffmpeg.exe").read_bytes())
             sealed.write_bytes(b"modified")

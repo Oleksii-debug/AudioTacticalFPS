@@ -75,12 +75,15 @@ class OcrOptionsActions:
         index = self.profile.GetSelection()
         if index not in (0, 1):
             raise OcrLanguageError('Choose a model profile.')
+        if not self.selected_codes:
+            raise OcrLanguageError('Choose at least one installed text-language or script model.')
         config = replace(self.initial, languages='+'.join(self.selected_codes),
                          orientation=self.orientation.GetValue(),
                          model_policy=('default', POLICY)[index])
         if self.catalog.integrity != 'unavailable':
             self.catalog.validate(config.languages, orientation=config.orientation,
-                                  model_policy=config.model_policy)
+                                  model_policy=config.model_policy,
+                                  model_profile=config.model_profile)
         return config
 
     def accept(self, event=None):
@@ -100,11 +103,14 @@ class OcrOptionsActions:
             for name, codes in [('English', 'eng'), ('Ukrainian', 'ukr'), ('Slovak', 'slk'),
                     ('English, Ukrainian and Slovak', 'eng+ukr+slk')]:
                 if set(codes.split('+')) <= set(self.catalog.selectable):
-                    items.append((name, dict(languages=codes, model_policy='default', orientation=False), False))
+                    items.append((name, dict(languages=codes, model_policy='default', orientation=False,
+                                            model_profile=self.initial.model_profile), False))
         if self.preset_root is not None:
             try:
                 for row in load_presets(self.preset_root):
-                    items.append(('Saved: ' + row['name'], {k: v for k, v in row.items() if k != 'name'}, row['name']))
+                    profile = row.get('model_profile', 'installed')
+                    items.append(('Saved: ' + row['name'] + f' [{profile}]',
+                                  {k: v for k, v in row.items() if k != 'name'}, row['name']))
             except (ValueError, OSError) as exc:
                 problem = str(exc)
         self.preset_items = tuple(items)
@@ -119,7 +125,8 @@ class OcrOptionsActions:
                 raise OcrLanguageError('Select a preset first.')
             label, settings, _ = self.preset_items[index]
             self.catalog.validate(settings['languages'], orientation=settings['orientation'],
-                                  model_policy=settings['model_policy'])
+                                  model_policy=settings['model_policy'],
+                                  model_profile=settings.get('model_profile', 'installed'))
             self.selected_codes = list(split_languages(settings['languages']))
             self.profile.SetSelection(0 if settings['model_policy'] == 'default' else 1)
             self.orientation.SetValue(settings['orientation'])
@@ -201,6 +208,8 @@ class OcrOptionsActions:
                         self.ok.SetLabel('Use settings')
                         integrity = ('Portable model inventory and SHA256 checks passed.'
                                      if self.catalog.integrity == 'portable_sha256' else
+                                     'Managed model inventory; each selected file is verified before recognition.'
+                                     if self.catalog.integrity == 'managed_manifest' else
                                      'System-installed models; publisher authenticity is not verified here.')
                         message = (f'{self.catalog.engine_version}: {len(self.catalog.selectable)} recognition models. '
                                    + integrity + ' Add one or more models in the required priority order. '
@@ -219,10 +228,11 @@ class OcrOptionsActions:
             if not self.closed:
                 wx.CallAfter(apply)
 
-        self.executor.submit(discover_languages, cancelled=self.cancel_event.is_set).add_done_callback(finish)
+        loader = getattr(self, 'catalog_loader', discover_languages)
+        self.executor.submit(loader, cancelled=self.cancel_event.is_set).add_done_callback(finish)
 
 
-def create_ocr_dialog(parent, initial=None, *, preset_root=None):
+def create_ocr_dialog(parent, initial=None, *, preset_root=None, catalog_loader=None):
     """Create native controls; caller owns ShowModal/Destroy and result handling."""
     import wx
     from concurrent.futures import ThreadPoolExecutor
@@ -235,6 +245,7 @@ def create_ocr_dialog(parent, initial=None, *, preset_root=None):
             self.initial = initial or Config()
             self.result = None
             self.preset_root = preset_root
+            self.catalog_loader = catalog_loader or discover_languages
             self.selected_codes = list(split_languages(self.initial.languages))
             self.catalog = None
             self.visible_codes, self.preset_items = (), ()
@@ -274,9 +285,13 @@ def create_ocr_dialog(parent, initial=None, *, preset_root=None):
             layout.Add(actions, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             profiles = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
             profiles.AddGrowableCol(1)
-            self.profile = wx.Choice(self, choices=['Installed models (identity recorded during import)',
+            profile_label = {'installed': 'Installed models', 'fast': 'Managed Fast models',
+                             'best': 'Managed Best models'}[self.initial.model_profile]
+            self.profile = wx.Choice(self, choices=[profile_label + ' (identity recorded during import)',
                 'Pinned tessdata_fast: English, Ukrainian and Slovak'])
             self.profile.SetSelection(0 if self.initial.model_policy == 'default' else 1)
+            if self.initial.model_profile == 'best':
+                self.profile.Disable()
             self.presets = wx.Choice(self)
             for label, control in [('Model profile', self.profile), ('Recognition presets', self.presets)]:
                 control.SetName(label)

@@ -10,6 +10,7 @@ import wave
 import pytest
 
 from carr_library.audio.engines import EngineUnavailable
+from carr_library.audio import music
 from carr_library.audio.music import (_wave_frames, generate_music, music_capabilities,
                                       render_music)
 
@@ -24,6 +25,124 @@ def ffmpeg():
 
 def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize('legacy_only', [False, True], ids=['modern', 'legacy'])
+def test_filter_file_capability_selects_actual_support_and_cleans_probe(tmp_path, monkeypatch, legacy_only):
+    directory = tmp_path / 'Музика з пробілами'
+    directory.mkdir()
+    calls, scripts = [], []
+    cancelled = lambda: False
+
+    def run(command, **options):
+        option = next(value for value in command if value in ('-/filter_complex', '-filter_complex_script'))
+        script = Path(command[command.index(option) + 1])
+        calls.append(option)
+        scripts.append(script)
+        graph = script.read_text('ascii')
+        assert 'atrim=end_sample=1[probe]' in graph
+        assert not any('sine=' in str(value) for value in command)
+        assert command[-3:] == ['-f', 'null', '-']
+        assert options['timeout'] == 15 and options['cancelled'] is cancelled
+        assert options['env']['HF_HUB_OFFLINE'] == '1'
+        # Reopening for write also catches a still-open NamedTemporaryFile on Windows.
+        with script.open('r+b') as stream:
+            assert stream.read() == graph.encode('ascii')
+        if legacy_only and option == '-/filter_complex':
+            raise EngineUnavailable('fixture: unsupported option')
+        return b''
+
+    monkeypatch.setattr(music, '_run', run)
+    selected = music._filter_file_option(Path('ffmpeg'), directory=directory, cancelled=cancelled)
+    expected = '-filter_complex_script' if legacy_only else '-/filter_complex'
+    assert selected == expected
+    assert calls == (['-/filter_complex', '-filter_complex_script'] if legacy_only else ['-/filter_complex'])
+    assert all(not script.exists() for script in scripts)
+    assert list(directory.iterdir()) == []
+
+
+def test_filter_file_capability_rejects_unsupported_engine_without_publication(tmp_path, monkeypatch, ffmpeg):
+    original = music._run
+    attempts = []
+
+    def reject_graph(command, **options):
+        if '-version' in command:
+            return original(command, **options)
+        attempts.append(command)
+        raise EngineUnavailable('fixture: unsupported file graph')
+
+    monkeypatch.setattr(music, '_run', reject_graph)
+    with pytest.raises(EngineUnavailable, match='file-based procedural music filters'):
+        render_music(tmp_path / 'unsupported.wav', duration=.1, sample_rate=8000, ffmpeg=ffmpeg)
+    assert len(attempts) == 2
+    assert not list(tmp_path.rglob('*.wav'))
+    assert not list(tmp_path.rglob('*.mid'))
+    assert not list(tmp_path.rglob('*.music.json'))
+    assert not list(tmp_path.rglob('*.filters'))
+    assert not list(tmp_path.rglob('.music-filter-probe-*'))
+
+
+@pytest.mark.parametrize('error', [InterruptedError, TimeoutError, RuntimeError],
+                         ids=['cancelled', 'deadline', 'log-budget'])
+def test_filter_file_probe_does_not_retry_cancellation_or_resource_failure(tmp_path, monkeypatch, error):
+    calls = []
+
+    def stop(command, **options):
+        calls.append(command)
+        raise error('fixture stopped')
+
+    monkeypatch.setattr(music, '_run', stop)
+    with pytest.raises(error, match='fixture stopped'):
+        music._filter_file_option(Path('ffmpeg'), directory=tmp_path, cancelled=lambda: False)
+    assert len(calls) == 1
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize('option', ['-/filter_complex', '-filter_complex_script'], ids=['modern', 'legacy'])
+def test_procedural_graph_stays_in_file_and_is_removed_after_render_failure(tmp_path, monkeypatch, option):
+    scripts = []
+
+    def failed_render(command, **options):
+        script = Path(command[command.index(option) + 1])
+        scripts.append(script)
+        graph = script.read_text('ascii')
+        assert len(graph) > 7000
+        assert sum(len(str(value)) for value in command) < 2048
+        assert not any('sine=' in str(value) for value in command)
+        assert '-filter_complex' not in command
+        assert '-map' in command and '[music]' in command
+        raise EngineUnavailable('fixture render failure')
+
+    monkeypatch.setattr(music, '_run', failed_render)
+    with pytest.raises(EngineUnavailable, match='fixture render failure'):
+        music._render_procedural_chunk(tmp_path / 'part.wav', first_bar=0, start_frame=0,
+            frame_count=128000, total_frames=128000, sample_rate=8000, tempo=60,
+            mood='energetic', seed=1, gain=.18, ffmpeg=Path('ffmpeg'),
+            filter_file_option=option, cancelled=lambda: False)
+    assert len(scripts) == 1 and not scripts[0].exists()
+
+
+def test_actual_multichunk_render_probes_once_and_passes_only_file_arguments(tmp_path, monkeypatch, ffmpeg):
+    original = music._run
+    probe_options, render_options = [], []
+
+    def record(command, **options):
+        if '[probe]' in command or '[music]' in command:
+            selected = next(value for value in command if value in ('-/filter_complex', '-filter_complex_script'))
+            script = Path(command[command.index(selected) + 1])
+            assert script.is_file() and script.stat().st_size < 65536
+            assert not any('sine=' in str(value) for value in command)
+            (probe_options if '[probe]' in command else render_options).append(selected)
+        return original(command, **options)
+
+    monkeypatch.setattr(music, '_run', record)
+    result = render_music(tmp_path / 'two-parts.wav', duration=9.125, sample_rate=8000,
+                          tempo=120, ffmpeg=ffmpeg)
+    assert result['frames'] == 73000 and result['provenance']['chunks'] == 2
+    assert _wave_frames(result['path'])['frames'] == 73000
+    assert probe_options in (['-/filter_complex'], ['-/filter_complex', '-filter_complex_script'])
+    assert render_options == [probe_options[-1], probe_options[-1]]
+    assert not list(tmp_path.rglob('*.filters'))
 
 
 def test_actual_procedural_score_is_exact_reproducible_audio_with_midi(tmp_path, ffmpeg):

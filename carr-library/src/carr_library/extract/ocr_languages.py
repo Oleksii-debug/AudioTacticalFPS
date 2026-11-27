@@ -64,6 +64,26 @@ def valid_model_code(value):
                         *(f'lpt{i}' for i in range(1, 10))}
 
 
+def is_model_id(value):
+    """Shared runtime/store identity check, including official script IDs."""
+    return valid_model_code(value)
+
+
+def model_ids(languages):
+    """Parse bounded model identities, including auxiliary inventory entries.
+
+    This lower-level contract also serves complete installed inventories. A
+    recognition Config applies the smaller ordered, non-auxiliary selection
+    budget through split_languages separately.
+    """
+    if not isinstance(languages, str) or not 0 < len(languages) <= MAX_MODELS * 72:
+        raise ValueError('invalid language selection')
+    selected = tuple(languages.split('+'))
+    if len(selected) > MAX_MODELS or any(not is_model_id(name) for name in selected):
+        raise ValueError('invalid language selection')
+    return selected
+
+
 def split_languages(value):
     """Accept only bounded CLI data, including official script/Name selectors."""
     if not isinstance(value, str) or not 0 < len(value) <= MAX_SELECTED_MODELS * 72:
@@ -92,6 +112,7 @@ class LanguageCatalog:
     engine_version: str = ''
     integrity: str = 'unavailable'
     manifest_sha256: str | None = None
+    model_profile: str = 'installed'
 
     @property
     def selectable(self):
@@ -102,8 +123,10 @@ class LanguageCatalog:
         return tuple(code for code in self.selectable if not query
                      or query in model_label(code).casefold())
 
-    def validate(self, value, *, orientation=False, model_policy='default'):
+    def validate(self, value, *, orientation=False, model_policy='default', model_profile=None):
         from .pinned_tessdata import MODELS, POLICY
+        if model_profile is not None and model_profile != self.model_profile:
+            raise OcrLanguageError('Choose the saved OCR model profile before applying this preset.')
         selected = split_languages(value)
         missing = tuple(code for code in selected if code not in self.selectable)
         if missing:
@@ -138,10 +161,11 @@ def parse_language_report(report):
 def _capture(runtime, option, remaining):
     # A file-backed capture prevents a malformed native inventory from filling
     # Python's memory. The runtime remains bounded by the shared deadline.
+    from .ocr_process import prepare_ocr_query, normalize_ocr_query_output
     remaining()
-    argv = runtime.command([runtime.executable, option])
+    argv, cwd, report_directory = prepare_ocr_query(runtime, [runtime.executable, option])
     with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as errors:
-        with subprocess.Popen(argv, stdout=output, stderr=errors, cwd=runtime.root,
+        with subprocess.Popen(argv, stdout=output, stderr=errors, cwd=cwd,
                               creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)) as process:
             try:
                 while True:
@@ -165,7 +189,7 @@ def _capture(runtime, option, remaining):
                     process.kill()
                 process.wait()
                 raise
-    return raw.decode('utf-8')
+    return normalize_ocr_query_output(raw, report_directory).decode('utf-8')
 
 
 def discover_languages(*, timeout=10, cancelled=lambda: False):
@@ -235,19 +259,25 @@ def validate_presets_bytes(raw):
     except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
         raise OcrLanguageError('The saved OCR presets are invalid.') from exc
     if (type(data) is not dict or set(data) != {'version', 'presets'}
-            or type(data['version']) is not int or data['version'] != 1
+            or type(data['version']) is not int or data['version'] not in (1, 2)
             or type(data['presets']) is not list or len(data['presets']) > MAX_PRESETS):
         raise OcrLanguageError('The saved OCR preset format is unsupported.')
     names = set()
     for item in data['presets']:
-        if type(item) is not dict or set(item) != {'name', 'languages', 'model_policy', 'orientation'}:
+        fields = {'name', 'languages', 'model_policy', 'orientation'}
+        if data['version'] == 2:
+            fields.add('model_profile')
+        if type(item) is not dict or set(item) != fields:
             raise OcrLanguageError('The saved OCR preset fields are invalid.')
         name = _name(item['name']).casefold()
         if name in names:
             raise OcrLanguageError('The saved OCR presets contain repeated names.')
         names.add(name)
         codes = split_languages(item['languages'])
+        profile = item.get('model_profile', 'installed')
         if (type(item['orientation']) is not bool or item['model_policy'] not in ('default', POLICY)
+                or profile not in ('installed', 'fast', 'best')
+                or (profile == 'best' and item['model_policy'] == POLICY)
                 or (item['model_policy'] == POLICY and any(code not in MODELS for code in codes))):
             raise OcrLanguageError('The saved OCR preset settings are invalid.')
     return data
@@ -278,7 +308,8 @@ def store_preset(root, name, config, *, replace=False):
     from ..ingest.writer_guard import exclusive_writer
     _name(name)
     item = {'name': name, 'languages': config.languages,
-            'orientation': config.orientation, 'model_policy': config.model_policy}
+            'orientation': config.orientation, 'model_policy': config.model_policy,
+            'model_profile': config.model_profile}
     with exclusive_writer(root) as base:
         presets = list(load_presets(base))
         existing = next((i for i, old in enumerate(presets)
@@ -304,7 +335,10 @@ def delete_preset(root, name):
 
 
 def _write_presets(root, presets):
-    raw = (json.dumps({'version': 1, 'presets': presets}, ensure_ascii=False,
+    # Version-1 choices used the installed engine's models. Make that default
+    # explicit when saving alongside new managed Fast/Best choices.
+    presets = [{**row, 'model_profile': row.get('model_profile', 'installed')} for row in presets]
+    raw = (json.dumps({'version': 2, 'presets': presets}, ensure_ascii=False,
                       sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
     validate_presets_bytes(raw)
     path = _preset_path(root)

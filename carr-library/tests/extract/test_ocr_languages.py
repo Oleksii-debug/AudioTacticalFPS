@@ -197,7 +197,7 @@ def test_presets_reopen_keep_order_and_require_explicit_replacement(tmp_path):
     models.store_preset(tmp_path, 'Французька й англійська', first)
     row, = models.load_presets(tmp_path)
     assert row == dict(name='Французька й англійська', languages='fra+eng',
-                       orientation=True, model_policy='default')
+                       orientation=True, model_policy='default', model_profile='installed')
     before = (tmp_path / models.FILENAME).read_bytes()
     with pytest.raises(FileExistsError):
         models.store_preset(tmp_path, row['name'], Config())
@@ -246,3 +246,40 @@ def test_linked_preset_file_is_not_read_or_overwritten(tmp_path):
 def test_invalid_or_unbounded_saved_preferences_fail_closed(raw):
     with pytest.raises(ValueError):
         models.validate_presets_bytes(raw)
+
+
+"""Official script-path compatibility without permitting filesystem paths."""
+import pytest
+
+from carr_library.extract.ocr_languages import model_ids
+from carr_library.extract.page_ocr import Config
+from carr_library.extract.pinned_tessdata import POLICY
+
+
+@pytest.mark.parametrize('selection', [
+    'eng', 'chi_tra_vert', 'Latin', 'script/Latin', 'script/Cyrillic',
+    'script/Japanese_vert', 'eng+script/Latin', 'script/Cyrillic+ukr+eng',
+])
+def test_configuration_preserves_root_and_script_model_identity(selection):
+    assert Config(languages=selection).languages == selection
+    assert model_ids(selection) == tuple(selection.split('+'))
+
+
+@pytest.mark.parametrize('selection', [
+    '', None, 1, True, ['eng'], '+eng', 'eng+', 'eng++ukr',
+    '../eng', './eng', '/eng', 'C:/eng', 'C:\\eng',
+    'script/', 'script/../eng', 'script/./Latin', 'script//Latin',
+    'script/Latin/eng', 'other/Latin', 'Script/Latin', 'script\\Latin',
+    'script/Latin.traineddata', 'eng --psm 1', 'eng\n', 'eng\x00',
+    'eng\u200b', ' script/Latin', 'script/Latin ',
+])
+def test_configuration_rejects_paths_controls_options_and_empty_selections(selection):
+    with pytest.raises(ValueError, match='language selection'):
+        Config(languages=selection)
+
+
+@pytest.mark.parametrize('selection', ['script/Latin', 'eng+script/Cyrillic', 'fra', 'eng+eng'])
+def test_script_support_does_not_expand_existing_pinned_policy(selection):
+    with pytest.raises(ValueError, match='unsupported pinned OCR language'):
+        Config(languages=selection, model_policy=POLICY)
+    assert Config(languages='eng+ukr+slk', model_policy=POLICY).model_policy == POLICY

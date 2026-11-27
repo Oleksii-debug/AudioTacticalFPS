@@ -33,6 +33,25 @@ the output location. Stop a running render before backing it up. This snapshot
 is separate from the research-library backup and from installed model/voice
 assets. API keys, executable runtimes and unrelated private files are excluded.
 
+Sound inputs referenced by either the saved script or its recovery draft are
+included even when cached chunks and rendered outputs are excluded. Their bytes
+must pass the same PCM16 RIFF/RF64 validation as rendering. Uppercase `.WAV`
+names and explicitly referenced files with another suffix remain portable.
+Missing or damaged referenced inputs stop snapshot creation or restoration;
+the application does not publish an apparently complete project without them.
+Other files beside the inputs are excluded, and restore checks these scope
+rules even when an archive's manifest checksums have been recomputed.
+
+Audio projects created from versioned reading copies retain their original
+text digest, reading-project identity and strictly validated source location.
+The transferred reading digest identifies the historical reading revision;
+later Studio edits and recovery do not replace it with the current script's
+digest. Snapshot/restore preserves that reference in both the saved project and
+recovery draft. It does not modify the original reading project or approve the
+edited text as source evidence. Generated MIDI and music provenance companions
+restore as independent files with the same checked bytes and can resume from
+verified cached chunks without the original audio folder.
+
 ## Explicit script directions
 
 Define roles before their first spoken line. No arbitrary code, shell command
@@ -132,6 +151,14 @@ Official adapter references inspected for this change:
 - [Windows generic credential storage](https://learn.microsoft.com/en-us/windows/win32/api/wincred/nf-wincred-credwritew)
 
 ## Acceptance evidence and limits
+
+The snapshot regressions exercise the actual reading-to-Studio producer,
+saved/recovery provenance, missing and damaged inputs, recomputed archive
+checksums, and real FFmpeg rendering after deleting the original input files.
+They also restore generated music companions and reuse their verified cache.
+The reconciled Linux audio, narration, UI, CLI and backup gate passed 303 tests
+and 9 subtests; its one skip was actual SAPI synthesis, which requires Windows.
+The Windows audio workflow collects these regressions through `tests/audio`.
 
 `scripts/long_audio_benchmark.py` creates real 1/3/10-hour files with bounded
 memory, exact frame counts, checkpoint reopen, cancellation and checksums. It

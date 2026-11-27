@@ -193,8 +193,35 @@ def _atomic_json(path, data):
         temporary.unlink(missing_ok=True)
 
 
+def _filter_file_option(ffmpeg, *, directory, cancelled):
+    """Verify file-based graph support once, without rendering a score or guessing versions.
+
+    FFmpeg 9 removed filter_complex_script. The generic slash-prefixed option
+    keeps large graphs out of Windows argv; older builds may need the legacy
+    option. A one-sample probe verifies the selected executable's actual support.
+    """
+    with tempfile.TemporaryDirectory(prefix='.music-filter-probe-', dir=directory) as temporary:
+        script = Path(temporary) / 'probe.filters'
+        script.write_text('sine=frequency=440:sample_rate=8000,atrim=end_sample=1[probe]',
+                          encoding='ascii')
+        for option in ('-/filter_complex', '-filter_complex_script'):
+            try:
+                _run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin',
+                      '-filter_complex_threads', '1', option, script, '-map', '[probe]',
+                      '-frames:a', '1', '-c:a', 'pcm_s16le', '-f', 'null', '-'],
+                     timeout=15, cancelled=cancelled, env=offline_environment())
+            except EngineUnavailable:
+                # Only an unsuccessful capability probe permits the other
+                # spelling. Cancellation, timeout and log limits stop immediately.
+                continue
+            return option
+    raise EngineUnavailable('The selected FFmpeg could not run file-based procedural music filters. '
+                            'Select a build supporting sine/atrim and either -/filter_complex '
+                            'or -filter_complex_script.')
+
+
 def _render_procedural_chunk(path, *, first_bar, start_frame, frame_count, total_frames, sample_rate,
-                             tempo, mood, seed, gain, ffmpeg, cancelled):
+                             tempo, mood, seed, gain, ffmpeg, filter_file_option, cancelled):
     notes = _notes_for_bars(first_bar, 4, sample_rate=sample_rate, tempo=tempo,
                             mood=mood, seed=seed, total_frames=total_frames)
     graph, labels = [], []
@@ -219,7 +246,7 @@ def _render_procedural_chunk(path, *, first_bar, start_frame, frame_count, total
     try:
         script.write_text(';\n'.join(graph), encoding='ascii')
         _run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-nostdin', '-filter_complex_threads', '1',
-              '-filter_complex_script', script, '-map', '[music]', '-ar', str(sample_rate), '-ac', '1',
+              filter_file_option, script, '-map', '[music]', '-ar', str(sample_rate), '-ac', '1',
               '-c:a', 'pcm_s16le', '-rf64', 'auto', '-f', 'wav', '-n', path],
              timeout=max(120, frame_count / sample_rate * 10), cancelled=cancelled,
              env=offline_environment())
@@ -379,6 +406,7 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
     if shutil.disk_usage(target.parent).free < bytes_needed:
         raise OSError('Insufficient free disk for music chunks and the final output.')
     if engine == 'procedural':
+        filter_file_option = _filter_file_option(binary, directory=work, cancelled=cancelled)
         chunk_size = sample_rate * 16 * 60 / tempo  # four bars; globally rounded boundaries
     else:
         chunk_size = sample_rate * 25  # five seconds of context fits a thirty-second model window
@@ -418,7 +446,8 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
                 if engine == 'procedural':
                     _render_procedural_chunk(partial, first_bar=number * 4, start_frame=start,
                         frame_count=count, total_frames=frames, sample_rate=sample_rate, tempo=tempo,
-                        mood=mood, seed=seed, gain=gain, ffmpeg=binary, cancelled=cancelled)
+                        mood=mood, seed=seed, gain=gain, ffmpeg=binary,
+                        filter_file_option=filter_file_option, cancelled=cancelled)
                 else:
                     _render_musicgen_chunk(partial, frame_count=count, sample_rate=sample_rate,
                         mood=mood, tempo=tempo, seed=(seed + number) % (2**63), gain=gain, ffmpeg=binary,

@@ -106,9 +106,53 @@ def verify_application_source(wheel, source_commit):
     return verifier.verify_application_wheel(wheel, HERE.parent.parent, source_commit)
 
 
+def verify_native_launcher(launcher, evidence):
+    """Bind an explicitly supplied private PE to the reviewed launcher sources.
+
+    This is build provenance and inventory validation, not Authenticode trust or
+    proof of Windows execution. The native process probes provide that evidence.
+    """
+    launcher, evidence = regular(Path(launcher)), regular(Path(evidence))
+    if not 0 < launcher.stat().st_size <= 2 * 1024 * 1024:
+        raise ValueError("native launcher exceeds its size budget")
+    if not 0 < evidence.stat().st_size <= 256 * 1024:
+        raise ValueError("native launcher evidence exceeds its size budget")
+    raw = evidence.read_bytes()
+
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError("duplicate native launcher evidence field")
+            result[key] = value
+        return result
+
+    data = json.loads(raw.decode("utf-8-sig"), object_pairs_hook=unique)
+    common = {"launcher.c", "launcher_core.h", "launcher.rc", "launcher.manifest"}
+    zig_sources = common | {"toolchain.lock.json"}
+    msvc_sources = common | {"windows_child_probe.c", "build_msvc.ps1", "probe_pe.py"}
+    sources = data.get("source_sha256") if isinstance(data, dict) else None
+    if (type(data) is not dict or type(data.get("schema")) is not int or data["schema"] != 1
+            or data.get("release_status") != "unsigned-private-candidate"
+            or type(sources) is not dict or set(sources) not in (zig_sources, msvc_sources)):
+        raise ValueError("invalid native launcher build evidence")
+    source_root = HERE / "native-launcher"
+    if any(sources[name] != sha256(regular(source_root / name)) for name in sources):
+        raise ValueError("native launcher was built from different source bytes")
+    spec = importlib.util.spec_from_file_location("carr_native_launcher_pe", source_root / "probe_pe.py")
+    inspector = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(inspector)
+    inspected = inspector.inspect_pe(launcher)
+    recorded = data.get("pe")
+    if (type(recorded) is not dict or recorded.get("sha256") != inspected["sha256"]
+            or recorded.get("bytes") != inspected["bytes"]):
+        raise ValueError("native launcher differs from its build evidence")
+    return inspected["sha256"], raw
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, audio_dir=None):
+                 ocr_source_archive=None, audio_dir=None, launcher=None, launcher_evidence=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
@@ -212,6 +256,13 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         from carr_library.audio.runtime import verify_runtime as verify_audio_runtime, ARCHIVE_MEMBERS
         audio_dir = Path(audio_dir)
         verify_audio_runtime(audio_dir)
+    if (launcher is None) != (launcher_evidence is None):
+        raise ValueError("supply both native launcher and its build evidence")
+    if launcher is not None:
+        if python_archive is None:
+            raise ValueError("native launcher requires bundled Python")
+        launcher = Path(launcher)
+        launcher_sha256, launcher_evidence_bytes = verify_native_launcher(launcher, launcher_evidence)
 
     # Validate active Windows requirements from every wheel. Pip performs the
     # actual offline resolution again at install time; this is a build preflight.
@@ -302,8 +353,28 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             shutil.copyfile(regular(HERE / name), staged / name)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        # Ship the guides referenced by the installed README, including the
+        # exact advanced-query syntax and complete-backup behavior.
+        guides = staged / "docs"
+        guides.mkdir()
+        for name in ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
+                     "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
+                     "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+                     "READING_COPIES.md", "COMPLETE_BACKUP.md", "KEYBOARD_SETTINGS.md",
+                     "COMMAND_PALETTE.md", "OCR_LANGUAGE_MANAGER.md", "OCR_MODEL_MANAGER.md",
+                     "ACADEMIC_ACQUISITION.md", "AUDIO_STUDIO_V3.md", "AUDIO_RUNTIME.md",
+                     "ACCESSIBLE_PROGRESS.md", "CANONICAL_LANGUAGE_CATALOG.md",
+                     "DOCUMENT_FORMATS_V3.md", "V3_BIBLIOGRAPHY.md",
+                     "UPSTREAM_CSL.md", "UPSTREAM_BIBTEX.md"):
+            shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if launcher is not None:
+            destination = staged / "ResearchLibrary.exe"
+            shutil.copyfile(regular(launcher), destination)
+            if sha256(destination) != launcher_sha256:
+                raise ValueError("native launcher changed during bundle assembly")
+            (staged / "launcher-provenance.json").write_bytes(launcher_evidence_bytes)
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
@@ -312,6 +383,8 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "files": files}
         if audio_dir is not None:
             manifest["bundled_audio_runtime"] = True
+        if launcher is not None:
+            manifest["bundled_native_launcher"] = True
         if source_commit is not None:
             manifest["source_commit"] = source_commit
         (staged / "bundle-manifest.json").write_text(
@@ -343,11 +416,15 @@ def main():
                         help="Corresponding-source archive pinned by the OCR runtime manifest")
     parser.add_argument("--audio-dir", type=Path,
                         help="Verified pinned Windows FFmpeg runtime, license and provenance")
+    parser.add_argument("--launcher", type=Path,
+                        help="Private native ResearchLibrary.exe built from the reviewed sources")
+    parser.add_argument("--launcher-evidence", type=Path,
+                        help="Matching source and executable hashes from the native launcher build")
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.audio_dir)))
+                                  args.audio_dir, args.launcher, args.launcher_evidence)))
 
 
 if __name__ == "__main__":
