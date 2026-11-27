@@ -107,6 +107,8 @@ def exercise_controls(root, wx):
                     raise RuntimeError('The native saved-job selector did not open.')
                 choices = [window for window in wx.GetTopLevelWindows()
                            if isinstance(window, wx.SingleChoiceDialog)
+                           and window.GetParent() == state['dialog']
+                           and window.IsShown() and window.IsModal()
                            and window.GetTitle() == 'Assistant jobs']
                 if not choices:
                     wx.CallLater(25, select_saved)
@@ -131,6 +133,8 @@ def exercise_controls(root, wx):
                 if dialog is None:
                     dialog = next((window for window in wx.GetTopLevelWindows()
                                    if isinstance(window, wx.Dialog)
+                                   and window.GetParent() == frame
+                                   and window.IsShown() and window.IsModal()
                                    and window.GetTitle().startswith('Local assistant')), None)
                     if dialog is None:
                         wx.CallLater(25, poll)
