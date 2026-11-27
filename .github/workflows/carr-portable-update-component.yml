@@ -1,0 +1,197 @@
+name: CARR portable update lifetime component
+
+on:
+  push:
+    branches: ['carr/portable-update-handoff-qa011-2aa-20261127-*']
+    paths: ['carr-library/**', '.github/workflows/carr-portable-update-component.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-portable-update-component-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  native-lifetime:
+    name: Exact component / Windows x64 / CPython 3.11
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PYTEST_ADDOPTS: ''
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact component commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Select the required native runtime
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the existing pinned Windows dependencies and exact package
+        id: dependencies
+        timeout-minutes: 10
+        run: |
+          New-Item -ItemType Directory -Force 'ci-portable-results' | Out-Null
+          git rev-parse HEAD | Set-Content 'ci-portable-results/tested-commit.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-portable-component-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-portable-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $identity = @'
+          import hashlib, importlib, json, pathlib, platform, struct, subprocess, sys
+          assert sys.platform == 'win32' and struct.calcsize('P') == 8 and sys.version_info[:2] == (3, 11)
+          checkout = pathlib.Path.cwd().resolve()
+          modules = ('carr_library.installation_lease', 'carr_library.portable_entry',
+                     'carr_library.portable_bootstrap', 'carr_library.audio.windows_process',
+                     'carr_library.security.installation', 'carr_library.security.handoff')
+          proof = {}
+          for name in modules:
+              module = importlib.import_module(name)
+              path = pathlib.Path(module.__file__).resolve()
+              assert not path.is_relative_to(checkout), (name, path)
+              relative = pathlib.Path(*name.split('.')).with_suffix('.py')
+              source = checkout / 'src' / relative
+              assert path.read_bytes() == source.read_bytes(), name
+              proof[name] = {'origin': str(path), 'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+          result = {'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+                    'tree': subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
+                    'python': sys.version, 'windows': platform.platform(), 'modules': proof,
+                    'scope': 'synthetic local lifetime and preservation; no private release or production activation'}
+          pathlib.Path('ci-portable-results/source-identity.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result))
+          '@
+          $identity | & $python -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Locate the existing native Windows compiler
+        id: compiler
+        timeout-minutes: 2
+        run: |
+          $programFiles = [Environment]::GetEnvironmentVariable('ProgramFiles(x86)')
+          $vswhere = Join-Path $programFiles 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'Installed x64 MSVC toolchain not found.' }
+          "CARR_VSDEVCMD=$vs\Common7\Tools\VsDevCmd.bat" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Compile the exact admitted launcher without changing its build flags
+        id: launcher
+        timeout-minutes: 5
+        shell: cmd
+        run: |
+          call "%CARR_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64
+          if errorlevel 1 exit /b %errorlevel%
+          powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "packaging\native-launcher\build_msvc.ps1" -OutputDirectory "%RUNNER_TEMP%\carr-portable-component-launcher"
+          if errorlevel 1 exit /b %errorlevel%
+
+      - name: Verify the actual launcher process contract
+        id: launcher_probe
+        timeout-minutes: 3
+        run: |
+          $private = Join-Path $env:RUNNER_TEMP 'carr-portable-component-launcher'
+          & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_windows.py --launcher "$private/ResearchLibrary.exe" --child "$private/windows_child_probe.exe" --report "$private/windows-probe.json"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Copy-Item "$private/build-evidence.json" 'ci-portable-results/native-launcher-build.json'
+          Copy-Item "$private/windows-probe.json" 'ci-portable-results/native-launcher-process.json'
+          "CARR_NATIVE_LAUNCHER_DIR=$private" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Require portable transaction, rollback and original preservation suites
+        if: ${{ !cancelled() && steps.dependencies.conclusion == 'success' }}
+        timeout-minutes: 8
+        run: |
+          & $env:CARR_PYTHON -B -m pytest -q -o xfail_strict=true tests/security/test_portable_handoff.py tests/packaging/test_portable_entry.py tests/packaging/test_standard_installer.py tests/packaging/test_installer_process.py tests/security/test_installation.py tests/security/test_publication_integrity.py tests/security/test_independent_review_boundaries.py --junitxml=ci-portable-results/filesystem.xml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-portable-results/filesystem.xml').iter('testcase')); assert cases and not any(c.find(t) is not None for c in cases for t in ('failure','error','skipped')); print(json.dumps(dict(status='PASS',passed=len(cases),skipped=0,scope='actual filesystem and original retained-data boundaries')))" | Tee-Object 'ci-portable-results/filesystem.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require all actual source Windows guardian and activation barriers
+        if: ${{ !cancelled() && steps.dependencies.conclusion == 'success' && steps.launcher_probe.conclusion == 'success' }}
+        timeout-minutes: 8
+        run: |
+          & $env:CARR_PYTHON -B -m pytest -q -o xfail_strict=true tests/packaging/test_portable_entry_windows.py tests/security/test_activation_lifetime_windows.py --junitxml=ci-portable-results/native-source.xml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-portable-results/native-source.xml').iter('testcase')); assert len(cases)==20 and not any(c.find(t) is not None for c in cases for t in ('failure','error','skipped')); print(json.dumps(dict(status='PASS',passed=20,skipped=0,windows='actual Job, handles, files and exclusive leases')))" | Tee-Object 'ci-portable-results/native-source.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require the same actual barriers from the installed application
+        if: ${{ !cancelled() && steps.dependencies.conclusion == 'success' && steps.launcher_probe.conclusion == 'success' }}
+        timeout-minutes: 8
+        run: |
+          $installed = @'
+          import json, pathlib, sys, xml.etree.ElementTree as ET
+          import carr_library, carr_library.installation_lease, carr_library.portable_entry
+          import carr_library.portable_bootstrap, carr_library.audio.windows_process
+          import carr_library.security.installation, carr_library.security.handoff
+          import pytest
+          checkout = pathlib.Path.cwd().resolve()
+          modules = ('carr_library', 'carr_library.installation_lease', 'carr_library.portable_entry',
+                     'carr_library.portable_bootstrap', 'carr_library.audio.windows_process',
+                     'carr_library.security.installation', 'carr_library.security.handoff')
+          def origins():
+              result = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in modules}
+              assert all(not pathlib.Path(value).is_relative_to(checkout) for value in result.values())
+              return result
+          origins()
+          class RejectExpectedFailures:
+              seen = False
+              def pytest_runtest_logreport(self, report):
+                  if hasattr(report, 'wasxfail'):
+                      self.seen = True
+          policy = RejectExpectedFailures()
+          report = pathlib.Path('ci-portable-results/native-installed.xml')
+          status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
+                                '-o', 'xfail_strict=true', '--import-mode=importlib',
+                                '--junitxml=' + str(report),
+                                'tests/packaging/test_portable_entry_windows.py',
+                                'tests/security/test_activation_lifetime_windows.py'], plugins=[policy])
+          cases = list(ET.parse(report).iter('testcase')) if report.exists() else []
+          failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error')) for case in cases)
+          skipped = sum(case.find('skipped') is not None for case in cases)
+          ok = status == 0 and len(cases) == 20 and failed == skipped == 0 and not policy.seen
+          result = dict(status='PASS' if ok else 'FAIL', passed=len(cases)-failed-skipped,
+                        failed=failed, skipped=skipped, pytest_exit=int(status),
+                        expected_failures=policy.seen, origins=origins())
+          pathlib.Path('ci-portable-results/native-installed.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+          print(json.dumps(result), flush=True)
+          raise SystemExit(0 if ok else 1)
+          '@
+          $installed | & $env:CARR_PYTHON -I -B -X utf8 -
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve exact identity and unedited native evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: portable-update-component-${{ github.sha }}
+          path: carr-library/ci-portable-results/
+          if-no-files-found: error
+          retention-days: 7

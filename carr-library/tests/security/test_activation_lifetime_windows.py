@@ -211,3 +211,90 @@ def test_activation_owner_never_confuses_direct_exit_with_descendant_cleanup(tmp
         if unrelated.poll() is None:
             unrelated.kill()
         unrelated.wait(timeout=5)
+
+
+@pytest.mark.parametrize('finish_on_wait', [True, False], ids=['exit-in-progress', 'still-running'])
+def test_activation_job_refused_stop_waits_for_actual_process_exit(tmp_path, finish_on_wait):
+    """A failed request cannot acknowledge or preempt the actual exit wait."""
+    from types import SimpleNamespace
+    from carr_library.audio import windows_process
+
+    ready = tmp_path / 'child-holds-file'
+    held = tmp_path / 'active-installation-file'
+    code = (
+        'import pathlib,sys; '
+        f'stream=open({str(held)!r}, "wb"); stream.write(b"owned"); stream.flush(); '
+        f'pathlib.Path({str(ready)!r}).write_text("ready"); '
+        'assert sys.stdin.buffer.read(1) == b"x"; stream.close()')
+    child = subprocess.Popen([sys.executable, '-I', '-S', '-B', '-c', code],
+        stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+        close_fds=True)
+    job = windows_process._Job()
+    kernel = _kernel()
+    handle = int(child._handle)
+    actual = job.api.kernel
+    observed = {'refused': [], 'waits': []}
+
+    class Function:
+        def __init__(self, call):
+            self.call = call
+        def __call__(self, *arguments):
+            return self.call(*arguments)
+
+    def refused(value, exit_code):
+        assert value == handle
+        assert kernel.WaitForSingleObject(handle, 0) == 258
+        observed['refused'].append(value)
+        ctypes.set_last_error(5)
+        return 0
+
+    def wait(value, milliseconds):
+        if value == handle and milliseconds:
+            assert observed['refused'] and 0 < milliseconds <= 5000
+            assert kernel.WaitForSingleObject(handle, 0) == 258
+            with pytest.raises(PermissionError):
+                held.unlink()
+            if finish_on_wait:
+                child.stdin.write(b'x')
+                child.stdin.flush()
+                child.stdin.close()
+            result = kernel.WaitForSingleObject(value, milliseconds)
+            observed['waits'].append(result)
+            return result
+        return kernel.WaitForSingleObject(value, milliseconds)
+
+    class Kernel:
+        TerminateProcess = Function(refused)
+        WaitForSingleObject = Function(wait)
+        def __getattr__(self, name):
+            return getattr(actual, name)
+
+    try:
+        job.assign(handle)
+        _ready(ready, child)
+        job.api = SimpleNamespace(kernel=Kernel(), error=job.api.error)
+        if finish_on_wait:
+            job.stop_and_wait(handle)
+            assert observed == {'refused': [handle], 'waits': [0]}
+            assert kernel.WaitForSingleObject(handle, 0) == 0
+            assert child.wait(timeout=5) == 0
+            held.unlink()
+        else:
+            started = time.monotonic()
+            with pytest.raises(TimeoutError, match='remains unconfirmed.*WinError 5'):
+                job.stop_and_wait(handle)
+            assert time.monotonic() - started < 8
+            assert observed == {'refused': [handle], 'waits': [258]}
+            assert kernel.WaitForSingleObject(handle, 0) == 258
+            with pytest.raises(PermissionError):
+                held.unlink()
+    finally:
+        job.close()
+        if kernel.WaitForSingleObject(handle, 0) == 258:
+            kernel.TerminateProcess(handle, 99)
+        assert kernel.WaitForSingleObject(handle, 10000) == 0
+        if child.stdin and not child.stdin.closed:
+            child.stdin.close()
+        child.wait(timeout=5)
+        child.stderr.close()
+        child._handle.Close()

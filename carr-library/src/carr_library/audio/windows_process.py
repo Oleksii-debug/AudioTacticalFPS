@@ -111,6 +111,7 @@ class _Job:
                         ('identities', ctypes.c_size_t * 256)]
 
         handles, owned = {}, []
+        stop_errors = {}
         deadline = time.monotonic() + 5
 
         def members():
@@ -158,12 +159,16 @@ class _Job:
                     handles[identity] = value
                 for value in handles.values():
                     if status(value) == 258 and not kernel.TerminateProcess(value, 1):
-                        if status(value) != 0:
-                            raise self.api.error()
+                        # A concurrent exit may refuse another stop request
+                        # before its process object signals. Only the bounded
+                        # exact-handle wait below can acknowledge completion.
+                        stop_errors[value] = ctypes.get_last_error()
                 for value in handles.values():
                     remaining = deadline - time.monotonic()
                     if remaining <= 0 or status(value, max(1, int(remaining * 1000))) != 0:
-                        raise TimeoutError('Owned process termination remains unconfirmed.')
+                        detail = (' (WinError ' + str(stop_errors[value]) + ')'
+                                  if value in stop_errors else '')
+                        raise TimeoutError('Owned process termination remains unconfirmed.' + detail)
                 if all(identity in handles and status(handles[identity]) == 0
                        for identity in members()):
                     return
