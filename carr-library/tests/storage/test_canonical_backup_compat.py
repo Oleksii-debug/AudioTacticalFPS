@@ -123,7 +123,21 @@ def test_flat_v4_restores_exact_reader_drafts_preferences_and_pending_source(lib
     before_manifest = (backup / 'manifest.json').read_bytes()
     assert manifest['schema_version'] == CURRENT_SCHEMA_VERSION == 6
     assert type(manifest['sidecars']) is list and not (backup / 'sidecars').exists()
-    assert len([r for r in manifest['pending']['files'] if r['filename'].startswith('originals/')]) == 1
+    pending_originals = [r for r in manifest['pending']['files'] if r['filename'].startswith('originals/')]
+    pending_digest = sha256(source_bytes).hexdigest()
+    # The canonical journal retains both the completed text source and the
+    # unpublished batch source. Bind every exact file instead of assuming only
+    # the not-yet-registered request has an original in that producer.
+    expected_originals = {
+        'originals/' + location.asset_sha256 + '.txt': app.assets.resolve(location.asset_sha256).read_bytes(),
+        'originals/' + pending_digest + '.txt': source_bytes,
+    }
+    assert len(pending_originals) == 2
+    assert {r['filename']: (r['size_bytes'], r['sha256']) for r in pending_originals} == {
+        name: (len(payload), sha256(payload).hexdigest()) for name, payload in expected_originals.items()
+    }
+    for name, payload in expected_originals.items():
+        assert (backup / 'pending' / name).read_bytes() == payload
     pending_source.unlink()
     restored_root = restore_backup(backup, tmp_path / 'restored', checksum)
     restored = LibraryApp(restored_root)

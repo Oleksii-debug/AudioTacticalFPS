@@ -62,7 +62,7 @@ def run_native(source, report, checkpoint):
     def installed_origins():
         if source is None:
             from importlib.metadata import distribution
-            package = Path(distribution('carr-library').locate_file('carr_library')).resolve(strict=True)
+            package = Path(distribution('universal-research-library').locate_file('carr_library')).resolve(strict=True)
             check('reader and keyboard modules load from the installed distribution',
                   all(Path(origin).is_relative_to(package) for origin in origins.values()))
 
@@ -150,7 +150,7 @@ def run_native(source, report, checkpoint):
 
         def configure_next_with_native_controls():
             # The command enters via actual Ctrl+Alt+K. The answers are entered
-            # in real SingleChoiceDialog/TextEntryDialog controls; Return is
+            # in the production SingleChoiceDialog and field-dialog controls; Return is
             # delivered through the OS, not a constructed wx command event.
             state = {'active': True, 'step': 'choice', 'stages': [], 'error': None}
             pending = []
@@ -184,8 +184,15 @@ def run_native(source, report, checkpoint):
                             if not simulator.Char(wx.WXK_RETURN):
                                 raise RuntimeError('Native selection confirmation was unavailable.')
                             break
-                        if state['step'] == 'key' and isinstance(window, wx.TextEntryDialog):
-                            window.SetValue('Ctrl+Shift+J')
+                        if state['step'] == 'key' and window.GetTitle() == 'Change keyboard shortcut':
+                            controls = list(window.GetChildren())
+                            for control in tuple(controls):
+                                controls.extend(control.GetChildren())
+                            fields = [control for control in controls if isinstance(control, wx.TextCtrl)]
+                            if len(fields) != 1:
+                                raise AssertionError('The production shortcut field dialog was ambiguous.')
+                            fields[0].SetValue('Ctrl+Shift+J')
+                            fields[0].SetFocus()
                             state['stages'].append('native key entry')
                             state['step'] = 'done'
                             if not simulator.Char(wx.WXK_RETURN):

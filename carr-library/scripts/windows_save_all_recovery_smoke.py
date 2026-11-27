@@ -56,7 +56,7 @@ def run_native(source=None):
 
     def check(name, condition):
         if not condition:
-            raise AssertionError(name)
+            raise AssertionError(name + (': ' + '; '.join(errors) if errors else ''))
         checks.append(name)
         print('PASS:', name, flush=True)
 
@@ -138,7 +138,7 @@ def run_native(source=None):
             yield child
             yield from descendants(child)
 
-    def button(window, label):
+    def find_button(window, label):
         return next(child for child in descendants(window)
                     if isinstance(child, wx.Button) and child.GetLabel().replace('&', '') == label)
 
@@ -251,12 +251,12 @@ def run_native(source=None):
             def exercise_studio():
                 try:
                     check('actual integrated Studio exposes Save All and cancellation',
-                          button(studio.dialog, 'Save all open drafts').IsEnabled()
-                          and button(studio.dialog, 'Cancel Save All').IsEnabled())
+                          find_button(studio.dialog, 'Save all open drafts').IsEnabled()
+                          and find_button(studio.dialog, 'Cancel Save All').IsEnabled())
                     restored.note.SetValue('Native Save All first note snapshot')
                     studio.script.SetValue('Narrator: Native Studio project committed by Save All.')
                     frame.hold_completions = True
-                    press(button(studio.dialog, 'Save all open drafts'))
+                    press(find_button(studio.dialog, 'Save all open drafts'))
                     check('Save All waits for actual note completion on its native owner',
                           pump(lambda: bool(frame.pending_ui)) and frame._save_coordinator.busy)
                     check('real note transaction committed before its deferred UI acknowledgement',
@@ -281,10 +281,10 @@ def run_native(source=None):
                     studio.script.SetValue('Narrator: This later Studio draft must await another Save.')
                     prior_revision = controller.project.revision
                     frame.hold_completions = True
-                    press(button(studio.dialog, 'Save all open drafts'))
+                    press(find_button(studio.dialog, 'Save all open drafts'))
                     check('second request reaches a committed note before the next participant',
                           pump(lambda: bool(frame.pending_ui)) and frame._save_coordinator.busy)
-                    press(button(studio.dialog, 'Cancel Save All'))
+                    press(find_button(studio.dialog, 'Cancel Save All'))
                     check('actual modal Cancel signals the shared request', frame.cancel_event.is_set())
                     frame.release_completions()
                     check('cancelled Save All releases its request',
@@ -293,14 +293,15 @@ def run_native(source=None):
                           library.evidence(workspace, topic)[0].note == 'Newer native note remains editable'
                           and controller.store.load(controller.project.id).revision == prior_revision
                           and studio.unsaved() and 'cancelled' in studio.status.GetValue())
-                    press(button(studio.dialog, 'Save project'))
+                    press(find_button(studio.dialog, 'Save project'))
                     check('a separate explicit native Save commits the remaining Studio draft',
                           pump(lambda: not studio.unsaved())
                           and controller.store.load(controller.project.id).script ==
                               'Narrator: This later Studio draft must await another Save.')
-                    press(button(studio.dialog, 'Close'))
+                    press(find_button(studio.dialog, 'Close'))
                 except Exception as exc:
                     errors.append('Studio Save All: ' + repr(exc))
+                    traceback.print_exc()
                     if studio.dialog.IsModal():
                         studio.dialog.EndModal(wx.ID_CANCEL)
 
@@ -323,9 +324,9 @@ def run_native(source=None):
                         if isinstance(child, wx.TextCtrl)
                         and child.GetName() == 'Reading copy (editable; Ctrl+S saves)')
                     check('reader voice discovery finishes before its explicit Save All',
-                          pump(lambda: button(dialog, 'Reload voices').IsEnabled(), timeout=20))
+                          pump(lambda: find_button(dialog, 'Reload voices').IsEnabled(), timeout=20))
                     editor.SetValue('Native reader edit committed by Save All.')
-                    press(button(dialog, 'Save all open drafts'))
+                    press(find_button(dialog, 'Save all open drafts'))
                     check('native reader participant writes actual reading recovery state',
                           pump(lambda: reader_store.path.exists() and
                                reader_store.load().document.text == 'Native reader edit committed by Save All.'))
@@ -335,9 +336,10 @@ def run_native(source=None):
                     check('reader shares the same owner coordinator',
                           any(key.startswith('reading.') for key in frame._save_coordinator.participants)
                           and not frame._save_coordinator.busy)
-                    press(button(dialog, 'Close'))
+                    press(find_button(dialog, 'Close'))
                 except Exception as exc:
                     errors.append('Reader Save All: ' + repr(exc))
+                    traceback.print_exc()
                     if dialog is not None and dialog.IsModal():
                         dialog.EndModal(wx.ID_CANCEL)
 

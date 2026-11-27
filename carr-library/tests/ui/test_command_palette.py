@@ -324,7 +324,14 @@ def test_installer_registers_palette_in_the_same_shortcut_inventory(tmp_path, wx
     assert palette.item.GetItemLabel().endswith('\tCtrl+Shift+P')
     assert keyboard is frame.keyboard_actions and install_productivity_actions(frame) is keyboard
     assert install_command_palette(frame) is installed is palette.item
-    assert sum(command.shortcut == 'Ctrl+Shift+P' for command in keyboard.commands) == 1
+    shared = [command for command in keyboard.commands if command.shortcut == 'Ctrl+Shift+P']
+    assert {(command.context, command.identity) for command in shared} == {
+        ('main', PALETTE_IDENTITY), ('reader', 'reader.commands')}
+    # The shared preference inventory does not place Reader actions in the
+    # main native palette: each context owns exactly one effective binding.
+    assert len(shared) == 2
+    assert all(choice.command.context == 'main'
+               for choice in CommandPalette(keyboard).matching(''))
 
 
 def test_palette_default_cannot_silently_reassign_an_existing_shortcut(tmp_path, wx):

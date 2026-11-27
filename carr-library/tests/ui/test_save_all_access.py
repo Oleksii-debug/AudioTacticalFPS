@@ -107,6 +107,8 @@ def callbacks(module, outer_name, names, factory, environment):
                      if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
                      and getattr(node.value.func, 'id', None) == 'INSERT')
     function.body[insertion:insertion + 1] = [found[name] for name in names]
+    environment.setdefault('__name__', module.__name__)
+    environment.setdefault('__package__', module.__package__)
     exec(compile(ast.fix_missing_locations(wrapper), str(source), 'exec'), environment)
     return environment['make']
 
@@ -318,6 +320,7 @@ def make(frame):
         show.assert_not_called()
         assert 'Could not recover' in frame.report.call_args.args[0]
     else:
+        assert show.call_count == 1, frame.report.call_args
         assert 'Earlier one-slot draft' in show.call_args.args[2]
         assert app.evidence(workspace, topic)[0].note == 'Committed note'
 
