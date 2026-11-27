@@ -252,20 +252,30 @@ def show_translation(frame):
         try:
             check_library()
             p = profile()
-            result = service.preview(p, selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(),
-                                     rate_per_million=rate.GetValue().strip() or None, glossary=glossary.GetValue().strip() or None,
-                                     **source_arguments())
             total = money(budget.GetValue())
-            if result['estimated_cost'] is not None and money(result['estimated_cost']) > total:
-                raise ValueError('The entered price estimate exceeds the chosen total budget.')
-            reviewed = (p.id, selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(total),
-                        glossary.GetValue().strip() or None, rate.GetValue().strip() or None,
-                        json.dumps(source_arguments(), sort_keys=True))
-            current_job = None
-            report(json.dumps(result, ensure_ascii=False, indent=2) +
-                   '\n\nNo request sent. Translate asks permission for this exact selected text and total budget. '
-                   'The budget is a local reservation bound, not a provider-enforced billing guarantee.')
-            controls()
+            values = (p.id, selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(total),
+                      glossary.GetValue().strip() or None, rate.GetValue().strip() or None,
+                      json.dumps(source_arguments(), sort_keys=True))
+            context = json.loads(values[7])
+            reviewed, current_job = None, None
+            def review():
+                result = service.preview(p, values[1], values[2], values[3], rate_per_million=values[6],
+                                         glossary=values[5], cancelled=stopped, **context)
+                if result['estimated_cost'] is not None and money(result['estimated_cost']) > total:
+                    raise ValueError('The entered price estimate exceeds the chosen total budget.')
+                return result
+            def complete(result):
+                nonlocal reviewed
+                reviewed = values
+                report(json.dumps(result, ensure_ascii=False, indent=2) +
+                       '\n\nNo request sent. Translate asks permission for this exact selected text and total budget. '
+                       'The budget is a local reservation bound, not a provider-enforced billing guarantee.')
+                controls()
+            if context:
+                begin('Reviewing exact translation source', review, complete)
+            else:
+                cancel.clear()
+                complete(review())
         except Exception as exc:
             reviewed = None
             report(str(exc))
@@ -281,6 +291,7 @@ def show_translation(frame):
                           json.dumps(source_arguments(), sort_keys=True))
                 if reviewed != values:
                     raise ValueError('Preview this exact text, languages and budget before approving translation.')
+                context = json.loads(values[7])
                 if wx.MessageBox(f'Send exactly {len(values[1])} selected characters to Google Translation? '
                     f'Approved total reservation: {values[4]} USD. Translation is a derived reading copy. '
                     'The provider may charge your account under its terms.\n' + p.endpoint + '\nModel: ' + p.model +
@@ -289,11 +300,29 @@ def show_translation(frame):
                     return
                 check_library()
                 authorization, bound = translation_approval(p, values[1], values[2], values[3], values[4],
-                                                           glossary=values[5], **source_arguments())
-                current_job = service.submit(p, values[1], values[2], values[3],
-                    authorization=authorization, per_call_cost=bound, glossary=values[5], **source_arguments())
+                                                           glossary=values[5], **context)
+                def submit():
+                    return service.submit(p, values[1], values[2], values[3], authorization=authorization,
+                        per_call_cost=bound, glossary=values[5], cancelled=stopped, **context)
+                def submitted(identity):
+                    nonlocal current_job
+                    current_job = identity
+                    if stopped():
+                        report('The approved job was saved. Resume explicitly to start translation after this pause.')
+                    else:
+                        resume(identity)
+                if context:
+                    begin('Preparing approved source translation', submit, submitted)
+                    return
+                cancel.clear()
+                current_job = submit()
+            resume(current_job)
+        except Exception as exc:
+            report(str(exc))
+
+    def resume(identity):
+        try:
             service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
-            identity = current_job
             def translate():
                 progress = getattr(frame, 'operation_progress', None)
                 token = progress.event.token if progress is not None else None

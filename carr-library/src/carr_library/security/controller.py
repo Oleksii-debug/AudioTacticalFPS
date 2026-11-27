@@ -27,7 +27,8 @@ class GrantReview:
 
 class TrustController:
     def __init__(self, *, entitlement=None, refresh=None, updates=None, target=None, terms=None,
-                 context=None, automatic_refresh=False):
+                 context=None, automatic_refresh=False, automatic_updates=False,
+                 update_repository=None, update_interval=3600.0, update_timeout=20.0):
         if (entitlement is not None or updates is not None) and type(context) is not IntegrationContext:
             raise TrustError('Configured clients require an explicit installation context.')
         if type(automatic_refresh) is not bool or (automatic_refresh and refresh is None):
@@ -36,6 +37,8 @@ class TrustController:
             raise TrustError('Renewal must use this exact entitlement store.')
         if updates is not None and (context.product_id, context.channel) != (updates.policy.product, updates.policy.channel):
             raise TrustError('The update client belongs to another product or channel.')
+        if type(automatic_updates) is not bool or (automatic_updates and update_repository is None):
+            raise TrustError('Automatic update checks require an explicitly selected signed repository.')
         self.context, self.automatic_refresh = context, automatic_refresh
         self.entitlement, self.refresh, self.updates, self.target = entitlement, refresh, updates, target
         self.entitlement_provider = ClientEntitlementProvider(context, entitlement) if entitlement is not None else None
@@ -49,6 +52,11 @@ class TrustController:
         self.terms = MappingProxyType(approved_terms)
         if (updates is None) != (target is None):
             raise TrustError('Supply both the trusted update client and its target.')
+        self.update_poll = None
+        if update_repository is not None:
+            from .polling import IdleUpdatePollHost
+            self.update_poll = IdleUpdatePollHost(self, update_repository, enabled=automatic_updates,
+                                                  interval=update_interval, timeout=update_timeout)
 
     def status_text(self):
         status = self.entitlement.status() if self.entitlement is not None else private_status()
@@ -61,6 +69,8 @@ class TrustController:
             lines.append(self._notice)
         lines.append('Signed offline update checks are available.' if self.updates is not None
                      else 'No signed update source has been configured for this installation.')
+        if self.update_poll is not None:
+            lines.append(self.update_poll.message)
         lines.append('Updates and renewal never remove access to reading, export, backups, recovery or prior outputs.')
         return '\n\n'.join(lines)
 

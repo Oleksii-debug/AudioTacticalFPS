@@ -69,7 +69,8 @@ def bundle(tmp_path, monkeypatch):
     (packaging / 'wheel-notices' / 'SOURCES.json').write_text('{"synthetic-current-notices":true}\n')
     (project / 'docs').mkdir()
     for name in ('RUNNING.md', 'START_V3_UK.txt', 'TRUSTED_CLIENT.md', 'STUDIO_CLIP_EDITING.md',
-                 'MICROPHONE_RECORDING.md', 'STUDIO_EPUB_PUBLISHING.md', 'STUDIO_DAISY_PUBLISHING.md', 'translation_workstation.md'):
+                 'MICROPHONE_RECORDING.md', 'STUDIO_EPUB_PUBLISHING.md', 'STUDIO_DAISY_PUBLISHING.md', 'EPUB_RECORDED_READING.md',
+                 'PRONUNCIATION_REVIEW.md', 'AUDIOBOOK_CHAPTERS.md', 'translation_workstation.md'):
         (project / 'docs' / name).write_text('Synthetic current installation guidance.\n')
     for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
         (packaging / name).write_text('raise AssertionError("PACKAGING MUST NOT EXECUTE PAYLOAD")\n')
@@ -168,7 +169,8 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
         assert (bundle.output / name).read_bytes() == raw
     assert not (bundle.output / 'unlisted-private.txt').exists()
     for name in ('TRUSTED_CLIENT.md', 'STUDIO_CLIP_EDITING.md', 'MICROPHONE_RECORDING.md',
-                 'STUDIO_EPUB_PUBLISHING.md', 'STUDIO_DAISY_PUBLISHING.md', 'translation_workstation.md'):
+                 'STUDIO_EPUB_PUBLISHING.md', 'STUDIO_DAISY_PUBLISHING.md', 'EPUB_RECORDED_READING.md',
+                 'PRONUNCIATION_REVIEW.md', 'AUDIOBOOK_CHAPTERS.md', 'translation_workstation.md'):
         guide = bundle.output / 'docs' / name
         assert guide.read_bytes() == (bundle.packaging.parent / 'docs' / name).read_bytes()
         assert manifest['files']['docs/' + name] == sha256(guide.read_bytes()).hexdigest()

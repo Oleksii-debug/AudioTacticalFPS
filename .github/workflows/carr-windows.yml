@@ -272,7 +272,7 @@ jobs:
       - name: Exercise installed Studio, proposal and translation controls
         timeout-minutes: 8
         run: |
-          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py')) {
+          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py')) {
             & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-results ('native-' + $probe + '.txt'))
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
@@ -517,7 +517,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path tests/ui/native_trust_status_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-trusted-client-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py')) {
+          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py')) {
             & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path (Join-Path scripts $probe)).Path 2>&1 | Tee-Object (Join-Path ci-results ('full-bundle-' + $probe + '.txt'))
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
@@ -571,6 +571,13 @@ jobs:
               'tests/studio/test_publishing_handlers.py',
               'tests/studio/test_daisy_publishing.py',
               'tests/studio/test_daisy_boundaries.py',
+              'tests/reader/test_ebook_audio.py',
+              'tests/speech/test_pronunciation_review.py',
+              'tests/speech/test_pronunciation_handlers.py',
+              'tests/speech/test_pronunciation_reader_hook.py',
+              'tests/studio/test_pronunciation.py',
+              'tests/studio/test_pronunciation_dialog.py',
+              'tests/studio/test_pronunciation_render.py',
               'tests/assistant/test_translation_source.py',
               'tests/packaging/test_installer_process.py',
               'tests/packaging/test_standard_installer.py',
@@ -578,6 +585,8 @@ jobs:
               'tests/assistant/test_local_planning.py',
               'tests/assistant/test_planning_handlers.py',
               'tests/assistant/test_translation_v3.py',
+              'tests/audio/test_audiobook.py',
+              'tests/studio/test_audiobook_publication.py',
               'tests/storage/test_state_replacement.py',
               'tests/security/test_anchor_locking.py',
               'tests/security/test_canonical_boundary.py',
@@ -589,6 +598,7 @@ jobs:
               'tests/security/test_publication_integrity.py',
               'tests/security/test_refresh.py',
               'tests/security/test_updates.py',
+              'tests/security/test_update_polling.py',
               'tests/ui/test_academic_tools.py',
               'tests/e2e/test_epub_library.py',
               'tests/e2e/test_epub_reading_desk.py',
@@ -780,6 +790,13 @@ jobs:
             'tests/studio/test_publishing_handlers.py',
             'tests/studio/test_daisy_publishing.py',
             'tests/studio/test_daisy_boundaries.py',
+            'tests/reader/test_ebook_audio.py',
+            'tests/speech/test_pronunciation_review.py',
+            'tests/speech/test_pronunciation_handlers.py',
+            'tests/speech/test_pronunciation_reader_hook.py',
+            'tests/studio/test_pronunciation.py',
+            'tests/studio/test_pronunciation_dialog.py',
+            'tests/studio/test_pronunciation_render.py',
             'tests/assistant/test_translation_source.py',
             'tests/packaging/test_installer_process.py',
             'tests/packaging/test_standard_installer.py',
@@ -787,6 +804,8 @@ jobs:
             'tests/assistant/test_local_planning.py',
             'tests/assistant/test_planning_handlers.py',
             'tests/assistant/test_translation_v3.py',
+            'tests/audio/test_audiobook.py',
+            'tests/studio/test_audiobook_publication.py',
             'tests/storage/test_state_replacement.py',
             'tests/security/test_anchor_locking.py',
             'tests/security/test_canonical_boundary.py',
@@ -798,6 +817,7 @@ jobs:
             'tests/security/test_publication_integrity.py',
             'tests/security/test_refresh.py',
             'tests/security/test_updates.py',
+            'tests/security/test_update_polling.py',
             'tests/ui/test_command_palette.py',
             'tests/ui/test_operation_progress.py',
             'tests/ui/test_progress_numeric_limits.py',

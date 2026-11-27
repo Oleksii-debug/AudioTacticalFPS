@@ -147,6 +147,8 @@ class TranslationService:
         except InterruptedError:
             raise
         except (ValueError, OSError):
+            if cancelled():
+                raise InterruptedError('Translation source verification cancelled.') from None
             raise PermissionError('The reviewed translation source or scope changed. Reopen and review it before continuing.') from None
 
     def _languages_path(self, profile):
@@ -183,13 +185,15 @@ class TranslationService:
         return rows
 
     def preview(self, profile, value, source, target, *, rate_per_million=None, glossary=None,
-                source_anchor=None, source_metadata=None, source_topic=None):
+                source_anchor=None, source_metadata=None, source_topic=None, cancelled=lambda: False):
+        if cancelled():
+            raise InterruptedError('Translation review cancelled.')
         if profile.adapter not in ('google-translation-v2', 'google-translation-v3') or not profile.enabled:
             raise ValueError('Choose an enabled Google Basic v2 or Advanced v3 NMT profile.')
         parts = split_text(value)
         context = source_context(value, source_anchor, source_metadata, source_topic)
         if context is not None:
-            self._validate_source({'source_text': value, **context})
+            self._validate_source({'source_text': value, **context}, cancelled=cancelled)
         first = next(part for part in parts if part.strip())
         selected = translation_payload(first, source, target, glossary)
         _request(profile, 'translation.text', selected)
@@ -205,6 +209,8 @@ class TranslationService:
         estimate = None
         if rate_per_million not in (None, ''):
             estimate = str((money(rate_per_million) * len(value) / Decimal(1_000_000)).quantize(Decimal('0.000001'), rounding=ROUND_UP))
+        if cancelled():
+            raise InterruptedError('Translation review cancelled.')
         return {'source_sha256': _hash(value), 'characters': len(value),
             'calls': sum(bool(part.strip()) for part in parts), 'source': source, 'target': target,
             'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
@@ -214,9 +220,10 @@ class TranslationService:
             **(context or {})}
 
     def submit(self, profile, value, source, target, *, title='Translation', authorization, per_call_cost, glossary=None,
-               source_anchor=None, source_metadata=None, source_topic=None):
+               source_anchor=None, source_metadata=None, source_topic=None, cancelled=lambda: False):
         context = source_context(value, source_anchor, source_metadata, source_topic)
-        preview = self.preview(profile, value, source, target, glossary=glossary, **(context or {}))
+        preview = self.preview(profile, value, source, target, glossary=glossary,
+                               cancelled=cancelled, **(context or {}))
         parts = split_text(value)
         _, cost = _approved_requests(profile, parts, source, target, authorization, per_call_cost, glossary,
                                      **(context or {}))
@@ -227,6 +234,8 @@ class TranslationService:
             'source_text': value, 'source_sha256': preview['source_sha256'], 'source_language': source,
             'target_language': target, 'chunks': list(parts), 'receipts': [], 'glossary': glossary,
             'authorization': asdict(authorization), 'per_call_cost': str(cost), **(context or {})}
+        if cancelled():
+            raise InterruptedError('Translation submission cancelled.')
         self.jobs.save(job)
         return identity
 
