@@ -158,7 +158,7 @@ jobs:
           $report = Get-Content converter-ci-results/legacy-converter-gate.json -Raw | ConvertFrom-Json
           $expected = if ($env:CARR_CONVERTER_FAMILY -eq 'calibre') { 9 } else { 4 }
           if ($report.status -ne 'PASS' -or $report.native_source_cases -ne $expected -or $report.native_installed_cases -ne $expected -or
-              $report.portable_source_cases -ne 187 -or $report.portable_installed_cases -ne 187 -or
+              $report.portable_source_cases -ne 221 -or $report.portable_installed_cases -ne 221 -or
               $report.source_commit -ne $env:CARR_CONVERTER_COMMIT -or $report.source_tree -ne $env:CARR_CONVERTER_TREE -or
               -not $report.installed_identity.isolated) { throw 'Actual legacy fixture qualification is incomplete.' }
           & git diff --exit-code HEAD --
@@ -186,3 +186,73 @@ jobs:
             carr-library/converter-ci-results
           if-no-files-found: error
           retention-days: 14
+
+  chm-portable:
+    name: Linux / focused CHM recovery source boundaries
+    if: contains(github.ref_name, 'chm-paragraph')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install exact portable parser and test dependencies
+        run: python -m pip install --only-binary=:all: pytest==9.0.2 lxml==6.1.3 defusedxml==0.7.1 platformdirs==4.10.0
+      - name: Require all 134 current legacy and recovery source cases
+        timeout-minutes: 8
+        run: |
+          python -I -B -X utf8 - <<'PY'
+          from hashlib import sha256
+          import json
+          import os
+          from pathlib import Path
+          import runpy
+          import subprocess
+          root = Path('.').resolve(strict=True)
+          output = root / 'chm-portable-results'
+          output.mkdir()
+          head = subprocess.run(['git', 'rev-parse', 'HEAD'], check=True, capture_output=True, text=True).stdout.strip()
+          if head != os.environ['GITHUB_SHA']:
+              raise ValueError('Focused CHM source head differs from its frozen workflow.')
+          paths = subprocess.run(['git', 'ls-files', '-z', '--', '*.py'], check=True, capture_output=True).stdout.decode().split('\0')
+          def inventory():
+              return {name: sha256((root / name).read_bytes()).hexdigest() for name in paths if name}
+          before = inventory()
+          (output / 'before-source.json').write_text(json.dumps(before, sort_keys=True), encoding='utf-8')
+          plan = json.loads((root / 'scripts/legacy_conversion_oracles.json').read_text(encoding='utf-8'))
+          expected = {name: plan['portable'][name] for name in (
+              'tests.conversion.test_legacy_adapters', 'tests.conversion.test_chm_html_recovery')}
+          if sum(sum(row.values()) for row in expected.values()) != 134:
+              raise ValueError('Focused CHM source population changed.')
+          base = runpy.run_path(str(root / 'scripts/conversion_acceptance.py'))
+          report = {'schema': 1, 'status': 'NOT_RUN', 'source_commit': head,
+                    'scope': 'Linux source boundary tests only; no installed/native converter qualification'}
+          try:
+              report['source'] = base['run_population']('source', root, output, expected)
+              if inventory() != before:
+                  raise ValueError('Tracked Python source changed during focused CHM tests.')
+              report['status'] = 'PASS'
+          finally:
+              (output / 'focused-gate.json').write_text(json.dumps(report, sort_keys=True, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'status': report['status'], 'source_commit': head, 'cases': report['source']['cases']}))
+          PY
+      - name: Retain raw focused source evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-chm-source-${{ github.sha }}
+          path: carr-library/chm-portable-results/
+          if-no-files-found: error

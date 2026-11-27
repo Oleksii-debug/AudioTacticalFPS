@@ -102,10 +102,10 @@ https://djvu.sourceforge.net/doc/man/djvutxt.html
 
 .github/workflows/carr-legacy-converters.yml has independent Windows jobs for
 calibre, DjVuLibre and CHM. Each builds an exact source-bound wheel, verifies all
-installed Python bytes and runs under -I. The current oracle requires 187
+installed Python bytes and runs under -I. The current oracle requires 221
 portable boundary cases from both source and installed wheel: all 179 exercised
-by the recorded calibre run plus six explicit-selection regressions and two
-strict-version rejection cases. Both DjVu and calibre native fixtures use the
+by the recorded calibre run, six explicit-selection regressions, two
+strict-version rejection cases and 34 bounded CHM recovery cases. Both DjVu and calibre native fixtures use the
 ordinary service admission path with legacy_preview=False. CHM fixtures retain
 explicit preview admission until their separate qualification succeeds.
 
@@ -190,3 +190,44 @@ cases passed at779967 in both source and installed fixture-preview mode. The
 ordinary-admission successor must also pass all nine at its own frozen head.
 See evidence/calibre-native-preview-independent-read-20261127.json for exact
 artifact, raw JUnit, installed-origin and publisher identities.
+
+## Complete CHM publisher census and bounded HTML recovery
+
+The fixed publisher-fixture diagnostic at20be86 enumerated all70 HTML members
+and completed their inert reading checks. Eleven members failed strict nesting;
+their raw member hashes, exact offending token classes and source positions are
+retained in evidence/chm-publisher-census-recovery-20261127.json. The observed
+run remains FAIL (three source native cases passed and one failed; installed
+native cases did not run). The diagnostic did not execute document content.
+
+For the four already recognized legacy PUBLIC HTML declarations only, recovery
+now reuses the installed lxml HTML parser after the existing inert reader has
+admitted the complete original token stream. The admitted additions are the
+observed unmatched anchor/bold/list/definition/header/IL end tokens and an
+otherwise empty trailing UL. An unknown orphan structural close, malformed
+closing-token attributes, unsafe implicit closure, ambiguous attributes,
+unsupported declaration or invalid character remains an error. The previous
+empty-paragraph normalization and general HTML reader are unchanged.
+
+The lxml parser receives bounded UTF-8 bytes in memory with no network and a
+resolver that refuses all external resources; no XML/DTD loading, URL parsing,
+browser, XInclude or script execution is introduced. Source, tree node/depth,
+token, visible-text, output-byte and absolute deadline bounds apply. Recovered
+bytes are passed through the existing strict inert reader again. The ordered
+visible-word fingerprint must equal the original admitted preview, so recovery
+cannot silently discard, reorder, add or expose visible content. Whitespace
+and layout remain unverified. Both original member SHA256 and parsed-member
+SHA256 remain in the existing source locator.
+
+The additional34 cases cover every observed malformed shape, declared legacy
+charsets and numeric Unicode, active/hidden suppression, pre-recovery refusal
+and budgets, serialized expansion, post-recovery text loss/reordering/exposure
+and complete worker provenance. The focused Linux source-only lane requires
+these34 plus all100 existing legacy adapter cases; it does not qualify a native
+Windows converter. The authoritative Windows lane still requires all221
+portable cases per mode and all four actual CHM native cases per mode. CHM
+remains unqualified until that frozen candidate succeeds.
+
+Primary parser API and its explicit recovery/data-loss caveat:
+https://lxml.de/parsing.html
+https://lxml.de/apidoc/lxml.etree.html

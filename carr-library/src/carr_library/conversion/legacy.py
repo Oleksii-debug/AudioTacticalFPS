@@ -312,14 +312,96 @@ _LEGACY_HTML_DOCTYPES = {
 }
 
 
-def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
-    """Normalize only a legacy orphan paragraph end with the existing parser.
+def _chm_recovered_html(text, *, encoding, before, max_chars, deadline, notices):
+    """Recover the admitted legacy end-token classes, then check inert text."""
+    from lxml import etree
+    from ..extract.document_formats_text import (
+        _Budget, _HTMLPreview, _decode, _html_encoding, _CHUNK, _MAX_TOKEN, _MAX_DEPTH)
 
-    HTML's in-body rule treats an end-p token without an open p as an empty
-    paragraph. Preserve that boundary by inserting its missing start token.
-    Every other token, nesting rule, hidden/active-content rule and budget is
-    still enforced by the current non-executing preview reader.
-    https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
+    class NoExternal(etree.Resolver):
+        def resolve(self, url, public_id, context):
+            raise ConversionError('CHM HTML recovery cannot resolve an external resource.')
+
+    budget = _Budget(max_chars, None, deadline)
+    budget.check()
+    encoded = text.encode('utf-8', 'strict')
+    if len(encoded) > MAX_MEMBER_BYTES:
+        raise ConversionError('CHM HTML recovery exceeds its input byte budget.')
+    # This is a bounded in-memory HTML parse, never a filename/URL, XML/DTD
+    # parser, browser or XInclude operation. The original token pass has
+    # already rejected unsupported declarations, attributes and controls.
+    parser = etree.HTMLParser(encoding='utf-8', recover=True, no_network=True,
+        huge_tree=False, remove_blank_text=False, remove_comments=False,
+        remove_pis=False, collect_ids=False)
+    parser.resolvers.add(NoExternal())
+    for offset in range(0, len(encoded), _CHUNK):
+        budget.check()
+        parser.feed(encoded[offset:offset + _CHUNK])
+    root = parser.close()
+    budget.check()
+    if root is None:
+        raise ConversionError('CHM HTML recovery returned no complete document.')
+    depth = 0
+    for event, element in etree.iterwalk(root, events=('start', 'end', 'comment', 'pi')):
+        budget.node()
+        if event == 'start':
+            depth += 1
+            if depth > _MAX_DEPTH:
+                raise ValueError('HTML nesting budget exceeded.')
+        elif event == 'end':
+            depth -= 1
+    # Numeric references preserve non-ASCII characters without lying about a
+    # previously admitted legacy charset. The declared PUBLIC HTML prefix is
+    # ASCII-compatible, so UTF-16/32 documents never enter this recovery path.
+    serialized = etree.tostring(root, method='html', encoding='ascii', with_tail=False)
+    result = serialized.decode('ascii', 'strict').encode(encoding, 'strict')
+    if len(result) > MAX_MEMBER_BYTES:
+        raise ConversionError('CHM HTML recovery exceeds its output byte budget.')
+    budget.check()
+
+    checked = _Budget(max_chars, None, deadline)
+    reading = _decode(result, checked, _html_encoding(result))
+    strict = _HTMLPreview(checked, encoding=next(iter(checked.encodings)))
+    for offset in range(0, len(reading), _CHUNK):
+        checked.check()
+        strict.feed(reading[offset:offset + _CHUNK])
+        if len(strict.rawdata) > _MAX_TOKEN:
+            raise ValueError('HTML token budget exceeded.')
+    strict.finish()
+
+    def visible_order(records):
+        digest = sha256()
+        count = 0
+        for record in records:
+            checked.check()
+            for token in re.finditer(r'\S+', record['raw_text']):
+                checked.check()
+                value = token.group().encode('utf-8', 'strict')
+                digest.update(len(value).to_bytes(8, 'big'))
+                digest.update(value)
+                count += 1
+        return count, digest.digest()
+
+    # libxml2 recovery may discard broken content. It may not silently drop,
+    # add, reorder or expose visible words here. Only inert layout/whitespace
+    # boundaries can differ; original bytes and both member hashes remain.
+    if visible_order(before.records) != visible_order(checked.records):
+        raise ConversionError('CHM HTML recovery changed the ordered visible text.')
+    checked.check()
+    if notices is not None:
+        for warning in sorted(before.warnings | {'legacy_html_recovered_with_bounded_lxml'}):
+            if warning not in notices:
+                notices.append(warning)
+    return result
+
+
+def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
+    """Admit known legacy end-token repairs through the current inert reader.
+
+    Empty orphan paragraphs retain the existing exact normalization. Other
+    observed harmless end-token classes use lxml HTML recovery only after a
+    complete strict-budget/suppression pass, followed by strict inert reading
+    and equality of the ordered visible words. General HTML stays unchanged.
     """
     from ..extract.document_formats_text import (
         _Budget, _HTMLPreview, _decode, _html_encoding, _CHUNK, _MAX_TOKEN, _MAX_DEPTH)
@@ -329,34 +411,61 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
     text = _decode(raw, budget, _html_encoding(raw))
     encoding = next(iter(budget.encodings))
     end_token = re.compile(r'</[ \t\r\n]*p[ \t\r\n]*>', re.IGNORECASE)
+    # Complete publisher census: unmatched anchors/bold/list-definition/table
+    # headers, an IL typo and two otherwise empty trailing lists. Other
+    # malformed structures and any malformed end-token syntax stay refused.
+    orphan_ends = frozenset(('a', 'b', 'li', 'dt', 'th', 'il'))
 
     class ParagraphEnds(_HTMLPreview):
         def __init__(self):
             super().__init__(budget, encoding=encoding)
             self.insertions = []
+            self.recovery = False
             self.line_number = 1
             self.line_start = 0
 
+        def _offset(self):
+            line, column = self.getpos()
+            while self.line_number < line:
+                budget.check()
+                self.line_start = text.index('\n', self.line_start) + 1
+                self.line_number += 1
+            return self.line_start + column
+
         def handle_endtag(self, tag):
-            if (tag == 'p' and any(item[0] == 'body' for item in self.stack)
+            in_body = any(item[0] == 'body' for item in self.stack)
+            if (tag == 'p' and in_body
                     and not any(item[0] == 'p' for item in self.stack)):
-                line, column = self.getpos()
-                while self.line_number < line:
-                    budget.check()
-                    self.line_start = text.index('\n', self.line_start) + 1
-                    self.line_number += 1
-                offset = self.line_start + column
+                offset = self._offset()
                 if end_token.match(text, offset) is None:
                     raise ValueError('Unsupported legacy paragraph end token.')
                 self.insertions.append(offset)
-                # This is the one synthetic start-p token. It inherits the
-                # current suppression state and contributes no source text.
+                # The synthetic empty p inherits the current suppression.
                 budget.node()
                 self._flush()
                 self.stack.append(('p', bool(self.stack and self.stack[-1][1])))
                 if len(self.stack) > _MAX_DEPTH:
                     raise ValueError('HTML nesting budget exceeded.')
-            return super().handle_endtag(tag)
+            try:
+                return super().handle_endtag(tag)
+            except ValueError as error:
+                if str(error) != 'HTML element nesting is malformed.' or not in_body:
+                    raise
+                offset = self._offset()
+                token = re.compile(r'</[ \t\r\n]*' + re.escape(tag) + r'[ \t\r\n]*>',
+                                   re.IGNORECASE)
+                if token.match(text, offset) is None:
+                    raise
+                if tag in orphan_ends and not any(item[0] == tag for item in self.stack):
+                    self.recovery = True
+                    return
+                if (tag == 'body' and self.stack[-1][0] == 'ul'
+                        and re.search(r'<ul[ \t\r\n]*>[ \t\r\n]*\Z',
+                            text[max(0, offset - _MAX_TOKEN):offset], re.IGNORECASE)):
+                    self.stack.pop()
+                    self.recovery = True
+                    return super().handle_endtag(tag)
+                raise
 
     parser = ParagraphEnds()
     for start in range(0, len(text), _CHUNK):
@@ -366,7 +475,7 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
             raise ValueError('HTML token budget exceeded.')
     parser.finish()
     budget.check()
-    if not parser.insertions:
+    if not parser.insertions and not parser.recovery:
         return raw
     pieces, previous = [], 0
     for offset in parser.insertions:
@@ -374,13 +483,17 @@ def _chm_paragraph_ends(raw, *, max_chars, deadline, notices):
         pieces.extend((text[previous:offset], '<p>'))
         previous = offset
     pieces.append(text[previous:])
-    result = ''.join(pieces).encode(encoding, 'strict')
+    normalized = ''.join(pieces)
+    result = normalized.encode(encoding, 'strict')
     if len(result) > MAX_MEMBER_BYTES:
         raise ConversionError('CHM HTML normalization exceeds its output byte budget.')
     budget.check()
     warning = 'legacy_html_orphan_paragraph_end_normalized'
-    if notices is not None and warning not in notices:
+    if parser.insertions and notices is not None and warning not in notices:
         notices.append(warning)
+    if parser.recovery:
+        return _chm_recovered_html(normalized, encoding=encoding, before=budget,
+            max_chars=max_chars, deadline=deadline, notices=notices)
     return result
 
 
