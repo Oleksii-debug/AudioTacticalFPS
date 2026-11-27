@@ -523,7 +523,11 @@ def test_direct_archive_rejects_retained_audio_inventory_despite_absence_flags(
 
     monkeypatch.setattr(bundle.module._Payload, 'write', forbidden)
     monkeypatch.setattr(bundle.module.tempfile, 'mkstemp', forbidden)
-    with pytest.raises(ValueError, match='Audio runtime distribution clearance'):
+    # On case-insensitive Windows, the parent installer verifier notices this
+    # directory before the refreshed inventory reaches the transfer gate.
+    expected = ('Audio runtime distribution clearance|unannounced audio runtime'
+                if name == 'AuDiO/bin/ffprobe.exe' else 'Audio runtime distribution clearance')
+    with pytest.raises(ValueError, match=expected):
         _archive_refresh(bundle)
     assert path.read_bytes() == raw and selected.read_bytes() == payload
     assert not bundle.output.with_suffix('.zip').exists()
