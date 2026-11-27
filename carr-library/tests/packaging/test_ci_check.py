@@ -40,8 +40,14 @@ class CIEntrypointTests(unittest.TestCase):
         result = self.run_fixture(
             'def test_ok(): assert True\n', 'test_sample.py',
             script_changes=(('STACK_DUMP_SECONDS = 120', 'STACK_DUMP_SECONDS = 0.1'),),
+            # Keep the accelerated watchdog inside this deliberately stalled import.
+            # It must capture the real import stack, then stop before pytest imports
+            # run with the fixture's 100 ms interval. Production retains 120 seconds.
             files={'onnxruntime.py':
-                   'import time\ntime.sleep(0.4)\ndef disable_telemetry_events(): pass\n'})
+                   'import faulthandler\nimport time\n'
+                   'try:\n    time.sleep(0.4)\n'
+                   'finally:\n    faulthandler.cancel_dump_traceback_later()\n'
+                   'def disable_telemetry_events(): pass\n'})
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('Timeout (', result.stderr)
         self.assertIn('onnxruntime.py', result.stderr)
