@@ -186,3 +186,20 @@ authority and recovery. The existing installed Windows pronunciation/reader prob
 also drives Ctrl+F, native match selection, single/all replacements and durable
 undo using real controls. Prepared source requires its own CI execution; these
 checks do not qualify a voice or NVDA behavior.
+
+## Native playback transport guards
+
+On Windows, seeking while paused sends a silent MCI seek and keeps the reader
+paused until explicit Resume. It does not restart the recording just to pause it
+again. A failed native Close retains the alias and its temporary audio for a
+confirmed retry; a successful Close establishes silence even if Stop reported an
+error. These narrow guards are reused from the reviewed canonical-compatible
+PR149 player changes. The existing FFplay environment filtering is preserved.
+
+The focused transport suite checks the real PCM input and MCI command/cleanup
+contracts. `scripts/windows_reader_player_smoke.py` requires the installed package
+and actual Windows MCI; it measures pause, silent seek, explicit resume, stop and
+file release on a silent synthetic recording. A missing native output device
+fails that gate. It does not establish audible quality, NVDA acceptance or
+physical microphone behavior. This transport increment does not claim A–B repeat,
+sleep-timer or configurable-skip completion.
