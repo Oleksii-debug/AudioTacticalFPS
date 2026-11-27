@@ -30,6 +30,10 @@ def main(argv=None):
     parser.add_argument('--data-dir', type=Path)
     parser.add_argument('--input-root', action='append', type=Path, default=[], help='Explicit local cue folder; repeat if needed')
     operations = parser.add_subparsers(dest='operation', required=True)
+    audit = operations.add_parser('voice-corpus', help='Audit a reviewed local VoiceWorkshop single-speaker corpus')
+    audit.add_argument('review', type=Path, help='VoiceWorkshop review.json containing reviewed clips')
+    audit.add_argument('--audio-root', type=Path, required=True, help='Local directory containing the reviewed PCM WAV clips')
+    audit.add_argument('--speaker', required=True, help='Expected speaker label in the local review')
     operations.add_parser('voices', help='List actually installed local voices')
     operations.add_parser('jobs', help='List saved resumable production jobs')
     operations.add_parser('projects', help='List saved projects')
@@ -88,6 +92,11 @@ def main(argv=None):
     args = parser.parse_args(arguments)
     service = None
     try:
+        if args.operation == 'voice-corpus':
+            from ..integrations.voiceworkshop_review import audit_voiceworkshop_review
+            result = audit_voiceworkshop_review(args.review, args.audio_root, args.speaker)
+            print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
+            return 0
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
         if args.operation in ('convert', 'convert-batch'):
