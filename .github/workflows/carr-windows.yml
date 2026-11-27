@@ -411,9 +411,11 @@ jobs:
                             'tests/speech/test_session.py',
                             'tests/audio/test_supplied_transcription.py',
                             'tests/audio/test_supplied_runtime_manifest.py',
+                            'tests/audio/test_process_start_cleanup.py',
                             'tests/ui/test_transcription_dialog.py',
                             'tests/ingest/test_worker_publication_boundary.py',
                             'tests/storage/test_atomic_state_publication.py',
+                            'tests/storage/test_state_backup_portability.py',
                             'tests/storage/test_v3_state_backup.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -542,11 +544,13 @@ jobs:
             'tests/catalog/test_insights_budget.py',
             'tests/storage/test_v2_recovery.py',
             'tests/storage/test_v3_state_backup.py',
+            'tests/storage/test_state_backup_portability.py',
             'tests/storage/test_atomic_state_publication.py',
             'tests/speech/test_source.py',
             'tests/speech/test_session.py',
             'tests/audio/test_supplied_transcription.py',
             'tests/audio/test_supplied_runtime_manifest.py',
+            'tests/audio/test_process_start_cleanup.py',
             'tests/ui/test_transcription_dialog.py',
             'tests/storage/test_catalog_composition.py',
             'tests/reader/test_saved_topic_query.py',

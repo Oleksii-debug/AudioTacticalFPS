@@ -47,10 +47,12 @@ jobs:
           python -B -m pytest -p no:cacheprovider -q --import-mode=importlib \
             tests/speech/test_source.py tests/speech/test_session.py tests/speech/test_reading.py \
             tests/audio/test_supplied_transcription.py tests/audio/test_supplied_runtime_manifest.py \
+            tests/audio/test_process_start_cleanup.py \
             tests/ui/test_transcription_dialog.py tests/ui/test_progress_voice_actions.py \
             tests/ui/test_progress_media_quiet.py \
             tests/ingest/test_worker_publication_boundary.py tests/ingest/test_worker_isolated_launch.py \
             tests/e2e/test_import_worker.py tests/storage/test_atomic_state_publication.py \
+            tests/storage/test_state_backup_portability.py tests/storage/test_state_snapshot_portability.py \
             tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py \
             tests/storage/test_complete_pending_backup.py tests/ui/test_academic_export_handler.py \
             tests/ui/test_academic_library_dialog.py tests/ui/test_academic_actions.py \
@@ -155,7 +157,7 @@ jobs:
         run: |
           node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/ui/test_transcription_dialog.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
+          python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_keyboard_settings.py tests/ui/test_transcription_dialog.py tests/test_delivery_contract.py tests/storage/test_atomic_state_publication.py tests/storage/test_state_backup_portability.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Keep source and test evidence only
         if: always()
