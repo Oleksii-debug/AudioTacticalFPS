@@ -1,6 +1,6 @@
 # Локальний асистент
 
-Відкрийте **Tools → Local assistant** або натисніть **Ctrl+Alt+J**. Це керовані локальні команди та версійовані JSON-плани. Вільномовний LLM, онлайн-планування й переклад залишаються окремими незавершеними можливостями платформи.
+Відкрийте **Tools → Local assistant** або натисніть **Ctrl+Alt+J**. Асистент підтримує керовані локальні команди та версійовані JSON-плани. Окремо можна запросити пропозицію плану у вже налаштованої локальної мовної моделі. Її встановлення, фактична якість і повна перевірка LLM залишаються окремими вимогами; онлайн-планування й переклад ще не завершені.
 
 ## Перегляд і виконання
 
@@ -51,8 +51,9 @@
 
 The **Propose with local model** button reuses an explicitly configured loopback
 OpenAI-compatible profile from AI and API connections. The selected local service
-receives only the entered goal and fixed planning instructions. It does not receive
-library contents, credentials, or permission to invoke tools.
+receives the entered goal and fixed planning instructions. No library contents or
+tool permissions are attached to the prompt. A profile's configured authentication
+may be sent only to that explicitly selected endpoint.
 
 The service must already be installed and running. Select its profile and authorize
 the exact one-call request. A returned proposal is bounded, decoded with duplicate
