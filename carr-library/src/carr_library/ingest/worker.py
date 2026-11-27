@@ -703,6 +703,31 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
                                                          if budget is not None else {}))
     except ResourceCancelled:
         result = {'state': 'cancelled', 'message': 'Import cancelled while waiting for shared local resources.'}
+        if record.get('attempt') is not None:
+            # A cancelled caller may retire an old, already quiescent attempt,
+            # but must never rewrite an attempt still owned by pending cleanup.
+            # The outer request lock serializes this identity. Acquire the same
+            # operation through the ordinary broker for this metadata-only step;
+            # do not wait for occupied resources and do not launch native work.
+            deadline = time.monotonic() + 0.1
+            stopped = lambda: time.monotonic() >= deadline
+            try:
+                idle = ResourceBroker.for_app(app.root, cancelled=stopped)
+                with idle.reserve(ResourceRequest(cpu_slots=1),
+                                  operation_id='import:' + request_id,
+                                  cancelled=stopped, timeout=0):
+                    with app.read(workspace):
+                        current = load_request(root, request_id)
+                        if (request_identity(current) != captured_identity
+                                or current.get('attempt') != record.get('attempt')):
+                            raise ValueError('The saved import changed before cancellation.')
+                    record_progress(root, request_id, attempt=uuid4().hex,
+                        publication_candidate=None, state='cancelled',
+                        result=dict(result, request_id=request_id, isolated=True))
+            except (ResourceError, OSError, ValueError, sqlite3.Error):
+                # Occupied, changed or unverifiable ownership stays untouched.
+                # A later admitted resume creates its own fresh attempt.
+                pass
     except ResourceTimeout:
         result = {'state': 'timed_out', 'message': 'Shared local resources remained busy; the saved import can be resumed.'}
     except ResourceError as exc:

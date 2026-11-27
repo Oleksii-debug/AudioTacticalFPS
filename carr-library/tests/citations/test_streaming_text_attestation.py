@@ -256,3 +256,24 @@ def test_selected_text_cannot_hide_a_disagreement_with_the_sealed_original_count
         with pytest.raises(ValueError, match="unverified extraction"):
             historical_loader(case.store.db, "A", attest)(case.identity, Locator("logical_segment", 1))
         assert case.path.read_bytes() == case.bytes
+
+
+@pytest.mark.parametrize("sealed_count", [2, 1001])
+@pytest.mark.parametrize("invalid_index", ["next", "maximum"])
+def test_out_of_sealed_range_is_refused_before_any_authorized_source_access(
+        source_case, sealed_count, invalid_index):
+    records = tuple(f"Actual original {number:04d}; Київ.\r\n"
+                    for number in range(sealed_count))
+    with source_case(records) as case, case.store.transaction():
+        index = sealed_count + 1 if invalid_index == "next" else 2 ** 31 - 1
+        assert case.store.db.execute(
+            "SELECT count(*) FROM page WHERE revision=?",
+            (case.identity.revision,)).fetchone()[0] == sealed_count
+
+        def forbidden(identity):
+            pytest.fail("Out-of-range locator reached the actual source resolver.")
+
+        attest = text_attestation.strict_text_attestor(case.store.db, "A", forbidden)
+        assert attest(case.identity, Locator("logical_segment", index),
+                      digest(records[-1])) is False
+        assert case.path.read_bytes() == case.bytes

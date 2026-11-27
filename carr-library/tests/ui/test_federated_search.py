@@ -150,9 +150,23 @@ def center(tmp_path):
     app.add_text(hidden, 'Unselected source', 'Railway history hidden from this search.')
     frame, view, dialogs = Frame(app, one, local_topic), View(), Dialogs(choice=1)
     controller = SearchCenter(frame, view, dialogs=dialogs)
-    return SimpleNamespace(app=app, one=one, two=two, hidden=hidden, local_topic=local_topic,
+    state = SimpleNamespace(app=app, one=one, two=two, hidden=hidden, local_topic=local_topic,
         destination=destination, root=root, first=first, second=second, frame=frame,
         view=view, dialogs=dialogs, controller=controller)
+    service = controller.service
+    try:
+        yield state
+    finally:
+        # The real view owns these private SQLite handles until disposal.
+        # Complete any genuinely queued cancellation before releasing them.
+        controller.dispose()
+        while frame.pending:
+            frame.finish()
+        assert not controller.running
+        service.clear()
+        assert service._cursor_owner.close()
+        assert all(owner.close() for owner in service._retired_cursor_owners)
+        assert app.close_search()
 
 
 def search(state, **options):
@@ -734,6 +748,8 @@ def test_native_checklist_preserves_checked_library_identity_with_distinct_label
     native.query.GetValue.return_value = 'history'
     for control in native.filters.values():
         control.GetValue.return_value = ''
+    for control, value in ((native.timeout, '300'), (native.memory, '64'), (native.disk, '2048')):
+        control.GetValue.return_value = value
     native._search()
     options, = native.controller.search.call_args.args
     assert options.workspaces == ('library-1',)
@@ -825,9 +841,9 @@ def test_native_library_checklist_uses_distinct_choices_without_reordering(monke
     wx = SimpleNamespace(**{name: 1 << index for index, name in enumerate((
         'VERTICAL', 'HORIZONTAL', 'EXPAND', 'ALL', 'ALIGN_CENTER_VERTICAL',
         'LEFT', 'RIGHT', 'TE_PROCESS_ENTER', 'LB_SINGLE', 'TE_READONLY',
-        'TE_MULTILINE', 'ALIGN_RIGHT'))})
+        'TE_MULTILINE', 'ALIGN_RIGHT', 'VSCROLL', 'EVT_BUTTON'))})
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'FlexGridSizer', 'CheckListBox',
-                 'TextCtrl', 'Choice', 'Button', 'ListBox'):
+                 'TextCtrl', 'Choice', 'Button', 'ListBox', 'ScrolledWindow'):
         setattr(wx, name, Mock(side_effect=lambda *args, **kwargs: Mock()))
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(module, 'SearchCenter', Mock())
@@ -885,7 +901,7 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
                               groups=(SimpleNamespace(workspace='w', library_name='Library', hits=hits),))
     controller = SimpleNamespace(view=View(), epoch=0, _ready=Mock(), _clear_rows=Mock(),
         selection_changed=Mock(), _report_error=Mock(), _cancelled=lambda: False,
-        _refresh_navigation=Mock(),
+        _refresh_navigation=Mock(), source_history=[],
         service=SimpleNamespace(search=Mock(return_value=session)))
     controller._job = lambda title, operation, done, **kwargs: done(operation())
     SearchCenter.search(controller, SearchOptions(('w',), 'test'))
@@ -895,3 +911,61 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
     assert 'Unknown edition' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.labels[2]
     assert 'Unverified extraction' in controller.view.messages[-1]
+
+
+def test_ranked_center_uses_full_scope_with_one_existing_worker(center):
+    center.app.add_text(center.one, "Many pages", "\f".join(
+        f"Needle exact source {number:04d}." for number in range(205)))
+    center.controller.search(SearchOptions((center.one,), "Needle", mode="thematic", limit_per_library=100))
+    first = center.controller.rows
+    assert len(first) == 100 and center.view.navigation == (False, True)
+    assert center.controller.options.effective_ranking_scope == "all"
+    assert "complete selected scope" in center.view.messages[-1]
+    assert not any(cursor is not None for _, cursor in center.controller.next_source_cursors)
+    center.controller.navigate(1)
+    second = center.controller.rows
+    assert len(second) == 100 and center.view.navigation == (True, True)
+    assert {row.result.page for row in first}.isdisjoint({row.result.page for row in second})
+    center.controller.navigate(1)
+    assert len(center.controller.rows) == 5 and center.view.navigation == (True, False)
+    assert center.frame.active == (center.one, center.local_topic)
+    assert center.frame.unsaved_note == "An unsaved notebook draft — retain exactly."
+    assert len(center.frame.jobs) == 3 and all(t != get_ident() for t in center.frame.worker_threads)
+    center.controller.dispose()
+
+
+def test_native_rewrapped_destroy_id_disposes_the_same_pending_owner(center):
+    native = NativeSearchCenter.__new__(NativeSearchCenter)
+    native.window = Mock()
+    native._window_id = 317
+    native.controller = center.controller
+    native._window_alive = True
+    native._deferred_destroy = False
+    center.frame.deferred = True
+    search(center)
+    child_event = SimpleNamespace(GetEventObject=lambda: object(), GetId=lambda: 318, Skip=Mock())
+    native._destroyed(child_event)
+    assert native._window_alive and center.controller.alive and not center.frame.cancel_event.is_set()
+    owner_event = SimpleNamespace(GetEventObject=lambda: object(), GetId=lambda: 317, Skip=Mock())
+    native._destroyed(owner_event)
+    assert not native._window_alive and not center.controller.alive
+    assert center.frame.cancel_event.is_set() and center.controller.running
+    before = list(center.view.messages)
+    center.frame.finish()
+    assert not center.controller.running and center.view.messages == before
+    assert center.controller.rows == () and center.controller.service.current is None
+    native.window.Destroy.assert_not_called()
+    child_event.Skip.assert_called_once()
+    owner_event.Skip.assert_called_once()
+
+
+@pytest.mark.parametrize("error", [OSError("queue unavailable"), KeyboardInterrupt()])
+def test_search_admission_failure_releases_controller_for_explicit_retry(center, error):
+    original = center.frame.run_job
+    center.frame.run_job = Mock(side_effect=error)
+    search(center)
+    assert not center.controller.running and not center.frame.working
+    assert center.controller.rows == ()
+    center.frame.run_job = original
+    search(center)
+    assert center.controller.rows and not center.controller.running

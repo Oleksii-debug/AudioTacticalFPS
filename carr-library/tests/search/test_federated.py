@@ -295,7 +295,7 @@ def test_invalid_or_implicit_selection_is_rejected_before_reads(research, select
 
 
 @pytest.mark.parametrize('options', [dict(limit_per_library=0), dict(limit_per_library=101),
-    dict(limit_per_library=True), dict(timeout=0), dict(timeout=61), dict(timeout=float('nan')),
+    dict(limit_per_library=True), dict(timeout=0), dict(timeout=86401), dict(timeout=float('nan')),
     dict(timeout=True), dict(cancelled=False), dict(on_status=False), dict(mode='all'),
     dict(result_mode='unbounded'), dict(collections='all'), dict(collections={'foreign': 'collection'}),
     dict(title='')])

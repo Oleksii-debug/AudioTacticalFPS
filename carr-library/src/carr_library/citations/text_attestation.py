@@ -14,9 +14,9 @@ MAX_SEGMENTS = 1000
 def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: False):
     """Return a callback for historical_loader, never approve PDF or OCR here.
 
-    resolve_asset(identity) must return bounded immutable original bytes from an
-    authorized local catalog/asset snapshot (not a user-supplied path or a text
-    cache). Caller authenticates metadata and topic membership and owns one
+    resolve_asset(identity) must return bounded immutable original bytes or an
+    authorized FileSnapshot from the local catalog/asset store (not a supplied
+    path or text cache). Caller authenticates metadata and topic membership and owns one
     consistent read transaction. No network, writes, or mutable cache here.
     """
     if not isinstance(workspace, str) or not workspace.strip() or not callable(resolve_asset):
@@ -33,7 +33,8 @@ def strict_text_attestor(db, workspace, resolve_asset, *, cancelled=lambda: Fals
             FROM revision r JOIN sealed s ON s.revision=r.id
             WHERE r.workspace=? AND r.edition=? AND r.asset=? AND r.id=?''',
             (workspace, identity.edition_id, identity.asset_sha256, identity.revision)).fetchone()
-        if row is None or row[0] != CONFIG or not 1 <= row[1] <= 2 ** 31 - 1:
+        if (row is None or row[0] != CONFIG or not 1 <= row[1] <= 2 ** 31 - 1
+                or not 1 <= locator.index <= row[1]):
             return False
         try:
             data = resolve_asset(identity)

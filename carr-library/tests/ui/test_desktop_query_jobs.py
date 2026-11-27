@@ -1,5 +1,6 @@
 """Actual desktop handlers with headless controls; no native NVDA claim."""
 import ast
+import importlib.util
 from contextlib import nullcontext
 from pathlib import Path
 from threading import Event
@@ -11,9 +12,15 @@ import pytest
 from carr_library.ui.search_model import Hit, SearchModel
 
 
+def empty_page():
+    from carr_library.search.paging import SearchCursor, SearchPage
+    return SearchPage((), SearchCursor(), None, False, 0, 0, 0, 0,
+                      'synthetic-empty-window', 'all', 0)
+
+
 @pytest.fixture
 def handlers():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    source = Path(importlib.util.find_spec('carr_library.ui.desktop_app').origin).resolve()
     tree = ast.parse(source.read_text(encoding='utf-8'))
     classes = [node for node in tree.body if isinstance(node, ast.ClassDef)
                and node.name in ('DesktopSearchPanel', 'DesktopFrame')]
@@ -24,7 +31,7 @@ def handlers():
                SimpleNamespace(id='chosen', name='Chosen search')]
     saved = Mock()
     saved.return_value.list_queries.return_value = queries
-    environment = {'PagedSearchPanel': object, 'WorkspaceFrame': object, 'Hit': Hit,
+    environment = {'__name__': 'carr_library.ui._query_job_fixture', '__package__': 'carr_library.ui', 'PagedSearchPanel': object, 'WorkspaceFrame': object, 'Hit': Hit,
                    'wx': SimpleNamespace(ID_OK=1, SingleChoiceDialog=Mock(return_value=dialog)),
                    'SavedTopicQueries': saved, 'show_text': Mock(),
                    'format_topic_results': Mock(return_value='Readable saved quotations.')}
@@ -49,10 +56,16 @@ def panel(handlers):
     panel.collection_ids = [None]
     panel.filters, panel.results = {}, {}
     panel._context_epoch = 0
+    panel._search_page, panel._source_history = None, []
+    panel.search_navigation = {name: Mock() for name in
+        ('result_previous', 'result_next', 'source_previous', 'source_next')}
+    for name, value in (('search_timeout', '300'), ('search_memory', '64'), ('search_disk', '2048')):
+        setattr(panel, name, Mock())
+        getattr(panel, name).GetValue.return_value = value
     panel.grid, panel.details, panel.status = Mock(), Mock(), Mock()
     panel._refresh_details = Mock()
     panel.frame = SimpleNamespace(working=False, cancel_event=Event(), run_job=Mock(),
-        library=SimpleNamespace(search=Mock(), semantic_ranker=object(),
+        library=SimpleNamespace(search_page=Mock(), close_search=Mock(return_value=True), semantic_ranker=object(),
             root=Path('/synthetic-library'), database=Path('/synthetic-library/library.sqlite'),
             assets_dir=Path('/synthetic-library/assets'),
             assets=SimpleNamespace(root=Path('/synthetic-library/assets'))), report=Mock())
@@ -65,10 +78,10 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     def search(*args, on_status, cancelled, **kwargs):
         assert not cancelled()
         on_status(note)
-        return ()
-    panel.frame.library.search.side_effect = search
+        return empty_page()
+    panel.frame.library.search_page.side_effect = search
     panel.on_search(None)
-    panel.frame.library.search.assert_not_called()
+    panel.frame.library.search_page.assert_not_called()
     _, operation, complete = panel.frame.run_job.call_args.args
     rows = operation()
     panel.status.ChangeValue.assert_not_called()
@@ -76,7 +89,7 @@ def test_empty_semantic_fallback_is_readable_after_background_completion(panel):
     assert note in panel.status.ChangeValue.call_args.args[0]
     assert 'No results.' in panel.status.ChangeValue.call_args.args[0]
     panel.status.SetFocus.assert_called_once()
-    cancelled = panel.frame.library.search.call_args.kwargs['cancelled']
+    cancelled = panel.frame.library.search_page.call_args.kwargs['cancelled']
     panel.frame.cancel_event.set()
     assert cancelled()
 
@@ -99,12 +112,12 @@ def test_collection_refresh_distinguishes_all_books_and_preserves_selected_id(pa
 def test_status_notes_belong_only_to_their_search_and_ignore_stale_completion(panel):
     def first(*args, on_status, **kwargs):
         on_status('Old fallback notice.')
-        return ()
-    panel.frame.library.search.side_effect = first
+        return empty_page()
+    panel.frame.library.search_page.side_effect = first
     panel.on_search(None)
     _, old_operation, old_complete = panel.frame.run_job.call_args.args
     old_rows = old_operation()
-    panel.frame.library.search.side_effect = lambda *args, **kwargs: ()
+    panel.frame.library.search_page.side_effect = lambda *args, **kwargs: empty_page()
     panel.on_search(None)
     _, operation, complete = panel.frame.run_job.call_args.args
     complete(operation())
