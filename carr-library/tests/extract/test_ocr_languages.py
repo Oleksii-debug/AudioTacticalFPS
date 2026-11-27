@@ -438,7 +438,7 @@ def test_windows_report_keeps_exact_count_and_directory_binding(monkeypatch, tmp
 def _diagnostic_engine_response(monkeypatch, listing):
     from carr_library.extract import ocr_process
     native = SimpleNamespace(executable='synthetic response fixture', portable=False,
-        manifest_sha256=None, assert_unchanged=Mock())
+        tessdata=Path('installed models'), manifest_sha256=None, assert_unchanged=Mock())
     monkeypatch.setattr(ocr_runtime, 'discover_ocr_runtime', lambda *args, **kwargs: native)
     execute = Mock(side_effect=[SimpleNamespace(stdout=raw) for raw in
         (b'tesseract 5.5.4\n', listing.encode('utf-8'), b'RESEARCH\n')])
