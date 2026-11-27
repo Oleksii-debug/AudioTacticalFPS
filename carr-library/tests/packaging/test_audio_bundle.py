@@ -11,7 +11,7 @@ import zipfile
 
 import pytest
 
-from carr_library import audio_runtime as runtime
+from carr_library import audio_runtime as runtime, native_checks
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -54,6 +54,7 @@ def inputs(tmp_path, monkeypatch):
         archive.writestr('carr_library/audio_runtime.py', (ROOT / 'src/carr_library/audio_runtime.py').read_bytes())
     manifest = {'schema': 1, 'target': 'Windows x64 / CPython 3.11', 'source_commit': 'a' * 40,
                 'source_tree': 'b' * 40, 'bundled_python': True, 'bundled_native_runtime': True,
+                'bundled_model': False, 'bundled_ocr': False,
                 'files': {p.relative_to(bundle).as_posix(): digest(p.read_bytes())
                           for p in bundle.rglob('*') if p.is_file()}}
     (bundle / 'bundle-manifest.json').write_bytes(encode(manifest))
@@ -101,6 +102,9 @@ def test_attach_preserves_exact_source_and_every_sealed_byte_without_collecting_
     assert runtime.bundled_audio_tools(output) == report['audio_runtime']['tools']
     assert report['native_windows_execution'] == report['audio_runtime']['native_execution'] == 'NOT_RUN'
     helper._installer().verify(output)
+    # The installer invokes this separate consumer after installing the wheel.
+    # Its schema must accept the actual supplemented producer manifest intact.
+    assert native_checks._manifest(output) == actual
 
 
 def test_existing_output_is_preserved(inputs):

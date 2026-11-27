@@ -111,6 +111,31 @@ def test_native_runtime_flag_is_delegated_to_canonical_loader(tmp_path, monkeypa
     assert events[1] == ('activate_bundled_runtime', str(tmp_path))
 
 
+def test_complete_release_manifest_keeps_source_tree_and_all_component_flags(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path, model=True, ocr=True)
+    manifest.update(source_tree='c' * 40, bundled_native_runtime=True, bundled_audio_runtime=True)
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    assert native_checks._manifest(tmp_path) == manifest
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert report['semantic']['status'] == report['ocr']['status'] == 'PASS'
+    assert ('canonical_ocr_check', 30, str(tmp_path / 'ocr')) in events
+    assert 'tokenizers.tokenizers' in events
+
+
+def test_explicit_absent_audio_flag_keeps_legacy_core_manifest_valid(tmp_path, monkeypatch):
+    manifest = bundle(tmp_path)
+    manifest['bundled_audio_runtime'] = False
+    (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    events = []
+    controlled_imports(monkeypatch, events)
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'PASS'
+    assert report['semantic']['status'] == report['ocr']['status'] == 'NOT_INCLUDED'
+
+
 def test_optional_semantic_uses_shared_policy_before_tokenizers(tmp_path, monkeypatch):
     bundle(tmp_path, model=True)
     events = []
@@ -150,7 +175,9 @@ def test_bundled_ocr_reuses_canonical_check_and_restores_environment(
 @pytest.mark.parametrize('change', [
     'duplicate_key', 'boolean_schema', 'string_model_flag', 'missing_ocr_flag',
     'unknown_field', 'bad_commit', 'bad_hash', 'traversal', 'case_collision', 'bad_json',
-    'string_native_flag',
+    'string_native_flag', 'string_audio_flag', 'integer_audio_flag', 'bad_tree',
+    'boolean_tree', 'tree_without_commit', 'audio_without_python',
+    'audio_without_native', 'audio_without_tree',
 ])
 def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, change):
     manifest = bundle(tmp_path)
@@ -172,6 +199,25 @@ def test_invalid_manifest_rejected_before_native_imports(tmp_path, monkeypatch, 
         manifest['files']['readme.TXT'] = 'b' * 64
     elif change == 'string_native_flag':
         manifest['bundled_native_runtime'] = 'false'
+    elif change == 'string_audio_flag':
+        manifest['bundled_audio_runtime'] = 'false'
+    elif change == 'integer_audio_flag':
+        manifest['bundled_audio_runtime'] = 1
+    elif change == 'bad_tree':
+        manifest['source_tree'] = 'HEAD^{tree}'
+    elif change == 'boolean_tree':
+        manifest['source_tree'] = True
+    elif change == 'tree_without_commit':
+        manifest['source_tree'] = 'c' * 40
+        del manifest['source_commit']
+    elif change.startswith('audio_without_'):
+        manifest.update(source_tree='c' * 40, bundled_native_runtime=True, bundled_audio_runtime=True)
+        if change == 'audio_without_python':
+            manifest['bundled_python'] = False
+        elif change == 'audio_without_native':
+            manifest['bundled_native_runtime'] = False
+        else:
+            del manifest['source_tree']
     raw = json.dumps(manifest)
     if change == 'duplicate_key':
         raw = '{"bundled_model":true,' + raw[1:]

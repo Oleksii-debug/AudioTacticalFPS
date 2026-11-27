@@ -216,7 +216,7 @@ jobs:
       - name: Check observed FFmpeg and OCR inventory compatibility
         timeout-minutes: 5
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/audio/test_music.py tests/audio/test_production.py tests/extract/test_ocr_runtime.py 2>&1 | Tee-Object 'ci-results/runtime-compatibility-regressions.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/audio/test_music.py tests/audio/test_production.py tests/extract/test_ocr_runtime.py tests/packaging/test_native_checks.py tests/packaging/test_audio_bundle.py 2>&1 | Tee-Object 'ci-results/runtime-compatibility-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check observed Windows format and OCR regressions before long suites
