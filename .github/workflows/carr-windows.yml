@@ -24,7 +24,8 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 55
+    # Retain the prior job budget and add the new 15-minute core acceptance gate.
+    timeout-minutes: 70
     defaults:
       run:
         shell: pwsh
@@ -342,7 +343,10 @@ jobs:
       - name: Build, install and exercise the complete bundle with runtime egress blocked
         id: complete_bundle
         if: ${{ !cancelled() && steps.local_model.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        timeout-minutes: 20
+        # Exact c112 bundle acceptance reached 93% after 18 minutes, with
+        # 1,648 real cases and no observed failure before its superseding commit.
+        # Keep every case; allow the final source-lineage and seal checks to finish.
+        timeout-minutes: 25
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
           $wheelhouse = Join-Path $bundleWork 'wheelhouse'
@@ -670,7 +674,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             & $python -I -B -X utf8 tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/transferable-advanced-search.txt'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            & $python -I -B -X utf8 (Join-Path $bundle 'tools/audio-setup/setup_local_audio.py') 2>&1 | Tee-Object 'ci-results/transferable-audio-setup-plan.json'
+            & $python -I -B -X utf8 (Join-Path $bundle 'tools/audio-setup/setup_local_audio.py') 2>&1 | Tee-Object 'ci-results/transferable-audio-setup-plan.txt'
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $testWheels = Join-Path $env:RUNNER_TEMP 'carr-test-wheels'
             & $python -I -B -m pip install --no-index --find-links $testWheels pytest==9.0.2 reportlab==4.4.9
