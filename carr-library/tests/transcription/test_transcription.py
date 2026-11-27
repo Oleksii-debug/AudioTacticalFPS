@@ -43,6 +43,12 @@ def status(phase, done=0, state=None):
     write('job_status.json', {'schema_version':1,'protocol':protocol,'job_id':config['job_id'],
       'run_id':run_id,'phase':phase,'result_state':state,'done':done})
 status('starting')
+write('test_started.json', {'job_id':config['job_id'],'run_id':run_id})
+if MODE == 'live-replacements':
+    for update in range(50):
+        status('recognizing')
+        time.sleep(.005)
+    write('test_progress_updates.json', {'count':50})
 if MODE == 'flood':
     sys.stdout.write('x' * (3 * 1024 * 1024)); sys.stdout.flush(); time.sleep(30)
 if MODE == 'early-failure':
@@ -53,8 +59,16 @@ if MODE in {'unresponsive','cooperative','pause'}:
     if MODE == 'unresponsive':
         child = subprocess.Popen([sys.executable, '-I', '-B', '-c', 'import time; time.sleep(90)'])
         write('test_child.json', {'pid':child.pid})
+    pause_seen, continued = False, False
     while MODE == 'unresponsive' or not (root / 'stop.flag').exists():
-        status('paused' if (root / 'pause.flag').exists() else 'recognizing')
+        paused = (root / 'pause.flag').exists()
+        status('paused' if paused else 'recognizing')
+        if MODE == 'pause' and paused and not pause_seen:
+            write('test_pause_seen.json', {'job_id':config['job_id'],'run_id':run_id})
+            pause_seen = True
+        if MODE == 'pause' and pause_seen and not paused and not continued:
+            write('test_continue_seen.json', {'job_id':config['job_id'],'run_id':run_id})
+            continued = True
         time.sleep(.02)
     value={'schema_version':1,'protocol':protocol,'job_id':config['job_id'],'run_id':run_id,
       'state':'cancelled','done':0,'failed':0,'total':len(config['files']),
@@ -103,6 +117,13 @@ if MODE=='wrong-exit':
     write('job_result.json',value); status('terminal',len(records),'succeeded'); sys.exit(2)
 write('job_result.json',value)
 status('terminal',len(records),'succeeded')
+if MODE.startswith('terminal-status-'):
+    final=json.loads((root/'job_status.json').read_text(encoding='utf-8'))
+    if MODE=='terminal-status-job': final['job_id']='0'*32
+    if MODE=='terminal-status-run': final['run_id']='0'*32
+    if MODE=='terminal-status-phase': final['phase']='recognizing'
+    if MODE=='terminal-status-state': final['result_state']='failed'
+    write('job_status.json',final)
 '''
 
 
@@ -255,20 +276,64 @@ def test_isolated_worker_explicit_utf8_preserves_unicode_library_and_title(tmp_p
     assert Path(config['files'][0]).is_relative_to(service.directory)
 
 
-def test_live_progress_handle_allows_atomic_replacement(tmp_path):
-    path, pending = tmp_path / 'job_status.json', tmp_path / 'next.json'
-    path.write_bytes(b'{"phase":"starting"}')
-    pending.write_bytes(b'{"phase":"recognizing"}')
-    if os.name == 'nt':
-        # Deterministic Windows regression: a normal CRT reader blocks the
-        # worker's replace. The service's reader must allow that same operation.
-        with path.open('rb'):
-            with pytest.raises(PermissionError):
-                os.replace(pending, path)
-    with module._open_progress(path) as snapshot:
-        os.replace(pending, path)
-        assert json.loads(snapshot.read()) == {'phase': 'starting'}
-    assert module._read_progress(path) == {'phase': 'recognizing'}
+def test_live_progress_policy_matches_host():
+    assert module._READ_LIVE_PROGRESS is (os.name != 'nt')
+
+
+def test_nonpolling_run_never_opens_live_status_and_verifies_after_exit(
+        service, source, engine, monkeypatch):
+    # Exercise the Windows policy on every platform with a real, repeatedly
+    # publishing worker. No timing luck or skipped Win32 assertion is involved.
+    monkeypatch.setattr(module, '_READ_LIVE_PROGRESS', False)
+    monkeypatch.setattr(module, '_read_progress',
+        lambda path: pytest.fail('opened the worker live status destination'))
+    owned, terminal_reads, events = [], [], []
+    actual_popen, actual_read, actual_regular = subprocess.Popen, module.read_json, module.regular
+    def launch(*args, **kwargs):
+        process = actual_popen(*args, **kwargs)
+        owned.append(process)
+        return process
+    def read(path):
+        if Path(path).name == 'job_status.json':
+            assert owned and owned[0].poll() is not None
+            terminal_reads.append(Path(path))
+        return actual_read(path)
+    def regular(path, **kwargs):
+        if Path(path).name == 'job_status.json':
+            assert owned and owned[0].poll() is not None
+        return actual_regular(path, **kwargs)
+    patch_worker_popen(monkeypatch, launch)
+    monkeypatch.setattr(module, 'read_json', read)
+    monkeypatch.setattr(module, 'regular', regular)
+    identity = service.submit([source])
+    result = service.run(identity, engine=engine('live-replacements'),
+                         progress=lambda *args: events.append(args))
+    assert result['state'] == result['receipt']['state'] == 'succeeded'
+    assert len(owned) == 1 and owned[0].returncode == 0 and len(terminal_reads) == 1
+    assert read_json(service.jobs / identity / 'test_progress_updates.json') == {'count': 50}
+    assert len(result['receipt']['artifacts']) == 4
+    assert service.get(identity) == result
+    assert any(phase == 'Running locally; progress verified after worker exit'
+               for done, total, phase in events)
+    assert all(done is None and total == 1 for done, total, phase in events[:-1])
+    assert events[-1] == (1, 1, 'Verified every requested transcript output')
+
+
+@pytest.mark.parametrize('mode', [
+    'wrong-job', 'stale-run', 'missing-result', 'wrong-exit', 'missing-format',
+    'artifact-hash', 'source-hash', 'terminal-status-job', 'terminal-status-run',
+    'terminal-status-phase', 'terminal-status-state',
+])
+def test_nonpolling_run_preserves_strict_terminal_verification(
+        service, source, engine, monkeypatch, mode):
+    monkeypatch.setattr(module, '_READ_LIVE_PROGRESS', False)
+    monkeypatch.setattr(module, '_read_progress',
+        lambda path: pytest.fail('opened the worker live status destination'))
+    identity = service.submit([source])
+    with pytest.raises((ValueError, RuntimeError, OSError)):
+        service.run(identity, engine=engine(mode))
+    job = service.get(identity, verify=False)
+    assert job['state'] == 'failed' and job['receipt'] is None
 
 
 @pytest.mark.parametrize('raw', [b'{"done":0,"done":1}', b'{"done":NaN}'])
@@ -407,23 +472,42 @@ def test_pause_uses_worker_flag_and_shared_cancellation(service, source, engine)
     def worker():
         try:
             outcome.append(service.run(identity, engine=spec, cancelled=cancel.is_set,
-                progress=lambda done, total, phase: seen.set() if phase == 'paused' else None))
+                progress=lambda done, total, phase: seen.set()
+                    if phase == ('paused' if module._READ_LIVE_PROGRESS
+                                 else 'Pause requested; waiting for worker') else None))
         except Exception as exc:
             errors.append(exc)
     thread = threading.Thread(target=worker)
     thread.start()
     try:
+        directory = service.jobs / identity
         deadline = time.monotonic() + 4
-        while service.get(identity, verify=False)['state'] != 'running' and time.monotonic() < deadline:
+        while not (directory / 'test_started.json').exists() and time.monotonic() < deadline:
             time.sleep(.02)
+        assert (directory / 'test_started.json').exists()
         service.set_paused(identity, True)
         assert seen.wait(4)
+        # The synthetic worker publishes each acknowledgement exactly once.
+        # Never read its replaceable live status to prove pause/continue.
+        deadline = time.monotonic() + 4
+        while not (directory / 'test_pause_seen.json').exists() and time.monotonic() < deadline:
+            time.sleep(.02)
+        assert (directory / 'test_pause_seen.json').exists()
         service.set_paused(identity, False)
-        assert not (service.jobs / identity / 'pause.flag').exists()
+        assert not (directory / 'pause.flag').exists()
+        deadline = time.monotonic() + 4
+        while not (directory / 'test_continue_seen.json').exists() and time.monotonic() < deadline:
+            time.sleep(.02)
+        assert (directory / 'test_continue_seen.json').exists()
     finally:
         cancel.set(); thread.join(5)
     assert not thread.is_alive() and not errors
     assert outcome[0]['state'] == 'cancelled'
+    started = read_json(directory / 'test_started.json')
+    paused = read_json(directory / 'test_pause_seen.json')
+    continued = read_json(directory / 'test_continue_seen.json')
+    terminal = read_json(directory / 'job_result.json')
+    assert started == paused == continued == {'job_id': identity, 'run_id': terminal['run_id']}
 
 
 def test_full_state_backup_restore_rebases_inputs_and_requires_explicit_engine(tmp_path, engine):
@@ -493,16 +577,20 @@ def test_runtime_script_is_outside_library_even_during_backup(tmp_path, engine, 
         assert not entrypoint.is_relative_to(app.root)
         assert sha256(entrypoint.read_bytes()).hexdigest() == spec.worker_sha256
         observed.append(entrypoint)
-        # The snapshot is present and private when this backup executes.
-        create_backup(app, tmp_path / 'while-launching')
-        manifest = read_json(tmp_path / 'while-launching' / 'manifest.json')
-        names = [entry['filename'] for entry in manifest['state']]
-        assert any('/inputs/' in name for name in names)
-        assert not any(name.endswith('.py') or 'runner' in name for name in names)
+        # The private snapshot already exists while the public job lock is
+        # held. Backup must reject this interval without opening worker files.
+        with pytest.raises(RuntimeError, match='stop the active job'):
+            create_backup(app, tmp_path / 'while-launching')
+        assert not (tmp_path / 'while-launching').exists()
         return original_popen(args, **kwargs)
     patch_worker_popen(monkeypatch, capture)
     assert service.run(identity, engine=spec)['state'] == 'succeeded'
     assert observed and not observed[0].exists()
+    create_backup(app, tmp_path / 'completed')
+    manifest = read_json(tmp_path / 'completed' / 'manifest.json')
+    names = [entry['filename'] for entry in manifest['state']]
+    assert any('/inputs/' in name for name in names)
+    assert not any(name.endswith('.py') or 'runner' in name for name in names)
 
 
 def test_runtime_temp_inside_library_is_rejected_before_execution(service, source, engine, monkeypatch):
@@ -597,3 +685,227 @@ def test_saved_output_verification_and_reading_accept_shared_cancellation(servic
     with pytest.raises(InterruptedError):
         service.read_transcript(identity, item['path'], cancelled=lambda: True)
     assert service.get(identity)['state'] == 'succeeded'
+
+
+@pytest.mark.parametrize('paused', [False, True])
+def test_active_worker_backup_rejects_before_reads_and_releases_prior_locks(
+        tmp_path, source, engine, monkeypatch, paused):
+    from carr_library.application import LibraryApp
+    from carr_library.durable_state import state_lock
+    from carr_library.library_backup import create_backup
+    app = LibraryApp(tmp_path / 'library')
+    service = TranscriptionService(app.root / 'state' / 'transcription')
+    idle, active = sorted([service.submit([source]), service.submit([source])])
+    directory = service.jobs / active
+    spec = engine('pause')
+    monkeypatch.setattr(module, '_READ_LIVE_PROGRESS', False)
+    stopped, errors, outcome = threading.Event(), [], []
+    def run_owned():
+        try:
+            outcome.append(service.run(active, engine=spec, cancelled=stopped.is_set))
+        except BaseException as exc:
+            errors.append(exc)
+    thread = threading.Thread(target=run_owned)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 5
+        while not (directory / 'test_started.json').exists() and time.monotonic() < deadline:
+            time.sleep(.02)
+        assert (directory / 'test_started.json').exists() and thread.is_alive()
+        if paused:
+            service.set_paused(active, True)
+            deadline = time.monotonic() + 4
+            while not (directory / 'test_pause_seen.json').exists() and time.monotonic() < deadline:
+                time.sleep(.02)
+            assert (directory / 'test_pause_seen.json').exists()
+        original_open = Path.open
+        def no_worker_read(path, mode='r', *args, **kwargs):
+            if Path(path).is_relative_to(service.jobs) and 'r' in mode:
+                pytest.fail('Backup opened job bytes before obtaining every run lock.')
+            return original_open(path, mode, *args, **kwargs)
+        with monkeypatch.context() as patch:
+            patch.setattr(Path, 'open', no_worker_read)
+            with pytest.raises(RuntimeError, match='stop the active job.*pausing is not sufficient'):
+                create_backup(app, tmp_path / 'blocked-backup')
+        assert not (tmp_path / 'blocked-backup').exists()
+        assert thread.is_alive() and not stopped.is_set() and not errors
+        # The idle job sorts first; partial admission must release its run lock
+        # and the catalogue lock while leaving the active worker untouched.
+        with state_lock(service.directory, 'jobs'), state_lock(service.jobs / idle, 'transcription'):
+            pass
+    finally:
+        stopped.set()
+        thread.join(6)
+    assert not thread.is_alive() and not errors and outcome[0]['state'] == 'cancelled'
+    assert (directory / outcome[0]['inputs'][0]['path']).read_bytes() == source.read_bytes()
+    create_backup(app, tmp_path / 'after-stop')
+    assert (tmp_path / 'after-stop' / 'manifest.json').is_file()
+
+
+@pytest.mark.parametrize('state', ['queued', 'interrupted', 'succeeded'])
+def test_quiescent_transcription_backup_restores_same_job_and_explicit_rebind(
+        tmp_path, source, engine, state):
+    from carr_library.application import LibraryApp
+    from carr_library.library_backup import create_backup, restore_backup
+    app = LibraryApp(tmp_path / 'library')
+    service = TranscriptionService(app.root / 'state' / 'transcription')
+    spec = engine()
+    service.configure_engine(spec)
+    identity = service.submit([source])
+    if state == 'succeeded':
+        assert service.run(identity)['state'] == 'succeeded'
+    elif state == 'interrupted':
+        # Owner death can leave this value while the OS lock is free. It must
+        # remain portable and resumable, not be treated as a live operation.
+        job = service.get(identity, verify=False)
+        job['state'] = 'running'
+        atomic_json(service.jobs / identity / 'job.json', job, replace=True)
+    before = service.get(identity, verify=False)
+    digest = create_backup(app, tmp_path / 'backup')
+    restored_root = restore_backup(tmp_path / 'backup', tmp_path / 'restored', digest)
+    restored = TranscriptionService(restored_root / 'state' / 'transcription')
+    assert restored.get(identity, verify=False) == before
+    assert restored.capability()['state'] == 'waiting-input'
+    source.unlink()
+    restored.configure_engine(spec)
+    result = restored.run(identity)
+    assert result['id'] == identity and result['state'] == 'succeeded'
+    assert len(result['receipt']['artifacts']) == 4
+    assert restored.get(identity) == result
+    if state != 'succeeded':
+        config = read_json(restored.jobs / identity / 'job_config.json')
+        assert all(Path(path).is_relative_to(restored_root) for path in config['files'])
+
+
+def test_backup_holds_admission_and_run_locks_through_copy_and_final_hash(
+        service, source, engine, tmp_path, monkeypatch):
+    from carr_library.state_backup import snapshot_state
+    identity = service.submit([source])
+    spec = engine()
+    original_open, observed, errors = Path.open, [], []
+    def attempts():
+        for operation in (lambda: service.submit([source]),
+                          lambda: service.run(identity, engine=spec)):
+            try:
+                operation()
+            except RuntimeError as exc:
+                errors.append(str(exc))
+            except BaseException as exc:
+                errors.append(exc)
+            else:
+                errors.append('operation incorrectly admitted')
+    def held_read(path, mode='r', *args, **kwargs):
+        if Path(path) == service.jobs / identity / 'job.json' and 'r' in mode:
+            observed.append(Path(path))
+            thread = threading.Thread(target=attempts)
+            thread.start(); thread.join(4)
+            assert not thread.is_alive()
+        return original_open(path, mode, *args, **kwargs)
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, 'open', held_read)
+        patch_worker_popen(patch, lambda *a, **k: pytest.fail('Backup allowed a worker launch.'))
+        entries = snapshot_state(service.directory.parent, tmp_path / 'snapshot')
+    assert len(observed) == 2  # Initial copy and the final source-byte rehash.
+    assert len(errors) == 4 and all(isinstance(error, str) and 'already being changed' in error for error in errors)
+    assert any(entry['filename'].endswith('/job.json') for entry in entries)
+    assert len(service.list()) == 1 and service.get(identity)['state'] == 'queued'
+    # Both locks have left their contexts after snapshot completion.
+    assert service.run(identity, engine=spec)['state'] == 'succeeded'
+    assert service.submit([source]) != identity
+
+
+@pytest.mark.parametrize('existing_namespace', [False, True])
+def test_late_transcription_namespace_or_job_is_rejected_before_inventory_reads(
+        tmp_path, source, monkeypatch, existing_namespace):
+    import carr_library.state_backup as backup
+    root = tmp_path / 'state'; root.mkdir()
+    if existing_namespace:
+        service = TranscriptionService(root / 'transcription')
+        service.submit([source])
+    new_job = root / 'transcription' / 'jobs' / ('f' * 32)
+    status = new_job / 'job_status.json'
+    actual_walk, actual_regular, inserted = os.walk, backup.regular, []
+    def arriving(*args, **kwargs):
+        if not inserted:
+            new_job.mkdir(parents=True)
+            status.write_text('{"phase":"recognizing"}', encoding='utf-8')
+            inserted.append(True)
+        return actual_walk(*args, **kwargs)
+    def no_unadmitted_file(path, **kwargs):
+        if Path(path) == status:
+            pytest.fail('Inventory inspected an unadmitted worker status file.')
+        return actual_regular(path, **kwargs)
+    facade = SimpleNamespace(**vars(os)); facade.walk = arriving
+    monkeypatch.setattr(backup, 'os', facade)
+    monkeypatch.setattr(backup, 'regular', no_unadmitted_file)
+    with pytest.raises(RuntimeError, match='appeared or changed'):
+        backup.snapshot_state(root, tmp_path / 'snapshot')
+    assert inserted and not (tmp_path / 'snapshot').exists()
+
+
+def test_transcription_backup_admission_is_bounded_and_cancellation_releases_locks(
+        service, source, tmp_path, monkeypatch):
+    from contextlib import contextmanager
+    import carr_library.state_backup as backup
+    from carr_library.durable_state import state_lock
+    identities = [service.submit([source]), service.submit([source])]
+    with monkeypatch.context() as patch:
+        patch.setattr(module, 'MAX_JOBS', 1)
+        with pytest.raises(ValueError, match='admission budget'):
+            backup.snapshot_state(service.directory.parent, tmp_path / 'too-many')
+    assert not any((service.jobs / identity / '.transcription.lock').exists() for identity in identities)
+    stopped = threading.Event()
+    @contextmanager
+    def cancelling_lock(path, name='state'):
+        with state_lock(path, name):
+            if name == 'transcription':
+                stopped.set()
+            yield
+    with monkeypatch.context() as patch:
+        patch.setattr(backup, 'state_lock', cancelling_lock)
+        with pytest.raises(InterruptedError, match='Backup cancelled'):
+            backup.snapshot_state(service.directory.parent, tmp_path / 'cancelled', cancelled=stopped.is_set)
+    with state_lock(service.directory, 'jobs'):
+        for identity in identities:
+            with state_lock(service.jobs / identity, 'transcription'):
+                pass
+    assert not (tmp_path / 'too-many').exists() and not (tmp_path / 'cancelled').exists()
+
+
+def test_non_transcription_backup_does_not_create_a_transcription_namespace(tmp_path):
+    from carr_library.state_backup import snapshot_state
+    root = tmp_path / 'state'; root.mkdir()
+    atomic_json(root / 'notes.json', {'text': 'Existing private application state'})
+    entries = snapshot_state(root, tmp_path / 'snapshot')
+    assert [entry['filename'] for entry in entries] == ['notes.json']
+    assert not (root / 'transcription').exists()
+
+
+def test_transcription_backup_rejects_link_before_target_classification_or_job_lock(
+        service, tmp_path, monkeypatch):
+    import carr_library.state_backup as backup
+    outside = tmp_path / 'external'; outside.mkdir()
+    (outside / 'job_status.json').write_text('{"private":"untouched"}', encoding='utf-8')
+    link = service.jobs / ('f' * 32)
+    if os.name == 'nt':
+        import _winapi
+        _winapi.CreateJunction(str(outside), str(link))
+    else:
+        link.symlink_to(outside, target_is_directory=True)
+    actual_is_dir, actual_lock = Path.is_dir, backup.state_lock
+    locks = []
+    def no_follow(path):
+        if Path(path) == link:
+            pytest.fail('Backup followed the linked job directory during admission.')
+        return actual_is_dir(path)
+    def no_job_lock(path, name='state'):
+        locks.append((Path(path), name))
+        assert Path(path) != link
+        return actual_lock(path, name)
+    monkeypatch.setattr(Path, 'is_dir', no_follow)
+    monkeypatch.setattr(backup, 'state_lock', no_job_lock)
+    with pytest.raises(ValueError, match='without links'):
+        backup.snapshot_state(service.directory.parent, tmp_path / 'snapshot')
+    assert locks == [(service.directory, 'jobs')]
+    assert not (tmp_path / 'snapshot').exists()
+    assert not (outside / '.transcription.lock').exists()

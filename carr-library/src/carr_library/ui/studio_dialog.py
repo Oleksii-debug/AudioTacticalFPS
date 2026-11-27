@@ -720,9 +720,11 @@ def install_studio_actions(frame):
     menu = wx.Menu()
     for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
                             ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
-                            ('Publish synchronized EPUB3...', lambda e: show_publishing(frame)),
+                            ('Publish synchronized EPUB3 and DAISY...', lambda e: show_publishing(frame)),
                             ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
                             ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
+        if title == 'Publish synchronized EPUB3 and DAISY...':
+            item.carr_command_name = 'publish synchronized epub3'
         frame.Bind(wx.EVT_MENU, handler, item)
     frame.menu_bar.Append(menu, 'Audio St&udio')

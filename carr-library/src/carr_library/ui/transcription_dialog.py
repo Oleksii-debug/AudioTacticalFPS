@@ -6,6 +6,7 @@ import threading
 from ..durable_state import local_path
 from ..transcription import (EngineSpec, MAX_WORKER_BYTES, TranscriptionService,
                              TranscriptionSettings, _bounded_bytes)
+from ..transcription_inputs import select_inputs
 
 
 def describe_job(job):
@@ -116,12 +117,17 @@ def create_transcription_dialog(frame, *, wx_module=None):
             self.buttons = {}
             for key, label, handler in [('engine', 'Configure reviewed &engine', self.on_engine),
                                        ('files', 'Choose audio &files', self.on_choose_files),
+                                       ('folder', 'Choose audio f&older', self.on_choose_folder),
                                        ('jobs', 'Saved transcription &jobs', self.on_jobs)]:
                 button = wx.Button(panel, label=label)
                 button.Bind(wx.EVT_BUTTON, handler)
                 self.buttons[key] = button
                 row.Add(button, 0, wx.ALL, 4)
             layout.Add(row, 0, wx.EXPAND)
+            self.recursive = wx.CheckBox(panel, label='Include subfolders when choosing a folder')
+            self.recursive.SetName('Include subfolders when choosing a folder')
+            self.recursive.SetValue(False)
+            layout.Add(self.recursive, 0, wx.ALL, 4)
             layout.Add(wx.StaticText(panel, label='Selected local audio inputs; private managed copies are created when Run is chosen'),
                        0, wx.ALL, 4)
             self.selected_files = wx.ListBox(panel, size=(-1, 85))
@@ -209,7 +215,7 @@ def create_transcription_dialog(frame, *, wx_module=None):
             self.SetSizer(outer)
             self.Bind(wx.EVT_CLOSE, self.on_close)
             self.refresh_capability()
-            self.report('Choose local audio files or a saved job. Run snapshots selected audio and invokes only the reviewed local worker. '
+            self.report('Choose local audio files, a folder or a saved job. Run snapshots selected audio and invokes only the reviewed local worker. '
                         'Restored jobs require an explicit Run and a newly selected engine profile.')
             self.controls()
 
@@ -232,8 +238,9 @@ def create_transcription_dialog(frame, *, wx_module=None):
                 return
             for key, control in self.settings_controls.items():
                 control.Enable(not self.busy and self.current_job is None)
-            for key in ('engine', 'files', 'jobs', 'run'):
+            for key in ('engine', 'files', 'folder', 'jobs', 'run'):
                 self.buttons[key].Enable(not self.busy)
+            self.recursive.Enable(not self.busy)
             self.buttons['pause'].Enable(self.busy and self.pausable and self.current_job is not None)
             self.buttons['cancel'].Enable(self.busy)
             self.artifact_choice.Enable(not self.busy and bool(self.artifacts))
@@ -314,6 +321,25 @@ def create_transcription_dialog(frame, *, wx_module=None):
             try:
                 if picker.ShowModal() == wx.ID_OK:
                     self.set_files(picker.GetPaths())
+            finally:
+                picker.Destroy()
+
+        def on_choose_folder(self, event=None):
+            if self.busy or not self.alive:
+                return
+            picker = wx.DirDialog(self, 'Choose a local audio folder; only the displayed files will be submitted')
+            try:
+                if picker.ShowModal() != wx.ID_OK:
+                    return
+                folder, recursive = picker.GetPath(), self.recursive.GetValue()
+                def selected(selection):
+                    self.set_files(selection.files)
+                    self.report(selection.describe())
+                self.begin('Reviewing selected audio folder',
+                    lambda: select_inputs(folders=(folder,), recursive=recursive,
+                        cancelled=lambda: self.cancel.is_set() or frame.cancel_event.is_set()), selected)
+            except (ValueError, OSError) as exc:
+                self.report(exc)
             finally:
                 picker.Destroy()
 

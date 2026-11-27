@@ -308,3 +308,265 @@ def test_competing_file_at_actual_publication_is_not_replaced(export, monkeypatc
     assert target.read_bytes() == b'Other writer at the actual filesystem operation'
     assert target.stat().st_nlink == 1
     assert not list(target.parent.glob('.research-export-*'))
+
+
+
+def _same_size_timestamp_collision(target, monkeypatch):
+    """Real changed bytes/restored mtime, with Windows creation-time semantics."""
+    original = target.stat()
+    state = export_file._file_state
+    identity = original.st_dev, original.st_ino
+
+    def windows_ctime(info):
+        result = state(info)
+        if result[0] == identity:
+            # POSIX ctime cannot be reset by os.utime; Windows st_ctime is the
+            # creation time in the tested Python runtime and may remain equal.
+            return (*result[:-1], original.st_ctime_ns)
+        return result
+
+    monkeypatch.setattr(export_file, '_file_state', windows_ctime)
+
+    def change(raw):
+        assert len(raw) == original.st_size
+        target.write_bytes(raw)
+        os.utime(target, ns=(original.st_atime_ns, original.st_mtime_ns))
+
+    return change
+
+
+def test_approved_same_size_changed_bytes_survive_colliding_timestamps(export, monkeypatch):
+    target, _, publish = export
+    target.write_bytes(b'Approved earlier bytes')
+    change = _same_size_timestamp_collision(target, monkeypatch)
+    approval = export_file.capture_export_destination(target, private_root=target.parent / 'private')
+    changed = b'Newer independent work'
+    change(changed)
+    assert export_file._destination(target, approval.private_root)[2] == approval.state
+
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=approval)
+
+    assert target.read_bytes() == changed
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_final_approved_byte_recheck_preserves_same_size_change_during_staging(export, monkeypatch):
+    target, _, publish = export
+    target.write_bytes(b'Approved earlier bytes')
+    change = _same_size_timestamp_collision(target, monkeypatch)
+    approval = export_file.capture_export_destination(target, private_root=target.parent / 'private')
+    original_sync = export_file.os.fsync
+    changed = b'Newer independent work'
+
+    def competing_save(descriptor):
+        original_sync(descriptor)
+        change(changed)
+        assert export_file._destination(target, approval.private_root)[2] == approval.state
+
+    monkeypatch.setattr(export_file.os, 'fsync', competing_save)
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=approval)
+
+    assert target.read_bytes() == changed
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_empty_existing_file_has_a_content_bound_approval(export):
+    from hashlib import sha256
+    target, expected, publish = export
+    target.write_bytes(b'')
+    approval = export_file.capture_export_destination(target, private_root=target.parent / 'private')
+    assert not approval.require_absent and approval.content_sha256 == sha256(b'').hexdigest()
+    publish(approval=approval)
+    assert target.read_bytes() == expected
+
+
+def test_existing_approval_without_a_digest_never_falls_back_to_metadata(export):
+    from dataclasses import replace
+    target, _, publish = export
+    target.write_bytes(b'Existing approved work')
+    approval = export_file.capture_export_destination(target, private_root=target.parent / 'private')
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=replace(approval, content_sha256=None))
+    assert target.read_bytes() == b'Existing approved work'
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def _observe_export_reads(monkeypatch, after_read=lambda size, raw: None):
+    """Wrap real reader handles without replacing their I/O or identity."""
+    fdopen = export_file.os.fdopen
+    streams, requests = [], []
+
+    class Reader:
+        def __init__(self, stream):
+            self.stream = stream
+        def fileno(self):
+            return self.stream.fileno()
+        def read(self, size):
+            assert 0 < size <= export_file.HASH_BLOCK_BYTES
+            raw = self.stream.read(size)
+            requests.append((size, len(raw)))
+            after_read(size, raw)
+            return raw
+        def __enter__(self):
+            return self
+        def __exit__(self, *error):
+            self.stream.close()
+
+    def opened(descriptor, *args, **kwargs):
+        stream = fdopen(descriptor, *args, **kwargs)
+        streams.append(stream)
+        return Reader(stream)
+
+    monkeypatch.setattr(export_file.os, 'fdopen', opened)
+    return streams, requests
+
+
+def test_capture_size_cap_rejects_before_opening_oversized_existing_bytes(tmp_path, monkeypatch):
+    target = tmp_path / 'oversized.txt'
+    with target.open('wb') as stream:
+        stream.truncate(export_file.MAX_APPROVAL_BYTES + 1)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail('Oversized replacement approval opened the existing file.')
+
+    monkeypatch.setattr(export_file.os, 'open', forbidden)
+    with pytest.raises(ValueError, match='Choose a new filename'):
+        export_file.capture_export_destination(target, private_root=tmp_path / 'private')
+    assert target.stat().st_size == export_file.MAX_APPROVAL_BYTES + 1
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_capture_deadline_stops_between_bounded_reads_and_closes_its_handle(tmp_path, monkeypatch):
+    target = tmp_path / 'slow.txt'
+    original = b'X' * (export_file.HASH_BLOCK_BYTES * 3)
+    target.write_bytes(original)
+    clock = [0.0]
+    monkeypatch.setattr(export_file, 'monotonic', lambda: clock[0])
+    def slow_read(size, raw):
+        if raw:
+            clock[0] = export_file.APPROVAL_HASH_SECONDS + 1
+    streams, reads = _observe_export_reads(monkeypatch, slow_read)
+
+    with pytest.raises(TimeoutError, match='Choose a new filename'):
+        export_file.capture_export_destination(target, private_root=tmp_path / 'private')
+
+    assert reads == [(export_file.HASH_BLOCK_BYTES, export_file.HASH_BLOCK_BYTES)]
+    assert streams and all(stream.closed for stream in streams)
+    assert target.read_bytes() == original
+
+
+def test_capture_cancellation_is_checked_between_chunks_without_retaining_an_open_file(tmp_path, monkeypatch):
+    from threading import Event
+    target = tmp_path / 'cancelled.txt'
+    original = b'X' * (export_file.HASH_BLOCK_BYTES * 3)
+    target.write_bytes(original)
+    stopped = Event()
+    streams, reads = _observe_export_reads(monkeypatch, lambda size, raw: stopped.set())
+
+    with pytest.raises(TimeoutError, match='destination was not changed'):
+        export_file.capture_export_destination(target, private_root=tmp_path / 'private', cancelled=stopped.is_set)
+
+    assert reads == [(export_file.HASH_BLOCK_BYTES, export_file.HASH_BLOCK_BYTES)]
+    assert streams and all(stream.closed for stream in streams)
+    assert target.read_bytes() == original
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('cancelled,exception', [(lambda: True, TimeoutError), (None, ValueError)])
+def test_invalid_or_pre_cancelled_capture_never_inspects_a_destination(tmp_path, monkeypatch, cancelled, exception):
+    def forbidden(*args, **kwargs):
+        pytest.fail('Cancelled/invalid approval accessed the filesystem.')
+    monkeypatch.setattr(export_file, '_destination', forbidden)
+    with pytest.raises(exception):
+        export_file.capture_export_destination(tmp_path / 'output.txt', private_root=tmp_path / 'private',
+                                               cancelled=cancelled)
+
+
+@pytest.mark.parametrize('phase', ['before-staging', 'after-staging'])
+def test_approved_export_cancellation_during_content_verification_preserves_old_file(export, monkeypatch, phase):
+    from threading import Event
+    target, _, publish = export
+    original = b'X' * (export_file.HASH_BLOCK_BYTES * 3)
+    target.write_bytes(original)
+    approval = export_file.capture_export_destination(target, private_root=target.parent / 'private')
+    stopped = Event()
+    def cancel_read(size, raw):
+        if raw and (phase == 'before-staging' or list(target.parent.glob('.research-export-*'))):
+            stopped.set()
+    streams, reads = _observe_export_reads(monkeypatch, cancel_read)
+
+    with pytest.raises(TimeoutError, match='destination was not changed'):
+        publish(approval=approval, cancelled=stopped.is_set)
+
+    assert stopped.is_set() and reads
+    assert streams and all(stream.closed for stream in streams)
+    assert target.read_bytes() == original
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_existing_approval_reader_handles_are_closed_before_windows_replacement(export, monkeypatch):
+    target, expected, publish = export
+    target.write_bytes(b'Existing selected work')
+    approval = export_file.capture_export_destination(target, private_root=target.parent / 'private')
+    streams, _ = _observe_export_reads(monkeypatch)
+    replace = export_file.os.replace
+
+    def closed_before_replace(source, destination):
+        assert len(streams) == 2 and all(stream.closed for stream in streams)
+        return replace(source, destination)
+
+    monkeypatch.setattr(export_file.os, 'replace', closed_before_replace)
+    publish(approval=approval)
+    assert target.read_bytes() == expected
+
+
+def test_existing_file_swapped_between_metadata_and_read_is_not_approved(export, monkeypatch):
+    target, _, publish = export
+    target.write_bytes(b'Approved earlier bytes')
+    approval = export_file.capture_export_destination(target, private_root=target.parent / 'private')
+    replacement = target.parent / 'competing.tmp'
+    replacement.write_bytes(b'Newer independent work')
+    original_open = export_file.os.open
+    swaps = []
+
+    def swap_before_read(path, flags, *args, **kwargs):
+        if Path(path) == target and not swaps:
+            os.replace(replacement, target)
+            swaps.append(True)
+        return original_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(export_file.os, 'open', swap_before_read)
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=approval)
+    assert swaps and target.read_bytes() == b'Newer independent work'
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+
+def test_windows_filename_execute_bits_do_not_break_handle_identity(tmp_path, monkeypatch):
+    target = tmp_path / 'export.cmd'
+    target.write_bytes(b'Approved plain text; this file is never executed.')
+    os.chmod(target, target.stat().st_mode | 0o111)
+    identity = target.stat().st_dev, target.stat().st_ino
+    actual_fstat = export_file.os.fstat
+
+    class HandleState:
+        def __init__(self, value):
+            self.value = value
+            self.st_mode = value.st_mode & ~0o111
+        def __getattr__(self, name):
+            return getattr(self.value, name)
+
+    def windows_handle_mode(descriptor):
+        value = actual_fstat(descriptor)
+        return HandleState(value) if (value.st_dev, value.st_ino) == identity else value
+
+    # CPython Windows path stat adds executable-extension bits; fstat does not.
+    # Model that documented source behavior on POSIX too, preserving real I/O.
+    monkeypatch.setattr(export_file.os, 'fstat', windows_handle_mode)
+    approval = export_file.capture_export_destination(target, private_root=tmp_path / 'private')
+    export_file.write_export(target, 'Updated plain text', private_root=tmp_path / 'private', approval=approval)
+    assert target.read_bytes() == b'Updated plain text'
+    assert not list(tmp_path.glob('.research-export-*'))

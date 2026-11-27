@@ -1,6 +1,6 @@
 """Independent regression checks for truthful desktop job completion."""
 import ast
-from concurrent.futures import Future
+from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 import threading
 from types import SimpleNamespace
@@ -445,12 +445,20 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
                                       'executor', 'audio_files', 'dialog')}
+    registry = Mock()
+    cleanup_order = []
+    env['owned_registries'] = {registry}
+    env['executor'].shutdown.side_effect = lambda **kwargs: cleanup_order.append('worker finished')
+    registry.close.side_effect = lambda: cleanup_order.append('registry closed') or True
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    registry.close.assert_called_once_with()
+    assert cleanup_order == ['worker finished', 'registry closed']
+    assert env['owned_registries'] == set()
     if device_failure:
         env['audio_files'].cleanup.assert_not_called()
         assert env['parent']._reader_playback_retained == [(env['player'], env['audio_files'])]
@@ -480,13 +488,37 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor = [Mock() for _ in range(9)]
     if device_failure:
         dialog._audio_player.close.side_effect = RuntimeError('Audio device disconnected')
-    callback = env['make'](autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor)
-    callback()
+    release_worker, worker_started, cleanup_finished = [threading.Event() for _ in range(3)]
+    worker_threads = []
+    def close_service():
+        worker_threads.append(threading.get_ident())
+        cleanup_finished.set()
+    service.close.side_effect = close_service
+    pool = ThreadPoolExecutor(max_workers=1)
+    executor = Mock(wraps=pool)
+    def running_work():
+        worker_started.set()
+        assert release_worker.wait(5), 'Test did not release the active worker'
+    running = pool.submit(running_work)
+    try:
+        assert worker_started.wait(5), 'Test worker did not start'
+        callback = env['make'](autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor)
+        callback()
+        executor.submit.assert_called_once_with(service.close)
+        executor.shutdown.assert_called_once_with(wait=False, cancel_futures=False)
+        service.close.assert_not_called()  # queued behind the still-owned operation
+    finally:
+        release_worker.set()
+        cleanup_completed = cleanup_finished.wait(5)
+        pool.shutdown(wait=True)
+    assert cleanup_completed, 'Queued owned-service cleanup did not finish'
+    running.result()
+    service.close.assert_called_once_with()
+    assert len(worker_threads) == 1 and worker_threads[0] != threading.get_ident()
     dialog._audio_player.close.assert_called_once_with()
     progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
     parent_progress.unregister_player.assert_called_once_with(dialog._audio_player, silence_confirmed=not device_failure)
     progress.pause.assert_called_once_with('Audio production paused; completed chunks retained')
     progress.close.assert_called_once_with()
-    executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
     dialog.EndModal.assert_called_once_with(123)
     assert report.call_count == int(device_failure)

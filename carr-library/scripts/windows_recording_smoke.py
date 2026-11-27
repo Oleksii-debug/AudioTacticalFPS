@@ -23,6 +23,8 @@ def main():
     arguments = parser.parse_args()
     from carr_library.native_runtime import activate_bundled_runtime
     native_handle = activate_bundled_runtime()
+    import ctypes
+    from ctypes import wintypes
     import wx
     from carr_library.application import LibraryApp
     from carr_library.audio import AudioRuntime
@@ -71,6 +73,13 @@ def main():
 
     app = ProbeApp(False)
     simulator = wx.UIActionSimulator()
+    user32 = ctypes.WinDLL('user32', use_last_error=True)
+    user32.SetForegroundWindow.argtypes = [wintypes.HWND]
+    user32.SetForegroundWindow.restype = wintypes.BOOL
+    user32.GetForegroundWindow.argtypes = []
+    user32.GetForegroundWindow.restype = wintypes.HWND
+    key_pending = False
+    pressed_keys = {}
     original_factory = dialog_module.RecordingService
 
     with TemporaryDirectory(prefix='resonance-native-recording-', ignore_cleanup_errors=True) as temporary:
@@ -141,11 +150,43 @@ def main():
             return invoke
 
         def press(target, key=wx.WXK_SPACE):
-            target.SetFocus()
+            nonlocal key_pending
+            key_pending = True
+            name = target.GetName()
+            top = wx.GetTopLevelParent(target)
+            focus_deadline = min(deadline, monotonic() + 5)
+            def release():
+                nonlocal key_pending
+                try:
+                    if key in pressed_keys:
+                        check('native key release: ' + name, simulator.KeyUp(key))
+                finally:
+                    pressed_keys.pop(key, None)
+                    key_pending = False
             def dispatch():
+                nonlocal key_pending
+                if errors or finished:
+                    key_pending = False
+                    return
+                top.Raise()
+                user32.SetForegroundWindow(top.GetHandle())
+                target.SetFocus()
+                if wx.Window.FindFocus() != target or user32.GetForegroundWindow() != top.GetHandle():
+                    if monotonic() >= focus_deadline:
+                        raise TimeoutError('Native foreground and focus did not reach ' + target.GetName())
+                    wx.CallLater(25, guarded(dispatch))
+                    return
                 check('native focus reaches ' + target.GetName(), wx.Window.FindFocus() == target)
-                check('native key dispatch: ' + target.GetName(), simulator.Char(key))
-            wx.CallLater(25, guarded(dispatch))
+                check('native recording dialog owns the foreground', user32.GetForegroundWindow() == top.GetHandle())
+                try:
+                    check('native key dispatch: ' + name, simulator.KeyDown(key))
+                    pressed_keys[key] = name
+                except BaseException:
+                    simulator.KeyUp(key)
+                    key_pending = False
+                    raise
+                wx.CallLater(40, guarded(release))
+            wx.CallAfter(guarded(dispatch))
 
         def drive():
             nonlocal stage, dialog
@@ -153,6 +194,9 @@ def main():
                 return
             if monotonic() >= deadline:
                 raise TimeoutError('Native recording acceptance exceeded its deadline')
+            if key_pending:
+                wx.CallLater(25, guarded(drive))
+                return
             if dialog is None:
                 dialog = next((window for window in wx.GetTopLevelWindows()
                     if isinstance(window, wx.Dialog) and window.GetTitle() == 'Local microphone recording'), None)
@@ -168,8 +212,9 @@ def main():
             status = control('Recording status')
             if stage == 0 and refresh.IsEnabled():
                 check('opening the dialog does not discover or capture', not service._devices and not captures)
-                check('recording progress has a native accessible gauge',
-                      isinstance(control('Recording operation progress'), wx.Gauge))
+                gauges = [child for child in dialog.GetChildren() if isinstance(child, wx.Gauge)]
+                check('recording progress has a native accessible gauge', len(gauges) == 1
+                      and gauges[0].GetName().startswith('Operation progress: '))
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
@@ -216,6 +261,13 @@ def main():
                 return
             wx.CallLater(25, guarded(drive))
             result = dialog_module.show_recording(frame)
+            # Escape can finish the modal before the scheduled key-up tick.
+            # Release it while this real event loop is still owned by the probe.
+            for key, name in tuple(pressed_keys.items()):
+                try:
+                    check('native key release after modal close: ' + name, simulator.KeyUp(key))
+                finally:
+                    pressed_keys.pop(key, None)
             finished = True
             if not errors:
                 check('Escape closes only after active capture cleanup', stage == 8 and result is None
@@ -236,6 +288,9 @@ def main():
                 raise AssertionError('\n'.join(errors))
         finally:
             dialog_module.RecordingService = original_factory
+            for key in tuple(pressed_keys):
+                simulator.KeyUp(key)
+                pressed_keys.pop(key, None)
             for item in captures:
                 item['cancel'].set()
             if frame is not None:

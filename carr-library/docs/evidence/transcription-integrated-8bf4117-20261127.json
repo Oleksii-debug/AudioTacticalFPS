@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "execution_date": "2026-11-27",
+  "source_commit": "8bf411718548809793748ed01f458c79f3692e98",
+  "source_tree": "f8345c43a294315dedb15f30042a38d12333e5a7",
+  "application_code_sha256": {
+    "application.py": "483c31f17a8317970709682745c5267ce957588b3012bd816b80741cd44f9308",
+    "library_backup.py": "fa814356bf9cab332c29eff8cf2c709a65f419285b93e40e43454392e3dc46b5",
+    "state_backup.py": "bfb98d72856d845723146fb56443ecacecf8e44e67c580a22e121dc274075417",
+    "transcription.py": "d95200bff919d1b76f329c23b18fa32c01443e882bed99c0b0b3dd657e0cf4af",
+    "transcription_cli.py": "736e3e6ed0032f23007ca2548d6322f2972f6241c53f93c575ff2dd4e7441ef4"
+  },
+  "private_worker_sha256": "5379b889b8019c7ad9f427a7bc8db268dccd747469abc72db4f3001f9f82306c",
+  "model": {
+    "repository": "Systran/faster-whisper-tiny.en",
+    "revision": "0d3d19a32d3338f10357c0889762bd8d64bbdeba",
+    "files": {
+      "README.md": {
+        "size": 1323,
+        "sha256": "1b7816626bf0548e4b71a467f4112b4592924bc818e3117f19aefcc50ce4b6aa"
+      },
+      "config.json": {
+        "size": 2317,
+        "sha256": "14b1b421a90349bc551b881461426b561a874049cb9e4c4864f2ca384f6a7cc5"
+      },
+      "model.bin": {
+        "size": 75537502,
+        "sha256": "1a5afae06a4db91c975c9a9d78be5cc110ee4ea022ad57d55492e4550e936b2a"
+      },
+      "tokenizer.json": {
+        "size": 2128466,
+        "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df"
+      },
+      "vocabulary.txt": {
+        "size": 422309,
+        "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf"
+      }
+    }
+  },
+  "runtime_freeze_sha256": "1e3a4139212df1b703ceaef6cab78688d58468dd7767599a09f17f39f717f2d3",
+  "runtime_dependency_check": "PASS",
+  "network": {
+    "boundary": "Linux user/network namespace",
+    "interfaces": [
+      "lo"
+    ],
+    "external_connect_errno": 101,
+    "external_route_present": false
+  },
+  "fixture": {
+    "type": "Synthetic Flite English speech",
+    "sha256": "174b1e7d218764f80b63e3f7bbe1be31ebab375dfec711ba8fb7a59576f0da15",
+    "bytes": 169358
+  },
+  "passed_assertions": 82,
+  "actual_worker_runs": 6,
+  "verified_formats": [
+    "txt",
+    "srt",
+    "vtt",
+    "json"
+  ],
+  "runs": [
+    {
+      "phase": "service-cold",
+      "seconds": 2.155,
+      "recognition_reused": false,
+      "actual_runtime": {
+        "compute_type": "int8_float32",
+        "device": "cpu",
+        "effective_parallel_files": 1
+      }
+    },
+    {
+      "phase": "service-cold-interrupted-after-receipt",
+      "seconds": 3.436,
+      "recognition_reused": false,
+      "actual_runtime": {
+        "compute_type": "int8_float32",
+        "device": "cpu",
+        "effective_parallel_files": 1
+      }
+    },
+    {
+      "phase": "cli-warm-resume-via-public-service",
+      "seconds": 1.812,
+      "recognition_reused": true,
+      "actual_runtime": {
+        "compute_type": "int8_float32",
+        "device": "cpu",
+        "effective_parallel_files": 1
+      }
+    },
+    {
+      "phase": "explicit-run-after-rebind",
+      "seconds": 2.104,
+      "recognition_reused": false,
+      "actual_runtime": {
+        "compute_type": "int8_float32",
+        "device": "cpu",
+        "effective_parallel_files": 1
+      }
+    },
+    {
+      "phase": "cancelled-existing-job-before-backup",
+      "seconds": 2.518,
+      "recognition_reused": false
+    },
+    {
+      "phase": "same-id-resume-after-deletion-and-restore",
+      "seconds": 3.192,
+      "recognition_reused": false
+    }
+  ],
+  "verified_workflows": [
+    "Actual cold inference with the exact supplied corrected worker and pinned model",
+    "Final observer exception cannot rewrite a durably verified successful job",
+    "Completed job reopens without another worker process",
+    "Separate derived transcript editing and no-clobber export",
+    "Actual interruption followed by explicit CLI resume and exact cached artifact reuse",
+    "Original selected recording and entire original library deleted before restore",
+    "A genuinely cancelled job survives a second backup, library deletion and restore",
+    "External engine requires explicit rebind before restored execution",
+    "Same saved job ID resumes with a new matching run ID and current retained paths",
+    "Source bytes, research quotation and edited transcript revision survive recovery",
+    "Raw overlong model timestamp retained with warning; exported timestamp bounded to decoded duration",
+    "Exact private worker bytes remain unchanged after all runs"
+  ],
+  "limits": [
+    "Linux source-package compatibility only; native Windows and manual NVDA are separate",
+    "One short synthetic English fixture; no multilingual, acoustic accuracy or listening qualification",
+    "No GPU, diarization, word-alignment or long-file qualification",
+    "No private source, recordings, model weights, credentials or machine paths published"
+  ]
+}

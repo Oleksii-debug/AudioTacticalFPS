@@ -541,6 +541,10 @@ class LibraryApp:
                     expected_manifest=None):
         """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
+        if not isinstance(authors, (tuple, list)) or len(authors) > 100:
+            raise ValueError('invalid authors')
+        if not isinstance(collections, (tuple, list)) or len(collections) > 100:
+            raise ValueError('invalid collections')
         path = Path(path).absolute()
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),

@@ -1,23 +1,37 @@
 """Manifest-bound private application sidecars for complete library backups.
 
-Snapshot committed JSON/project files and optionally generated audio. Atomic
-writers may continue: a changing file causes a clear retryable failure, never
-a successful partial snapshot. Rebuildable audio cache is optional; a restored
-render checks every receipt and regenerates missing/corrupt chunks.
+Snapshot committed JSON/project files and optionally generated audio. Ordinary
+atomic writers may continue: a changing file causes a clear retryable failure.
+Transcription admission/run locks remain held throughout a snapshot so backup
+readers cannot disrupt an active Windows worker's output replacement. Rebuildable
+audio cache is optional; restored renders verify and regenerate their chunks.
 """
+from contextlib import ExitStack
 from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
+import stat
+import unicodedata
 
-from .durable_state import local_path, regular, sync_directory
+from .durable_state import local_path, regular, state_lock, sync_directory
 
 MAX_STATE_FILES = 100_000
 MAX_STATE_BYTES = 32 * 1024**3
+MAX_STATE_PATH_LENGTH = 4096
+MAX_STATE_PATH_DEPTH = 64
 
 
 def relative_name(value):
-    if not isinstance(value, str) or not value or '\\' in value or ':' in value or any(ord(c) < 32 for c in value):
+    if not isinstance(value, str) or not value:
+        raise ValueError('Invalid state manifest path.')
+    # Bound parsing and ancestor expansion before constructing any Path objects.
+    # A small manifest can otherwise contain a deeply nested, quadratic path.
+    if len(value) > MAX_STATE_PATH_LENGTH:
+        raise ValueError('State manifest path exceeds the 4096-character limit.')
+    if value.count('/') + 1 > MAX_STATE_PATH_DEPTH:
+        raise ValueError('State manifest path exceeds the 64-component depth limit.')
+    if '\\' in value or ':' in value or any(ord(c) < 32 for c in value):
         raise ValueError('Invalid state manifest path.')
     path = PurePosixPath(value)
     if path.is_absolute() or str(path) != value or any(x in ('.', '..') or x.endswith((' ', '.')) for x in path.parts):
@@ -37,6 +51,93 @@ def _include(path, generated):
             and (generated or 'cache' not in path.parts))
 
 
+def _transcription_snapshot_guard(root, locks, cancelled):
+    """Hold existing admission/run locks before inventory opens worker outputs."""
+    admitted = {}
+    transcription = root / 'transcription'
+
+    def check_cancelled():
+        if cancelled():
+            raise InterruptedError('Backup cancelled.')
+
+    def identity(path):
+        value = regular(path, directory=True)
+        return value.st_dev, value.st_ino
+
+    def acquire(path, name):
+        check_cancelled()
+        try:
+            locks.enter_context(state_lock(path, name))
+        except RuntimeError:
+            raise RuntimeError('Wait for transcription operations to finish or stop the active job '
+                               'before creating a backup; pausing is not sufficient.') from None
+
+    if os.path.lexists(transcription):
+        local_path(transcription, root=root, exists=True)
+        root_identity = identity(transcription)
+        acquire(transcription, 'jobs')
+        if identity(transcription) != root_identity:
+            raise ValueError('Transcription state changed during backup; retry after it settles.')
+        admitted[('transcription',)] = (transcription, root_identity)
+        jobs = transcription / 'jobs'
+        if os.path.lexists(jobs):
+            local_path(jobs, root=transcription, exists=True)
+            jobs_identity = identity(jobs)
+            admitted[('transcription', 'jobs')] = (jobs, jobs_identity)
+            # Match the public service's finite job budget without importing
+            # the service at module load (it imports relative_name from here).
+            from .transcription import MAX_JOBS
+            selected = []
+            for job in jobs.iterdir():
+                check_cancelled()
+                if not _include(job.relative_to(root), True):
+                    continue
+                # Classify the directory entry without following it. Even a
+                # preflight is_dir() can follow an external link/reparse point.
+                is_directory = stat.S_ISDIR(job.lstat().st_mode)
+                regular(job, directory=is_directory)
+                local_path(job, root=jobs, exists=True)
+                if is_directory:
+                    selected.append(job)
+                    if len(selected) > MAX_JOBS:
+                        raise ValueError('Transcription jobs exceed the backup admission budget.')
+            for job in sorted(selected):
+                check_cancelled()
+                if not _include(job.relative_to(root), True):
+                    continue
+                local_path(job, root=jobs, exists=True)
+                job_identity = identity(job)
+                acquire(job, 'transcription')
+                if identity(job) != job_identity:
+                    raise ValueError('Transcription state changed during backup; retry after it settles.')
+                key = ('transcription', 'jobs', job.name.casefold())
+                if key in admitted:
+                    raise ValueError('Transcription job names are ambiguous during backup.')
+                admitted[key] = (job, job_identity)
+
+    def guard(directory):
+        parts = directory.relative_to(root).parts
+        folded = tuple(part.casefold() for part in parts)
+        if not folded or folded[0] != 'transcription':
+            return
+        keys = [folded[:1]]
+        if len(folded) >= 2 and folded[1] == 'jobs':
+            keys.append(folded[:2])
+            if len(folded) >= 3:
+                keys.append(folded[:3])
+        for key in keys:
+            actual = root.joinpath(*parts[:len(key)])
+            expected = admitted.get(key)
+            if (expected is None or actual != expected[0]
+                    or identity(actual) != expected[1]):
+                # This includes a newly appearing namespace/job that was absent
+                # at admission. Fail before reading any of its status/results.
+                raise RuntimeError('Transcription state appeared or changed during backup. '
+                                   'Wait for completion or stop the job, then retry.')
+
+    return guard
+
+
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
                    cancelled=lambda: False):
     root = Path(root)
@@ -46,11 +147,19 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
         return []
     root = local_path(root, exists=True)
     regular(root, directory=True)
+    with ExitStack() as locks:
+        guard = _transcription_snapshot_guard(root, locks, cancelled)
+        return _snapshot_locked_state(root, target, include_generated=include_generated,
+                                      max_bytes=max_bytes, cancelled=cancelled, guard=guard)
+
+
+def _snapshot_locked_state(root, target, *, include_generated, max_bytes, cancelled, guard):
     def inventory():
         found = {}
         for directory, dirs, files in os.walk(root, followlinks=False):
             if cancelled():
                 raise InterruptedError('Backup cancelled.')
+            guard(Path(directory))
             for name in dirs:
                 regular(Path(directory) / name, directory=True)
             dirs[:] = [name for name in dirs if _include((Path(directory) / name).relative_to(root), include_generated)]
@@ -134,23 +243,42 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
+    # A snapshot must pass the same portable manifest checks as a restore.
+    # Keep this after content revalidation and before publication.
+    validate_state(entries)
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
 def validate_state(entries):
     if not isinstance(entries, list) or len(entries) > MAX_STATE_FILES:
         raise ValueError('Invalid application state manifest.')
-    names, total = set(), 0
+    names, directories, portable_paths, total = set(), set(), {}, 0
     for item in entries:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
                 or type(item['size_bytes']) is not int or item['size_bytes'] < 0
                 or not isinstance(item['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', item['sha256'])):
             raise ValueError('Invalid application state manifest.')
         name = relative_name(item['filename']).as_posix()
-        if name.casefold() in names:
+        key = unicodedata.normalize('NFC', name).casefold()
+        if key in names:
             raise ValueError('Duplicate application state filename.')
-        names.add(name.casefold())
+        names.add(key)
+        # Reuse the typed sidecar portable-path policy, including ancestors.
+        # A/one and a/two may coexist on POSIX but alias on Windows.
+        path = PurePosixPath(name)
+        for component in (path, *path.parents):
+            current = str(component)
+            if current == '.':
+                continue
+            portable = unicodedata.normalize('NFC', current).casefold()
+            previous = portable_paths.setdefault(portable, current)
+            if previous != current:
+                raise ValueError('Application state paths collide on a portable filesystem.')
+            if component != path:
+                directories.add(portable)
         total += item['size_bytes']
+    if names & directories:
+        raise ValueError('Application state file and directory paths collide.')
     if total > MAX_STATE_BYTES:
         raise ValueError('Application state manifest exceeds its byte budget.')
 

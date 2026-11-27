@@ -19,12 +19,45 @@ private worker source, engine environment, model weights or recordings.
 An earlier `d911…` derivative is not admitted because replacement inference
 processes could retain the previous runtime fingerprint.
 
-The final service blob is `cc696c76e805a0589fbdad93f38e0a9d292ac8d2`.
-The actual service/CLI acceptance ran at
-`e1e8136e4793ae35ef551704832dca7f44b69201`; integration retains the same service
-bytes. Its private evidence contains 81 passed assertions. The public
-[execution record](evidence/transcription-private-worker-20261127.json) records
-the bounded conclusions and hashes without private machine paths.
+The first actual service/CLI acceptance ran at
+`e1e8136e4793ae35ef551704832dca7f44b69201`, service blob
+`cc696c76e805a0589fbdad93f38e0a9d292ac8d2`, with 81 passed assertions. Its
+[historical execution record](evidence/transcription-private-worker-20261127.json)
+is retained without transferring that result to subsequently changed code.
+
+The integrated service was exercised again at exact public source
+`8bf411718548809793748ed01f458c79f3692e98`, tree
+`f8345c43a294315dedb15f30042a38d12333e5a7`, after the Windows UTF-8/progress-file
+changes and final-observer correction. **82 assertions passed across six actual
+worker executions**, including CLI reuse and the same saved job resumed after a
+second destructive restore. A deliberately failing final progress observer did
+not change the successful verified result or launch the worker again. The
+[integrated execution record](evidence/transcription-integrated-8bf4117-20261127.json)
+binds the exact public modules, unchanged private worker, pinned model and
+dependency freeze. This replay used a fresh engine environment with an identical
+dependency freeze and successful `pip check`, inside a namespace with no external
+network route.
+
+The explicit folder entry point was exercised next against an immutable archive
+of committed source `310e6e7cffc9e91949b4c76248842d151c2a30f4`. Its separate
+[folder execution record](evidence/transcription-folder-310e6e7-20261127.json)
+binds all four public transcription module hashes and raw private report SHA256
+`8f708e6b201f2701335a5ed206d779ef64c5be339aa09dea99760a9481ec55e8`.
+**69 assertions passed**, including 31 exact runtime-version checks and five
+pinned model-component checks. Actual CLI configuration and `submit --folder`
+created one queued job containing two distinct synthetic English recordings,
+reported an unsupported TXT entry and did not start recognition. After deletion
+of the harness-created original folder, explicit Run produced all eight
+verified TXT/SRT/VTT/JSON outputs from the retained inputs. Both JSON transcripts
+contained nonempty timestamped recognition. The worker received a finite file
+list and an empty folder list; a completed Run revalidated the same receipt.
+This Linux replay again used only a loopback interface and observed external
+connection failure `ENETUNREACH` (101). Python was 3.12.14, actual CPU compute was
+`int8_float32`, and the two 5.03/5.29-second recordings completed in 2.724 seconds.
+That timing is an individual observation. The worker digest remained unchanged;
+private paths, worker source, model weights, recordings and raw transcripts are
+excluded from the public record. The earlier 81/82-assertion records are unchanged
+and their assertion totals are not added to this separate workflow.
 
 | Dimension | Current evidence |
 | --- | --- |
@@ -33,7 +66,7 @@ the bounded conclusions and hashes without private machine paths.
 | EXECUTED | Actual faster-whisper CPU inference with `Systran/faster-whisper-tiny.en`, revision `0d3d19a32d3338f10357c0889762bd8d64bbdeba`; no external route inside the Linux network namespace |
 | Recovery | Real interrupted job resumes with a new matching run ID and verified recognition reuse; original input and whole library removed before restore; same saved job resumes after explicit engine rebind |
 | Original / derivative boundary | Original audio and generated transcript hashes retained; editing creates a separate revision; export refuses an existing destination |
-| QUALIFIED | Only compatibility with this exact runtime/model and one 5.29-second synthetic English fixture; not multilingual, human listening, general accuracy, long-file or GPU qualification |
+| QUALIFIED | Compatibility with the exact runtime/model and short synthetic English inputs (5.03/5.29 seconds); not multilingual, human listening, general accuracy, long-file or GPU qualification |
 | Windows / NVDA | Native source and installed-package probes are required by the composed Windows workflow; this Linux evidence makes no native Windows or manual NVDA claim |
 | DISTRIBUTION_CLEARED | WAITING_INPUT: private wrapper authorization, exact runtime/model notices and distribution profile remain separate; no inference assets are bundled automatically |
 
@@ -41,8 +74,9 @@ The exercised runtime used faster-whisper 1.2.1, CTranslate2 4.8.0, PyAV 17.1.0,
 ONNX Runtime 1.26.0, NumPy 2.4.6, huggingface-hub 1.19.0 and tokenizers 0.23.1.
 The installed dependency freeze and `pip check` were recorded privately.
 Requested CPU `int8` resolved to actual `int8_float32`; the receipt reports the
-actual value. Effective inference concurrency was one. A cold service run took
-1.990 seconds and the explicit warm CLI resume 1.716 seconds on the test host;
+actual value. Effective inference concurrency was one. In the integrated replay,
+the cold service run took 2.155 seconds and the explicit warm CLI resume 1.812
+seconds; the same-job resume after the second restore took 3.192 seconds;
 these are individual observations, not performance guarantees.
 
 The test model emitted a segment end beyond the decoded duration. The corrected
@@ -54,6 +88,34 @@ After relocation, a stored engine selection is inactive until the user explicitl
 selects the reviewed external runtime again. A resumed job regenerates all
 execution paths from its current retained inputs. Relocation correctly caused
 fresh recognition instead of reusing the old absolute-path cache identity.
+
+## Composed folder and completed-backup replay
+
+The [source-bound replay record](evidence/transcription-folder-recovery-646a15e-20261127.json)
+records **107 passing assertions** on committed source
+`646a15e38bf7b56349632011e28e7e1b65e9bd3e`. It retains the earlier folder
+scenario and adds recovery after the Windows progress/active-backup corrections
+and portable state-path bounds. The private raw report SHA256 is
+`37b5d3cc520c1ad8f66accae2bca10862e48d90a7a3069eff4e60e24d1dfff7d`.
+
+Both actual worker executions used the unchanged `5379b889…f82306c` worker,
+all five immutable `tiny.en` components, the exact 31-package replay freeze and
+a successful dependency check. Execution ran inside a Linux user/network
+namespace with only loopback; the external connection attempt returned errno
+101. The first two-file CLI run produced eight verified artifacts after removal
+of the selected folder. A full v4 backup retained 19 state files (359,308 bytes).
+The original test library was removed, then restored to a new location. Running
+before engine rebind was refused; explicit rebind permitted the same completed
+job to revalidate unchanged input/output, configuration and result identities.
+The original catalog asset bytes also survived.
+
+The second real two-file run forced `_READ_LIVE_PROGRESS=False` only in the
+Linux test host. It completed with truthful indeterminate progress and eight
+strictly validated artifacts. This is compatibility evidence for that branch,
+not a native Windows file-sharing or NVDA result. No production source bytes or
+private worker bytes changed during either run. The earlier interruption/resume
+record and 69-assertion folder record are preserved independently; this evidence
+does not extend their acoustic, language, platform or distribution qualifications.
 
 ## Original static review and resolved findings
 

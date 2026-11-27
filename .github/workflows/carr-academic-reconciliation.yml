@@ -47,7 +47,7 @@ jobs:
           python -m pip install '.[test]'
           python -m pip check
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng
+          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng ffmpeg
       - name: Verify every reconciled path with strict isolated suites
         timeout-minutes: 8
         run: |
@@ -78,6 +78,7 @@ jobs:
             tests/ui/test_desktop_result_modes.py \
             tests/ui/probe_advanced_query_builder.py \
             tests/ui/test_progress_job_review.py \
+            tests/audio/test_posix_process.py tests/storage/test_state_backup_portability_posix.py \
             tests/e2e/test_advanced_research_search.py \
             tests/e2e/test_research_search_cli.py \
             tests/storage/test_library_backup_reading_state.py \

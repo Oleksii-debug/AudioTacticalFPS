@@ -46,6 +46,10 @@ FORMATS = ('txt', 'srt', 'vtt', 'json')
 _TERMINAL = {'succeeded', 'partial', 'failed', 'cancelled'}
 _SHA = re.compile(r'[0-9a-f]{64}')
 _ID = re.compile(r'[0-9a-f]{32}')
+# Classic Windows os.replace cannot replace an open destination, even when its
+# handle shares delete access. The reviewed worker uses that unchanged writer.
+# Do not open its live status there; final evidence is read after the child exits.
+_READ_LIVE_PROGRESS = os.name != 'nt'
 
 
 def _hex(value):
@@ -74,12 +78,12 @@ def _cancel(cancelled):
 
 @contextmanager
 def _open_progress(path):
-    """Read an atomic worker status without preventing its next replacement.
+    """Open a bounded status snapshot, never a live Windows worker target.
 
-    Ordinary Windows CRT file handles deny delete sharing. Holding one while
-    the worker publishes its next status can make os.replace fail. Share only
-    for this transient progress snapshot; final receipts retain strict reads
-    after the owned worker exits.
+    Delete sharing allows a Windows reader to coexist with some rename/delete
+    operations, but it does not permit ordinary os.replace to replace an open
+    destination. The run loop therefore reads this file only on POSIX while its
+    worker is alive. Final Windows status is read strictly after child exit.
     """
     path = local_path(path, exists=True)
     if os.name != 'nt':
@@ -631,7 +635,8 @@ class TranscriptionService:
                     # and diagnostic files leave their context, even on error.
                     children.callback(stop_process, process)
                     started, status_stamp = time.monotonic(), None
-                    progress(0, len(job['inputs']), 'Starting reviewed local transcription')
+                    progress(0 if _READ_LIVE_PROGRESS else None, len(job['inputs']),
+                        'Starting reviewed local transcription')
                     while process.poll() is None:
                         now = time.monotonic()
                         if cancelled() and stopping is None:
@@ -645,18 +650,30 @@ class TranscriptionService:
                             raise TimeoutError('The reviewed transcription worker exceeded its time budget.')
                         if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_DIAGNOSTIC_BYTES:
                             raise ValueError('The transcription worker exceeded its diagnostic byte budget.')
-                        status = root / 'job_status.json'
                         update_available = False
-                        try:
-                            current_stamp = _stamp(regular(status))
-                            if current_stamp != status_stamp:
-                                update = _read_progress(status)
-                                update_available = True
-                        except (FileNotFoundError, PermissionError):
-                            # A live atomic replacement may be briefly pending
-                            # deletion on Windows. Progress can wait for the
-                            # next bounded poll; terminal evidence never can.
-                            pass
+                        if _READ_LIVE_PROGRESS:
+                            status = root / 'job_status.json'
+                            try:
+                                current_stamp = _stamp(regular(status))
+                                if current_stamp != status_stamp:
+                                    update = _read_progress(status)
+                                    update_available = True
+                            except (FileNotFoundError, PermissionError):
+                                # Progress may wait for the next bounded poll;
+                                # terminal evidence is always read after exit.
+                                pass
+                        else:
+                            # On Windows even a read handle with delete sharing
+                            # can make the worker's atomic replacement fail.
+                            # Neither open nor stat its status while it is alive.
+                            phase = ('Stopping local transcription; waiting for worker exit'
+                                if stopping is not None else
+                                'Pause requested; waiting for worker'
+                                if (root / 'pause.flag').exists() else
+                                'Running locally; progress verified after worker exit')
+                            if phase != status_stamp:
+                                progress(None, len(job['inputs']), phase)
+                                status_stamp = phase
                         if update_available:
                             if (type(update) is not dict or update.get('protocol') != PROTOCOL
                                     or update.get('job_id') != identity

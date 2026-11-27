@@ -9,11 +9,11 @@ import signal
 import sys
 import threading
 
-from .durable_state import local_path, read_json, regular
+from .durable_state import read_json
 from .studio.cli import data_directory
-from .transcription import (AUDIO_EXTENSIONS, EngineSpec, MAX_ARTIFACT_BYTES, MAX_INPUT_BYTES,
-                            MAX_INPUT_FILES, MAX_JOB_INPUT_BYTES, TranscriptionService,
+from .transcription import (EngineSpec, MAX_ARTIFACT_BYTES, TranscriptionService,
                             TranscriptionSettings, _bounded_bytes, _relative, _text)
+from .transcription_inputs import select_inputs
 
 
 def _job_id(value):
@@ -69,26 +69,6 @@ def _summary(job):
             'error': job.get('error')}
 
 
-def _input_arguments(files):
-    """Reject invalid selected-path arguments before initializing app state.
-
-    The service still snapshots and checks byte identity, mutation and duplicate
-    content at admission; this lightweight CLI check does not replace it.
-    """
-    if not 1 <= len(files) <= MAX_INPUT_FILES:
-        raise ValueError('Choose 1–' + str(MAX_INPUT_FILES) + ' explicit audio files.')
-    seen, total = set(), 0
-    for value in files:
-        path = local_path(value, exists=True)
-        size = regular(path).st_size
-        if path in seen or path.suffix.casefold() not in AUDIO_EXTENSIONS or not 0 < size <= MAX_INPUT_BYTES:
-            raise ValueError('Choose each supported nonempty local audio file once, within the byte budget.')
-        seen.add(path)
-        total += size
-        if total > MAX_JOB_INPUT_BYTES:
-            raise ValueError('Selected transcription inputs exceed the job byte budget.')
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Local reviewed transcription; submit and execution are separate operations')
     parser.add_argument('--data-dir', type=Path, help='Existing application data selection, or an explicit private library root')
@@ -103,7 +83,11 @@ def main(argv=None):
     status = operations.add_parser('status', help='Revalidate saved source/output receipts and show one job')
     status.add_argument('job_id', type=_job_id)
     submit = operations.add_parser('submit', help='Snapshot selected audio into a new queued job; never executes the worker')
-    submit.add_argument('files', nargs='+', type=Path)
+    submit.add_argument('files', nargs='*', type=Path)
+    submit.add_argument('--folder', action='append', type=Path, default=[],
+                        help='Explicit local folder to expand now; repeat for more folders. No ongoing watch.')
+    submit.add_argument('--recursive', action='store_true',
+                        help='Include subfolders of --folder; off by default. Links/reparse points are never followed.')
     submit.add_argument('--title', default='Transcription')
     submit.add_argument('--settings', type=Path, help='Bounded JSON object containing TranscriptionSettings fields')
     submit.add_argument('--model', help='Installed model directory name; tiny.en is English-only')
@@ -133,6 +117,8 @@ def main(argv=None):
     export.add_argument('--output', required=True, type=Path)
     export.add_argument('--revision', type=_job_id, help='Saved TXT revision ID; omit for the original worker output')
     args = parser.parse_args(argv)
+    if args.operation == 'submit' and (not args.files and not args.folder or args.recursive and not args.folder):
+        parser.error('Choose explicit audio files or --folder; --recursive requires --folder.')
     cancelled = threading.Event()
     previous_signal = None
     current_job = getattr(args, 'job_id', None)
@@ -142,6 +128,8 @@ def main(argv=None):
         label = f'{done}/{total}: {phase}' if done is not None and total is not None else phase
         print(label, file=sys.stderr, flush=True)
     try:
+        if threading.current_thread() is threading.main_thread():
+            previous_signal = signal.signal(signal.SIGINT, interrupt)
         # Validate the explicit profile/settings/text before creating any app
         # state. The durable service still performs its own boundary checks.
         engine = (EngineSpec(str(args.python_path), str(args.worker_path), args.worker_sha256,
@@ -149,13 +137,14 @@ def main(argv=None):
         settings = _settings(args, parser) if args.operation == 'submit' else None
         if args.operation == 'submit':
             _text(args.title, 'job name')
-            _input_arguments(args.files)
+            selected = select_inputs(args.files, folders=args.folder, recursive=args.recursive,
+                                     cancelled=cancelled.is_set)
+            if args.folder:
+                print(selected.describe(), file=sys.stderr, flush=True)
         text = (_bounded_bytes(args.text_file, min(MAX_ARTIFACT_BYTES, 8_000_000)).decode('utf-8-sig')
                 if args.operation == 'edit' else None)
         if text is not None and (len(text) > 2_000_000 or '\x00' in text):
             raise ValueError('An edited transcript must be bounded plain text.')
-        if threading.current_thread() is threading.main_thread():
-            previous_signal = signal.signal(signal.SIGINT, interrupt)
         from .application import LibraryApp
         library = LibraryApp(data_directory(args.data_dir))
         service = TranscriptionService(library.root / 'state' / 'transcription')
@@ -171,7 +160,7 @@ def main(argv=None):
         elif args.operation == 'status':
             result = service.get(args.job_id, cancelled=cancelled.is_set)
         elif args.operation == 'submit':
-            current_job = service.submit(args.files, settings, title=args.title,
+            current_job = service.submit(selected.files, settings, title=args.title,
                                          cancelled=cancelled.is_set, progress=progress)
             result = _summary(service.get(current_job, verify=False))
         elif args.operation == 'run':

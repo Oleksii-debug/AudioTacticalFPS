@@ -6,11 +6,15 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import threading
+from types import SimpleNamespace
 
 import pytest
 
 import carr_library.transcription as transcription
 from carr_library.durable_state import read_json
+import carr_library.transcription_inputs as input_selection
+from carr_library.transcription_inputs import select_inputs
 
 _fixture_spec = importlib.util.spec_from_file_location('transcription_cli_fixtures', Path(__file__).with_name('test_transcription.py'))
 _fixtures = importlib.util.module_from_spec(_fixture_spec)
@@ -65,10 +69,171 @@ def test_help_and_invalid_arguments_do_not_create_data(tmp_path):
     for args in [('run','../bad'), ('jobs','--self-test'), ('capability','studio'),
                  ('submit','audio.wav','--run'), ('configure','--python','missing'),
                  ('run','0'*32,'--timeout','inf'), ('run','0'*32,'--stop-grace','0'),
-                 ('edit','0'*32,'--artifact','../outside.txt','--text-file','missing')]:
+                 ('edit','0'*32,'--artifact','../outside.txt','--text-file','missing'),
+                 ('submit',), ('submit','audio.wav','--recursive')]:
         result = cli(root,*args)
         assert result.returncode == 2, result.stderr
         assert not root.exists(), args
+
+
+def folder_sources(tmp_path):
+    folder = tmp_path / 'selected-audio'
+    folder.mkdir()
+    (folder / 'b.wav').write_bytes(b'RIFF second synthetic input')
+    (folder / 'A.WAV').write_bytes(b'RIFF first synthetic input')
+    (folder / 'notes.txt').write_text('Not an audio input.', encoding='utf-8')
+    return folder
+
+
+def test_folder_selection_is_sorted_finite_and_recursion_is_explicit(tmp_path):
+    folder = folder_sources(tmp_path)
+    nested = folder / 'subfolder'; nested.mkdir()
+    (nested / 'c.wav').write_bytes(b'RIFF nested synthetic input')
+    selected = select_inputs(folders=(folder,))
+    assert [path.name for path in selected.files] == ['A.WAV', 'b.wav']
+    assert selected.skipped_count == 2
+    assert 'notes.txt' in selected.describe() and 'Subfolder excluded' in selected.describe()
+    expanded = select_inputs(folders=(folder,), recursive=True)
+    assert [path.name for path in expanded.files] == ['A.WAV', 'b.wav', 'c.wav']
+    assert expanded.skipped_count == 1
+    (folder / 'later.wav').write_bytes(b'RIFF added after selection')
+    assert len(selected.files) == 2  # a review is not a live folder watch
+
+
+def test_explicit_file_and_overlapping_folders_are_included_once(tmp_path):
+    folder = folder_sources(tmp_path)
+    selected = select_inputs((folder / 'b.wav',), folders=(folder, folder))
+    assert [path.name for path in selected.files] == ['b.wav', 'A.WAV']
+    assert selected.skipped_count == 2 and 'included only once' in selected.describe()
+
+
+@pytest.mark.parametrize('limit', ['files', 'entries', 'file-bytes', 'job-bytes', 'depth'])
+def test_folder_scan_fails_closed_at_count_byte_and_depth_budgets(tmp_path, monkeypatch, limit):
+    folder = folder_sources(tmp_path)
+    selected_limit = {'files': 'MAX_INPUT_FILES', 'entries': 'MAX_SCAN_ENTRIES',
+                      'file-bytes': 'MAX_INPUT_BYTES', 'job-bytes': 'MAX_JOB_INPUT_BYTES',
+                      'depth': 'MAX_SCAN_DEPTH'}[limit]
+    monkeypatch.setattr(input_selection, selected_limit, 1)
+    if limit == 'depth':
+        (folder / 'subfolder').mkdir()
+    with pytest.raises(ValueError, match='budget'):
+        select_inputs(folders=(folder,), recursive=True)
+
+
+def test_folder_selection_cancellation_discards_the_unfinished_list(tmp_path):
+    folder = folder_sources(tmp_path)
+    calls = 0
+    def cancelled():
+        nonlocal calls
+        calls += 1
+        return calls >= 6
+    with pytest.raises(InterruptedError, match='selection cancelled'):
+        select_inputs(folders=(folder,), cancelled=cancelled)
+
+
+def test_folder_does_not_descend_reparse_entry(tmp_path, monkeypatch):
+    folder = folder_sources(tmp_path)
+    excluded = folder / 'junction'; excluded.mkdir()
+    (excluded / 'private.wav').write_bytes(b'never selected')
+    original = Path.lstat
+    def lstat(path, *args, **kwargs):
+        value = original(path, *args, **kwargs)
+        if path == excluded:
+            return SimpleNamespace(st_mode=value.st_mode, st_file_attributes=0x400)
+        return value
+    monkeypatch.setattr(Path, 'lstat', lstat)
+    selection = select_inputs(folders=(folder,), recursive=True)
+    assert len(selection.files) == 2
+    assert 'Link or reparse point; not followed.' in selection.describe()
+
+
+def test_folder_does_not_follow_symbolic_or_hard_links(tmp_path):
+    folder = folder_sources(tmp_path)
+    outside = tmp_path / 'outside'; outside.mkdir()
+    private = outside / 'private.wav'; private.write_bytes(b'not selected')
+    os.link(private, folder / 'hard.wav')
+    if os.name == 'nt':
+        import _winapi
+        _winapi.CreateJunction(str(outside), str(folder / 'linked-folder'))
+    else:
+        (folder / 'linked-folder').symlink_to(outside, target_is_directory=True)
+    selected = select_inputs(folders=(folder,), recursive=True)
+    assert len(selected.files) == 2 and selected.skipped_count == 3
+    assert 'not followed' in selected.describe() and 'unlinked local file' in selected.describe()
+    with pytest.raises(ValueError, match='without links'):
+        select_inputs(folders=(folder / 'linked-folder',), recursive=True)
+
+
+def test_folder_changed_during_preflight_is_not_an_accepted_partial_selection(tmp_path, monkeypatch):
+    folder = folder_sources(tmp_path)
+    original = input_selection.regular
+    changed = False
+    def regular(path, **kwargs):
+        nonlocal changed
+        value = original(path, **kwargs)
+        if Path(path).name == 'A.WAV' and not changed:
+            changed = True
+            (folder / 'late.wav').write_bytes(b'late source')
+        return value
+    monkeypatch.setattr(input_selection, 'regular', regular)
+    with pytest.raises(ValueError, match='folder changed'):
+        select_inputs(folders=(folder,))
+
+
+def test_cli_folder_review_discloses_skips_and_retains_only_selected_files(tmp_path):
+    folder = folder_sources(tmp_path)
+    root = tmp_path / 'library'
+    result = cli(root, 'submit', '--folder', folder, '--language', 'en')
+    row = payload(result)
+    assert row['state'] == 'queued' and row['total'] == 2
+    assert 'notes.txt' in result.stderr and 'Unsupported audio/video extension' in result.stderr
+    saved = payload(cli(root, 'status', row['id']))
+    assert [item['name'] for item in saved['inputs']] == ['A.WAV', 'b.wav']
+    assert not (root / 'state/transcription/jobs' / row['id'] / 'job_config.json').exists()
+
+
+def test_cli_empty_or_unsafe_folder_never_initializes_library(tmp_path):
+    folder = tmp_path / 'empty'; folder.mkdir()
+    (folder / 'notes.txt').write_text('Only unsupported input')
+    root = tmp_path / 'unused'
+    result = cli(root, 'submit', '--folder', folder)
+    assert result.returncode == 1 and 'No supported' in result.stderr and 'notes.txt' in result.stderr
+    assert not root.exists()
+    result = cli(root, 'submit', '--folder', folder / 'notes.txt')
+    assert result.returncode == 1 and not root.exists()
+
+
+def test_folder_batch_cancel_then_resume_uses_same_retained_two_input_job(tmp_path, engine, monkeypatch):
+    folder = folder_sources(tmp_path)
+    root = tmp_path / 'library'
+    spec = engine()
+    payload(configure(root, spec))
+    identity = payload(cli(root, 'submit', '--folder', folder))['id']
+    service = transcription.TranscriptionService(root / 'state' / 'transcription')
+    before = service.get(identity)
+    expected = {row['name']: (folder / row['name']).read_bytes() for row in before['inputs']}
+    for path in folder.iterdir():
+        path.unlink()
+    folder.rmdir()
+    cancellation = threading.Event()
+    original = service._artifact
+    def verified(*args, **kwargs):
+        result = original(*args, **kwargs)
+        cancellation.set()
+        return result
+    monkeypatch.setattr(service, '_artifact', verified)
+    cancelled = service.run(identity, cancelled=cancellation.is_set)
+    assert cancelled['id'] == identity and cancelled['state'] == 'cancelled'
+    job_root = service.jobs / identity
+    assert read_json(job_root / 'job_result.json')['total'] == 2
+    assert len(list((job_root / 'results').iterdir())) == 8
+    for row in cancelled['inputs']:
+        assert (job_root / row['path']).read_bytes() == expected[row['name']]
+    resumed = payload(cli(root, 'run', identity, admitted=spec.worker_sha256))
+    assert resumed['id'] == identity and resumed['state'] == 'succeeded'
+    assert resumed['receipt']['done'] == 2 and len(resumed['receipt']['artifacts']) == 8
+    assert resumed['inputs'] == before['inputs']
+    assert read_json(job_root / 'job_config.json')['folders'] == []
 
 
 def test_cli_waiting_capability_and_jobs_survive_reopening(tmp_path):
@@ -160,7 +325,7 @@ def test_cli_invalid_worker_terminal_claim_returns_nonzero_and_retains_job(tmp_p
 
 
 def test_cli_pause_continue_and_ctrl_c_retain_resumable_job(tmp_path, source, engine):
-    root=tmp_path/'library';spec=engine('cooperative')
+    root=tmp_path/'library';spec=engine('pause')
     payload(configure(root,spec))
     identity=payload(cli(root,'submit',source))['id']
     trigger=tmp_path/'send-python-sigint'
@@ -171,19 +336,36 @@ def test_cli_pause_continue_and_ctrl_c_retain_resumable_job(tmp_path, source, en
     try:
         deadline=time.monotonic()+10
         while time.monotonic()<deadline:
-            if (directory/'job_status.json').exists():break
+            if (directory/'test_started.json').exists():break
             if process.poll() is not None:break
             time.sleep(.02)
-        assert process.poll() is None and (directory/'job_status.json').exists()
+        assert process.poll() is None and (directory/'test_started.json').exists()
         assert payload(cli(root,'pause',identity))['state']=='pause-requested'
         assert (directory/'pause.flag').exists()
+        # Each synthetic acknowledgement is published once; the replaceable
+        # live status is never opened by either the CLI or this observer.
+        deadline=time.monotonic()+4
+        while not (directory/'test_pause_seen.json').exists() and time.monotonic()<deadline:
+            assert process.poll() is None
+            time.sleep(.02)
+        assert (directory/'test_pause_seen.json').exists()
         assert payload(cli(root,'continue',identity))['state']=='continue-requested'
         assert not (directory/'pause.flag').exists()
+        deadline=time.monotonic()+4
+        while not (directory/'test_continue_seen.json').exists() and time.monotonic()<deadline:
+            assert process.poll() is None
+            time.sleep(.02)
+        assert (directory/'test_continue_seen.json').exists()
         trigger.write_text('send SIGINT through Python signal machinery')
         output,error=process.communicate(timeout=12)
         assert process.returncode==130, output+'\n'+error
         assert json.loads(output)['state']=='cancelled'
         assert 'Explicitly run the saved job ID' in error
+        started=read_json(directory/'test_started.json')
+        paused=read_json(directory/'test_pause_seen.json')
+        continued=read_json(directory/'test_continue_seen.json')
+        terminal=read_json(directory/'job_result.json')
+        assert started==paused==continued=={'job_id':identity,'run_id':terminal['run_id']}
         job=payload(cli(root,'status',identity))
         assert job['state']=='cancelled' and (directory/job['inputs'][0]['path']).read_bytes()==source.read_bytes()
     except BaseException as error:

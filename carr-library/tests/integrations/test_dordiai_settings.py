@@ -39,12 +39,19 @@ def test_legacy_settings_are_normalized_without_rewriting_or_mutating_input(tmp_
 @pytest.mark.parametrize('declaration', [None, {'enabled': False},
                                       {'enabled': False, 'runtime_directory': '/missing/private/installation'}])
 def test_disabled_saved_engine_never_probes_private_paths(tmp_path, monkeypatch, declaration):
+    if isinstance(declaration, dict) and 'runtime_directory' in declaration:
+        # The disabled path is absent but genuinely absolute on this platform.
+        # A POSIX-looking literal is drive-relative on Windows.
+        absent = tmp_path / 'missing' / 'private' / 'installation'
+        assert not absent.exists()
+        declaration = {**declaration, 'runtime_directory': str(absent)}
     no_platform_voices(monkeypatch)
     monkeypatch.setattr(dordiai_speech, 'DordiaiSpeechProvider',
                         lambda *_a, **_k: pytest.fail('Disabled configuration launched a provider.'))
     value = settings.load_settings(tmp_path)
     value['dordiai'] = declaration
     settings.save_settings(tmp_path, value)
+    assert settings.load_settings(tmp_path)['dordiai'] == declaration
     registry = settings.voice_registry(tmp_path)
     assert registry.voices() == ()
     registry.close()

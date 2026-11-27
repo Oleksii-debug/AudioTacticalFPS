@@ -430,7 +430,8 @@ class PublicationService:
         for path in sorted(self.receipts.glob('*.json')):
             value = read_json(path)
             if (value.get('schema') != 'resonance-publication/1' or value.get('id') != path.stem
-                    or value.get('status') not in ('prepared', 'complete')):
+                    or value.get('status') not in ('prepared', 'complete')
+                    or value.get('format', 'epub') not in ('epub', 'daisy-2.02')):
                 raise ValueError('Invalid saved publication receipt.')
             rows.append(value)
         return tuple(rows)
@@ -477,18 +478,39 @@ class PublicationService:
         return project, documents['timeline.json'], paths
 
     def export_epub(self, job_id, output, *, language='und', creator='', cancelled=lambda: False, progress=None):
+        return self._export(job_id, output, format='epub', language=language, creator=creator,
+                            cancelled=cancelled, progress=progress)
+
+    def export_daisy(self, job_id, output, *, publisher, language='und', creator='',
+                     cancelled=lambda: False, progress=None):
+        """Export a DAISY 2.02 file-set ZIP through the same verified job path."""
+        return self._export(job_id, output, format='daisy-2.02', publisher=publisher,
+                            language=language, creator=creator, cancelled=cancelled, progress=progress)
+
+    def _export(self, job_id, output, *, format, language, creator, cancelled, progress, publisher=''):
+        if format == 'epub':
+            label, suffix, notice = 'EPUB', '.epub', NOTICE
+            audio_member, inspector = 'EPUB/audio/master.mp3', inspect_epub
+        elif format == 'daisy-2.02':
+            from . import daisy
+            daisy.language_tag(language)
+            publisher = _text(publisher, 'DAISY publisher', maximum=512)
+            label, suffix, notice = 'DAISY', '.zip', daisy.NOTICE
+            audio_member, inspector = 'master.mp3', daisy.inspect_daisy
+        else:
+            raise ValueError('Unsupported synchronized publication format.')
         language = language_tag(language)
         creator = _text(creator, 'Creator', maximum=512, empty=True)
         job_id = _id(job_id)
         output = local_path(output)
-        if output.suffix.lower() != '.epub':
-            raise ValueError('Choose a new .epub filename.')
+        if output.suffix.lower() != suffix:
+            raise ValueError(f'Choose a new {suffix} filename.')
         parent = local_path(output.parent, exists=True)
         if output.is_relative_to(self.root):
-            raise ValueError('Choose an EPUB destination outside private Studio state.')
+            raise ValueError(f'Choose a destination for {label} outside private Studio state.')
         parent_info = regular(parent, directory=True)
         if os.path.lexists(output):
-            raise FileExistsError('The selected EPUB already exists; it will not be overwritten.')
+            raise FileExistsError(f'The selected {label} already exists; it will not be overwritten.')
         self.production.get(job_id)  # Unknown IDs must not create a job directory.
         started = monotonic()
         observer = progress
@@ -502,9 +524,9 @@ class PublicationService:
                     pass
         def check():
             if cancelled():
-                raise AudioCancelled('EPUB publication cancelled; previous completed files are retained.')
+                raise AudioCancelled(f'{label} publication cancelled; previous completed files are retained.')
             if monotonic() - started > self.budget.timeout:
-                raise TimeoutError('EPUB publication exceeded its selected time budget.')
+                raise TimeoutError(f'{label} publication exceeded its selected time budget.')
         def stopping():
             return cancelled() or monotonic() - started > self.budget.timeout
         def scope():
@@ -514,7 +536,7 @@ class PublicationService:
                 raise ValueError('The selected output directory changed during publication.')
             local_path(output)
             if os.path.lexists(output):
-                raise FileExistsError('The selected EPUB became occupied; nothing will be overwritten.')
+                raise FileExistsError(f'The selected {label} became occupied; nothing will be overwritten.')
 
         with state_lock(self.production.jobs_root / job_id, 'render'):
             state = self.production.get(job_id)
@@ -525,7 +547,7 @@ class PublicationService:
             if shutil.disk_usage(parent).free < source_receipt['size'] * 2 + self.budget.reserve_disk_bytes:
                 raise OSError('Not enough free disk for verified audio staging and the selected reserve.')
             scope()
-            with TemporaryDirectory(prefix='.pending-epub-', dir=parent) as temporary:
+            with TemporaryDirectory(prefix='.pending-' + label.lower() + '-', dir=parent) as temporary:
                 staging = local_path(temporary, exists=True)
                 selected_audio = staging / ('source' + source_path.suffix)
                 progress('Copying the verified local audio master')
@@ -556,7 +578,7 @@ class PublicationService:
                     raise ValueError('The packaged MP3 does not cover the measured master duration.')
                 audio_identity = _digest(audio, check, self.budget.max_output_bytes)
                 identity = uuid4().hex
-                provenance = {'schema': 'resonance-epub/1', 'publication_id': identity,
+                provenance = {'schema': 'resonance-' + format + '/1', 'publication_id': identity,
                     'created': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
                     'source': {'job_id': job_id, 'job_sha256': state_digest, 'project_id': project.id,
                         'project_sha256': project.fingerprint, 'source_script_sha256': timeline['source_sha256'],
@@ -565,36 +587,43 @@ class PublicationService:
                     'audio': {'identity': audio_identity, 'media_type': 'audio/mpeg', 'codec': observed.codec,
                         'duration': observed.duration, 'sample_rate': observed.sample_rate, 'channels': observed.channels,
                         'source_artifact': source_name, 'reused': source_name.endswith('.mp3')},
-                    'validation': {'zip_xml_graph': 'verified on export', 'epubcheck': 'NOT_RUN',
-                                   'reader_interoperability': 'NOT_RUN'}}
-                parts = _parts(project, timeline, provenance, language, creator, check)
+                    'validation': {'zip_xml_graph': 'verified on export', 'reader_interoperability': 'NOT_RUN'}}
+                if format == 'epub':
+                    provenance['validation']['epubcheck'] = 'NOT_RUN'
+                    parts = _parts(project, timeline, provenance, language, creator, check)
+                else:
+                    provenance['validation']['independent_daisy_validator'] = 'NOT_RUN'
+                    parts = daisy.parts(project, timeline, provenance, language, creator, publisher, check)
                 raw_size = sum(len(raw) for raw in parts.values()) + audio_identity['size'] + 20
                 if raw_size + sum(path.stat().st_size for path in staging.iterdir()) > self.budget.max_output_bytes:
-                    raise ValueError('EPUB metadata/audio staging exceeds the selected byte budget.')
-                staged = staging / 'publication.epub'
-                progress('Packaging EPUB text, navigation and measured media overlays')
+                    raise ValueError(f'{label} metadata/audio staging exceeds the selected byte budget.')
+                staged = staging / ('publication' + suffix)
+                progress(f'Packaging {label} text, navigation and measured media overlays')
                 with ZipFile(staged, 'x', compression=ZIP_DEFLATED, allowZip64=True) as archive:
-                    mimetype = ZipInfo('mimetype'); mimetype.compress_type = ZIP_STORED
-                    archive.writestr(mimetype, b'application/epub+zip')
+                    if format == 'epub':
+                        mimetype = ZipInfo('mimetype'); mimetype.compress_type = ZIP_STORED
+                        archive.writestr(mimetype, b'application/epub+zip')
                     for name, raw in parts.items():
                         check(); archive.writestr(name, raw)
-                    member = ZipInfo('EPUB/audio/master.mp3'); member.compress_type = ZIP_STORED
+                    member = ZipInfo(audio_member); member.compress_type = ZIP_STORED
                     digest, count = sha256(), 0
                     with audio.open('rb') as source, archive.open(member, 'w', force_zip64=True) as target:
                         while block := source.read(1024 * 1024):
                             check(); count += len(block); digest.update(block); target.write(block)
                     if {'size': count, 'sha256': digest.hexdigest()} != audio_identity:
-                        raise ValueError('The staged MP3 changed during EPUB packaging.')
-                inspect_epub(staged, cancelled=stopping, max_bytes=self.budget.max_output_bytes)
+                        raise ValueError(f'The staged MP3 changed during {label} packaging.')
+                inspector(staged, cancelled=stopping, max_bytes=self.budget.max_output_bytes)
                 archive_identity = _digest(staged, check, self.budget.max_output_bytes)
                 progress('Rechecking source receipts and selected destination before publication')
                 self._source(state, check, lambda message: None)
                 if sha256(encode(self.production.get(job_id))).hexdigest() != state_digest:
-                    raise ValueError('The completed Studio job changed during EPUB publication.')
+                    raise ValueError(f'The completed Studio job changed during {label} publication.')
                 scope()
                 record = {'schema': 'resonance-publication/1', 'id': identity, 'status': 'prepared',
                     'studio_root': str(self.root), 'output': str(output), 'artifact': archive_identity,
-                    'source': provenance['source'], 'created': provenance['created'], 'notice': NOTICE}
+                    'source': provenance['source'], 'created': provenance['created'], 'notice': notice}
+                if format != 'epub':
+                    record['format'] = format
                 self.receipts.mkdir(mode=0o700, parents=True, exist_ok=True)
                 receipt_path = self.receipts / (identity + '.json')
                 atomic_json(receipt_path, record)
@@ -606,15 +635,15 @@ class PublicationService:
                     # Prepared receipts make a crash after atomic publication
                     # recoverable by an explicit verify, never by re-encoding.
                     if _digest(output, check, self.budget.max_output_bytes) != archive_identity:
-                        raise ValueError('The completed EPUB changed before its receipt was finalized.')
+                        raise ValueError(f'The completed {label} changed before its receipt was finalized.')
                     record['status'] = 'complete'
                     atomic_json(receipt_path, record, replace=True)
                 except Exception as exc:
-                    message = f'{exc} Publication receipt: {identity}. Verify any completed EPUB before retrying.'
+                    message = f'{exc} Publication receipt: {identity}. Verify any completed {label} before retrying.'
                     if isinstance(exc, AudioCancelled):
                         raise AudioCancelled(message) from exc
                     raise RuntimeError(message) from exc
-                progress('EPUB saved and its exact bytes verified')
+                progress(f'{label} saved and its exact bytes verified')
                 return record
 
     def verify(self, publication_id, *, output=None, cancelled=lambda: False):
@@ -625,8 +654,16 @@ class PublicationService:
         if (record.get('schema') != 'resonance-publication/1' or record.get('id') != publication_id
                 or record.get('status') not in ('prepared','complete')):
             raise ValueError('Invalid publication receipt.')
+        format = record.get('format', 'epub')
+        if format == 'epub':
+            inspector = inspect_epub
+        elif format == 'daisy-2.02':
+            from .daisy import inspect_daisy
+            inspector = inspect_daisy
+        else:
+            raise ValueError('Unsupported saved publication format.')
         if record.get('studio_root') != str(self.root) and output is None:
-            raise ValueError('This receipt was restored elsewhere; explicitly select its existing EPUB file to verify.')
+            raise ValueError('This receipt was restored elsewhere; explicitly select its existing publication file to verify.')
         selected = local_path(output if output is not None else record['output'], exists=True)
         started = monotonic()
         def check():
@@ -637,11 +674,11 @@ class PublicationService:
         with state_lock(self.receipts, publication_id):
             if _digest(selected, check, self.budget.max_output_bytes) != record['artifact']:
                 raise ValueError('The selected publication differs from its exact completed receipt.')
-            provenance = inspect_epub(selected,
+            provenance = inspector(selected,
                 cancelled=lambda: cancelled() or monotonic() - started > self.budget.timeout,
                 max_bytes=self.budget.max_output_bytes)
             if provenance.get('publication_id') != publication_id or provenance.get('source') != record['source']:
-                raise ValueError('The EPUB source identity differs from its publication receipt.')
+                raise ValueError('The publication source identity differs from its publication receipt.')
             if _digest(selected, check, self.budget.max_output_bytes) != record['artifact']:
                 raise ValueError('The publication changed during structural verification.')
             check()

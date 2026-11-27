@@ -218,3 +218,68 @@ def test_transcript_reading_stays_inside_shared_background_operation(desktop, so
     dialog.on_artifact()
     assert frame.jobs[before:] == ['Reading verified transcript']
     assert len(observed) == 2
+
+
+def test_folder_choice_reviews_in_background_without_submitting_or_running(desktop, tmp_path, monkeypatch):
+    from carr_library.ui import transcription_dialog
+    frame, dialog, wx = desktop
+    folder = tmp_path / 'selected'; folder.mkdir()
+    (folder / 'b.wav').write_bytes(b'Second synthetic audio')
+    (folder / 'a.wav').write_bytes(b'First synthetic audio')
+    (folder / 'notes.txt').write_text('Not audio')
+    nested = folder / 'subfolder'; nested.mkdir()
+    (nested / 'c.wav').write_bytes(b'Nested synthetic audio')
+    destroyed = []
+    wx.DirDialog = lambda *args, **kwargs: SimpleNamespace(
+        ShowModal=lambda: wx.ID_OK, GetPath=lambda: str(folder), Destroy=lambda: destroyed.append(True))
+    original = transcription_dialog.select_inputs
+    calls = []
+    def select(*args, **kwargs):
+        assert frame.working, 'Folder enumeration must use the shared background operation.'
+        calls.append(kwargs['recursive'])
+        return original(*args, **kwargs)
+    monkeypatch.setattr(transcription_dialog, 'select_inputs', select)
+    assert dialog.recursive.GetValue() is False
+    assert dialog.recursive.GetName() == 'Include subfolders when choosing a folder'
+    assert dialog.buttons['folder'].GetLabel() == 'Choose audio f&older'
+    dialog.on_choose_folder()
+    assert calls == [False] and destroyed == [True]
+    assert [path.name for path in dialog.files] == ['a.wav', 'b.wav']
+    assert 'notes.txt' in dialog.status.GetValue() and 'Subfolder excluded' in dialog.status.GetValue()
+    assert dialog.current_job is None and dialog.service.list() == []
+    assert frame.jobs == ['Reviewing selected audio folder']
+    dialog.recursive.SetValue(True)
+    dialog.on_choose_folder()
+    assert calls == [False, True]
+    assert [path.name for path in dialog.files] == ['a.wav', 'b.wav', 'c.wav']
+    assert dialog.service.list() == []
+
+
+def test_cancelled_folder_review_preserves_previous_explicit_selection(desktop, source, tmp_path, monkeypatch):
+    from carr_library.ui import transcription_dialog
+    frame, dialog, wx = desktop
+    dialog.set_files([source])
+    folder = tmp_path / 'new-folder'; folder.mkdir()
+    (folder / 'candidate.wav').write_bytes(b'New synthetic input')
+    wx.DirDialog = lambda *args, **kwargs: SimpleNamespace(
+        ShowModal=lambda: wx.ID_OK, GetPath=lambda: str(folder), Destroy=lambda: None)
+    original = transcription_dialog.select_inputs
+    def select(*args, **kwargs):
+        dialog.on_cancel()
+        return original(*args, **kwargs)
+    monkeypatch.setattr(transcription_dialog, 'select_inputs', select)
+    dialog.on_choose_folder()
+    assert dialog.files == [source] and dialog.current_job is None
+    assert 'selection cancelled' in dialog.status.GetValue()
+    assert dialog.service.list() == [] and not dialog.busy
+
+
+def test_folder_picker_does_not_expand_after_library_change(desktop, tmp_path):
+    frame, dialog, wx = desktop
+    other = tmp_path / 'other'; other.mkdir()
+    frame.library.root = other
+    wx.DirDialog = lambda *args, **kwargs: SimpleNamespace(
+        ShowModal=lambda: wx.ID_OK, GetPath=lambda: str(other), Destroy=lambda: None)
+    dialog.on_choose_folder()
+    assert frame.jobs == [] and dialog.files == []
+    assert 'library location changed' in dialog.status.GetValue()
