@@ -4,6 +4,7 @@ Uses purpose-written public fixture text on an ephemeral CI desktop. Reports
 only checks and module identity, never the clipboard contents.
 """
 import argparse
+import faulthandler
 from hashlib import sha256
 import importlib.metadata
 import json
@@ -13,12 +14,92 @@ import sys
 import time
 
 
+def _checkpoint(path, value):
+    """Persist only bounded diagnostic metadata, never clipboard values."""
+    raw = (json.dumps(value, ensure_ascii=False, allow_nan=False, indent=2) + '\n').encode('utf-8')
+    if len(raw) > 64 * 1024:
+        raise RuntimeError('Clipboard diagnostic receipt exceeds its bound.')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + '.partial')
+    with temporary.open('wb') as output:
+        output.write(raw)
+        output.flush()
+        os.fsync(output.fileno())
+    os.replace(temporary, path)
+
+
+def _phase(args, report, name):
+    report['phase'] = name
+    _checkpoint(args.report, report)
+
+
+def _bounded_sha256(path):
+    with path.open('rb') as source:
+        raw = source.read(2 * 1024 * 1024 + 1)
+    if len(raw) > 2 * 1024 * 1024:
+        raise RuntimeError('Clipboard probe module exceeds its source-proof bound.')
+    return sha256(raw).hexdigest()
+
+
+def _module_evidence(checkout, package_root, modules, *, source_mode, distribution=None):
+    """Bind each actually loaded module to its exact checkout and wheel record."""
+    checkout, package_root = checkout.resolve(strict=True), package_root.resolve(strict=True)
+    expected = checkout / 'src' / 'carr_library'
+    if source_mode:
+        if package_root != expected.resolve(strict=True):
+            raise RuntimeError('Clipboard source package differs from the exact checkout.')
+    elif package_root.is_relative_to(checkout) or distribution is None:
+        raise RuntimeError('The installed clipboard probe imported the source checkout.')
+    result = {}
+    for relative, module in modules:
+        origin = Path(module.__file__).resolve(strict=True)
+        if origin != (package_root / relative).resolve(strict=True):
+            raise RuntimeError('A loaded clipboard dependency differs from its package root.')
+        if not source_mode:
+            member = 'carr_library/' + relative
+            recorded = [Path(distribution.locate_file(item)).resolve(strict=True)
+                        for item in distribution.files or ()
+                        if str(item).replace('\\', '/') == member]
+            if recorded != [origin]:
+                raise RuntimeError('A loaded clipboard dependency is absent from its wheel RECORD.')
+        checksum = _bounded_sha256(origin)
+        if checksum != _bounded_sha256(expected / relative):
+            raise RuntimeError('Loaded clipboard dependency bytes differ from the exact checkout.')
+        result[relative] = {'path': str(origin), 'sha256': checksum}
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--source', type=Path)
     parser.add_argument('--expect-installed', action='store_true')
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args()
+    report = dict(status='FAIL', phase='starting', checks=[],
+        scope='actual Windows clipboard and menu handoff; reader rendering is a separate native gate',
+        clipboard_content='NOT_RECORDED', automatic_speech=False, watcher=False,
+        nvda='NOT_RUN', installed=args.expect_installed,
+        source_commit=os.environ.get('GITHUB_SHA'), python=sys.version)
+    _checkpoint(args.report, report)
+    faulthandler.enable()
+    faulthandler.dump_traceback_later(90, exit=True)
+    try:
+        result = _run_probe(args, report)
+        report.update(result)
+        report['phase'] = 'completed'
+        _checkpoint(args.report, report)
+        return 0
+    except BaseException as exc:
+        report['status'] = 'FAIL'
+        report['failure'] = {'type': type(exc).__name__, 'message': str(exc)[:2000]}
+        _checkpoint(args.report, report)
+        raise
+    finally:
+        faulthandler.cancel_dump_traceback_later()
+
+
+def _run_probe(args, report):
+    _phase(args, report, 'source-and-platform-admission')
     if os.name != 'nt':
         raise RuntimeError('This probe requires actual Windows clipboard controls.')
     checkout = Path(__file__).resolve().parents[1]
@@ -26,33 +107,40 @@ def main():
         if args.expect_installed:
             raise ValueError('Select one exact source or installed origin.')
         source = args.source.resolve(strict=True)
+        if source != checkout:
+            raise RuntimeError('The clipboard source override differs from this exact checkout.')
         sys.path.insert(0, str(source / 'src'))
         expected = source / 'src' / 'carr_library'
     else:
         if not args.expect_installed:
             raise ValueError('An explicit source or installed origin is required.')
         expected = None
+    _phase(args, report, 'import-native-controls-and-reader')
     import wx
-    from carr_library.ui import clipboard_reader as ui
+    import carr_library
+    from carr_library.ui import clipboard_reader as ui, speech_dialog
+    from carr_library.speech import _io as speech_io
+    report['wx_version'] = wx.version()
+    _phase(args, report, 'verify-imported-module-origin')
     origin = Path(ui.__file__).resolve(strict=True)
-    if expected is not None:
-        if origin != (expected / 'ui' / 'clipboard_reader.py').resolve(strict=True):
-            raise RuntimeError('Clipboard source origin differs from the exact checkout.')
-    else:
-        if origin.is_relative_to(checkout):
-            raise RuntimeError('The installed clipboard probe imported the source checkout.')
-        dist = importlib.metadata.distribution('universal-research-library')
-        recorded = [Path(dist.locate_file(item)).resolve(strict=True) for item in dist.files or ()
-                    if str(item).replace('\\', '/') == 'carr_library/ui/clipboard_reader.py']
-        if recorded != [origin]:
-            raise RuntimeError('The installed clipboard module is absent from its wheel RECORD.')
-    checks = []
+    package_root = Path(carr_library.__file__).resolve(strict=True).parent
+    distribution = (None if args.source else
+                    importlib.metadata.distribution('universal-research-library'))
+    report['modules'] = _module_evidence(checkout, package_root,
+        (('ui/clipboard_reader.py', ui), ('ui/speech_dialog.py', speech_dialog),
+         ('speech/_io.py', speech_io)),
+        source_mode=bool(args.source), distribution=distribution)
+    report['module_sha256'] = report['modules']['ui/clipboard_reader.py']['sha256']
+    checks = report['checks']
     def check(condition, name):
+        _phase(args, report, name)
         if not condition:
             raise AssertionError(name)
         checks.append(name)
+        _checkpoint(args.report, report)
         print('PASS: ' + name, flush=True)
 
+    _phase(args, report, 'create-native-clipboard-owner')
     app = wx.App(False)
     frame = wx.Frame(None, title='Purpose-written clipboard verification')
     menu = wx.Menu()
@@ -65,6 +153,7 @@ def main():
     original_reader = ui.show_speech_reader
     original_clipboard = None
     had_text = False
+    _phase(args, report, 'preserve-existing-clipboard')
     if wx.TheClipboard.Open():
         try:
             if wx.TheClipboard.IsSupported(wx.DataFormat(wx.DF_UNICODETEXT)):
@@ -86,6 +175,7 @@ def main():
         return ui._read_clipboard_text(wx)
 
     try:
+        _phase(args, report, 'write-purpose-written-clipboard-fixture')
         fixture = '  Український текст 😀.\r\nSecond line.\t '
         set_text(fixture)
         item = ui.install_clipboard_reader(frame)
@@ -96,6 +186,7 @@ def main():
             check(not wx.TheClipboard.IsOpened(), 'clipboard ownership ends before reader handoff')
             opened.append(options)
         ui.show_speech_reader = handed_off
+        _phase(args, report, 'dispatch-native-menu-command')
         frame.Show()
         event = wx.CommandEvent(wx.EVT_MENU.typeId, item.GetId())
         frame.ProcessEvent(event)
@@ -121,19 +212,23 @@ def main():
             nvda='NOT_RUN', module_sha256=sha256(origin.read_bytes()).hexdigest(),
             installed=args.expect_installed, source_commit=os.environ.get('GITHUB_SHA'))
     finally:
-        ui.show_speech_reader = original_reader
-        frame.Destroy()
-        app.Yield()
-        if had_text:
-            set_text(original_clipboard)
-        elif wx.TheClipboard.Open():
-            try:
-                wx.TheClipboard.Clear()
-            finally:
-                wx.TheClipboard.Close()
-    args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    return 0
+        report['cleanup_started'] = True
+        try:
+            _checkpoint(args.report, report)
+        finally:
+            ui.show_speech_reader = original_reader
+            frame.Destroy()
+            app.Yield()
+            if had_text:
+                set_text(original_clipboard)
+            elif wx.TheClipboard.Open():
+                try:
+                    wx.TheClipboard.Clear()
+                finally:
+                    wx.TheClipboard.Close()
+        report['cleanup_complete'] = True
+        _checkpoint(args.report, report)
+    return result
 
 
 if __name__ == '__main__':

@@ -9,7 +9,8 @@ from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
-from .reader_playback import ReaderPlaybackControls
+from .reader_playback import ReaderPlaybackControls, show_reader_playback
+from .reader_transport import ReaderPlaybackSession
 from .reader_output import ReaderOutputControls
 from .reader_presentation import ReaderPresentationControls
 from .reading_tools import (ReaderEditHost, ReadingSnapshot, reading_offset,
@@ -152,10 +153,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
+    playback_button = wx.Button(dialog, label='Playback controls...')
+    playback_button.SetName('Playback volume, skips, speed and pitch')
     seek = wx.Button(dialog, label='Seek to &time')
     cleanup = wx.Button(dialog, label='Normalize s&paces')
     close = wx.Button(dialog, wx.ID_CANCEL, 'C&lose')
-    for control in (seek, cleanup, close):
+    for control in (playback_button, seek, cleanup, close):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT)
     transport = ReaderPlaybackControls(dialog, layout, player,
@@ -639,6 +642,31 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     dialog.reader_edit_host = edit_host
     dialog.reader_editor = editor
 
+    playback_session = ReaderPlaybackSession(player,
+        submit=run, guard=playback_guard, capture=capture_edit, verify=verify_edit,
+        alive=lambda: alive, busy=lambda: busy, cancelled=cancel.is_set,
+        clear_cancel=cancel.clear, start=start_playback, stop=stop_audio, pause=pause_audio,
+        report=report, refresh=transport.refresh_controls,
+        state_root=Path(reader_root) / 'state' if reader_root is not None else None,
+        broker=getattr(parent, 'resource_broker', None))
+    dialog.reader_playback_session = playback_session
+    dialog.reader_player = player
+    dialog.playback_button = playback_button
+
+    def show_playback(event=None):
+        try:
+            playback_session.check()
+            show_reader_playback(dialog, player,
+                execute=playback_session.execute, stop=playback_session.stop,
+                pause=playback_session.pause, subscribe=transport.subscribe,
+                prepare_listening=playback_session.prepare_listening,
+                guard=playback_guard, active=lambda: alive)
+        except Exception as exc:
+            report(f'Playback controls did not complete. {exc}', focus=True)
+        finally:
+            if alive and not dialog_destroyed:
+                playback_button.SetFocus()
+
     def find_replace(event=None):
         try:
             capture_edit()
@@ -868,7 +896,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         (export_audio, save_audio), (save_button, save_project), (save_all_button, save_all_drafts), (cancel_all_button, cancel_all_drafts),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
-        (original, compare), (seek, seek_audio), (cleanup, clean),
+        (original, compare), (seek, seek_audio), (playback_button, show_playback), (cleanup, clean),
         (find_button, find_replace), (replace_button, find_replace),
         (pronunciation_button, pronunciation_dictionary), (spelling_button, check_spelling),
         (appearance_button, appearance.show), (focus_button, choose_reading_focus), (close, closing)):
@@ -886,6 +914,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         'voice_reader.replace': (replace_button, find_replace),
         'voice_reader.pronunciation': (pronunciation_button, pronunciation_dictionary),
         'voice_reader.settings': (keyboard_button, lambda event: keyboard.settings(event)),
+        'voice_reader.playback': (playback_button, show_playback),
     }, guard=playback_guard, alive=lambda: alive, report=report, wx=wx)
     keyboard_button.Bind(wx.EVT_BUTTON, keyboard.settings)
     autosave_timer = wx.Timer(dialog)
@@ -920,6 +949,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                         dirty=unsaved, save=save_registered, focus=lambda: editor.SetFocus())
                        if coordinator is not None else lambda: None)
     try:
+        integration = getattr(parent, 'desktop_integration', None)
+        if integration is not None:
+            integration.attach_reader(dialog, pause, stop,
+                                      lambda: alive and not dialog_destroyed)
         capabilities()
         if tabs_requested:
             load_reading_tabs()
@@ -935,6 +968,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             reader_tabs.close()
         silence_confirmed = False
         worker_finished = False
+        listening_finished = False
         notices = []
         try:
             try:
@@ -949,6 +983,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 unregister_save()
             except Exception as exc:
                 notices.append(f'Save coordinator could not be detached: {exc}')
+            try:
+                playback_session.close()
+            except (OSError, RuntimeError) as exc:
+                notices.append(f'Listening-copy cleanup is not confirmed: {exc}')
             try:
                 transport.close(stop=False)
             except (OSError, RuntimeError) as exc:
@@ -973,6 +1011,20 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                 worker_finished = True
             except (OSError, RuntimeError) as exc:
                 notices.append(f'The reading worker has not confirmed shutdown: {exc}')
+            # A worker can finish after the first close or after a completion
+            # was queued. Drain its exact unadopted values after the worker joins.
+            try:
+                playback_session.close(worker_drained=worker_finished)
+                listening_finished = (playback_session.operation is None
+                                      and not playback_session._values)
+            except (OSError, RuntimeError) as exc:
+                notices.append(f'Listening-copy cleanup remains pending: {exc}')
+            if not listening_finished:
+                retained = getattr(parent, '_reader_listening_retained', None)
+                if not isinstance(retained, list):
+                    retained = []
+                    parent._reader_listening_retained = retained
+                retained.append(playback_session)
             removed = False
             if silence_confirmed and worker_finished:
                 try:

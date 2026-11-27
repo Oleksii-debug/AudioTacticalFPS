@@ -498,6 +498,7 @@ class DesktopFrame(WorkspaceFrame):
         self._menus()
         from .productivity import install_productivity_actions
         keyboard = install_productivity_actions(self)
+        self.desktop_integration.activate_saved_tray()
         if self.scopes:
             self.choice.SetSelection(0)
             self.open_selected()
@@ -569,6 +570,10 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         from .audio_studio import install_audio_studio
         install_audio_studio(self)
+        from .audio_playback import install_audio_playback
+        install_audio_playback(self)
+        from .book_audio_dialog import install_book_audio_actions
+        install_book_audio_actions(self)
         from .audio_runtime_setup import install_audio_runtime_setup
         install_audio_runtime_setup(self)
         from .audio_effects import install_audio_effects
@@ -601,6 +606,10 @@ class DesktopFrame(WorkspaceFrame):
         install_diagnostics(self)
         from .delivery_dialog import install_delivery_actions
         install_delivery_actions(self)
+        from .backup_incremental_dialog import install_incremental_backup_actions
+        install_incremental_backup_actions(self)
+        from .desktop_integration import install_desktop_integration
+        install_desktop_integration(self)
 
     def build_advanced_query(self, event=None):
         if self.working:
@@ -914,6 +923,9 @@ class DesktopFrame(WorkspaceFrame):
             self._drop()
             self.library = candidate
             self.audio_runtime_binding = binding
+            integration = getattr(self, 'desktop_integration', None)
+            if integration is not None:
+                integration.change_root()
             if getattr(self, 'keyboard_settings', None) is not None:
                 self.keyboard_settings.reload()
             if getattr(self, 'operation_progress', None) is not None:
@@ -1413,6 +1425,12 @@ class DesktopFrame(WorkspaceFrame):
         if not event.GetVeto():
             self._closing = True
             self.cancel_event.set()
+            integration = getattr(self, 'desktop_integration', None)
+            if integration is not None:
+                try:
+                    integration.close()
+                except Exception as exc:
+                    self.report('Desktop cleanup needs attention: ' + str(exc))
             pending_discard = getattr(self, '_pending_job_discard', None)
             if pending_discard is not None:
                 pending_discard()

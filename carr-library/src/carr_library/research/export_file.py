@@ -163,7 +163,8 @@ def _windows_change_time(path):
             raise _windows_api_error('CloseHandle')
 
 
-def _destination(path, private_root, check_cancelled=lambda: None, *, require_absent=False):
+def _destination(path, private_root, check_cancelled=lambda: None, *, require_absent=False,
+                 expected=None):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -190,10 +191,15 @@ def _destination(path, private_root, check_cancelled=lambda: None, *, require_ab
     target = parent / path.name
     if target.is_relative_to(private):
         raise ValueError('Choose an export destination outside the private library folder.')
+    parent_identity = _identity(parent.stat())
+    if expected is not None and (target, parent_identity) != expected[:2]:
+        raise ValueError('The export destination changed. Choose the destination again.')
     try:
         info = target.lstat()
     except FileNotFoundError:
         state = None
+        if expected is not None and expected[2] is not None:
+            raise ValueError('The export destination changed. Choose the destination again.')
     else:
         if _linked(info) or not stat.S_ISREG(info.st_mode):
             raise ValueError('The export destination must be a regular file without links or reparse points.')
@@ -204,20 +210,34 @@ def _destination(path, private_root, check_cancelled=lambda: None, *, require_ab
             # Keep the path/link guards above, then reject before hashing a
             # potentially very large or slow user-selected destination.
             raise FileExistsError('The export destination already exists; replacement was not authorized.')
-        parent_identity = _identity(parent.stat())
+        metadata = _file_state(info)
+        # Reject a stale approved inode before native metadata or byte reads.
+        if expected is not None and (expected[2] is None
+                or metadata != expected[2][:len(metadata)]):
+            raise ValueError('The export destination changed. Choose the destination again.')
         # Python 3.11 exposes Windows creation time as ctime. Bind native
         # ChangeTime as well as the full bytes: either timestamp can collide,
         # while a write followed by restoration of the old bytes still changes
         # native metadata. A failed native query never falls back to less proof.
         change_time = _windows_change_time(target) if os.name == 'nt' else None
+        metadata = (*metadata, change_time) if change_time is not None else metadata
+        if expected is not None and metadata != expected[2][:-1]:
+            raise ValueError('The export destination changed. Choose the destination again.')
         state = _content_state(target, info, check_cancelled)
+        # Recheck native ChangeTime after the bounded byte read as well: an
+        # in-place edit and restoration during hashing can preserve the bytes
+        # and all Python-visible Windows metadata.
+        if change_time is not None and _windows_change_time(target) != change_time:
+            raise ValueError('The export destination changed. Choose the destination again.')
         after = target.lstat()
         if (_linked(after) or _file_state(after) != _file_state(info)
                 or _identity(parent.stat()) != parent_identity):
             raise ValueError('The export destination changed. Choose the destination again.')
         if change_time is not None:
             state = (*state[:-1], change_time, state[-1])
-    return target, _identity(parent.stat()), state
+    if _identity(parent.stat()) != parent_identity:
+        raise ValueError('The export destination changed. Choose the destination again.')
+    return target, parent_identity, state
 
 
 @dataclass(frozen=True)
@@ -316,10 +336,12 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
     if approval is not None and (approval.requested != requested or approval.private_root != private):
         raise ValueError('The export destination changed. Choose the destination again.')
     captured_absent = type(approval) is ExportDestination and approval.require_absent
+    expected = ((approval.target, approval.parent_identity, approval.state)
+                if approval is not None else None)
     try:
         target, parent_identity, previous = _destination(
             requested, private, check_cancelled,
-            require_absent=require_absent or captured_absent)
+            require_absent=require_absent or captured_absent, expected=expected)
     except FileExistsError as exc:
         if captured_absent:
             # A new occupant invalidates the captured selection. Preserve the
@@ -351,7 +373,8 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
         check_cancelled()
         try:
             checked_target, checked_parent, current = _destination(
-                requested, private, check_cancelled, require_absent=require_absent)
+                requested, private, check_cancelled, require_absent=require_absent,
+                expected=(target, parent_identity, previous))
         except FileExistsError as exc:
             raise ValueError('The export destination changed. Choose the destination again.') from exc
         if (checked_target != target or checked_parent != parent_identity or

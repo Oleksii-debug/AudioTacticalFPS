@@ -4,12 +4,13 @@ from concurrent.futures import Future
 from pathlib import Path
 import threading
 from types import SimpleNamespace
-from unittest.mock import Mock, create_autospec
+from unittest.mock import Mock, create_autospec, call
 
 import pytest
 
 from carr_library.ui.operation_progress import ProgressTracker, operation_outcome
 from carr_library.ui.reader_playback import ReaderPlaybackControls
+from carr_library.ui.reader_transport import ReaderPlaybackSession
 from carr_library.ui.keyboard_settings import VoiceReaderKeyboardAdapter
 from carr_library.ui.reader_output import ReaderOutputControls
 
@@ -385,6 +386,16 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     # The extracted finally block closes the controls created before the modal
     # try. Preserve that closure binding and its real keyword-only signature.
     env['transport'] = create_autospec(ReaderPlaybackControls, instance=True, spec_set=True)
+    session = ReaderPlaybackSession(env['player'], submit=Mock(), guard=Mock(),
+        capture=Mock(), verify=Mock(), alive=lambda: True, busy=lambda: False,
+        cancelled=lambda: False, clear_cancel=Mock(), start=Mock(), stop=Mock(),
+        pause=Mock(), report=Mock(), refresh=Mock())
+    env['playback_session'] = create_autospec(session, spec_set=True)
+    env['playback_session'].operation = None
+    env['playback_session']._values = set()
+    shutdown_order = Mock()
+    shutdown_order.attach_mock(env['playback_session'], 'listening')
+    shutdown_order.attach_mock(env['executor'], 'executor')
     env['keyboard'] = create_autospec(VoiceReaderKeyboardAdapter, instance=True, spec_set=True)
     env['output_controls'] = create_autospec(ReaderOutputControls, instance=True, spec_set=True)
     # This existing close fixture represents a single, live reader. The modal
@@ -404,6 +415,11 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'], silence_confirmed=not device_failure)
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    assert shutdown_order.mock_calls == [
+        call.listening.close(),
+        call.executor.shutdown(wait=True, cancel_futures=True),
+        call.listening.close(worker_drained=True),
+    ]
     if device_failure:
         env['audio_files'].cleanup.assert_not_called()
         assert env['parent']._reader_playback_retained == [(env['player'], env['audio_files'])]

@@ -111,6 +111,14 @@ def validate_resource_policy(value):
 def _prepared(relative, value):
     """Return a modified typed record, or None for unchanged opaque state."""
     path = _dispatch_path(relative)
+    if path == PurePosixPath('audio-metadata/choices.json'):
+        from .audio.metadata_review import validate_choices
+        validate_choices(value)
+        return None
+    if path == PurePosixPath('speech/playback-queue.json'):
+        from .speech.playlist import SavedPlaylist
+        SavedPlaylist.from_dict(value)
+        return None
     if path == PurePosixPath('speech/presentation.json'):
         from .speech.presentation import ReadingAppearance
         ReadingAppearance.from_dict(value)
@@ -276,12 +284,25 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
     recording_backup.validate_state_entries(entries, cancelled=cancelled)
     clip_receipt = backup_inputs.validate_state(root, entries, cancelled=cancelled)
     validated_tabs = _validate_reading_tabs(root, entries, cancelled=cancelled)
+    from .studio import book_backup
+    validated_books = book_backup.validate_state(root, entries, cancelled=cancelled)
+    if any(entry['filename'].casefold() == 'speech/playback-queue.json' for entry in entries):
+        from .speech.playlist import validate_state_collection
+        validate_state_collection(root, entries)
     for entry in entries:
         if cancelled():
             raise InterruptedError('Application state verification cancelled.')
         relative = _dispatch_path(entry['filename'])
-        if relative.as_posix() in validated_tabs:
+        if relative.as_posix() in validated_tabs or relative.as_posix() in validated_books:
             continue
+        if relative == PurePosixPath('audio-metadata/choices.json'):
+            from .audio.metadata_review import MAX_BYTES
+            if not 0 < entry['size_bytes'] <= MAX_BYTES:
+                raise ValueError('Saved audio metadata choices exceed their recovery size limit.')
+        if relative == PurePosixPath('speech/playback-queue.json'):
+            from .speech.playlist import MAX_STATE_BYTES
+            if not 0 < entry['size_bytes'] <= MAX_STATE_BYTES:
+                raise ValueError('Saved playback queue exceeds its recovery size limit.')
         if relative == PurePosixPath('speech/presentation.json'):
             from .speech.presentation import MAX_BYTES
             if not 0 < entry['size_bytes'] <= MAX_BYTES:
@@ -313,7 +334,8 @@ def validate_state_documents(root, entries, *, cancelled=lambda: False, restored
             value = read_json(path)
         except (UnicodeError, json.JSONDecodeError):
             if (_publication_path(relative)
-                    or relative in (PurePosixPath('speech/presentation.json'),
+                    or relative in (PurePosixPath('audio-metadata/choices.json'),
+                                    PurePosixPath('speech/presentation.json'),
                                     PurePosixPath('transcription/engine.json'), PurePosixPath('audio/engines.json'),
                                     PurePosixPath('operations/resources.json'))
                     or len(relative.parts) == 5 and relative.parts[0] == 'transcription'

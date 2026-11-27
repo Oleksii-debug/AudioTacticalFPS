@@ -49,6 +49,7 @@ def test_pending_actual_child_keeps_stage_and_lock_until_owned_quiescence(
     broker = editor = None
     if route == 'editor-admission':
         library = tmp_path / 'library'
+        library.mkdir()
         broker = ResourceBroker.for_app(library, limits=ResourceLimits(cpu_slots=1,
             memory_bytes=1024**3, disk_bytes=512 * 1024**2, min_free_disk_bytes=0))
         service = ProductionService(library / 'state/studio', voices=SimpleNamespace(),
@@ -307,4 +308,155 @@ def test_successful_selected_byte_retention_is_content_bound_and_reusable(tmp_pa
     assert first.read_bytes() == selected.read_bytes() == original
     assert checks == [original, original]
     assert not list(inputs.glob('.pending-*'))
+    free_lock(inputs)
+
+
+
+@pytest.mark.parametrize('change', ['foreign-target', 'third-link', 'changed-bytes', 'foreign-stage'])
+def test_only_exact_owned_publication_allows_private_stage_release(tmp_path, monkeypatch, change):
+    inputs, selected = prepared(tmp_path)
+    original = selected.read_bytes()
+    publish = clips.publish_file
+    observed = {}
+
+    def changed_after_link(staged, target, **options):
+        publish(staged, target, **options)
+        assert staged.samefile(target) and staged.stat().st_nlink == 2
+        # Global regular-file admission must remain strict, even for our link.
+        with pytest.raises(ValueError):
+            clips.regular(staged)
+        observed.update(stage=staged, target=target)
+        if change == 'foreign-target':
+            foreign = inputs / 'foreign-equal-copy'
+            foreign.write_bytes(original)
+            assert not foreign.samefile(staged)
+            os.replace(foreign, target)
+        elif change == 'third-link':
+            other = tmp_path / 'unapproved-third-link.audio'
+            os.link(staged, other)
+            observed['other'] = other
+        elif change == 'changed-bytes':
+            before = target.stat()
+            with target.open('r+b') as stream:
+                stream.write(b'!')  # same size; the packet/file digest must still reject it
+            os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns))
+        else:
+            moved = staged.with_suffix('.owned-original')
+            staged.rename(moved)
+            staged.write_bytes(b'Foreign private-stage replacement must remain.')
+            observed['other'] = moved
+
+    monkeypatch.setattr(clips, 'publish_file', changed_after_link)
+    with pytest.raises(ValueError, match='publication|replaced'):
+        retain_audio_input(inputs, selected, inspect=lambda *_args, **_kwargs: None)
+    stage, target = observed['stage'], observed['target']
+    assert stage.is_file() and target.is_file()
+    assert selected.read_bytes() == original
+    if change == 'foreign-target':
+        assert stage.read_bytes() == target.read_bytes() == original
+        assert not stage.samefile(target)
+    elif change == 'third-link':
+        assert stage.samefile(target) and stage.samefile(observed['other'])
+        assert stage.stat().st_nlink == 3
+        assert observed['other'].read_bytes() == original
+    elif change == 'changed-bytes':
+        assert stage.read_bytes() == target.read_bytes() == b'!' + original[1:]
+    else:
+        assert stage.read_bytes() == b'Foreign private-stage replacement must remain.'
+        assert observed['other'].samefile(target)
+        assert observed['other'].read_bytes() == original
+    free_lock(inputs)
+
+
+def test_foreign_output_racing_before_link_is_not_adopted_or_deleted(tmp_path, monkeypatch):
+    inputs, selected = prepared(tmp_path)
+    original = selected.read_bytes()
+    observed = {}
+
+    def other_producer(staged, target, **options):
+        observed.update(stage=staged, target=target)
+        target.write_bytes(original)
+        assert not target.samefile(staged)
+        raise FileExistsError('A foreign producer claimed the same content name.')
+
+    monkeypatch.setattr(clips, 'publish_file', other_producer)
+    with pytest.raises(ValueError, match='exact publication'):
+        retain_audio_input(inputs, selected, inspect=lambda *_args, **_kwargs: None)
+    assert observed['stage'].read_bytes() == observed['target'].read_bytes() == original
+    assert not observed['stage'].samefile(observed['target'])
+    assert selected.read_bytes() == original
+    free_lock(inputs)
+
+
+def test_last_prelink_stage_mutation_is_rejected_before_retained_output(tmp_path, monkeypatch):
+    inputs, selected = prepared(tmp_path)
+    original = selected.read_bytes()
+    publish = clips.publish_file
+    observed = []
+
+    def before_link(staged, target, *, cancelled):
+        calls = 0
+        def mutate():
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                before = staged.stat()
+                with staged.open('r+b') as stream:
+                    stream.write(b'!')
+                os.utime(staged, ns=(before.st_atime_ns, before.st_mtime_ns + 2_000_000_000))
+                observed.append(staged)
+            return cancelled()
+        return publish(staged, target, cancelled=mutate)
+
+    monkeypatch.setattr(clips, 'publish_file', before_link)
+    with pytest.raises(ValueError, match='stage changed before publication'):
+        retain_audio_input(inputs, selected, inspect=lambda *_args, **_kwargs: None)
+    assert len(observed) == 1 and not observed[0].exists()
+    assert not (inputs / (sha256(original).hexdigest() + '.audio')).exists()
+    assert selected.read_bytes() == original
+    free_lock(inputs)
+
+
+def test_late_cancel_after_real_link_keeps_verified_completed_retention(tmp_path, monkeypatch):
+    inputs, selected = prepared(tmp_path)
+    original = selected.read_bytes()
+    stopped = Event()
+    publish = clips.publish_file
+
+    def commit_then_cancel(staged, target, **options):
+        publish(staged, target, **options)
+        assert staged.samefile(target) and staged.stat().st_nlink == 2
+        stopped.set()
+        raise AudioCancelled('Cancellation arrived after the actual retained-file commit.')
+
+    monkeypatch.setattr(clips, 'publish_file', commit_then_cancel)
+    target = retain_audio_input(inputs, selected, inspect=lambda *_args, **_kwargs: None,
+                                cancelled=stopped.is_set)
+    assert stopped.is_set()
+    assert target == inputs / (sha256(original).hexdigest() + '.audio')
+    assert target.read_bytes() == original and clips.regular(target).st_nlink == 1
+    assert selected.read_bytes() == original and not list(inputs.glob('.pending-*'))
+    free_lock(inputs)
+
+
+def test_postcommit_finalization_error_names_retained_file_and_preserves_reuse(tmp_path, monkeypatch):
+    inputs, selected = prepared(tmp_path)
+    original = selected.read_bytes()
+    target = inputs / (sha256(original).hexdigest() + '.audio')
+    publish = clips.publish_file
+
+    def commit_then_fail(staged, output, **options):
+        publish(staged, output, **options)
+        raise OSError('Synthetic directory flush error after the real link.')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(clips, 'publish_file', commit_then_fail)
+        with pytest.raises(ValueError, match='audio was retained with verified bytes') as failure:
+            retain_audio_input(inputs, selected, inspect=lambda *_args, **_kwargs: None)
+    assert isinstance(failure.value.__cause__, OSError)
+    assert target.read_bytes() == original and clips.regular(target).st_nlink == 1
+    assert not list(inputs.glob('.pending-*'))
+    reused = retain_audio_input(inputs, selected, inspect=lambda *_args, **_kwargs: None)
+    assert reused == target and reused.read_bytes() == original
+    assert selected.read_bytes() == original
     free_lock(inputs)

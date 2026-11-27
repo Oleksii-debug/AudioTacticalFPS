@@ -402,7 +402,7 @@ class ProductionService:
         return audio_runtime(self.cache, state_root=self.root.parent,
                              input_roots=(self.cache, *self.input_roots))
 
-    def run(self, job_id, *, cancelled=lambda: False, progress=None):
+    def run(self, job_id, *, cancelled=lambda: False, progress=None, source_guard=None):
         self._check_open()
         from ..audio import AudioCancelled, AudioError, Track, MusicSpec
         from ..speech import SpeechSettings
@@ -419,10 +419,38 @@ class ProductionService:
                     raise ValueError('This restored production job requires a new output. '
                                      'Create a new job and explicitly choose its destination; '
                                      'verified cached work remains reusable.')
+            project = Project.from_dict(state['project'])
+            bound_source = any(line.source_ref.startswith('carr-book-audio:')
+                               for scene in project.scenes for line in scene.lines)
+            if source_guard is not None and not callable(source_guard):
+                raise ValueError('The source guard must be callable.')
+            if bound_source and source_guard is None:
+                raise ValueError('Open this source-bound job from Book audio to recheck its original source.')
+            source_provenance = None
+
+            def check_source():
+                nonlocal source_provenance
+                if source_guard is None:
+                    return
+                if self._closed or cancelled():
+                    raise InterruptedError('Production stopped before source publication.')
+                value = source_guard()
+                if bound_source:
+                    from .book_source import validate_project_provenance
+                    validate_project_provenance(value, project)
+                    raw = encode(value)
+                    if source_provenance is not None and raw != source_provenance:
+                        raise ValueError('The reviewed book source provenance changed.')
+                    source_provenance = raw
+
+            # Source authorization precedes any completed external-output read.
+            check_source()
             if state['status'] == 'complete':
                 self._verify_artifacts(state, cancelled=cancelled)
+                if bound_source and encode(read_json(Path(state['destination']) / 'book-source.json')) != source_provenance:
+                    raise ValueError('The published book source provenance differs from its reviewed plan.')
+                check_source()
                 return state
-            project = Project.from_dict(state['project'])
             control = job_root / 'control.json'
             if control.exists():
                 control.unlink()  # explicit Run/Resume authorizes continuing the saved job
@@ -471,6 +499,7 @@ class ProductionService:
                             raise ValueError('A selected production input changed while waiting for resources.')
                         source_versions[str(source)] = source_stamp(before)
                 lease.checkpoint()
+                check_source()
             except Exception as exc:
                 from ..operations import ResourceCancelled
                 action = read_json(control).get('action') if control.exists() else None
@@ -770,6 +799,7 @@ class ProductionService:
                             target, duration=master_info.duration, sample_rate=project.sample_rate,
                             effects=project.effects, cancelled=stopping))
                 verify_sources(tuple(cue for scene in project.scenes for cue in scene.cues))
+                check_source()
                 output = local_path(state['destination'])
                 marker = output / 'production-owner.json'
                 if output.exists():
@@ -781,6 +811,7 @@ class ProductionService:
 
                 def publish(source, name):
                     check()
+                    check_source()
                     target = local_path(output / name, root=output)
                     target.parent.mkdir(parents=True, exist_ok=True)
                     identity = digest_file(source)
@@ -819,6 +850,7 @@ class ProductionService:
                                 raise ValueError('Audio changed during publication.')
                             # Hashing and flushing large outputs can take time.
                             # Stop before publication, never after the link commits.
+                            check_source()
                             check()
                             os.link(temporary, target)
                         finally:
@@ -830,7 +862,12 @@ class ProductionService:
                     publish(path, f'chapters/{index:04d}-{_output_name(scene.title)}.wav')
                 if state['format'] != 'wav':
                     # Codec selection is delegated to the verified local runtime inventory.
-                    key = sha256(encode([digest_file(master), state['format'], runtime_identity])).hexdigest()
+                    encoding_identity = [digest_file(master), state['format'], runtime_identity]
+                    if state['format'] == 'm4b':
+                        from ..audio import audiobook
+                        encoding_identity.extend([project.title, chapter_data, project.sample_rate,
+                                                  digest_file(Path(audiobook.__file__))])
+                    key = sha256(encode(encoding_identity)).hexdigest()
                     encoded = self.cache / (key + '.' + state['format'])
                     receipt = self.cache / (key + '-encoded.json')
                     try:
@@ -844,8 +881,13 @@ class ProductionService:
                     if not (cached and encoded.exists() and digest_file(encoded) == cached.get('sha256')):
                         if encoded.exists():
                             encoded = self.cache / (key + '-' + uuid4().hex[:10] + '.' + state['format'])
-                        generate(encoded, lambda target: runtime.convert(master, target,
-                            sample_rate=project.sample_rate, cancelled=stopping))
+                        if state['format'] == 'm4b':
+                            generate(encoded, lambda target: runtime.audiobook(master, target,
+                                chapters=chapter_data, title=project.title,
+                                sample_rate=project.sample_rate, cancelled=stopping))
+                        else:
+                            generate(encoded, lambda target: runtime.convert(master, target,
+                                sample_rate=project.sample_rate, cancelled=stopping))
                         atomic_json(receipt, {'sha256': digest_file(encoded), 'file': encoded.name}, replace=receipt.exists())
                     publish(encoded, 'audiobook.' + state['format'])
                 for role_id, paths in stem_scenes.items():
@@ -868,6 +910,8 @@ class ProductionService:
                 for index, line in enumerate(timeline, 1):
                     subtitles.append(f'{index}\n{_stamp(line["start"])} --> {_stamp(line["end"])}\n{line["text"]}\n')
                     srt.append(f'{index}\n{_stamp(line["start"], comma=True)} --> {_stamp(line["end"], comma=True)}\n{line["text"]}\n')
+                from ..audio.audiobook import line_lrc
+                lrc = line_lrc(timeline).encode('utf-8')
                 report('Measuring the actual completed master')
                 meter = runtime.measure(master, cancelled=stopping)
                 metadata = {'schema': 1, 'project': project.id, 'revision': project.revision,
@@ -879,7 +923,8 @@ class ProductionService:
                             'music_kind': 'procedural/MIDI/local-model as explicitly selected per scene',
                             'music_continuity': 'Neural segments are separate seeded variations with boundary fades; '
                                                 'continuous neural composition and perceptually seamless joins are not assumed.',
-                            'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.'}
+                            'timing_notice': 'Line-level alignment from actual synthesized durations; no word timing claim.',
+                            'lrc_sha256': sha256(lrc).hexdigest()}
                 if project.schema >= 2:
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
@@ -893,16 +938,25 @@ class ProductionService:
                                   for cue in scene.cues} for scene in project.scenes},
                         'stems': 'Track effects are included. Scene and master effects apply only to their mixed buses.'}
                 verify_sources(tuple(cue for scene in project.scenes for cue in scene.cues))
+                if source_provenance is not None:
+                    metadata['book_source_sha256'] = sha256(source_provenance).hexdigest()
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
+                                  ('script.lrc', lrc),
                                   ('timeline.json', encode(metadata)),
                                   ('project.json', encode(project.to_dict()))]:
                     source = job_root / name
                     atomic_bytes(source, raw, replace=source.exists())
                     publish(source, name)
+                if source_provenance is not None:
+                    source = job_root / 'book-source.json'
+                    atomic_bytes(source, source_provenance, replace=source.exists())
+                    publish(source, 'book-source.json')
+                check_source()
                 state['result'] = metadata
                 state['status'], state['progress'] = 'complete', 'Audio files and checksums verified.'
                 self._verify_artifacts(state, cancelled=stopping)
+                check_source()
                 self._save(state)
                 return state
             except BaseException as exc:
@@ -926,6 +980,7 @@ class ProductionService:
             raise InterruptedError('Production output verification cancelled.')
         root = local_path(state['destination'], exists=True)
         required = set()
+        lrc_digest = None
         if state['status'] == 'complete':
             # A receipt with a shortened (or empty) artifact list must not
             # turn a damaged production into a successful committed replay.
@@ -934,6 +989,19 @@ class ProductionService:
                     'job': state['id'], 'fingerprint': state['fingerprint']}:
                 raise ValueError('The production output owner receipt changed.')
             required = {'master.wav', 'script.vtt', 'script.srt', 'timeline.json', 'project.json'}
+            if 'lrc_sha256' in state.get('result', {}):
+                lrc_digest = state['result']['lrc_sha256']
+                if not isinstance(lrc_digest, str) or not re.fullmatch(r'[0-9a-f]{64}', lrc_digest):
+                    raise ValueError('The completed LRC receipt is invalid.')
+                required.add('script.lrc')
+            if any(line.source_ref.startswith('carr-book-audio:')
+                   for scene in project.scenes for line in scene.lines):
+                from .book_source import validate_project_provenance
+                provenance = read_json(root / 'book-source.json')
+                validate_project_provenance(provenance, project)
+                if state.get('result', {}).get('book_source_sha256') != sha256(encode(provenance)).hexdigest():
+                    raise ValueError('The completed Book source receipt changed.')
+                required.add('book-source.json')
             required.update(f'chapters/{index:04d}-{_output_name(scene.title)}.wav'
                             for index, scene in enumerate(project.scenes, 1))
             if state['format'] != 'wav':
@@ -952,6 +1020,8 @@ class ProductionService:
             if name in seen:
                 raise ValueError('Duplicate production artifact receipt.')
             seen.add(name)
+            if name == 'script.lrc' and lrc_digest is not None and artifact['sha256'] != lrc_digest:
+                raise ValueError('The completed LRC receipt changed.')
             if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:
                 raise ValueError('A rendered output is missing or its checksum changed.')
         if required - seen:

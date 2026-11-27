@@ -159,7 +159,7 @@ def _studio_job(value, identity):
 def _timeline(value):
     fields(value, {'schema', 'project', 'revision', 'source_sha256', 'chapters', 'lines',
                    'duration', 'sample_rate', 'channels', 'mode', 'local_only', 'loudness',
-                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects'})
+                   'music_kind', 'timing_notice'}, {'music_continuity', 'clips', 'clip_stems_notice', 'effects', 'book_source_sha256', 'lrc_sha256'})
     if type(value['schema']) is not int or value['schema'] != 1 or value['local_only'] is not True:
         raise ValueError('Invalid timeline schema.')
     if type(value['project']) is not str or not re.fullmatch(ID, value['project']):
@@ -173,6 +173,10 @@ def _timeline(value):
         raise ValueError('Invalid timeline mode or loudness.')
     for name in ('music_kind', 'timing_notice'):
         text(value[name], 8192)
+    if 'book_source_sha256' in value:
+        digest(value['book_source_sha256'])
+    if 'lrc_sha256' in value:
+        digest(value['lrc_sha256'])
     if 'music_continuity' in value:
         text(value['music_continuity'], 8192)
     for name, required in [('chapters', {'id', 'title', 'start', 'end'}),

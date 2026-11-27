@@ -153,3 +153,157 @@ def test_reader_open_failure_keeps_snapshot_and_releases_clipboard(monkeypatch):
     ui.show_clipboard_reader(SimpleNamespace(report=reports.append))
     assert clipboard.text == 'Unchanged clipboard text' and not clipboard.opened
     assert len(reports) == 1 and 'initialization failure' in reports[0]
+
+
+
+def _diagnostic_probe(monkeypatch):
+    import importlib.util
+    from pathlib import Path
+    from unittest.mock import Mock
+
+    path = Path(__file__).resolve().parents[2] / 'scripts' / 'windows_clipboard_reader_smoke.py'
+    spec = importlib.util.spec_from_file_location('clipboard_diagnostic_probe', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    # These controls test durable diagnostic reporting only. The actual probe
+    # retains its independent native watchdog and every clipboard assertion.
+    module.faulthandler = SimpleNamespace(enable=Mock(), dump_traceback_later=Mock(),
+                                         cancel_dump_traceback_later=Mock())
+    return module
+
+
+@pytest.mark.parametrize('error', [ImportError, OSError], ids=['import', 'native-call'])
+def test_native_probe_persists_initial_and_failure_receipt_before_native_success(tmp_path, monkeypatch, error):
+    import json
+
+    module = _diagnostic_probe(monkeypatch)
+    report = tmp_path / 'receipt.json'
+    monkeypatch.setattr(sys, 'argv', ['probe', '--expect-installed', '--report', str(report)])
+    def failing(args, value):
+        initial = json.loads(report.read_bytes())
+        assert initial['status'] == 'FAIL' and initial['phase'] == 'starting'
+        assert initial['checks'] == [] and initial['clipboard_content'] == 'NOT_RECORDED'
+        assert initial['python'] == sys.version
+        module._phase(args, value, 'exact-native-boundary')
+        raise error('Synthetic bounded diagnostic failure.')
+    monkeypatch.setattr(module, '_run_probe', failing)
+    with pytest.raises(error, match='Synthetic'):
+        module.main()
+    saved = json.loads(report.read_bytes())
+    assert saved['status'] == 'FAIL' and saved['phase'] == 'exact-native-boundary'
+    assert saved['failure'] == {'type': error.__name__, 'message': 'Synthetic bounded diagnostic failure.'}
+    assert saved['checks'] == [] and saved['installed'] is True
+    assert not report.with_name('receipt.json.partial').exists()
+    module.faulthandler.dump_traceback_later.assert_called_once_with(90, exit=True)
+    module.faulthandler.cancel_dump_traceback_later.assert_called_once_with()
+
+
+def test_native_probe_pass_receipt_requires_completed_probe_result(tmp_path, monkeypatch):
+    import json
+
+    module = _diagnostic_probe(monkeypatch)
+    report = tmp_path / 'receipt.json'
+    monkeypatch.setattr(sys, 'argv', ['probe', '--source', str(tmp_path), '--report', str(report)])
+    def completed(args, value):
+        value['checks'].append('Purpose-written completed control')
+        value['cleanup_complete'] = True
+        return {'status': 'PASS', 'checks': value['checks'], 'module_sha256': 'a' * 64}
+    monkeypatch.setattr(module, '_run_probe', completed)
+    assert module.main() == 0
+    saved = json.loads(report.read_bytes())
+    assert saved['status'] == 'PASS' and saved['phase'] == 'completed'
+    assert saved['checks'] == ['Purpose-written completed control']
+    assert saved['module_sha256'] == 'a' * 64 and saved['cleanup_complete'] is True
+    assert saved['clipboard_content'] == 'NOT_RECORDED' and saved['installed'] is False
+
+
+def test_native_probe_interrupt_stays_failed_and_cancels_watchdog(tmp_path, monkeypatch):
+    import json
+
+    module = _diagnostic_probe(monkeypatch)
+    report = tmp_path / 'receipt.json'
+    monkeypatch.setattr(sys, 'argv', ['probe', '--expect-installed', '--report', str(report)])
+    def interrupted(args, value):
+        raise KeyboardInterrupt('Synthetic interrupted native probe.')
+    monkeypatch.setattr(module, '_run_probe', interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        module.main()
+    saved = json.loads(report.read_bytes())
+    assert saved['status'] == 'FAIL' and saved['failure']['type'] == 'KeyboardInterrupt'
+    module.faulthandler.cancel_dump_traceback_later.assert_called_once_with()
+
+
+def test_native_probe_atomic_receipt_does_not_replace_prior_evidence_on_publish_failure(tmp_path, monkeypatch):
+    module = _diagnostic_probe(monkeypatch)
+    report = tmp_path / 'receipt.json'
+    module._checkpoint(report, {'status': 'FAIL', 'phase': 'before-native-call'})
+    original = report.read_bytes()
+    def failed_publish(source, destination):
+        raise OSError('Synthetic receipt publication failure.')
+    monkeypatch.setattr(module.os, 'replace', failed_publish)
+    with pytest.raises(OSError, match='publication failure'):
+        module._checkpoint(report, {'status': 'PASS', 'phase': 'completed'})
+    assert report.read_bytes() == original
+
+
+
+@pytest.mark.parametrize('mode', ['source', 'installed'])
+def test_native_clipboard_probe_requires_exact_loaded_dependency_bytes(tmp_path, monkeypatch, mode):
+    from pathlib import Path
+
+    module = _diagnostic_probe(monkeypatch)
+    checkout = tmp_path / 'checkout'
+    expected = checkout / 'src' / 'carr_library'
+    package = expected if mode == 'source' else tmp_path / 'installed' / 'carr_library'
+    relative = 'ui/clipboard_reader.py'
+    for root in {expected, package}:
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'purpose-written module bytes\n')
+    loaded = SimpleNamespace(__file__=str(package / relative))
+    distribution = SimpleNamespace(files=[Path('carr_library') / relative],
+        locate_file=lambda item: package.parent / item)
+    values = module._module_evidence(checkout, package, [(relative, loaded)],
+        source_mode=mode == 'source', distribution=distribution)
+    assert values[relative]['path'] == str((package / relative).resolve())
+    if mode == 'installed':
+        (package / relative).write_bytes(b'changed loaded dependency\n')
+        with pytest.raises(RuntimeError, match='bytes differ'):
+            module._module_evidence(checkout, package, [(relative, loaded)],
+                source_mode=False, distribution=distribution)
+        (package / relative).write_bytes((expected / relative).read_bytes())
+        distribution.files = []
+        with pytest.raises(RuntimeError, match='wheel RECORD'):
+            module._module_evidence(checkout, package, [(relative, loaded)],
+                source_mode=False, distribution=distribution)
+    else:
+        with pytest.raises(RuntimeError, match='source checkout'):
+            module._module_evidence(checkout, package, [(relative, loaded)],
+                source_mode=False, distribution=distribution)
+
+
+def test_native_clipboard_probe_rejects_foreign_module_root_before_byte_read(tmp_path, monkeypatch):
+    module = _diagnostic_probe(monkeypatch)
+    checkout = tmp_path / 'checkout'
+    package = checkout / 'src' / 'carr_library'
+    (package / 'ui').mkdir(parents=True)
+    (package / 'ui' / 'clipboard_reader.py').write_bytes(b'exact')
+    foreign = tmp_path / 'foreign.py'
+    foreign.write_bytes(b'exact')
+    monkeypatch.setattr(module, '_bounded_sha256',
+        lambda path: pytest.fail('A foreign module reached the byte-proof reader.'))
+    with pytest.raises(RuntimeError, match='package root'):
+        module._module_evidence(checkout, package,
+            [('ui/clipboard_reader.py', SimpleNamespace(__file__=str(foreign)))],
+            source_mode=True)
+
+
+def test_native_clipboard_probe_source_proof_rejects_oversize_before_hash(tmp_path, monkeypatch):
+    module = _diagnostic_probe(monkeypatch)
+    path = tmp_path / 'oversize.py'
+    with path.open('wb') as stream:
+        stream.truncate(2 * 1024 * 1024 + 1)
+    monkeypatch.setattr(module, 'sha256',
+        lambda value: pytest.fail('An oversized module reached hashing.'))
+    with pytest.raises(RuntimeError, match='source-proof bound'):
+        module._bounded_sha256(path)

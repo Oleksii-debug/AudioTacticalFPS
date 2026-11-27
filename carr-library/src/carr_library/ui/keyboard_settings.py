@@ -399,6 +399,7 @@ def voice_reader_commands():
         ('voice_reader.replace', 'Find and replace in reading copy', 'Ctrl+H'),
         ('voice_reader.pronunciation', 'Reading pronunciation dictionary', 'Ctrl+Shift+D'),
         ('voice_reader.settings', 'Voice reader keyboard shortcuts', 'Ctrl+Alt+K'),
+        ('voice_reader.playback', 'Playback volume, skips, speed and pitch', ''),
     )
     return tuple(Command(identity, label, key, context='voice_reader')
                  for identity, label, key in rows)

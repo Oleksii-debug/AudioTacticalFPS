@@ -22,13 +22,14 @@ from .ingest.bundle import _plain, _unique_object
 from .ingest.restore import RestoreError
 from .reader.reading_state import MAX_BYTES as READING_BYTES, _decode
 from . import backup_producers, backup_generated, recording_backup, backup_transcription
-from .studio import backup_inputs
+from .studio import backup_inputs, book_backup
 
 MAX_FILES = 100_000
 MAX_BYTES = 512 * 1024 * 1024
 ENGINE_SETTINGS_BYTES = 32 * 1024 * 1024
 _SIMPLE = ('reading-state.json', 'keybindings.json', 'keyboard-shortcuts.json',
-           'evidence-drafts.json', 'ocr-language-presets.json', 'progress-preferences.json')
+           'evidence-drafts.json', 'ocr-language-presets.json', 'progress-preferences.json',
+           'desktop-preferences.json')
 _DIRECTORIES = ('narration-projects', 'reading-copies', 'state')
 _ID = r'[A-Za-z0-9_-]{1,80}'
 _STUDIO = re.compile(r'state/studio/projects/(' + _ID + r')/(?:project\.json|revisions/(\d{8})-([0-9a-f]{64})\.json)\Z')
@@ -73,6 +74,8 @@ def _model(module):
 def sidecar_limit(name):
     """Resolve only explicit formats; also fail early if a producer is absent."""
     portable_name(name)
+    if name == 'desktop-preferences.json':
+        return _model('desktop_preferences').MAX_BYTES
     if name == 'reading-state.json':
         return READING_BYTES
     if name == 'keybindings.json':
@@ -85,12 +88,21 @@ def sidecar_limit(name):
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if name == 'progress-preferences.json':
         return _model('progress_preferences').MAX_BYTES
+    if name.casefold() == 'state/audio-metadata/choices.json':
+        return _model('audio.metadata_review').MAX_BYTES
+    if name.casefold() == 'state/speech/playback-queue.json':
+        return _model('speech.playlist').MAX_STATE_BYTES
     if name.casefold() == 'state/speech/reading-tabs.json':
         return _model('speech.tabs').MAX_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
     if name == 'state/operations/resources.json':
         return 32768
+    if book_backup.namespace(name):
+        maximum = book_backup.limit(name)
+        if maximum is None:
+            raise RestoreError('Unsupported Book recovery path.')
+        return maximum
     if backup_inputs.namespace(name):
         return backup_inputs.limit(name)
     if backup_transcription.namespace(name):
@@ -284,7 +296,9 @@ def validate_sidecar(db, name, raw):
             or not raw and not backup_transcription.allows_empty(name)):
         raise RestoreError('sidecar is empty or exceeds its data-format budget')
     try:
-        if name == 'reading-state.json':
+        if name == 'desktop-preferences.json':
+            _model('desktop_preferences').validate_desktop_preferences(raw)
+        elif name == 'reading-state.json':
             positions, bookmarks, _ = _decode(raw.decode('utf-8'))
             validate_locations(db, [value[0] for value in positions.values()] +
                                [bookmark.location for bookmark in bookmarks.values()])
@@ -310,11 +324,17 @@ def validate_sidecar(db, name, raw):
             _model('progress_preferences').validate_progress_preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
+        elif name.casefold() == 'state/audio-metadata/choices.json':
+            _model('audio.metadata_review').validate_choices(_json(raw))
+        elif name.casefold() == 'state/speech/playback-queue.json':
+            _model('speech.playlist').SavedPlaylist.from_dict(_json(raw))
         elif name.casefold() == 'state/speech/reading-tabs.json':
             _model('speech.tabs').ReadingTabs.from_dict(_json(raw))
         elif name == 'state/operations/resources.json':
             from .state_recovery import validate_resource_policy
             validate_resource_policy(_json(raw))
+        elif book_backup.namespace(name):
+            book_backup.validate_database_document(db, name, _json(raw))
         elif backup_inputs.namespace(name):
             backup_inputs.validate_metadata(name, _json(raw))
         elif backup_transcription.namespace(name):
@@ -438,6 +458,8 @@ def normalize_manifest(manifest):
         if entry['filename'].startswith(backup_generated.PREFIX) and not generated:
             raise RestoreError('Generated audio requires explicit manifest inclusion.')
         maximum = sidecar_limit(entry['filename'])
+        if backup_transcription.is_cache_file(entry['filename']) and not generated:
+            raise RestoreError('Transcription cache requires explicit manifest inclusion.')
         if (entry['size_bytes'] < 0 or entry['size_bytes'] > maximum
                 or entry['size_bytes'] == 0 and not backup_transcription.allows_empty(entry['filename'])
                 or entry['filename'].casefold() in names):
@@ -651,6 +673,9 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False, destinatio
             if name.startswith(backup_generated.PREFIX):
                 receipts[name] = _json(raw)
     backup_generated.validate_collection(inventory.entries, receipts)
+    if any(entry['filename'].casefold() == 'state/speech/playback-queue.json'
+           for entry in inventory.entries):
+        _model('speech.playlist').validate_collection(stage, inventory.entries)
     state = [{**row, 'filename': row['filename'][len('state/'):]}
              for row in inventory.entries if row['filename'].startswith('state/')]
     if state:
@@ -660,6 +685,7 @@ def restore(db, source, stage, inventory, *, cancelled=lambda: False, destinatio
         from .state_recovery import prepare_restored_state
         state = prepare_restored_state(stage / 'state', state, cancelled=cancelled,
             destination_state_root=Path(destination) / 'state' if destination is not None else None)
+        book_backup.validate_database_bindings(db, stage / 'state', state, cancelled=cancelled)
         inventory = Inventory(tuple(
             [row for row in inventory.entries if not row['filename'].startswith('state/')]
             + [{**row, 'filename': 'state/' + row['filename']} for row in state]),

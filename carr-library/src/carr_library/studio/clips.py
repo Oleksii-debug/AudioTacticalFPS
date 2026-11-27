@@ -81,6 +81,7 @@ def retain_audio_input(inputs, selected, *, inspect, expected_sha256=None,
                        cancelled=lambda: False, progress=None):
     """Retain only reviewed bytes; pending native cleanup keeps stage and lock."""
     from ..operations._locks import NativeLock
+    from ..audio.audiobook import _owned_publication
 
     if not callable(inspect) or not callable(cancelled):
         raise ValueError('A bounded audio-format review and cancellation callback are required.')
@@ -106,18 +107,49 @@ def retain_audio_input(inputs, selected, *, inspect, expected_sha256=None,
         raise ValueError('Not enough free disk space to retain the selected original audio.')
     staged = inputs / ('.pending-' + uuid4().hex + '.audio')
     owned_identity = None
+    publication_owner = None
+    accepted_target = None
+    target = None
+
+    def prove_publication():
+        if publication_owner is None or target is None:
+            raise ValueError('An unreviewed link to the private Studio input stage was preserved.')
+        try:
+            # The same existing two-link proof used by media publication:
+            # exact staged/target inode, captured directory, bounded bytes/hash.
+            _owned_publication(staged, target, publication_owner, directory,
+                               identity, before.st_size, check=guard_inputs)
+        except (OSError, ValueError, RuntimeError) as error:
+            raise ValueError('The retained Studio input is not this attempt\'s exact publication; '
+                             'its private stage and existing files were preserved.') from error
 
     def discard_stage():
+        nonlocal accepted_target
         if owned_identity is None:
             return
         guard_inputs()
         try:
-            retained = regular(staged)
+            retained = staged.lstat()
         except FileNotFoundError:
             return
         if (retained.st_dev, retained.st_ino) != owned_identity:
             raise ValueError('The private Studio input stage was replaced; it was preserved.')
+        linked = retained.st_nlink != 1 or (
+            publication_owner is not None and target is not None and os.path.lexists(target))
+        if linked:
+            # Never weaken regular(): only this attempt's exact two links are
+            # admitted here. Foreign, extra, replaced or changed links remain.
+            prove_publication()
+        else:
+            regular(staged)
         staged.unlink()
+        if linked:
+            current = regular(local_path(target, exists=True))
+            if ((current.st_dev, current.st_ino) != owned_identity
+                    or current.st_size != count
+                    or _checked_digest(target, current, lambda: False) != identity):
+                raise ValueError('The retained Studio input changed during final stage cleanup.')
+            accepted_target = _stamp(current)
 
     # The native backend uses the same lock pathname as the previous selected-
     # clip transaction, with a non-thread-local owner and held-descriptor checks.
@@ -158,16 +190,38 @@ def retain_audio_input(inputs, selected, *, inspect, expected_sha256=None,
             guard_inputs()
             inspect(staged, cancelled=cancelled)
             guard_inputs()
-            if _checked_digest(staged, regular(staged), cancelled) != identity:
+            reviewed_stage = regular(staged)
+            if _checked_digest(staged, reviewed_stage, cancelled) != identity:
                 raise ValueError('Retained audio changed during decoder verification.')
             target = inputs / (identity + '.audio')
             if target.exists():
                 retained = regular(target)
                 if retained.st_size != count or _checked_digest(target, retained, cancelled) != identity:
                     raise ValueError('Previously retained audio differs from its content identity.')
+                accepted_target = _stamp(retained)
             else:
                 guard_inputs()
-                publish_file(staged, target, cancelled=cancelled)
+                publication_owner = reviewed_stage
+
+                def before_commit():
+                    if cancelled():
+                        return True
+                    guard_inputs()
+                    if _stamp(regular(staged)) != _stamp(reviewed_stage):
+                        raise ValueError('The reviewed Studio input stage changed before publication.')
+                    return False
+
+                try:
+                    publish_file(staged, target, cancelled=before_commit)
+                except (Exception, KeyboardInterrupt) as error:
+                    if not os.path.lexists(target):
+                        raise
+                    prove_publication()
+                    if not isinstance(error, AudioCancelled):
+                        raise ValueError('Selected audio was retained with verified bytes, but '
+                                         'publication finalization needs review. The retained input was kept.') from error
+                    # A cancellation reported after this attempt's verified
+                    # link cannot turn its completed retention into a discard.
             guard_inputs()
         except BaseException as error:
             pending_owners = _pending_native_owners(error)
@@ -175,7 +229,10 @@ def retain_audio_input(inputs, selected, *, inspect, expected_sha256=None,
                 _retain_until_quiescent(ownership, pending_owners)
             raise
     guard_inputs()
-    return local_path(target, exists=True)
+    result = local_path(target, exists=True)
+    if accepted_target is None or _stamp(regular(result)) != accepted_target:
+        raise ValueError('The retained Studio input changed before completion.')
+    return result
 
 
 class ClipEditor:

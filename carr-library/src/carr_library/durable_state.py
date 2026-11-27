@@ -107,8 +107,8 @@ def read_json(path):
     return read_json_snapshot(path)[0]
 
 
-def read_json_snapshot(path, *, max_bytes=None):
-    """Return decoded state and a digest of the same bounded captured bytes."""
+def read_bytes_snapshot(path, *, max_bytes=None):
+    """Capture bounded state bytes and their digest before optional typed parsing."""
     maximum = MAX_JSON_BYTES if max_bytes is None else max_bytes
     if type(maximum) is not int or not 0 < maximum <= MAX_JSON_BYTES:
         raise ValueError('Use a positive bounded JSON read budget.')
@@ -139,9 +139,15 @@ def read_json_snapshot(path, *, max_bytes=None):
         raise ValueError('State changed repeatedly while opening; retry the operation.')
     if len(raw) > maximum:
         raise ValueError('State grew beyond its JSON budget.')
+    return raw, sha256(raw).hexdigest()
+
+
+def read_json_snapshot(path, *, max_bytes=None):
+    """Return decoded state and a digest of the same bounded captured bytes."""
+    raw, token = read_bytes_snapshot(path, max_bytes=max_bytes)
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                        parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
-    return value, sha256(raw).hexdigest()
+    return value, token
 
 
 def sync_directory(path):
