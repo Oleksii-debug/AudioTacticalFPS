@@ -129,6 +129,10 @@ def cases():
     result.append(('dic-replacement-doubled-literals', 'dic', '\ufeffcat=**|$|==|##\r\n', 'cat'))
     result.append(('dic-wildcard-order-first', 'dic', '\ufeff*cat=X\r\nscat=Y\r\n', 'scat'))
     result.append(('dic-wildcard-order-last', 'dic', '\ufeffscat=Y\r\n*cat=X\r\n', 'scat'))
+    for boundary_mode in range(4):
+        row = list(base)
+        row[4], row[5], row[6], row[7], row[8] = '1', str(boundary_mode), '0', 'c.t', 'TOKEN'
+        result.append((f'bxd-regex-boundary-{boundary_mode}', 'bxd', bxd([row]), CORPUS))
     if len(result) > 64:
         raise AssertionError('Authored case count exceeded its fixed budget.')
     return result
