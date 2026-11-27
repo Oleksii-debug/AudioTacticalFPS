@@ -1,0 +1,63 @@
+name: CARR pinned public model metadata
+on:
+  push:
+    branches: [work/local-llm-public-metadata-a49c]
+permissions:
+  contents: read
+jobs:
+  public-metadata-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Read bounded publisher pointer and license bytes without model download
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+          import urllib.request
+          revision = '90862c4b9d2787eaed51d12237eafdfe7c5f6077'
+          base = 'https://huggingface.co/Qwen/Qwen3-1.7B-GGUF/raw/' + revision + '/'
+          target = Path('public-llm-candidate-metadata')
+          target.mkdir(exist_ok=False)
+          records = {}
+          for name in ('Qwen3-1.7B-Q8_0.gguf', 'LICENSE', 'README.md'):
+              url = base + name
+              request = urllib.request.Request(url, headers={'User-Agent': 'carr-public-metadata-review/1'})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  raw = response.read(32769)
+              assert 0 < len(raw) <= 32768, 'Metadata exceeds its bounded allowance.'
+              decoded = raw.decode('utf-8')
+              if name.endswith('.gguf'):
+                  assert decoded.splitlines() == [
+                      'version https://git-lfs.github.com/spec/v1',
+                      'oid sha256:061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a',
+                      'size 1834426016',
+                  ], 'The immutable publisher pointer differs from independently reviewed metadata.'
+              elif name == 'LICENSE':
+                  assert 'Apache License' in decoded and 'Version 2.0, January 2004' in decoded
+                  assert 'Copyright 2025 Alibaba Cloud' in decoded
+              destination = name + '.pointer.txt' if name.endswith('.gguf') else name
+              (target / destination).write_bytes(raw)
+              records[name] = {'url': url, 'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()}
+          result = {'status': 'PASS', 'scope': 'public metadata bytes only',
+              'model_bytes_downloaded': False, 'repository': 'Qwen/Qwen3-1.7B-GGUF',
+              'revision': revision, 'model_size_bytes': 1834426016,
+              'model_sha256': '061b54daade076b5d3362dac252678d17da8c68f07560be70818cace6590cb1a',
+              'records': records}
+          (target / 'metadata-identities.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(result, sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: public-llm-candidate-metadata-${{ github.sha }}
+          path: public-llm-candidate-metadata/
+          if-no-files-found: warn
+          retention-days: 7
