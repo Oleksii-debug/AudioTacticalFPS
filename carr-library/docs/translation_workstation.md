@@ -324,3 +324,59 @@ exact installed build; source tests do not establish it.
 
 The Advanced REST/authentication references above were reviewed on 2026-11-27.
 No live provider pricing or account capability was inferred from them.
+
+
+## Explicit local LibreTranslate profile
+
+The same translation workspace, source selection, document batches, job store
+and provider ledger also support the bounded LibreTranslate client protocol.
+This adds no server process, model installer, fallback provider or separate job
+queue. The selected protocol was reviewed against LibreTranslate v1.10.0,
+commit `29aea44cc80100401497fb62db813a3f3a504e84`.
+
+Create an enabled `libretranslate-local` profile in **AI and API connections**.
+Select an explicit loopback IP base URL, for example the address of your own
+already running service, and a descriptive model-set label. Hostnames, remote
+addresses, URL subpaths, credentials and voice settings are refused. The
+profile permits only `translation.text` and `translation.languages`.
+The label is your declaration; the API does not attest installed model files.
+No language count, offline egress, translation quality or actual LibreTranslate
+installation is qualified by synthetic client tests.
+
+Opening the workspace, saving a profile, previewing, preparing a batch and
+reading existing jobs make no network request. **Fetch languages** asks
+permission to contact the exact local endpoint without selected text.
+The cached response declares directed source/target pairs. **auto** is only
+the source-detection request sentinel; it is never a target or a declared
+language. An automatic response must identify a real declared source that
+supports the chosen target. Glossaries are unavailable for this protocol.
+
+Review the exact selected text or existing source revision and use an explicit
+zero external cost bound. Local transfer needs its own approval; remote
+approval alone does not authorize a local job, and local approval cannot
+authorize a cloud request. A mixed batch requires both approvals for the exact
+reviewed per-document endpoints and settings. The normal bounded requests,
+timeouts, cancellation, source lineage and no-clobber exports remain in force.
+
+Local calls use the existing ledger at zero reserved external cost.
+A response is accepted only after its schema, decoded text/detected-language
+digest, source and current profile have been checked. Paused jobs retain
+accepted chunks. Uncertain or already-attempted calls are not silently sent
+again, including when a local response detects an undeclared translation
+direction. Re-enable or repair a changed profile explicitly; that does not
+erase its existing uncertain-call record.
+
+Typed backup retains local profiles, declared-pair caches, exact source-bound
+jobs, immutable batch templates and their existing usage receipts. Restoring
+does not start a server, obtain credentials or transmit text. Completed reads
+and fresh-directory exports use retained receipts without the profile or
+language cache. A coherently edited job cannot replace decoded output while
+its independent ledger still binds the accepted result. Original source text
+and quotation authority remain unchanged.
+
+The executable client checks are `tests/assistant/test_translation_local.py`
+(no network) and `tests/assistant/test_translation_local_loopback.py` (explicit
+synthetic localhost HTTP and CLI children). The latter must use the existing
+strict direct-pytest loopback gate, never the all-connections-denied
+`ci_check.py` selection. Native control checks and real model/linguistic
+qualification remain separate evidence.
