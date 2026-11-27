@@ -83,13 +83,13 @@ def test_translation_state_roundtrips_without_credentials_or_gateway(produced, t
 
 
 @pytest.mark.parametrize('damage', ['source', 'chunks', 'receipt-text', 'request', 'authorization',
-                                   'complete', 'secret-field', 'language-digest', 'profile-digest'])
+                                   'complete', 'secret-field', 'language-digest', 'language-model', 'profile-digest'])
 def test_resigned_translation_tampering_is_rejected(produced, tmp_path, damage):
     app, service, identity = produced
     folder = tmp_path / 'backup'
     create_backup(app, folder)
     relative = 'state/translation/jobs/' + identity + '.json'
-    if damage == 'language-digest': relative = 'state/translation/languages-google_fixture.json'
+    if damage in ('language-digest', 'language-model'): relative = 'state/translation/languages-google_fixture.json'
     if damage == 'profile-digest':
         relative = next(p.relative_to(folder).as_posix() for p in
             (folder / 'state/translation/provider/usage').glob('*.usage.json'))
@@ -103,6 +103,7 @@ def test_resigned_translation_tampering_is_rejected(produced, tmp_path, damage):
     elif damage == 'complete': value['status'] = 'complete'
     elif damage == 'secret-field': value['profile']['api_key'] = 'synthetic-secret-marker'
     elif damage == 'language-digest': value['languages'][0]['name'] += 'forged'
+    elif damage == 'language-model': value['model'] = 'general/nmt'
     else: next(iter(value['operations'].values()))['profile_sha256'] = 'not-a-digest'
     raw = json.dumps(value).encode(); path.write_bytes(raw)
     manifest = json.loads((folder / 'manifest.json').read_bytes())

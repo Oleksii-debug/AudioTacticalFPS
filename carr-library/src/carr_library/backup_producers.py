@@ -373,11 +373,11 @@ def _translation_languages(value, identity):
     from .assistant.profiles import google_v3_parent
     fields(value, {'schema', 'profile', 'endpoint', 'model', 'fetched_at', 'languages',
                    'languages_sha256', 'qualification'})
+    advanced = value['endpoint'] != ENDPOINT
     if (value['schema'] != 'carr-translation-languages/1' or value['profile'] != identity
-            or value['model'] != 'nmt'
+            or value['model'] != ('general/nmt' if advanced else 'nmt')
             or value['qualification'] != 'provider-declared; not acoustic or translation-quality verification'):
         raise ValueError('Invalid translation language inventory identity.')
-    advanced = value['endpoint'] != ENDPOINT
     if advanced:
         google_v3_parent(value['endpoint'])
     text(value['fetched_at'], 128)
