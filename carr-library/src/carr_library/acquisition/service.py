@@ -413,10 +413,16 @@ class AcquisitionService:
         try:
             self._scope(workspace, cancelled, collection)
             with self.app.read(workspace) as db:
-                existing = db.execute('SELECT e.id FROM catalog_edition e JOIN active a '
+                matches = tuple(db.execute('SELECT e.id FROM catalog_edition e JOIN active a '
                     'ON a.workspace=e.workspace AND a.edition=e.id '
-                    'WHERE e.workspace=? AND e.asset=? ORDER BY e.id LIMIT 1',
-                    (workspace, info.sha256)).fetchone()
+                    'WHERE e.workspace=? AND e.asset=? ORDER BY e.id LIMIT 2',
+                    (workspace, info.sha256)))
+            if len(matches) > 1:
+                return AcquisitionResult(path, receipt_path, None, None, 'downloaded',
+                    'The PDF and provenance were saved. Multiple editions in this library '
+                    'share these bytes; review the correct edition and link it manually. '
+                    'No reference or collection membership was changed.', info.sha256)
+            existing = matches[0] if matches else None
             if existing:
                 # Matching database hashes are not proof that the retained file
                 # still exists with these exact bytes. Revalidate before linking
