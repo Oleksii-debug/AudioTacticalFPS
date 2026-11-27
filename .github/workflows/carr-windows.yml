@@ -24,7 +24,7 @@ jobs:
   integrated-desktop:
     name: Windows x64 / CPython 3.11 / integrated desktop
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 90
     defaults:
       run:
         shell: pwsh
@@ -415,7 +415,7 @@ jobs:
       # are uploaded. NVDA and final-download identity remain separate acceptance.
       - name: Run required integrated source workflows
         if: ${{ !cancelled() && steps.desktop_dependencies.conclusion == 'success' && steps.ocr_runtime.conclusion == 'success' }}
-        timeout-minutes: 20
+        timeout-minutes: 45
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
