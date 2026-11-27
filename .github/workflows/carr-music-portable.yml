@@ -1,0 +1,143 @@
+name: CARR procedural audio option compatibility
+on:
+  push:
+    branches: [carr/music-portable-af5-20261127]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-music-portable.yml
+permissions:
+  contents: read
+concurrency:
+  group: carr-music-portable-af5
+  cancel-in-progress: true
+jobs:
+  actual-windows-audio:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      EXPECTED_SOURCE_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact event commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the actual desktop package in a fresh environment
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force 'ci-results' | Out-Null
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($sourceCommit -cne $env:EXPECTED_SOURCE_COMMIT) { throw 'Checkout does not match the exact event head.' }
+          $sourceCommit | Set-Content 'ci-results/tested-commit.txt'
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --only-binary=:all: pytest==9.0.2 reportlab==4.4.9 openpyxl==3.1.5
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip list --format=json | Set-Content 'ci-results/installed-packages.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -c "import json,platform,sqlite3,struct,sys,wx; assert sys.platform=='win32' and struct.calcsize('P')==8 and sys.version_info[:2]==(3,11); print(json.dumps(dict(python=sys.version,windows=platform.platform(),sqlite=sqlite3.sqlite_version,wx=wx.version())))" | Tee-Object 'ci-results/native-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare the pinned audio tools before required audio regressions
+        timeout-minutes: 10
+        run: |
+          $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
+          $audioCache = Join-Path $bundleWork 'audio-cache'
+          $audioRuntime = Join-Path $bundleWork 'audio-runtime'
+          & $env:CARR_PYTHON packaging/acquire_audio_runtime.py --output $audioCache --download | Tee-Object 'ci-results/audio-acquisition.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
+          & $env:CARR_PYTHON packaging/prepare_audio_runtime.py --archive (Join-Path $audioCache $audioLock.archive.name) --sources-dir $audioCache --output $audioRuntime | Tee-Object 'ci-results/audio-preparation.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $audioBin = Join-Path $audioRuntime 'bin'
+          "CARR_CI_AUDIO_RUNTIME=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_FFMPEG=$(Join-Path $audioBin 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Confirm the actual removed option and pinned engine identity
+        timeout-minutes: 2
+        run: |
+          $probe = @'
+          import json, os, pathlib, subprocess
+          binary = pathlib.Path(os.environ['CARR_FFMPEG'])
+          version = subprocess.run([str(binary), '-version'], check=True, capture_output=True)
+          result = subprocess.run([str(binary), '-hide_banner', '-filter_complex_script', 'synthetic-unused.filters'], capture_output=True, timeout=15)
+          assert result.returncode == 2880417800, (result.returncode, result.stderr.decode('utf-8', 'replace')[:1200])
+          assert b'filter_complex_script' in result.stderr
+          print(json.dumps({'status': 'PASS', 'removed_option_exit': result.returncode,
+                            'version': version.stdout.decode('utf-8', 'replace').splitlines()[0],
+                            'synthetic_diagnostic': result.stderr.decode('utf-8', 'replace')[:1200]}))
+          '@
+          $probe | & $env:CARR_PYTHON -I -B - | Tee-Object 'ci-results/removed-option.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require real composition, MIDI, continuation and production cases
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/audio/test_music.py tests/audio/test_production.py 2>&1 | Tee-Object 'ci-results/audio-source.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run the same actual audio suites from the installed application
+        timeout-minutes: 5
+        run: |
+          $installed = @'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          import carr_library.audio.music as music
+          import carr_library.audio.production as production
+          import pytest
+          site = pathlib.Path(sys.executable).resolve().parent.parent / 'Lib' / 'site-packages'
+          assert pathlib.Path(music.__file__).resolve().is_relative_to(site)
+          assert pathlib.Path(production.__file__).resolve().is_relative_to(site)
+          result = pytest.main(['-q', '-W', 'error', '-o', 'pythonpath=', '-o', 'addopts=',
+                                '--import-mode=importlib', '--junitxml=ci-results/audio-installed.xml',
+                                'tests/audio/test_music.py', 'tests/audio/test_production.py'])
+          if result:
+              raise SystemExit(result)
+          cases = list(ET.parse('ci-results/audio-installed.xml').iter('testcase'))
+          assert len(cases) == 36 and not any(c.find(tag) is not None for c in cases for tag in ('failure', 'error', 'skipped'))
+          print('PASS: 36 real installed audio cases, zero failures or skips')
+          '@
+          $installed | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-results/audio-installed.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Preserve synthetic diagnostics and exact audio test evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-music-portable-${{ github.sha }}
+          path: carr-library/ci-results/
+          if-no-files-found: error
+          retention-days: 7
