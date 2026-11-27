@@ -37,7 +37,7 @@ jobs:
       CARR_CONVERTER_FAMILY: ${{ matrix.family }}
     steps:
       - name: Check out exact candidate
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181353ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
