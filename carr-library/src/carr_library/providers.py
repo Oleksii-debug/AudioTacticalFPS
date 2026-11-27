@@ -122,6 +122,40 @@ def _digest(value):
     return sha256(_json(value)).hexdigest()
 
 
+def _reject_credential_material(value, secret):
+    """Reject reflected credentials before any result or completion receipt escapes.
+
+    Binary audio needs the same raw guard as JSON. Structured responses also
+    need inspection after JSON/HTML decoding; escaped keys or metadata are not
+    a safe place to retain a live credential. Nothing here displays the value.
+    """
+    if not secret:
+        return
+    if isinstance(value, bytes):
+        if secret.encode('utf-8') in value:
+            raise ProviderError('Provider returned credential material; no response was saved.')
+        return
+    pending = [value]
+    while pending:
+        current = pending.pop()
+        if isinstance(current, str):
+            probe = current
+            for _ in range(5):
+                if secret in probe:
+                    raise ProviderError('Provider returned credential material; no response was saved.')
+                following = unescape(probe)
+                if following == probe:
+                    break
+                probe = following
+            else:
+                raise ProviderError('Unsupported nested response escapes; no response was saved.')
+        elif isinstance(current, dict):
+            pending.extend(current.keys())
+            pending.extend(current.values())
+        elif isinstance(current, (list, tuple)):
+            pending.extend(current)
+
+
 def translation_receipt_sha256(value, detected_source):
     """Bind accepted decoded text and language independently of its wire hash."""
     return _digest({'text': value, 'detected_source': detected_source})
@@ -1120,15 +1154,18 @@ class ProviderGateway:
                 output = self.transport.post(profile, route, raw, headers, **transport_options)
             if not isinstance(output, bytes) or not 0 < len(output) <= MAX_RESPONSE:
                 raise ProviderError('Invalid or oversized provider result.')
+            _reject_credential_material(output, secret)
             decoded_translation_sha256 = None
             if isinstance(request, GoogleTranslationRequest):
                 decoded = decode_translation_response(request, output, secret=secret, profile=profile)
+                _reject_credential_material(decoded, secret)
                 if request.operation == 'text':
                     decoded_translation_sha256 = translation_receipt_sha256(
                         decoded['text'], decoded['detected_source'])
             elif request.capability == 'llm':
                 try:
                     decoded = json.loads(output)
+                    _reject_credential_material(decoded, secret)
                     message = decoded['choices'][0]['message']
                     if message.get('tool_calls') or not isinstance(message['content'], str):
                         raise ValueError
