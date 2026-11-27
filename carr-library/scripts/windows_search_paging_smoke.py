@@ -332,7 +332,7 @@ def _run_native():
 
     def set_text(control, value, done):
         def write():
-            check('native typed text', simulator.Text(value))
+            check('native typed text', simulator.Text(value.encode('ascii')))
             until(lambda: control.GetValue() == value, done, timeout=5, label='native text entry')
         key(control, ord('A'), write, wx.MOD_CONTROL)
 
