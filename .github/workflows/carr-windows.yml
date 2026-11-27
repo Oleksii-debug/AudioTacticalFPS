@@ -106,7 +106,7 @@ jobs:
       - name: Verify bibliography import and publication boundaries
         timeout-minutes: 5
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/research/test_bibtex_import.py tests/catalog/test_ris_apply.py tests/reader/test_export_no_clobber.py tests/storage/test_durable_state_publication.py tests/ui/test_export_destination.py tests/ingest/test_initial_publication_completion.py tests/ui/test_profile_project_exports.py tests/ui/test_academic_actions.py 2>&1 | Tee-Object 'ci-results/bibliography-publication.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed BibTeX import and real overwrite confirmation
@@ -283,8 +283,9 @@ jobs:
               source = hf_hub_download(helper.REPO, name, revision=helper.REVISION, cache_dir=target.parent / 'cache', token=False)
               shutil.copyfile(source, target / name)
           proof = helper.seal(target)
-          with manifest.open('x', encoding='utf-8') as stream:
-              json.dump(proof, stream, sort_keys=True)
+          with manifest.open('x', encoding='utf-8', newline='\n') as stream:
+              json.dump(proof, stream, indent=2, sort_keys=True)
+              stream.write('\n')
           print(json.dumps({'status': 'PASS', 'revision': helper.REVISION, 'files': len(proof['hashes'])}))
           '@
           # Only this explicit build-time child may fetch the pinned public model.
@@ -562,6 +563,7 @@ jobs:
               'tests/research/test_bibtex_import.py',
               'tests/reader/test_export_no_clobber.py',
               'tests/ui/test_export_destination.py',
+              'tests/ui/test_academic_actions.py',
               'tests/storage/test_durable_state_publication.py',
               'tests/academic_integration/test_formatting.py',
               'tests/integrations/test_dordiai_convergence.py',

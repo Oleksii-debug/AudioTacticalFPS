@@ -329,3 +329,259 @@ def test_competing_file_at_actual_publication_is_not_replaced(export, monkeypatc
     assert target.read_bytes() == b'Other writer at the actual filesystem operation'
     assert target.stat().st_nlink == 1
     assert not list(target.parent.glob('.research-export-*'))
+
+
+def _keep_windows_creation_time(monkeypatch, target):
+    """Only ctime is modeled; actual files, sizes, mtimes and identities remain real."""
+    before = target.stat()
+    original = export_file._file_state
+    monkeypatch.setattr(export_file, '_file_state',
+        lambda info: (*original(info)[:-1], before.st_ctime_ns))
+    return before
+
+
+@pytest.mark.parametrize('when', ('before_writer', 'after_staging'))
+def test_same_size_changed_bytes_with_original_timestamps_are_not_replaced(export, monkeypatch, when):
+    from contextlib import contextmanager
+
+    target, _, publish = export
+    approved, newer = b'Approved earlier bytes', b'Newer independent work'
+    assert len(approved) == len(newer) == 22
+    target.write_bytes(approved)
+    before = _keep_windows_creation_time(monkeypatch, target)
+    metadata = export_file._file_state(before)
+    approval = export_file.capture_export_destination(target,
+        private_root=target.parent / 'private')
+
+    def change_content():
+        target.write_bytes(newer)
+        os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns))
+        assert export_file._file_state(target.stat()) == metadata
+        assert target.read_bytes() == newer
+
+    if when == 'before_writer':
+        change_content()
+    else:
+        original_temporary = export_file.NamedTemporaryFile
+
+        @contextmanager
+        def change_after_staging(*args, **kwargs):
+            with original_temporary(*args, **kwargs) as stream:
+                yield stream
+            change_content()
+
+        monkeypatch.setattr(export_file, 'NamedTemporaryFile', change_after_staging)
+
+    with pytest.raises(ValueError, match='destination changed'):
+        publish(approval=approval)
+    assert target.read_bytes() == newer
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def _observe_destination_reads(monkeypatch, after_read=lambda *args: None):
+    """Observe real unbuffered reads without substituting filesystem bytes."""
+    original = os.fdopen
+    sessions = []
+
+    class Read:
+        def __init__(self, source, session):
+            self.source, self.session = source, session
+        def __enter__(self):
+            self.source.__enter__()
+            return self
+        def __exit__(self, *args):
+            return self.source.__exit__(*args)
+        def read(self, count):
+            assert 0 < count <= 1024 * 1024
+            result = self.source.read(count)
+            self.session['requested'].append(count)
+            self.session['returned'].append(len(result))
+            after_read(self.session, result)
+            return result
+
+    def observe(descriptor, *args, **kwargs):
+        source = original(descriptor, *args, **kwargs)
+        session = {'index': len(sessions), 'descriptor': descriptor,
+                   'source': source, 'requested': [], 'returned': []}
+        sessions.append(session)
+        return Read(source, session)
+
+    monkeypatch.setattr(os, 'fdopen', observe)
+    return sessions
+
+
+def _assert_fingerprint_descriptors_closed(sessions):
+    for session in sessions:
+        assert session['source'].closed
+        with pytest.raises(OSError):
+            os.fstat(session['descriptor'])
+
+
+@pytest.mark.parametrize('change_tail', (False, True))
+def test_full_existing_content_is_streamed_and_unsampled_tail_changes_are_detected(export, monkeypatch, change_tail):
+    target, expected, publish = export
+    size = 2 * 1024 * 1024 + 37
+    original_bytes = b'A' * size
+    target.write_bytes(original_bytes)
+    before = _keep_windows_creation_time(monkeypatch, target)
+    sessions = _observe_destination_reads(monkeypatch)
+    approval = export_file.capture_export_destination(target,
+        private_root=target.parent / 'private')
+    if change_tail:
+        with target.open('r+b') as stream:
+            stream.seek(-1, os.SEEK_END)
+            stream.write(b'Z')
+        os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns))
+        with pytest.raises(ValueError, match='destination changed'):
+            publish(approval=approval)
+    else:
+        publish(approval=approval)
+    _assert_fingerprint_descriptors_closed(sessions)
+    assert len(sessions) >= (2 if change_tail else 3)
+    assert all(sum(row['returned']) == size and sum(row['requested']) == size + 1
+               for row in sessions)
+    assert target.read_bytes() == (original_bytes[:-1] + b'Z' if change_tail else expected)
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('when', ('capture', 'after_staging'))
+@pytest.mark.parametrize('change', ('grow', 'shorten', 'rewrite'))
+def test_destination_mutating_during_hash_is_rejected_without_publication(export, monkeypatch, when, change):
+    target, _, publish = export
+    original_bytes = b'A' * (1024 * 1024 + 37)
+    target.write_bytes(original_bytes)
+    before = target.stat()
+    approval = (export_file.capture_export_destination(target, private_root=target.parent / 'private')
+                if when == 'after_staging' else None)
+    selected_read = 1 if when == 'after_staging' else 0
+    changed = []
+
+    def mutate(session, block):
+        if session['index'] != selected_read or len(session['returned']) != 1:
+            return
+        assert block
+        with target.open('r+b') as stream:
+            if change == 'grow':
+                stream.seek(0, os.SEEK_END)
+                stream.write(b'additional newer bytes')
+            elif change == 'shorten':
+                stream.truncate(1024 * 1024)
+            else:
+                stream.write(b'B')
+        # Make the in-read mutation observable on coarse-timestamp filesystems
+        # too. The separate equal-stat cases exercise content-only identity.
+        os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000))
+        changed.append(target.read_bytes())
+
+    sessions = _observe_destination_reads(monkeypatch, mutate)
+    with pytest.raises(ValueError, match='destination changed'):
+        if when == 'capture':
+            export_file.capture_export_destination(target, private_root=target.parent / 'private')
+        else:
+            publish(approval=approval)
+    _assert_fingerprint_descriptors_closed(sessions)
+    assert len(changed) == 1 and target.read_bytes() == changed[0]
+    assert all(sum(row['returned']) <= len(original_bytes) + 1 for row in sessions)
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('when', ('before_staging', 'after_staging'))
+@pytest.mark.parametrize('failure', ('cancel', 'read_error'))
+def test_hash_cancellation_and_read_failure_preserve_destination_and_close_descriptors(export, monkeypatch, when, failure):
+    target, _, publish = export
+    original_bytes = b'Keep existing bytes.\n' * 100_000
+    target.write_bytes(original_bytes)
+    approval = export_file.capture_export_destination(target,
+        private_root=target.parent / 'private')
+    selected_read = 1 if when == 'after_staging' else 0
+    cancelled, checkpoints = [], []
+
+    def stop(session, block):
+        if session['index'] == selected_read and len(session['returned']) == 1:
+            assert block
+            checkpoints.append(bool(list(target.parent.glob('.research-export-*'))))
+            if failure == 'cancel':
+                cancelled.append(True)
+            else:
+                raise OSError('Synthetic destination read failure')
+
+    sessions = _observe_destination_reads(monkeypatch, stop)
+    exception, message = (TimeoutError, 'cancelled') if failure == 'cancel' else (OSError, 'read failure')
+    with pytest.raises(exception, match=message):
+        publish(approval=approval, cancelled=lambda: bool(cancelled))
+    _assert_fingerprint_descriptors_closed(sessions)
+    assert checkpoints == [when == 'after_staging']
+    assert target.read_bytes() == original_bytes
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_private_destination_is_rejected_before_opening_content(export, monkeypatch):
+    target, _, publish = export
+    private = target.parent / 'private'
+    original = private / 'original.txt'
+    original.write_bytes(b'Private retained bytes must not be read by export hashing')
+    attempts = []
+
+    def must_not_open(*args, **kwargs):
+        attempts.append(args)
+        raise AssertionError('A private export destination must be rejected before opening content.')
+
+    monkeypatch.setattr(os, 'open', must_not_open)
+    with pytest.raises(ValueError, match='outside the private library folder'):
+        export_file.capture_export_destination(original, private_root=private)
+    with pytest.raises(ValueError, match='outside the private library folder'):
+        export_file.write_export(original, 'Forbidden replacement', private_root=private)
+    assert not attempts
+    assert original.read_bytes() == b'Private retained bytes must not be read by export hashing'
+
+
+def test_raced_private_hardlink_is_rejected_before_any_descriptor_read(export, monkeypatch):
+    target, _, publish = export
+    target.write_bytes(b'An ordinary external file')
+    private = target.parent / 'private' / 'retained.txt'
+    private.write_bytes(b'Private retained content')
+    original_open, changed = os.open, []
+
+    def replace_before_open(path, flags, *args, **kwargs):
+        if Path(path) == target and not changed:
+            target.unlink()
+            os.link(private, target)
+            changed.append(True)
+        return original_open(path, flags, *args, **kwargs)
+
+    sessions = _observe_destination_reads(monkeypatch)
+    monkeypatch.setattr(os, 'open', replace_before_open)
+    with pytest.raises(ValueError, match='destination changed'):
+        publish()
+    _assert_fingerprint_descriptors_closed(sessions)
+    assert changed == [True] and all(not row['requested'] for row in sessions)
+    assert target.samefile(private)
+    assert private.read_bytes() == b'Private retained content'
+    assert not list(target.parent.glob('.research-export-*'))
+
+
+def test_raced_nonregular_destination_never_blocks_or_reads_content(export, monkeypatch):
+    target, _, publish = export
+    target.write_bytes(b'An ordinary external file')
+    original_open, changed = os.open, []
+
+    def replace_before_open(path, flags, *args, **kwargs):
+        if Path(path) == target and not changed:
+            target.unlink()
+            if hasattr(os, 'mkfifo'):
+                os.mkfifo(target)
+                # Fail before a blocking open if this safety flag is removed.
+                assert flags & os.O_NONBLOCK
+            else:
+                target.mkdir()
+            changed.append(True)
+        return original_open(path, flags, *args, **kwargs)
+
+    sessions = _observe_destination_reads(monkeypatch)
+    monkeypatch.setattr(os, 'open', replace_before_open)
+    with pytest.raises((ValueError, OSError)):
+        publish()
+    _assert_fingerprint_descriptors_closed(sessions)
+    assert changed == [True] and all(not row['requested'] for row in sessions)
+    assert target.is_fifo() if hasattr(os, 'mkfifo') else target.is_dir()
+    assert not list(target.parent.glob('.research-export-*'))

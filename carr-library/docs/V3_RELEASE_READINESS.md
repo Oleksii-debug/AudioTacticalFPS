@@ -20,6 +20,7 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
+| Transcription | One durable application/CLI service for the supplied worker, retained media, verified receipts, cancellation/resume, separate edit versions, exports and native Save all | Actual synthetic child-process and UI regressions; the private worker has separate retained real Linux tiny-model evidence. Final installed Windows neural inference and model/language quality remain unqualified |
 | Delivery preparation | Exact-source wheel checks, pinned dependency/SBOM closure, parent-manifest binding, strict paths and sealed runtime files | Source/packaging tests; checksum integrity is not a publisher signature |
 | Private integration boundary | Separate versioned entitlement/update protocols and preservation of user-data operations | 45 synthetic boundary tests; no verifier, authority, automatic renewal, production trust or updater is enabled |
 
@@ -47,12 +48,17 @@ The following cannot be labelled DONE by passing the current core tests:
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper Transcribe V4.3 implementation has been received and
-statically reviewed; transcription is part of the approved platform scope.
-The current library/audio preview leaves its integration, real execution and
-qualification pending. The existing worker must be corrected and adapted through
-shared jobs and an isolated reviewed engine pack; no competing ASR stack or
-unverified runtime is bundled. See [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The supplied Whisper Transcribe V4.3 implementation has been received, reviewed
+and connected through the existing shared jobs and native transcription window.
+The compatible private repair has retained real Linux CPU tiny-model inference,
+verified cache reuse and application-service execution evidence. Those results
+do not establish Windows acoustic or language-quality acceptance. The recorded
+qualified runtime and model weights are currently unavailable after cleanup,
+so this application package does not include a ready-to-run neural engine pack.
+Restore reviewed pinned inputs and qualify the actual final installed Windows
+host before advancing that capability. No competing recognizer or automatic
+model download is selected. See the [workflow](TRANSCRIPTION.md) and
+[original source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
 
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,
