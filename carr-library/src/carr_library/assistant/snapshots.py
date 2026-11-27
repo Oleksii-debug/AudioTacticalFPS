@@ -11,7 +11,8 @@ import stat
 
 from ..backup_files import optional_present
 from .state import read_bytes, regular
-from .validation import validate_state_document
+from .validation import decode_state_json, validate_state_document
+from . import templates as _templates
 
 
 DIRECTORY = 'state/assistant'
@@ -19,18 +20,22 @@ MAX_JOBS = 1000
 MAX_JOB_BYTES = 64 * 1024 * 1024
 MAX_CONTROL_BYTES = 1024
 MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
+MAX_TOTAL_SNAPSHOT_BYTES = MAX_SNAPSHOT_BYTES + _templates.MAX_COLLECTION_BYTES
 _DOCUMENT = re.compile(r'([0-9a-f]{32})(\.control)?\.json')
 _TRANSIENT = re.compile(r'(?:\.state\.lock|[0-9a-f]{32}\.lock|\.[0-9a-f]{32}(?:\.control)?\.json\.[0-9a-f]{32}\.tmp)')
 
 
 def is_state_path(relative):
-    return (isinstance(relative, str) and relative.startswith(DIRECTORY + '/')
+    return (_templates.is_state_path(relative) or
+            isinstance(relative, str) and relative.startswith(DIRECTORY + '/')
             and _DOCUMENT.fullmatch(relative[len(DIRECTORY) + 1:]) is not None)
 
 
 def state_limit(relative):
     if not is_state_path(relative):
         raise ValueError('Unsupported assistant backup sidecar.')
+    if _templates.is_state_path(relative):
+        return _templates.MAX_TEMPLATE_BYTES
     return MAX_CONTROL_BYTES if relative.endswith('.control.json') else MAX_JOB_BYTES
 
 
@@ -58,6 +63,10 @@ def state_paths(root, *, cancelled=lambda: False):
             entries += 1
             if entries > MAX_JOBS * 4 + 16:
                 raise ValueError('Assistant checkpoint directory exceeds its entry budget.')
+            if path.name == 'templates':
+                _directory(path)
+                paths.extend(_templates.state_paths(root, cancelled=cancelled))
+                continue
             # A disposable-looking name never permits following a link or
             # ignoring a directory inside this private namespace.
             info = regular(path)
@@ -153,9 +162,16 @@ def validate_sources(db, record):
 def validate_state_tree(db, root, *, cancelled=lambda: False):
     """Validate one document at a time; return no external file capabilities."""
     root = Path(root)
+    template_names = set()
     for path in state_paths(root, cancelled=cancelled):
         relative = path.relative_to(root).as_posix()
         raw = read_bytes(path, maximum=state_limit(relative))
+        if _templates.is_state_path(relative):
+            value = _templates.validate_saved_template(relative, decode_state_json(raw))
+            if value.name.casefold() in template_names:
+                raise ValueError('Saved workflow templates must have distinct names.')
+            template_names.add(value.name.casefold())
+            continue
         value = validate_state_document(path.name, raw)
         if not path.name.endswith('.control.json'):
             validate_sources(db, value)

@@ -96,9 +96,15 @@ from .progress import (
     decode_preferences as decode_progress_preferences,
 )
 from .assistant.snapshots import (
-    MAX_JOBS as MAX_ASSISTANT_JOBS, MAX_SNAPSHOT_BYTES as MAX_ASSISTANT_BYTES,
+    MAX_JOBS as MAX_ASSISTANT_JOBS, MAX_TOTAL_SNAPSHOT_BYTES as MAX_ASSISTANT_BYTES,
+    MAX_SNAPSHOT_BYTES as MAX_ASSISTANT_JOB_BYTES,
     is_state_path as _assistant_path, state_limit as _assistant_limit,
     state_paths as _assistant_files, validate_state_tree as _validate_assistants,
+)
+from .assistant.templates import (
+    MAX_TEMPLATES as MAX_ASSISTANT_TEMPLATES,
+    MAX_COLLECTION_BYTES as MAX_ASSISTANT_TEMPLATE_BYTES,
+    is_state_path as _assistant_template_path,
 )
 
 DATABASE = 'library.sqlite'
@@ -543,7 +549,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
                 # The outer application writer is already held. Publication and
                 # snapshot use that same order; never reacquire it reentrantly.
                 stack.enter_context(state_write_guard(directory))
-                for identity in sorted({path.name[:32] for path in assistant}):
+                for identity in sorted({path.name[:32] for path in assistant
+                                        if path.parent == directory}):
                     stack.enter_context(snapshot_job_guard(directory, identity))
             except RuntimeError as exc:
                 raise RestoreError('An assistant job or control is being updated. Retry the backup after it stops.') from exc
@@ -1175,6 +1182,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         names, total, reader_total, narration_total, reader_count = {}, 0, 0, 0, 0
         reading_import_total, reading_import_count = 0, 0
         assistant_total, assistant_jobs, assistant_controls = 0, 0, 0
+        assistant_job_bytes, assistant_template_bytes, assistant_templates = 0, 0, 0
         translation_total, translation_jobs, translation_caches = 0, 0, 0
         supplied_total, supplied_files, supplied_jobs = 0, 0, set()
         for entry in entries:
@@ -1215,10 +1223,18 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                 raise RestoreError('reader sidecar count or byte limit')
             if _assistant_path(entry[field]):
                 assistant_total += entry['size_bytes']
-                assistant_controls += int(entry[field].endswith('.control.json'))
-                assistant_jobs += int(not entry[field].endswith('.control.json'))
+                if _assistant_template_path(entry[field]):
+                    assistant_templates += 1
+                    assistant_template_bytes += entry['size_bytes']
+                else:
+                    assistant_job_bytes += entry['size_bytes']
+                    assistant_controls += int(entry[field].endswith('.control.json'))
+                    assistant_jobs += int(not entry[field].endswith('.control.json'))
                 if (entry['size_bytes'] > _assistant_limit(entry[field])
                         or assistant_total > MAX_ASSISTANT_BYTES
+                        or assistant_job_bytes > MAX_ASSISTANT_JOB_BYTES
+                        or assistant_template_bytes > MAX_ASSISTANT_TEMPLATE_BYTES
+                        or assistant_templates > MAX_ASSISTANT_TEMPLATES
                         or max(assistant_jobs, assistant_controls) > MAX_ASSISTANT_JOBS):
                     raise RestoreError('assistant sidecar count or byte limit')
             if _translation_path(entry[field]):

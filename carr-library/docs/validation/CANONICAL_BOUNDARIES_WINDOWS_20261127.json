@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "component": "canonical-export-and-native-lock-boundaries",
+  "status": "PASS",
+  "tested_commit": "658259b710df23cd54b5cd1c86743990ba67c2cf",
+  "tested_tree": "fbdac233b7c8ed80287f3e38f401ce92216fb448",
+  "run_id": 46009637583,
+  "job_id": 140541558069,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46009637583",
+  "summary": {
+    "schema": 1,
+    "status": "PASS",
+    "source_cases": 52,
+    "installed_cases": 52,
+    "oracle_sha256": "2159b1171b15a893042c52ab48b0124d13816816b292056da5fc41f38319c7ce",
+    "qualification_adapter_sha256": "10404212e73f8d40880d93c310de185b093d06732f557ef0522db0b4abbd9d64",
+    "native_gui": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "source_commit": "658259b710df23cd54b5cd1c86743990ba67c2cf",
+    "source_tree": "fbdac233b7c8ed80287f3e38f401ce92216fb448",
+    "wheel_sha256": "e1e3178aeda8b6b1f903142d981ebed62ff9bf2ea7c961b6d204f516445b3c02",
+    "actual_ffmpeg": {
+      "sha256": "3ab4a9c404504ebff6662d6a48661db952f88ee7fb7d5949a711cad7a763b2cf",
+      "version": "ffmpeg version 9.1-full_build-www.gyan.dev Copyright (c) 2000-2026 the FFmpeg developers",
+      "version_sha256": "900a9c75d78682e23c3f73e9e13d4c9625b24a8f0dfb921a879fc5f9e445bc64"
+    },
+    "actual_windows_file_handles": "PASS",
+    "existing_boundary_cases_retained": 36,
+    "new_boundary_cases": 16
+  },
+  "artifact": {
+    "id": 15202612671,
+    "size_bytes": 361630,
+    "file_count": 20,
+    "sha256": "81d7d3a1a79cc8bd6882bbaeb2e8508e6e349028957ae54c501e122085a0dee8",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46009637583/artifacts/15202612671"
+  },
+  "scope": "Exact Windows source and isolated installed populations, including real process/native lock and export file boundaries; this receipt does not qualify later composed heads.",
+  "peer_review": {
+    "component": "6835f469a0a6cdffe7568bfde3bc199f4cd46014",
+    "result": "GO",
+    "reviewer": "independent payload composition agent",
+    "execution_claim": false
+  }
+}
