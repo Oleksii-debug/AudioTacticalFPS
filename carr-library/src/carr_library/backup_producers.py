@@ -53,6 +53,10 @@ def allow_empty(name):
 
 
 def limit(name):
+    if name == 'state/ui/shortcuts.json':
+        return 128 * 1024
+    if name == 'state/ui/progress.json':
+        return 4096
     if is_media(name):
         return 8 * 1024**3
     if name in ('state/studio/backup-inputs.json', 'state/studio/legacy-input-review.json', 'state/studio/draft.json'):
@@ -669,8 +673,58 @@ def _studio_media_record(name, value):
             digest(identity['sha256'])
 
 
+def _legacy_shortcuts(value):
+    """Preserve old menu-path bindings as data; never retarget current IDs."""
+    fields(value, {'schema', 'overrides', 'originals'})
+    if (type(value['schema']) is not int or value['schema'] != 1
+            or type(value['overrides']) is not dict or type(value['originals']) is not dict
+            or len(value['overrides']) > 512
+            or set(value['overrides']) != set(value['originals'])):
+        raise ValueError('Invalid historical keyboard settings schema.')
+    used = set()
+    for action, shortcut in value['overrides'].items():
+        text(action, 32768)
+        if (any(ord(character) < 32 for character in action)
+                or any(not part.strip() for part in action.split('/'))):
+            raise ValueError('Invalid historical menu action.')
+        for key in (shortcut, value['originals'][action]):
+            text(key, 80, empty=True)
+            if not key:
+                continue
+            parts = key.split('+')
+            modifiers, final = parts[:-1], parts[-1]
+            ordered = [modifier for modifier in ('Ctrl', 'Alt', 'Shift') if modifier in modifiers]
+            if (modifiers != ordered or not re.fullmatch(r'[A-Z0-9]|F(?:[1-9]|1[0-9]|2[0-4])', final)
+                    or len(final) == 1 and 'Ctrl' not in modifiers):
+                raise ValueError('Invalid historical keyboard shortcut.')
+        if shortcut:
+            if shortcut in used:
+                raise ValueError('Duplicate historical keyboard shortcut.')
+            used.add(shortcut)
+
+
+def _legacy_progress(value):
+    """Validate the retained dialog-local schema without starting feedback."""
+    fields(value, {'schema', 'preferences'})
+    if type(value['schema']) is not int or value['schema'] != 1:
+        raise ValueError('Invalid historical progress settings schema.')
+    preferences = value['preferences']
+    fields(preferences, {'mode', 'interval_seconds', 'volume', 'quiet', 'background',
+                         'mute_during_audio'})
+    if preferences['mode'] not in ('off', 'beep', 'speech', 'both'):
+        raise ValueError('Invalid historical progress feedback mode.')
+    number(preferences['interval_seconds'], 1, 120)
+    number(preferences['volume'], 0, 1)
+    if any(type(preferences[key]) is not bool for key in ('quiet', 'background', 'mute_during_audio')):
+        raise ValueError('Invalid historical progress feedback options.')
+
+
 def validate(db, name, value):
-    if name == 'state/studio/draft.json':
+    if name == 'state/ui/shortcuts.json':
+        _legacy_shortcuts(value)
+    elif name == 'state/ui/progress.json':
+        _legacy_progress(value)
+    elif name == 'state/studio/draft.json':
         # Autosave intentionally retains an invalid/unfinished script or title.
         # Check its bounded storage shape, not production readiness.
         fields(value, {'schema', 'text', 'title', 'voice_ids', 'project_id'})

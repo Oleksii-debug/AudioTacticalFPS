@@ -515,6 +515,10 @@ def read_regular(path, maximum, *, allow_empty=False):
 
 def _ignored(name):
     path = PurePosixPath(name)
+    if path.parent.as_posix() == 'state/ui' and (
+            path.name in ('.shortcuts.lock', '.progress.lock')
+            or re.fullmatch(r'\.(?:shortcuts|progress)\.json\.[0-9a-f]{32}\.tmp', path.name)):
+        return True
     if path.parent.as_posix() in ('narration-projects', 'reading-copies'):
         return path.name.startswith('.reading-copy-') and path.name.endswith('.tmp')
     owned = ('state/studio/', 'state/speech/', 'state/audio/',
