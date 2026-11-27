@@ -16,7 +16,9 @@ import traceback
 def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument('--native', action='store_true')
-    parser.parse_args()
+    parser.add_argument('--playback-effects', action='store_true',
+                        help='Require actual verified FFmpeg preparation with independent tempo/pitch.')
+    options = parser.parse_args()
     if os.name != 'nt':
         print(json.dumps({'status': 'NOT_RUN', 'reason': 'Native Windows required.', 'nvda': 'NOT_RUN'}))
         return 77
@@ -27,13 +29,14 @@ def main():
     from carr_library.audio.jobs import sha256_file
     from carr_library.operations import ResourceBroker
     from carr_library.reader.live_speech import SpeechPositionStore
+    from carr_library.reader.live_playback import PlaybackSettings
     from carr_library.reader.reading_desk import ReadingDesk
     from carr_library.reader.reading_state import ReadingState
     from carr_library.ui.live_reading import LiveReadingDialog, native_offset, selected_source_offsets
 
     checks, failures, timers, metrics = [], [], [], {}
     state = {'active': True, 'window': None, 'phase': 'ready', 'done': False}
-    deadline = monotonic() + 60
+    deadline = monotonic() + (90 if options.playback_effects else 60)
     gui = wx.App(False)
     frame = wx.Frame(None, title='Live source reading acceptance')
     frame.Show()
@@ -122,6 +125,32 @@ def main():
                     window.voice.GetEventHandler().ProcessEvent(event)
                     check('unsupported SAPI pitch control stays disabled', not window.pitch.IsEnabled())
                     window.mode.SetSelection(window.modes.index('selection'))
+                    if options.playback_effects:
+                        check('verified local FFmpeg captured for independent playback',
+                              window.playback_runtime is not None and len(window.playback_runtime.sha256) == 64)
+                        check('independent native playback controls are named and enabled',
+                              all(isinstance(control, wx.TextCtrl) and control.GetName() and control.IsEnabled()
+                                  for control in (window.playback_tempo, window.playback_pitch))
+                              and window.playback_reset.IsEnabled())
+                        window.playback_tempo.ChangeValue('1.25')
+                        window.playback_pitch.ChangeValue('3')
+                        window.playback_tempo.SetFocus()
+                        state['phase'] = 'playback-tempo-focus'
+                    else:
+                        window.voice.SetFocus()
+                        state['phase'] = 'focus'
+                elif phase == 'playback-tempo-focus':
+                    if wx.Window.FindFocus() is not window.playback_tempo:
+                        schedule()
+                        return
+                    check('actual native focus reaches independent playback tempo', True)
+                    window.playback_pitch.SetFocus()
+                    state['phase'] = 'playback-pitch-focus'
+                elif phase == 'playback-pitch-focus':
+                    if wx.Window.FindFocus() is not window.playback_pitch:
+                        schedule()
+                        return
+                    check('actual native focus reaches independent playback pitch', True)
                     window.voice.SetFocus()
                     state['phase'] = 'focus'
                 elif phase == 'focus':
@@ -141,6 +170,18 @@ def main():
                     info = wav_info(excerpt.path)
                     metrics.update(frames=info.frames, sample_rate=info.rate,
                                    pcm_sha256=sha256_file(excerpt.path), source_sha256=before)
+                    if options.playback_effects:
+                        metrics.update(synthesis_frames=excerpt.synthesis_frames,
+                            synthesis_sample_rate=excerpt.synthesis_sample_rate,
+                            playback_tempo=excerpt.playback.tempo, playback_pitch=excerpt.playback.pitch,
+                            ffmpeg_sha256=window.operation.playback_runtime.sha256)
+                        check('prepared utterance retains chosen independent playback settings',
+                              excerpt.playback == PlaybackSettings(1.25, 3)
+                              and window.session.settings.pitch == 0 and not window.pitch.IsEnabled())
+                        expected_seconds = excerpt.synthesis_frames / excerpt.synthesis_sample_rate / 1.25
+                        check('actual transformed PCM has expected independent tempo duration',
+                              excerpt.synthesis_frames > 0 and excerpt.synthesis_sample_rate > 0
+                              and abs(info.frames / info.rate - expected_seconds) < max(.1, expected_seconds * .1))
                     check('measured PCM and exact spoken source digest', info.frames > 0
                           and excerpt.text_sha256 == sha256(source[first:last].encode('utf-8')).hexdigest())
                     check('prepared excerpt highlights exact native source range',
@@ -206,7 +247,9 @@ def main():
     result = {'status': 'PASS' if state['done'] and not failures else 'FAIL',
               'checks': checks, 'actual_sapi_pcm': metrics, 'native_controls': 'EXECUTED',
               'physical_playback': 'NOT_RUN', 'nvda': 'NOT_RUN',
-              'word_alignment': 'NOT_CLAIMED', 'language_quality': 'NOT_CLAIMED'}
+              'word_alignment': 'NOT_CLAIMED', 'language_quality': 'NOT_CLAIMED',
+              'independent_playback': ('EXECUTED' if state['done'] and not failures else 'FAILED')
+                                      if options.playback_effects else 'NOT_RUN'}
     print(json.dumps(result, ensure_ascii=False), flush=True)
     return 0 if result['status'] == 'PASS' else 1
 

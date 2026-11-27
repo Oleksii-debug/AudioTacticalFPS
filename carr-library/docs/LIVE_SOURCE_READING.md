@@ -27,16 +27,43 @@ Pause and precise seeking require its native Windows backend. **Where am I?**
 shows the source location, utterance range, measured duration and the player's
 reported position accuracy. Voice-native synthesis rate, pitch and volume are
 enabled only when the chosen voice advertises those controls; they do not
-silently substitute a different voice. Independent live playback speed/pitch
-remain a separate player implementation task.
+silently substitute a different voice.
+
+Independent **Playback tempo factor** and **Playback pitch semitones** use the
+existing local FFmpeg effects while preparing an utterance. Tempo accepts
+0.25–4 and pitch accepts −12–12 semitones, exactly the existing effect bounds.
+They are separate from the selected voice's synthesis rate and native pitch;
+a SAPI voice without native pitch keeps that native control disabled.
+
+Choose independent playback settings before **Prepare first excerpt** or
+**Read aloud**. The request captures them for all of its utterances and later
+book pages. Stop and start a new request to change them. Already playing audio
+does not change instantly. The measured prepared duration and normal player
+position apply to the processed PCM; text highlights still identify the exact
+original utterance and do not claim word timing.
+
+Refresh checks the existing installed/configured FFmpeg locally without
+downloads. Independent playback controls stay disabled when it is unavailable
+or fails verification, with the reason shown in a named native status field.
+The explicit **Reset playback to tempo 1 and pitch 0** control remains available
+between requests, including when FFmpeg is missing. These defaults preserve
+the exact synthesized WAV bytes and do not call the processor.
 
 ## Lifetime, cancellation and source integrity
 
 One reader owns one background worker and at most one temporary PCM utterance.
 Synthesis uses the existing resource broker, engine supervision and process
 ownership. The source is checked before and after rendering. The selected
-engine identity must remain unchanged for the session. The existing shared
-media coordinator prevents conflicting narration/recording activity.
+engine identity must remain unchanged for the session. Independent processing
+uses the same resource reservation and supervised FFmpeg process owner. The
+existing conservative disk reservation grows for slower playback. The selected
+runtime's full byte identity is checked and its immutable file reader stays
+open through processing; the synthesized input is retained by another immutable
+reader for the same interval. The source, processed PCM digest and native
+identity are checked before handoff. Only the processed utterance remains after
+successful preparation. Cancellation/Close waits for processing to settle
+before deleting either private input or output. The existing shared media
+coordinator prevents conflicting narration/recording activity.
 
 Before Play, a background worker revalidates the source and prepared PCM digest.
 The existing immutable payload reader stays open across any media-coordinator
@@ -109,3 +136,21 @@ measured PCM, and verifies Unicode source highlights, focus, stop, durable
 resume and modal cleanup. A probe is accepted only when the exact composed
 source executes successfully. Physical listening, manual NVDA and
 language-specific voice quality remain separately reported evidence.
+
+## Independent playback qualification
+
+The r8 additions require the 22 file/resource/integrity cases in
+`tests/reader/test_live_playback.py`, 8 native-control state cases in
+`tests/ui/test_live_playback_controls.py`, and 3 actual configured FFmpeg cases
+in `tests/reader/test_live_playback_ffmpeg.py`. The latter gate requires its
+pinned `CARR_FFMPEG` executable and measures transformed synthetic PCM duration
+and tone frequency. It preserves source offsets and advances the text cursor
+only after explicit completion; it does not qualify voice quality or devices.
+
+The existing native probe without new flags keeps its 26 checks. Running
+`scripts/windows_live_reading_smoke.py --native --playback-effects` requires
+32 checks, adding verified local FFmpeg, named independent controls, native
+focus for both controls, captured settings and measured transformed SAPI PCM.
+The original focused live-reader gate remains a separate frozen result. New
+source, installed and native execution must report their own exact commit and
+module identities before this extension is accepted.
