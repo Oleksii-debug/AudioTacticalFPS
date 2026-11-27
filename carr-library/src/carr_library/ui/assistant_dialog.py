@@ -66,7 +66,11 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
     buttons = {}
     for identity, label in [('preview', '&Preview plan'), ('model', 'Propose with local &model'),
                              ('run', '&Run / resume'), ('pause', '&Pause'),
-                             ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
+                             ('jobs', 'Saved &jobs'), ('templates', '&Templates...'),
+                             ('help', '&Help'), ('close', '&Close')]:
+        if identity == 'jobs':
+            layout.Add(row)
+            row = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(dialog, label=label)
         button.SetName(label.replace('&', ''))
         buttons[identity] = button
@@ -116,10 +120,10 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
     def change_busy(kind):
         nonlocal busy, busy_kind
         busy_kind, busy = kind, kind is not None
-        for key in ('preview', 'model', 'jobs'):
+        for key in ('preview', 'model', 'jobs', 'templates'):
             buttons[key].Enable(not busy)
         buttons['run'].Enable(not busy and (plan is not None or job_id is not None))
-        buttons['pause'].Enable(busy)
+        buttons['pause'].Enable(busy and kind != 'templates')
         label = ('Cancel &proposal' if kind == 'model' else
                  'Cancel &preview' if kind == 'preview' else '&Pause')
         buttons['pause'].SetLabel(label)
@@ -458,6 +462,57 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
         finally:
             choice.Destroy()
 
+    def templates(event=None):
+        if busy:
+            return
+        from .assistant_templates import create_templates_dialog
+        picker = None
+        try:
+            if not library_current():
+                raise ValueError('The library location changed. Reopen the assistant.')
+            selected_inputs, selected_revision = input_identity(), revision
+            selected_plan = plan if approved_inputs == (selected_inputs, selected_revision) else None
+            selected_job = job_id
+            # Worker-safe owner predicate: it reads no native control values.
+            def owner_current():
+                return alive and library_current() and revision == selected_revision
+            change_busy('templates')
+            picker = create_templates_dialog(dialog, service, executor=executor,
+                is_current=owner_current, current_plan=selected_plan,
+                current_job_id=selected_job, progress=progress)
+            picker.ShowModal()
+            draft = picker.template_result
+            if draft is not None:
+                if not owner_current() or selected_inputs != input_identity():
+                    raise ValueError('The goal or library changed while choosing a workflow. Open it again.')
+                invalidate()
+                # Loading replaces an instruction only. Even a prior dialog's
+                # folders, full-backup permission and budgets must be chosen
+                # anew before a template can become a current approved plan.
+                scope_choice.SetSelection(0)
+                input_folder.ChangeValue('')
+                output_folder.ChangeValue('')
+                full_backup.SetValue(False)
+                budget.ChangeValue('1024')
+                file_budget.ChangeValue('5000')
+                deadline.ChangeValue('3600')
+                instruction.ChangeValue(draft)
+                report('Saved workflow loaded as an unapproved draft. Nothing has run.\n\n'
+                       'Choose the current library and input/output folders, review the literal '
+                       'paths and steps, then choose Preview plan. Run remains disabled until '
+                       'that separate preview succeeds.')
+                review.SetFocus()
+        except Exception as exc:
+            if alive:
+                invalidate()
+                report(str(exc))
+        finally:
+            if picker is not None:
+                picker.template_handlers['close']()
+                picker.Destroy()
+            if alive:
+                change_busy(None)
+
     def close(event=None):
         nonlocal alive
         if not alive:
@@ -480,7 +535,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
         show_text(dialog, 'Local assistant commands', HELP)
 
     for identity, callback in {'preview': preview, 'model': propose, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+                               'jobs': jobs, 'templates': templates, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction, budget, file_budget, deadline):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -494,6 +549,7 @@ def show_assistant(frame, *, production=None, interactive=None, parent=None, ini
                 'run': buttons['run'], 'model': buttons['model'], 'close': buttons['close'], 'output': output_folder,
                 'scope': scope_choice, 'input': input_folder, 'full_backup': full_backup,
                 'file_budget': file_budget, 'pause': buttons['pause'], 'jobs': buttons['jobs'],
+                'templates': buttons['templates'],
                 'folder_buttons': tuple(folder_buttons)})
         dialog.ShowModal()
     finally:
