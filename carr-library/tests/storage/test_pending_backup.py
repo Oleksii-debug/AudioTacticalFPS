@@ -518,6 +518,7 @@ def test_complete_backup_recovers_only_committed_crashed_import_state(app, tmp_p
         with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True)) as checked:
             assert checked.execute('SELECT error FROM job').fetchall() == [('committed_before_crash',)]
             assert checked.execute('SELECT * FROM checkpoint ORDER BY ordinal').fetchall() == checkpoints
+    expected_page = source.read_text(encoding='utf-8').split('\f')[1]
     source.unlink()
     restored = LibraryApp(restore_backup(destination, tmp_path / 'crash-restored', checksum))
     with closing(sqlite3.connect(restored.root / 'imports.sqlite')) as checked:
@@ -525,7 +526,7 @@ def test_complete_backup_recovers_only_committed_crashed_import_state(app, tmp_p
         assert checked.execute('SELECT * FROM checkpoint ORDER BY ordinal').fetchall() == checkpoints
     completed = restored.resume_import(workspace, request['request_id'])
     assert completed['state'] == 'complete' and completed['id'] == initial['id']
-    assert restored.search(workspace, 'second')[0].quote == 'second'
+    assert restored.search(workspace, expected_page)[0].quote == expected_page
 
 
 def test_archive_journal_verifier_does_not_recover_or_modify_hot_database(app, tmp_path):
