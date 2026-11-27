@@ -303,6 +303,28 @@ def test_eml_malformed_structures_and_decodings_fail_closed(source):
         extract(source, '.eml')
 
 
+@pytest.mark.parametrize('payload', [
+    b'YWJj=', b'YWJj==', b'YWJj===', b'YQ===', b'YWI==',
+    b'YR==', b'YWJ=', b'YQ==\r\nYWJj',
+])
+def test_eml_base64_rejects_noncanonical_padding_and_pad_bits(payload):
+    source = b'Content-Transfer-Encoding: base64\r\n\r\n' + payload
+    with pytest.raises(ValueError):
+        extract(source, '.eml')
+
+
+@pytest.mark.parametrize('payload,expected', [
+    (b'YQ==', 'a'), (b'YWI=', 'ab'), (b'YWJj', 'abc'),
+    (b' \tYQ==\r\n', 'a'), (b'Y\r\nW J\tj\r\n', 'abc'),
+    (b'YWI=\r\n\t ', 'ab'),
+])
+def test_eml_base64_preserves_valid_padding_and_mime_whitespace(payload, expected):
+    source = b'Content-Transfer-Encoding: base64\r\n\r\n' + payload
+    result = extract(source, '.eml')
+    assert texts(result) == [expected]
+    assert result['provenance']['asset_sha256'] == sha256(source).hexdigest()
+
+
 def test_eml_mail_part_budget_before_unbounded_recursion():
     body = b'Content-Type: text/plain\r\n\r\nbody'
     # Recursive message/rfc822 parsing is bounded by the message factory even
