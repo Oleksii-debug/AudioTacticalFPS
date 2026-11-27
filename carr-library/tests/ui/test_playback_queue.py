@@ -222,6 +222,18 @@ def test_media_admission_failure_releases_prepared_readers(window):
     pending[0](RuntimeError('Progress audio could not settle.'))
     assert prepared.readers is None and value.prepared is None
     assert 'could not settle' in value.status.value
+    # The real shared progress owner also closes abandoned scope requests
+    # without a failure callback. The queue's timer releases that review too.
+    request = SimpleNamespace(closed=False)
+    request.close = lambda: setattr(request, 'closed', True)
+    value.progress = SimpleNamespace(media_action=lambda action, **kwargs: request)
+    value.play()
+    drain(value, callbacks)
+    abandoned = value.prepared
+    request.closed = True
+    value.tick()
+    assert abandoned.readers is None and value.prepared is None
+    assert not any(call[0] == 'play' for call in value.player.calls)
 
 
 @pytest.mark.parametrize('operation', ['stop', 'close'])

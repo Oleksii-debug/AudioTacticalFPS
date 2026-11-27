@@ -420,7 +420,23 @@ class PlaybackQueueDialog:
                 self._error(exc)
 
     def tick(self, event=None):
-        if not self._idle() or self.session.admission is None:
+        if not self._idle():
+            return
+        if self.prepared is not None:
+            try:
+                self.guard()
+                # The shared progress request can close on a changed scope
+                # without invoking either action or failure. Its UI owner must
+                # still release the unstarted review's held input readers.
+                if getattr(self.media_request, 'closed', False):
+                    self._cancel_media()
+                    self._say('Playback was not started; the retained queue draft is unchanged.')
+                    self._enable()
+            except Exception as exc:
+                self._cancel_media()
+                self._error(exc)
+            return
+        if self.session.admission is None:
             return
         try:
             self.guard()
