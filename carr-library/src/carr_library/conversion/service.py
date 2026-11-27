@@ -18,9 +18,9 @@ from ..audio.process import run_process
 from .models import ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable
 
 
-BUILTIN = ('.txt', '.md', '.markdown', '.html', '.htm', '.xhtml', '.eml', '.docx', '.epub',
+BUILTIN = ('.txt', '.md', '.markdown', '.html', '.htm', '.xhtml', '.eml', '.mht', '.mhtml', '.txtz', '.zip', '.docx', '.epub',
            '.pdf', '.fb2', '.fb3', '.odt', '.ods', '.odp', '.pptx', '.xlsx')
-LEGACY = ('.azw', '.azw3', '.chm', '.djvu', '.doc', '.lit', '.mobi', '.pdb', '.prc', '.ppt', '.tcr', '.wpd', '.xls')
+LEGACY = ('.azw', '.azw3', '.chm', '.djvu', '.doc', '.lit', '.mobi', '.pdb', '.prc', '.ppt', '.tcr', '.wpd', '.wri', '.xls')
 IMAGES = ('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp')
 PANDOC_READERS = {'.rtf': 'rtf', '.md': 'commonmark', '.markdown': 'commonmark', '.html': 'html+raw_html',
                   '.htm': 'html+raw_html', '.fb2': 'fb2', '.odt': 'odt', '.docx': 'docx', '.epub': 'epub'}
@@ -175,13 +175,16 @@ def _completion_warning():
 
 
 class ConversionService:
-    def __init__(self, root, *, input_roots=(), budget=None, pandoc=None):
+    def __init__(self, root, *, input_roots=(), budget=None, pandoc=None, office=None):
         self.root = local_path(root)
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.input_roots = tuple(local_path(path, exists=True) for path in input_roots)
         self.budget = budget or ConversionBudget()
         if not isinstance(self.budget, ConversionBudget):
             raise TypeError('A typed conversion budget is required.')
+        from .office import OfficeSelection
+        self.office = (office if isinstance(office, OfficeSelection) else
+                       OfficeSelection.capture(office) if office is not None else None)
         self.pandoc = local_path(pandoc, exists=True) if pandoc else None
         if self.pandoc and not self.pandoc.is_file():
             raise ValueError('Select an installed Pandoc executable.')
@@ -202,9 +205,15 @@ class ConversionService:
             values.append({'extension': suffix, 'available': ocr,
                            'adapter': 'installed Tesseract with explicit languages',
                            'limitation': 'OCR must be explicitly selected; unverified text only, no automatic quotation approval.'})
+        from .office import OFFICE_SUFFIXES
         for suffix in LEGACY:
-            values.append({'extension': suffix, 'available': False, 'adapter': 'separate reviewed converter needed',
-                           'limitation': 'Legacy format is not enabled without a tested offline/active-content isolation adapter; no DRM bypass.'})
+            if suffix in OFFICE_SUFFIXES:
+                values.append({'extension': suffix, 'available': self.office is not None,
+                    'adapter': 'explicitly selected local LibreOffice',
+                    'limitation': 'Fixed legacy import filter; reading text only. Requires matching installed filters; layout and source fidelity need review. Selected native tool is not an OS sandbox.'})
+            else:
+                values.append({'extension': suffix, 'available': False, 'adapter': 'separate reviewed converter needed',
+                    'limitation': 'Legacy format is not enabled without a tested offline/active-content isolation adapter; no DRM bypass.'})
         return tuple(values)
 
     def _input(self, value):
@@ -257,6 +266,28 @@ class ConversionService:
                              'No custom filters, PDF engine, template, resource embedding or network input is enabled.']
                             + (['Pandoc reported conversion warnings; review source fidelity.'] if result.stderr else [])}
 
+    def _office(self, source, output, report, stage, cancelled):
+        from .office import OfficeSelection, OFFICE_SUFFIXES, PROFILE_BYTES, MAX_STAGE_ENTRIES
+        if not isinstance(self.office, OfficeSelection) or source.suffix.casefold() not in OFFICE_SUFFIXES:
+            raise ConversionUnavailable('Select a compatible installed LibreOffice explicitly for this legacy document.')
+        selection = self.office.snapshot(cancelled=cancelled)
+        request = stage / 'request.json'
+        request.write_text(json.dumps({'source': str(source), 'output': str(output),
+            'report': str(report), 'budget': asdict(self.budget), 'operation': 'office',
+            'office': selection}, ensure_ascii=False, allow_nan=False), encoding='utf-8')
+        process_budget = replace(self._process_budget(),
+            max_output_bytes=2 * self.budget.max_source_bytes + self.budget.max_text_bytes + PROFILE_BYTES,
+            max_staging_files=MAX_STAGE_ENTRIES)
+        run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
+            'carr_library.conversion.worker', str(request)], budget=process_budget,
+            cancelled=cancelled, watch=(stage,), env=self._env(stage), cwd=stage, owned_tree=True)
+        self.office._unchanged()
+        details = json.loads(_read_bytes(report, 16 * 1024 * 1024, cancelled).decode('utf-8'))
+        if details.get('metadata', {}).get('selected_components_sha256') != sha256(
+                json.dumps(selection, sort_keys=True, separators=(',', ':')).encode()).hexdigest():
+            raise ConversionError('The selected office result is not bound to the reviewed local converter.')
+        return details
+
     def _image(self, source, output, stage, languages, cancelled):
         if not languages or not isinstance(languages, (tuple, list)) or len(languages) > 16:
             raise ConversionUnavailable('Choose one or more installed OCR languages before converting an image.')
@@ -293,17 +324,24 @@ class ConversionService:
         target, report_path = self._output(output)
         if source == target:
             raise ValueError('The source must remain unchanged; choose a new output file.')
-        if adapter not in ('auto', 'builtin', 'pandoc'):
+        if adapter not in ('auto', 'builtin', 'pandoc', 'office'):
             raise ValueError('Choose a supported conversion adapter.')
         suffix = source.suffix.casefold()
-        if suffix in LEGACY or suffix not in (*BUILTIN, '.rtf', *IMAGES):
-            raise ConversionUnavailable('This legacy/unknown format is not safely enabled. See the supported-format matrix.')
+        from .office import OFFICE_SUFFIXES
+        office_selected = suffix in OFFICE_SUFFIXES and self.office is not None and adapter in ('auto', 'office')
+        if (suffix in LEGACY and not office_selected) or suffix not in (*BUILTIN, '.rtf', *IMAGES, *OFFICE_SUFFIXES):
+            raise ConversionUnavailable('This legacy/unknown format needs an explicitly selected compatible converter. See the supported-format matrix.')
+        if adapter == 'office' and not office_selected:
+            raise ConversionUnavailable('The selected office adapter supports only its declared legacy document families.')
+        if office_selected:
+            self.office._unchanged()
         if cancelled():
             raise InterruptedError('Document conversion cancelled before reading source bytes.')
         started = monotonic()
         before = _fingerprint(source)
         original_digest = sha256()
-        if shutil.disk_usage(target.parent).free < before[2] + self.budget.max_text_bytes + 16 * 1024 * 1024:
+        office_reserve = 2 * self.budget.max_source_bytes + 64 * 1024 * 1024 if office_selected else 0
+        if shutil.disk_usage(target.parent).free < before[2] + self.budget.max_text_bytes + 16 * 1024 * 1024 + office_reserve:
             raise ConversionError('Not enough free disk for the source snapshot and bounded text output.')
         completed = None
         files = ()
@@ -330,7 +368,9 @@ class ConversionService:
                 if count != before[2] or _fingerprint(source) != before:
                     raise ConversionError('Source changed during conversion planning.')
                 try:
-                    if suffix in IMAGES:
+                    if office_selected:
+                        details = self._office(snapshot, converted, details_path, stage, cancelled)
+                    elif suffix in IMAGES:
                         details = self._image(snapshot, converted, stage, ocr_languages, cancelled)
                     elif adapter == 'pandoc' or (adapter == 'auto' and suffix == '.rtf'):
                         details = self._pandoc(snapshot, converted, stage, suffix, cancelled)
