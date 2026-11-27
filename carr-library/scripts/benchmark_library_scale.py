@@ -511,7 +511,9 @@ def tree_bytes(directory: Path, *, maximum_entries: int, cancelled=lambda: False
                 entries += 1
                 if entries > maximum_entries:
                     raise ValueError("Fixture inventory exceeded its measured entry allowance.")
-                value = item.stat(follow_symlinks=False)
+                # Windows DirEntry.stat reports zero for st_nlink; obtain the
+                # actual current no-follow metadata before enforcing one link.
+                value = Path(item.path).lstat()
                 if getattr(value, "st_file_attributes", 0) & 0x400:
                     raise ValueError("Fixture inventory contains a reparse entry.")
                 if stat.S_ISDIR(value.st_mode):
