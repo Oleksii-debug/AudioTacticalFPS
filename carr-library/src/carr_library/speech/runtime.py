@@ -381,7 +381,8 @@ class VoiceRegistry:
                     part = staged.parent / 'utterance.wav'
                     try:
                         provider.render(chunk, voice, part, options, cancelled)
-                        rate, channels, size, width = _wave_info(part)
+                        rate, channels, size, width = _wave_info(local_file(part),
+                            cancelled=cancelled, max_output_bytes=options.max_output_bytes)
                         if params is None:
                             params = rate, channels, width
                             combined.setframerate(rate)
@@ -391,15 +392,28 @@ class VoiceRegistry:
                             raise ValueError('The voice changed audio format between chunks.')
                         if (frames + size) * channels * width + 128 > options.max_output_bytes:
                             raise ValueError('Speech exceeds the selected audio budget. Split it into chapters.')
-                        with wave.open(str(part), 'rb') as segment:
+                        expected_bytes = size * channels * width
+                        copied = 0
+                        with wave.open(str(local_file(part)), 'rb') as segment:
+                            if (segment.getframerate(), segment.getnchannels(),
+                                    segment.getnframes(), segment.getsampwidth()) != (rate, channels, size, width):
+                                raise ValueError('The voice output geometry changed before assembly.')
                             while block := segment.readframes(65536):
                                 check_cancelled(cancelled)
+                                copied += len(block)
+                                if copied > expected_bytes:
+                                    raise ValueError('The voice output length changed during assembly.')
                                 combined.writeframesraw(block)
+                        if copied != expected_bytes:
+                            raise ValueError('The voice output length changed during assembly.')
                         frames += size
                         count += 1
                     finally:
                         part.unlink(missing_ok=True)
-            rate, channels, frames, _ = _wave_info(staged)
+            rate, channels, measured_frames, width = _wave_info(staged,
+                cancelled=cancelled, max_output_bytes=options.max_output_bytes)
+            if (rate, channels, width) != params or measured_frames != frames:
+                raise ValueError('The assembled WAV does not match the measured utterances.')
             checksum = digest(staged)
         return SpeechResult(target, checksum, frames / rate, rate, channels, frames,
                             voice_id, sha256(text.encode('utf-8')).hexdigest(), count)
