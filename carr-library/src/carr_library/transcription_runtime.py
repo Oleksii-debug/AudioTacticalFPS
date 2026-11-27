@@ -6,6 +6,8 @@ seal does not assert that an environment can perform inference.
 """
 from hashlib import sha256
 import csv
+from email.parser import Parser
+import io
 from importlib import metadata
 import json
 import os
@@ -27,6 +29,9 @@ MAX_RUNTIME_FILES = 100000
 MAX_RUNTIME_BYTES = 16 * 1024**3
 MAX_AUXILIARY_FILES = 256
 MAX_AUXILIARY_BYTES = 16 * 1024**2
+MAX_RUNTIME_SCAN_ENTRIES = MAX_RUNTIME_FILES
+MAX_RUNTIME_BYTECODE_FILES = 65536
+MAX_RUNTIME_BYTECODE_BYTES = 4 * 1024**3
 RUNTIME_DISTRIBUTIONS = ('faster-whisper', 'ctranslate2', 'av', 'onnxruntime',
                          'numpy', 'huggingface-hub', 'tokenizers')
 
@@ -138,8 +143,138 @@ def _python_layout(python, resolved_python, *, cancel=None):
     return roots, configurations, support
 
 
+def _distribution_metadata(path, *, cancel=None):
+    """Bind the parsed Name and Version to the inventoried METADATA bytes."""
+    path = local_path(path, exists=True)
+    maximum = 1024**2
+    identity = file_identity(path, cancel=cancel, maximum=maximum)
+    stopped(cancel)
+    with path.open('rb') as stream:
+        raw = stream.read(maximum + 1)
+    stopped(cancel)
+    if len(raw) != identity['size'] or sha256(raw).hexdigest() != identity['sha256']:
+        raise ValueError('The installed METADATA changed during verification.')
+    try:
+        headers = Parser().parsestr(raw.decode('utf-8'), headersonly=True)
+    except UnicodeDecodeError as exc:
+        raise ValueError('A selected distribution has malformed METADATA.') from exc
+    names, versions = headers.get_all('Name', []), headers.get_all('Version', [])
+    if headers.defects or len(names) != 1 or len(versions) != 1:
+        raise ValueError('A selected distribution has ambiguous or malformed METADATA.')
+    name = re.sub(r'[-_.]+', '-', names[0].lower())
+    version = versions[0]
+    if (len(name) > 1024 or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', name)
+            or not version or len(version) > 256
+            or any(ord(char) < 32 or ord(char) == 127 for char in version)):
+        raise ValueError('A selected distribution has no valid name or version.')
+    return name, version, identity
+
+
+def _record_labels(record_path, *, cancel=None):
+    """Parse the actual RECORD, including missing files hidden by metadata.files."""
+    record_path = local_path(record_path, exists=True)
+    maximum = 16 * 1024**2
+    identity = file_identity(record_path, cancel=cancel, maximum=maximum)
+    stopped(cancel)
+    with record_path.open('rb') as stream:
+        raw = stream.read(maximum + 1)
+    stopped(cancel)
+    if len(raw) != identity['size'] or sha256(raw).hexdigest() != identity['sha256']:
+        raise ValueError('The installed RECORD changed during verification.')
+    labels, seen = [], set()
+    try:
+        rows = csv.reader(io.StringIO(raw.decode('utf-8'), newline=''), strict=True)
+        for row in rows:
+            stopped(cancel)
+            if len(labels) >= 65536:
+                raise ValueError('A selected ASR distribution exceeds its installed-record budget.')
+            if (len(row) != 3 or not row[0] or '\x00' in row[0]
+                    or (row[2] and (len(row[2]) > 20 or not row[2].isascii()
+                                   or not row[2].isdigit() or int(row[2]) > MAX_RUNTIME_BYTES))
+                    or (row[1] and ('=' not in row[1] or not row[1].split('=', 1)[0]))):
+                raise ValueError('A selected ASR distribution has a malformed RECORD row.')
+            # Preserve the existing importlib.metadata PackagePath label dialect
+            # used by the supplied worker's seven-package checkpoint hashes.
+            label = str(metadata.PackagePath(row[0]))
+            if label in seen:
+                raise ValueError('A selected distribution has a duplicate installed-file record.')
+            seen.add(label)
+            labels.append(label)
+    except (csv.Error, UnicodeDecodeError) as exc:
+        raise ValueError('A selected ASR distribution has a malformed RECORD.') from exc
+    if not labels:
+        raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
+    return labels, identity
+
+
+
+def _bytecode_inventory(directories, *, recorded=(), cancel=None,
+                        maximum_files=None, maximum_bytes=None):
+    """Pin executable bytecode that RECORD commonly omits.
+
+    Python -I -B prevents writes, not reading existing __pycache__ files,
+    including unrecorded or legacy sourceless modules. Bind those actual
+    bytes to a separate passive runtime_bytecode inventory and the same profile
+    fingerprint. The historic seven-package checkpoint hashes remain unchanged.
+    """
+    stopped(cancel)
+    maximum_files = min(MAX_RUNTIME_BYTECODE_FILES,
+                        MAX_RUNTIME_FILES if maximum_files is None else maximum_files)
+    maximum_bytes = min(MAX_RUNTIME_BYTECODE_BYTES,
+                        MAX_RUNTIME_BYTES if maximum_bytes is None else maximum_bytes)
+    discovered = {}
+    seen = set()
+    scanned = total_bytes = 0
+    for path in sorted(recorded):
+        stopped(cancel)
+        if len(seen) >= maximum_files:
+            raise ValueError('The selected runtime exceeds its bytecode file budget.')
+        identity = file_identity(path, cancel=cancel,
+                                 maximum=maximum_bytes - total_bytes)
+        total_bytes += identity['size']
+        seen.add(path)
+        discovered[str(path)] = identity
+    for root in directories:
+        pending = [root]
+        while pending:
+            stopped(cancel)
+            directory = pending.pop()
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    stopped(cancel)
+                    scanned += 1
+                    if scanned > MAX_RUNTIME_SCAN_ENTRIES:
+                        raise ValueError('The selected runtime exceeds its bytecode-scan entry budget.')
+                    suffix = entry.name.casefold().endswith(('.pyc', '.pyo'))
+                    if entry.is_symlink():
+                        # Never traverse a linked package tree or accept a
+                        # linked bytecode payload outside its reviewed root.
+                        if entry.is_dir() or suffix:
+                            raise ValueError('The selected runtime has linked bytecode or a linked package directory.')
+                        continue
+                    if entry.is_dir(follow_symlinks=False):
+                        pending.append(local_path(entry.path, root=root, exists=True))
+                        continue
+                    if not suffix:
+                        continue
+                    path = local_path(entry.path, root=root, exists=True)
+                    if path in seen:
+                        if path in recorded:
+                            continue  # Already bound by the explicit RECORD walk.
+                        raise ValueError('Duplicate installed bytecode identity.')
+                    if len(seen) >= maximum_files:
+                        raise ValueError('The selected runtime exceeds its bytecode file budget.')
+                    seen.add(path)
+                    identity = file_identity(path, cancel=cancel,
+                                             maximum=maximum_bytes - total_bytes)
+                    total_bytes += identity['size']
+                    discovered[str(path)] = identity
+    return discovered
+
+
 def _runtime_inventory(roots, *, cancel=None, progress=None):
-    """Read selected environment metadata; never import or execute its code."""
+    """Read all recorded distributions in the selected environment without importing them."""
+    stopped(cancel)
     auxiliary = {}
     search = []
     for root in roots:
@@ -163,59 +298,94 @@ def _runtime_inventory(roots, *, cancel=None, progress=None):
             raise ValueError('The selected runtime exceeds its installed-distribution budget.')
         for path in entries:
             stopped(cancel)
+            if len(selected) >= 8192:
+                raise ValueError('The selected runtime exceeds its installed-distribution budget.')
             # The metadata parser runs in the application interpreter. It reads
             # inert installation records from the selected external environment.
             regular(local_path(path, exists=True), directory=True)
             meta_path = path / 'METADATA'
-            if not meta_path.exists() or regular(meta_path).st_size > 1024**2:
-                continue
+            if not meta_path.exists():
+                raise ValueError('A selected distribution has no bounded METADATA.')
+            name, version, meta_identity = _distribution_metadata(meta_path, cancel=cancel)
             distribution = metadata.PathDistribution(path)
-            name = (distribution.metadata.get('Name') or '').lower().replace('_', '-')
-            if name in RUNTIME_DISTRIBUTIONS and name not in selected:
-                selected[name] = distribution
+            if name in selected:
+                raise ValueError('The selected runtime has ambiguous installed distribution: ' + name)
+            selected[name] = (distribution, version, meta_identity)
     if (len(auxiliary) > MAX_AUXILIARY_FILES
             or sum(row['size'] for row in auxiliary.values()) > MAX_AUXILIARY_BYTES):
         raise ValueError('The selected runtime exceeds its path-configuration budget.')
-    result, file_count, byte_count = {}, 0, 0
-    for name in RUNTIME_DISTRIBUTIONS:
-        if name not in selected:
-            result[name] = {'present': False}
-            continue
-        distribution = selected[name]
+    result = {}
+    total_files = total_bytes = 0
+    recorded_auxiliary = set()
+    # Keep the worker's seven-package dialect, while binding every additional
+    # installed distribution in the outer host review. Explicit package absence
+    # remains valid for an unqualified stdlib-only supplied-protocol peer.
+    for name in sorted(selected):
+        distribution, version, meta_identity = selected[name]
+        meta_path = local_path(distribution._path / 'METADATA', exists=True)
         record_path = distribution._path / 'RECORD'
         if not record_path.exists() or regular(local_path(record_path, exists=True)).st_size > 16 * 1024**2:
             raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
-        try:
-            entries = distribution.files
-        except (TypeError, ValueError, csv.Error) as exc:
-            # importlib.metadata reports malformed external RECORD rows as
-            # parser errors, including TypeError for a blank/extra CSV field.
-            # Keep the review boundary fail-closed without executing that env.
-            raise ValueError('A selected ASR distribution has a malformed installed file inventory.') from exc
-        if not entries or len(entries) > 65536:
-            raise ValueError('A selected ASR distribution has no bounded installed file inventory.')
+        record_path = local_path(record_path, exists=True)
+        entries, record_identity = _record_labels(record_path, cancel=cancel)
         files = {}
-        for relative in sorted(entries, key=str):
+        recorded_paths = set()
+        for relative in sorted(entries):
+            stopped(cancel)
             label = str(relative)
-            if '__pycache__' in Path(label).parts or label.endswith(('.pyc', '.pyo')):
+            is_bytecode = label.endswith(('.pyc', '.pyo'))
+            if '__pycache__' in Path(label).parts or is_bytecode:
+                # Preserve the worker's historical digest dialect but bind
+                # recorded executable/data files outside the scanned tree.
+                path = local_path(Path(distribution.locate_file(relative)), exists=not is_bytecode)
+                if not any(path.is_relative_to(root.resolve()) for root in roots):
+                    raise ValueError('An installed-file record escapes the explicitly selected Python environment.')
+                if path in recorded_paths:
+                    raise ValueError('A selected distribution has duplicate resolved installed-file records.')
+                recorded_paths.add(path)
+                if path.exists():
+                    recorded_auxiliary.add(path)
+                    if len(recorded_auxiliary) > MAX_RUNTIME_BYTECODE_FILES:
+                        raise ValueError('The selected runtime exceeds its bytecode file budget.')
                 continue
+            if label in files:
+                raise ValueError('A selected distribution has a duplicate installed-file record.')
+            total_files += 1
+            if total_files > MAX_RUNTIME_FILES:
+                raise ValueError('The selected runtime exceeds its total installed-file budget.')
             if progress:
                 progress({'phase': 'Verifying installed ASR runtime files', 'status': 'running',
                           'current': name + ': ' + label, 'done': None, 'total': None, 'indeterminate': True})
-            path = local_path(Path(distribution.locate_file(relative)).resolve(strict=True), exists=True)
+            path = local_path(Path(distribution.locate_file(relative)), exists=True)
             if not any(path.is_relative_to(root.resolve()) for root in roots):
                 raise ValueError('An installed-file record escapes the explicitly selected Python environment.')
-            identity = file_identity(path, cancel=cancel, maximum=MAX_RUNTIME_BYTES)
-            file_count += 1
-            byte_count += identity['size']
-            if file_count > MAX_RUNTIME_FILES or byte_count > MAX_RUNTIME_BYTES:
-                raise ValueError('The installed ASR file inventory exceeds its aggregate budget.')
+            if path in recorded_paths:
+                raise ValueError('A selected distribution has duplicate resolved installed-file records.')
+            recorded_paths.add(path)
+            identity = file_identity(path, cancel=cancel, maximum=MAX_RUNTIME_BYTES - total_bytes)
+            if path == record_path and identity != record_identity:
+                raise ValueError('The installed RECORD changed during verification.')
+            if path == meta_path and identity != meta_identity:
+                raise ValueError('The installed METADATA changed during verification.')
+            total_bytes += identity['size']
+            if total_bytes > MAX_RUNTIME_BYTES:
+                raise ValueError('The selected runtime exceeds its total installed-byte budget.')
             files[label] = identity
-        result[name] = {'present': True, 'version': distribution.version, 'file_count': len(files),
+        if not files:
+            raise ValueError('A selected distribution has an empty installed-file inventory.')
+        required = {local_path(distribution._path / filename, exists=True)
+                    for filename in ('METADATA', 'RECORD')}
+        if not required.issubset(recorded_paths):
+            raise ValueError('A selected distribution inventory omits METADATA or RECORD.')
+        result[name] = {'present': True, 'version': version, 'file_count': len(files),
             'installed_files_sha256': sha256(json.dumps(files, ensure_ascii=False,
                 sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()}
-    return result, auxiliary
-
+    bytecode = _bytecode_inventory(search, recorded=recorded_auxiliary, cancel=cancel,
+        maximum_files=MAX_RUNTIME_FILES - total_files,
+        maximum_bytes=MAX_RUNTIME_BYTES - total_bytes)
+    core = {name: result.get(name, {'present': False}) for name in RUNTIME_DISTRIBUTIONS}
+    additional = {name: value for name, value in result.items() if name not in core}
+    return core, auxiliary, additional, bytecode
 
 
 def inspect_python(python_executable, *, cancelled=lambda: False, progress=None):
@@ -226,7 +396,8 @@ def inspect_python(python_executable, *, cancelled=lambda: False, progress=None)
     selected = _stamp(python.lstat())
     resolved = local_path(python.resolve(strict=True), exists=True)
     roots, configurations, support = _python_layout(python, resolved, cancel=cancelled)
-    distributions, auxiliary = _runtime_inventory(roots, cancel=cancelled, progress=progress)
+    distributions, auxiliary, additional, bytecode = _runtime_inventory(
+        roots, cancel=cancelled, progress=progress)
     value = {
         'schema': 'carr-transcription-runtime-files/1',
         'python_executable': str(python), 'python_resolved': str(resolved),
@@ -235,6 +406,10 @@ def inspect_python(python_executable, *, cancelled=lambda: False, progress=None)
         'runtime_distributions': distributions, 'runtime_auxiliary': auxiliary,
         'qualification': 'installed-files-recorded; inference-unqualified',
     }
+    if additional:
+        value['runtime_additional_distributions'] = additional
+    if bytecode:
+        value['runtime_bytecode'] = bytecode
     if _stamp(python.lstat()) != selected or python.resolve(strict=True) != resolved:
         raise ValueError('The selected Python entry changed during inspection.')
     stopped(cancelled)
@@ -331,11 +506,28 @@ def _inventory(value, *, maximum_files, maximum_bytes):
         raise ValueError('The passive runtime inventory exceeds its byte budget.')
 
 
+def _distribution_entry(entry, *, optional=False):
+    if optional and type(entry) is dict and entry == {'present': False}:
+        return 0
+    _fields(entry, ('present', 'version', 'file_count', 'installed_files_sha256'))
+    if entry['present'] is not True:
+        raise ValueError('Invalid installed runtime package presence.')
+    _text(entry['version'], 256)
+    if type(entry['file_count']) is not int or not 1 <= entry['file_count'] <= 65536:
+        raise ValueError('Invalid installed runtime package file count.')
+    _digest(entry['installed_files_sha256'])
+    return entry['file_count']
+
+
 def validate_runtime(value):
     """Validate recorded data only; never follow a stored external path."""
-    _fields(value, ('schema', 'python_executable', 'python_resolved', 'python_identity',
-                    'python_configuration', 'python_support', 'runtime_distributions',
-                    'runtime_auxiliary', 'qualification', 'fingerprint'))
+    required = ('schema', 'python_executable', 'python_resolved', 'python_identity',
+                'python_configuration', 'python_support', 'runtime_distributions',
+                'runtime_auxiliary', 'qualification', 'fingerprint')
+    optional = {'runtime_additional_distributions', 'runtime_bytecode'}
+    if (type(value) is not dict or not set(required).issubset(value)
+            or set(value) - set(required) - optional):
+        raise ValueError('Invalid passive runtime inventory fields.')
     if (value['schema'] != 'carr-transcription-runtime-files/1'
             or value['qualification'] != 'installed-files-recorded; inference-unqualified'):
         raise ValueError('Invalid recorded runtime inventory schema.')
@@ -349,16 +541,26 @@ def validate_runtime(value):
                maximum_bytes=MAX_AUXILIARY_BYTES)
     distributions = value['runtime_distributions']
     _fields(distributions, RUNTIME_DISTRIBUTIONS)
-    for entry in distributions.values():
-        if type(entry) is dict and entry == {'present': False}:
-            continue
-        _fields(entry, ('present', 'version', 'file_count', 'installed_files_sha256'))
-        if entry['present'] is not True:
-            raise ValueError('Invalid installed runtime package presence.')
-        _text(entry['version'], 256)
-        if type(entry['file_count']) is not int or not 1 <= entry['file_count'] <= 65536:
-            raise ValueError('Invalid installed runtime package file count.')
-        _digest(entry['installed_files_sha256'])
+    count = sum(_distribution_entry(entry, optional=True) for entry in distributions.values())
+    if 'runtime_additional_distributions' in value:
+        additional = value['runtime_additional_distributions']
+        if type(additional) is not dict or not additional or len(additional) > 8192:
+            raise ValueError('Invalid additional installed distribution inventory.')
+        for name, entry in additional.items():
+            if (type(name) is not str or len(name) > 1024
+                    or re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)*', name) is None
+                    or name in distributions):
+                raise ValueError('Invalid additional installed distribution name.')
+            count += _distribution_entry(entry)
+    if 'runtime_bytecode' in value:
+        bytecode = value['runtime_bytecode']
+        if type(bytecode) is not dict or not bytecode:
+            raise ValueError('Invalid installed bytecode inventory.')
+        _inventory(bytecode, maximum_files=MAX_RUNTIME_BYTECODE_FILES,
+                   maximum_bytes=MAX_RUNTIME_BYTECODE_BYTES)
+        count += len(bytecode)
+    if count > MAX_RUNTIME_FILES:
+        raise ValueError('The passive runtime inventory exceeds its total file budget.')
     _digest(value['fingerprint'])
     if value['fingerprint'] != fingerprint({key: item for key, item in value.items() if key != 'fingerprint'}):
         raise ValueError('The recorded runtime inventory fingerprint changed.')
