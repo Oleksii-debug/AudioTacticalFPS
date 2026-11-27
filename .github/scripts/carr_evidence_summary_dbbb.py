@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 import zipfile
 REPOSITORY = "Oleksii-debug/AudioTacticalFPS"
-SOURCES = [[46059057339,"45b5963842f03de629974ce24057d2ec2e7b93b7",15228897142,"9465079c2c560e95b90f6972c73506797e80274a5fd34ac73b0312ee30026f50"]]
+SOURCES = [[46058816017,"7471d0455549b5598248b4e51d67ad613f86f5ca",15230190378,"c47e304495edd2b7c1c042c56ae6c386b74b528610e00faa13f0288ef569e0cc"]]
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         parsed = urllib.parse.urlsplit(newurl)
@@ -53,7 +53,7 @@ for run, head, identity, digest in SOURCES:
         if len(entries) > 2000 or sum(x.file_size for x in entries) > 128 * 1024 * 1024:
             raise ValueError("Evidence archive exceeds reviewed bound")
         emit("FILES " + json.dumps([(x.filename, x.file_size) for x in entries if not x.is_dir()])[:10000])
-        priority = ("reader-player", "ebook-daisy", "bundle", "reader-navigation")
+        priority = ("reading-production-source",)
         entries.sort(key=lambda entry: (next((i for i, term in enumerate(priority)
             if term in entry.filename.lower()), len(priority)), entry.filename))
         for entry in entries:
@@ -78,6 +78,10 @@ for run, head, identity, digest in SOURCES:
                             key: value[key] for key in ("status", "result", "passed", "failed_stage",
                             "error", "errors", "manual_nvda", "speech_inference") if key in value})[:2500])
             elif any(term in name for term in priority):
-                emit("NATIVE_TEXT " + name + "\n" + content[-50000:])
+                lines = content.splitlines()
+                selected = [line for line in lines if re.search(
+                    r"^(?:PASS:|FAIL:|Required suites complete|FAILED |ERROR |={2,}|collected |tests/|.*(?:TIMEOUT|timeout|timed out))", line)]
+                emit("REQUIRED_SUITE_VERDICTS " + name + "\n" + "\n".join(selected)[-70000:])
+                emit("SOURCE_LOG_TAIL " + name + "\n" + content[-70000:])
 emit(json.dumps({"summary_complete": True, "remaining_output_budget": remaining,
                  "qualification": "diagnostic only; exact previous source head"}))
