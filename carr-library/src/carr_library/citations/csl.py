@@ -118,6 +118,7 @@ class RenderedBibliography:
     processor_reported_version: str = PROCESSOR_REPORTED_VERSION
     style_sha256: str = ''
     custom_style: bool = False
+    bibliography_parameters: tuple[tuple[str, object], ...] = ()
 
     @property
     def bibliography(self):
@@ -740,8 +741,8 @@ _BRIDGE = r'''
     engine.updateUncitedItems(ids.filter(function (id) { return !cited[id]; }));
     var previous = [], output = [];
     payload.citations.forEach(function (items, index) {
-        var id = 'citation-' + (index + 1);
-        var noteIndex = payload.noteStyle ? index + 1 : 0;
+        var id = payload.citationContext[index].id;
+        var noteIndex = payload.citationContext[index].note_index;
         var result = engine.processCitationCluster({citationID:id, citationItems:items,
             properties:{noteIndex:noteIndex}}, previous, []);
         if (result[0].citation_errors && result[0].citation_errors.length) {
@@ -755,12 +756,18 @@ _BRIDGE = r'''
         throw new Error('The processor could not format the bibliography.');
     }
     return JSON.stringify({entries:bibliography[1], entry_ids:bibliography[0].entry_ids,
-        citations:output, warnings:messages, version:CSL.PROCESSOR_VERSION});
+        citations:output, warnings:messages, version:CSL.PROCESSOR_VERSION,
+        bibliography_parameters:{
+            hangingindent:bibliography[0].hangingindent || false,
+            linespacing:bibliography[0].linespacing || 1,
+            entryspacing:bibliography[0].entryspacing || 0,
+            'second-field-align':bibliography[0]['second-field-align'] || null}});
 })
 '''
 
 
-def render(records, *, style='apa', citations=None, locale='en-US', output='text', budget=None):
+def render(records, *, style='apa', citations=None, locale='en-US', output='text', budget=None,
+           citation_context=None):
     """Render complete, context-aware citations and a bibliography offline.
 
     ``citations`` is an ordered sequence of clusters; each cluster contains CSL
@@ -789,11 +796,33 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
     budget.validate()
     rows, identities, warnings = _records(records, budget)
     clusters, manual_locator = _clusters(citations, rows, identities, budget)
+    # The document adapter supplies stable cluster IDs and explicit note numbers.
+    # Default workbench calls retain the original sequential context.
+    if citation_context is None:
+        context_rows = [{'id': f'citation-{index + 1}',
+                         'note_index': index + 1 if style_info.kind == 'note' else 0}
+                        for index in range(len(clusters))]
+    else:
+        if type(citation_context) not in (list, tuple) or len(citation_context) != len(clusters):
+            raise ValueError('Citation context must match the complete cluster sequence.')
+        context_rows, used = [], set()
+        for index, context in enumerate(citation_context):
+            if type(context) is not dict or set(context) != {'id', 'note_index'}:
+                raise ValueError('Unsupported citation context fields.')
+            identifier = _text(context['id'], 'citation cluster identifier', 200, required=True)
+            if identifier in used or identifier in _PROTECTED or any(c.isspace() for c in identifier):
+                raise ValueError('Citation cluster identifiers must be unique and nonreserved.')
+            used.add(identifier)
+            note = context['note_index']
+            if note is not None and (type(note) is not int or not 1 <= note <= 1_000_000):
+                raise ValueError('A note number must be a positive bounded integer.')
+            context_rows.append({'id': identifier, 'note_index':
+                (note if note is not None else index + 1) if style_info.kind == 'note' else 0})
     if manual_locator:
         warnings.append('Citation locators were supplied manually; formatting does not verify those page or source positions.')
     if style_info.kind == 'note' and any(row.get('page') for row in rows):
         warnings.append('Page ranges in full bibliographic notes describe publication extent, not verified quotation locations.')
-    payload = {'records': rows, 'citations': clusters, 'locale': locale,
+    payload = {'records': rows, 'citations': clusters, 'citationContext': context_rows, 'locale': locale,
         'output': output, 'noteStyle': style_info.kind == 'note',
         'style': _xml_json(custom.source.decode('utf-8') if custom
                            else _resource('styles/' + style_info.filename)),
@@ -801,7 +830,7 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
                     for name in (LOCALES if custom else dict.fromkeys(('en-US', locale)))}}
     # Bound bibliographic input and the number of cite-item repetitions before
     # allocating the complete interpreter payload.
-    user_size = len(json.dumps({'records': rows, 'citations': clusters}, ensure_ascii=False).encode('utf-8'))
+    user_size = len(json.dumps({'records': rows, 'citations': clusters, 'citationContext': context_rows}, ensure_ascii=False).encode('utf-8'))
     if custom:
         user_size += len(custom.source)
     if user_size > budget.max_input_bytes:
@@ -848,4 +877,5 @@ def render(records, *, style='apa', citations=None, locale='en-US', output='text
         tuple(clean(entry).strip() for entry in entries),
         tuple(tuple(group) for group in entry_ids),
         tuple(clean(citation).strip() for citation in rendered_citations),
-        tuple(dict.fromkeys(warnings)), style_sha256=style_hash, custom_style=custom is not None)
+        tuple(dict.fromkeys(warnings)), style_sha256=style_hash, custom_style=custom is not None,
+        bibliography_parameters=tuple(result['bibliography_parameters'].items()))
