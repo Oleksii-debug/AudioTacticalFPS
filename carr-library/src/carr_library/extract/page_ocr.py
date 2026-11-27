@@ -82,6 +82,8 @@ class Config:
         selected = model_ids(self.languages)
         if NON_READING_MODELS.intersection(selected):
             raise ValueError('Choose reading languages or scripts; special detectors are separate.')
+        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
+            raise ValueError('duplicate or oversized language selection')
         if self.model_policy not in ('default', POLICY):
             raise ValueError('unknown OCR model policy')
         if self.model_profile not in ('installed', 'fast', 'best'):
@@ -91,8 +93,6 @@ class Config:
         if self.model_policy == POLICY:
             if len(set(selected)) != len(selected) or any(lang not in MODELS for lang in selected):
                 raise ValueError('unsupported pinned OCR language')
-        if len(self.languages) > 2048 or len(set(selected)) != len(selected):
-            raise ValueError('duplicate or oversized language selection')
         if not 72 <= self.dpi <= 400 or not 1 <= self.timeout <= 120 or not 1 <= self.max_pixels <= 20_000_000:
             raise ValueError('invalid resource limit')
 
