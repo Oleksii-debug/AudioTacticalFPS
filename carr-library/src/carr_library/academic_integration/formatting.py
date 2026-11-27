@@ -146,6 +146,14 @@ def _manifest() -> dict:
         raise CitationError('The installed citation bundle is incomplete.') from exc
 
 
+def processor_attribution() -> str:
+    """Return the installed processor's exact retained attribution notice."""
+    value = _manifest().get('attribution')
+    if not isinstance(value, str) or not value.strip():
+        raise CitationError('The installed citation attribution is missing.')
+    return value
+
+
 def available_styles() -> tuple[StyleInfo, ...]:
     return tuple(StyleInfo(**{key: entry[key] for key in StyleInfo.__dataclass_fields__})
                  for entry in _manifest()['styles'])

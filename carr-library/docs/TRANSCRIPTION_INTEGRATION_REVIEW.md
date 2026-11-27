@@ -1,10 +1,69 @@
 # Supplied Whisper Transcribe — integration review
 
-Review date: 2026-11-27. Status: SOURCE_RECEIVED_AND_STATICALLY_REVIEWED; runtime/integration/Windows/NVDA/model-quality acceptance NOT_RUN in this audit. This is a work package under the [current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md), not a separate ASR product.
+Review and execution date: 2026-11-27. The supplied worker is now adapted through
+`TranscriptionService`, the native Tools dialog and the `transcription` CLI.
+Actual offline CPU inference, verified cache reuse and destructive backup/restore
+have executed with one pinned English test model. Windows/NVDA, multilingual
+quality, GPU behavior and redistribution clearance remain separate gates. This
+implements the transcription work package in the
+[current platform specification](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
+
+## Current integration and execution evidence
+
+The unmodified supplied worker has SHA256
+`1df2a1694b35bdf69dab614f91f1e8dea99716dfb039182ef5b83ca5ccb46ec9`.
+Its corrected private derivative is admitted only as SHA256
+`5379b889b8019c7ad9f427a7bc8db268dccd747469abc72db4f3001f9f82306c`.
+Public source contains the adapter and synthetic protocol tests; it contains no
+private worker source, engine environment, model weights or recordings.
+An earlier `d911…` derivative is not admitted because replacement inference
+processes could retain the previous runtime fingerprint.
+
+The final service blob is `cc696c76e805a0589fbdad93f38e0a9d292ac8d2`.
+The actual service/CLI acceptance ran at
+`e1e8136e4793ae35ef551704832dca7f44b69201`; integration retains the same service
+bytes. Its private evidence contains 81 passed assertions. The public
+[execution record](evidence/transcription-private-worker-20261127.json) records
+the bounded conclusions and hashes without private machine paths.
+
+| Dimension | Current evidence |
+| --- | --- |
+| SOURCE_REVIEWED | Original source identified; ASR-01 through ASR-06 corrected in the supplied implementation; 36 worker-boundary regressions pass |
+| ADAPTER_PRESENT / INTEGRATED | One public service, retained audio, durable jobs, native wx dialog, CLI, shared progress/cancellation and complete library backup |
+| EXECUTED | Actual faster-whisper CPU inference with `Systran/faster-whisper-tiny.en`, revision `0d3d19a32d3338f10357c0889762bd8d64bbdeba`; no external route inside the Linux network namespace |
+| Recovery | Real interrupted job resumes with a new matching run ID and verified recognition reuse; original input and whole library removed before restore; same saved job resumes after explicit engine rebind |
+| Original / derivative boundary | Original audio and generated transcript hashes retained; editing creates a separate revision; export refuses an existing destination |
+| QUALIFIED | Only compatibility with this exact runtime/model and one 5.29-second synthetic English fixture; not multilingual, human listening, general accuracy, long-file or GPU qualification |
+| Windows / NVDA | Native source and installed-package probes are required by the composed Windows workflow; this Linux evidence makes no native Windows or manual NVDA claim |
+| DISTRIBUTION_CLEARED | WAITING_INPUT: private wrapper authorization, exact runtime/model notices and distribution profile remain separate; no inference assets are bundled automatically |
+
+The exercised runtime used faster-whisper 1.2.1, CTranslate2 4.8.0, PyAV 17.1.0,
+ONNX Runtime 1.26.0, NumPy 2.4.6, huggingface-hub 1.19.0 and tokenizers 0.23.1.
+The installed dependency freeze and `pip check` were recorded privately.
+Requested CPU `int8` resolved to actual `int8_float32`; the receipt reports the
+actual value. Effective inference concurrency was one. A cold service run took
+1.990 seconds and the explicit warm CLI resume 1.716 seconds on the test host;
+these are individual observations, not performance guarantees.
+
+The test model emitted a segment end beyond the decoded duration. The corrected
+worker retained the raw timestamp, clamped the exported interval to 5.29 seconds
+and exposed a warning. Timestamp cleanup is not evidence of acoustic alignment.
+`tiny.en` is explicitly English-only in the service and dialog.
+
+After relocation, a stored engine selection is inactive until the user explicitly
+selects the reviewed external runtime again. A resumed job regenerates all
+execution paths from its current retained inputs. Relocation correctly caused
+fresh recognition instead of reusing the old absolute-path cache identity.
+
+## Original static review and resolved findings
+
+The following inventory describes the received V4.3 snapshot. It is retained as
+the provenance and defect record; it does not describe the corrected derivative
+as still unintegrated.
 
 ## Source and boundary
 
-The owner-supplied implementation identifies itself as V4.3. The current source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The readable worker source was inspected. File bytes/immutable source hash and dependency lock must be recorded before code adoption; this review has not created a redistributed source snapshot.
+The owner-supplied implementation identifies itself as V4.3. The received source includes worker.py (37,974 bytes), accessible_window.ps1 (49,718 bytes), README_UA.txt and download_models_once.py. The worker's immutable identity is recorded above. No private source snapshot has been redistributed in public Git.
 
 The source location is retained in the authorized private worker input, not in public Git. Its personal jobs, recordings/transcripts, virtual environment, historical backups/patch clutter and machine-specific paths must not be imported. No root LICENSE, dependency lock or pyproject.toml was observed; establish provenance/rights for the supplied wrapper and every runtime/model before redistribution. Do not invent a license for the owner's code.
 
@@ -20,9 +79,9 @@ Reusable functionality includes a persistent faster_whisper.WhisperModel, CPU in
 
 The supplied environment metadata records Python3.14.5, faster-whisper1.2.1, CTranslate2 4.8.0, PyAV17.1.0, ONNX Runtime1.26.0, NumPy2.4.6, huggingface-hub1.19.0 and tokenizers0.23.1. These observations do not prove compatibility or portability. The current platform uses a different CPython3.11 runtime; retain an isolated reviewed engine pack or rebuild and test a deliberately selected compatible set.
 
-No models directory was observed at the supplied project root. The downloader names tiny/base/small/medium/large-v3-turbo/large-v3 without immutable revisions and hashes. Actual model availability, complete dependencies and cold offline operation remain unverified. Do not copy the virtual environment as a portable runtime or automatically download all models.
+No models directory was observed at the supplied project root. Its downloader names tiny/base/small/medium/large-v3-turbo/large-v3 without immutable revisions and hashes. The explicitly pinned tiny.en model and isolated test environment above resolve cold offline execution for that test profile only. Other models remain unverified. Do not copy the supplied virtual environment as a portable runtime or automatically download models.
 
-## Findings to resolve before qualification
+## Defect record and remaining qualification
 
 Line references identify the inspected worker.py snapshot and may move after changes.
 
@@ -38,6 +97,14 @@ Line references identify the inspected worker.py snapshot and may move after cha
 | ASR-08 / acceptance | No speaker-diarization implementation observed; word_timestamps not enabled in transcription call | Do not advertise diarization or word alignment as implemented. Qualify them as separate requested extensions using existing compatible components. |
 
 Whisper task=translate in this implementation targets English. It is separate from the platform's general Google/local any-supported-pair translation workstation.
+
+ASR-01 through ASR-06 are corrected: cache identity binds exact audio, model tree,
+settings and the actual replacement child runtime; unrelated text is never
+adopted; silent language fallback is removed; every requested artifact must
+exist with its declared hash; inference uses one owned process; cancellation
+terminates it and preserves independently verified checkpoints. ASR-07 has
+executed for the pinned tiny.en profile only. ASR-08 remains unimplemented:
+no diarization or word-alignment feature is advertised.
 
 ## Incremental adoption
 

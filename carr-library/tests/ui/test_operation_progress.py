@@ -205,7 +205,7 @@ def test_preferences_default_off_persist_and_reject_invalid_or_linked_state(tmp_
         load_preferences(tmp_path)
 
 
-@pytest.mark.parametrize('changes', [{'mode': 'speech'}, {'interval_seconds': 0}, {'interval_seconds': float('nan')},
+@pytest.mark.parametrize('changes', [{'mode': 'cloud'}, {'interval_seconds': 0}, {'interval_seconds': float('nan')},
     {'volume': float('inf')}, {'volume': -1}, {'quiet': 1}, {'background': 'yes'}, {'mute_during_audio': None}])
 def test_preferences_require_valid_explicit_options(changes):
     with pytest.raises(ValueError):

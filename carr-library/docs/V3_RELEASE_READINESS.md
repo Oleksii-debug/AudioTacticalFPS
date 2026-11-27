@@ -11,12 +11,13 @@ unchanged until a verified migration; visible application titles use Resonance.
 
 | Area | Implemented behavior | Evidence and limits |
 | --- | --- | --- |
-| Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
+| Library and OCR | Scoped originals, exact quotations, advanced Boolean/NEAR search, BibTeX and DOI/ISBN workflows, additional document formats, managed Fast/Best OCR | Actual SQLite/parser/import/recovery tests; externally downloaded PDFs bind import and resume to their exact verified receipt; native acceptance is recorded per build |
 | Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
 | Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings and project state | Real backup/restore and resumed import tests; externally exported audio and OS credential secrets are separate |
-| Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and playback suppression | Automated native/contract tests; human NVDA listening remains required; speech-mode progress is not implemented |
+| Recovery | Manifest-bound backup v4, conditional v5 for reading state, pending import bytes, bookmarks/resume, Studio input assets and transcription state | Real deletion/restore/resume tests; external engine approvals require explicit rebind; external exports and OS credential secrets remain separate |
+| Transcription | Supplied reviewed Whisper worker through one service, native dialog and CLI; retained source, four output formats, revision editing and explicit resume | Actual offline tiny.en CPU inference and destructive recovery; one synthetic English fixture only; Windows/NVDA, other models, diarization and word alignment remain separate |
+| Keyboard and progress | Configurable menu keys, named controls, measured or indeterminate progress, Off/Beep/Speech/Beep+Speech, explicit local voice and playback suppression | Real private PCM synthesis and bounded feedback-worker tests; terminal notices wait for obsolete speech to stop; human NVDA listening remains required |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
 | Translation | Optional Google Basic v2 selected-text derivatives, explicit supported-language query, consent, chunk receipts/resume and new exports | Synthetic transport with real gateway/ledger/reading objects; live API, translation quality, Advanced v3 and local model inference are not qualified |
@@ -47,12 +48,14 @@ The following cannot be labelled DONE by passing the current core tests:
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper Transcribe V4.3 implementation has been received and
-statically reviewed; transcription is part of the approved platform scope.
-The current library/audio preview leaves its integration, real execution and
-qualification pending. The existing worker must be corrected and adapted through
-shared jobs and an isolated reviewed engine pack; no competing ASR stack or
-unverified runtime is bundled. See [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The supplied Whisper Transcribe V4.3 implementation is corrected and integrated.
+The exact private worker `5379b889…` has executed through the service and CLI with
+the pinned tiny.en model, including genuine interruption, verified reuse and
+same-job recovery after deletion of the original library. This establishes a
+bounded English CPU compatibility result, not complete language or audio-quality
+qualification. The worker/runtime/model remain explicit external selections and
+are not published or automatically bundled. See the
+[integration and execution review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
 
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,

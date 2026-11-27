@@ -896,8 +896,8 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 report(self.status, f'Bibliography not copied: {exc}')
 
         def on_import(self, event=None):
-            chooser = wx.FileDialog(self, 'Choose a RIS or CSL JSON bibliography',
-                                   wildcard='Bibliography (*.ris;*.json)|*.ris;*.json|RIS (*.ris)|*.ris|CSL JSON (*.json)|*.json',
+            chooser = wx.FileDialog(self, 'Choose a RIS, BibTeX or CSL JSON bibliography',
+                                   wildcard='Bibliography (*.ris;*.bib;*.json)|*.ris;*.bib;*.json|RIS (*.ris)|*.ris|BibTeX (*.bib)|*.bib|CSL JSON (*.json)|*.json',
                                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
             try:
                 if chooser.ShowModal() != wx.ID_OK:
@@ -906,9 +906,9 @@ def create_academic_dialog(parent, controller, *, executor=None):
             finally:
                 chooser.Destroy()
             try:
-                format = {'.ris': 'ris', '.json': 'csl-json'}.get(path.suffix.lower())
+                format = {'.ris': 'ris', '.bib': 'bibtex', '.json': 'csl-json'}.get(path.suffix.lower())
                 if format is None:
-                    raise ValueError('Choose a .ris or .json bibliography file.')
+                    raise ValueError('Choose a .ris, .bib or .json bibliography file.')
                 with path.open('rb') as stream:
                     data = stream.read(MAX_IMPORT_BYTES + 1)
                 if len(data) > MAX_IMPORT_BYTES:

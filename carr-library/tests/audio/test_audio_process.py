@@ -119,8 +119,10 @@ def test_audio_publication_flushes_a_writable_handle(tmp_path, monkeypatch):
     assert flushed and target.read_bytes() == staged.read_bytes() == b'Exact unchanged audio bytes'
 
 
-@pytest.mark.parametrize('explicit', [False, True])
+@pytest.mark.parametrize('explicit', [False, True, 'bytes'])
 def test_real_ffmpeg_cannot_overwrite_an_inherited_report_destination(tmp_path, monkeypatch, explicit):
+    if explicit == 'bytes' and os.name == 'nt':
+        pytest.skip('Bytes environment mappings are a POSIX subprocess interface.')
     executable = shutil.which('ffmpeg')
     if executable is None:
         pytest.skip('Actual native report-file regression requires installed FFmpeg.')
@@ -132,6 +134,8 @@ def test_real_ffmpeg_cannot_overwrite_an_inherited_report_destination(tmp_path, 
     report = 'file=unrelated-private.txt:level=48'
     monkeypatch.setenv('FFREPORT', report)
     environment = dict(os.environ) if explicit else None
+    if explicit == 'bytes':
+        environment = {os.fsencode(key): os.fsencode(value) for key, value in environment.items()}
     before = dict(environment) if explicit else None
     run_process([str(Path(executable).resolve()), '-v', 'error', '-nostdin',
                  '-i', str(source), '-f', 'null', '-'], cwd=tmp_path, env=environment)
@@ -150,3 +154,26 @@ def test_process_preserves_device_locale_and_explicit_environment_without_report
     assert received['SDL_AUDIODRIVER'] == 'dummy'
     assert received['LANG'] == 'C' and received['CARR_HOST_SENTINEL'] == 'kept'
     assert environment == before
+
+
+@pytest.mark.skipif(os.name == 'nt', reason='Windows playback uses MCI, not the POSIX ffplay path.')
+def test_real_ffplay_cannot_overwrite_an_inherited_report_destination(tmp_path, monkeypatch):
+    from carr_library.speech.player import WavePlayer
+    if shutil.which('ffplay') is None:
+        pytest.skip('Actual POSIX playback report-file regression requires installed ffplay.')
+    source, sentinel = tmp_path / 'input.wav', tmp_path / 'unrelated-private.txt'
+    sentinel.write_bytes(b'Unchanged unrelated private file')
+    with wave.open(str(source), 'wb') as audio:
+        audio.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
+        audio.writeframes(b'\0\0' * 2400)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv('FFREPORT', 'file=unrelated-private.txt:level=48')
+    monkeypatch.setenv('SDL_AUDIODRIVER', 'dummy')
+    player = WavePlayer()
+    try:
+        player.play(source)
+        assert player._process.wait(timeout=5) == 0
+        assert player.state == 'stopped'
+        assert sentinel.read_bytes() == b'Unchanged unrelated private file'
+    finally:
+        player.close()

@@ -30,7 +30,8 @@ def native_audio_environment(environment=None):
     """
     return {key: value for key, value in
             (os.environ if environment is None else environment).items()
-            if not (isinstance(key, str) and key.casefold() == 'ffreport')}
+            if not ((isinstance(key, str) and key.casefold() == 'ffreport')
+                    or (isinstance(key, bytes) and key.lower() == b'ffreport'))}
 
 
 def _terminate(process):

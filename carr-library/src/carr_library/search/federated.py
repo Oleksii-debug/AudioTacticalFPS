@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 from copy import copy
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 from threading import Event, Lock, RLock
 import unicodedata
@@ -54,6 +55,8 @@ class FederatedSession:
     collections: tuple[tuple[str, str | None], ...]
     limit_per_library: int
     groups: tuple[LibraryResults, ...]
+    offset_per_library: int = 0
+    has_more: bool = False
 
     @property
     def hits(self):
@@ -88,6 +91,15 @@ def _workspaces(values, check):
         if len(selected) > 20:
             raise ValueError('Select at most 20 distinct libraries.')
     return tuple(selected)
+
+
+def _bounded_rows(rows, limit, check):
+    """Inspect at most one excess row, including an accidental lazy response."""
+    collected = []
+    for row in islice(rows, limit + 1):
+        check()
+        collected.append(row)
+    return tuple(collected)
 
 
 class FederatedSearch:
@@ -138,7 +150,8 @@ class FederatedSearch:
 
     def search(self, workspace_ids, query, *, mode='phrase', result_mode=None,
                title=None, author=None, language=None, edition=None, collections=None,
-               limit_per_library=50, timeout=60.0, cancelled=lambda: False, on_status=None):
+               limit_per_library=50, offset_per_library=0, timeout=60.0,
+               cancelled=lambda: False, on_status=None):
         """Replace current only after every selected library succeeds.
 
         collections optionally maps selected workspace IDs to their own active
@@ -147,6 +160,10 @@ class FederatedSearch:
         100 results per library and 20 distinct explicitly selected libraries.
         A failed/cancelled attempt preserves current; clear() is explicit.
         Status callbacks receive one string labelled with library name and ID.
+        Terms/advanced modes permit bounded result pages because they produce
+        one hit per source page. Every request rechecks the live source scope;
+        ordering is stable when that scope is unchanged, not a frozen snapshot.
+        A one-result lookahead establishes has_more within the same time budget.
         """
         if not self._search_lock.acquire(blocking=False):
             raise RuntimeError('A selected-library search is already running.')
@@ -158,18 +175,28 @@ class FederatedSearch:
                 raise ValueError('A search cancellation callback is required.')
             budget = _SearchBudget(timeout, lambda: invalidation.is_set() or cancelled())
             budget.check()
-            if mode not in ('phrase', 'word', 'terms', 'thematic', 'semantic'):
+            if mode not in ('phrase', 'word', 'terms', 'thematic', 'semantic', 'advanced'):
                 raise ValueError('Unknown search mode.')
             if result_mode not in (None, 'short', 'thematic'):
                 raise ValueError('Choose Short quotations or Thematic excerpts.')
             if type(limit_per_library) is not int or not 1 <= limit_per_library <= 100:
                 raise ValueError('Choose between 1 and 100 results per library.')
+            if type(offset_per_library) is not int or offset_per_library < 0:
+                raise ValueError('Choose a nonnegative integer result-page offset.')
+            if offset_per_library and mode not in ('terms', 'advanced'):
+                raise ValueError('Result-page navigation is available for All words and Advanced searches.')
             if on_status is not None and not callable(on_status):
                 raise ValueError('Search status callback must be callable.')
             if (not isinstance(query, str) or not query.strip() or len(query) > MAX_QUERY
                     or any(unicodedata.category(c) in ('Cc', 'Cs') and c not in '\t\n\r'
                            for c in query)):
                 raise ValueError(f'Enter a nonblank search query of at most {MAX_QUERY} characters.')
+            if mode == 'advanced':
+                # Validate before opening any selected library. The exact same
+                # parser then verifies each page in the existing literal engine;
+                # a failed query never replaces a completed federated session.
+                from .advanced import compile_query
+                compile_query(query, check=budget.check)
             selected = _workspaces(workspace_ids, budget.check)
             filters = dict(zip(('title', 'author', 'language', 'edition'),
                                map(_metadata, (title, author, language, edition))))
@@ -189,7 +216,7 @@ class FederatedSearch:
             working = copy(self._host)
             working._selections = {}
             session_id = uuid4().hex
-            groups, owned_hits = [], {}
+            groups, owned_hits, has_more = [], {}, False
             for workspace in selected:
                 budget.check()
                 with working._search_read(workspace, budget.remaining(), budget.stopped) as (db, _):
@@ -202,10 +229,13 @@ class FederatedSearch:
                         on_status(f'{name} [{workspace}]: {message}')
                     budget.check()
 
-                rows = tuple(working.search(workspace, query, mode=mode,
-                    result_mode=result_mode, collection=scopes.get(workspace), **filters,
-                    limit=limit_per_library, timeout=budget.remaining(),
-                    cancelled=budget.stopped, on_status=report))
+                options = dict(mode=mode, result_mode=result_mode,
+                    collection=scopes.get(workspace), **filters,
+                    limit=limit_per_library, cancelled=budget.stopped, on_status=report)
+                if offset_per_library:
+                    options['offset'] = offset_per_library
+                rows = _bounded_rows(working.search(workspace, query, **options,
+                    timeout=budget.remaining()), limit_per_library, budget.check)
                 budget.check()
                 if len(rows) > limit_per_library:
                     raise ValueError('The library search exceeded its result limit.')
@@ -219,10 +249,25 @@ class FederatedSearch:
                     owned_hits[result.ref] = hit
                     hits.append(hit)
                 groups.append(LibraryResults(workspace, name, tuple(hits)))
+                if mode in ('terms', 'advanced') and len(rows) == limit_per_library:
+                    next_offset = offset_per_library + limit_per_library
+                    # Lookahead must not evict any published page handle from
+                    # the existing 2000-selection host budget (20 * 100 hits).
+                    probe = copy(working)
+                    probe._selections = {}
+                    options.update(limit=1, offset=next_offset)
+                    more = _bounded_rows(probe.search(workspace, query, **options,
+                        timeout=budget.remaining()), 1, budget.check)
+                    budget.check()
+                    if len(more) > 1 or any(not isinstance(hit, SearchResult)
+                            or hit.workspace != workspace or hit.ref not in probe._selections
+                            for hit in more):
+                        raise ValueError('The search returned a lookahead outside its selected scope.')
+                    has_more = has_more or bool(more)
 
             session = FederatedSession(session_id, self._identity[0], query, mode, result_mode,
                 tuple(filters.items()), tuple((w, scopes.get(w)) for w in selected),
-                limit_per_library, tuple(groups))
+                limit_per_library, tuple(groups), offset_per_library, has_more)
             completed = _Completed(session, working, owned_hits)
             with self._search_state():
                 budget.check()

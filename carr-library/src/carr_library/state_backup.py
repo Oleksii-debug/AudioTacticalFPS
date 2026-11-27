@@ -96,6 +96,42 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             if count != before.st_size or _stamp(regular(source)) != _stamp(before):
                 raise ValueError('Application state changed during backup; retry after saving.')
             entries.append({'filename': relative.as_posix(), 'size_bytes': count, 'sha256': digest.hexdigest()})
+    # Studio augments the staged snapshot with retained external inputs and
+    # rewrites only its staged project records. Verify the original source
+    # inventory against the digests captured before that augmentation.
+    source_entries = tuple(entries)
+    from .studio.backup_inputs import snapshot_inputs
+    entries = snapshot_inputs(target, entries, max_bytes=max_bytes,
+                              max_files=MAX_STATE_FILES, cancelled=cancelled)
+    if inventory() != before_inventory:
+        raise ValueError('Application state changed during backup; retry after saving.')
+    # Windows creation-time/mtime metadata can stay unchanged across a same-size
+    # overwrite while another file is being copied. Re-read earlier source bytes
+    # against their copied digest; stat equality alone is not snapshot evidence.
+    for entry in source_entries:
+        source = root / entry['filename']
+        before = regular(source)
+        digest, count = sha256(), 0
+        if _stamp(before) != before_inventory[Path(entry['filename'])]:
+            raise ValueError('Application state changed during backup; retry after saving.')
+        with source.open('rb') as stream:
+            if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+                raise ValueError('Application state changed during backup; retry after saving.')
+            while True:
+                if cancelled():
+                    raise InterruptedError('Backup cancelled.')
+                block = stream.read(min(1024 * 1024, entry['size_bytes'] + 1 - count))
+                if not block:
+                    break
+                count += len(block)
+                if count > entry['size_bytes']:
+                    raise ValueError('Application state grew during backup; retry after saving.')
+                digest.update(block)
+            if _stamp(os.fstat(stream.fileno())) != _stamp(before):
+                raise ValueError('Application state changed during backup; retry after saving.')
+        if (count != entry['size_bytes'] or digest.hexdigest() != entry['sha256']
+                or _stamp(regular(source)) != _stamp(before)):
+            raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
     return sorted(entries, key=lambda entry: entry['filename'])
@@ -119,7 +155,7 @@ def validate_state(entries):
         raise ValueError('Application state manifest exceeds its byte budget.')
 
 
-def restore_state(source, target, entries):
+def restore_state(source, target, entries, *, destination_root=None):
     validate_state(entries)
     source = local_path(source, exists=True)
     regular(source, directory=True)
@@ -153,6 +189,8 @@ def restore_state(source, target, entries):
             os.fsync(write.fileno())
         if size != item['size_bytes'] or digest.hexdigest() != item['sha256']:
             raise ValueError('Application state checksum mismatch.')
+    from .studio.backup_inputs import restore_inputs
+    restore_inputs(target, target if destination_root is None else destination_root, entries)
     sync_directory(target)
 
 

@@ -1,0 +1,193 @@
+{
+  "schema": "resonance-transcription-execution-evidence/1",
+  "date": "2026-11-27",
+  "status": "PASS",
+  "worker_sha256": "5379b889b8019c7ad9f427a7bc8db268dccd747469abc72db4f3001f9f82306c",
+  "model": "Systran/faster-whisper-tiny.en",
+  "model_revision": "0d3d19a32d3338f10357c0889762bd8d64bbdeba",
+  "source_control": {
+    "same_service_blob_as_root_ab0c38b": true,
+    "service_blob": "cc696c76e805a0589fbdad93f38e0a9d292ac8d2",
+    "tested_checkout": "e1e8136e4793ae35ef551704832dca7f44b69201"
+  },
+  "service_code_sha256": "68b1db901470f0c821ad72bda1bca8b14ca8c2a904f0db2dad9c9e0df8823e86",
+  "network": {
+    "boundary": "Linux user/network namespace",
+    "external_connect_errno": 101,
+    "interfaces": [
+      "lo"
+    ],
+    "route_table": ""
+  },
+  "passed_assertions": 81,
+  "checks": [
+    "network namespace has no external interface or reachable route",
+    "frozen worker digest matches admission",
+    "pinned local model identity: README.md",
+    "pinned local model identity: config.json",
+    "pinned local model identity: model.bin",
+    "pinned local model identity: tokenizer.json",
+    "pinned local model identity: vocabulary.txt",
+    "service-cold: terminal execution IDs agree",
+    "service-cold: verified txt artifact bytes",
+    "service-cold: verified srt artifact bytes",
+    "service-cold: verified vtt artifact bytes",
+    "service-cold: verified json artifact bytes",
+    "service-cold: all requested formats exist",
+    "service-cold: actual recognized English sentence matches fixture",
+    "service-cold: duration clamp retains raw model timestamps and warning",
+    "service-cold: public verified receipt matches current worker run",
+    "cold actual worker recognized without cache reuse",
+    "selected original and managed input retain exact original audio",
+    "completed public job reopens idempotently without unnecessary engine execution",
+    "derived edit and no-clobber export preserve original recognized transcript",
+    "service-cold-interrupted: terminal execution IDs agree",
+    "service-cold-interrupted: verified txt artifact bytes",
+    "service-cold-interrupted: verified srt artifact bytes",
+    "service-cold-interrupted: verified vtt artifact bytes",
+    "service-cold-interrupted: verified json artifact bytes",
+    "service-cold-interrupted: all requested formats exist",
+    "service-cold-interrupted: actual recognized English sentence matches fixture",
+    "service-cold-interrupted: duration clamp retains raw model timestamps and warning",
+    "real completed worker bytes remain resumable after parent cancellation",
+    "cli-warm-resume: terminal execution IDs agree",
+    "cli-warm-resume: verified txt artifact bytes",
+    "cli-warm-resume: verified srt artifact bytes",
+    "cli-warm-resume: verified vtt artifact bytes",
+    "cli-warm-resume: verified json artifact bytes",
+    "cli-warm-resume: all requested formats exist",
+    "cli-warm-resume: actual recognized English sentence matches fixture",
+    "cli-warm-resume: duration clamp retains raw model timestamps and warning",
+    "cli-warm-resume: public verified receipt matches current worker run",
+    "explicit CLI resume executes a new actual worker run and reuses verified recognition",
+    "warm resume preserves exact completed artifact bytes",
+    "complete backup contains managed audio and transcript/revision state without worker source",
+    "selected original and original library/state were deleted before restore",
+    "restored complete graph and source/artifact hashes are verified without originals",
+    "derived revision survives exact backup/restore",
+    "library research source quotation also survives deletion and restore",
+    "restored external engine profile is inactive until explicit rebind",
+    "explicit CLI rebind admits only the frozen external engine",
+    "relocated-explicit-run: terminal execution IDs agree",
+    "relocated-explicit-run: verified txt artifact bytes",
+    "relocated-explicit-run: verified srt artifact bytes",
+    "relocated-explicit-run: verified vtt artifact bytes",
+    "relocated-explicit-run: verified json artifact bytes",
+    "relocated-explicit-run: all requested formats exist",
+    "relocated-explicit-run: actual recognized English sentence matches fixture",
+    "relocated-explicit-run: duration clamp retains raw model timestamps and warning",
+    "relocated-explicit-run: public verified receipt matches current worker run",
+    "new run configuration is generated only from current managed paths",
+    "private worker remains frozen after every actual run",
+    "observed actual worker exited successfully and its temporary source was removed",
+    "observed actual worker exited successfully and its temporary source was removed",
+    "observed actual worker exited successfully and its temporary source was removed",
+    "restored-job follow-up remains inside network namespace without external route",
+    "genuine interrupted job is saved without manually changing its durable state",
+    "previous state and every old managed input path were deleted before second restore",
+    "same saved job ID survives in cancelled state after restore",
+    "test retains a stale config pointing to now-deleted old inputs",
+    "relocated engine is visibly waiting for input",
+    "explicit run before rebind cannot mutate or execute the saved job",
+    "same restored job succeeds through actual CLI and TranscriptionService",
+    "new matching run ID replaces the old terminal identity",
+    "all managed execution paths rebind to the restored root",
+    "restored recognition uses the original exact audio SHA",
+    "resumed restored txt artifact byte identity",
+    "resumed restored srt artifact byte identity",
+    "resumed restored vtt artifact byte identity",
+    "resumed restored json artifact byte identity",
+    "restored execution completes every requested format",
+    "restored execution recognizes the same synthetic English sentence",
+    "relocation changes source identity and does not reuse an old absolute-path cache entry",
+    "original derived revision remains valid after the second restore",
+    "frozen worker source has not changed"
+  ],
+  "runs": [
+    {
+      "actual_runtime": {
+        "compute_type": "int8_float32",
+        "device": "cpu",
+        "effective_parallel_files": 1
+      },
+      "duration_seconds": 5.29,
+      "phase": "service-cold",
+      "recognition_reused": false,
+      "seconds": 1.99,
+      "state": "succeeded",
+      "warnings": [
+        "1 model segment timestamp(s) clamped to decoded audio duration; raw timestamps retained"
+      ]
+    },
+    {
+      "actual_runtime": {
+        "compute_type": "int8_float32",
+        "device": "cpu",
+        "effective_parallel_files": 1
+      },
+      "duration_seconds": 5.29,
+      "phase": "service-cold-interrupted-after-receipt",
+      "public_state": "cancelled",
+      "recognition_reused": false,
+      "seconds": 1.967,
+      "state": "succeeded",
+      "warnings": [
+        "1 model segment timestamp(s) clamped to decoded audio duration; raw timestamps retained"
+      ]
+    },
+    {
+      "actual_runtime": {
+        "compute_type": "int8_float32",
+        "device": "cpu",
+        "effective_parallel_files": 1
+      },
+      "duration_seconds": 5.29,
+      "phase": "cli-warm-resume-via-public-service",
+      "recognition_reused": true,
+      "seconds": 1.716,
+      "state": "succeeded",
+      "warnings": [
+        "1 model segment timestamp(s) clamped to decoded audio duration; raw timestamps retained"
+      ]
+    },
+    {
+      "actual_runtime": {
+        "compute_type": "int8_float32",
+        "device": "cpu",
+        "effective_parallel_files": 1
+      },
+      "duration_seconds": 5.29,
+      "phase": "explicit-run-after-rebind",
+      "recognition_reused": false,
+      "seconds": 2.428,
+      "state": "succeeded",
+      "warnings": [
+        "1 model segment timestamp(s) clamped to decoded audio duration; raw timestamps retained"
+      ]
+    },
+    {
+      "phase": "cancelled-existing-job-before-backup",
+      "public_state": "cancelled",
+      "recognition_reused": false,
+      "seconds": 2.261,
+      "state": "succeeded"
+    },
+    {
+      "phase": "same-id-resume-after-deletion-and-restore",
+      "recognition_reused": false,
+      "seconds": 2.318,
+      "state": "succeeded",
+      "warnings": [
+        "1 model segment timestamp(s) clamped to decoded audio duration; raw timestamps retained"
+      ]
+    }
+  ],
+  "limits": [
+    "Linux source-package service and CLI; Windows/NVDA are separate",
+    "one synthetic English audio fixture; no multilingual or listening-quality qualification"
+  ],
+  "distribution_cleared": false,
+  "private_source_included": false,
+  "model_weights_included": false,
+  "recordings_included": false
+}

@@ -390,6 +390,40 @@ def test_preview_budget_error_preserves_native_selection_and_imports_nothing(
     chooser.Destroy.assert_called_once()
 
 
+def test_bibtex_file_picker_uses_existing_bounded_preview_without_saving_on_cancel(
+        controller, native_handlers, monkeypatch, tmp_path):
+    target = tmp_path / 'References.BIB'
+    target.write_text('@book{original,title={Reviewed BibTeX},author={{Research, Inc.}}}', encoding='utf-8')
+    ui = native_handlers
+    chooser = Mock()
+    chooser.ShowModal.return_value = ui.wx.ID_OK
+    chooser.GetPath.return_value = str(target)
+    ui.wx.FileDialog = Mock(return_value=chooser)
+    ui.wx.FD_OPEN, ui.wx.FD_FILE_MUST_EXIST = 1, 2
+    # The handler's existing preview is tested above through its real service;
+    # intercept its constructed dialog to exercise the actual .BIB dispatch.
+    received = []
+    class CancelledPreview:
+        def __init__(self, parent, actual_controller, preview):
+            assert actual_controller is controller
+            received.append(preview)
+        def ShowModal(self):
+            return ui.wx.ID_CANCEL
+        def Destroy(self):
+            pass
+    window = ui.make('academic', controller)
+    window.controller = controller
+    window.references, window.refresh = Mock(), Mock()
+    monkeypatch.setitem(window.on_import.__func__.__globals__, 'ImportPreviewDialog', CancelledPreview)
+    window.on_import()
+    assert len(received) == 1 and received[0].format == 'bibtex'
+    assert received[0].entries[0].fields['authors'] == ('Research, Inc.',)
+    assert '*.bib' in ui.wx.FileDialog.call_args.kwargs['wildcard']
+    chooser.Destroy.assert_called_once()
+    assert controller.list() == ()
+    window.refresh.assert_not_called()
+
+
 @pytest.mark.parametrize('timing', ['before_worker_finishes', 'after_callback_queued'])
 @pytest.mark.parametrize('outcome', ['success', 'error'])
 def test_editor_late_completion_never_touches_destroyed_controls(controller, native_handlers, timing, outcome):

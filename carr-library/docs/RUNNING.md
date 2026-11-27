@@ -83,6 +83,24 @@ python -m carr_library --data-dir "D:\Research data"
 `--self-test` uses a temporary synthetic library. It does not import or upload
 your documents. Search and library data remain on the local computer.
 
+## Import and read additional document formats
+
+Choose **Library, Import books** or press **Ctrl+I** for individual files.
+**Library, Import Center: files, folders and queues** also prepares folder plans
+and saves queues for continuation after interruption. Supported additional
+inputs are HTML/HTM/XHTML, Markdown, EML, FB2/FB3, ODT/ODS/ODP, PPTX and XLSX.
+Select an imported book and press **Ctrl+R** to read its logical text segments;
+normal library search uses the same stored text.
+
+The import details explain actual omissions, such as email attachments, formulas
+and hidden spreadsheet content. These formats retain byte-exact originals and
+unverified extracted text. They do not enable verified quotation commands or
+invent printed pagination. Active-content originals are not launched in external
+viewers; use Reading Desk. **Help, Document formats** and
+[the format guide](DOCUMENT_FORMATS_V3.md) describe the supported subsets and
+the current 64 MiB source limit. Legacy converters and unsupported formats are
+not downloaded automatically.
+
 ## Open original sources and export research
 
 The **Bibliography** menu adds reviewed local RIS/CSL-JSON metadata intake and
@@ -187,6 +205,14 @@ first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
 
+Full library backups also include personal page bookmarks and reading resume
+positions for every library. Restore preserves their exact source revision,
+names and timestamps in the new data folder. The backup checksums cover this
+reading state as well as the database and retained originals. Older backups
+without reading state still restore; use a separate reading-state export to
+transfer those older bookmarks. Interrupted import queues are not part of the
+backup. See [reading desk](READING_DESK.md) for historical-position handling.
+
 ## Review the source catalog
 
 Open a library, then use the **Research** menu:
@@ -270,6 +296,14 @@ Use **Cancel operation** to stop a long operation before publication. Export des
 use the same checked Save workflow as topic exports.
 
 ### Search and source actions
+
+**Ctrl+Alt+Q** opens the advanced query builder. Its All, Any, Exclude and
+Nearby fields accept one literal word or phrase per line. Build the expression,
+choose Use query, then press Enter in Search. The explicit Advanced search mode
+supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
+through NEAR/100 within one page or text segment. Existing search modes keep
+their original meanings. See `docs/ADVANCED_SEARCH.md` in the source repository
+for syntax, examples, scope and limits.
 
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently

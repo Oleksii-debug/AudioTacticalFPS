@@ -67,6 +67,41 @@ def test_bibliography_only_is_a_real_supported_export(prepared, tmp_path):
     assert target.exists() and read_citation_docx(target)["clusters"] == []
 
 
+def test_bibtex_import_uses_existing_csl_and_docx_with_literal_authors_and_exact_sources(
+        prepared, tmp_path):
+    library, workspace, other, academic, _, source = prepared
+    original = library.assets.resolve(source['asset']).read_bytes()
+    hit, = library.search(workspace, 'spectroscopy')
+    quote = library.copy(workspace, hit.ref, hit.revision, 'quote')
+    raw = r'''@book{unselected,title={Unselected BibTeX}}
+@book{kept,title={Synthetic BibTeX methods},
+ author={{Research and Development, Inc.} and , Jr., John},
+ year=2026,publisher={Reviewed Press},pages={11--19},note={PrivateImportedNote}}'''.encode()
+    preview = academic.preview(raw, 'bibtex')
+    assert preview.entries[1].fields['authors'] == ('Research and Development, Inc.', ', Jr., John')
+    saved = academic.import_selected(preview, (1,))
+    reference = academic.get(saved.imported_ids[0])
+    assert reference.edition_id is None and reference.id != 'kept'
+    assert 'Citation key: kept' in reference.notes
+    assert not academic.list(query='Unselected BibTeX')
+    controller = CitationFormattingController(library, workspace)
+    snapshot = controller.load()
+    imported = next(row for row in snapshot.references if row['id'] == reference.id)
+    assert imported['author'] == [{'literal': 'Research and Development, Inc.'}, {'literal': ', Jr., John'}]
+    result = controller.render(snapshot, reference_ids=(reference.id,), style='apa')
+    assert 'Research and Development, Inc.' in result.bibliography[0].text
+    assert 'Synthetic BibTeX methods' in result.bibliography[0].text
+    destination = controller.export_docx(snapshot, result, tmp_path / 'bibtex-citations.docx')
+    recovered = read_citation_docx(destination)
+    assert recovered['references'][0]['author'] == imported['author']
+    assert 'PrivateImportedNote' not in json.dumps(recovered)
+    assert library.assets.resolve(source['asset']).read_bytes() == original
+    assert library.copy(workspace, hit.ref, hit.revision, 'quote') == quote
+    reopened = AcademicController(LibraryApp(library.root), workspace)
+    assert reopened.get(reference.id) == reference
+    assert not AcademicController(library, other).list(query='Synthetic BibTeX')
+
+
 def test_foreign_scope_and_another_controller_snapshot_cannot_be_reused(prepared):
     library, workspace, other, _, reference, _ = prepared
     controller = CitationFormattingController(library, workspace)
