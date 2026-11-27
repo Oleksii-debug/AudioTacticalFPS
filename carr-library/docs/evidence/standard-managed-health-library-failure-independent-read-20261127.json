@@ -1,0 +1,903 @@
+{
+  "schema": "carr.standard-managed-health-library-failure-independent-read.v1",
+  "status": "FAIL",
+  "candidate": {
+    "commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+    "tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+    "branch": "carr/standard-native-r28-managed-health-d3a-20261127",
+    "run_id": 46066498865,
+    "job_id": 140732969789,
+    "conclusion": "failure",
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46066498865"
+  },
+  "artifact": {
+    "run": 46066498865,
+    "commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+    "id": 15232821513,
+    "bytes": 1777762,
+    "sha256": "e1871dbd86a345f902c56e1a2ca4f476cdd5f3f6799b6d81c3e786c5b10e3d64",
+    "kind": "standard-managed-health-repaired-installed-library-failure"
+  },
+  "failure": {
+    "entrypoint": "packaging/probe_standard_update_windows.py",
+    "source_blob": "d966966e0858ef656457ddbd173fbebc41c58fec",
+    "line": 436,
+    "message": "The exact installed audio-free library qualification failed.",
+    "native_child_returncode": "NOT_RETAINED",
+    "native_child_output": "NOT_RETAINED",
+    "library_50_result": "NO_RETAINED_CASE_EVIDENCE",
+    "full_managed_15_result": "NOT_QUALIFIED"
+  },
+  "independent_readers": [
+    {
+      "commit": "71658ecbbb07cf20249b2621993c1c16c0e692b3",
+      "run_id": 46070357198,
+      "job_id": 140745556028,
+      "conclusion": "success",
+      "job_log_sha256": "a5a282d54006eefe2d9140faff6894c5d8efad43b5cfeacf4a1bf66bf6cec7c0"
+    },
+    {
+      "commit": "f5b648c758796c308aa5eb46ddcc6c96f3324440",
+      "run_id": 46070548354,
+      "job_id": 140746191660,
+      "conclusion": "success",
+      "job_log_sha256": "ef2f4194c212879b26cb0c7f07d5fbbdcccc05defda5176baca7c60147dffb21"
+    }
+  ],
+  "method": "Both readers independently verified exact original run/head/artifact metadata, size and SHA256; inert bounded ZIP/JSON/XML/text reads only. No extraction, import or execution of archive contents. Second reader required exactly90 members and printed their complete names.",
+  "verified_partial_results": {
+    "status": "VERIFIED_PARTIAL_ONLY",
+    "source": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+    "tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+    "source81": true,
+    "installed81": true,
+    "install6": true,
+    "maintenance4": true,
+    "actual_restart_rollback": true,
+    "managed15": "NOT_QUALIFIED",
+    "library50": "NOT_QUALIFIED",
+    "library_child_output": "NOT_RETAINED",
+    "artifact_member_count": 90,
+    "reader_runs": [
+      46070357198,
+      46070548354
+    ]
+  },
+  "junit": [
+    {
+      "artifact": 15232821513,
+      "file": "standard-system-helper-installed.xml",
+      "cases": 81,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.security.test_installation::test_active_work_refuses_update_before_any_stage_or_backup": 1,
+        "tests.security.test_installation::test_aliased_parent_directories_are_refused_even_when_signed": 1,
+        "tests.security.test_installation::test_budget_and_link_members_rejected": 1,
+        "tests.security.test_installation::test_changed_package_and_redirected_recovery_paths_are_rejected": 1,
+        "tests.security.test_installation::test_crash_after_protected_commit_finalizes_b_instead_of_rolling_back": 1,
+        "tests.security.test_installation::test_even_signed_archive_cannot_escape_staging": 8,
+        "tests.security.test_installation::test_failed_health_restores_a_and_keeps_checked_backup": 1,
+        "tests.security.test_installation::test_failed_preupdate_backup_never_activates_candidate": 1,
+        "tests.security.test_installation::test_forged_zip_directory_count_is_bounded_before_zipinfo_allocation": 1,
+        "tests.security.test_installation::test_plain_checksum_cannot_masquerade_as_a_tuf_verified_package": 1,
+        "tests.security.test_installation::test_portable_adapter_refuses_managed_slots_before_verifier_or_process": 8,
+        "tests.security.test_installation::test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier": 2,
+        "tests.security.test_installation::test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation": 4,
+        "tests.security.test_installation::test_process_death_between_renames_recovers_a_without_touching_data": 2,
+        "tests.security.test_installation::test_protected_store_failure_rolls_back_without_losing_data": 1,
+        "tests.security.test_installation::test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve_library": 1,
+        "tests.security.test_standard_health::test_portable_release_verifier_still_refuses_managed_ownership": 2,
+        "tests.security.test_standard_health::test_standard_health_cancellation_never_reports_success": 2,
+        "tests.security.test_standard_health::test_standard_health_keeps_real_payload_and_installation_checks": 3,
+        "tests.security.test_standard_health::test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+        "tests.security.test_standard_health::test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+        "tests.security.test_standard_health::test_standard_health_rechecks_activation_after_child_completion": 2,
+        "tests.security.test_standard_health::test_standard_health_rejects_changed_activation_before_commands": 5,
+        "tests.security.test_standard_health::test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+        "tests.security.test_standard_health::test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+        "tests.security.test_standard_health::test_standard_health_stops_at_each_failed_health_command": 3,
+        "tests.security.test_standard_health::test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+        "tests.security.test_standard_system_helper::test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+        "tests.security.test_standard_system_helper::test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+        "tests.security.test_standard_system_helper::test_redirected_system_helper_parent_is_refused": 1,
+        "tests.security.test_standard_system_helper::test_shortcut_helper_failure_never_admits_its_untrusted_target": 2,
+        "tests.security.test_standard_system_helper::test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+        "tests.security.test_standard_system_helper::test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+        "tests.security.test_standard_system_helper::test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+        "tests.security.test_standard_system_helper::test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3
+      }
+    },
+    {
+      "artifact": 15232821513,
+      "file": "standard-system-helper-source.xml",
+      "cases": 81,
+      "failures": 0,
+      "errors": 0,
+      "skips": 0,
+      "function_counter": {
+        "tests.security.test_installation::test_active_work_refuses_update_before_any_stage_or_backup": 1,
+        "tests.security.test_installation::test_aliased_parent_directories_are_refused_even_when_signed": 1,
+        "tests.security.test_installation::test_budget_and_link_members_rejected": 1,
+        "tests.security.test_installation::test_changed_package_and_redirected_recovery_paths_are_rejected": 1,
+        "tests.security.test_installation::test_crash_after_protected_commit_finalizes_b_instead_of_rolling_back": 1,
+        "tests.security.test_installation::test_even_signed_archive_cannot_escape_staging": 8,
+        "tests.security.test_installation::test_failed_health_restores_a_and_keeps_checked_backup": 1,
+        "tests.security.test_installation::test_failed_preupdate_backup_never_activates_candidate": 1,
+        "tests.security.test_installation::test_forged_zip_directory_count_is_bounded_before_zipinfo_allocation": 1,
+        "tests.security.test_installation::test_plain_checksum_cannot_masquerade_as_a_tuf_verified_package": 1,
+        "tests.security.test_installation::test_portable_adapter_refuses_managed_slots_before_verifier_or_process": 8,
+        "tests.security.test_installation::test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier": 2,
+        "tests.security.test_installation::test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation": 4,
+        "tests.security.test_installation::test_process_death_between_renames_recovers_a_without_touching_data": 2,
+        "tests.security.test_installation::test_protected_store_failure_rolls_back_without_losing_data": 1,
+        "tests.security.test_installation::test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve_library": 1,
+        "tests.security.test_standard_health::test_portable_release_verifier_still_refuses_managed_ownership": 2,
+        "tests.security.test_standard_health::test_standard_health_cancellation_never_reports_success": 2,
+        "tests.security.test_standard_health::test_standard_health_keeps_real_payload_and_installation_checks": 3,
+        "tests.security.test_standard_health::test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+        "tests.security.test_standard_health::test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+        "tests.security.test_standard_health::test_standard_health_rechecks_activation_after_child_completion": 2,
+        "tests.security.test_standard_health::test_standard_health_rejects_changed_activation_before_commands": 5,
+        "tests.security.test_standard_health::test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+        "tests.security.test_standard_health::test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+        "tests.security.test_standard_health::test_standard_health_stops_at_each_failed_health_command": 3,
+        "tests.security.test_standard_health::test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+        "tests.security.test_standard_system_helper::test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+        "tests.security.test_standard_system_helper::test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+        "tests.security.test_standard_system_helper::test_redirected_system_helper_parent_is_refused": 1,
+        "tests.security.test_standard_system_helper::test_shortcut_helper_failure_never_admits_its_untrusted_target": 2,
+        "tests.security.test_standard_system_helper::test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+        "tests.security.test_standard_system_helper::test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+        "tests.security.test_standard_system_helper::test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+        "tests.security.test_standard_system_helper::test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3
+      }
+    }
+  ],
+  "regression_module_origins": [
+    {
+      "mode": "source",
+      "package_origin": "D:\\a\\AudioTacticalFPS\\AudioTacticalFPS\\carr-library\\src\\carr_library",
+      "tested_modules_sha256": {
+        "carr_library.security.standard_windows": "ea85a332e1ddd310e526bc6c944d3e173c402b3e66e67573a80b774cc438de2a",
+        "carr_library.security.installation": "0274657a2a724bf50a1e4caabb54962b1bceb9df398acabbb78d7548a2a7e877",
+        "carr_library.security.standard_installation": "72c3b6192088813f9b1eeec7bacfb8dbeaec9da074ed1aedc0a5a577934b00de",
+        "carr_library.security._files": "7940e97ec49d3e375627046f852a209cb131f7aba9c0c360196b82e158e0c29b"
+      }
+    },
+    {
+      "mode": "installed",
+      "package_origin": "D:\\a\\_temp\\carr-windows-python\\Lib\\site-packages\\carr_library",
+      "tested_modules_sha256": {
+        "carr_library.security.standard_windows": "ea85a332e1ddd310e526bc6c944d3e173c402b3e66e67573a80b774cc438de2a",
+        "carr_library.security.installation": "0274657a2a724bf50a1e4caabb54962b1bceb9df398acabbb78d7548a2a7e877",
+        "carr_library.security.standard_installation": "72c3b6192088813f9b1eeec7bacfb8dbeaec9da074ed1aedc0a5a577934b00de",
+        "carr_library.security._files": "7940e97ec49d3e375627046f852a209cb131f7aba9c0c360196b82e158e0c29b"
+      }
+    }
+  ],
+  "raw_members": [
+    {
+      "artifact": 15232821513,
+      "name": "full-bundle-verified.json",
+      "bytes": 343,
+      "sha256": "595da9ea537f89e9bf8694f7b2909ffdeaf570df288d8ff5275cba5706d8915e"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "full-lock-source-inventory.json",
+      "bytes": 1257,
+      "sha256": "0e4a68351c9deeb252a89277e03951998c452762cc204a1af899eeb00201f8cc"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "native-launcher-installed-proof.json",
+      "bytes": 493,
+      "sha256": "6f43ace1e668a93ed1766f8bd7b1140fcb4ebaaab696246c01878085cdf8db58"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "native-launcher-process.json",
+      "bytes": 815,
+      "sha256": "12db0f7ad995d04bf8adcf5e7b421943bf88bbe7d248360d0d25b5aef2e3ca98"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "native-runtime.json",
+      "bytes": 201,
+      "sha256": "64281eeb3711297f6bd32a6778396ab3ad7ff4ea689a9a34c070916f16b0d182"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "sealed-sbom.json",
+      "bytes": 107,
+      "sha256": "6191b4df15f81653013f1e39495553dbd74e3af08fae7fbfd2fe71b13e169840"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "source-wheel-proof.json",
+      "bytes": 356,
+      "sha256": "a55f7b9bed309c635b828537175c78aab620280e538fb7ea844663baf2ac017a"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-installer/disk-budget.json",
+      "bytes": 246,
+      "sha256": "b4c4f4eb70dc50c2b764422bbba045f46f768e51a695b5705871c43c27fe029b"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-installer/good-build.json",
+      "bytes": 878,
+      "sha256": "fa73cc4f0c724f39d105cfa494bfbb0eed815ae69b9c6f9b2f27fa2039451b01"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-installer/inputs.json",
+      "bytes": 1235,
+      "sha256": "e66fa677a725e800522df6091aad3e31d68840d777677622354f78e0ebf61278"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-installer/native.json",
+      "bytes": 1002,
+      "sha256": "dd248958c49f15dd03a636c6b7ef0e7e0d3022ca570718122ea5047b4dd6a83c"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-installer/negative-build.json",
+      "bytes": 878,
+      "sha256": "2f02a25a52cc97b943f70dc70ad6d70a16ea817a9d2de855a46dcf439801e382"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-installer/payload-manifest.json",
+      "bytes": 543560,
+      "sha256": "6abefd3debcd81b032f25f05f1a89bdf788c64f7912d117b9dc2420bb7fc49e9"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-installer/proof.json",
+      "bytes": 2067,
+      "sha256": "d1a3c3636dec60d43e397fa3c524728f88dca90f7fb6b0fc0e505a7aafedeb65"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-system-helper-installed.xml",
+      "bytes": 12621,
+      "sha256": "f7a0089c4bab22a53408a2024c845d7f2cbe607d5da854da1224918ddc32a9e1"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-system-helper-regressions.json",
+      "bytes": 9614,
+      "sha256": "ecb5a38acd856600d9434e443565f18db73ec0aa7094dc9ca572d720f103f094"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-system-helper-regressions.txt",
+      "bytes": 11126,
+      "sha256": "e3ef93af6d65fcb21be96b3a9711c304a7640e5aa8e1e112218c8f5f896e696f"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-system-helper-source.xml",
+      "bytes": 12621,
+      "sha256": "f6bbf482579424c2e04d9859e0a8a91122a6ec85bb6e4a80d7b7cbbd8598c8be"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/candidate-application-wheel.json",
+      "bytes": 362,
+      "sha256": "7013234d4dacb64c8ea323a0b9b9ebcdd0c4d02aab023113905ec7e31b1a627f"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/disk-budget.json",
+      "bytes": 667,
+      "sha256": "1cb59d2d3eab0af02b8f01c0d9eb15df58573fbcb44675f999af376d3ce32331"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/inputs.json",
+      "bytes": 1276,
+      "sha256": "aa68cb859912525540aad194ced49486c8258b091a0851fead06a61419b6c9ea"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/maintenance-install.log",
+      "bytes": 3191107,
+      "sha256": "affb3a24a6cf5c0bb95fef64efcc5765a846243c259ec35af1761d357d7ee170"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/native-managed-33e72e86c9e448cb9354d40e578f369c.log",
+      "bytes": 3194069,
+      "sha256": "c448141bf67b5851b474ce5174425d072159e27332452fcc3b91262d3bf0d360"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/native-managed-88be0e48908049fd9e92777a3b6ab233.log",
+      "bytes": 3194068,
+      "sha256": "8bd71e3a59f67382f17437538aa1ca6937a997753677735165e9427eda721ca6"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/native-restart-crash-after-activation.json",
+      "bytes": 425,
+      "sha256": "078a3d2a63d3b3e41cc300af3a99959066e5f25a3cb0fef5ab833fcdca9934ac"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/native-probe.log",
+      "bytes": 962,
+      "sha256": "d142577468597a89fac07654e7a6f29c5a21fae731cd003a63c10d02fb1da34c"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/native-restart-recover.json",
+      "bytes": 433,
+      "sha256": "b4d7738a479464c3b4701f4a4db30d31e9869baf6a86207a1df4a18e84567d70"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/original-application-wheel/manifest.json",
+      "bytes": 810,
+      "sha256": "f4048cd65d161b5124bc3879517f2bef94622b9d4629e53e2f9ef0916791a043"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/original-build.json",
+      "bytes": 878,
+      "sha256": "32732a48362eae95c73ce5b121df52936122f0b69c75a22b073cf1c99a11e0c8"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/original-candidate-application-wheel.json",
+      "bytes": 362,
+      "sha256": "7013234d4dacb64c8ea323a0b9b9ebcdd0c4d02aab023113905ec7e31b1a627f"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/original-install.log",
+      "bytes": 3190683,
+      "sha256": "463af272463c2508e3e2871d4645adc8f222dd9f886ae6c81b9172d87d947756"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/original-manifest.json",
+      "bytes": 543072,
+      "sha256": "01c0c1fb45de0dae3afe7638be0ad5d946495e5b0a4ad453dae12ee2bffbde0d"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/original-maintenance.json",
+      "bytes": 731,
+      "sha256": "d4a7d7fb0aad45a1340cf0d5ac3e2a649cd4893a36fff89243e086c9fb8b78f2"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/previous-application-wheel/manifest.json",
+      "bytes": 810,
+      "sha256": "69512b429e195f496f8ac122fd6586d94e555cd9082358cc8cf063b7cfc8ed3c"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/previous-manifest.json",
+      "bytes": 543072,
+      "sha256": "c0f6c54d8b0ee5ed272267e7a66c92ca30b0002920d42eb09f24ccdd385ae5b2"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "standard-update/previous-build.json",
+      "bytes": 878,
+      "sha256": "8d8b997564fc3c001742557c802817c613cd49d9e0081b3c34af44d3c3e8c7dd"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "tested-application-wheel.json",
+      "bytes": 334,
+      "sha256": "9223cea716519451c0cb88af2509745582a608c63fbacab97d4091b5da9e16c9"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "tested-commit.txt",
+      "bytes": 42,
+      "sha256": "7a4770cdb0c4ff937c95e35def3bf43651e8ba7fddacd5ebeb9b84953b6832d6"
+    },
+    {
+      "artifact": 15232821513,
+      "name": "tested-tree.txt",
+      "bytes": 42,
+      "sha256": "ac26240101f9188219d392498dd8999c37f9e7f7ca594802bceaa0b9034dd153"
+    }
+  ],
+  "full_artifact_member_names": [
+    "audio-runtime.json",
+    "core-bundle-install.txt",
+    "core-bundle-self-test.json",
+    "full-bundle-build.json",
+    "full-bundle-firewall.json",
+    "full-bundle-native-runtime.json",
+    "full-bundle-verified.json",
+    "full-lock-source-inventory.json",
+    "installed-packages.json",
+    "local-audio-setup.txt",
+    "model-acquisition.json",
+    "native-launcher-build.json",
+    "native-launcher-installed-proof.json",
+    "native-launcher-installed.json",
+    "native-launcher-installed.txt",
+    "native-launcher-process.json",
+    "native-runtime-preparation.json",
+    "native-runtime.json",
+    "ocr-preparation.json",
+    "sealed-sbom.json",
+    "source-syntax-preflight.json",
+    "standard-installer/base-build.log",
+    "source-wheel-proof.json",
+    "standard-installer/blocked-uninstall-process.log",
+    "standard-installer/blocked-uninstall-setup.log",
+    "standard-installer/build-verification.log",
+    "standard-installer/compiler-probe.txt",
+    "standard-installer/disk-budget.json",
+    "standard-installer/failed-bootstrap-setup.log",
+    "standard-installer/failed-bootstrap-process.log",
+    "standard-installer/good-build.json",
+    "standard-installer/good-build.log",
+    "standard-installer/good-manifest.json",
+    "standard-installer/inputs.json",
+    "standard-installer/install-process.log",
+    "standard-installer/install-setup.log",
+    "standard-installer/install-shortcut.txt",
+    "standard-installer/native-probe.log",
+    "standard-installer/native-runtime.log",
+    "standard-installer/native.json",
+    "standard-installer/negative-build.json",
+    "standard-installer/negative-build.log",
+    "standard-installer/negative-manifest.json",
+    "standard-installer/payload-manifest.json",
+    "standard-installer/proof.json",
+    "standard-installer/repair-process.log",
+    "standard-installer/repair-setup.log",
+    "standard-installer/repair-shortcut.txt",
+    "standard-installer/uninstall-process.log",
+    "standard-installer/verdict.log",
+    "standard-installer/uninstall-setup.log",
+    "standard-system-helper-installed.xml",
+    "standard-system-helper-regressions.json",
+    "standard-system-helper-regressions.txt",
+    "standard-system-helper-source.xml",
+    "standard-update/candidate-application-wheel.json",
+    "standard-update/disk-budget.json",
+    "standard-update/inputs.json",
+    "standard-update/maintenance-install.log",
+    "standard-update/native-managed-33e72e86c9e448cb9354d40e578f369c.log",
+    "standard-update/native-managed-88be0e48908049fd9e92777a3b6ab233.log",
+    "standard-update/native-restart-crash-after-activation.json",
+    "standard-update/native-probe.log",
+    "standard-update/native-restart-recover.json",
+    "standard-update/original-application-wheel/manifest.json",
+    "standard-update/original-base-bundle.log",
+    "standard-update/original-build-verification.log",
+    "standard-update/original-build.json",
+    "standard-update/original-candidate-application-wheel.json",
+    "standard-update/original-install.log",
+    "standard-update/original-manifest.json",
+    "standard-update/original-maintenance.json",
+    "standard-update/original-native-runtime.log",
+    "standard-update/original-standard-build.log",
+    "standard-update/original-wheel-build.log",
+    "standard-update/preflight.log",
+    "standard-update/original-wheel-proof.log",
+    "standard-update/previous-application-wheel/manifest.json",
+    "standard-update/previous-base-bundle.log",
+    "standard-update/previous-build-verification.log",
+    "standard-update/previous-manifest.json",
+    "standard-update/previous-build.json",
+    "standard-update/previous-native-runtime.log",
+    "standard-update/previous-standard-build.log",
+    "standard-update/previous-wheel-build.log",
+    "standard-update/previous-wheel-proof.log",
+    "tested-application-wheel.json",
+    "tested-commit.txt",
+    "tested-tree.txt",
+    "word-runtime-abi.json"
+  ],
+  "retained_receipts": {
+    "standard-installer/proof.json": {
+      "active_application_blocks_uninstall": true,
+      "actual_installed_app_self_test": true,
+      "audio_transfer_guard": "ENFORCED",
+      "authenticode_verified": false,
+      "check_count": 6,
+      "checks": [
+        "active-application-blocks-uninstall",
+        "failed-bootstrap-preserves-previous",
+        "install",
+        "repair",
+        "uninstall",
+        "failed-environment-preserved"
+      ],
+      "compiler_engine_sha256": "1a6ff68241e7f3b18543bb875283788913abbdd7b9d7403ac094598d044def7a",
+      "compiler_sha256": "eb6f4410c8db367a5f74127e8025ad2ccacc0afabbe783959d237df3050f97fb",
+      "compiler_version": "6.7.1",
+      "existing_full_sealed_payload_unchanged": true,
+      "failed_bootstrap_preserves_previous_registration": true,
+      "failed_environment_preserved": true,
+      "failed_installer_sha256": "60de7f12c32d34de9ac80c23c160074eb25cf3750c4053d1fc7af49c240a6049",
+      "installer_sha256": "c4ba5d60672c167e956cee235d6a30ab5c0a92dc94c2fc239b9da62e2be55f7b",
+      "manifest_sha256": "6abefd3debcd81b032f25f05f1a89bdf788c64f7912d117b9dc2420bb7fc49e9",
+      "native_install_repair_uninstall": true,
+      "nvda_verified": false,
+      "old_process_survived_repair": true,
+      "one_start_menu_entry": true,
+      "probe_interpreter": "existing-installed-application",
+      "research_and_unknown_files_preserved": true,
+      "schema": 1,
+      "source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "source_files_sha256": {
+        "packaging/build_standard_installer.py": "4f855dc2aa727e1e3aa12c17084bda1c4124db0f4fbaea72a69e86bebe0b8dd9",
+        "packaging/probe_standard_installer_windows.py": "b5ccaa1634ece7ba89676117a7fe2aed36febbbab1926e2b28b965a46f0d297e",
+        "packaging/standard_windows.iss.in": "0b9e5ee9366b5539af8a9b3d12023eeb05bc89ff3192c8e543947b5a785b6174",
+        "scripts/ci_standard_installer.ps1": "4f3a33aee06fd2d471f710ee6ed6db57623a2db6fcd644c2c25a4a643e4304d1",
+        "tests/packaging/build_standard_failure_fixture.py": "42db7d7384ce9758607bce9856c1eab5798234ff20dd6d048da866460876a9fd"
+      },
+      "source_tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+      "status": "passed"
+    },
+    "standard-installer/native.json": {
+      "active_application_blocks_uninstall": true,
+      "actual_installed_app_self_test": true,
+      "authenticode_verified": false,
+      "checks": [
+        "active-application-blocks-uninstall",
+        "failed-bootstrap-preserves-previous",
+        "install",
+        "repair",
+        "uninstall",
+        "failed-environment-preserved"
+      ],
+      "failed_bootstrap_preserves_previous_registration": true,
+      "failed_environment_preserved": true,
+      "failed_installer_sha256": "60de7f12c32d34de9ac80c23c160074eb25cf3750c4053d1fc7af49c240a6049",
+      "installer_sha256": "c4ba5d60672c167e956cee235d6a30ab5c0a92dc94c2fc239b9da62e2be55f7b",
+      "manifest_sha256": "6abefd3debcd81b032f25f05f1a89bdf788c64f7912d117b9dc2420bb7fc49e9",
+      "native_install_repair_uninstall": true,
+      "nvda_verified": false,
+      "old_process_survived_repair": true,
+      "one_start_menu_entry": true,
+      "research_and_unknown_files_preserved": true,
+      "schema": 1,
+      "source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "status": "passed"
+    },
+    "standard-installer/inputs.json": {
+      "application_wheel_sha256": "1bfb3ad5f4fdfc7592c3d3b5aa3fda5229f756e2fce1c5432e5fe6668ff359ca",
+      "authenticode_verified": false,
+      "compiler_engine_sha256": "1a6ff68241e7f3b18543bb875283788913abbdd7b9d7403ac094598d044def7a",
+      "compiler_file_version": "0.0.0.0",
+      "compiler_path": "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe",
+      "compiler_sha256": "eb6f4410c8db367a5f74127e8025ad2ccacc0afabbe783959d237df3050f97fb",
+      "compiler_version": "6.7.1",
+      "estimated_payload_bytes": 798378461,
+      "existing_full_manifest_sha256": "f3442778c4384e99d161044d8471cd1bd3aa6ac96da6f2bea0f551b2465c0b95",
+      "initial_free_bytes": 229704445952,
+      "model_manifest_sha256": "33d54752e4b5b8e6566901b4b5899e5aaff880a9f0ec547557d1db8ff30655aa",
+      "native_launcher_sha256": "d4d0870e8e8135a84019fc79101ef5e6a431a47a5dfd9dfdb5b79cfa4c4202ff",
+      "nvda_verified": false,
+      "ocr_source_archive_sha256": "11a0045ed934c2d96b85ec1f78e60abb6bea21ee2c8b7af8ee91ad3b989bbab0",
+      "python_archive_sha256": "f31751f4a8483f5ac7cd77ad83f8dfb80d9f2a7245bff1585e27516c777fb46f",
+      "schema": 1,
+      "source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "source_tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+      "status": "recorded"
+    },
+    "standard-update/inputs.json": {
+      "authenticode_verified": false,
+      "candidate_manifest_sha256": "6abefd3debcd81b032f25f05f1a89bdf788c64f7912d117b9dc2420bb7fc49e9",
+      "candidate_setup_sha256": "c4ba5d60672c167e956cee235d6a30ab5c0a92dc94c2fc239b9da62e2be55f7b",
+      "candidate_source": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "candidate_tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+      "compiler_engine_sha256": "1a6ff68241e7f3b18543bb875283788913abbdd7b9d7403ac094598d044def7a",
+      "compiler_sha256": "eb6f4410c8db367a5f74127e8025ad2ccacc0afabbe783959d237df3050f97fb",
+      "dependency_lock_sha256": "12d587307f4ca4ebfadc881726ee9f0710b2f58af797fdebd5d4a732cc803edd",
+      "dependency_sbom_sha256": "a8e0dd50c3eeb598c6b33f00057aea9fed4749367b434796be57813eac9e6a79",
+      "existing_full_manifest_sha256": "f3442778c4384e99d161044d8471cd1bd3aa6ac96da6f2bea0f551b2465c0b95",
+      "nvda_verified": false,
+      "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+      "original_tree": "8f9de28e362ad3c53addb247ad8d774c16a9b46a",
+      "previous_source": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+      "previous_tree": "ac71a966c6ea7a26e3265b53ce6859a87d0fcc57",
+      "production_authority_qualified": false,
+      "schema": 1,
+      "status": "verified-inputs",
+      "synthetic_publisher_and_anchor": true
+    },
+    "standard-update/original-maintenance.json": {
+      "actual_original_process_preserved": true,
+      "actual_original_sealed_generation_preserved": true,
+      "checks": [
+        "exact-original-source-installed",
+        "ordinary-maintenance-installer-without-update-authority",
+        "original-process-and-sealed-generation-preserved",
+        "maintenance-native-self-test-and-user-data-preserved"
+      ],
+      "original_manifest_sha256": "01c0c1fb45de0dae3afe7638be0ad5d946495e5b0a4ad453dae12ee2bffbde0d",
+      "original_setup_sha256": "adecb83315da0c36499e7e7dd856778dab76a2bb0f69879297ccacef0fc0468f",
+      "original_source": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+      "previous_source": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+      "status": "passed",
+      "user_data_preserved": true
+    },
+    "standard-update/native-restart-crash-after-activation.json": {
+      "actual_installed_module": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\__init__.py",
+      "actual_process": 3860,
+      "candidate_source": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "current_anchor_sequence": 0,
+      "exit_code": 73,
+      "generation": "versions/910b1498d801-2",
+      "schema": 1,
+      "status": "controlled-process-exit-after-activation",
+      "transaction": "4663fe15e98549899d26ea1285465108"
+    },
+    "standard-update/native-restart-recover.json": {
+      "actual_fresh_process": true,
+      "actual_installed_module": "D:\\a\\_temp\\carr-bundle-ci\\complete bundle\\.venv\\Lib\\site-packages\\carr_library\\__init__.py",
+      "actual_process": 5324,
+      "actual_windows_vault": true,
+      "candidate_source": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "fresh_tuf_verification": true,
+      "prior_sha256": "f847ef721cae8084f505671fb4e2769d23bf281c1b2948966e6ffebceaa00ba9",
+      "schema": 1,
+      "status": "rolled-back"
+    },
+    "standard-update/original-application-wheel/manifest.json": {
+      "authenticode_verified": false,
+      "candidate_source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "candidate_wheel_sha256": "1bfb3ad5f4fdfc7592c3d3b5aa3fda5229f756e2fce1c5432e5fe6668ff359ca",
+      "kind": "tested-public-source-wheel",
+      "native_qualification": "NOT_RUN",
+      "nvda_verified": false,
+      "payload_files": 368,
+      "production_authority_qualified": false,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev1",
+      "required_runtime_files": 300,
+      "schema": 1,
+      "source_commit": "91332206578b4d8dc779fec08c8d51a67962b0ff",
+      "wheel_bytes": 1731811,
+      "wheel_expanded_bytes": 6448855,
+      "wheel_file": "universal_research_library-0.2.0.dev1-py3-none-any.whl",
+      "wheel_sha256": "a4874a429b77477c6afce77a37496d623f213b175ea1efd0e1c79445a7d2a7d8"
+    },
+    "standard-update/previous-application-wheel/manifest.json": {
+      "authenticode_verified": false,
+      "candidate_source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "candidate_wheel_sha256": "1bfb3ad5f4fdfc7592c3d3b5aa3fda5229f756e2fce1c5432e5fe6668ff359ca",
+      "kind": "tested-public-source-wheel",
+      "native_qualification": "NOT_RUN",
+      "nvda_verified": false,
+      "payload_files": 368,
+      "production_authority_qualified": false,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev1",
+      "required_runtime_files": 300,
+      "schema": 1,
+      "source_commit": "3cefda9cc3be02a96d4e40b291645f1bfc1fcc6f",
+      "wheel_bytes": 1732360,
+      "wheel_expanded_bytes": 6450261,
+      "wheel_file": "universal_research_library-0.2.0.dev1-py3-none-any.whl",
+      "wheel_sha256": "c9559c39ca319fff4557a99e404b5813bc27e6372e1d0465669ea783210cff6e"
+    },
+    "standard-update/candidate-application-wheel.json": {
+      "payload_files": 440,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 371,
+      "source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "source_tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+      "wheel_sha256": "1bfb3ad5f4fdfc7592c3d3b5aa3fda5229f756e2fce1c5432e5fe6668ff359ca"
+    },
+    "source-wheel-proof.json": {
+      "payload_files": 440,
+      "project_name": "universal-research-library",
+      "project_version": "0.2.0.dev2",
+      "required_runtime_files": 371,
+      "source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "source_tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+      "status": "PASS",
+      "wheel_sha256": "1bfb3ad5f4fdfc7592c3d3b5aa3fda5229f756e2fce1c5432e5fe6668ff359ca"
+    },
+    "tested-application-wheel.json": {
+      "installed_bundle": "PASS",
+      "sha256": "1bfb3ad5f4fdfc7592c3d3b5aa3fda5229f756e2fce1c5432e5fe6668ff359ca",
+      "source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "source_tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+      "status": "PASS",
+      "wheel": "universal_research_library-0.2.0.dev2-py3-none-any.whl"
+    },
+    "standard-system-helper-regressions.json": {
+      "native_activation": "NOT_RUN_BY_THIS_GATE",
+      "native_health_commands": "SYNTHETIC_RESULTS_IN_PORTABLE_REGRESSIONS",
+      "oracle_sha256": "413b0bee4faee75011b9ec97b3dd6fcf21fa903cf828d150a91a3220fad7de9a",
+      "private_file_policy": "UNCHANGED_SINGLE_LINK",
+      "qualification_sha256": "0e7bfab0aeae0b817ed4b408c3e4561e9787aef932ef2394c9f90a65696c982a",
+      "results": {
+        "installed": {
+          "failed": 0,
+          "functions": {
+            "tests.security.test_installation::test_active_work_refuses_update_before_any_stage_or_backup": 1,
+            "tests.security.test_installation::test_aliased_parent_directories_are_refused_even_when_signed": 1,
+            "tests.security.test_installation::test_budget_and_link_members_rejected": 1,
+            "tests.security.test_installation::test_changed_package_and_redirected_recovery_paths_are_rejected": 1,
+            "tests.security.test_installation::test_crash_after_protected_commit_finalizes_b_instead_of_rolling_back": 1,
+            "tests.security.test_installation::test_even_signed_archive_cannot_escape_staging": 8,
+            "tests.security.test_installation::test_failed_health_restores_a_and_keeps_checked_backup": 1,
+            "tests.security.test_installation::test_failed_preupdate_backup_never_activates_candidate": 1,
+            "tests.security.test_installation::test_forged_zip_directory_count_is_bounded_before_zipinfo_allocation": 1,
+            "tests.security.test_installation::test_plain_checksum_cannot_masquerade_as_a_tuf_verified_package": 1,
+            "tests.security.test_installation::test_portable_adapter_refuses_managed_slots_before_verifier_or_process": 8,
+            "tests.security.test_installation::test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier": 2,
+            "tests.security.test_installation::test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation": 4,
+            "tests.security.test_installation::test_process_death_between_renames_recovers_a_without_touching_data": 2,
+            "tests.security.test_installation::test_protected_store_failure_rolls_back_without_losing_data": 1,
+            "tests.security.test_installation::test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve_library": 1,
+            "tests.security.test_standard_health::test_portable_release_verifier_still_refuses_managed_ownership": 2,
+            "tests.security.test_standard_health::test_standard_health_cancellation_never_reports_success": 2,
+            "tests.security.test_standard_health::test_standard_health_keeps_real_payload_and_installation_checks": 3,
+            "tests.security.test_standard_health::test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+            "tests.security.test_standard_health::test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+            "tests.security.test_standard_health::test_standard_health_rechecks_activation_after_child_completion": 2,
+            "tests.security.test_standard_health::test_standard_health_rejects_changed_activation_before_commands": 5,
+            "tests.security.test_standard_health::test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+            "tests.security.test_standard_health::test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+            "tests.security.test_standard_health::test_standard_health_stops_at_each_failed_health_command": 3,
+            "tests.security.test_standard_health::test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+            "tests.security.test_standard_system_helper::test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+            "tests.security.test_standard_system_helper::test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+            "tests.security.test_standard_system_helper::test_redirected_system_helper_parent_is_refused": 1,
+            "tests.security.test_standard_system_helper::test_shortcut_helper_failure_never_admits_its_untrusted_target": 2,
+            "tests.security.test_standard_system_helper::test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+            "tests.security.test_standard_system_helper::test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+            "tests.security.test_standard_system_helper::test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+            "tests.security.test_standard_system_helper::test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3
+          },
+          "junit_sha256": "f7a0089c4bab22a53408a2024c845d7f2cbe607d5da854da1224918ddc32a9e1",
+          "passed": 81,
+          "skipped": 0
+        },
+        "source": {
+          "failed": 0,
+          "functions": {
+            "tests.security.test_installation::test_active_work_refuses_update_before_any_stage_or_backup": 1,
+            "tests.security.test_installation::test_aliased_parent_directories_are_refused_even_when_signed": 1,
+            "tests.security.test_installation::test_budget_and_link_members_rejected": 1,
+            "tests.security.test_installation::test_changed_package_and_redirected_recovery_paths_are_rejected": 1,
+            "tests.security.test_installation::test_crash_after_protected_commit_finalizes_b_instead_of_rolling_back": 1,
+            "tests.security.test_installation::test_even_signed_archive_cannot_escape_staging": 8,
+            "tests.security.test_installation::test_failed_health_restores_a_and_keeps_checked_backup": 1,
+            "tests.security.test_installation::test_failed_preupdate_backup_never_activates_candidate": 1,
+            "tests.security.test_installation::test_forged_zip_directory_count_is_bounded_before_zipinfo_allocation": 1,
+            "tests.security.test_installation::test_plain_checksum_cannot_masquerade_as_a_tuf_verified_package": 1,
+            "tests.security.test_installation::test_portable_adapter_refuses_managed_slots_before_verifier_or_process": 8,
+            "tests.security.test_installation::test_portable_named_slot_without_managed_marker_keeps_existing_real_verifier": 2,
+            "tests.security.test_installation::test_portable_transaction_refuses_managed_slot_before_stage_backup_or_activation": 4,
+            "tests.security.test_installation::test_process_death_between_renames_recovers_a_without_touching_data": 2,
+            "tests.security.test_installation::test_protected_store_failure_rolls_back_without_losing_data": 1,
+            "tests.security.test_installation::test_signed_a_to_b_real_stage_backup_activation_and_checked_restore_preserve_library": 1,
+            "tests.security.test_standard_health::test_portable_release_verifier_still_refuses_managed_ownership": 2,
+            "tests.security.test_standard_health::test_standard_health_cancellation_never_reports_success": 2,
+            "tests.security.test_standard_health::test_standard_health_keeps_real_payload_and_installation_checks": 3,
+            "tests.security.test_standard_health::test_standard_health_keeps_rejected_generation_unlaunchable": 1,
+            "tests.security.test_standard_health::test_standard_health_preserves_optional_exact_source_receipt_checks": 5,
+            "tests.security.test_standard_health::test_standard_health_rechecks_activation_after_child_completion": 2,
+            "tests.security.test_standard_health::test_standard_health_rejects_changed_activation_before_commands": 5,
+            "tests.security.test_standard_health::test_standard_health_rejects_foreign_snapshot_before_commands": 4,
+            "tests.security.test_standard_health::test_standard_health_rejects_signed_source_mismatch_before_commands": 1,
+            "tests.security.test_standard_health::test_standard_health_stops_at_each_failed_health_command": 3,
+            "tests.security.test_standard_health::test_standard_health_verifies_managed_payload_and_runs_fixed_commands": 2,
+            "tests.security.test_standard_system_helper::test_fixed_os_helper_accepts_servicing_hardlinks_without_environment_selection": 3,
+            "tests.security.test_standard_system_helper::test_hardlinked_private_files_remain_refused_before_any_content_read": 1,
+            "tests.security.test_standard_system_helper::test_redirected_system_helper_parent_is_refused": 1,
+            "tests.security.test_standard_system_helper::test_shortcut_helper_failure_never_admits_its_untrusted_target": 2,
+            "tests.security.test_standard_system_helper::test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+            "tests.security.test_standard_system_helper::test_system_api_failure_does_not_fall_back_to_environment_or_path": 1,
+            "tests.security.test_standard_system_helper::test_system_helper_rejects_nonregular_or_redirected_leaf": 4,
+            "tests.security.test_standard_system_helper::test_unavailable_or_truncated_system_directory_never_reaches_a_file": 3
+          },
+          "junit_sha256": "f6bbf482579424c2e04d9859e0a8a91122a6ec85bb6e4a80d7b7cbbd8598c8be",
+          "passed": 81,
+          "skipped": 0
+        }
+      },
+      "schema": "carr-system-helper-regressions/2",
+      "scope": "fixed-system-helper-plus-portable-ownership-and-managed-payload-health",
+      "source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+      "source_tree": "37e8d766ca3528e23f30f589f239a9b45ed123e1",
+      "status": "PASS",
+      "test_source_sha256": {
+        "tests/security/test_installation.py": "67c22fe7e3228b1d27ff84478a617b60e426a001f85ccb873e14154db79e8803",
+        "tests/security/test_standard_health.py": "bff968b074e9aa1ac0162f6ace52aa9e4e09958b5b57656d5ded5907bcccd400",
+        "tests/security/test_standard_system_helper.py": "9eee44b564b0f5a509fe565073ddef424ce82f2f078ee8083e062bfa4dc03be4"
+      }
+    }
+  },
+  "exact_source_hashes": {
+    "carr-library/src/carr_library/security/installation.py": {
+      "blob": "d51c82ec7b0757517719f5d638d928e605be9a66",
+      "sha256": "0274657a2a724bf50a1e4caabb54962b1bceb9df398acabbb78d7548a2a7e877"
+    },
+    "carr-library/src/carr_library/security/standard_windows.py": {
+      "blob": "7880fb12b71726e76a6dd9ebdae11fdbff99ee93",
+      "sha256": "ea85a332e1ddd310e526bc6c944d3e173c402b3e66e67573a80b774cc438de2a"
+    },
+    "carr-library/scripts/standard_system_helper_acceptance.py": {
+      "blob": "e1401349736cade4fc5d53fadff15865498cb5a1",
+      "sha256": "0e7bfab0aeae0b817ed4b408c3e4561e9787aef932ef2394c9f90a65696c982a"
+    },
+    "carr-library/src/carr_library/security/standard_installation.py": {
+      "blob": "c15047e2844ce48254c46d777664aef848f3dfcf",
+      "sha256": "72c3b6192088813f9b1eeec7bacfb8dbeaec9da074ed1aedc0a5a577934b00de"
+    },
+    "carr-library/src/carr_library/security/_files.py": {
+      "blob": "17b3e7bb3e33f22a9a0218f291f33b795f43e2bc",
+      "sha256": "7940e97ec49d3e375627046f852a209cb131f7aba9c0c360196b82e158e0c29b"
+    },
+    "carr-library/tests/security/test_standard_system_helper.py": {
+      "blob": "66cefd61be3a8f7c23a78a42354a7833abf9a0a1",
+      "sha256": "9eee44b564b0f5a509fe565073ddef424ce82f2f078ee8083e062bfa4dc03be4"
+    },
+    "carr-library/tests/security/test_installation.py": {
+      "blob": "a72943f6a66f30e56aa3e3bced879ca9aed5bc0d",
+      "sha256": "67c22fe7e3228b1d27ff84478a617b60e426a001f85ccb873e14154db79e8803"
+    },
+    "carr-library/tests/security/test_standard_health.py": {
+      "blob": "4b2f6b22bd31f8bdcc24d0f3cb17c124ee3a2533",
+      "sha256": "bff968b074e9aa1ac0162f6ace52aa9e4e09958b5b57656d5ded5907bcccd400"
+    },
+    "carr-library/packaging/probe_standard_update_windows.py": {
+      "blob": "d966966e0858ef656457ddbd173fbebc41c58fec",
+      "sha256": "175b3b60fe39f60729a37b7aca30e7fe663fb7aff93da81bbed2af06507116ec"
+    }
+  },
+  "source_bound_health_inference": {
+    "kind": "CONTROL_FLOW_INFERENCE_SEPARATE_FROM_FINAL_ACCEPTANCE",
+    "source_commit": "910b1498d801cabcf9ba2751b93ecbe01d825ea8",
+    "probe_blob": "d966966e0858ef656457ddbd173fbebc41c58fec",
+    "observed_failure_line": 436,
+    "conditions_passed_before_that_line": [
+      "RejectOneVerifiedHealth.health calls the actual WindowsStandardHost.health and increments its counter only after the real three-command health result succeeds.",
+      "The probe requires verified_health_calls==1 after its controlled post-health rejection, then checks exact A rollback and retained rejectedB.",
+      "The retained controlled-crash and fresh-recovery records are checked against distinct real PIDs, prior activation and protected anchor.",
+      "The probe then sets reject=False, completes a real transaction.apply, verifies its restored library backup, exact committedB source/generation, oldO/A processes/seals and protected anchor, and runs a separate realB self-test.",
+      "Only then does the owned PowerShell library qualifier return nonzero and cause line436."
+    ],
+    "no_standalone_health_receipt": true,
+    "no_final_managed_receipt": true
+  },
+  "observability_repair": {
+    "commit": "30673a5ee70a7d241c842a6577c5480260bfb8bf",
+    "tree": "a646eb81ab143f43ce905fd8409ed835bc63df2a",
+    "paths": [
+      "packaging/probe_standard_update_windows.py",
+      "docs/evidence/standard-library-child-output-diagnostic-20261127.json"
+    ],
+    "scope": "Retain exact existing bounded settled-child output/returncode; keep all failure predicates, owner, argv, environment, timeouts and products unchanged.",
+    "root_review": "GO",
+    "independent_review": "GO",
+    "new_run_id": 46071021445,
+    "new_run_status_at_recording": "IN_PROGRESS",
+    "result_transferred": false
+  },
+  "limits": {
+    "underlying_child_cause": "NOT_OBSERVED",
+    "library_case_counts": "UNKNOWN",
+    "full_standard_result": "FAIL",
+    "production_authority": "NOT_CONFIGURED",
+    "authenticode": "NOT_RUN",
+    "nvda": "NOT_RUN",
+    "full_platform": "NOT_QUALIFIED"
+  }
+}
