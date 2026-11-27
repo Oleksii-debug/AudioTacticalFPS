@@ -108,5 +108,6 @@ bootstrap = "bootstrap"
 "carr_library.speech" = ["COMTYPES_LICENSE.txt"]
 
 [tool.pytest.ini_options]
+markers = ["requires_loopback: real HTTP tests requiring an explicit loopback-only networking gate"]
 testpaths = ["tests", "bootstrap", "docs/contracts/probes"]
 pythonpath = ["src", "."]

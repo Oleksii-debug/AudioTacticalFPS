@@ -432,11 +432,26 @@ jobs:
           os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
+          import importlib
+          assistant_modules = ('carr_library.assistant.profiles', 'carr_library.assistant.providers', 'carr_library.assistant.state', 'carr_library.assistant.translation', 'carr_library.assistant.translation_cli', 'carr_library.assistant.llm', 'carr_library.assistant.service', 'carr_library.studio.cli', 'carr_library.ui.assistant_dialog', 'carr_library.ui.translation_dialog')
+          for module_name in assistant_modules:
+              importlib.import_module(module_name)
+          def installed_assistant_origins():
+              origins = {name: str(pathlib.Path(sys.modules[name].__file__).resolve()) for name in assistant_modules}
+              assert all(pathlib.Path(path).is_relative_to(root / '.venv') for path in origins.values()), origins
+              return origins
+          print(json.dumps({'assistant_installed_origins': installed_assistant_origins()}), flush=True)
           print(json.dumps({'installed_package': True, 'source_commit': manifest['source_commit']}), flush=True)
           import pytest
           # Keep the shared workflow list intact while exercising the additive
           # contents reader in this same installed-package/native-runtime process.
           contents_suites = [
+              'tests/assistant/test_translation.py',
+              'tests/assistant/test_translation_v3.py',
+              'tests/assistant/test_translation_advanced_source.py',
+              'tests/assistant/test_translation_advanced_union.py',
+              'tests/assistant/test_local_planning.py',
+              'tests/assistant/test_planning_handlers.py',
               'tests/reader/test_ebook_contents.py',
               'tests/e2e/test_epub_library.py',
               'tests/e2e/test_epub_reading_desk.py',
@@ -483,6 +498,7 @@ jobs:
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
+          installed_assistant_origins()
           kernel = ctypes.WinDLL('kernel32', use_last_error=True)
           kernel.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
           kernel.GetModuleHandleW.restype = wintypes.HMODULE
@@ -546,6 +562,12 @@ jobs:
         run: |
           $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
           $suites = @(
+            'tests/assistant/test_translation.py',
+            'tests/assistant/test_translation_v3.py',
+            'tests/assistant/test_translation_advanced_source.py',
+            'tests/assistant/test_translation_advanced_union.py',
+            'tests/assistant/test_local_planning.py',
+            'tests/assistant/test_planning_handlers.py',
             'tests/packaging/test_offline_runtime_policy.py',
             'tests/packaging/test_install_bytecode.py',
             'tests/e2e/test_offline_startup.py',
