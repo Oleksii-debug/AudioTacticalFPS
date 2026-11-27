@@ -234,8 +234,14 @@ def test_failed_native_cleanup_keeps_window_and_input_owner_for_retry(window, op
     setattr(value.player, operation + '_failure', True)
     getattr(value, operation)()
     drain(value, callbacks)
-    assert not value.closed and not disposed
-    assert value.session.admission is admitted and admitted.readers is not None
+    assert not value.closed and not disposed and value.player.native is not None
+    if operation == 'stop':
+        assert value.session.admission is admitted and admitted.readers is not None
+    else:
+        # Close first completed an actual stop, so input readers may safely
+        # close while the failed native handle owner stays available to retry.
+        assert value.session.admission is None and admitted.readers is None
+        assert value.player.status().state == 'stopped'
     setattr(value.player, operation + '_failure', False)
     getattr(value, operation)()
     drain(value, callbacks, lambda current: current.closed if operation == 'close' else not current.stopping)
