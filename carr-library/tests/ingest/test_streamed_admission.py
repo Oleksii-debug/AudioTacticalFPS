@@ -383,3 +383,59 @@ def test_cancelled_admission_does_not_rewrite_a_concurrently_changed_request(
     assert source.read_bytes() == raw and app.browse(workspace) == ()
     assert tuple(app.assets_dir.iterdir()) == ()
     assert broker.snapshot()['leases'] == []
+
+
+@pytest.mark.parametrize('streamed', [False, True], ids=['ordinary', 'streamed'])
+def test_cancel_between_lease_polls_preserves_an_actual_committed_publication(
+        tmp_path, monkeypatch, streamed):
+    from threading import Event
+    from carr_library.operations.broker import ResourceLease
+
+    factory = prepared if streamed else prepared_ordinary_document
+    app, workspace, source, request, raw = factory(tmp_path)
+    stopped, committed = Event(), Event()
+    observations, invoked = [], []
+    original_cancelled, original_invoke = ResourceLease.cancelled, worker._invoke
+
+    def cancellation_between_polls(self):
+        result = original_cancelled(self)
+        if committed.is_set() and not result:
+            # The first real lease poll says running. Its following checkpoint
+            # sees the newly set cancellation through the unchanged callback.
+            stopped.set()
+            observations.append(self.id)
+        return result
+
+    def actual_worker_then_late_poll(message, *, timeout, cancelled):
+        invoked.append(message['request_id'])
+        result = original_invoke(message, timeout=timeout, cancelled=cancelled)
+        assert result['state'] == 'complete'
+        current = worker.load_request(app.root, request['request_id'])
+        assert current['publication_candidate'] is not None
+        with app.read(workspace) as db:
+            assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+        # The real child has committed and been reaped. Exercise the same live
+        # callback before returning its terminal outcome; no fake SQL receipt
+        # or substitute publication is used to model this cancellation window.
+        committed.set()
+        assert cancelled() is True
+        return {'state': 'cancelled', 'message': 'Stop arrived after the real publication.'}
+
+    monkeypatch.setattr(ResourceLease, 'cancelled', cancellation_between_polls)
+    monkeypatch.setattr(worker, '_invoke', actual_worker_then_late_poll)
+    result = app.resume_import(workspace, request['request_id'], cancelled=stopped.is_set)
+    current = worker.load_request(app.root, request['request_id'])
+    assert stopped.is_set() and len(observations) == 1
+    assert invoked == [request['request_id']]
+    assert result['state'] == current['state'] == 'complete'
+    assert result['worker_terminal_state'] == 'cancelled'
+    assert result['publication_recovered'] is True and result['reconciled'] is True
+    assert current['publication_candidate'] is not None or current['publication'] is not None
+    assert source.read_bytes() == raw
+    with app.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1
+    assert ResourceBroker.for_app(app.root).snapshot()['leases'] == []
+    # A terminal reopen proves the persisted result without another child.
+    monkeypatch.setattr(worker, '_invoke',
+                        lambda *a, **k: pytest.fail('A committed request launched twice.'))
+    assert app.resume_import(workspace, request['request_id']) == result

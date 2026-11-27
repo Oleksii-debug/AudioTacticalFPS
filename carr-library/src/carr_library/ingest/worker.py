@@ -933,7 +933,14 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
             def stopped():
                 if lease.cancelled():
                     return True
-                lease.checkpoint()
+                try:
+                    lease.checkpoint()
+                except ResourceCancelled:
+                    # Cancellation may arrive between these two checks. Keep
+                    # the supervisor's normal stop/reap/publication-reconcile
+                    # path instead of misclassifying a running child as a
+                    # cancellation that happened before resource admission.
+                    return True
                 return False
             return execute(stopped)
     except ResourceCancelled:
