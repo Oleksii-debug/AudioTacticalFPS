@@ -278,13 +278,26 @@ class NativeReaderTabs:
         # A worker completion can still target the active copy. Do not visit
         # another tab for save confirmation until that worker has finished.
         self.check()
-        self.current.resume, self.current.save_path = self.capture()
+        captured = self.current
+        captured.resume, captured.save_path = self.capture()
         self.stop()
         for i, state in enumerate(self.states):
             if state.resume.document.dirty and state.resume.document.text:
                 self._activate(i)
                 if not self.confirm_close():
                     return False
+        # A clean copy can still have a new cursor, voice or playback position.
+        # Flush its captured passive state only after every close confirmation
+        # succeeds. Dirty copies retain their explicit Save/Discard decision.
+        if not (captured.resume.document.dirty and captured.resume.document.text):
+            self.check()
+            captured.token = captured.store.save_with_token(captured.resume,
+                                                            expected_token=captured.token)
+            captured.audio_signature = captured.resume.document._signature()
+            # An explicitly discarded new copy may not have a saved draft.
+            # Keep the prior membership instead of publishing a missing file.
+            if all(state.token is not None for state in self.states):
+                self._publish()
         return True
 
     def save_all(self, save_action):
