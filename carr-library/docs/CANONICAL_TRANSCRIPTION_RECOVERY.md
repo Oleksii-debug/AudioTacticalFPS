@@ -182,3 +182,9 @@ the broader retained-service regression tests use their existing harmless
 protocol children. The 56 production package pins are the existing integrated
 lock, including signed-admission dependencies. No private media, model or
 runtime payload enters the evidence artifact.
+
+## Observed Windows export correction — 2026-11-27
+
+Frozen run 46009009552 (job 140539398233, source e0dcac834abb46bda55a9d662674d3638188d682) executed all 265 source and 265 installed cases. Each population had 264 passes and one failure: the second `history-export` invocation incorrectly replaced its existing destination because the shared writer defaults to caller-authorized replacement. The native phase completed, but the aggregate gate correctly remained FAIL.
+
+The history exporter now requests atomic create-only publication whenever no captured destination approval is supplied. The native dialog can still pass its existing explicitly confirmed destination snapshot. The CLI regression checks both an identical existing output and a different user-authored existing file, retaining the same case identity and exact 265/265/53 gate populations. The original failure is retained as evidence; this correction requires its own actual Windows run.
