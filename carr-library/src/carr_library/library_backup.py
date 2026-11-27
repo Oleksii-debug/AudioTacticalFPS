@@ -507,7 +507,7 @@ def _canonical_manifest(manifest):
     return set(manifest) == fields
 
 
-def _read_manifest(directory, expected_manifest_sha256):
+def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: False):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
@@ -536,7 +536,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         fields.update(('state', 'generated_audio_included'))
         if manifest['version'] == 4:
             fields.add('pending')
-        if type(manifest['generated_audio_included']) is not bool or manifest['schema_version'] not in (3, 4):
+        if type(manifest['generated_audio_included']) is not bool or manifest['schema_version'] not in (3, 4, 5):
             raise RestoreError('invalid canonical state backup schema')
         try:
             validate_canonical_state(manifest['state'])
@@ -649,7 +649,7 @@ def _read_manifest(directory, expected_manifest_sha256):
         if 'pending' in manifest:
             _plain(directory / PENDING, directory=True)
         try:
-            validate_canonical_namespace(directory / 'state', manifest['state'])
+            validate_canonical_namespace(directory / 'state', manifest['state'], cancelled=cancelled)
         except (ValueError, TypeError, KeyError) as exc:
             raise RestoreError('invalid canonical state namespace: ' + str(exc)) from exc
     else:
@@ -725,7 +725,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
     canonical = _canonical_manifest(manifest)
     _plain(source / ORIGINALS, directory=True)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:

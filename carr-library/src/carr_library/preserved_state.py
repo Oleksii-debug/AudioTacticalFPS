@@ -9,8 +9,9 @@ from contextlib import ExitStack
 from hashlib import sha256
 import json
 import os
-from pathlib import Path, PurePosixPath, PureWindowsPath
+from pathlib import Path, PurePosixPath
 import re
+import unicodedata
 
 from .durable_state import atomic_bytes, local_path, regular, sync_directory
 
@@ -24,7 +25,9 @@ MAX_METADATA = 8 * 1024**2
 MAX_PATH_BYTES = 2048
 MAX_DEPTH = 32
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
-_LIVE_MARKERS = ('studio', 'speech', 'providers', 'audio', 'progress',
+_RESERVED = {'con', 'prn', 'aux', 'nul', 'conin$', 'conout$',
+             *(prefix + digit for prefix in ('com', 'lpt') for digit in '123456789¹²³')}
+_LIVE_MARKERS = ('studio', 'speech', 'providers', 'audio', 'progress', 'ui',
                  'translation/jobs', 'translation/provider')
 _TYPED_ROOTS = frozenset(('transcription', 'operations'))
 
@@ -50,9 +53,13 @@ def relative_name(value):
     path = PurePosixPath(value)
     if (path.is_absolute() or str(path) != value or len(path.parts) > MAX_DEPTH
             or any(part in ('.', '..') or part.endswith((' ', '.'))
-                   or PureWindowsPath(part).is_reserved() for part in path.parts)):
+                   or part.split('.')[0].rstrip(' ').casefold() in _RESERVED for part in path.parts)):
         raise ValueError('Invalid portable preserved-state path.')
     return path
+
+
+def _portable_key(value):
+    return unicodedata.normalize('NFC', value).casefold()
 
 
 def _names(entries, *, max_bytes=MAX_BYTES, max_files=MAX_FILES):
@@ -66,7 +73,7 @@ def _names(entries, *, max_bytes=MAX_BYTES, max_files=MAX_FILES):
                 or not isinstance(item['sha256'], str) or not _HASH.fullmatch(item['sha256'])):
             raise ValueError('Invalid preserved-state file identity.')
         path = relative_name(item['filename'])
-        folded = item['filename'].casefold()
+        folded = _portable_key(item['filename'])
         if folded in names:
             raise ValueError('Duplicate preserved-state filename.')
         names.add(folded)
@@ -74,11 +81,11 @@ def _names(entries, *, max_bytes=MAX_BYTES, max_files=MAX_FILES):
             if str(part) == '.':
                 continue
             text = str(part)
-            if text.casefold() not in spelling:
+            if _portable_key(text) not in spelling:
                 path_bytes += len(text.encode('utf-8')) + 64
                 if path_bytes > MAX_METADATA:
                     raise ValueError('Preserved-state path inventory exceeds its metadata budget.')
-            previous = spelling.setdefault(text.casefold(), text)
+            previous = spelling.setdefault(_portable_key(text), text)
             if previous != text:
                 raise ValueError('Ambiguous preserved-state path casing.')
         total += item['size_bytes']
@@ -86,7 +93,7 @@ def _names(entries, *, max_bytes=MAX_BYTES, max_files=MAX_FILES):
         if total > max_bytes or metadata > MAX_METADATA:
             raise ValueError('Preserved state exceeds its byte or metadata budget.')
     for item in entries:
-        if any(str(parent).casefold() in names for parent in PurePosixPath(item['filename']).parents
+        if any(_portable_key(str(parent)) in names for parent in PurePosixPath(item['filename']).parents
                if str(parent) != '.'):
             raise ValueError('A preserved-state file is also used as a directory.')
     return {item['filename']: item for item in entries}
@@ -128,13 +135,14 @@ def _walk(root, *, cancelled, live=False, max_bytes=MAX_BYTES, max_files=MAX_FIL
                 metadata += len(name.encode('utf-8')) + 160
                 if metadata > MAX_METADATA:
                     raise ValueError('Preserved-state directory inventory exceeds its metadata budget.')
-                previous = seen.setdefault(name.casefold(), name)
+                previous = seen.setdefault(_portable_key(name), name)
                 if previous != name:
                     raise ValueError('Ambiguous preserved-state path casing.')
                 path = Path(child.path)
-                info = child.stat(follow_symlinks=False)
                 is_dir = child.is_dir(follow_symlinks=False)
-                regular(path, directory=is_dir)
+                # Windows DirEntry.stat can omit st_nlink. Use the same checked
+                # Path.lstat metadata as every later read and copy comparison.
+                info = regular(path, directory=is_dir)
                 # These two current typed components retain their own snapshot
                 # guards, private-runtime exclusions and restore review gates.
                 if live and not relative and child.name.casefold() in _TYPED_ROOTS:
@@ -234,9 +242,9 @@ def _canonical_directories(inventory, expected):
         raise ValueError('Canonical state has unlisted directories.')
 
 
-def validate_canonical_namespace(source, entries):
+def validate_canonical_namespace(source, entries, *, cancelled=lambda: False):
     expected = validate_canonical_state(entries)
-    inventory = _walk(source, cancelled=lambda: False, max_files=MAX_FILES - 1)
+    inventory = _walk(source, cancelled=cancelled, max_files=MAX_FILES - 1)
     if set(inventory[0]) != set(expected):
         raise ValueError('Canonical state has missing or unlisted files.')
     _canonical_directories(inventory, expected)
