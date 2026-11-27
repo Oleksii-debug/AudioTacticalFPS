@@ -102,7 +102,7 @@ def main():
             return None
         title = ctypes.create_unicode_buffer(256)
         user32.GetWindowTextW(handle, title, len(title))
-        return handle if title.value == 'Replace academic bibliography' else None
+        return handle if title.value == 'Replace export' else None
 
     def focused(control):
         current = wx.Window.FindFocus()
@@ -234,6 +234,7 @@ def main():
     frame = academic = None
     original_picker = wx.FileDialog
     original_message_dialog = wx.MessageDialog
+    original_message_box = wx.MessageBox
     with TemporaryDirectory(prefix='research-interchange-native-') as temporary:
         root = Path(temporary)
         try:
@@ -420,7 +421,7 @@ def main():
                 yield from answer_yes(handle, attempts)
                 check('real Yes cannot replace a destination changed since the question was opened',
                       changed.read_bytes() == competing
-                      and academic.status.GetValue().startswith('Bibliography not exported:')
+                      and academic.status.GetValue().startswith('Bibliography export:')
                       and 'destination changed' in academic.status.GetValue() and focused(academic.status))
                 check('native export keeps references, original sources and exact saved evidence unchanged',
                       controller.get(reference.id) == reference
@@ -430,6 +431,7 @@ def main():
                 check('all controlled file choices are disposed and native confirmation stays real',
                       len(pickers) == 4 and all(picker.destroyed for picker in pickers)
                       and wx.MessageDialog is original_message_dialog
+                      and wx.MessageBox is original_message_box
                       and not list(root.glob('.research-export-*')))
                 yield from focus(academic.references)
                 yield from key(wx.WXK_ESCAPE)
