@@ -256,5 +256,83 @@
       "manual_nvda": "NOT_RUN",
       "third_party_reader_interoperability": "NOT_RUN"
     }
+  },
+  "live-playback": {
+    "probe": "scripts/windows_live_reading_smoke.py",
+    "arguments": [
+      "--native",
+      "--playback-effects"
+    ],
+    "modules": [
+      "carr_library.reader.live_speech",
+      "carr_library.ui.live_reading",
+      "carr_library.ui.reading_desk",
+      "carr_library.ui.narration_editor",
+      "carr_library.library_backup",
+      "carr_library.ui.builtin_keyboard_commands",
+      "carr_library.reader.live_playback",
+      "carr_library.native_runtime",
+      "carr_library.audio.jobs"
+    ],
+    "checks": {
+      "named read-only native source control": 1,
+      "all ten live reading actions are native and named": 1,
+      "native emoji and newline selection identifies exact source": 1,
+      "native reading range includes whole book": 1,
+      "actual installed English SAPI voice enumerated": 1,
+      "voice enumeration requires explicit selection": 1,
+      "unsupported SAPI pitch control stays disabled": 1,
+      "verified local FFmpeg captured for independent playback": 1,
+      "independent native playback controls are named and enabled": 1,
+      "actual native focus reaches independent playback tempo": 1,
+      "actual native focus reaches independent playback pitch": 1,
+      "actual native keyboard focus reaches selected voice": 1,
+      "actual SAPI utterance became prepared PCM": 1,
+      "prepared utterance retains chosen independent playback settings": 1,
+      "actual transformed PCM has expected independent tempo duration": 1,
+      "measured PCM and exact spoken source digest": 1,
+      "prepared excerpt highlights exact native source range": 1,
+      "preparing does not start a device or advance cursor": 1,
+      "stop retains only the last completed text cursor": 1,
+      "stop releases private utterance PCM": 1,
+      "book resume is exact source-bound": 1,
+      "speech resource reservation is released": 1,
+      "restored cursor uses exact native character position": 1,
+      "where-am-I is exposed through named native status": 1,
+      "native modal exits only after reader owners settle": 1,
+      "immutable source remains byte-identical after the native workflow": 1,
+      "native Unicode cursor roundtrip 0": 1,
+      "native Unicode cursor roundtrip 7": 1,
+      "native Unicode cursor roundtrip 8": 1,
+      "native Unicode cursor roundtrip 11": 1,
+      "native Unicode cursor roundtrip 38": 1,
+      "native Unicode cursor roundtrip 78": 1
+    },
+    "fields": {
+      "status": "PASS",
+      "native_controls": "EXECUTED",
+      "independent_playback": "EXECUTED",
+      "physical_playback": "NOT_RUN",
+      "nvda": "NOT_RUN",
+      "word_alignment": "NOT_CLAIMED",
+      "language_quality": "NOT_CLAIMED"
+    },
+    "positive_metrics": [
+      "actual_sapi_pcm.frames",
+      "actual_sapi_pcm.sample_rate",
+      "actual_sapi_pcm.synthesis_frames",
+      "actual_sapi_pcm.synthesis_sample_rate"
+    ],
+    "digest_fields": [
+      "actual_sapi_pcm.pcm_sha256",
+      "actual_sapi_pcm.source_sha256",
+      "actual_sapi_pcm.ffmpeg_sha256"
+    ],
+    "exact_metrics": {
+      "actual_sapi_pcm.playback_tempo": 1.25,
+      "actual_sapi_pcm.playback_pitch": 3
+    },
+    "runtime_digest_field": "actual_sapi_pcm.ffmpeg_sha256",
+    "runtime_environment": "CARR_FFMPEG"
   }
 }

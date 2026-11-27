@@ -6,6 +6,7 @@ from hashlib import sha256
 import importlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import runpy
@@ -100,10 +101,26 @@ def main():
                 value = value[part]
             if not isinstance(value, str) or re.fullmatch("[0-9a-f]{64}", value) is None:
                 raise ValueError("Native digest is missing: " + field)
-        if args.kind == "live":
+        if args.kind in ("live", "live-playback"):
             source = "Prefix 😀.\r\nSelected source sentence 🦉. Second source sentence.\nLast paragraph."
             if report["actual_sapi_pcm"]["source_sha256"] != sha256(source.encode("utf-8")).hexdigest():
                 raise ValueError("Native speech was not bound to the exact Unicode source.")
+        for field, expected_value in config.get("exact_metrics", {}).items():
+            value = report
+            for part in field.split("."):
+                value = value[part]
+            if type(value) not in (int, float) or value != expected_value:
+                raise ValueError("Native metric differs from the selected setting: " + field)
+        if "runtime_digest_field" in config:
+            from carr_library.audio.jobs import sha256_file
+            runtime = Path(os.environ[config["runtime_environment"]])
+            if not runtime.is_absolute():
+                raise ValueError("Native runtime must be explicitly selected by absolute path.")
+            value = report
+            for part in config["runtime_digest_field"].split("."):
+                value = value[part]
+            if value != sha256_file(runtime):
+                raise ValueError("Native PCM does not identify the gate-verified runtime.")
         commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
         tree = subprocess.check_output(["git", "rev-parse", "HEAD^{tree}"], cwd=root, text=True).strip()
         evidence.update(status="PASS", source_commit=commit, source_tree=tree, installed_package=True,
