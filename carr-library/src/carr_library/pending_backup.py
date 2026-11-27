@@ -266,7 +266,7 @@ def _metadata(value, db, workspace):
         raise ValueError('Pending edition/work identity differs from the catalog.')
 
 
-def _result(value, workspace, edition, db, *, complete=False):
+def _result(value, workspace, edition, db, *, complete=False, asset=None):
     if value is None and not complete:
         return
     if not isinstance(value, dict) or len(canonical(value).encode('utf-8')) > MAX_REQUEST:
@@ -277,10 +277,12 @@ def _result(value, workspace, edition, db, *, complete=False):
         revision = value.get('id')
         if value.get('state') != 'complete' or not _hash(revision):
             raise ValueError('Invalid complete import result.')
+        if not _hash(asset) or value.get('asset', asset) != asset:
+            raise ValueError('Complete import result source differs from its saved request.')
         if db.execute('SELECT 1 FROM revision JOIN sealed ON sealed.revision=revision.id '
-                      'WHERE revision.id=? AND workspace=? AND edition=?',
-                      (revision, workspace, edition)).fetchone() is None:
-            raise ValueError('Import completion has no matching sealed publication.')
+                      'WHERE revision.id=? AND workspace=? AND edition=? AND asset=?',
+                      (revision, workspace, edition, asset)).fetchone() is None:
+            raise ValueError('Import completion has no matching sealed source publication.')
 
 
 def _request(record, request_id, data_dir, db):
@@ -329,7 +331,7 @@ def _request(record, request_id, data_dir, db):
                 or (record.get('job') is not None and candidate['revision'] != record['job'])):
             raise ValueError('Pending publication candidate has a foreign source or journal identity.')
     _result(record.get('result'), record['workspace'], record['metadata']['edition_id'], db,
-            complete=record['state'] == 'complete')
+            complete=record['state'] == 'complete', asset=record.get('asset_sha256'))
 
 
 def _batch(record, batch_id, data_dir, db):
@@ -371,7 +373,9 @@ def _batch(record, batch_id, data_dir, db):
         _metadata(dict(title=row['title'], authors=[], language=None, edition=None, volume=None,
                        collections=record['collections'], work_id=row['work_id'], edition_id=row['edition_id']),
                   db, record['workspace'])
-        _result(row['result'], record['workspace'], row['edition_id'], db, complete=row['state'] == 'complete')
+        _result(row['result'], record['workspace'], row['edition_id'], db,
+                complete=row['state'] == 'complete',
+                asset=row['manifest']['sha256'] if row['manifest'] is not None else None)
     for row in record['rows']:
         duplicate = row['duplicate_of']
         if duplicate is None:

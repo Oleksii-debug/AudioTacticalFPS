@@ -17,7 +17,8 @@ spec.loader.exec_module(base)
 base.ORACLE_PATH, base.ORACLE = ORACLE_PATH, ORACLE
 base.SUPPORT = (*base.SUPPORT, 'tests/ui/test_operation_progress.py',
                 'tests/ui/test_keyboard_manager.py',
-                'tests/conversion/test_office_selection.py')
+                'tests/conversion/test_office_selection.py',
+                'tests/conversion/fixtures/ordered_slides.pptx')
 read, write, require, file_hash = base.read, base.write, base.require, base.file_hash
 source_identity, installed_identity = base.source_identity, base.installed_identity
 runtime_identity, population = base.runtime_identity, base.population
@@ -94,7 +95,9 @@ def finalize(results):
                     office_workspace_cases=ORACLE.get('office_workspace_cases', 0),
                     canonical_ocr_manifest_cases=ORACLE.get('canonical_ocr_manifest_cases', 0),
                     completed_speech_checkpoint_cases=ORACLE.get('completed_speech_checkpoint_cases', 0),
-                    canonical_process_signal_cases=ORACLE.get('canonical_process_signal_cases', 0))
+                    canonical_process_signal_cases=ORACLE.get('canonical_process_signal_cases', 0),
+                    canonical_completed_import_binding_cases=ORACLE.get('canonical_completed_import_binding_cases', 0),
+                    canonical_presentation_fixture_cases=ORACLE.get('canonical_presentation_fixture_cases', 0))
     except Exception as error:
         print(''.join(traceback.format_exception(type(error), error, error.__traceback__)),
               file=sys.stderr, flush=True)

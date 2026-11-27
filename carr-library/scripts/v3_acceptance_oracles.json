@@ -2789,6 +2789,27 @@
       "test_native_failure_is_not_reported_as_prepared_and_does_not_keep_network_input": 1,
       "test_temporary_cleanup_failure_cannot_leave_a_success_receipt": 1,
       "test_keyboard_stop_during_transfer_keeps_existing_library_and_archive": 1
+    },
+    "tests.storage.test_pending_completion_binding": {
+      "test_completed_docx_request_cannot_rebind_its_published_source": 3
+    },
+    "tests.conversion.test_canonical_presentation": {
+      "test_complete_canonical_presentation_uses_relationship_order_in_actual_worker": 1
+    },
+    "tests.e2e.test_extended_document_workflows": {
+      "test_format_listing_rejects_another_operation_before_opening_any_runtime": 4,
+      "test_format_listing_does_not_open_a_library_or_native_runtime": 1
+    },
+    "tests.e2e.test_search_operation_budget": {
+      "test_busy_search_fails_promptly_and_preserves_previous_selection": 5,
+      "test_federated_name_lookup_obeys_busy_search_policy": 1
+    },
+    "tests.ingest.test_import_replay_identity": {
+      "test_fresh_post_commit_cancellation_returns_committed_source": 2
+    },
+    "tests.ingest.test_txt_replay_registration": {
+      "test_cancelled_completed_replay_never_adds_membership": 1,
+      "test_cancellation_during_completed_replay_validation_rolls_back_membership": 1
     }
   },
   "installed": {
@@ -5478,6 +5499,27 @@
       "test_actual_equalizer_preserves_canonical_selective_gain_tolerances": 1,
       "test_actual_reflection_impulse_positions_keep_declared_millisecond_units": 2,
       "test_actual_silence_has_no_fabricated_finite_loudness_or_peak": 1
+    },
+    "tests.storage.test_pending_completion_binding": {
+      "test_completed_docx_request_cannot_rebind_its_published_source": 3
+    },
+    "tests.conversion.test_canonical_presentation": {
+      "test_complete_canonical_presentation_uses_relationship_order_in_actual_worker": 1
+    },
+    "tests.e2e.test_extended_document_workflows": {
+      "test_format_listing_rejects_another_operation_before_opening_any_runtime": 4,
+      "test_format_listing_does_not_open_a_library_or_native_runtime": 1
+    },
+    "tests.e2e.test_search_operation_budget": {
+      "test_busy_search_fails_promptly_and_preserves_previous_selection": 5,
+      "test_federated_name_lookup_obeys_busy_search_policy": 1
+    },
+    "tests.ingest.test_import_replay_identity": {
+      "test_fresh_post_commit_cancellation_returns_committed_source": 2
+    },
+    "tests.ingest.test_txt_replay_registration": {
+      "test_cancelled_completed_replay_never_adds_membership": 1,
+      "test_cancellation_during_completed_replay_validation_rolls_back_membership": 1
     }
   },
   "native_trust": [

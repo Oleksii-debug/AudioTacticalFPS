@@ -651,7 +651,10 @@ jobs:
             'tests/audio/test_completed_speech_checkpoint.py',
             'tests/audio/test_canonical_process_signal.py',
             'tests/packaging/test_audio_acquisition.py',
-            'tests/packaging/test_local_audio_download.py'
+            'tests/packaging/test_local_audio_download.py',
+            'tests/storage/test_pending_completion_binding.py',
+            'tests/conversion/test_canonical_presentation.py',
+            'tests/ingest/test_import_replay_identity.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1686,6 +1689,10 @@ jobs:
               'tests/conversion/test_chm_html_recovery.py',
               'tests/audio/test_completed_speech_checkpoint.py',
               'tests/audio/test_canonical_process_signal.py',
+              'tests/storage/test_pending_completion_binding.py',
+              'tests/conversion/test_canonical_presentation.py',
+              'tests/e2e/test_search_operation_budget.py',
+              'tests/ingest/test_import_replay_identity.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:

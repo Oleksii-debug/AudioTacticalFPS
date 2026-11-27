@@ -2,7 +2,7 @@
   "schema": 1,
   "component": "Preserved publication, canonical recovery, progress settings, native manifests and headless admission",
   "authoring_status": "NOT_RUN",
-  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases. Retain300; add41 explicit-TXT source/receipt/worker boundaries and4 current Studio semantic-keymap cases. Retain345 and add9 parent-owned Office native/publication workspace, resource, identity and argv boundaries. Retain354 and restore4 canonical OCR manifest snapshot, rehashed malformed JSON and oversize checksum regressions on the current installer. Retain358; add10 current completed-speech checkpoint/stop/identity cases and15 direct canonical owned-process and measured FFmpeg signal regressions.",
+  "derivation": "Retain the exact prior132 cases; add39 passive-provider recovery,9 headless admission,32 canonical progress preference and20 unchanged canonical manifest cases. Retain all232 and add27 observed-write, publication and settings-dialog conflict cases. Retain all259; restore7 canonical generic-state publication cases, protect6 existing resource-state cases through the shared retry owner, and add7 actual-child FFmpeg diagnostic boundary cases. Retain279 and restore21 canonical numeric-progress and count-boundary cases. Retain300; add41 explicit-TXT source/receipt/worker boundaries and4 current Studio semantic-keymap cases. Retain345 and add9 parent-owned Office native/publication workspace, resource, identity and argv boundaries. Retain354 and restore4 canonical OCR manifest snapshot, rehashed malformed JSON and oversize checksum regressions on the current installer. Retain358; add10 current completed-speech checkpoint/stop/identity cases and15 direct canonical owned-process and measured FFmpeg signal regressions. Retain383; restore3 exact canonical completed-DOCX source/result/missing-source boundaries and1 actual current-worker check using the exact canonical complete PPTX fixture.",
   "failure_source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
   "failure_run_id": 45993629737,
   "tests": {
@@ -215,9 +215,15 @@
       "test_actual_equalizer_preserves_canonical_selective_gain_tolerances": 1,
       "test_actual_reflection_impulse_positions_keep_declared_millisecond_units": 2,
       "test_actual_silence_has_no_fabricated_finite_loudness_or_peak": 1
+    },
+    "tests/storage/test_pending_completion_binding.py": {
+      "test_completed_docx_request_cannot_rebind_its_published_source": 3
+    },
+    "tests/conversion/test_canonical_presentation.py": {
+      "test_complete_canonical_presentation_uses_relationship_order_in_actual_worker": 1
     }
   },
-  "total_cases": 383,
+  "total_cases": 387,
   "canonical_provider_cases": 96,
   "canonical_preserved_cases": 37,
   "canonical_progress_cases": 59,
@@ -230,5 +236,7 @@
   "office_workspace_cases": 9,
   "canonical_ocr_manifest_cases": 4,
   "completed_speech_checkpoint_cases": 10,
-  "canonical_process_signal_cases": 15
+  "canonical_process_signal_cases": 15,
+  "canonical_completed_import_binding_cases": 3,
+  "canonical_presentation_fixture_cases": 1
 }

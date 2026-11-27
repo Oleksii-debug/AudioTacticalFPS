@@ -277,6 +277,26 @@ def test_nonsearch_reads_retain_busy_policy_and_query_only_snapshot(research):
     assert app.workspaces()[0].id == workspace
 
 
+@pytest.mark.parametrize('mode', ['phrase', 'word', 'terms', 'thematic', 'semantic'])
+def test_busy_search_fails_promptly_and_preserves_previous_selection(research, mode):
+    app, workspace = research
+    previous, = app.search(workspace, 'history')
+    selections = dict(app._selections)
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as writer:
+        assert writer.execute('PRAGMA journal_mode=DELETE').fetchone()[0] == 'delete'
+        writer.execute('BEGIN EXCLUSIVE')
+        try:
+            started = monotonic()
+            with pytest.raises(RuntimeError, match='library is busy'):
+                app.search(workspace, 'history', mode=mode, timeout=.05)
+            assert monotonic() - started < 1.0
+            assert app._selections == selections
+        finally:
+            writer.rollback()
+    assert app.copy(workspace, previous.ref, previous.revision, 'quote') == 'history'
+    assert app.search(workspace, 'archives')
+
+
 @pytest.mark.parametrize('journal', ['DELETE', 'WAL'])
 @pytest.mark.parametrize('phase', ['schema', 'authorization'])
 def test_search_cancellation_covers_initial_sql_and_cleans_up(research, monkeypatch, journal, phase):
@@ -341,3 +361,22 @@ def test_initial_schema_sql_obeys_search_deadline(research, monkeypatch):
         app.search(workspace, 'history', timeout=.02)
     assert monotonic() - started < 1.0
     assert not finished and app._selections == {}
+
+
+def test_federated_name_lookup_obeys_busy_search_policy(research):
+    from carr_library.search.federated import FederatedSearch
+    app, workspace = research
+    service = FederatedSearch(app)
+    previous = service.search((workspace,), 'history')
+    with closing(sqlite3.connect(app.database, isolation_level=None)) as writer:
+        writer.execute('PRAGMA journal_mode=DELETE')
+        writer.execute('BEGIN EXCLUSIVE')
+        try:
+            started = monotonic()
+            with pytest.raises(RuntimeError, match='library is busy'):
+                service.search((workspace,), 'history', timeout=.05)
+            assert monotonic() - started < 1.0
+            assert service.current is previous
+        finally:
+            writer.rollback()
+    assert service.copy(previous.hits[0], 'quote') == 'history'

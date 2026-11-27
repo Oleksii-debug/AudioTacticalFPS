@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "kind": "canonical-producer-fixture-preservation",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_test": "tests/conversion/test_conversion.py::test_presentation_order_uses_relationship_order",
+  "canonical_test_blob": "e8cae855b1d64bc85fe06b945f840976f07c67a3",
+  "fixture": {
+    "path": "tests/conversion/fixtures/ordered_slides.pptx",
+    "git_blob": "58b0d7cce78a50883ed4bcf1e73cbbcc40675d44",
+    "bytes": 29150,
+    "provenance": "Canonical synthetic complete presentation, described by its authored test as generated with python-pptx 1.0.2; reused by exact Git blob, not regenerated."
+  },
+  "current_module": "tests.conversion.test_canonical_presentation",
+  "declared_cases": 1,
+  "assertions": [
+    "Supervised current ConversionService retains slide2-before-slide1 relationship order (Earlier before Later), with exactly two reading segments.",
+    "Source/reading/segment hashes, original byte invariance, report-last pair and unverified quotation/printed-pagination status remain checked."
+  ],
+  "distinct_from_existing": "Current test_document_formats_xml already checks reversed relationship order with minimal in-memory XML. This case adds the exact complete producer-generated ZIP through the ordinary supervised service boundary.",
+  "validation": {
+    "fixture_git_identity": "Verified by exact canonical/current tree entry and asserted by test",
+    "python_compilation": "NOT_RUN",
+    "source_tests": "NOT_RUN",
+    "installed_tests": "NOT_RUN"
+  },
+  "source_parent": "7f901654c2257cc1d4796bcab2e54d038a916186"
+}
