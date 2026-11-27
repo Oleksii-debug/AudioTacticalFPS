@@ -1,0 +1,147 @@
+name: Resonance one-off MCI filename diagnosis
+
+# Only these diagnostic files trigger this job. The application, its six
+# ordinary acceptance workflows and the existing endpoint helper stay intact.
+on:
+  push:
+    branches: [carr/ci-endpoint-evaluation-20261127]
+    paths:
+      - .github/workflows/carr-mci-path-evaluation.yml
+      - .github/scripts/mci_path_diagnostic.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carr-mci-path-evaluation-20261127
+  cancel-in-progress: false
+
+jobs:
+  native-paths:
+    name: Exact P3 / same PCM / typed MCI and waveOut
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.autocrlf false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check out the exact diagnostic commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify unchanged P3 application and endpoint preparation
+        run: |
+          New-Item -ItemType Directory -Force ci-mci-results | Out-Null
+          git rev-parse HEAD | Set-Content ci-mci-results/tested-commit.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code 10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a HEAD -- .
+          if ($LASTEXITCODE -ne 0) { throw 'The diagnostic must retain the exact P3 carr-library tree.' }
+          git ls-tree -r HEAD -- src/carr_library scripts/ci_audio_endpoint.py scripts/ci_audio_endpoint_pins.json scripts/ci_audio_endpoint_authenticode.ps1 scripts/ci_audio_endpoint_NOTICE.md | Set-Content ci-mci-results/source-inventory.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Set up native x64 CPython
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Install the exact P3 wheel with pinned desktop dependencies
+        id: installed
+        run: |
+          $environment = Join-Path $env:RUNNER_TEMP 'carr-mci-path-python'
+          $wheelDirectory = Join-Path $env:RUNNER_TEMP 'carr-mci-path-wheel'
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          "CARR_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          & $python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip wheel --no-deps --wheel-dir $wheelDirectory .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $wheels = @(Get-ChildItem -LiteralPath $wheelDirectory -Filter '*.whl' -File)
+          if ($wheels.Count -ne 1) { throw 'Expected one exact application wheel.' }
+          & $python -m pip install --no-deps $wheels[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          @{ name=$wheels[0].Name; bytes=$wheels[0].Length; sha256=(Get-FileHash -Algorithm SHA256 -LiteralPath $wheels[0].FullName).Hash.ToLowerInvariant(); application_commit='10b9a4e36b6415cdf9a21fbc36bcd9ef2b72420a'; diagnostic_commit=$env:GITHUB_SHA } | ConvertTo-Json | Set-Content ci-mci-results/wheel-identity.json
+          & $python -I -B -X utf8 -c "import ast,pathlib; ast.parse(pathlib.Path('../.github/scripts/mci_path_diagnostic.py').read_text(encoding='utf-8')); print('Diagnostic AST accepted')"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Start existing audio services without changing startup policy
+        timeout-minutes: 2
+        run: |
+          $evidence = @()
+          foreach ($serviceName in @('AudioEndpointBuilder', 'Audiosrv')) {
+            $service = Get-Service -Name $serviceName -ErrorAction Stop
+            $before = $service.Status.ToString()
+            try {
+              if ($service.Status -eq 'Stopped') {
+                $service.Start()
+              } elseif ($service.Status -notin @('Running', 'StartPending')) {
+                throw "Unsupported service state: $serviceName $before"
+              }
+              $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running, [TimeSpan]::FromSeconds(20))
+            } finally {
+              $service.Refresh()
+              $evidence += @{ name=$serviceName; before=$before; after=$service.Status.ToString(); start_type=$service.StartType.ToString() }
+              $service.Dispose()
+              @{ services=$evidence; startup_policy_changed=$false } | ConvertTo-Json -Depth 5 | Set-Content 'ci-mci-results/audio-services.json'
+            }
+          }
+
+      - name: Verify existing signature serialization under both PowerShell versions
+        timeout-minutes: 2
+        run: |
+          $legacy = Join-Path ([Environment]::GetFolderPath('System')) 'WindowsPowerShell/v1.0/powershell.exe'
+          $modern = Join-Path $env:ProgramFiles 'PowerShell/7/pwsh.exe'
+          & $legacy -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-mci-results/signature-json-ps51.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $modern -NoLogo -NoProfile -NonInteractive -File tests/ci_endpoint/verify_authenticode_serialization.ps1 -Report ci-mci-results/signature-json-ps7.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare only the exact already-reviewed signed render endpoint
+        id: endpoint
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/ci_audio_endpoint.py --receipt ci-mci-results/endpoint-evaluation.json 2>&1 | Tee-Object ci-mci-results/endpoint-evaluation.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Observe exact source and isolated installed MCI filename behavior
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' && steps.endpoint.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          $failures = @()
+          & $env:CARR_PYTHON -I -B -X utf8 ../.github/scripts/mci_path_diagnostic.py --source . --report ci-mci-results/source-mci-paths.json 2>&1 | Tee-Object ci-mci-results/source-mci-paths.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'source' }
+          & $env:CARR_PYTHON -I -B -X utf8 ../.github/scripts/mci_path_diagnostic.py --expect-installed --report ci-mci-results/installed-mci-paths.json 2>&1 | Tee-Object ci-mci-results/installed-mci-paths.txt
+          if ($LASTEXITCODE -ne 0) { $failures += 'installed' }
+          if ($failures.Count) { throw ('Native diagnostic failure: ' + ($failures -join ', ')) }
+
+      - name: Preserve only public bounded receipts and source identity
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-mci-path-diagnostic-${{ github.sha }}-${{ github.run_attempt }}
+          path: carr-library/ci-mci-results/
+          if-no-files-found: warn
+          retention-days: 7
