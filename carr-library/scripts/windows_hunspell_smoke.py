@@ -59,6 +59,8 @@ def main():
 
     checks, errors, futures, children, stages, worker_threads = [], [], [], [], [], []
     host_thread = threading.get_ident()
+    modal_loops = []
+    unwind_pending = False
     def check(label, condition):
         if not condition:
             raise AssertionError(label)
@@ -91,8 +93,7 @@ def main():
         def OnExceptionInMainLoop(self):
             errors.append(traceback.format_exc())
             unwind()
-            self.ExitMainLoop()
-            return False
+            return True  # Recorded failure; let the active owned modal unwind first.
     app = App(False)
     app.SetAssertMode(wx.APP_ASSERT_EXCEPTION)
     app.SetExitOnFrameDelete(False)
@@ -102,10 +103,37 @@ def main():
     user32.GetForegroundWindow.argtypes, user32.GetForegroundWindow.restype = [], wintypes.HWND
     user32.IsWindow.argtypes, user32.IsWindow.restype = [wintypes.HWND], wintypes.BOOL
 
+    def own_modal(window):
+        # Capture the actual running loop while inside this dialog's driver.
+        # IsModal alone also describes suspended outer loops.
+        loop = wx.EventLoopBase.GetActive()
+        if loop is None or not loop.IsRunning() or loop.IsMain():
+            raise AssertionError('The owned modal has no active native event loop.')
+        modal_loops.append((window, window.GetHandle(), loop))
+
     def unwind():
-        for window in reversed(wx.GetTopLevelWindows()):
-            if isinstance(window, wx.Dialog) and window.IsModal():
-                window.EndModal(wx.ID_CANCEL)
+        nonlocal unwind_pending
+        if unwind_pending:
+            return
+        unwind_pending = True
+
+        def close_active():
+            nonlocal unwind_pending
+            unwind_pending = False
+            try:
+                for window, handle, loop in reversed(modal_loops):
+                    if window and user32.IsWindow(handle) and window.IsModal() and loop.IsRunning():
+                        window.EndModal(wx.ID_CANCEL)
+                        return
+                active = wx.EventLoopBase.GetActive()
+                if errors and active is not None and active.IsMain():
+                    active.ScheduleExit(1)
+            except Exception:
+                errors.append(traceback.format_exc())
+                active = wx.EventLoopBase.GetActive()
+                if active is not None:
+                    active.ScheduleExit(1)
+        wx.CallAfter(close_active)
 
     def pump(predicate, message, timeout=25, *, allow_errors=False):
         deadline = time.monotonic() + timeout
@@ -250,6 +278,7 @@ def main():
                     pump(lambda: modal('Spelling review — Hunspell') is not None, 'Spelling modal did not open.')
                     dialog = modal('Spelling review — Hunspell')
                     spellings.append(dialog)
+                    own_modal(dialog)
                     editor = named(readers[-1], 'Reading copy (editable; Ctrl+S saves)')
                     check('profile starts empty without loading a native library',
                           dialog.profile is None and dialog.review is None and not children)
@@ -339,6 +368,7 @@ def main():
                     pump(lambda: modal('Voice reader and reading copy') is not None, 'Reader modal did not open.')
                     reader = modal('Voice reader and reading copy')
                     readers.append(reader)
+                    own_modal(reader)
                     editor = named(reader, 'Reading copy (editable; Ctrl+S saves)')
                     spelling_button = named(reader, 'Spelling review with Hunspell')
                     pump(lambda: spelling_button.IsEnabled() and editor.GetValue() == original_text,
@@ -370,8 +400,46 @@ def main():
                     errors.append(traceback.format_exc())
                     unwind()
 
+            def verify_nested_failure_cleanup():
+                outer = wx.Dialog(frame, title='Native outer cleanup fixture')
+                inner = wx.Dialog(outer, title='Native inner cleanup fixture')
+                closed = []
+
+                def inner_driver():
+                    try:
+                        own_modal(inner)
+                        unwind()
+                    except Exception:
+                        errors.append(traceback.format_exc()); unwind()
+
+                def outer_driver():
+                    try:
+                        own_modal(outer)
+                        wx.CallLater(60, inner_driver)
+                        assert inner.ShowModal() == wx.ID_CANCEL
+                        closed.append('inner')
+                        check('failure cleanup unwinds only the active owned modal before its parent',
+                              outer.IsModal() and wx.EventLoopBase.GetActive().IsRunning()
+                              and not wx.EventLoopBase.GetActive().IsMain())
+                        unwind()
+                    except Exception:
+                        errors.append(traceback.format_exc()); unwind()
+
+                try:
+                    wx.CallLater(60, outer_driver)
+                    assert outer.ShowModal() == wx.ID_CANCEL
+                    closed.append('outer')
+                    if errors:
+                        raise RuntimeError('\n'.join(errors))
+                    if closed != ['inner', 'outer'] or not wx.EventLoopBase.GetActive().IsMain():
+                        raise AssertionError('Nested native failure cleanup did not restore the host loop.')
+                finally:
+                    inner.Destroy()
+                    outer.Destroy()
+
             def scenario():
                 try:
+                    verify_nested_failure_cleanup()
                     wx.CallLater(60, reader_driver)
                     speech_dialog.show_speech_reader(frame, title='Retained spelling source',
                         source_loader=source_loader, source_guard=scope, recovery_slot=slot)

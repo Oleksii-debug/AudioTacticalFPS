@@ -1,0 +1,53 @@
+{
+  "schema": "carr-reviewed-source-slice/1",
+  "name": "Actual Windows Hunspell admission and nested-modal failure cleanup",
+  "status": "DRAFT_NOT_RUN",
+  "evidence": {
+    "job": 140626778136,
+    "source": "Exact aaf6 diagnostic: official 38-file MSVC build succeeded; source 53 passed and 61 failed/error, no skips. Review-only ResourceRequest disk_bytes=0 with non-null disk_path is rejected at operations.models.py:131.",
+    "native": "The resulting review failure exposed immediate EndModal calls on suspended outer loops; native cleanup then hit wx IsRunning assertion and the retained 180-second watchdog."
+  },
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/speech/spelling.py",
+      "preimage": "01e2d104e2a88073df43277f95e1c15efd26522d",
+      "sha": "6a8865cb812d7d36492412757b2753396ae04e57"
+    },
+    {
+      "path": "carr-library/tests/speech/test_spelling.py",
+      "preimage": "c807c9b998e7cda5ab9eace965132dadbc811035",
+      "sha": "6bde6f86f3298700e51cf91aae675302c3e6e0be"
+    },
+    {
+      "path": "carr-library/scripts/windows_hunspell_smoke.py",
+      "preimage": "2497c1de4442f132f51573f6019c965d60ec5aa9",
+      "sha": "0499b35d3779694104f96da8d3b763f8e21b6bb4"
+    }
+  ],
+  "changes": [
+    "Zero-disk review passes disk_path=None; positive native-copy reservations are byte-preserved.",
+    "One new actual ResourceBroker/hash case checks CPU/memory ownership and no disk reservation or staging/native execution.",
+    "The native probe captures its own active modal loop and queues one EndModal for that running loop only. Outer callbacks propagate the recorded failure after inner return; failures remain failures.",
+    "One actual nested native-modal regression exercises the failure cleanup path before normal native checks; all original 28 checks and 20 origins are retained."
+  ],
+  "required_validation": {
+    "whole_suites": {
+      "tests/speech/test_spelling.py": 55,
+      "tests/speech/test_spelling_handlers.py": 20,
+      "tests/speech/test_spelling_reader_hook.py": 9,
+      "tests/packaging/test_hunspell_build.py": 31
+    },
+    "counts_kind": "Actual predecessor counts plus one statically added case; corrected execution NOT_RUN.",
+    "native_checks": 29,
+    "native_origins": 20,
+    "new_native_check": "failure cleanup unwinds only the active owned modal before its parent",
+    "unchanged_headless": "Actual pinned Hunspell C API acceptance must still run; source/installed selectors and native cancellation/close remain required."
+  },
+  "primary_reference": "https://docs.wxpython.org/wx.EventLoopBase.html",
+  "validation": {
+    "readback": "EXACT",
+    "parser": "NOT_RUN",
+    "pytest": "NOT_RUN",
+    "native": "NOT_RUN"
+  }
+}
