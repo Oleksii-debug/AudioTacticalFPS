@@ -37,13 +37,15 @@ def local_path(path: Path | str, *, must_exist: bool = True) -> Path:
     if any(':' in part for part in path.parts[1:]):
         raise ModelManifestError('Alternate streams and URL paths are not supported.')
     for part in (path, *path.parents):
-        if part.is_symlink():
-            raise ModelManifestError('Linked paths are not accepted for local engine assets.')
         try:
-            attributes = getattr(part.lstat(), 'st_file_attributes', 0)
+            info = part.lstat()
         except FileNotFoundError:
             continue
-        if attributes & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400):
+        # One fresh metadata read supplies both checks. Do not cache ancestor
+        # trust across calls: a previously ordinary directory may be replaced.
+        if stat.S_ISLNK(info.st_mode):
+            raise ModelManifestError('Linked paths are not accepted for local engine assets.')
+        if getattr(info, 'st_file_attributes', 0) & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400):
             raise ModelManifestError('Reparse points are not accepted for local engine assets.')
     if must_exist and not path.exists():
         raise FileNotFoundError(path)

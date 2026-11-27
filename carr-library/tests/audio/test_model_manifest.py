@@ -93,6 +93,38 @@ def test_linked_asset_is_rejected(tmp_path):
         local_path(linked)
 
 
+def test_path_recheck_rejects_a_new_reparse_parent(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    parent = tmp_path / 'model'
+    parent.mkdir()
+    asset = parent / 'voice.onnx'
+    asset.write_bytes(b'synthetic model fixture')
+    assert local_path(asset) == asset
+    original = Path.lstat
+
+    def changed_parent(path, *args, **kwargs):
+        info = original(path, *args, **kwargs)
+        if path == parent:
+            return SimpleNamespace(st_mode=info.st_mode, st_file_attributes=0x400)
+        return info
+
+    monkeypatch.setattr(Path, 'lstat', changed_parent)
+    with pytest.raises(ModelManifestError, match='Reparse points'):
+        local_path(asset)
+
+
+@pytest.mark.parametrize('must_exist', [False, True])
+def test_missing_local_parent_preserves_explicit_existence_policy(tmp_path, must_exist):
+    missing = tmp_path / 'not-created' / 'model.bin'
+    if must_exist:
+        with pytest.raises(FileNotFoundError):
+            local_path(missing)
+    else:
+        assert local_path(missing, must_exist=False) == missing
+    assert not missing.parent.exists()
+
+
 def test_manifest_byte_budget_and_cancellation(tmp_path):
     model = LocalModelManifest.load(manifest(tmp_path))
     with pytest.raises(ModelManifestError, match='budget'):

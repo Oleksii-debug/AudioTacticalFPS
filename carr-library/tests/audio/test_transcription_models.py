@@ -73,18 +73,28 @@ def test_private_library_model_is_rejected(model, tmp_path):
     assert not (model / MANIFEST_NAME).exists()
 
 
-def test_linked_model_asset_is_rejected(model, tmp_path):
+@pytest.mark.parametrize('force_metadata_probe', [False, True])
+def test_linked_model_asset_is_rejected(model, tmp_path, force_metadata_probe):
     external = tmp_path / 'other.bin'
     external.write_bytes(b'outside')
     link = model / 'linked.bin'
     try:
+        if force_metadata_probe:
+            raise OSError('Synthetic missing symlink privilege')
         link.symlink_to(external)
     except OSError:
         # Exercise the same inspection boundary without needing the runner's
         # privilege to create a Windows symlink.
+        import stat
+        from types import SimpleNamespace
+
         link.write_bytes(b'synthetic linked entry')
-        original = Path.is_symlink
-        with patch.object(Path, 'is_symlink', lambda self: self == link or original(self)):
+        original = Path.lstat
+        def linked_metadata(path, *args, **kwargs):
+            if path == link:
+                return SimpleNamespace(st_mode=stat.S_IFLNK, st_file_attributes=0)
+            return original(path, *args, **kwargs)
+        with patch.object(Path, 'lstat', linked_metadata):
             with pytest.raises(ValueError, match='Linked paths'):
                 register(model)
     else:

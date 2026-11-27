@@ -7,7 +7,7 @@ on:
       - carr-library/**
       - .github/workflows/carr-windows.yml
   push:
-    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126, carr/resonance-build-check-20261127]
+    branches: [carr/finish-desktop-20261126, carr/academic-research-e021-20261126, carr/academic-workbench-20261126, carr-library, carr/notebook-release-ascii-e021-20261126, carr/v3-integrated-private-ce034-20261126, carr/backup-compose-primary-20261126]
     paths:
       - carr-library/**
       - .github/workflows/carr-windows.yml
