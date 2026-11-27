@@ -39,6 +39,11 @@ class ProviderError(RuntimeError):
     """User-safe provider failure, without remote response bodies or credentials."""
 
 
+def translation_receipt_sha256(value, detected_source):
+    """Bind decoded translation and detected language, independently of wire JSON."""
+    return sha256(canonical({'text': value, 'detected_source': detected_source}).encode('utf-8')).hexdigest()
+
+
 def _check_request(deadline, cancelled):
     callback = cancelled.is_set if hasattr(cancelled, 'is_set') else cancelled
     if not callable(callback):
@@ -600,7 +605,8 @@ class Gateway:
                         if detected is not None and (not isinstance(detected, str) or not re.fullmatch('[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,3}', detected)):
                             raise ProviderError('The detected translation language is invalid.')
                         result['detected_source'] = detected
-                        usage = {'submitted_characters': len(body['q'])}
+                        usage = {'submitted_characters': len(body['q']),
+                                 'decoded_translation_sha256': translation_receipt_sha256(result['text'], detected)}
                 else:
                     choices = parsed.get('choices') if type(parsed) is dict else None
                     if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
