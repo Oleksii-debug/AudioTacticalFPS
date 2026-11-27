@@ -110,3 +110,119 @@ def test_real_library_backup_receipt_detects_database_tamper(tmp_path):
         stream.write(bytes([byte[0] ^ 1]))
     with pytest.raises(ValueError, match='completed backup changed'):
         verify_backup_receipt(directory, receipt, max_bytes=4 * 1024 * 1024, max_files=10)
+
+
+@pytest.mark.parametrize('operation', ['capture', 'verify', 'nested'])
+def test_receipt_rejects_change_after_earlier_file_scan(tmp_path, monkeypatch, operation):
+    import sqlite3
+    from carr_library.assistant import backup_receipt as receipt
+
+    root = tmp_path / 'backup'
+    root.mkdir()
+    with sqlite3.connect(root / 'library.sqlite') as db:
+        db.execute('create table t(v text)')
+        db.execute("insert into t values ('old')")
+    (root / 'manifest.json').write_bytes(b'{"synthetic":true}')
+    (root / 'originals').mkdir()
+    (root / 'originals/source.txt').write_bytes(b'original')
+    (root / 'z-last.txt').write_bytes(b'last')
+    digest = sha256((root / 'manifest.json').read_bytes()).hexdigest()
+    budget = dict(max_bytes=1000000, max_files=10)
+    old = receipt.capture_backup_receipt(root, digest, **budget)
+    plain = receipt._plain
+    changed = []
+
+    def hook(path, *, directory=False):
+        trigger = root / ('z-last.txt' if operation == 'nested' else 'manifest.json')
+        if path == trigger and not changed:
+            if operation == 'nested':
+                (root / 'originals/source.txt').write_bytes(b'modified')
+            else:
+                with sqlite3.connect(root / 'library.sqlite') as db:
+                    # A real in-place writer, without a sibling journal whose
+                    # directory timestamp would incidentally expose the edit.
+                    db.execute('pragma journal_mode=off')
+                    db.execute("update t set v='new'")
+            changed.append(True)
+        return plain(path, directory=directory)
+
+    monkeypatch.setattr(receipt, '_plain', hook)
+    with pytest.raises(ValueError, match='changed during verification'):
+        if operation == 'capture':
+            receipt.capture_backup_receipt(root, digest, **budget)
+        else:
+            receipt.verify_backup_receipt(root, old, **budget)
+    assert changed
+
+
+@pytest.mark.parametrize('kind', ['file', 'directory'])
+def test_receipt_rechecks_names_after_an_earlier_directory_scan(tmp_path, monkeypatch, kind):
+    from carr_library.assistant import backup_receipt as receipt
+
+    root, digest = backup(tmp_path)
+    (root / 'z-last.txt').write_bytes(b'last')
+    parent = root / 'originals'
+    before = parent.stat()
+    plain = receipt._plain
+    changed = []
+
+    def hook(path, *, directory=False):
+        if path == root / 'z-last.txt' and not changed:
+            added = parent / 'added-after-scan'
+            if kind == 'file':
+                added.write_bytes(b'new unobserved bytes')
+            else:
+                added.mkdir()
+            # On Windows a directory's ctime denotes creation and can remain
+            # unchanged; preserving mtime must not hide a new child name.
+            os.utime(parent, ns=(before.st_atime_ns, before.st_mtime_ns))
+            changed.append(True)
+        return plain(path, directory=directory)
+
+    monkeypatch.setattr(receipt, '_plain', hook)
+    with pytest.raises(ValueError, match='changed during verification'):
+        capture(root, digest)
+    assert changed
+
+
+@pytest.mark.parametrize('phase', ['file', 'directory'])
+@pytest.mark.parametrize('failure', [InterruptedError, TimeoutError])
+def test_second_pass_preserves_cancellation_and_deadline(tmp_path, monkeypatch, phase, failure):
+    from carr_library.assistant import backup_receipt as receipt
+
+    root, digest = backup(tmp_path)
+    source = root / 'library.sqlite'
+    original = source.read_bytes()
+    entered, ready = [], []
+    if phase == 'file':
+        actual = receipt.os.open
+
+        def open_file(path, *args, **kwargs):
+            result = actual(path, *args, **kwargs)
+            if Path(path) == source:
+                entered.append(True)
+                if len(entered) == 2:
+                    ready.append(True)
+            return result
+        monkeypatch.setattr(receipt.os, 'open', open_file)
+    else:
+        actual = receipt.os.scandir
+
+        def scan_directory(path):
+            result = actual(path)
+            if Path(path) == root / 'originals':
+                entered.append(True)
+                if len(entered) == 2:
+                    ready.append(True)
+            return result
+        monkeypatch.setattr(receipt.os, 'scandir', scan_directory)
+
+    def cancelled():
+        if ready:
+            raise failure('Synthetic cancellation or deadline during re-attestation.')
+        return False
+
+    with pytest.raises(failure, match='Synthetic cancellation or deadline'):
+        capture(root, digest, cancelled=cancelled)
+    assert ready and len(entered) == 2
+    assert source.read_bytes() == original
