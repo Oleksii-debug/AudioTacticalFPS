@@ -120,10 +120,16 @@ jobs:
           $python = (Get-Command python.exe).Source
           $basePython = (& $python -I -c "import sys; print(sys._base_executable)").Trim()
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:PATH = "$env:CARR_V3_CITATIONS$([System.IO.Path]::PathSeparator)$env:PATH"
           $node = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source
           $expectedNode = [System.IO.Path]::GetFullPath((Join-Path $env:CARR_V3_CITATIONS 'node.exe'))
+          $pythonNode = (& python -I -c "import shutil; print(shutil.which('node') or '')").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $nodeLock = Get-Content 'packaging/windows-citations.lock.json' -Raw | ConvertFrom-Json
-          if ([System.IO.Path]::GetFullPath($node) -ne $expectedNode -or (Get-FileHash $node -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nodeLock.files.'node.exe') { throw 'Command discovery did not select the exact pinned Node executable.' }
+          $nodeHash = (Get-FileHash -LiteralPath $node -Algorithm SHA256).Hash.ToLowerInvariant()
+          $pythonNodeHash = if ($pythonNode) { (Get-FileHash -LiteralPath $pythonNode -Algorithm SHA256).Hash.ToLowerInvariant() } else { '' }
+          @{ expected_path=$expectedNode; expected_sha256=$nodeLock.files.'node.exe'; powershell_path=$node; powershell_sha256=$nodeHash; python_path=$pythonNode; python_sha256=$pythonNodeHash } | ConvertTo-Json | Tee-Object 'ci-v3-results/citation-selection-native.json'
+          if ([System.IO.Path]::GetFullPath($node) -ne $expectedNode -or $nodeHash -ne $nodeLock.files.'node.exe' -or -not $pythonNode -or [System.IO.Path]::GetFullPath($pythonNode) -ne $expectedNode -or $pythonNodeHash -ne $nodeLock.files.'node.exe') { throw 'PowerShell and Python must select the exact pinned Node executable; see citation selection evidence.' }
           $programs = @($python, $basePython, $node,
             (Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'),
             (Join-Path $env:SystemRoot 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'),
@@ -165,9 +171,16 @@ jobs:
       - name: Validate local services, DSP, integrity and provider permission boundaries
         if: ${{ !cancelled() && steps.install-runtime.outcome == 'success' && steps.audio-runtime.outcome == 'success' && steps.citation-runtime.outcome == 'success' }}
         run: |
+          $env:PATH = "$env:CARR_V3_CITATIONS$([System.IO.Path]::PathSeparator)$env:PATH"
           $node = (Get-Command node.exe -CommandType Application -ErrorAction Stop).Source
+          $expectedNode = [System.IO.Path]::GetFullPath((Join-Path $env:CARR_V3_CITATIONS 'node.exe'))
+          $pythonNode = (& python -I -c "import shutil; print(shutil.which('node') or '')").Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $nodeLock = Get-Content 'packaging/windows-citations.lock.json' -Raw | ConvertFrom-Json
-          if ([System.IO.Path]::GetFullPath($node) -ne [System.IO.Path]::GetFullPath((Join-Path $env:CARR_V3_CITATIONS 'node.exe')) -or (Get-FileHash $node -Algorithm SHA256).Hash.ToLowerInvariant() -ne $nodeLock.files.'node.exe') { throw 'Service tests require the exact pinned Node executable.' }
+          $nodeHash = (Get-FileHash -LiteralPath $node -Algorithm SHA256).Hash.ToLowerInvariant()
+          $pythonNodeHash = if ($pythonNode) { (Get-FileHash -LiteralPath $pythonNode -Algorithm SHA256).Hash.ToLowerInvariant() } else { '' }
+          @{ expected_path=$expectedNode; expected_sha256=$nodeLock.files.'node.exe'; powershell_path=$node; powershell_sha256=$nodeHash; python_path=$pythonNode; python_sha256=$pythonNodeHash } | ConvertTo-Json | Tee-Object 'ci-v3-results/citation-selection-services.json'
+          if ([System.IO.Path]::GetFullPath($node) -ne $expectedNode -or $nodeHash -ne $nodeLock.files.'node.exe' -or -not $pythonNode -or [System.IO.Path]::GetFullPath($pythonNode) -ne $expectedNode -or $pythonNodeHash -ne $nodeLock.files.'node.exe') { throw 'PowerShell and Python must select the exact pinned Node executable; see citation selection evidence.' }
           & $node --version | Tee-Object 'ci-v3-results/citation-node-version.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pytest -q --import-mode=importlib tests/audio tests/speech tests/assistant tests/studio tests/operations tests/transcription tests/academic_integration tests/conversion tests/language_qualification tests/ui/test_operation_progress.py tests/ui/test_progress_job_review.py tests/ui/test_operations_policy.py tests/ui/test_transcription_dialog.py tests/ui/test_platform_modal_lifecycle.py tests/ui/test_keyboard_settings.py tests/e2e/test_operations_cli.py tests/e2e/test_transcription_cli.py tests/e2e/test_import_progress.py tests/ingest/test_worker_publication_boundary.py tests/reader/test_export_no_clobber.py tests/reader/test_export_publication_boundary.py tests/test_delivery_contract.py tests/storage/test_v3_state_backup.py tests/storage/test_pending_backup.py tests/storage/test_complete_pending_backup.py tests/storage/test_backup_v4_review.py tests/storage/test_transcription_backup.py tests/storage/test_state_backup_portability.py tests/storage/test_atomic_state_publication.py tests/extract/test_language_manager.py tests/packaging/test_prepare_windows_audio.py tests/packaging/test_refresh_private_bundle_review.py tests/packaging/test_delivery_archive.py --junitxml=ci-v3-results/v3-tests.xml 2>&1 | Tee-Object 'ci-v3-results/v3-tests.txt'
