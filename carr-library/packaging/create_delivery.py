@@ -5,6 +5,8 @@ The unchanged bundle manifest requires their union. No supplied Python code,
 native executable or model is loaded. Use private local build directories.
 The currently reviewed FFmpeg packs are local-installation only, not transfer
 payloads. Verify old archives separately; do not create new archives with them.
+The currently reviewed FFmpeg packs are local-installation only, not transfer
+payloads. Verify old archives separately; do not create new archives with them.
 """
 from __future__ import annotations
 

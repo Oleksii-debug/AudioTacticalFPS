@@ -10,6 +10,7 @@ import math
 import os
 from pathlib import Path
 import struct
+import sys
 from tempfile import TemporaryDirectory
 from time import monotonic, sleep
 import traceback
@@ -30,12 +31,21 @@ def main():
     from carr_library.ui import studio_clips as ui
     from carr_library.ui.desktop_app import DesktopFrame
 
-    checks, errors, audio_proof = [], [], {}
+    checks, errors, audio_proof, module_origins = [], [], {}, {}
     def check(name, condition):
         if not condition:
             raise AssertionError(name)
         checks.append(name)
         print('PASS:', name, flush=True)
+
+    for name in ('carr_library.studio.clips', 'carr_library.studio.render',
+                 'carr_library.studio.project', 'carr_library.audio.process',
+                 'carr_library.audio.windows_job', 'carr_library.ui.studio_clips'):
+        module = __import__(name, fromlist=['__file__'])
+        location = Path(module.__file__).resolve(strict=True)
+        module_origins[name] = str(location)
+        check('installed module origin: ' + name,
+              location.is_relative_to(Path(sys.prefix).resolve()) and 'site-packages' in location.parts)
 
     def verify_audio(runtime):
         bundle = Path(os.environ['CARR_PROGRAM_DIR']).resolve() if os.environ.get('CARR_PROGRAM_DIR') else None
@@ -194,7 +204,8 @@ def main():
             if native_handle is not None:
                 native_handle.close()
     print(json.dumps({'result': 'PASS', 'checks': checks, 'native_keyboard': 'PASS',
-        'fixture': 'synthetic PCM rendered by actual FFmpeg', 'audio_runtime': audio_proof, 'nvda': 'NOT_RUN',
+        'fixture': 'synthetic PCM rendered by actual FFmpeg', 'audio_runtime': audio_proof,
+        'module_origins': module_origins, 'nvda': 'NOT_RUN',
         'native_file_pickers': 'NOT_RUN', 'physical_microphone': 'NOT_RUN'}), flush=True)
     return 0
 

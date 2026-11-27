@@ -105,6 +105,22 @@ cases using the exact installed package and bundled FFmpeg, with Java and the
 application runtime covered by outbound firewall rules. Windows evidence is
 recorded per commit, separately from this local result.
 
+The source run above was repeated on the integrated Linux checkout at checkpoint
+`317f94f0eaa9987f5b87530c2982ce8d168e7841`. The sanitized
+[evidence record](evidence/epubcheck-20261127.json) records the exact checker,
+publisher, render and clip module hashes; three synthetic EPUB hashes and actual
+checker counts; and the deliberately invalid control. It contains no private
+runtime or temporary paths. Installed Windows conformance remains a separate
+required gate.
+
+The saved publication grammar is shared with typed backup validation.
+`validate_publication_receipt` validates declarations without opening external
+paths. Complete backups retain the receipt, while the EPUB remains an explicitly
+declared external output. A relocated receipt requires the user to select that
+output and verify its actual bytes. Publication and verification use the same
+receipt lock; verification reads its snapshot only after acquiring that lock,
+so it cannot overwrite a concurrent receipt with an earlier snapshot.
+
 Conformance checks do not qualify a real reading system, DAISY interchange,
 Braille output, acoustic quality, WCAG conformance or manual NVDA behavior.
 

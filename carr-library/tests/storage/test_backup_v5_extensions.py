@@ -200,3 +200,31 @@ def test_cancelled_extension_copy_does_not_publish_success(tmp_path):
         create_backup(app, target, cancelled=lambda: True)
     assert not target.exists()
 
+
+def test_v5_lost_parent_reply_retains_one_committed_revision_and_rebinds_resume(tmp_path):
+    from carr_library.ingest.worker import run_request, _store
+    app, workspace, *_ = configured(tmp_path)
+    source = tmp_path / 'committed-worker.txt'
+    source.write_text('First committed page.\fSecond committed page.', encoding='utf-8')
+    metadata = dict(title='Committed import', authors=[], language=None, edition=None,
+                    volume=None, collections=[], work_id=uuid4().hex, edition_id=uuid4().hex)
+    completed = run_request(app.root, workspace, source, metadata, Config())
+    assert completed['state'] == 'complete'
+    request = load_request(app.root, completed['request_id'])
+    assert request['publication_candidate']['revision'] == completed['id']
+    request['state'] = 'running'
+    request.pop('result')
+    _store(app.root, completed['request_id'], request)
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    assert json.loads((backup / 'manifest.json').read_text())['version'] == 5
+    source.unlink()
+    restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
+    rebound = load_request(restored.root, completed['request_id'])
+    assert 'attempt' not in rebound and 'publication_candidate' not in rebound
+    resumed = restored.resume_import(workspace, completed['request_id'])
+    assert resumed['state'] == 'complete' and resumed['id'] == completed['id']
+    with restored.read(workspace) as db:
+        assert db.execute('SELECT count(*) FROM revision WHERE id=?', (completed['id'],)).fetchone()[0] == 1
+        assert db.execute('SELECT count(*) FROM page WHERE revision=?', (completed['id'],)).fetchone()[0] == 2
+

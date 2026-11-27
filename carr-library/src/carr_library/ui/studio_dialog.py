@@ -473,8 +473,40 @@ def show_studio(frame):
                 return
             finally:
                 chooser.Destroy()
+        approved_inputs = ()
+        try:
+            pending_inputs = service.restored_inputs_to_review(current_job)
+            if pending_inputs:
+                review = wx.MessageDialog(dialog,
+                    'This imported or restored project refers to external audio. Review these local paths:\n\n'
+                    + '\n'.join(pending_inputs)
+                    + '\n\nAllow this project to read these local files and include them in future backups?',
+                    'Review restored audio inputs', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                try:
+                    if review.ShowModal() != wx.ID_YES:
+                        return
+                    approved_inputs = pending_inputs
+                finally:
+                    review.Destroy()
+            restored = service.get(current_job).get('recovery', {}).get('requires_output_directory') is True
+            if restored:
+                chooser = wx.DirDialog(dialog, 'Choose a new output folder for the restored production job')
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    service.relocate_restored_job(current_job, Path(chooser.GetPath()))
+                finally:
+                    chooser.Destroy()
+        except Exception as exc:
+            report(str(exc), True)
+            return
         identity = current_job
-        run(lambda measured: service.run(identity, cancelled=cancel.is_set, progress=measured),
+        def render_selected(measured):
+            if approved_inputs:
+                measured('Verifying explicitly approved restored audio inputs')
+                service.approve_restored_inputs(approved_inputs, cancelled=cancel.is_set)
+            return service.run(identity, cancelled=cancel.is_set, progress=measured)
+        run(render_selected,
             lambda result: report('Production complete. ' + result['destination'] +
                 '\nWAV, chapters, requested stems, subtitles and checksums are saved.', True),
             phase='Rendering audio production', with_progress=True)
@@ -610,7 +642,8 @@ def show_studio(frame):
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
 
-    run(lambda: service.voices.voices(), loaded, phase='Checking installed local voices')
+    run(lambda: service.discover_voices(cancelled=cancel.is_set).voices(), loaded,
+        phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:

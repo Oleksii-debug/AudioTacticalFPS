@@ -66,3 +66,41 @@ def test_application_backup_cancellation_does_not_publish_a_destination(tmp_path
     with pytest.raises(InterruptedError):
         app.backup(destination, include_generated=True, cancelled=lambda: True)
     assert not destination.exists()
+
+
+def test_actual_cli_restore_reports_inert_original_count_without_inspecting_audio(tmp_path, capsys, monkeypatch):
+    from carr_library.audio.recording import RecordingService
+    from carr_library.speech import runtime
+    app = LibraryApp(tmp_path / 'library')
+    app.create_workspace('Unverified recording recovery')
+    original = app.root / 'state/studio/recordings' / ('b' * 32 + '.wav')
+    original.parent.mkdir(parents=True)
+    raw = b'Committed original with no successful recording receipt.'
+    original.write_bytes(raw)
+    backup = tmp_path / 'backup'
+    digest = app.backup(backup)
+    monkeypatch.setattr(RecordingService, '_runtime',
+                        lambda *args, **kwargs: pytest.fail('Recovery reporting opened an audio runtime.'))
+    monkeypatch.setattr(runtime, '_wave_info',
+                        lambda *args, **kwargs: pytest.fail('An unverified original was parsed as completed audio.'))
+    restored = tmp_path / 'restored'
+    assert main(['--data-dir', str(restored), '--restore', str(backup), '--manifest-sha256', digest]) == 0
+    output = capsys.readouterr().out
+    assert 'Unverified recording originals preserved: 1.' in output
+    assert 'They have no capture receipt and remain inactive.' in output
+    final = restored / original.relative_to(app.root)
+    assert final.read_bytes() == raw and not final.with_suffix('.json').exists()
+
+
+def test_late_recording_inventory_error_does_not_erase_restore_success(tmp_path, monkeypatch):
+    from carr_library.audio import recording
+    from carr_library.backup_report import recovery_summary
+    app = LibraryApp(tmp_path / 'restored-library')
+    app.create_workspace('Already durable')
+    def changed_after_restore(root):
+        raise OSError('Recording folder became unavailable after publication')
+    monkeypatch.setattr(recording, 'unverified_recording_files', changed_after_restore)
+    summary = recovery_summary(app.root)
+    assert 'Restored library folder: ' in summary
+    assert 'The library is restored. Unverified recording originals could not be listed:' in summary
+    assert LibraryApp(app.root).workspaces()[0].name == 'Already durable'

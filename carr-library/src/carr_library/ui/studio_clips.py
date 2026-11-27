@@ -106,7 +106,8 @@ class ClipDialog(wx.Dialog):
     def _run(self, title, operation, done):
         if self.closed or self.pending or self.frame.working:
             return False
-        self.stop()
+        if not self.stop():
+            return False
         self.pending = True
         self._enable()
         self.message(title)
@@ -347,7 +348,13 @@ class ClipDialog(wx.Dialog):
     def stop(self, event=None):
         self.playback_generation += 1
         if self.player is not None:
-            self.player.close()
+            try:
+                if self.player.close() is False:
+                    raise RuntimeError('The audio device has not confirmed Stop.')
+            except Exception as exc:
+                self.message('Playback cleanup is still pending. Retry Stop playback before continuing. ' + str(exc))
+                return False
+        return True
 
     def cancel(self, event=None):
         if self.pending:
@@ -355,10 +362,14 @@ class ClipDialog(wx.Dialog):
             self.message('Cancellation requested; waiting for the owned audio operation to finish.')
 
     def close(self, event=None):
-        self.stop()
+        quiet = self.stop()
         if self.pending:
             self.closing = True
             self.cancel()
+            if event is not None and hasattr(event, 'Veto') and event.CanVeto():
+                event.Veto()
+            return
+        if not quiet:
             if event is not None and hasattr(event, 'Veto') and event.CanVeto():
                 event.Veto()
             return

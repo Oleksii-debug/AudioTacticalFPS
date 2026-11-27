@@ -49,9 +49,15 @@ def main(argv=None):
     render.add_argument('--output', type=Path, required=True, help='Existing parent folder; a new project subfolder is created')
     render.add_argument('--format', default='wav', choices=('wav','flac','mp3','ogg','opus','m4a','m4b','aiff','wma'))
     render.add_argument('--no-stems', action='store_true')
+    render.add_argument('--approve-input', action='append', type=Path, default=[],
+                        help='Explicit exact local input to approve after reviewing an imported project; repeat as needed')
     resume = operations.add_parser('resume', help='Resume a saved interrupted job, retaining successful chunks')
     resume.add_argument('job_id')
+    resume.add_argument('--output', type=Path, help='Explicit new output parent for a restored job')
+    resume.add_argument('--approve-input', action='append', type=Path, default=[],
+                        help='Explicit exact local input to approve for this restored job; repeat as needed')
     args = parser.parse_args(argv)
+    service = None
     try:
         from ..application import LibraryApp
         app = LibraryApp(data_directory(args.data_dir))
@@ -83,6 +89,7 @@ def main(argv=None):
             if args.operation == 'render':
                 if args.project:
                     project = Project.from_dict(read_json(args.project))
+                    service.register_project_inputs(project, imported=True)
                 else:
                     if args.script.stat().st_size > 16 * 1024**2:
                         raise ValueError('Script exceeds the project text budget; split by chapters.')
@@ -91,6 +98,14 @@ def main(argv=None):
                 identity = service.submit(project, args.output, format=args.format, stems=not args.no_stems)
             else:
                 identity = args.job_id
+                if args.output is not None:
+                    service.relocate_restored_job(identity, args.output)
+            if args.approve_input:
+                pending = set(service.restored_inputs_to_review(identity))
+                selected = tuple(str(path) for path in args.approve_input)
+                if not set(selected) <= pending:
+                    raise ValueError('Approve only exact inputs listed for this selected production job.')
+                service.approve_restored_inputs(selected)
             print('Production job: ' + identity, file=sys.stderr, flush=True)
             job = service.run(identity, progress=lambda text: print(text, file=sys.stderr, flush=True))
             result = {'id': job['id'], 'status': job['status'], 'destination': job['destination'],
@@ -103,6 +118,9 @@ def main(argv=None):
     except (ValueError, OSError, RuntimeError) as exc:
         print('Audio Studio: ' + str(exc), file=sys.stderr)
         return 1
+    finally:
+        if service is not None:
+            service.close()
 
 
 def assistant_main(argv=None):

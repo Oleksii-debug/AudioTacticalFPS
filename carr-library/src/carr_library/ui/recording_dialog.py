@@ -355,9 +355,14 @@ def show_recording(frame, *, on_selected=None):
         stopped.set()
         if cleanup_owner is not None and not cleanup_owner.quiescent:
             if cleanup_retry is None or not cleanup_retry.is_alive():
-                cleanup_retry = threading.Thread(target=cleanup_owner.close,
-                    name='recording-cleanup-retry', daemon=True)
-                cleanup_retry.start()
+                try:
+                    cleanup_retry = threading.Thread(target=cleanup_owner.close,
+                        name='recording-cleanup-retry', daemon=True)
+                    cleanup_retry.start()
+                except (OSError, RuntimeError) as exc:
+                    status.SetValue('Cleanup retry could not start. The native owner and quiet reservation '
+                                    'remain retained. ' + str(exc))
+                    return
             status.SetValue('Retrying microphone cleanup. Media stays muted until silence is confirmed.')
         elif busy:
             status.SetValue('Stop requested. Waiting for WAV finalization and owned process cleanup.')
@@ -383,6 +388,8 @@ def show_recording(frame, *, on_selected=None):
             if unverified:
                 status.SetValue(f'{len(unverified)} retained WAV original(s) lack a verified receipt. '
                     f'They remain unselected and unplayed in {service.root}. Preserve them for explicit recovery.')
+            else:
+                status.SetValue('Saved recording receipts loaded. Refresh microphones and choose a device explicitly before Start.')
         run(lambda: (service.list(cancelled=cancelled.is_set), unverified_recording_files(library.root)),
             loaded_records, 'Loading saved recording receipts')
         buttons['refresh'].SetFocus()
