@@ -535,7 +535,7 @@ def test_default_https_worker_keeps_exact_host_tls_and_never_follows_redirect(mo
 
 
 def test_actual_isolated_worker_rejects_invalid_envelope_without_echoing_email():
-    completed = subprocess.run([sys.executable, "-I", "-B", str(Path(module.__file__)), "--metadata-worker"],
+    completed = subprocess.run(module._worker_argv(),
         input=raw_json({"provider": "https://unexpected.example.org", "email": EMAIL}),
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3, check=True)
     assert json.loads(completed.stdout) == {"error": "connection"}

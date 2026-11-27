@@ -40,7 +40,8 @@ _ID = re.compile(r'[0-9a-f]{32}\Z')
 _HASH = re.compile(r'[0-9a-f]{64}\Z')
 _REQUEST_REQUIRED = {'version', 'request_id', 'data_dir', 'workspace', 'source',
                      'metadata', 'config', 'state'}
-_REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result'}
+_REQUEST_OPTIONAL = {'asset_sha256', 'job', 'expected_manifest', 'result',
+                     'attempt', 'publication_candidate'}
 _JOB_STATES = {'pending', 'cancelled', 'failed', 'quarantined', 'complete', 'superseded', 'conflict'}
 _REQUEST_STATES = _JOB_STATES | {'running', 'timed_out'}
 _SCHEMA = '''
@@ -204,7 +205,7 @@ def _catalog(path):
         db.execute('PRAGMA query_only=ON')
         db.execute('BEGIN')
         version = db.execute('PRAGMA user_version').fetchone()[0]
-        if version not in (3, 4) or schema_fingerprint(db) != expected_schema_fingerprint(version):
+        if version not in (3, 4, 5, 6) or schema_fingerprint(db) != expected_schema_fingerprint(version):
             raise ValueError('Pending imports require the canonical catalog schema.')
     except BaseException:
         db.close()
@@ -280,6 +281,22 @@ def _request(record, request_id, data_dir, db):
     if ('asset_sha256' in record and 'expected_manifest' in record
             and record['asset_sha256'] != record['expected_manifest']['sha256']):
         raise ValueError('Pending request source identity changed.')
+    if 'attempt' in record and not _id(record['attempt']):
+        raise ValueError('Invalid pending import attempt identity.')
+    candidate = record.get('publication_candidate')
+    if candidate is not None:
+        if (not isinstance(candidate, dict)
+                or set(candidate) != {'attempt', 'revision', 'sha256', 'completed', 'manifest'}
+                or not _id(candidate['attempt']) or candidate['attempt'] != record.get('attempt')
+                or not _hash(candidate['revision']) or not _hash(candidate['sha256'])
+                or type(candidate['completed']) is not int or candidate['completed'] < 1):
+            raise ValueError('Invalid pending import publication candidate.')
+        manifest = _manifest(candidate['manifest'])
+        if (manifest['sha256'] != record.get('asset_sha256')
+                or (record.get('expected_manifest') is not None
+                    and manifest != record['expected_manifest'])
+                or (record.get('job') is not None and candidate['revision'] != record['job'])):
+            raise ValueError('Pending publication candidate has a foreign source or journal identity.')
     _result(record.get('result'), record['workspace'], record['metadata']['edition_id'], db,
             complete=record['state'] == 'complete')
 
@@ -808,6 +825,11 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
                 binding = bindings['import-requests/' + request_id + '.json', None]
                 request['data_dir'] = str(new_root)
                 request['source'] = str(new_root / 'originals' / assets[binding['asset_sha256']]['filename'])
+                # A candidate is bound to one original process attempt and its
+                # root/source paths. Restoring is not evidence that it committed;
+                # explicit resume verifies the existing source/journal again.
+                request.pop('attempt', None)
+                request.pop('publication_candidate', None)
                 _write(stage / 'import-requests' / (request_id + '.json'), (canonical(request) + '\n').encode('utf-8'))
             for batch_id, batch in batches.items():
                 batch['data_dir'] = str(new_root)

@@ -403,6 +403,16 @@ jobs:
                   'carr_library.ui.studio_dialog',
                   'carr_library.speech.progress_speech',
                   'carr_library.studio.render',
+                  'carr_library.state_backup',
+                  'carr_library.pending_backup',
+                  'carr_library.library_backup',
+                  'carr_library.speech.reading',
+                  'carr_library.speech.source',
+                  'carr_library.speech.runtime',
+                  'carr_library.academic_integration.doi',
+                  'carr_library.speech.session',
+                  'carr_library.storage.revisions',
+                  'carr_library.storage.schema_identity',
           ):
               origin = importlib.util.find_spec(name).origin
               assert origin and pathlib.Path(origin).resolve().is_relative_to(root / '.venv'), name
@@ -442,6 +452,17 @@ jobs:
                             'tests/speech/test_discovery_cancellation.py',
                             'tests/storage/test_state_snapshot_identity.py',
                             'tests/ingest/test_worker_publication_reconcile.py',
+                            'tests/storage/test_v3_state_backup.py',
+                            'tests/storage/test_pending_backup.py',
+                            'tests/storage/test_complete_pending_backup.py',
+                            'tests/storage/test_academic_migration.py',
+                            'tests/storage/test_backup_schema_identity.py',
+                            'tests/e2e/test_import_worker_publication.py',
+                            'tests/ingest/test_import_replay_identity.py',
+                            'tests/speech/test_reading.py',
+                            'tests/speech/test_source.py',
+                            'tests/speech/test_session.py',
+                            'tests/packaging/test_worker_bytecode.py',
                             'tests/extract/test_ocr_model_catalog.py',
                             'tests/extract/test_ocr_model_cli.py',
                             'tests/extract/test_ocr_model_store.py',
@@ -644,7 +665,16 @@ jobs:
             'tests/integrations/test_dordiai_convergence.py',
             'tests/speech/test_discovery_cancellation.py',
             'tests/storage/test_state_snapshot_identity.py',
-            'tests/ingest/test_worker_publication_reconcile.py'
+            'tests/ingest/test_worker_publication_reconcile.py',
+            'tests/storage/test_v3_state_backup.py',
+            'tests/storage/test_pending_backup.py',
+            'tests/storage/test_complete_pending_backup.py',
+            'tests/e2e/test_import_worker_publication.py',
+            'tests/ingest/test_import_replay_identity.py',
+            'tests/speech/test_reading.py',
+            'tests/speech/test_source.py',
+            'tests/speech/test_session.py',
+            'tests/packaging/test_worker_bytecode.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

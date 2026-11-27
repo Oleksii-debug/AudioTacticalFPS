@@ -13,3 +13,39 @@ No destructive down migration; future migrations must be versioned and backed up
 ## Reproduction
 From carr-library: PYTHONPATH=src python -m pytest -q tests/storage/test_revisions.py (Linux); Python 3.13.5, SQLite 3.46.1. 5 passed in 0.11s, exit 0. Source Git blob d1ffd0829a6680d7af7a172186ce7db991de3dfe; test blob fb852dfba3f52e998e25d5f3c7b3dabcbe0e95a9.
 One synthetic 10,000-page run, one workspace/edition, each page text "Synthetic page {i} historical river bridge archive", AMD EPYC 9V74 (5 visible CPUs), Linux x86_64: publication 0.1041s, check 0.0502s, rebuild 0.1238s, database 3,117,056 bytes. This is a single run, not a performance SLA. Windows and independent review NOT_RUN.
+
+## Current host: import publication receipts (schema V5)
+
+The earlier candidate notes above are historical. The current application keeps
+the existing catalog, source revisions and import journal. Schema V5 adds one
+immutable receipt in `library.sqlite`, committed in the same transaction as the
+source revision. It binds that publication to its import request, execution
+attempt and validated source fingerprint. Identical imports retain their
+deterministic revision ID; a second request cannot make a cancelled first
+request claim its commit. A sidecar candidate is only a hint and requires this
+receipt plus fresh authorization and retained-source verification.
+
+Exact V3 and V4 databases upgrade transactionally after schema and data checks.
+The released V1–V4 layouts and fingerprints remain unchanged. Existing revisions
+receive no invented receipts. Full backups include receipts in the normal
+SQLite snapshot; old backups restore at their original version before the host
+performs its checked upgrade. Restoring pending requests clears process-bound
+attempts and candidate hints, while immutable historical receipts remain.
+These records report completion only and grant no quotation approval.
+
+## Replay registration receipts (schema V6)
+
+Schema V6 preserves the exact released V5 layout and adds an immutable
+`import_registration` receipt for each request and execution attempt that
+commits registration of an existing active revision. The receipt is inserted
+inside the same transaction as its requested collection memberships; it does
+not replace the original revision's publication receipt. A competing import
+with identical source bytes and memberships cannot complete a rolled-back
+request. Completed no-op replays can be recovered using their own receipt.
+
+V3, V4 and V5 databases upgrade through validated transactional steps. Existing
+source rows, original receipts and historical citations remain unchanged, and
+old revisions receive no invented ownership. Full backup and restore retain
+both immutable receipt tables. Recovery checks the exact request attempt,
+metadata, configuration, page hashes and retained original bytes under the
+original import deadline; it never infers ownership from a changed catalog.
