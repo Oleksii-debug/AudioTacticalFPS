@@ -119,3 +119,21 @@ This reuses the prepared canonical snapshot recorded as
 exporter informed the standards review; its alternate renderer/schema/UI were
 not adopted. The existing EPUB menu identity stays unchanged. The new DAISY
 entry uses the same current menu registration and publication dialog.
+
+## CI preparation
+
+`python scripts/prepare_publication_tools.py --output VALIDATION_CACHE --download`
+acquires only the exact EPUBCheck archive and five schema inputs pinned above.
+It enforces HTTPS publisher/redirect hosts, expected byte counts and hashes,
+retains existing cache files, and records the two archive license notices.
+It executes and installs nothing. Without `--download`, it verifies an already
+prepared offline cache. The existing packaging artifact verifier is reused.
+
+Run `scripts/epubcheck_acceptance.py --archive VALIDATION_CACHE/epubcheck-5.3.0.zip
+--java ABSOLUTE_JAVA_EXECUTABLE --report NEW_EPUB_REPORT.json`, then
+`scripts/daisy_schema_acceptance.py --schemas VALIDATION_CACHE/daisy-schemas
+--report NEW_DAISY_REPORT.json`. Add `--require-installed` to each installed
+acceptance run. Supply Java and the test-only `lxml==6.1.1` through CI tool setup;
+the production dependency locks are unchanged. The preparation helper's twelve
+focused tests cover offline reuse, exact/short/excess/changed bytes, competing
+file creation, refused redirects, cleanup and actual ZIP notice inspection.
