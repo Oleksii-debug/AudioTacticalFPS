@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "NOT_RUN",
-  "portable_cases": 156,
+  "portable_cases": 162,
   "portable": {
     "tests.conversion.test_conversion": {
       "test_actual_worker_keeps_utf8_crlf_formfeed_and_original": 1,
@@ -87,7 +87,9 @@
       "test_chm_known_legacy_doctype_is_inert_and_original_bytes_stay_bound": 4,
       "test_chm_undeclared_or_complex_doctype_remains_refused": 4,
       "test_large_selected_code_closure_keeps_every_reader_until_native_scope_exits": 2,
-      "test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1
+      "test_excessive_code_handle_inventory_is_refused_before_any_native_lease": 1,
+      "test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form": 4,
+      "test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment": 2
     }
   },
   "native_cases": 17,

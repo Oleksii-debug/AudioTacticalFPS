@@ -171,6 +171,33 @@ def test_djvu_framing_and_page_authority_are_bounded(mutation):
         legacy._djvu_pages(raw, maximum)
 
 
+@pytest.mark.parametrize('nested', [False, True])
+@pytest.mark.parametrize('padded', [False, True])
+def test_djvu_final_odd_chunk_ends_exactly_at_its_containing_form(nested, padded):
+    page = b'DJVU' + b'INFO' + struct.pack('>I', 3) + b'abc' + (b'\0' if padded else b'')
+    if nested:
+        # DIRM is aligned before FORM. The final FORM, like its INFO child,
+        # is permitted to end at the parent's declared odd byte boundary.
+        payload = (b'DJVM' + b'DIRM' + struct.pack('>I', 1) + b'\x80\0' +
+                   b'FORM' + struct.pack('>I', len(page)) + page)
+    else:
+        payload = page
+    raw = b'AT&TFORM' + struct.pack('>I', len(payload)) + payload
+    assert legacy._djvu_pages(raw, 1) == 1
+
+
+@pytest.mark.parametrize('malformation', ['overrun', 'unaligned_sibling'])
+def test_djvu_final_padding_exception_never_relaxes_chunk_bounds_or_sibling_alignment(malformation):
+    if malformation == 'overrun':
+        payload = b'DJVU' + b'INFO' + struct.pack('>I', 4) + b'abc'
+    else:
+        payload = (b'DJVU' + b'INFO' + struct.pack('>I', 3) + b'abc' +
+                   b'JUNK' + struct.pack('>I', 4) + b'data')
+    raw = b'AT&TFORM' + struct.pack('>I', len(payload)) + payload
+    with pytest.raises(ConversionError, match='chunk'):
+        legacy._djvu_pages(raw, 1)
+
+
 @pytest.mark.parametrize('name', ['../private.htm', 'C:/private.htm', '/absolute.htm', 'a//b.htm', 'a/./b.htm', 'a.htm\nSize = 0'])
 def test_chm_member_path_cannot_escape_or_spoof_listing(name):
     with pytest.raises(ConversionError):

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "status": "OBSERVED_FAILURE_REPAIR_NOT_RUN",
+  "observed": {
+    "source_commit": "65ddc03deacc28a03001e8bf4ad9ebe84acefbf8",
+    "source_tree": "c5fab748b05450b6f82f9452e48b4229c4eb0dd8",
+    "run_id": 46010230070,
+    "job_id": 140543561701,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46010230070/job/140543561701",
+    "native_source": {
+      "passed": 3,
+      "failed": 1,
+      "total": 4
+    },
+    "native_installed": "NOT_RUN",
+    "artifact": {
+      "id": 15204719936,
+      "bytes": 2120568,
+      "sha256": "f10e303d631d13dd9bda9ac2835869b9a897eb0ee6dbdb4fde711d83959a0a84"
+    },
+    "failed_test": "test_real_djvu_without_text_layer_is_not_reported_as_ocr",
+    "failure": "Real cjb2 output ended at an odd final chunk boundary. The bounded parser incorrectly demanded its alignment byte inside the containing FORM.",
+    "evidence": "Decoded GitHub job log and matching upload/API artifact identity. No independent ZIP readback."
+  },
+  "publisher_source": {
+    "repository": "https://github.com/DjVuLibre/djvulibre",
+    "commit": "5fb9bfc934cb153ff9babe34073d0683dcab5d9a",
+    "path": "libdjvu/IFFByteStream.cpp",
+    "blob": "67f319d549701fd7311778fca70a4801b06a2cef",
+    "url": "https://github.com/DjVuLibre/djvulibre/blob/5fb9bfc934cb153ff9babe34073d0683dcab5d9a/libdjvu/IFFByteStream.cpp",
+    "behavior": "get_chunk returns when the offset equals the current context end before skipping the next-sibling alignment byte. put_chunk writes alignment before a new chunk; close_chunk records the exact current offset without appending padding."
+  },
+  "repair": {
+    "status": "NOT_RUN",
+    "product": "Allow an odd chunk to terminate exactly at its declared containing FORM boundary. Keep exact top-level length, overrun refusal, sibling alignment, depth/chunk/page budgets and indirect/shared dictionary refusal.",
+    "portable_cases_each": 162,
+    "new_portable_cases": 6,
+    "native_djvu_cases_each": 4,
+    "qualification_advertised": false,
+    "gate": "A frozen branch containing djvu-framing executes only the unchanged required DjVu native population, with all 162 source and installed portable boundaries; ordinary branches retain all three legacy families."
+  },
+  "limitations": [
+    "Only execution of the new gate can qualify this repair.",
+    "No DjVu OCR or shared dictionaries are enabled.",
+    "Existing CHM malformed-HTML failure remains separate."
+  ]
+}
