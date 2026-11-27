@@ -444,6 +444,7 @@ def test_local_only(request):
         # A completed leader is intentionally not sufficient evidence.
         with (mock.patch.object(runner, 'os', types.SimpleNamespace(name='posix',
                     killpg=lambda group, signal: events.append(('kill-group', group)))),
+              mock.patch.object(runner, 'signal', types.SimpleNamespace(SIGKILL=9)),
               mock.patch.object(runner, '_posix_group_quiescent', side_effect=quiescent),
               mock.patch.object(runner, 'sleep', side_effect=lambda delay: events.append(('wait', delay)))):
             runner._settle_test_process(process)
