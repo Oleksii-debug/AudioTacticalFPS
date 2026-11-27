@@ -341,6 +341,9 @@ jobs:
             'tests/extract/test_document_formats_xml.py',
             'tests/e2e/test_extended_document_workflows.py',
             'tests/citations/test_csl.py',
+            'tests/citations/test_csl_contexts.py',
+            'tests/citations/test_documents.py',
+            'tests/citations/test_regeneration.py',
             'tests/citations/test_custom_csl.py',
             'tests/citations/test_bibliography_workbench.py',
             'tests/citations/test_custom_workbench.py',
@@ -612,7 +615,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-citation-styles.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $installedPython -I -B scripts/windows_assistant_smoke.py 2>&1 | Tee-Object 'ci-results/full-bundle-assistant-native.txt'
+          & $installedPython -I -B scripts/windows_assistant_smoke.py --bundle $bundle 2>&1 | Tee-Object 'ci-results/full-bundle-assistant-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_PYTHON -I -B packaging/native-launcher/probe_installed_windows.py --bundle-root $bundle --report 'ci-results/full-bundle-native-launcher.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -702,6 +705,9 @@ jobs:
               'tests/extract/test_document_formats_xml.py',
               'tests/e2e/test_extended_document_workflows.py',
               'tests/citations/test_csl.py',
+              'tests/citations/test_csl_contexts.py',
+              'tests/citations/test_documents.py',
+              'tests/citations/test_regeneration.py',
               'tests/citations/test_custom_csl.py',
               'tests/citations/test_bibliography_workbench.py',
               'tests/citations/test_custom_workbench.py',

@@ -76,6 +76,9 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 button.Enable(False)
                 actions.Add(button, 0, wx.ALL, 4)
             layout.Add(actions, 0, wx.ALL, 4)
+            self.regenerate_button = wx.Button(self, label='Regenerate saved citation document...')
+            self.regenerate_button.Bind(wx.EVT_BUTTON, self.on_regenerate)
+            layout.Add(self.regenerate_button, 0, wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
             self.status = wx.TextCtrl(self, value='Choose a style and preview the selected references.',
                                       style=wx.TE_MULTILINE | wx.TE_READONLY)
             self.status.SetName('Citation formatting status')
@@ -104,7 +107,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.status.SetFocus()
 
         def controls(self, *, pending):
-            for control in (*self.options, self.generate):
+            for control in (*self.options, self.generate, self.regenerate_button):
                 control.Enable(not pending)
             for control in (self.copy_bibliography, self.copy_citations, self.export_button):
                 control.Enable(not pending and self.preview is not None)
@@ -210,6 +213,67 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.report('Bibliography copied.' if part == 'bibliography' else 'Citation examples copied.')
             except Exception as exc:
                 self.report(f'Text not copied: {exc}')
+
+        def on_regenerate(self, event=None):
+            if self.pending is not None:
+                return
+            try:
+                question = wx.MessageDialog(self,
+                    'Create a NEW Word document from its saved citation snapshot?\n'
+                    'Visible edits made in Word are kept in the original file and are not imported. '
+                    'The original style and processor must still match. This does not verify source quotations.',
+                    'Regenerate citation document', style=wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+                try:
+                    if question.ShowModal() != wx.ID_YES:
+                        return
+                finally:
+                    question.Destroy()
+                picker = wx.FileDialog(self, 'Open a saved citation document',
+                    wildcard='Word document (*.docx)|*.docx', style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+                try:
+                    if picker.ShowModal() != wx.ID_OK:
+                        return
+                    source = picker.GetPath()
+                finally:
+                    picker.Destroy()
+                chooser = wx.FileDialog(self, 'Save regenerated document to a NEW file',
+                    defaultFile='regenerated-citations.docx',
+                    wildcard='Word document (*.docx)|*.docx', style=wx.FD_SAVE)
+                try:
+                    if chooser.ShowModal() != wx.ID_OK:
+                        return
+                    destination = chooser.GetPath()
+                finally:
+                    chooser.Destroy()
+                approval = capture_export_destination(destination, private_root=controller.library.root)
+                if not approval.require_absent:
+                    raise FileExistsError('Choose a new filename; regeneration never replaces an existing document.')
+                selected_style = self.custom_style if self.style_choice.GetSelection() == len(self.styles) else None
+                self.cancelled = threading.Event()
+                self.controls(pending=True)
+                self.report('Regenerating the saved citation snapshot locally. The original document stays unchanged.',
+                            focus=False)
+                future = self.executor.submit(self.workbench.regenerate_document, source, destination,
+                    custom_style=selected_style, cancelled=self.cancelled.is_set, approval=approval)
+                self.pending = future
+                future.add_done_callback(
+                    lambda completed: wx.CallAfter(self.on_regenerate_ready, completed, destination))
+            except Exception as exc:
+                self.pending = None
+                self.controls(pending=False)
+                self.report(f'Citation document not regenerated: {exc}')
+
+        def on_regenerate_ready(self, future, destination):
+            if not self.alive or self.cancelled.is_set() or self.pending is not future:
+                return
+            self.pending = None
+            try:
+                future.result()
+                self.report(f'Regenerated citation snapshot saved to {destination}. '
+                            'Original document and its visible edits were kept.')
+            except Exception as exc:
+                self.report(f'Citation document not regenerated: {exc}')
+            self.controls(pending=False)
 
         def on_export(self, event=None):
             if self.pending is not None:

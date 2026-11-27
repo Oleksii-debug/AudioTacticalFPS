@@ -1,7 +1,7 @@
 name: CARR academic reconciliation acceptance
 on:
   push:
-    branches: [carr/academic-search-20261126]
+    branches: [carr/academic-search-20261126, carr/citation-document-reuse-a49c-20261127]
     paths:
       - carr-library/**
       - .github/workflows/carr-academic-reconciliation.yml
@@ -72,5 +72,15 @@ jobs:
             tests/e2e/test_advanced_research_search.py \
             tests/e2e/test_research_search_cli.py \
             tests/storage/test_library_backup_reading_state.py \
-            tests/packaging/test_ci_check.py
+            tests/packaging/test_ci_check.py \
+            tests/citations/test_csl.py \
+            tests/citations/test_custom_csl.py \
+            tests/citations/test_csl_contexts.py \
+            tests/citations/test_documents.py \
+            tests/citations/test_regeneration.py \
+            tests/citations/test_bibliography_workbench.py \
+            tests/citations/test_custom_workbench.py \
+            tests/ui/test_citation_styles_jobs.py \
+            tests/reader/test_export_publication_boundary.py \
+            tests/reader/test_export_no_clobber.py
       # This source-only job supplements the complete native Windows/bundle gate.

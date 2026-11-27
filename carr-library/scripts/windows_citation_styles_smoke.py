@@ -50,7 +50,7 @@ def main():
     import ctypes
     from ctypes import wintypes
     from carr_library.application import LibraryApp
-    from carr_library.citations import bibliography_workbench, csl
+    from carr_library.citations import bibliography_workbench, csl, documents, regeneration
     from carr_library.research import bibtex_import
     from carr_library.ui import academic_library_dialog, citation_styles_dialog
 
@@ -231,7 +231,7 @@ def main():
 
     installed = Path(sysconfig.get_path('purelib')).resolve()
     modules = (academic_library_dialog, citation_styles_dialog, bibliography_workbench,
-               bibtex_import, csl)
+               bibtex_import, csl, documents, regeneration)
     check('isolated installed CPython 3.11 x64 is running',
           sys.flags.isolated == 1 and sys.version_info[:2] == (3, 11)
           and struct.calcsize('P') == 8 and sys.prefix != sys.base_prefix)
@@ -459,6 +459,71 @@ def main():
                     check('Word bibliography contains no external relationships',
                           all(b'TargetMode="External"' not in archive.read(name)
                               for name in archive.namelist() if name.endswith('.rels')))
+                citation_source = root / 'editable citation snapshot.docx'
+                dialog.workbench.export(formatted, citation_source,
+                                        format='docx-citations', require_absent=True)
+                citation_bytes = citation_source.read_bytes()
+                citation_snapshot = documents.read_citation_docx(citation_source)
+                check('installed editable citations retain metadata without certifying quotations',
+                      citation_snapshot['quotation_verified'] is False
+                      and citation_snapshot['visible_edits_verified'] is False
+                      and len(citation_snapshot['citation_ids']) == 2
+                      and 'NativePrivateNote' not in json.dumps(citation_snapshot))
+
+                regenerated_path = root / 'regenerated citation snapshot.docx'
+                saved_picker, saved_question = wx.FileDialog, wx.MessageDialog
+                regeneration_choices = []
+
+                class CitationFileChoice:
+                    def __init__(self, parent, message, **options):
+                        check('citation regeneration chooses explicit source and new output',
+                              parent is dialog and message in (
+                                  'Open a saved citation document',
+                                  'Save regenerated document to a NEW file'))
+                        self.path = (citation_source if message == 'Open a saved citation document'
+                                     else regenerated_path)
+                        self.destroyed = False
+                        regeneration_choices.append(self)
+                    def ShowModal(self):
+                        return wx.ID_OK
+                    def GetPath(self):
+                        return str(self.path)
+                    def Destroy(self):
+                        self.destroyed = True
+
+                class ConfirmRegeneration:
+                    def __init__(self, parent, message, caption, **options):
+                        check('regeneration explicitly explains source preservation and new output',
+                              parent is dialog and caption == 'Regenerate citation document'
+                              and 'Visible edits made in Word' in message
+                              and options['style'] & wx.NO_DEFAULT)
+                    def ShowModal(self):
+                        return wx.ID_YES
+                    def Destroy(self):
+                        pass
+
+                wx.FileDialog, wx.MessageDialog = CitationFileChoice, ConfirmRegeneration
+                try:
+                    count = len(executor.jobs)
+                    yield from press(dialog.regenerate_button)
+                    yield from pump_until(lambda: len(executor.jobs) > count,
+                               'The native regeneration button did not submit its background job.')
+                    job = executor.jobs[-1]
+                    yield from pump_until(lambda: job['future'].done() and dialog.pending is None,
+                               'The native citation regeneration did not settle.', timeout=45)
+                    job['future'].result()
+                    check('native regeneration uses the real background service and restores controls',
+                          job['busy_controls'] and job['executed_on'] != main_thread
+                          and dialog.regenerate_button.IsEnabled()
+                          and 'Original document' in dialog.status.GetValue())
+                    check('native regeneration preserves the original and exact saved citation snapshot',
+                          citation_source.read_bytes() == citation_bytes
+                          and documents.read_citation_docx(regenerated_path) == citation_snapshot)
+                    check('regeneration disposes both controlled file choices',
+                          len(regeneration_choices) == 2
+                          and all(choice.destroyed for choice in regeneration_choices))
+                finally:
+                    wx.FileDialog, wx.MessageDialog = saved_picker, saved_question
                 cancelled_destination = root / 'cancelled bibliography.txt'
                 rejected(lambda: dialog.workbench.export(formatted, cancelled_destination,
                          cancelled=lambda: True), TimeoutError, 'cancelled export reports cancellation')
@@ -588,7 +653,9 @@ def main():
                     },
                     'native_keyboard': 'PASS', 'native_clipboard': 'PASS',
                     'native_custom_style': 'PASS', 'custom_style_file_choice': 'controlled path only',
-                    'service_exports': ['text', 'html', 'docx'],
+                    'service_exports': ['text', 'html', 'docx', 'docx-citations'],
+                    'native_citation_regeneration': 'PASS',
+                    'regeneration_choices': 'controlled source, output and confirmation only',
                     'manual_keyboard': 'NOT_RUN', 'native_file_pickers': 'NOT_RUN',
                     'nvda': 'NOT_RUN', 'installer': 'NOT_RUN',
                 }, sort_keys=True), flush=True)

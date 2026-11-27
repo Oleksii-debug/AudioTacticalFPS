@@ -213,3 +213,57 @@ def test_destination_approval_preserves_other_work_created_during_real_render(
     assert destination.read_bytes() == changed
     assert controller.get(row.id) == row
     assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_native_citation_document_reuses_scoped_export_and_excludes_private_notes(research, tmp_path):
+    from carr_library.citations.documents import read_citation_docx
+    controller, row, workbench = research
+    preview = workbench.preview(identity=row.id, style='chicago-note', name_mode='family-given')
+    destination = tmp_path / 'editable-citations.docx'
+    workbench.export(preview, destination, format='docx-citations', require_absent=True)
+    snapshot = read_citation_docx(destination)
+    assert snapshot['style']['id'] == 'chicago-note'
+    assert 'PrivateNote' not in json.dumps(snapshot)
+    assert snapshot['quotation_verified'] is False
+    original = destination.read_bytes()
+    with pytest.raises(FileExistsError):
+        workbench.export(preview, destination, format='docx-citations', require_absent=True)
+    assert destination.read_bytes() == original
+    controller.update(row, {'title': 'Changed after preview'})
+    with pytest.raises(ValueError, match='changed'):
+        workbench.export(preview, tmp_path / 'stale-editable.docx', format='docx-citations')
+    assert not (tmp_path / 'stale-editable.docx').exists()
+
+
+def test_regeneration_cli_preserves_original_and_requires_new_destination(research, tmp_path, capsys):
+    from carr_library.citations.documents import read_citation_docx
+    controller, row, workbench = research
+    source, target = tmp_path / 'source.docx', tmp_path / 'regenerated.docx'
+    workbench.export(workbench.preview(identity=row.id), source, format='docx-citations', require_absent=True)
+    original = source.read_bytes()
+    args = ['regenerate', '--data-dir', str(controller.library.root),
+            '--workspace', controller.workspace, '--input', str(source), '--output', str(target)]
+    assert main(args) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result['source_preserved'] is True and result['visible_word_edits_imported'] is False
+    assert read_citation_docx(source) == read_citation_docx(target)
+    assert main(args) == 1
+    assert 'new document' in capsys.readouterr().err
+    assert source.read_bytes() == original and controller.get(row.id) == row
+
+
+def test_regeneration_rechecks_library_access_after_real_render(research, tmp_path, monkeypatch):
+    from carr_library.citations import regeneration
+    controller, row, workbench = research
+    source, target = tmp_path / 'source.docx', tmp_path / 'revoked.docx'
+    workbench.export(workbench.preview(identity=row.id), source, format='docx-citations', require_absent=True)
+    original = source.read_bytes()
+    actual = regeneration.citation_document
+    def revoke(*args, **kwargs):
+        content = actual(*args, **kwargs)
+        controller.library.archive_workspace(controller.workspace)
+        return content
+    monkeypatch.setattr(regeneration, 'citation_document', revoke)
+    with pytest.raises(ValueError):
+        workbench.regenerate_document(source, target)
+    assert not target.exists() and source.read_bytes() == original
