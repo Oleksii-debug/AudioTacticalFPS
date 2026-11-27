@@ -285,13 +285,17 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     local, parent, player = Progress('studio'), Progress('parent'), Mock()
     dialog = Mock()
     dialog._audio_player = player
-    values = dict(current_job='completed-test-job', service=SimpleNamespace(
-        get=lambda job: {'destination': str(tmp_path)}), dialog=dialog,
+    library = SimpleNamespace(root=tmp_path)
+    frame = SimpleNamespace(library=library, _closing=False)
+    service = SimpleNamespace(get=lambda job: {'destination': str(tmp_path)}, close=Mock())
+    values = dict(current_job='completed-test-job', service=service, dialog=dialog,
+        frame=frame, library=library, library_root=tmp_path,
         progress=local, parent_progress=parent, wx=SimpleNamespace(CallLater=scheduler, ID_CLOSE=3),
         report=lambda message, focus=False: reports.append(message), alive=True,
         autosave=lambda: None, cancel=threading.Event(), busy=False,
         timer=Mock(), executor=CleanupQueue(), owned_progress_voices=set())
-    handlers = callbacks('studio_dialog.py', 'show_studio', ['preview', 'close'], values)
+    handlers = callbacks('studio_dialog.py', 'show_studio', ['scope_current', 'preview', 'close'], values)
+    assert handlers.scope_current()
     handlers.preview()
     assert local.players == parent.players == [player]
     player.play.assert_not_called()
@@ -299,6 +303,7 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     scheduler.tick()
     player.play.assert_not_called()
     handlers.close()
+    assert not handlers.scope_current()
     parent.ready = True
     scheduler.tick()
     player.play.assert_not_called()
@@ -306,6 +311,9 @@ def test_studio_preview_waits_for_both_controllers_and_close_invalidates_start(t
     assert all(hold.closed for owner in (local, parent) for hold in owner.holds)
     assert scheduler.pending == []
     assert reports == []
+    service.close.assert_not_called()
+    values['executor'].finish().result()
+    service.close.assert_called_once_with()
 
 
 def test_quiet_helper_deduplicates_controllers_then_refreshes_transport_before_release():
