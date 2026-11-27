@@ -278,7 +278,7 @@ def _inventory(root, *, cancelled, python_only=False):
                         pending.append(path)
                     else:
                         regular(path)
-                        if not python_only or path.name.endswith('.py'):
+                        if not python_only or path.name.lower().endswith('.py'):
                             found.add(path.relative_to(root).as_posix())
         check_cancel()
     except OSError as exc:

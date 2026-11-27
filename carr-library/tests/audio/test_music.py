@@ -339,3 +339,14 @@ def test_unreadable_runtime_subtree_invalidates_music_inference(tmp_path, monkey
         music.probe_model(runtime, 'musicgen')
     assert status['assets_verified']
     assert not any(status[key] for key in ('runtime_probed', 'runtime_code_verified', 'inference_tested'))
+
+
+def test_runtime_inventory_counts_non_python_and_detects_case_variant(tmp_path, monkeypatch):
+    from carr_library.audio import music
+
+    (tmp_path / 'unreviewed.PY').write_bytes(b'# synthetic')
+    (tmp_path / 'metadata.txt').write_bytes(b'synthetic')
+    assert music._inventory(tmp_path, cancelled=lambda: False, python_only=True) == {'unreviewed.PY'}
+    monkeypatch.setattr(music, '_MAX_INVENTORY_ENTRIES', 1)
+    with pytest.raises(ValueError, match='entry limit'):
+        music._inventory(tmp_path, cancelled=lambda: False, python_only=True)
