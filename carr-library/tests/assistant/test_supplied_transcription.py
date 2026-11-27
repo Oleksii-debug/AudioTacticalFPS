@@ -335,3 +335,89 @@ def test_assistant_backup_retains_inert_transcription_checkpoint(environment, tm
     assert entry['filename'] == 'state/assistant/' + identity + '.json'
     saved = read_json(backup / entry['filename'])
     assert saved['steps'][0]['intent']['transcription']['sha256'] == digest_file(source)
+
+
+def _local_transcription_proposal(service, monkeypatch, response):
+    from carr_library.assistant.profiles import ProfileStore, ProviderProfile
+    from carr_library.assistant.providers import Gateway
+    store = ProfileStore(service.app.root / 'state' / 'providers')
+    profile = store.save(ProviderProfile('transcription_planner', 'Explicit local planner',
+        'openai-compatible', 'http://127.0.0.1:9/v1', 'synthetic-proposal',
+        local=True, enabled=True))
+    requests = []
+    def request(_gateway, selected, capability, payload, **options):
+        requests.append((selected, capability, payload, options))
+        return {'text': json.dumps(response, ensure_ascii=False)}
+    monkeypatch.setattr(Gateway, 'request', request)
+    return profile, requests
+
+
+def test_local_planner_advertises_registered_transcription_and_only_proposes(environment, monkeypatch):
+    import re
+    from carr_library.assistant.models import TOOLS
+    from carr_library.assistant.service import _KEYS
+    service, source, outputs, approved, _ = environment
+    arguments = dict(approved.steps[0].arguments, vad_filter=False, beam_size=2,
+                     condition_on_previous_text=False)
+    response = {'schema': 'carr-assistant-plan/1', 'summary': 'Review the selected local recording.',
+                'steps': [{'tool': 'audio.transcribe', 'arguments': arguments}]}
+    profile, requests = _local_transcription_proposal(service, monkeypatch, response)
+    original = source.read_bytes()
+    def no_execution(*args, **kwargs):
+        raise AssertionError('A local proposal attempted to execute transcription.')
+    monkeypatch.setattr(service.transcription, 'transcribe', no_execution)
+    instruction = 'Propose transcription of the selected recording for my review.'
+    proposal = service.propose_local(instruction, approved.scope, profile_id=profile.id,
+                                     expected_profile=profile)
+    assert proposal.scope is approved.scope
+    assert proposal.steps == (Step('audio.transcribe', arguments),)
+    assert service.preview(json.dumps(response), approved.scope) == proposal
+    assert len(requests) == 1
+    selected, capability, payload, options = requests[0]
+    assert selected == profile and capability == 'llm.chat'
+    assert payload['messages'][1] == {'role': 'user', 'content': instruction}
+    system = payload['messages'][0]['content']
+    advertised = set(re.findall(r'\b(?:library|audio)\.[a-z_]+(?=\()', system))
+    assert advertised == TOOLS
+    signature = re.search(r'audio\.transcribe\(([^)]*)\)', system)
+    assert signature is not None, 'The local planner must see the registered transcription contract.'
+    parameters = signature.group(1).split(',')
+    required, optional = _KEYS['audio.transcribe']
+    assert {name for name in parameters if not name.endswith('?')} == required
+    assert {name[:-1] for name in parameters if name.endswith('?')} == optional
+    assert options['task_id'] == 'local-plan-preview'
+    assert options['timeout'] == approved.scope.max_seconds
+    assert options['max_response_bytes'] == 8 * 1024**2
+    assert original.decode('utf-8') not in json.dumps(payload, ensure_ascii=False)
+    assert service.jobs() == () and service.app.workspaces() == ()
+    assert source.read_bytes() == original and list(outputs.iterdir()) == []
+
+
+@pytest.mark.parametrize('boundary', ['input', 'output', 'runtime-option', 'scope', 'unconfigured'])
+def test_local_transcription_proposal_retains_existing_authority_boundaries(environment, monkeypatch, boundary):
+    service, source, outputs, approved, _ = environment
+    arguments = dict(approved.steps[0].arguments)
+    response = {'steps': [{'tool': 'audio.transcribe', 'arguments': arguments}]}
+    expected = PermissionError
+    if boundary == 'input':
+        outside = source.parent.parent / 'unselected.wav'
+        outside.write_bytes(b'Synthetic unselected source.')
+        arguments['path'] = str(outside)
+    elif boundary == 'output':
+        arguments['name'] = '../outside'
+    elif boundary == 'runtime-option':
+        arguments['model'] = 'unreviewed-model'
+        expected = ValueError
+    elif boundary == 'scope':
+        response['scope'] = dict(approved.scope.to_dict(), allow_create=True)
+    else:
+        service = AssistantService(service.app)
+        expected = RuntimeError
+    profile, requests = _local_transcription_proposal(service, monkeypatch, response)
+    original = source.read_bytes()
+    with pytest.raises(expected):
+        service.propose_local('Propose transcription for review.', approved.scope,
+                              profile_id=profile.id, expected_profile=profile)
+    assert len(requests) == 1
+    assert service.jobs() == () and service.app.workspaces() == ()
+    assert source.read_bytes() == original and list(outputs.iterdir()) == []

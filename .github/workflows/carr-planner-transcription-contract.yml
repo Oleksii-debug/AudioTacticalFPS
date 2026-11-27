@@ -1,0 +1,47 @@
+name: Canonical local planner transcription contract
+
+on:
+  push:
+    branches: [carr/planner-transcription-contract-20261127]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: planner-transcription-proof-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  scoped-proposal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONUTF8: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+      - name: Install the canonical declared test dependencies
+        working-directory: carr-library
+        run: python -B -m pip install ".[test]"
+      - name: Require the original omission and the complete finite proposal regression
+        run: python -B recovery/planner-transcription-20261127/validate.py
+      - name: Preserve exact source identities and actual outcomes
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: planner-transcription-contract-${{ github.sha }}
+          path: ci-planner-transcription-results/
+          if-no-files-found: error
+          retention-days: 7
