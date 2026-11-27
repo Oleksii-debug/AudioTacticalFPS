@@ -1218,6 +1218,22 @@ class DesktopFrame(WorkspaceFrame):
             'Reading positions and bookmarks use their own export and import actions in the Reading menu; keep that export with your library backup.\n'
             'Printed pages are shown only when verified; otherwise physical PDF pages or unpaginated segments are identified.')
 
+    def _begin_shutdown(self):
+        if self._closing:
+            return
+        self._closing = True
+        self.cancel_event.set()
+        # Stop native delivery before the frame's C++ event target is deleted.
+        # The owner-destroy notification remains a fallback for other paths.
+        stop_autosave = getattr(self, '_stop_draft_autosave', None)
+        if stop_autosave is not None:
+            stop_autosave()
+        self.executor.shutdown(wait=False, cancel_futures=True)
+
+    def Destroy(self):
+        self._begin_shutdown()
+        return super().Destroy()
+
     def on_close(self, event):
         if self.working:
             if event.CanVeto():
@@ -1226,7 +1242,5 @@ class DesktopFrame(WorkspaceFrame):
                 return
         super().on_close(event)
         if not event.GetVeto():
-            self._closing = True
-            self.cancel_event.set()
-            self.executor.shutdown(wait=False, cancel_futures=True)
+            self._begin_shutdown()
 

@@ -74,6 +74,81 @@ def close_event(can_veto):
     return event
 
 
+def installed_draft_timer(value, monkeypatch):
+    """Exercise the real save installer without inventing a destroy notification."""
+    from carr_library.ui.save_actions import install_save_actions
+
+    bindings = {}
+    timer = SimpleNamespace(running=False)
+    timer.Start = lambda interval: setattr(timer, 'running', True)
+    timer.Stop = Mock(side_effect=lambda: setattr(timer, 'running', False))
+    value.Bind = lambda event, handler, *args: bindings.setdefault(event, handler)
+    value.Unbind = Mock(return_value=True)
+    wx = SimpleNamespace(Menu=Mock(), Timer=Mock(return_value=timer), ID_ANY=-1,
+                         ID_EXIT=1, EVT_MENU='menu', EVT_TIMER='timer',
+                         EVT_WINDOW_DESTROY='destroy')
+    monkeypatch.setitem(sys.modules, 'wx', wx)
+    install_save_actions(value)
+    assert timer.running
+    return timer, bindings
+
+
+@pytest.mark.parametrize('forced', [False, True])
+def test_accepted_close_stops_live_draft_timer_before_default_destruction(classes, monkeypatch, forced):
+    value = frame(classes)
+    value.working = forced
+    timer, _ = installed_draft_timer(value, monkeypatch)
+    event = close_event(not forced)
+    value.on_close(event)
+    assert not event.veto and event.skipped
+    assert value._closing and value.cancel_event.is_set()
+    assert not timer.running
+    timer.Stop.assert_called_once_with()
+    value.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+
+
+@pytest.mark.parametrize('reason', ['running-job', 'unsaved-note'])
+def test_vetoed_close_preserves_live_draft_timer(classes, monkeypatch, reason):
+    value = frame(classes)
+    timer, _ = installed_draft_timer(value, monkeypatch)
+    if reason == 'running-job':
+        value.working = True
+    else:
+        monkeypatch.setattr(BaseFrame, 'on_close', lambda self, event: event.Veto())
+    event = close_event(True)
+    value.on_close(event)
+    assert event.veto and not value._closing
+    assert timer.running and not value.cancel_event.is_set()
+    timer.Stop.assert_not_called()
+    value.executor.shutdown.assert_not_called()
+
+
+@pytest.mark.parametrize('closed_first', [False, True])
+def test_direct_destroy_stops_draft_before_native_owner_and_cleans_once(classes, monkeypatch, closed_first):
+    value = frame(classes)
+    timer, bindings = installed_draft_timer(value, monkeypatch)
+    native_result = object()
+    native_calls = []
+
+    def native_destroy(owner):
+        assert owner is value
+        assert not timer.running and owner._closing
+        assert owner.cancel_event.is_set()
+        native_calls.append(owner)
+        event = SimpleNamespace(GetEventObject=lambda: owner, Skip=Mock())
+        bindings['destroy'](event)
+        event.Skip.assert_called_once_with()
+        return native_result
+
+    monkeypatch.setattr(BaseFrame, 'Destroy', native_destroy, raising=False)
+    if closed_first:
+        value.on_close(close_event(True))
+    assert value.Destroy() is native_result
+    assert native_calls == [value]
+    timer.Stop.assert_called_once_with()
+    value.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+
+
 def panel(classes):
     env,_ = classes
     value = object.__new__(env['DesktopSearchPanel'])
