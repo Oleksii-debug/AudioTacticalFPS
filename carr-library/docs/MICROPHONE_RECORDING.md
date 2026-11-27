@@ -51,6 +51,70 @@ input retention API, binding the returned `audio.sha256`; they do not grant
 authority to an arbitrary saved path. Recordings are inputs, so generated-audio
 exclusion does not discard them. This adds no second backup format or DSP engine.
 
+## Another take of a selected recording
+
+Select a completed saved recording and a current microphone, then choose
+**Record another take of selected recording**. This uses the same capture,
+Pause, Resume, Stop, Cancel and cleanup owner as an ordinary recording. Enabled
+monitoring still requires an explicit output selection. Choosing the retake
+action never selects a microphone, monitoring output or prior recording for you.
+
+A new take receives a new UUID and a new create-only WAV/receipt pair. Its
+optional `retake_of` receipt field records only the prior recording's ID and
+verified whole-WAV SHA-256. The original PCM and receipt are never replaced.
+The service verifies that original before admission, again before opening the
+microphone after any resource wait, and immediately before publishing the new
+take. A changed original, malformed identity, unfinished prior receipt or
+extra-link original blocks the new take. Open a prior recording separately to
+finish any necessary recovery; a retake does not perform that recovery.
+
+Cancelling an unfinished new take preserves the old recording. A late stop or
+cleanup warning cannot revoke a new WAV that was already published and verified.
+The new recording appears separately in the saved list; the existing Studio
+asset is unchanged until you explicitly choose **Use selected recording**.
+Old v1/v2 receipts without this optional relationship keep their original bytes
+and schema. Backup retains both WAVs and their receipts through the existing
+recording validator, without opening a microphone or reselecting a device.
+
+## Pause, resume and explicit monitoring
+
+**Pause microphone recording** requests graceful completion of the current
+segment. The UI enables **Resume microphone recording** only after the owned
+capture and any monitoring output have confirmed closure. Resume reopens the
+same selected DirectShow identity; a changed FFmpeg executable or missing device
+is an error. Pause time does not create silent PCM. Stop while paused saves the
+retained frames without reopening the input; Cancel discards only this unfinished
+take. There are at most 128 segments and one hour of total paused time, within the
+existing three-hour recorded-duration and byte bounds.
+
+The current UI produces `carr-recording/2` receipts. Each segment has a contiguous
+frame range, exact PCM SHA-256 and completion reason. Joining streams the actual
+frames unchanged and verifies every source before and after the copy. Joins are
+not a gapless-performance or acoustic-quality claim: review the resulting take
+before use. Existing `carr-recording/1` receipts remain readable and direct
+capture without controls retains that original schema.
+
+**Enable dry input monitoring** starts off. **Refresh monitoring outputs** only
+lists outputs; the user must choose one explicitly before enabling monitored
+capture. Monitoring reads bounded appended PCM from the same private capture,
+without opening a second microphone or changing saved samples. The selected
+Windows output is revalidated on each opening. Four 50 ms waveOut buffers bound
+the queued output to 200 ms; end-to-end latency is not qualified. Slow monitoring
+drops old monitoring frames, recorded separately as submitted/dropped counts in
+the receipt. These counters do not prove audible delivery or listening quality.
+Use headphones to avoid feeding playback back into the selected microphone.
+
+A failed output close retains native headers and their PCM memory until retry
+confirms release. If capture-process cleanup is also pending, one combined
+cleanup owner retains both resources, private segment files, capture locks,
+shared admission and quiet holds. No new capture is admitted while that owner
+still needs cleanup. The same existing owner may retry after the window closes.
+
+Backup validates whole-file PCM and v2 segment hashes without running an engine.
+Receiptless WAV originals and prepared receipts without a published WAV remain
+inert recovery data. A completed receipt requires its exact retained audio.
+Restoration does not approve capture, monitoring, playback or an output device.
+
 ## Verification boundaries
 
 `tests/audio/test_recording.py` runs actual FFmpeg with a fixed synthetic source
@@ -75,7 +139,7 @@ until performed on a selected Windows device.
 
 `scripts/windows_recording_smoke.py` must run with the installed interpreter,
 `-I -B`, real wx MainLoop and a staged FFmpeg build. It dispatches native keys
-for explicit source selection, Start, Stop, Cancel and Escape, checks actual
+for explicit source selection, Start, Pause, Resume, Stop, Cancel, an explicit new take and Escape, checks actual
 retained PCM, and confirms cleanup. The probe's fixed synthetic source never
 discovers or opens physical microphone hardware. Its existence is not a native
 PASS claim; the platform job must execute it.
@@ -83,3 +147,23 @@ PASS claim; the platform job must execute it.
 Device interface: <https://ffmpeg.org/ffmpeg-devices.html#dshow>.
 Windows lifetime contract:
 <https://learn.microsoft.com/windows/win32/procthread/job-objects>.
+
+The added `test_recording_controls.py` exercises actual FFmpeg segment shutdown,
+retained-frame joins, passive backup/restore and combined cleanup ownership.
+`test_recording_monitor.py` exercises the bounded native buffer protocol with
+a controlled WinMM API and real growing WAV files. Those tests do not constitute
+a physical output-device run. The native probe retains exact installed-source
+and external-audio executable bindings plus direct and parent destruction cases.
+New source checkpoints are NOT_RUN until their recorded CI run has completed.
+
+Native buffer release contract:
+<https://learn.microsoft.com/windows/win32/api/mmeapi/nf-mmeapi-waveoutunprepareheader>.
+
+
+The retake additions to `test_recording_controls.py` exercise actual synthetic
+FFmpeg for new v1/v2 takes, cancellation, prior-file mutation before opening and
+before publication, foreign equal-byte replacement, late cancellation, and both
+takes surviving passive backup/restore. Native retake acceptance uses the real
+named button and foreground keyboard dispatch, then verifies the old receipt and
+PCM identity plus the new receipt. These additions are source-only until the
+specific CI run executes them; earlier recording passes do not qualify retakes.

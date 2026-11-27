@@ -6,6 +6,8 @@ temporary file is written; they are not a sandbox against a process that can
 maliciously replace directory entries at the instant of publication.
 """
 from dataclasses import dataclass
+from functools import lru_cache
+import ctypes
 from hashlib import sha256
 import logging
 from pathlib import Path, PureWindowsPath
@@ -19,6 +21,9 @@ from time import monotonic
 # must have a finite byte budget and check cancellation/time between reads.
 MAX_APPROVAL_BYTES = 64 * 1024 * 1024
 APPROVAL_TIMEOUT = 2.0
+# Keep both public and canonical controls; the stricter limit always applies.
+_MAX_OVERWRITE_BYTES = 32 * 1024 * 1024
+_OVERWRITE_CHECK_SECONDS = 0.25
 
 
 @dataclass(frozen=True)
@@ -65,7 +70,57 @@ def _file_state(info):
             info.st_mtime_ns, info.st_ctime_ns)
 
 
-def _destination(path, private_root):
+class _WindowsFileBasicInfo(ctypes.Structure):
+    # FILE_BASIC_INFO: four LARGE_INTEGER values and one DWORD. Fixed-width
+    # fields also make the ABI checks meaningful on non-Windows test hosts.
+    _fields_ = [('CreationTime', ctypes.c_int64), ('LastAccessTime', ctypes.c_int64),
+                ('LastWriteTime', ctypes.c_int64), ('ChangeTime', ctypes.c_int64),
+                ('FileAttributes', ctypes.c_uint32)]
+
+
+@lru_cache(maxsize=1)
+def _windows_file_api():
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    create, query, close = (kernel.CreateFileW, kernel.GetFileInformationByHandleEx,
+                            kernel.CloseHandle)
+    create.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32,
+                       ctypes.c_void_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p]
+    create.restype = ctypes.c_void_p
+    query.argtypes = [ctypes.c_void_p, ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint32]
+    query.restype = ctypes.c_int32
+    close.argtypes = [ctypes.c_void_p]
+    close.restype = ctypes.c_int32
+    return create, query, close
+
+
+def _windows_api_error(operation):
+    return OSError(f'The export destination could not be verified: {operation} '
+                   f'failed (Windows error {ctypes.get_last_error()}).')
+
+
+def _windows_change_time(path):
+    """Read bounded native metadata without reading or locking file contents."""
+    create, query, close = _windows_file_api()
+    # FILE_READ_ATTRIBUTES; share read/write/delete; OPEN_EXISTING; open the
+    # reparse point itself so the handle query can reject redirection.
+    handle = create(str(path), 0x80, 0x7, None, 3, 0x00200000, None)
+    if handle is None or handle == ctypes.c_void_p(-1).value:
+        raise _windows_api_error('CreateFileW')
+    try:
+        basic = _WindowsFileBasicInfo()
+        if not query(handle, 0, ctypes.byref(basic), ctypes.sizeof(basic)):
+            raise _windows_api_error('GetFileInformationByHandleEx')
+        if basic.FileAttributes & (0x400 | 0x10):  # reparse point or directory
+            raise ValueError('The export destination must be a regular file without links or reparse points.')
+        if basic.ChangeTime <= 0:
+            raise ValueError('The export destination does not provide a usable Windows change time.')
+        return basic.ChangeTime
+    finally:
+        if not close(handle):
+            raise _windows_api_error('CloseHandle')
+
+
+def _destination(path, private_root, reject_existing=None, expected=None):
     private = private_root.resolve()
     try:
         private_info = private.stat()
@@ -92,17 +147,43 @@ def _destination(path, private_root):
     target = parent / path.name
     if target.is_relative_to(private):
         raise ValueError('Choose an export destination outside the private library folder.')
+    parent_identity = _identity(parent.stat())
+    if expected is not None and (target, parent_identity) != expected[:2]:
+        raise ValueError('The export destination changed. Choose the destination again.')
     try:
         info = target.lstat()
     except FileNotFoundError:
         state = None
+        if expected is not None and expected[2] is not None:
+            raise ValueError('The export destination changed. Choose the destination again.')
     else:
+        # A create-only conflict grants no authority to inspect the file.
+        if reject_existing is not None:
+            raise reject_existing
         if _linked(info) or not stat.S_ISREG(info.st_mode):
             raise ValueError('The export destination must be a regular file without links or reparse points.')
         if info.st_nlink != 1:
             raise ValueError('Choose an export destination without hard links.')
         state = _file_state(info)
-    return target, _identity(parent.stat()), state
+        # A stale approval grants no authority to read replacement metadata or bytes.
+        if expected is not None and (expected[2] is None or state != expected[2][:len(state)]):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        if os.name == 'nt':
+            # Python 3.11 exposes Windows creation time as ctime. Native
+            # ChangeTime improves metadata freshness, but even that timestamp
+            # can collide for rapid writes. The bounded full-byte digest below
+            # also detects same-length edits with restored modification time.
+            change_time = _windows_change_time(target)
+            state = (*state, change_time)
+        if expected is not None and state != expected[2]:
+            raise ValueError('The export destination changed. Choose the destination again.')
+        after = target.lstat()
+        if (_linked(after) or _file_state(after) != _file_state(info)
+                or _identity(parent.stat()) != parent_identity):
+            raise ValueError('The export destination changed. Choose the destination again.')
+    if _identity(parent.stat()) != parent_identity:
+        raise ValueError('The export destination changed. Choose the destination again.')
+    return target, parent_identity, state
 
 
 @dataclass(frozen=True)
@@ -133,9 +214,10 @@ def _export_paths(path, private_root):
 def _existing_digest(target, state, cancelled):
     if state is None:
         return None
-    if state[3] > MAX_APPROVAL_BYTES:
-        raise ValueError('The existing export exceeds the overwrite-check size limit. Choose a new filename.')
-    deadline = monotonic() + APPROVAL_TIMEOUT
+    if state[3] > min(MAX_APPROVAL_BYTES, _MAX_OVERWRITE_BYTES):
+        raise ValueError('The existing export exceeds the overwrite-check size limit; '
+                         'it is too large to verify. Choose a new filename.')
+    deadline = monotonic() + min(APPROVAL_TIMEOUT, _OVERWRITE_CHECK_SECONDS)
     digest = sha256()
 
     def check_read():
@@ -144,35 +226,35 @@ def _existing_digest(target, state, cancelled):
         if monotonic() >= deadline:
             raise TimeoutError('Checking the existing export took too long. Choose a new filename.')
 
-    check_read()
     flags = (os.O_RDONLY | getattr(os, 'O_BINARY', 0)
              | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_NOFOLLOW', 0))
     descriptor = os.open(target, flags)
     try:
-        with os.fdopen(descriptor, 'rb', buffering=0, closefd=False) as stream:
-            if _file_state(os.fstat(descriptor)) != state:
-                raise ValueError('The export destination changed. Choose the destination again.')
-            remaining = state[3]
-            while remaining:
-                check_read()
-                block = stream.read(min(1024 * 1024, remaining))
-                check_read()
-                if not block:
-                    raise ValueError('The export destination changed. Choose the destination again.')
-                remaining -= len(block)
-                digest.update(block)
+        check_read()
+        if _file_state(os.fstat(descriptor)) != state[:6]:
+            raise ValueError('The export destination changed. Choose the destination again.')
+        remaining = state[3]
+        while remaining:
             check_read()
-            if stream.read(1):
-                raise ValueError('The export destination changed. Choose the destination again.')
+            block = os.read(descriptor, min(128 * 1024, remaining))
             check_read()
-            if _file_state(os.fstat(descriptor)) != state:
+            if not block:
                 raise ValueError('The export destination changed. Choose the destination again.')
+            remaining -= len(block)
+            digest.update(block)
+        check_read()
+        if os.read(descriptor, 1):
+            raise ValueError('The export destination changed. Choose the destination again.')
+        check_read()
+        if _file_state(os.fstat(descriptor)) != state[:6]:
+            raise ValueError('The export destination changed. Choose the destination again.')
     finally:
         os.close(descriptor)
     return digest.hexdigest()
 
 
-def capture_export_destination(path, *, private_root, cancelled=lambda: False):
+def capture_export_destination(path, *, private_root, cancelled=lambda: False,
+                               _reject_existing=None, _expected=None):
     """Inspect a chosen path before asking to replace its existing file.
 
     Pass this same immutable snapshot to the writer after confirmation. It
@@ -185,11 +267,12 @@ def capture_export_destination(path, *, private_root, cancelled=lambda: False):
     if cancelled():
         raise TimeoutError('Export cancelled; the destination was not changed.')
     requested, private = _export_paths(path, private_root)
-    target, parent_identity, state = _destination(requested, private)
+    target, parent_identity, state = _destination(requested, private, _reject_existing, _expected)
     content_sha256 = _existing_digest(target, state, cancelled)
-    if state is not None and _destination(requested, private) != (target, parent_identity, state):
+    if state is not None and _destination(requested, private, expected=(target, parent_identity, state)) != (target, parent_identity, state):
         raise ValueError('The export destination changed. Choose the destination again.')
-    return ExportDestination(requested, private, target, parent_identity, state, content_sha256)
+    approved_state = None if state is None else (*state, bytes.fromhex(content_sha256))
+    return ExportDestination(requested, private, target, parent_identity, approved_state, content_sha256)
 
 
 def write_export(path, content, *, private_root, cancelled=lambda: False,
@@ -235,15 +318,28 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             raise TimeoutError('Export cancelled; the destination was not changed.')
 
     check_cancelled()
-    initial = capture_export_destination(path, private_root=private_root, cancelled=cancelled)
+    if approval is not None and type(approval) is not ExportDestination:
+        raise ValueError('A captured export destination approval is required.')
+    requested, private = _export_paths(path, private_root)
+    if approval is not None and (approval.requested != requested or approval.private_root != private):
+        raise ValueError('The export destination changed. Choose the destination again.')
+    reject_existing = None
+    if approval is not None and approval.require_absent:
+        reject_existing = ValueError('The export destination changed. Choose the destination again.')
+    elif require_absent:
+        reject_existing = FileExistsError('The export destination already exists; replacement was not authorized.')
+    expected = ((approval.target, approval.parent_identity,
+                 None if approval.state is None else approval.state[:-1])
+                if approval is not None else None)
+    initial = capture_export_destination(path, private_root=private_root, cancelled=cancelled,
+                                         _reject_existing=reject_existing, _expected=expected)
     requested, private, target = initial.requested, initial.private_root, initial.target
-    parent_identity, previous = initial.parent_identity, initial.state
+    parent_identity = initial.parent_identity
+    previous = None if initial.state is None else initial.state[:-1]
     # Reuse PR111's policy for legacy callers too: approval cannot cover a file
     # that did not exist at this snapshot. Publication must never replace one.
     require_absent = require_absent or previous is None
     if approval is not None:
-        if type(approval) is not ExportDestination:
-            raise ValueError('A captured export destination approval is required.')
         if approval != initial:
             raise ValueError('The export destination changed. Choose the destination again.')
         require_absent = require_absent or approval.require_absent
@@ -261,13 +357,16 @@ def _write_payload(path, payload, *, private_root, cancelled, require_absent=Fal
             os.fsync(output.fileno())
 
         check_cancelled()
-        checked_target, checked_parent, current = _destination(requested, private)
+        conflict = (ValueError('The export destination changed. Choose the destination again.')
+                    if previous is None else None)
+        checked_target, checked_parent, current = _destination(
+            requested, private, conflict, (target, parent_identity, previous))
         if (checked_target != target or checked_parent != parent_identity or
                 current != previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         if _existing_digest(checked_target, current, cancelled) != initial.content_sha256:
             raise ValueError('The export destination changed. Choose the destination again.')
-        if previous is not None and _destination(requested, private) != (target, parent_identity, previous):
+        if previous is not None and _destination(requested, private, expected=(target, parent_identity, previous)) != (target, parent_identity, previous):
             raise ValueError('The export destination changed. Choose the destination again.')
         check_cancelled()
         if require_absent and os.name == 'nt':

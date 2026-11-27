@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "component": "Calibre",
+  "version": "9.19.0",
+  "source_repository": "https://github.com/kovidgoyal/calibre",
+  "source_tag": "v9.19.0",
+  "license": "GPLv3",
+  "use": "Explicit CI-only selected tool; no redistribution in application bundle",
+  "platforms": {
+    "windows": {
+      "url": "https://github.com/kovidgoyal/calibre/releases/download/v9.19.0/calibre-64bit-9.19.0.msi",
+      "bytes": 291713024,
+      "sha256": "241193d5045bdcbc3e7ec000c22ede0b5da1fd2e91e83fa0b17f0e1f67174480"
+    },
+    "linux_x86_64": {
+      "url": "https://github.com/kovidgoyal/calibre/releases/download/v9.19.0/calibre-9.19.0-x86_64.txz",
+      "bytes": 241350288,
+      "sha256": "35c1cbda1a2548aceeb89cb0a4be47a36025b5dc102ac046f7eaf98ba46a452d"
+    }
+  },
+  "identity_source": "https://api.github.com/repos/kovidgoyal/calibre/releases/tags/v9.19.0",
+  "identity_source_release_id": 453483183,
+  "qualification": "NOT_RUN"
+}

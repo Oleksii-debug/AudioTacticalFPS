@@ -1,12 +1,13 @@
 """Canonical studio integration, including actual FFmpeg output and recovery."""
 from dataclasses import replace
+from copy import deepcopy
 from pathlib import Path
 import shutil
 from types import SimpleNamespace
 
 import pytest
 
-from carr_library.audio import AudioBudget, AudioRuntime
+from carr_library.audio import AudioBudget, AudioError, AudioRuntime
 from carr_library.operations import ResourceBroker, ResourceLimits, ResourceRequest, ResourceUnavailable
 from carr_library.speech import VoiceRegistry
 from carr_library.studio.project import Music
@@ -179,3 +180,65 @@ def test_explicit_policy_recovery_preserves_actual_studio_thread_request(tmp_pat
     assert service.run(identity)['status'] == 'complete'
     assert all(runtime.budget.threads == 2 for runtime in runtimes)
     assert service.get(identity)['resource_plan']['request']['cpu_slots'] == 2
+
+
+@pytest.mark.skipif(not shutil.which('ffmpeg') or not shutil.which('ffprobe'),
+                    reason='Actual total-budget recovery requires FFmpeg and ffprobe.')
+def test_total_disk_budget_failure_releases_lease_and_resume_preserves_accepted_audio(tmp_path):
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    broker = ResourceBroker.for_app(tmp_path, limits=ResourceLimits(cpu_slots=1, min_free_disk_bytes=0))
+    budget = AudioBudget(threads=1, max_output_bytes=4 * 1024**2, reserve_disk_bytes=0, timeout=30)
+    factory = lambda root, **options: AudioRuntime(root, budget=budget, **options)
+    service = ProductionService(tmp_path / 'state' / 'studio', voices=VoiceRegistry([]),
+        runtime_factory=factory, broker=broker, total_disk_bytes=4 * 1024**2)
+    project = service.create('[Pause: 30]', mode='authored')
+    project = replace(project, sample_rate=16000, revision=project.revision + 1)
+    identity = service.submit(project, outputs, stems=True, format='flac')
+    with pytest.raises(AudioError, match='budget'):
+        service.run(identity)
+    failed = service.get(identity)
+    assert failed['status'] == 'failed' and failed['nodes']
+    assert not broker.snapshot()['leases']
+    accepted = {path: path.read_bytes() for path in service.cache.glob('*.wav')}
+    assert accepted
+    resumed = ProductionService(service.root, voices=VoiceRegistry([]), runtime_factory=factory,
+        broker=broker, total_disk_bytes=32 * 1024**2).run(identity)
+    assert resumed['status'] == 'complete' and resumed['total_disk_bytes'] == 32 * 1024**2
+    assert all(resumed['nodes'][key]['reused'] for key in failed['nodes'])
+    assert all(path.read_bytes() == content for path, content in accepted.items())
+    assert not broker.snapshot()['leases']
+
+
+def test_saved_production_admission_is_a_bounded_passive_backup_record(tmp_path, monkeypatch):
+    from carr_library import backup_producers
+    outputs = tmp_path / 'outputs'
+    outputs.mkdir()
+    service = ProductionService(tmp_path / 'state' / 'studio', voices=VoiceRegistry([]))
+    project = service.create('[Pause: 1]')
+    identity = service.submit(project, outputs)
+    saved = service.get(identity)
+    _, plan = service._resource_plan(project, saved, SimpleNamespace(budget=AudioBudget(threads=1)))
+    saved.update(resource_plan=plan, total_disk_bytes=service.total_disk_bytes, status='queued')
+    name = 'state/studio/jobs/' + identity + '/job.json'
+    # Reading this checkpoint may not acquire locks or resolve external paths.
+    monkeypatch.setattr(ResourceBroker, '__init__', lambda *_a, **_kw:
+                        pytest.fail('Backup validation started a runtime coordinator.'))
+    for status in ('queued', 'attention', 'failed'):
+        saved['status'] = status
+        backup_producers.validate(None, name, saved)
+    changes = (
+        lambda row: row['resource_plan'].update(schema=True),
+        lambda row: row['resource_plan']['request'].update(cpu_slots=-1),
+        lambda row: row['resource_plan']['request'].update(disk_path='relative/cache'),
+        lambda row: row['resource_plan'].update(unreviewed=True),
+        lambda row: row.update(total_disk_bytes=True),
+    )
+    for change in changes:
+        malformed = deepcopy(saved)
+        change(malformed)
+        with pytest.raises(ValueError):
+            backup_producers.validate(None, name, malformed)
+    legacy = {key: value for key, value in saved.items() if key not in ('resource_plan', 'total_disk_bytes')}
+    legacy['status'] = 'pending'
+    backup_producers.validate(None, name, legacy)

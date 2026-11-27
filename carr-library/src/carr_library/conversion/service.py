@@ -1,24 +1,27 @@
 """Create source-preserving text derivatives with atomic provenance receipts."""
-from dataclasses import asdict
+from contextlib import ExitStack, contextmanager
+from dataclasses import asdict, replace
 from hashlib import sha256
 import json
 import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import sys
-from tempfile import TemporaryDirectory
+from tempfile import gettempdir
 from time import monotonic
 
-from ..durable_state import local_path, regular, sync_directory
-from ..audio.models import AudioBudget, AudioCancelled, AudioError
+from ..durable_state import _open_json_file, local_path, regular, sync_directory
+from ..audio.models import AudioBudget, AudioCancelled, AudioCleanupPending, AudioError
+from ..audio.cleanup import retained_temporary_directory
 from ..audio.process import run_process
 from .models import ConversionBudget, ConversionError, ConversionResult, ConversionUnavailable
 
 
-BUILTIN = ('.txt', '.md', '.markdown', '.html', '.htm', '.xhtml', '.eml', '.docx', '.epub',
+BUILTIN = ('.txt', '.md', '.markdown', '.html', '.htm', '.xhtml', '.eml', '.mht', '.mhtml', '.txtz', '.zip', '.docx', '.epub',
            '.pdf', '.fb2', '.fb3', '.odt', '.ods', '.odp', '.pptx', '.xlsx')
-LEGACY = ('.azw', '.azw3', '.chm', '.djvu', '.doc', '.lit', '.mobi', '.pdb', '.prc', '.ppt', '.tcr', '.wpd', '.xls')
+LEGACY = ('.azw', '.azw3', '.chm', '.djvu', '.doc', '.lit', '.mobi', '.pdb', '.prc', '.ppt', '.tcr', '.wpd', '.wri', '.xls')
 IMAGES = ('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff', '.webp')
 PANDOC_READERS = {'.rtf': 'rtf', '.md': 'commonmark', '.markdown': 'commonmark', '.html': 'html+raw_html',
                   '.htm': 'html+raw_html', '.fb2': 'fb2', '.odt': 'odt', '.docx': 'docx', '.epub': 'epub'}
@@ -29,24 +32,207 @@ def _fingerprint(path):
     return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
 
 
-def _digest(path, cancelled=lambda: False):
-    result = sha256()
-    with Path(path).open('rb') as stream:
-        while data := stream.read(1024 * 1024):
+def _stamp(info):
+    return (info.st_dev, info.st_ino, info.st_size,
+            info.st_mtime_ns, info.st_ctime_ns, info.st_nlink)
+
+
+@contextmanager
+def _opened_snapshot(path, *, links=(1,)):
+    """Hold the same bounded regular file through pathname revalidation."""
+    def checked(info):
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink not in links
+                or getattr(info, 'st_file_attributes', 0) & 0x400):
+            raise ConversionError('Conversion requires an unchanged regular local file.')
+        return _stamp(info)
+
+    before = checked(Path(path).lstat())
+    if os.name == 'nt':
+        # Reuse the canonical non-following, non-inheritable Win32 reader.
+        stream = _open_json_file(Path(path))
+    else:
+        flags = (os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0)
+                 | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_CLOEXEC', 0))
+        descriptor = os.open(path, flags)
+        try:
+            stream = os.fdopen(descriptor, 'rb')
+        except BaseException:
+            os.close(descriptor)
+            raise
+    with stream:
+        if checked(os.fstat(stream.fileno())) != before:
+            raise ConversionError('The conversion file changed before it was read.')
+        yield stream, before
+        if (checked(os.fstat(stream.fileno())) != before
+                or checked(Path(path).lstat()) != before):
+            raise ConversionError('The conversion file changed while it was read.')
+
+
+def _read_bytes(path, maximum, cancelled=lambda: False):
+    with _opened_snapshot(path) as (stream, before):
+        if before[2] > maximum:
+            raise ConversionError('The conversion file exceeds its selected byte budget.')
+        if cancelled():
+            raise InterruptedError('Document conversion cancelled.')
+        value = stream.read(before[2] + 1)
+        if len(value) != before[2]:
+            raise ConversionError('The conversion file changed while it was read.')
+        if cancelled():
+            raise InterruptedError('Document conversion cancelled.')
+    return value
+
+
+def _digest(path, cancelled=lambda: False, *, maximum=None, links=(1,), deadline=None):
+    result, count = sha256(), 0
+    with _opened_snapshot(path, links=links) as (stream, before):
+        if maximum is not None and before[2] > maximum:
+            raise ConversionError('The conversion file exceeds its selected byte budget.')
+        while True:
             if cancelled():
                 raise InterruptedError('Document conversion cancelled.')
+            if deadline is not None and monotonic() >= deadline:
+                raise TimeoutError('Verifying the saved conversion exceeded its time budget.')
+            data = stream.read(min(1024 * 1024, before[2] + 1 - count))
+            if not data:
+                break
+            count += len(data)
+            if count > before[2]:
+                raise ConversionError('The conversion file grew while it was read.')
             result.update(data)
+        if count != before[2]:
+            raise ConversionError('The conversion file changed while it was read.')
     return result.hexdigest()
 
 
+def _parent_identity(path):
+    info = regular(path, directory=True)
+    return info.st_dev, info.st_ino
+
+
+
+def _copy_private_file(source, target, maximum, cancelled, deadline):
+    """Copy one captured ordinary file between this operation's private roots."""
+    from .office import _bounded_digest, _remaining, file_identity, regular_file, verified_reader
+    source, target = Path(source), Path(target)
+    source_info = regular_file(source)
+    identity = file_identity(source_info)
+    if source_info.st_size > maximum:
+        raise ConversionError('The private conversion file exceeds its byte budget.')
+    parent = local_path(target.parent, exists=True)
+    parent_identity = _parent_identity(parent)
+    def check():
+        if cancelled():
+            raise InterruptedError('Document conversion cancelled while copying private files.')
+        _remaining(deadline)
+    check()
+    digest, count = sha256(), 0
+    with verified_reader(source, expected_identity=identity) as incoming:
+        with target.open('xb') as outgoing:
+            while True:
+                check()
+                block = incoming.read(min(1024 * 1024, source_info.st_size - count + 1))
+                if not block:
+                    break
+                count += len(block)
+                if count > source_info.st_size:
+                    raise ConversionError('The private conversion file grew during its copy.')
+                digest.update(block)
+                outgoing.write(block)
+            if count != source_info.st_size:
+                raise ConversionError('The private conversion file changed during its copy.')
+            outgoing.flush()
+            check()
+            os.fsync(outgoing.fileno())
+        incoming.seek(0)
+        if _bounded_digest(incoming, count, check) != digest.hexdigest():
+            raise ConversionError('The private conversion source bytes changed during its copy.')
+    if (local_path(target.parent, exists=True) != parent
+            or _parent_identity(parent) != parent_identity
+            or _digest(target, cancelled, maximum=count, deadline=deadline) != digest.hexdigest()):
+        raise ConversionError('The private conversion copy or its destination changed.')
+    check()
+    return digest.hexdigest(), identity
+
+def _verify_published_pair(root, parent, parent_identity, files, *, timeout):
+    """Prove this invocation's exact two outputs, without late cancellation."""
+    if (local_path(parent, root=root, exists=True) != parent
+            or _parent_identity(parent) != parent_identity):
+        raise ConversionError('The conversion destination directory changed.')
+    deadline = monotonic() + min(timeout, 30)
+    observed = []
+    for staged, target, identity, expected in files:
+        retained = os.path.lexists(staged)
+        links = (2,) if retained else (1,)
+        info = target.lstat()
+        stamp = _stamp(info)
+        if (info.st_dev, info.st_ino, info.st_size) != identity:
+            raise ConversionError('The saved conversion is not this publication.')
+        stage_stamp = None
+        if retained:
+            stage_info = staged.lstat()
+            stage_stamp = _stamp(stage_info)
+            if (stat.S_ISLNK(stage_info.st_mode)
+                    or getattr(stage_info, 'st_file_attributes', 0) & 0x400
+                    or (stage_info.st_dev, stage_info.st_ino, stage_info.st_size) != identity):
+                raise ConversionError('The conversion staging identity changed.')
+        if _digest(target, maximum=identity[2], links=links, deadline=deadline) != expected:
+            raise ConversionError('The saved conversion bytes changed.')
+        observed.append((staged, target, identity, expected, links, stamp, stage_stamp))
+    # The second digest cannot bless a replacement or edit of the first file.
+    # Rehash earlier files once, under the same finite pair-verification budget,
+    # then recheck every selected and staging name as one final graph.
+    for _staged, target, identity, expected, links, _stamp_before, _stage_before in observed[:-1]:
+        if _digest(target, maximum=identity[2], links=links, deadline=deadline) != expected:
+            raise ConversionError('The saved conversion bytes changed.')
+    for staged, target, _identity, _expected, _links, stamp, stage_stamp in observed:
+        if _stamp(target.lstat()) != stamp:
+            raise ConversionError('The saved conversion changed during pair verification.')
+        if stage_stamp is None:
+            if os.path.lexists(staged):
+                raise ConversionError('The conversion staging identity changed.')
+        elif _stamp(staged.lstat()) != stage_stamp:
+            raise ConversionError('The conversion staging identity changed.')
+    if (local_path(parent, root=root, exists=True) != parent
+            or _parent_identity(parent) != parent_identity):
+        raise ConversionError('The conversion destination directory changed.')
+
+
+def _rollback_owned_outputs(parent, parent_identity, files):
+    """Remove only this attempt's incomplete names, preserving foreign files."""
+    if _parent_identity(parent) != parent_identity:
+        return
+    for staged, target, identity, _expected in reversed(files):
+        try:
+            info, stage_info = target.lstat(), staged.lstat()
+        except FileNotFoundError:
+            continue
+        if ((info.st_dev, info.st_ino, info.st_size) == identity
+                and (stage_info.st_dev, stage_info.st_ino, stage_info.st_size) == identity
+                and stat.S_ISREG(info.st_mode) and stat.S_ISREG(stage_info.st_mode)
+                and not getattr(info, 'st_file_attributes', 0) & 0x400):
+            target.unlink()
+
+
+def _completion_warning():
+    return ('The reading text and its provenance were verified as published, but final '
+            'cleanup or durability confirmation was not completed. Review the saved files '
+            'before starting another conversion.')
+
+
 class ConversionService:
-    def __init__(self, root, *, input_roots=(), budget=None, pandoc=None):
+    def __init__(self, root, *, input_roots=(), budget=None, pandoc=None, office=None, calibre=None):
         self.root = local_path(root)
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.input_roots = tuple(local_path(path, exists=True) for path in input_roots)
         self.budget = budget or ConversionBudget()
         if not isinstance(self.budget, ConversionBudget):
             raise TypeError('A typed conversion budget is required.')
+        from .office import OfficeSelection
+        self.office = (office if isinstance(office, OfficeSelection) else
+                       OfficeSelection.capture(office) if office is not None else None)
+        from .calibre import CalibreSelection
+        self.calibre = (calibre if isinstance(calibre, CalibreSelection) else
+                        CalibreSelection.capture(calibre) if calibre is not None else None)
         self.pandoc = local_path(pandoc, exists=True) if pandoc else None
         if self.pandoc and not self.pandoc.is_file():
             raise ValueError('Select an installed Pandoc executable.')
@@ -67,9 +253,20 @@ class ConversionService:
             values.append({'extension': suffix, 'available': ocr,
                            'adapter': 'installed Tesseract with explicit languages',
                            'limitation': 'OCR must be explicitly selected; unverified text only, no automatic quotation approval.'})
+        from .office import OFFICE_SUFFIXES
+        from .calibre import CALIBRE_SUFFIXES
         for suffix in LEGACY:
-            values.append({'extension': suffix, 'available': False, 'adapter': 'separate reviewed converter needed',
-                           'limitation': 'Legacy format is not enabled without a tested offline/active-content isolation adapter; no DRM bypass.'})
+            if suffix in OFFICE_SUFFIXES:
+                values.append({'extension': suffix, 'available': self.office is not None,
+                    'adapter': 'explicitly selected local LibreOffice',
+                    'limitation': 'Fixed legacy import filter; reading text only. Requires matching installed filters; layout and source fidelity need review. Selected native tool is not an OS sandbox.'})
+            elif suffix in CALIBRE_SUFFIXES:
+                values.append({'extension': suffix, 'available': self.calibre is not None,
+                    'adapter': 'explicitly selected local Calibre',
+                    'limitation': 'Unprotected supported book family; reading text only, no layout, pagination or DRM removal. DjVu requires an existing text layer; no new OCR. Selected native tool is not an OS sandbox.'})
+            else:
+                values.append({'extension': suffix, 'available': False, 'adapter': 'separate reviewed converter needed',
+                    'limitation': 'Legacy format is not enabled without a tested offline/active-content isolation adapter; no DRM bypass.'})
         return tuple(values)
 
     def _input(self, value):
@@ -116,11 +313,118 @@ class ConversionService:
                 '--wrap=none', '--output=' + str(output), str(source),
                 '+RTS', '-M' + str(self.budget.memory_bytes // (1024 * 1024)) + 'M', '-RTS']
         result = run_process(args, budget=self._process_budget(), cancelled=cancelled,
-                             watch=(output,), env=self._env(stage), cwd=stage)
+                             watch=(output,), env=self._env(stage), cwd=stage, owned_tree=True)
         return {'engine': 'installed-pandoc-sandbox', 'sections': [], 'metadata': {},
                 'warnings': ['Pandoc plain-text derivative; layout, pictures and printed pages are not retained.',
                              'No custom filters, PDF engine, template, resource embedding or network input is enabled.']
                             + (['Pandoc reported conversion warnings; review source fidelity.'] if result.stderr else [])}
+
+    def _office(self, source, output, report, stage, cancelled):
+        if os.name == 'nt':
+            return self._office_workspace(source, output, report, stage, cancelled)
+        return self._office_worker(source, output, report, stage, cancelled)
+
+    def _office_workspace(self, source, output, report, stage, cancelled):
+        """Keep native Office paths short; final publication stays in its original root.
+
+        The same retained owner holds both private directories if native shutdown
+        is uncertain. The worker still receives one private root and the existing
+        fixed executable, audit, profile and component admission contracts.
+        """
+        from .office import (OfficeSelection, OFFICE_SUFFIXES, PROFILE_BYTES,
+                             _remaining, checked_directory, file_identity, regular_file)
+        if not isinstance(self.office, OfficeSelection) or source.suffix.casefold() not in OFFICE_SUFFIXES:
+            raise ConversionUnavailable('Select a compatible installed LibreOffice explicitly for this legacy document.')
+        if cancelled():
+            raise InterruptedError('Document conversion cancelled.')
+        deadline = monotonic() + self.budget.timeout
+        temporary_parent = checked_directory(gettempdir())
+        required = (2 * self.budget.max_source_bytes + self.budget.max_text_bytes
+                    + PROFILE_BYTES + 16 * 1024 * 1024)
+        if shutil.disk_usage(temporary_parent).free < required:
+            raise ConversionError('Not enough free disk in the local Office temporary volume.')
+        with retained_temporary_directory(prefix='.carr-lo-', dir=temporary_parent) as folder:
+            native_stage = checked_directory(folder)
+            # The observed Windows build creates configuration descendants up
+            # to 152 characters below its root. Refuse an unsuitable temporary
+            # root before spawning; do not change the one-root worker audit.
+            if len(str(native_stage).encode('utf-16-le')) // 2 > 96:
+                raise ConversionUnavailable('Selected Office requires a shorter local temporary directory.')
+            native_source = native_stage / ('source' + source.suffix.casefold())
+            native_output, native_report = native_stage / 'reading.txt', native_stage / 'details.json'
+            source_digest, source_identity = _copy_private_file(source, native_source,
+                self.budget.max_source_bytes, cancelled, deadline)
+            native_identity = file_identity(regular_file(native_source))
+            details = self._office_worker(native_source, native_output, native_report,
+                native_stage, cancelled, budget=replace(self.budget, timeout=_remaining(deadline)))
+            if (file_identity(regular_file(source)) != source_identity
+                    or file_identity(regular_file(native_source)) != native_identity
+                    or _digest(source, cancelled, maximum=source_identity[2], deadline=deadline) != source_digest
+                    or _digest(native_source, cancelled, maximum=native_identity[2], deadline=deadline) != source_digest):
+                raise ConversionError('The captured Office source changed during native conversion.')
+            _copy_private_file(native_output, output, self.budget.max_text_bytes, cancelled, deadline)
+            _copy_private_file(native_report, report, 16 * 1024 * 1024, cancelled, deadline)
+            if json.loads(_read_bytes(report, 16 * 1024 * 1024, cancelled).decode('utf-8')) != details:
+                raise ConversionError('The private Office report changed during its checked copy.')
+            _remaining(deadline)
+        return details
+
+    def _office_worker(self, source, output, report, stage, cancelled, *, budget=None):
+        from .office import OfficeSelection, OFFICE_SUFFIXES, PROFILE_BYTES, MAX_STAGE_ENTRIES
+        if not isinstance(self.office, OfficeSelection) or source.suffix.casefold() not in OFFICE_SUFFIXES:
+            raise ConversionUnavailable('Select a compatible installed LibreOffice explicitly for this legacy document.')
+        budget = budget or self.budget
+        selection = self.office.snapshot(cancelled=cancelled)
+        request = stage / 'request.json'
+        request.write_text(json.dumps({'source': str(source), 'output': str(output),
+            'report': str(report), 'budget': asdict(budget), 'operation': 'office',
+            'office': selection}, ensure_ascii=False, allow_nan=False), encoding='utf-8')
+        process_budget = replace(self._process_budget(timeout=budget.timeout),
+            max_output_bytes=2 * budget.max_source_bytes + budget.max_text_bytes + PROFILE_BYTES,
+            max_staging_files=MAX_STAGE_ENTRIES)
+        run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
+            'carr_library.conversion.worker', str(request)], budget=process_budget,
+            cancelled=cancelled, watch=(stage,), env=self._env(stage), cwd=stage, owned_tree=True)
+        self.office._unchanged()
+        details = json.loads(_read_bytes(report, 16 * 1024 * 1024, cancelled).decode('utf-8'))
+        if details.get('metadata', {}).get('selected_components_sha256') != sha256(
+                json.dumps(selection, sort_keys=True, separators=(',', ':')).encode()).hexdigest():
+            raise ConversionError('The selected office result is not bound to the reviewed local converter.')
+        return details
+
+    def _calibre(self, source, output, report, stage, cancelled):
+        from .calibre import CalibreSelection, CALIBRE_SUFFIXES, PRIVATE_BYTES
+        from .office import MAX_STAGE_ENTRIES, file_identity, regular_file, verified_reader
+        if not isinstance(self.calibre, CalibreSelection) or source.suffix.casefold() not in CALIBRE_SUFFIXES:
+            raise ConversionUnavailable('Select a compatible installed Calibre explicitly for this book.')
+        selection = self.calibre.snapshot(cancelled=cancelled)
+        request = stage / 'request.json'
+        request.write_text(json.dumps({'source': str(source), 'output': str(output),
+            'report': str(report), 'budget': asdict(self.budget), 'operation': 'calibre',
+            'calibre': selection}, ensure_ascii=False, allow_nan=False), encoding='utf-8')
+        process_budget = replace(self._process_budget(),
+            max_output_bytes=2 * self.budget.max_source_bytes + self.budget.max_text_bytes + PRIVATE_BYTES,
+            max_staging_files=MAX_STAGE_ENTRIES)
+        with ExitStack() as held:
+            held.enter_context(self.calibre.lease(selection, cancelled=cancelled))
+            held.enter_context(verified_reader(source, expected_identity=file_identity(regular_file(source))))
+            try:
+                run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
+                    'carr_library.conversion.worker', str(request)], budget=process_budget,
+                    cancelled=cancelled, watch=(stage,), env=self._env(stage), cwd=stage, owned_tree=True)
+            except AudioCleanupPending as error:
+                # Keep these exact selected readers with the same native owner.
+                # The existing outer retained directory follows that owner too.
+                retained = held.pop_all()
+                error.cleanup_owner.add_quiescent_callback(retained.close)
+                raise
+        details = json.loads(_read_bytes(report, 16 * 1024 * 1024, cancelled).decode('utf-8'))
+        expected = sha256(json.dumps(selection, sort_keys=True, ensure_ascii=False,
+                         separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+        if (details.get('engine') != 'selected-calibre-' + source.suffix.casefold()[1:]
+                or details.get('metadata', {}).get('selected_core_sha256') != expected):
+            raise ConversionError('The selected book result is not bound to the reviewed local converter.')
+        return details
 
     def _image(self, source, output, stage, languages, cancelled):
         if not languages or not isinstance(languages, (tuple, list)) or len(languages) > 16:
@@ -137,15 +441,15 @@ class ConversionService:
         run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
                      'carr_library.conversion.worker', str(request)],
                     budget=self._process_budget(), cancelled=cancelled,
-                    watch=(image_report,), env=self._env(stage), cwd=stage)
+                    watch=(image_report,), env=self._env(stage), cwd=stage, owned_tree=True)
         if regular(image_report).st_size > 65536:
             raise ConversionError('Raster metadata exceeded its report budget.')
-        image_metadata = json.loads(image_report.read_text(encoding='utf-8'))
+        image_metadata = json.loads(_read_bytes(image_report, 65536, cancelled).decode('utf-8'))
         executable = str(local_path(runtime.executable, exists=True))
         arguments = runtime.command([executable, str(source), str(stage / 'ocr'), '-l', '+'.join(languages), '--psm', '3'])
         generated = stage / 'ocr.txt'
         run_process(arguments, budget=self._process_budget(), cancelled=cancelled, watch=(generated,),
-                    env=self._env(stage), cwd=runtime.root or stage)
+                    env=self._env(stage), cwd=runtime.root or stage, owned_tree=True)
         runtime.assert_unchanged()
         os.replace(generated, output)
         return {'engine': 'local-tesseract-ocr', 'sections': [],
@@ -158,91 +462,155 @@ class ConversionService:
         target, report_path = self._output(output)
         if source == target:
             raise ValueError('The source must remain unchanged; choose a new output file.')
-        if adapter not in ('auto', 'builtin', 'pandoc'):
+        if adapter not in ('auto', 'builtin', 'pandoc', 'office', 'calibre'):
             raise ValueError('Choose a supported conversion adapter.')
         suffix = source.suffix.casefold()
-        if suffix in LEGACY or suffix not in (*BUILTIN, '.rtf', *IMAGES):
-            raise ConversionUnavailable('This legacy/unknown format is not safely enabled. See the supported-format matrix.')
+        from .office import OFFICE_SUFFIXES
+        from .calibre import CALIBRE_SUFFIXES
+        office_selected = suffix in OFFICE_SUFFIXES and self.office is not None and adapter in ('auto', 'office')
+        calibre_selected = suffix in CALIBRE_SUFFIXES and self.calibre is not None and adapter in ('auto', 'calibre')
+        if (suffix in LEGACY and not (office_selected or calibre_selected)) or suffix not in (*BUILTIN, '.rtf', *IMAGES, *OFFICE_SUFFIXES, *CALIBRE_SUFFIXES):
+            raise ConversionUnavailable('This legacy/unknown format needs an explicitly selected compatible converter. See the supported-format matrix.')
+        if adapter == 'office' and not office_selected:
+            raise ConversionUnavailable('The selected office adapter supports only its declared legacy document families.')
+        if office_selected:
+            self.office._unchanged()
+        if adapter == 'calibre' and not calibre_selected:
+            raise ConversionUnavailable('The selected Calibre adapter supports only its declared book families.')
+        if calibre_selected:
+            self.calibre._unchanged()
         if cancelled():
             raise InterruptedError('Document conversion cancelled before reading source bytes.')
         started = monotonic()
         before = _fingerprint(source)
         original_digest = sha256()
-        if shutil.disk_usage(target.parent).free < before[2] + self.budget.max_text_bytes + 16 * 1024 * 1024:
+        office_reserve = 2 * self.budget.max_source_bytes + 64 * 1024 * 1024 if (office_selected or calibre_selected) else 0
+        if shutil.disk_usage(target.parent).free < before[2] + self.budget.max_text_bytes + 16 * 1024 * 1024 + office_reserve:
             raise ConversionError('Not enough free disk for the source snapshot and bounded text output.')
-        with TemporaryDirectory(prefix='.pending-conversion-', dir=target.parent) as folder:
-            stage = Path(folder)
-            snapshot = stage / ('source' + suffix)
-            converted, details_path = stage / 'reading.txt', stage / 'details.json'
-            with source.open('rb') as read, snapshot.open('xb') as write:
-                count = 0
-                while data := read.read(1024 * 1024):
-                    if cancelled():
-                        raise InterruptedError('Document conversion cancelled while taking its source snapshot.')
-                    count += len(data)
-                    if count > self.budget.max_source_bytes or count > before[2]:
-                        raise ConversionError('Source changed or exceeded the snapshot budget.')
-                    original_digest.update(data)
-                    write.write(data)
-                write.flush()
-                os.fsync(write.fileno())
-            if count != before[2] or _fingerprint(source) != before:
-                raise ConversionError('Source changed during conversion planning.')
-            try:
-                if suffix in IMAGES:
-                    details = self._image(snapshot, converted, stage, ocr_languages, cancelled)
-                elif adapter == 'pandoc' or (adapter == 'auto' and suffix == '.rtf'):
-                    details = self._pandoc(snapshot, converted, stage, suffix, cancelled)
-                else:
-                    request = stage / 'request.json'
-                    request.write_text(json.dumps({'source': str(snapshot), 'output': str(converted),
-                        'report': str(details_path), 'budget': asdict(self.budget), 'encoding': encoding}), encoding='utf-8')
-                    run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
-                        'carr_library.conversion.worker', str(request)], budget=self._process_budget(),
-                        cancelled=cancelled, watch=(converted, details_path), env=self._env(stage), cwd=stage)
-                    if regular(details_path).st_size > 16 * 1024 * 1024:
-                        raise ConversionError('Conversion provenance exceeded its budget.')
-                    details = json.loads(details_path.read_text(encoding='utf-8'))
-            except AudioCancelled as exc:
-                raise InterruptedError('Document conversion cancelled; no result was published.') from exc
-            except AudioError as exc:
-                raise ConversionError(str(exc).replace('audio', 'document').replace('Audio', 'Document')) from exc
-            if cancelled():
-                raise InterruptedError('Document conversion cancelled before publication.')
-            size = regular(converted).st_size
-            if not 0 < size <= self.budget.max_text_bytes:
-                raise ConversionError('Converted text is empty or exceeds the selected text budget.')
-            # Strict UTF-8, no replacement characters introduced by this host.
-            value = converted.read_bytes().decode('utf-8', errors='strict')
-            if not value.strip() or '\x00' in value:
-                raise ConversionError('Converter returned empty or invalid text.')
-            if _fingerprint(source) != before or _digest(source, cancelled) != original_digest.hexdigest():
-                raise ConversionError('The original source changed; derivative was not published.')
-            digest = _digest(converted, cancelled)
-            report = {'schema': 'carr-reading-derivative/1', 'source_name': source.name,
-                'source_format': suffix, 'source_sha256': original_digest.hexdigest(), 'source_size': before[2],
-                'text_sha256': digest, 'text_size': size, 'verified_for_quotation': False,
-                'original_modified': False, 'printed_pages_reconstructed': False,
-                'elapsed_seconds': round(monotonic() - started, 3), **details}
-            receipt = stage / 'provenance.json'
-            receipt.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False), encoding='utf-8')
-            for path in (converted, receipt):
-                with path.open('r+b') as stream:
-                    os.fsync(stream.fileno())
-            self._output(target)  # Repeat local/path/no-overwrite authorization before publication.
-            published = False
-            try:
-                os.link(converted, target)
-                published = True
+        completed = None
+        files = ()
+        parent_identity = None
+        try:
+            with retained_temporary_directory(prefix='.pending-conversion-', dir=target.parent) as folder:
+                stage = Path(folder)
+                snapshot = stage / ('source' + suffix)
+                converted, details_path = stage / 'reading.txt', stage / 'details.json'
+                with _opened_snapshot(source) as (read, snapshot_before), snapshot.open('xb') as write:
+                    if snapshot_before[:5] != before:
+                        raise ConversionError('Source changed before its snapshot was opened.')
+                    count = 0
+                    while data := read.read(1024 * 1024):
+                        if cancelled():
+                            raise InterruptedError('Document conversion cancelled while taking its source snapshot.')
+                        count += len(data)
+                        if count > self.budget.max_source_bytes or count > before[2]:
+                            raise ConversionError('Source changed or exceeded the snapshot budget.')
+                        original_digest.update(data)
+                        write.write(data)
+                    write.flush()
+                    os.fsync(write.fileno())
+                if count != before[2] or _fingerprint(source) != before:
+                    raise ConversionError('Source changed during conversion planning.')
+                try:
+                    if office_selected:
+                        details = self._office(snapshot, converted, details_path, stage, cancelled)
+                    elif calibre_selected:
+                        details = self._calibre(snapshot, converted, details_path, stage, cancelled)
+                    elif suffix in IMAGES:
+                        details = self._image(snapshot, converted, stage, ocr_languages, cancelled)
+                    elif adapter == 'pandoc' or (adapter == 'auto' and suffix == '.rtf'):
+                        details = self._pandoc(snapshot, converted, stage, suffix, cancelled)
+                    else:
+                        request = stage / 'request.json'
+                        request.write_text(json.dumps({'source': str(snapshot), 'output': str(converted),
+                            'report': str(details_path), 'budget': asdict(self.budget), 'encoding': encoding}), encoding='utf-8')
+                        run_process([str(Path(sys.executable).absolute()), '-I', '-B', '-m',
+                            'carr_library.conversion.worker', str(request)], budget=self._process_budget(),
+                            cancelled=cancelled, watch=(converted, details_path), env=self._env(stage), cwd=stage, owned_tree=True)
+                        if regular(details_path).st_size > 16 * 1024 * 1024:
+                            raise ConversionError('Conversion provenance exceeded its budget.')
+                        details = json.loads(_read_bytes(details_path, 16 * 1024 * 1024, cancelled).decode('utf-8'))
+                except AudioCleanupPending:
+                    raise  # The retained directory and native owner must reach the host unchanged.
+                except AudioCancelled as exc:
+                    raise InterruptedError('Document conversion cancelled; no result was published.') from exc
+                except AudioError as exc:
+                    raise ConversionError(str(exc).replace('audio', 'document').replace('Audio', 'Document')) from exc
                 if cancelled():
-                    raise InterruptedError('Document conversion cancelled before its provenance receipt.')
-                os.link(receipt, report_path)  # Receipt is the completion marker.
-                sync_directory(target.parent)
-            except BaseException:
-                if published and target.exists() and target.stat().st_ino == converted.stat().st_ino:
-                    target.unlink()
+                    raise InterruptedError('Document conversion cancelled before publication.')
+                size = regular(converted).st_size
+                if not 0 < size <= self.budget.max_text_bytes:
+                    raise ConversionError('Converted text is empty or exceeds the selected text budget.')
+                # Strict UTF-8, no replacement characters introduced by this host.
+                value = _read_bytes(converted, self.budget.max_text_bytes, cancelled).decode('utf-8', errors='strict')
+                if not value.strip() or '\x00' in value:
+                    raise ConversionError('Converter returned empty or invalid text.')
+                if _fingerprint(source) != before or _digest(source, cancelled) != original_digest.hexdigest():
+                    raise ConversionError('The original source changed; derivative was not published.')
+                digest = _digest(converted, cancelled)
+                report = {'schema': 'carr-reading-derivative/1', 'source_name': source.name,
+                    'source_format': suffix, 'source_sha256': original_digest.hexdigest(), 'source_size': before[2],
+                    'text_sha256': digest, 'text_size': size, 'verified_for_quotation': False,
+                    'original_modified': False, 'printed_pages_reconstructed': False,
+                    'elapsed_seconds': round(monotonic() - started, 3), **details}
+                receipt = stage / 'provenance.json'
+                receipt_bytes = json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False).encode('utf-8')
+                if len(receipt_bytes) > 16 * 1024 * 1024:
+                    raise ConversionError('Conversion provenance exceeded its byte budget.')
+                receipt.write_bytes(receipt_bytes)
+                for path in (converted, receipt):
+                    with path.open('r+b') as stream:
+                        os.fsync(stream.fileno())
+                # Recheck the fsynced staged bytes and original source before the
+                # first output becomes visible. The exact wire receipt is unchanged.
+                if (_digest(converted, cancelled, maximum=self.budget.max_text_bytes) != digest
+                        or _digest(receipt, cancelled, maximum=16 * 1024 * 1024) != sha256(receipt_bytes).hexdigest()):
+                    raise ConversionError('The staged conversion changed before publication.')
+                if _fingerprint(source) != before or _digest(source, cancelled, maximum=self.budget.max_source_bytes) != original_digest.hexdigest():
+                    raise ConversionError('The original source changed; derivative was not published.')
+                self._output(target)  # Repeat local/path/no-overwrite authorization before publication.
+                parent_identity = _parent_identity(target.parent)
+                files = tuple((staged, output_path,
+                               (info.st_dev, info.st_ino, info.st_size), expected)
+                    for staged, output_path, info, expected in (
+                        (converted, target, regular(converted), digest),
+                        (receipt, report_path, regular(receipt), sha256(receipt_bytes).hexdigest())))
+                if cancelled():
+                    raise InterruptedError('Document conversion cancelled before publication.')
+                try:
+                    os.link(converted, target)
+                    if cancelled():
+                        raise InterruptedError('Document conversion cancelled before its provenance receipt.')
+                    os.link(receipt, report_path)  # Receipt is the completion marker.
+                    _verify_published_pair(self.root, target.parent, parent_identity, files,
+                                           timeout=self.budget.timeout)
+                    completed = ConversionResult(target, report, report_path)
+                    # No cancellation after a proven completion marker. Cleanup and
+                    # directory durability are reported separately from saved bytes.
+                    converted.unlink()
+                    receipt.unlink()
+                    sync_directory(target.parent)
+                except (Exception, KeyboardInterrupt) as exc:
+                    try:
+                        _verify_published_pair(self.root, target.parent, parent_identity, files,
+                                               timeout=self.budget.timeout)
+                    except (Exception, KeyboardInterrupt):
+                        _rollback_owned_outputs(target.parent, parent_identity, files)
+                        raise exc
+                    completed = ConversionResult(target, report, report_path, _completion_warning())
+        except AudioCleanupPending:
+            raise  # The exact retained native owner remains responsible for staging.
+        except (Exception, KeyboardInterrupt):
+            if completed is None:
                 raise
-        return ConversionResult(target, report, report_path)
+            _verify_published_pair(self.root, target.parent, parent_identity, files,
+                                   timeout=self.budget.timeout)
+            completed = replace(completed, cleanup_warning=_completion_warning())
+        if completed is None:
+            raise ConversionError('The conversion did not publish a complete result.')
+        _verify_published_pair(self.root, target.parent, parent_identity, files,
+                               timeout=self.budget.timeout)
+        return completed
 
     def extract_many(self, sources, *, cancelled=lambda: False, adapter='auto', ocr_languages=()):
         """Finite batch; stable checksum names avoid silently overwriting another source."""

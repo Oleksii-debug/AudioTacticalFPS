@@ -4,7 +4,7 @@ Reading or restoring these bytes never inspects or runs the declared runtime.
 """
 import json
 import os
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import re
 import tempfile
 
@@ -25,7 +25,7 @@ def _declared_path(value):
     if (type(value) is not str or not 0 < len(value) <= 32768
             or value.startswith(('//', '\\\\')) or '://' in value
             or any(ord(char) < 32 for char in value)
-            or not (Path(value).is_absolute() or PureWindowsPath(value).is_absolute())
+            or not (PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute())
             or any(part in ('.', '..') for part in value.replace('\\', '/').split('/'))):
         raise ValueError('Choose an absolute local runtime path, not a network, device or relative path.')
 

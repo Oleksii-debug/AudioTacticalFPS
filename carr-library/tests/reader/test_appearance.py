@@ -159,8 +159,9 @@ def test_full_library_backup_restores_exact_preferences_without_active_lock(tmp_
     archive = tmp_path / 'Резервна копія'
     digest = create_backup(app, archive)
     manifest = json.loads((archive / 'manifest.json').read_bytes())
-    entry, = [row for row in manifest['state'] if row['filename'] == 'ui/reader-appearance.json']
-    assert entry == {'filename': 'ui/reader-appearance.json', 'size_bytes': len(raw),
+    assert manifest['version'] == 4
+    entry, = [row for row in manifest['sidecars'] if row['filename'] == 'state/ui/reader-appearance.json']
+    assert entry == {'filename': 'state/ui/reader-appearance.json', 'size_bytes': len(raw),
                      'sha256': sha256(raw).hexdigest()}
     restored = LibraryApp(restore_backup(archive, tmp_path / 'Відновлена бібліотека', digest))
     assert filename(restored.root).read_bytes() == filename(app.root).read_bytes() == raw

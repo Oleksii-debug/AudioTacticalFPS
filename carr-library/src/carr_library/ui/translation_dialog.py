@@ -53,15 +53,37 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     accounts = ProfileStore(library.root / 'state' / 'providers')
     profiles = tuple(p for p in accounts.list()
                      if p.adapter in ('google-translation-v2', 'google-translation-v3') and p.enabled)
-    dialog = wx.Dialog(frame, title='Translation — selected text derivatives', size=(850, 900),
-                       style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-    dialog.SetName('Translation workspace')
-    layout = wx.BoxSizer(wx.VERTICAL)
     alive, busy, current_job, reviewed = True, False, None, None
     visible_job = None
     source_ready = source_loader is None
     original_document = document = None
     cancel = threading.Event()
+
+    def dispose():
+        nonlocal alive
+        alive = False
+        cancel.set()
+
+    class TranslationDialog(wx.Dialog):
+        def Destroy(self):
+            dispose()
+            if getattr(self, '_destroy_requested', False) or not self:
+                return False
+            self._destroy_requested = True
+            return super().Destroy()
+
+    dialog = TranslationDialog(frame, title='Translation — selected text derivatives', size=(850, 900),
+                               style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    native_id = dialog.GetId()
+    dialog.SetName('Translation workspace')
+    layout = wx.BoxSizer(wx.VERTICAL)
+
+    def destroyed(event):
+        if event.GetId() == native_id:
+            dispose()
+        event.Skip()
+
+    dialog.Bind(wx.EVT_WINDOW_DESTROY, destroyed)
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.ALL, 4)
@@ -103,9 +125,9 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     dialog.SetSizer(layout)
 
     def report(value, focus=False):
-        if alive:
+        if alive and dialog:
             status.ChangeValue(str(value))
-            if focus:
+            if focus and alive and dialog:
                 status.SetFocus()
 
     def guard():
@@ -165,7 +187,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
 
 
     def controls():
-        if not alive:
+        if not alive or not dialog:
             return
         editing = not busy and source_ready
         for control in (provider, source, target, glossary, rate, budget):
@@ -194,20 +216,25 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         def finish(result):
             nonlocal busy
             busy = False
+            if not alive or not dialog:
+                return
             controls()
-            if alive:
+            if alive and dialog:
                 try:
                     guard()
                     complete(result)
                 except (ValueError, InterruptedError) as error:
                     report(str(error))
-                status.SetFocus()
+                if alive and dialog:
+                    status.SetFocus()
         def failed(error):
             nonlocal busy
             busy = False
+            if not alive or not dialog:
+                return
             controls()
             report(str(error))
-            if alive:
+            if alive and dialog:
                 status.SetFocus()
         def checked():
             if not alive and current_job is not None:
@@ -333,11 +360,11 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                     require_current_account(account)
                 remote_guard()
                 service.gateway = Gateway(root / 'provider', mode='APPROVED_REMOTE')
-                progress = getattr(frame, 'operation_progress', None)
-                token = progress.event.token if progress is not None else None
+                from ..progress import current_progress
+                progress = current_progress()
                 def advanced(done, total, phase):
                     if progress is not None:
-                        progress.update(done, total, phase, token=token)
+                        progress.update(completed=done, total=total, phase=phase)
                     wx.CallAfter(report, f'{done}/{total}: {phase}')
                 return service.resume(current_job, cancelled=stopped, progress=advanced, guard=remote_guard)
             begin('Translating approved selected text', translate,
@@ -356,9 +383,15 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                                      f"account {j['profile']['name']} ({j['profile']['id']}); "
                                      f"budget {j['authorization']['budget']} USD; job {j['id']}" for j in rows])
             try:
-                if chooser.ShowModal() == wx.ID_OK and 0 <= chooser.GetSelection() < len(rows):
-                    guard()
-                    job = rows[chooser.GetSelection()]
+                answer = chooser.ShowModal()
+                if not alive or not chooser:
+                    return
+                guard()
+                if answer == wx.ID_OK:
+                    index = chooser.GetSelection()
+                    if not 0 <= index < len(rows):
+                        return
+                    job = rows[index]
                     visible_job = job
                     binding = job.get('source_binding')
                     document = (ReadingDocument(job['source_text'], title=job['title'], source_anchor=binding['anchor'])
@@ -383,7 +416,8 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                            + account_status + ' An uncertain charge is never automatically retried.', True)
                     controls()
             finally:
-                chooser.Destroy()
+                if chooser:
+                    chooser.Destroy()
         except Exception as exc:
             report(str(exc), True)
 
@@ -424,7 +458,10 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             return
         chooser = wx.DirDialog(dialog, 'Choose parent folder for a NEW translation export of job ' + identity)
         try:
-            if chooser.ShowModal() == wx.ID_OK:
+            answer = chooser.ShowModal()
+            if not alive or not chooser:
+                return
+            if answer == wx.ID_OK:
                 guard()
                 destination = Path(chooser.GetPath()) / ('Translation-' + identity[:8] + '-' + uuid4().hex[:8])
                 def publish():
@@ -436,7 +473,8 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         except Exception as exc:
             report(str(exc), True)
         finally:
-            chooser.Destroy()
+            if chooser:
+                chooser.Destroy()
 
     def loaded(retained):
         nonlocal document, original_document, source_ready
@@ -461,10 +499,14 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                 report(str(exc), True)
 
     def close(event=None):
-        nonlocal alive
-        cancel.set()
-        alive = False
-        dialog.EndModal(wx.ID_CLOSE)
+        if not alive:
+            return
+        dispose()
+        if dialog:
+            if dialog.IsModal():
+                dialog.EndModal(wx.ID_CLOSE)
+            elif dialog:
+                dialog.Destroy()
 
     for name, handler in {'languages': languages, 'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
                            'jobs': jobs, 'new': new, 'export': export, 'close': close}.items():
@@ -477,9 +519,9 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     try:
         dialog.ShowModal()
     finally:
-        alive = False
-        cancel.set()
-        dialog.Destroy()
+        dispose()
+        if dialog:
+            dialog.Destroy()
 
 
 def install_translation_actions(frame):
@@ -493,8 +535,17 @@ def install_translation_actions(frame):
     if menu is None:
         raise RuntimeError('Install the shared Tools menu before translation actions.')
     identity = wx.NewIdRef()
-    menu.Append(identity, 'Translate selected te&xt...')
+    item = menu.Append(identity, 'Translate selected te&xt...')
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('tools.translation', 'Translate selected text'), item)
     frame.Bind(wx.EVT_MENU, lambda event: show_translation(frame), id=int(identity))
+
+    from .translation_batch_dialog import show_translation_batch
+    batch_item = menu.Append(wx.ID_ANY, 'Translate reviewed document &batch...')
+    register_menu_command(frame,
+        CommandSpec('tools.translation_batch', 'Translate reviewed document batch'), batch_item)
+    frame.Bind(wx.EVT_MENU, lambda event: show_translation_batch(frame), batch_item)
 
     class BookTranslation:
         def __init__(self, parent, desk, state, guard):
@@ -503,14 +554,24 @@ def install_translation_actions(frame):
         def show(self):
             self.guard()
             total = len(self.desk.pages)
-            with wx.TextEntryDialog(self.parent,
+            chooser = wx.TextEntryDialog(self.parent,
                 f'Choose source reading positions from 1 to {total}. Enter a position or first-last. '
                 'The full range selects this document. Positions are not inferred chapter or printed-page labels. '
                 'Up to 2,000,000 plain-text characters; formatting is not retained.',
-                'Translate a book or source range', f'1-{total}') as chooser:
-                if chooser.ShowModal() != wx.ID_OK:
+                'Translate a book or source range', f'1-{total}')
+            try:
+                answer = chooser.ShowModal()
+                if not self.parent or not chooser or getattr(self.parent, '_closing', False):
+                    return
+                self.guard()
+                if answer != wx.ID_OK:
                     return
                 first, last = source_range(chooser.GetValue(), total)
+            finally:
+                if chooser:
+                    chooser.Destroy()
+            if not self.parent or getattr(self.parent, '_closing', False):
+                return
             self.guard()
             show_translation(self.parent, source_guard=self.guard, source_topic=self.desk.topic,
                 source_loader=lambda cancelled: read_source_range(self.desk, first, last,

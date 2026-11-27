@@ -110,6 +110,41 @@ adapter. Profile exports clear credential references and disable restored
 connections. The new device must reconnect each account. No provider test is
 performed on save, open, import or application startup.
 
+## Request and review a local model proposal
+
+The existing **Local assistant** dialog defaults to guided commands and typed
+JSON. Its **Planning source** selector additionally lists enabled, explicitly
+local `openai-compatible` profiles with `llm.chat`. Create these in **AI and API
+connections**, using a numeric loopback endpoint and the model ID your already
+running server exposes. Opening either dialog does not contact or start a server.
+
+Choose a local profile and **Preview plan** to request a proposal. Only the goal
+text is sent; selected folder contents and library documents are not added.
+The shared provider gateway uses a 120-second request budget and an 8 MiB response
+limit for planning. Cancellation or a reached deadline may wait for the pending
+network read, whose timeout is at most 30 seconds. The result must pass the same typed tool, argument, workspace
+and path checks as a guided plan. The request is cancellable in the background.
+Editing the goal, selected scope or profile discards a pending response and
+invalidates a reviewed plan. **Run / resume** is a separate action that records
+and executes the reviewed plan through `AssistantService`.
+
+The CLI uses the same boundary. In PowerShell, for a configured profile named
+`chosen_local`, the two separate invocations are:
+
+```powershell
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --list-local-profiles
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --instructions "goal.txt" --allow-create --local-profile chosen_local | Set-Content -Encoding utf8 "reviewed-plan.json"
+# Open and review reviewed-plan.json, including every operation and its scope.
+python -m carr_library assistant --data-dir "C:\ResearchLibrary" --instructions "reviewed-plan.json" --allow-create --run
+```
+
+Repeat the exact workspace, input/output folders and permissions when executing
+the reviewed JSON. Scope changes are rejected. `--local-profile` cannot be
+combined with `--run` or `--resume`, so execution never regenerates a different
+model proposal. Listing profiles makes no model request. Provider errors produce
+no executable proposal. The protocol and native control fixtures validate this
+flow; an actual local model and its planning quality require separate acceptance.
+
 ## Implemented provider protocol adapters
 
 | Adapter | Operations | Protocol |
@@ -171,6 +206,23 @@ operation. No real paid or external provider call is part of the automated tests
 
 ## Verification scope
 
+The selectively adopted PR112 local-planning slice passed 41 integrated tests
+across `test_local_planning.py`, `test_local_planning_loopback.py` and
+`test_planning_handlers.py`. The loopback cases use actual HTTP and CLI subprocesses
+with a synthetic server bound to127.0.0.1; other cases use transport/widget
+stand-ins. They verify local-profile selection, typed permission/path validation,
+separate preview and execution, cancellation, changed-input/profile rejection,
+background voice inventory and the current production service's lifecycle.
+They neither execute an LLM nor load its weights.
+
+Donor head `8bf411718548809793748ed01f458c79f3692e98` passed the native planning
+step19 and explicit loopback step24 in Windows run45929429163, job140278375920.
+The donor workflow as a whole was not green. The installed integrated build must
+run `python -I -B scripts/windows_local_planning_smoke.py` and its required source
+suites again. This probe uses real wx widgets/focus and the shared gateway/service
+with synthetic loopback responses; button command events do not establish manual
+keyboard or NVDA acceptance.
+
 The automated suite exercises real SQLite workspaces, nested UTF-8 imports,
 scoped retrieval, exact Unicode reading-copy export, restart, interrupted create
 reconciliation, output tampering, queue substitution, parallel-run locking,
@@ -185,3 +237,13 @@ On Windows the credential test creates, reads and deletes only a new synthetic
 credential. On other hosts it verifies the vault refuses storage. Local tests
 do not establish native Windows/NVDA interaction, actual vendor acceptance,
 real local-LLM inference quality or voice/music listening quality.
+
+## Current integrated lifecycle
+
+The current dialog retains one worker, cached native ownership and source/scope
+validation. Closing cancels pending work, suppresses late callbacks and queues
+owned service cleanup after the worker; repeated close does not duplicate it.
+Actual outputs and saved jobs retain their domain status when optional progress
+reporting fails. Model output still requires typed review and a separate
+execution action. Use the exact current commit's gate reports; the donor counts
+above remain evidence for those explicitly named earlier revisions only.

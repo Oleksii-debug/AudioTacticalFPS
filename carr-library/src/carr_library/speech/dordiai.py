@@ -104,10 +104,16 @@ def _plain(path, *, directory=False):
 class DordiaiProvider:
     """A default-off provider with bounded discovery and exact asset identity."""
     name = 'Opt-in dordiai-voices'
+    cancellable_discovery = True
 
-    def __init__(self, configuration_root):
-        self.configuration_root = Path(configuration_root).absolute()
-        self.settings = configuration(self.configuration_root)
+    def __init__(self, configuration_root=None, *, settings=None, installation_qualified=False,
+                 settings_guard=lambda: None, clock=None):
+        self.configuration_root = Path(configuration_root).absolute() if configuration_root is not None else None
+        self._explicit_settings = settings is not None
+        self.settings = validate_settings(settings) if settings is not None else configuration(self.configuration_root)
+        self._settings_guard = settings_guard
+        self._clock = clock or (lambda: monotonic())
+        self._refresh_discovery = installation_qualified
         self.adapter = _adapter(self.settings)
         self.runtime = self.adapter.runtime
         self.executable = self.adapter.python
@@ -116,9 +122,12 @@ class DordiaiProvider:
         self._closed = Event()
         self._installation_revision = None
         self._worker_revision = None
+        self._installation_id = (sha256(os.path.normcase(str(self.runtime)).encode('utf-8')).hexdigest()
+                                 if installation_qualified else None)
 
     def _unchanged(self):
-        if configuration(self.configuration_root) != self.settings:
+        self._settings_guard()
+        if not self._explicit_settings and configuration(self.configuration_root) != self.settings:
             raise ValueError('Dordiai-voices configuration changed. Reload the installed voices.')
 
     @contextmanager
@@ -153,7 +162,9 @@ class DordiaiProvider:
             try:
                 adapter = self.adapter
                 voices, tokens = [], {}
-                for item in adapter.voices(cancelled=check):
+                discovered = (adapter.voices(refresh=True, cancelled=check) if self._refresh_discovery
+                              else adapter.voices(cancelled=check))
+                for item in discovered:
                     check()
                     if (not 0 < len(item.id) <= 4096 or not 0 < len(item.name) <= 512
                             or any(ord(char) < 32 for char in item.id + item.name)):
@@ -161,7 +172,9 @@ class DordiaiProvider:
                     for language in item.languages:
                         if _LANGUAGE.fullmatch(language) is None:
                             raise bridge.DordiaiProtocolError('Unsupported dordiai-voices language tag.')
-                        token = json.dumps([item.id, language], ensure_ascii=True, separators=(',', ':'))
+                        parts = ([self._installation_id, item.id, language] if self._installation_id is not None
+                                 else [item.id, language])
+                        token = json.dumps(parts, ensure_ascii=True, separators=(',', ':'))
                         identifier = 'dordiai-voices:' + sha256(token.encode('ascii')).hexdigest()
                         if identifier in tokens:
                             raise bridge.DordiaiProtocolError('Duplicate dordiai-voices identity.')
@@ -191,7 +204,8 @@ class DordiaiProvider:
         from ..ingest import writer_guard
         with self.operation(cancelled=cancelled) as check:
             self._unchanged()
-            if voice.id not in self._tokens:
+            voice_id = voice if isinstance(voice, str) else voice.id
+            if voice_id not in self._tokens:
                 raise ValueError('Reload the selected dordiai-voices profile.')
             root = self.runtime
             directories = [(root, _stamp(_plain(root, directory=True)))]
@@ -199,7 +213,8 @@ class DordiaiProvider:
             modules = (Path(__file__), Path(runtime.__file__), Path(_io.__file__),
                        Path(dordiai_settings.__file__), Path(durable_state.__file__),
                        Path(writer_guard.__file__), Path(bridge.__file__),
-                       Path(bridge.__file__).with_name('_dordiai_probe.py'))
+                       Path(bridge.__file__).with_name('_dordiai_probe.py'),
+                       Path(bridge.__file__).with_name('dordiai_speech.py'))
             package = Path(__file__).parent.parent
             for path in modules:
                 paths[path.resolve()] = 'adapter/' + path.relative_to(package).as_posix()
@@ -271,16 +286,16 @@ class DordiaiProvider:
             self._installation_revision = identity.hexdigest()
             identity.update(json.dumps(dict(adapter=bridge.ADAPTER_API_VERSION,
                 worker=self.settings['expected_worker_sha256'],
-                voice=self._tokens[voice.id]), sort_keys=True).encode('utf-8'))
+                voice=self._tokens[voice_id]), sort_keys=True).encode('utf-8'))
             return identity.hexdigest()
 
     def render(self, text, voice, output, settings, cancelled):
         """Produce only the registry's private utterance stage, never a final file."""
-        deadline = monotonic() + settings.timeout_seconds
+        deadline = self._clock() + settings.timeout_seconds
         with self.operation(cancelled=cancelled) as cancelled_check:
             def check():
                 cancelled_check()
-                if monotonic() >= deadline:
+                if self._clock() >= deadline:
                     raise TimeoutError('Dordiai-voices exceeded the speech execution time budget.')
                 return False
 

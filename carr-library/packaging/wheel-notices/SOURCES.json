@@ -46,5 +46,25 @@
     "file": "pylatexenc-LICENSE.txt",
     "sha256": "90b6f8fc23cb0328a9678562627fb2ebc5f9c871712fad698d781869eb02862c",
     "wheel_sha256": "e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0"
+  },
+  {
+    "component": "quickjs-ng",
+    "version": "0.18.0.2",
+    "commit": "354856ccce6262895565a1497e2893a16d0cbd85",
+    "source": "https://pypi.org/project/quickjs-ng/0.18.0.2/#files",
+    "file": "quickjs-ng-LICENSE.txt",
+    "sha256": "eac6e04a1feb150e577c140f4897b23be9e95384292482b4da74f493358c6f4d",
+    "wheel_sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d",
+    "source_archive_sha256": "a1a890300a5c460d7735481bc38e8ab10e6f06b733a517f7fa9887f6d121df40"
+  },
+  {
+    "component": "quickjs-ng",
+    "version": "0.18.0.2",
+    "commit": "354856ccce6262895565a1497e2893a16d0cbd85",
+    "source": "https://pypi.org/project/quickjs-ng/0.18.0.2/#files",
+    "file": "quickjs-ng-SOURCE_NOTICES.txt",
+    "sha256": "d1d13ac7fe4897200af37a93df5a63825a64ebb92993cb09cee9ac6e7f1de364",
+    "wheel_sha256": "b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d",
+    "source_archive_sha256": "a1a890300a5c460d7735481bc38e8ab10e6f06b733a517f7fa9887f6d121df40"
   }
 ]

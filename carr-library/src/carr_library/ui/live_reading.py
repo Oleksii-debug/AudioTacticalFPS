@@ -140,6 +140,10 @@ class LiveReadingControls:
         self.voice.SetName("Local reading voice; choose explicitly")
         voices.Add(self.voice, 1, wx.EXPAND | wx.ALL, 4)
         self.discover_button = self._button(voices, "Discover local voices", self.discover, "reader.speech_voices")
+        self.output_button = self._button(voices, "Playback output...", self.choose_output, "reader.output_device")
+        self._button(voices, "Independent playback settings...", self.playback_settings, "reader.playback_settings")
+        self._button(voices, "Tray and session hotkeys...", self.session_controls, "reader.session_controls")
+        self._button(voices, "Assistant for this source...", self.assistant_tools, "reader.assistant_tools")
         voices.Add(wx.StaticText(dialog, label="Synthesis rate (-10 to 10)"), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 4)
         self.rate = wx.SpinCtrl(dialog, min=-10, max=10, initial=0)
         self.rate.SetName("Speech rate for the next reading operation")
@@ -204,6 +208,45 @@ class LiveReadingControls:
             return
         try:
             self.core.discover_voices()
+        except Exception as exc:
+            self._report(exc)
+
+    def session_controls(self, event=None):
+        if not self.closed:
+            from .reader_background import show_session_controls
+            show_session_controls(self, event)
+
+    def assistant_tools(self, event=None):
+        if self.closed:
+            return
+        try:
+            from .assistant_dialog import show_assistant
+            show_assistant(self._host, reader_controls=self)
+        except Exception as error:
+            self._report(error)
+
+    def choose_output(self, event=None):
+        if self.closed:
+            return
+        core = self.core
+        generation = getattr(self, '_start_generation', 0)
+
+        def guard():
+            if (self.closed or self.core is not core or not self.dialog
+                    or generation != getattr(self, '_start_generation', 0)
+                    or core.busy or not self.ready()):
+                raise ValueError('The reader changed or is active. Stop reading before choosing its output.')
+
+        try:
+            from .output_devices import choose_output_device
+            guard()
+            choice = choose_output_device(self.dialog, current=core.output_device, guard=guard)
+            if choice is None:
+                return
+            guard()
+            core.set_output_device(choice.device)
+            label = choice.device.name if choice.device is not None else 'the Windows system default'
+            self._report(f'Playback output selected: {label}. Start reading when ready.')
         except Exception as exc:
             self._report(exc)
 
@@ -324,6 +367,40 @@ class LiveReadingControls:
         except Exception as exc:
             self._report(exc)
 
+    def playback_settings(self, event=None):
+        if self.closed:
+            return
+        from .playback_settings import show_playback_settings
+        import os
+        core = self.core
+        def guard():
+            if self.closed or not self.dialog or core is not self.core:
+                raise ValueError('This reading owner is no longer available.')
+            self.source.guard()
+        def prepare(selected, completed, failed, *, active):
+            guard()
+            core.set_listening_settings(selected.speed, selected.pitch_semitones)
+            if active():
+                completed('Speed and pitch selected for the next explicit reading operation. '
+                          'The current source and synthesis settings are unchanged.')
+            return None
+        def levels(selected):
+            guard()
+            core.set_playback_levels(selected.volume, muted=selected.muted, balance=selected.balance)
+        try:
+            guard()
+            show_playback_settings(self.dialog, settings=core.listening_settings,
+                levels=core.playback_levels, prepare=prepare, apply_levels=levels,
+                mix_available=os.name == 'nt', alive=lambda: not self.closed and core is self.core,
+                stop=self.stop, wx_module=self.wx,
+                preparation_label='Use speed and pitch for next reading',
+                notice='Stop reading before changing speed or pitch. '
+                       'Volume, mute and balance are handled by the current reading worker. '
+                       'Saved source positions stay on the original speech timeline.')
+        except (Exception, KeyboardInterrupt) as exc:
+            if not self.closed:
+                self._report(exc)
+
     def focus_status(self, event=None):
         if not self.closed:
             self.status.SetFocus()
@@ -337,8 +414,9 @@ class LiveReadingControls:
         for button in self.read_buttons:
             button.Enable(available)
         self.discover_button.Enable(not busy)
+        self.output_button.Enable(available)
         self.resume_button.Enable(available and self.source.supports_resume)
-        self.pause_button.Enable(busy and view.state in ("loading", "rendering", "playing", "paused"))
+        self.pause_button.Enable(busy and view.state in ("loading", "rendering", "preparing_playback", "playing", "paused"))
         self.stop_button.Enable(busy or not self.ready())
         self.seek_button.Enable(busy and view.state in ('playing', 'paused'))
         self.capabilities()
@@ -384,6 +462,8 @@ class LiveReadingControls:
         if self.closed:
             return
         self.closed = True
+        from .reader_background import close_session_controls
+        close_session_controls(self)
         try:
             self.timer.Stop()
         except (OSError, RuntimeError):

@@ -611,3 +611,159 @@ def test_saved_job_modal_handoff_imports_wx_and_cleans_up_dead_parent(monkeypatc
     dialog.controller.inspect.assert_called_once_with(JOB)
     dialog.controller.dispose.assert_called_once()
     assert dialog.Destroy.call_count == (0 if native_deleted else 1)
+
+
+def test_worker_progress_updates_only_its_bound_canonical_task(setup):
+    from carr_library.progress import ProgressHub, ProgressState, bind_progress
+    ready(setup)
+    hub = ProgressHub()
+    captured = hub.start('Captured transcription')
+    unrelated = hub.start('Unrelated later operation')
+    setup.host.progress_panel = SimpleNamespace(active_task=unrelated)
+    setup.host.operation_progress = SimpleNamespace(
+        update=lambda *args, **kwargs: pytest.fail('Canonical work updated the legacy observer.'))
+    assert setup.controller.start()
+    queued = setup.host.queue[-1]
+    original = queued.operation
+    def bound():
+        with bind_progress(captured):
+            return original()
+    queued.operation = bound
+    outcome = setup.host.finish()
+    assert 'error' not in outcome and setup.controller.record['status'] == 'complete'
+    assert 'every requested output' in captured.snapshot().phase
+    assert len(captured.snapshot().phase) <= 200
+    assert captured.snapshot().state == ProgressState.RUNNING
+    assert unrelated.snapshot().revision == 1 and not unrelated.snapshot().phase
+    # Durable completion remains the existing desktop host's responsibility.
+
+
+@pytest.mark.parametrize('state', ['cancelling', 'cancelled', 'complete'])
+def test_late_progress_does_not_rewrite_a_canonical_terminal_or_cancelling_task(setup, state):
+    from carr_library.progress import ProgressHub
+    task = ProgressHub().start('Owned ASR observation')
+    if state == 'cancelling':
+        task.request_cancel()
+    elif state == 'cancelled':
+        task.cancelled()
+    else:
+        task.succeed(durable=True)
+    before = task.snapshot()
+    token = setup.controller._token = object()
+    setup.controller.busy = True
+    setup.controller._progress(token, 'Late owned phase', None, progress_task=task)
+    assert task.snapshot() == before
+    assert len(setup.progress) == 1
+    setup.controller.dispose()
+    setup.progress.pop()()
+    assert setup.controller.closed and setup.controller.status != 'Late owned phase'
+
+
+def _routed_native_dialog(*, profile_pending=False, manifest_pending=False, page=0):
+    """Run the actual native methods, replacing only native controls."""
+    import ast
+    from unittest.mock import Mock
+    from carr_library.ui import transcription_dialog as ui
+    source = Path(ui.__file__)
+    tree = ast.parse(source.read_text(encoding='utf-8'))
+    factory = next(node for node in tree.body
+                   if isinstance(node, ast.FunctionDef) and node.name == 'create_transcription_dialog')
+    selected = next(node for node in factory.body if isinstance(node, ast.ClassDef))
+    definition = deepcopy(selected)
+    definition.name = 'RoutedNativeDialog'
+    definition.bases = [ast.Name(id='NativeOwner', ctx=ast.Load())]
+    names = {'_profile_active', 'refresh_shared_actions', 'page_changed',
+             'start', 'pause', 'cancel', 'query_progress'}
+    definition.body = [node for node in definition.body
+                       if isinstance(node, ast.FunctionDef) and node.name in names]
+
+    class Control:
+        def __init__(self, value='', selection=0):
+            self.value, self.selection = value, selection
+            self.enabled, self.focused = None, False
+            self.dead = False
+        def touch(self):
+            if self.dead:
+                raise AssertionError('A detached action touched its native control.')
+        def GetSelection(self): self.touch(); return self.selection
+        def GetValue(self): self.touch(); return self.value
+        def GetStringSelection(self): self.touch(); return self.value
+        def Enable(self, value): self.touch(); self.enabled = value
+        def SetFocus(self): self.touch(); self.focused = True
+
+    class NativeOwner:
+        def __bool__(self): return self.native_alive
+
+    namespace = {'NativeOwner': NativeOwner, 'TranscriptionSettings': ui.TranscriptionSettings}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[definition], type_ignores=[])),
+                 str(source), 'exec'), namespace)
+    window = namespace['RoutedNativeDialog']()
+    window.native_alive = True
+    window.controller = SimpleNamespace(closed=False, busy=manifest_pending, mode='run',
+        manifest='explicit-manifest', paths=['selected.wav'], job_id=None,
+        start=Mock(), request_stop=Mock(), report=Mock())
+    window.profile_view = SimpleNamespace(closed=False, pending=profile_pending, _kind='transcribe',
+        current_job=None, start=Mock(), pause=Mock(), cancel=Mock(), status=Control())
+    window.pages, window.status = Control(selection=page), Control()
+    window.start_button, window.pause_button, window.cancel_button = Control(), Control(), Control()
+    window.language, window.task = Control('uk'), Control(selection=0)
+    window.device, window.compute = Control('cpu'), Control('int8')
+    window.formats = {'txt': Control(True)}
+    return window
+
+
+@pytest.mark.parametrize('owner,page', [('profile', 0), ('profile', 2), ('manifest', 0), ('manifest', 2)])
+def test_shared_native_asr_commands_select_the_pending_owner_before_the_visible_page(owner, page):
+    view = _routed_native_dialog(profile_pending=owner == 'profile',
+                                manifest_pending=owner == 'manifest', page=page)
+    view.refresh_shared_actions()
+    assert not view.start_button.enabled
+    assert view.pause_button.enabled and view.cancel_button.enabled
+    view.start()
+    view.pause()
+    view.cancel()
+    view.query_progress()
+    if owner == 'profile':
+        view.profile_view.start.assert_called_once()
+        view.profile_view.pause.assert_called_once()
+        view.profile_view.cancel.assert_called_once()
+        assert view.profile_view.status.focused and not view.status.focused
+        view.controller.start.assert_not_called()
+        view.controller.request_stop.assert_not_called()
+    else:
+        view.controller.start.assert_called_once()
+        assert [call.args[0] for call in view.controller.request_stop.call_args_list] == ['pause', 'cancel']
+        assert view.status.focused and not view.profile_view.status.focused
+        view.profile_view.start.assert_not_called()
+        view.profile_view.pause.assert_not_called()
+        view.profile_view.cancel.assert_not_called()
+
+
+@pytest.mark.parametrize('page', [0, 1, 2])
+def test_idle_shared_start_uses_only_the_selected_transcription_page(page):
+    view = _routed_native_dialog(page=page)
+    view.start()
+    assert view.profile_view.start.call_count == (1 if page == 2 else 0)
+    assert view.controller.start.call_count == (0 if page == 2 else 1)
+
+
+@pytest.mark.parametrize('closed,native_alive', [(True, True), (False, False), (True, False)])
+def test_detached_shared_transcription_commands_never_query_deleted_controls(closed, native_alive):
+    view = _routed_native_dialog(profile_pending=True, page=2)
+    view.controller.closed, view.native_alive = closed, native_alive
+    for value in vars(view).values():
+        if hasattr(value, 'dead'):
+            value.dead = True
+    view.profile_view.status.dead = True
+    view.refresh_shared_actions()
+    view.start()
+    view.pause()
+    view.cancel()
+    view.query_progress()
+    view.controller.start.assert_not_called()
+    view.controller.request_stop.assert_not_called()
+    view.profile_view.start.assert_not_called()
+    view.profile_view.pause.assert_not_called()
+    view.profile_view.cancel.assert_not_called()
+
+    view.controller.report.assert_not_called()

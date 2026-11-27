@@ -25,8 +25,9 @@ def test_complete_backup_restores_exact_policy_without_replaying_live_leases(tmp
         folder = tmp_path / 'backup'
         checksum = create_backup(app, folder, include_generated=include_generated)
         manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
-        names = {entry['filename'] for entry in manifest['state']}
-        assert 'operations/resources.json' in names
+        assert manifest['version'] == 4
+        names = {entry['filename'] for entry in manifest['sidecars']}
+        assert 'state/operations/resources.json' in names
         assert not any('runtime' in name.split('/') or 'leases' in name.split('/') for name in names)
         assert (folder / 'state/operations/resources.json').read_bytes() == original
         destination = restore_backup(folder, tmp_path / 'restored', checksum)

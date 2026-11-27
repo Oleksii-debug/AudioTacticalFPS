@@ -393,10 +393,13 @@ def show_operations(frame):
 
 def install_operations_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     menu = next((frame.menu_bar.GetMenu(i) for i in range(frame.menu_bar.GetMenuCount())
                  if frame.menu_bar.GetMenuLabel(i).replace('&', '') == 'Tools'), None)
     if menu is None:
         menu = wx.Menu()
         frame.menu_bar.Append(menu, '&Tools')
     item = menu.Append(wx.ID_ANY, 'Tasks and resources...')
+    register_menu_command(frame, CommandSpec('operations.tasks', 'Tasks and resources...', 'main'), item)
     frame.Bind(wx.EVT_MENU, lambda event: show_operations(frame), item)

@@ -42,6 +42,7 @@ def main():
 
 def _run_native(arguments):
     import ctypes
+    import wave
     from ctypes import wintypes
     import wx
     from carr_library.application import LibraryApp
@@ -49,6 +50,7 @@ def _run_native(arguments):
     from carr_library.audio.models import AudioCancelled
     import carr_library.audio.process as process_module
     import carr_library.audio.recording as recording_module
+    import carr_library.audio.recording_monitor as monitor_module
     import carr_library.ui.recording_dialog as dialog_module
     from carr_library.ui.desktop_app import DesktopFrame
 
@@ -70,7 +72,7 @@ def _run_native(arguments):
             raise AssertionError('External audio executable identity changed during native acceptance.')
         audio_proof.update(checked)
 
-    source_identity = binding.verify_installed_sources(process_module, recording_module, dialog_module)
+    source_identity = binding.verify_installed_sources(process_module, recording_module, monitor_module, dialog_module)
     check('exact current installed recording source', bool(source_identity))
 
     class ProbeApp(wx.App):
@@ -89,6 +91,25 @@ def _run_native(arguments):
     key_pending = False
     pressed_keys = {}
     original_factory = dialog_module.RecordingService
+    original_process, original_monitor_api = recording_module.run_process, monitor_module._api
+    segment_runs = []
+
+    def observed_process(command, **kwargs):
+        item = {'path': Path(command[-1]), 'active': True, 'pcm': None}
+        check('owned capture processes never overlap', not any(row['active'] for row in segment_runs))
+        segment_runs.append(item)
+        try:
+            result = original_process(command, **kwargs)
+            with wave.open(str(item['path']), 'rb') as reader:
+                item['pcm'] = reader.readframes(reader.getnframes())
+            return result
+        finally:
+            item['active'] = False
+
+    def forbidden_monitor():
+        raise AssertionError('Default-off monitoring opened an output.')
+    recording_module.run_process = observed_process
+    monitor_module._api = forbidden_monitor
 
     with TemporaryDirectory(prefix='resonance-native-recording-', ignore_cleanup_errors=True) as temporary:
         root = Path(temporary)
@@ -115,7 +136,8 @@ def _run_native(arguments):
         real_capture = service.capture
 
         def capture(device_id, **kwargs):
-            item = {'seconds': 0, 'cancel': kwargs['cancelled'].__self__, 'active': True}
+            item = {'seconds': 0, 'cancel': kwargs['cancelled'].__self__, 'active': True,
+                    'retake_of': kwargs.get('retake_of')}
             captures.append(item)
             observe = kwargs['progress']
             item['late_progress'] = observe
@@ -215,15 +237,21 @@ def _run_native(arguments):
             refresh = control('Refresh microphones')
             start = control('Start recording')
             stop = control('Stop and save recording')
+            pause = control('Pause microphone recording')
+            resume = control('Resume microphone recording')
             cancel = control('Cancel unfinished recording')
             selection = control('Microphone device (explicit selection required)')
             saved = control('Saved recordings')
             status = control('Recording status')
             if stage == 0 and refresh.IsEnabled():
                 check('opening the dialog does not discover or capture', not service._devices and not captures)
-                gauges = [child for child in dialog.GetChildren() if isinstance(child, wx.Gauge)]
-                check('recording progress has a native accessible gauge', len(gauges) == 1
-                      and control('Recording operation progress') is gauges[0])
+                gauge = control('Recording operation progress')
+                check('recording progress has a native accessible gauge', isinstance(gauge, wx.Gauge)
+                      and wx.GetTopLevelParent(gauge) is dialog)
+                check('monitoring defaults off without selecting an output',
+                      not control('Enable dry input monitoring').GetValue()
+                      and control('Monitoring output (explicit selection required)').GetSelection() == wx.NOT_FOUND)
+                check('pause and resume remain unavailable before recording', not pause.IsEnabled() and not resume.IsEnabled())
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
@@ -236,14 +264,32 @@ def _run_native(arguments):
                 control('Recording title').SetValue('Native synthetic recording')
                 stage = 3
                 press(start)
-            elif stage == 3 and captures and captures[0]['seconds'] >= .1 and stop.IsEnabled():
+            elif stage == 3 and captures and captures[0]['seconds'] >= .1 and pause.IsEnabled():
                 check('actual FFmpeg reports recorded PCM while UI remains responsive', captures[0]['active'])
+                stage = 31
+                press(pause)
+            elif stage == 31 and dialog.capture_state == 'paused' and resume.IsEnabled():
+                check('Pause acknowledges exited owned capture before allowing Resume',
+                      len(segment_runs) == 1 and not segment_runs[0]['active']
+                      and bool(segment_runs[0]['pcm']) and not pause.IsEnabled())
+                stage = 32
+                press(resume)
+            elif stage == 32 and len(segment_runs) == 2 and dialog.capture_state == 'recording' and stop.IsEnabled():
+                check('Resume starts a second owned segment after the first has closed',
+                      not segment_runs[0]['active'] and segment_runs[1]['active'])
                 stage = 4
                 press(stop)
             elif stage == 4 and saved.GetCount() == 1 and start.IsEnabled():
                 check('Stop finalizes and verifies an actual retained recording', len(completed) == 1
                     and completed[0]['completion'] == 'stopped' and service.get(completed[0]['id']) == completed[0])
                 check('Stop reports retained completion', status.GetValue().startswith('Saved and verified.'))
+                result = completed[0]
+                with wave.open(result['path'], 'rb') as reader:
+                    retained = reader.readframes(reader.getnframes())
+                check('Pause and Resume preserve the exact contiguous PCM of both segments',
+                      result['schema'] == 'carr-recording/2' and len(result['segments']) == 2
+                      and retained == b''.join(row['pcm'] for row in segment_runs)
+                      and not result['monitoring']['enabled'])
                 stage = 5
                 press(start)
             elif stage == 5 and len(captures) == 2 and captures[1]['seconds'] >= .1:
@@ -421,6 +467,103 @@ def _run_native(arguments):
                 wx.CallAfter = original_call_after
                 dialog_module.ThreadPoolExecutor = original_executor
 
+        def retake_checks():
+            nonlocal dialog, finished
+            original = completed[0]
+            original_path = Path(original['path'])
+            receipt_path = service.root / (original['id'] + '.json')
+            original_bytes, receipt_bytes = original_path.read_bytes(), receipt_path.read_bytes()
+            info = original_path.stat()
+            original_identity = info.st_dev, info.st_ino
+            first_capture, first_complete = len(captures), len(completed)
+            selected_inputs = []
+            state = {'phase': 0, 'closed': False}
+            expires = min(deadline, monotonic() + 25)
+            dialog, finished = None, False
+
+            def tick():
+                nonlocal dialog
+                if state['closed'] or errors:
+                    return
+                if monotonic() >= expires:
+                    raise TimeoutError('Native explicit retake did not complete')
+                if key_pending:
+                    wx.CallLater(25, guarded(tick))
+                    return
+                if dialog is None:
+                    dialog = next((window for window in wx.GetTopLevelWindows()
+                        if isinstance(window, wx.Dialog) and window.GetParent() == frame
+                        and window.GetTitle() == 'Local microphone recording'), None)
+                if dialog is None:
+                    wx.CallLater(25, guarded(tick))
+                    return
+                refresh = control('Refresh microphones')
+                saved = control('Saved recordings')
+                microphone = control('Microphone device (explicit selection required)')
+                retake = control('Record another take of selected recording')
+                stop = control('Stop and save recording')
+                if state['phase'] == 0 and refresh.IsEnabled() and saved.GetCount() == 1:
+                    check('retake has no implicit original or microphone selection',
+                          saved.GetSelection() == wx.NOT_FOUND and not retake.IsEnabled()
+                          and len(captures) == first_capture)
+                    state['phase'] = 1
+                    press(saved, wx.WXK_DOWN)
+                elif state['phase'] == 1 and saved.GetSelection() == 0:
+                    check('retake still requires an explicitly selected current microphone',
+                          not retake.IsEnabled() and not selected_inputs)
+                    state['phase'] = 2
+                    press(refresh)
+                elif state['phase'] == 2 and refresh.IsEnabled() and microphone.GetCount() == 1:
+                    check('retake refresh does not choose a microphone',
+                          microphone.GetSelection() == wx.NOT_FOUND and not retake.IsEnabled())
+                    state['phase'] = 3
+                    press(microphone, wx.WXK_DOWN)
+                elif state['phase'] == 3 and microphone.GetSelection() == 0 and retake.IsEnabled():
+                    control('Maximum recording duration in minutes').SetValue(1)
+                    control('Recording title').SetValue('Native explicit second take')
+                    state['phase'] = 4
+                    press(retake)
+                elif state['phase'] == 4 and len(captures) == first_capture + 1 and captures[-1]['seconds'] >= .1:
+                    check('native retake key starts the existing owner with the selected predecessor',
+                          captures[-1]['active'] and captures[-1]['retake_of'] == original['id']
+                          and not retake.IsEnabled())
+                    state['phase'] = 5
+                    press(stop)
+                elif state['phase'] == 5 and retake.IsEnabled() and saved.GetCount() == 2:
+                    check('native retake creates a distinct verified recording',
+                          len(completed) == first_complete + 1
+                          and completed[-1]['id'] != original['id']
+                          and completed[-1]['retake_of'] == {
+                              'id': original['id'], 'audio_sha256': original['audio']['sha256']}
+                          and service.get(completed[-1]['id']) == completed[-1])
+                    after = original_path.stat()
+                    check('native retake keeps the exact original receipt and PCM identity',
+                          original_path.read_bytes() == original_bytes
+                          and receipt_path.read_bytes() == receipt_bytes
+                          and (after.st_dev, after.st_ino) == original_identity
+                          and service.get(original['id']) == original)
+                    check('new take does not attach or replace any Studio input automatically',
+                          not selected_inputs and 'Studio selection are unchanged' in control('Recording status').GetValue())
+                    state['phase'] = 6
+                    press(control('Close'))
+                wx.CallLater(25, guarded(tick))
+
+            try:
+                wx.CallLater(25, guarded(tick))
+                outcome = dialog_module.show_recording(frame, on_selected=selected_inputs.append)
+                check('native retake closes with both originals retained and no implicit Use',
+                      state['phase'] == 6 and outcome is None and not selected_inputs
+                      and len(service.list()) == 2 and not any(item['active'] for item in captures)
+                      and not list(service.root.glob('.pending-*')))
+            finally:
+                state['closed'] = True
+                for key, name in tuple(pressed_keys.items()):
+                    try:
+                        check('native key release after retake close: ' + name, simulator.KeyUp(key))
+                    finally:
+                        pressed_keys.pop(key, None)
+                finished = True
+
         def open_recording():
             nonlocal frame, finished
             if frame.working:
@@ -446,6 +589,8 @@ def _run_native(arguments):
                     and not list(service.root.glob('.pending-*')))
             if not errors:
                 lifecycle_checks()
+            if not errors:
+                retake_checks()
             app.ExitMainLoop()
 
         try:
@@ -459,6 +604,8 @@ def _run_native(arguments):
                 raise AssertionError('\n'.join(errors))
         finally:
             dialog_module.RecordingService = original_factory
+            recording_module.run_process = original_process
+            monitor_module._api = original_monitor_api
             for key in tuple(pressed_keys):
                 simulator.KeyUp(key)
                 pressed_keys.pop(key, None)
@@ -470,9 +617,13 @@ def _run_native(arguments):
                 frame.Destroy()
                 app.Yield()
     verify_audio(runtime)
+    check('installed recording sources remain exact after retake and lifecycle work',
+          binding.verify_installed_sources(process_module, recording_module, monitor_module, dialog_module) == source_identity)
     print(json.dumps({'status': 'PASS', 'checks': checks, 'actual_native_keys': True,
         'source_identity': source_identity,
-        'actual_ffmpeg_synthetic_capture': True, 'direct_parent_destruction': 'PASS',
+        'actual_ffmpeg_synthetic_capture': True, 'pause_resume_exact_pcm': 'PASS',
+        'explicit_retake_preserves_original': 'PASS',
+        'monitoring_default_off': 'PASS', 'physical_monitor_output': 'NOT_RUN', 'direct_parent_destruction': 'PASS',
         'late_recording_progress_and_completion': 'PASS', 'audio_runtime': audio_proof, 'physical_microphone': 'NOT_RUN',
         'nvda': 'NOT_RUN', 'audio_listening': 'NOT_RUN'}, ensure_ascii=False, indent=2))
 

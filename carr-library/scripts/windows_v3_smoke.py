@@ -288,7 +288,8 @@ def main():
             open_dialog(frame)
             assert inspected == [True], 'Native dialog lacked a required accessible control name'
             app.Yield()
-        inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice'))
+        inspect_dialog(show_studio, ('Script', 'Production and save status', 'Default voice',
+                                     'Audio Studio current progress and phase', 'Query Audio Studio progress'))
         inspect_dialog(show_assistant, ('Library scope', 'Goal', 'Plan preview'))
         inspect_dialog(show_provider_settings, ('Provider accounts', 'Connection configuration status'), wx.ID_CLOSE)
         inspect_dialog(show_engine_settings, ('Local engine configuration',), wx.ID_CLOSE)

@@ -275,3 +275,48 @@ def test_actual_registry_notification_runs_on_existing_feedback_worker():
     assert sound.last_error is None and sound.quiescent
     assert len(provider.calls) == len(player.played) == 1
     sound.close()
+
+
+
+def test_actual_registry_notification_runs_on_canonical_snapshot_feedback_worker():
+    from carr_library.progress import ProgressHub
+    from carr_library.progress_feedback import ProgressFeedback
+    from carr_library.progress_preferences import ProgressPreferences
+    from carr_library.speech.progress_speech import SnapshotProgressSpeech
+
+    speech, provider, player = selected()
+    sound = ProgressFeedback(ProgressPreferences(mode='speech', volume=20),
+                             speech_provider=SnapshotProgressSpeech(speech))
+    try:
+        assert sound.update(ProgressHub().start('Existing worker and registry.').snapshot())
+        assert player.started.wait(3)
+        with sound._condition:
+            assert sound._condition.wait_for(lambda: sound.quiescent, timeout=3)
+        assert sound.last_error == '' and sound.quiescent
+        assert len(provider.calls) == len(player.played) == 1
+    finally:
+        sound.close()
+        worker = sound._worker
+        if worker is not None:
+            worker.join(3)
+            assert not worker.is_alive()
+
+
+@pytest.mark.parametrize(('language', 'state', 'expected'), [
+    ('en-US', 'running', 'In progress. 49 percent.'),
+    ('uk-UA', 'running', 'Робота триває. 49 відсотків.'),
+    ('sk-SK', 'cancelled', 'Zrušené. 49 percent.'),
+])
+def test_snapshot_bridge_preserves_selected_notification_language(language, state, expected):
+    from carr_library.progress import ProgressHub
+    from carr_library.speech.progress_speech import SnapshotProgressSpeech
+
+    speech, _, _ = selected(PCMProvider(language=language))
+    task = ProgressHub().start('Explicit selected voice', total=100)
+    task.update(completed=49, phase='A visible English phase')
+    if state == 'cancelled':
+        task.cancelled()
+    message = SnapshotProgressSpeech(speech).format_progress(task.snapshot(), kind=state)
+    assert message.startswith(expected) and len(message) <= 240
+    if language != 'en-US':
+        assert 'A visible English phase' not in message

@@ -326,7 +326,15 @@ class EbookAudioDialog:
                 self._pending = prepared
                 def start():
                     self.guard()
-                    if self.transport.start(prepared, ticket):
+                    try:
+                        started = self.transport.start(prepared, ticket)
+                    except Exception as exc:
+                        # Failed native admission also stops this transport and
+                        # advances its generation. Report on the still-live
+                        # dialog before the quiet helper sees that stale ticket.
+                        self._error(exc)
+                        return
+                    if started:
                         self._pending = None
                         self._highlight()
                         self.timer.Start(100)

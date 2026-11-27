@@ -22,18 +22,6 @@ def references():
                  issued={'date-parts': [[2020]]}, publisher='Example Press', page='1-400')]
 
 
-@pytest.fixture(scope='module')
-def real_results():
-    if not shutil.which('node'):
-        pytest.skip('Actual CSL acceptance requires locally installed Node.js 18 or newer.')
-    items = [dict(id='book-doe', type='book', title='The Book of Science',
-                  author=[{'family': 'Doe', 'given': 'Jane'}],
-                  issued={'date-parts': [[2020]]}, publisher='Example Press', page='1-400')]
-    return {style.id: render_citations(items, style=style.id,
-            citations=[CitationRequest('book-doe', '12', locator_verified=True)])
-            for style in available_styles()}
-
-
 @pytest.mark.parametrize('style,expected_bibliography,expected_citation', [
     ('apa', 'Doe, J. (2020). The Book of Science (pp. 1–400). Example Press.', '(Doe, 2020, p. 12)'),
     ('chicago-author-date', 'Doe, Jane. 2020. The Book of Science. Example Press.', '(Doe 2020, 12)'),
@@ -45,8 +33,16 @@ def real_results():
     ('ieee', '[1] J. Doe, The Book of Science. Example Press, 2020, pp. 1–400.', '[1, p. 12]'),
 ])
 def test_real_styles_preserve_page_extent_and_apply_the_actual_rules(
-        real_results, style, expected_bibliography, expected_citation):
-    result = real_results[style]
+        references, style, expected_bibliography, expected_citation, record_property):
+    # Each style must reach the real engine independently. A failed common
+    # fixture used to turn one style failure into seven setup errors.
+    started = time.monotonic()
+    record_property('style', style)
+    try:
+        result = render_citations(references, style=style,
+            citations=[CitationRequest('book-doe', '12', locator_verified=True)])
+    finally:
+        record_property('elapsed_seconds', time.monotonic() - started)
     assert result.bibliography[0].text == expected_bibliography
     assert result.citations[0].text == expected_citation
     assert result.bibliography[0].reference_id == 'book-doe'
@@ -206,15 +202,29 @@ def test_actual_engine_timeout_is_bounded(references):
     assert time.monotonic() - start < 3
 
 
-def test_actual_worker_cancels_after_launch(references):
-    calls = 0
-    def cancelled():
-        nonlocal calls
-        calls += 1
-        return calls >= 2
+def test_actual_worker_cancels_after_launch(references, monkeypatch):
+    import quickjs
+    context_type = quickjs.Context
+    evaluated = []
+
+    class ObservedContext:
+        def __init__(self):
+            self.context = context_type()
+
+        def __getattr__(self, name):
+            return getattr(self.context, name)
+
+        def eval(self, code):
+            result = self.context.eval(code)
+            evaluated.append(True)
+            return result
+
+    monkeypatch.setattr(quickjs, 'Context', ObservedContext)
     with pytest.raises(CitationCancelled):
-        render_citations(references, cancelled=cancelled)
-    assert calls >= 2
+        render_citations(references, cancelled=lambda: bool(evaluated))
+    # The real pinned processor ran. Cancellation before returning its result
+    # suppresses publication; this does not claim mid-instruction interruption.
+    assert evaluated == [True]
 
 
 def test_runtime_ignores_node_options_preload_injection(tmp_path, references, monkeypatch):
@@ -225,3 +235,36 @@ def test_runtime_ignores_node_options_preload_injection(tmp_path, references, mo
     result = render_citations(references)
     assert result.bibliography[0].reference_id == 'book-doe'
     assert not marker.exists()
+
+
+@pytest.mark.parametrize('locale', ['en-US', 'uk-UA', 'sk-SK'])
+def test_real_document_profile_uses_structured_xml_without_the_string_parser(
+        locale, references, monkeypatch):
+    from carr_library.citations import csl
+
+    original_execute = csl._execute
+    observed = []
+
+    def actual_execute(payload, *, processor, bridge, budget, cancelled=None):
+        assert payload['style_xml']['name'] == 'style'
+        assert all(value['name'] == 'locale' for value in payload['locales'].values())
+        assert budget.cpu_seconds == 30 and budget.memory_bytes == 256 * 1024 * 1024
+        from carr_library.academic_integration.runtime_adapter import adapter_identity
+        identity = adapter_identity()
+        assert sha256(processor.encode('utf-8')).hexdigest() == identity['adapted_processor_sha256']
+        assert sha256((formatting._ROOT / 'vendor/citeproc.js').read_bytes()).hexdigest() == identity['base_processor_sha256']
+        observed.append(True)
+        # The actual pinned processor still formats the reference. Poison only
+        # its fallback XML-string parser so the old runtime handoff fails.
+        forbidden = "CSL.parseXml = function () { throw new Error('Unexpected XML string parser'); };\n"
+        return original_execute(payload, processor=processor, bridge=forbidden + bridge,
+                                budget=budget, cancelled=cancelled)
+
+    monkeypatch.setattr(csl, '_execute', actual_execute)
+    result = render_citations(references, locale=locale,
+        citations=[CitationRequest('book-doe', '12', locator_verified=True)])
+    assert observed == [True]
+    assert result.bibliography[0].reference_id == 'book-doe'
+    assert 'The Book of Science' in result.bibliography[0].text
+    assert '12' in result.citations[0].text
+    assert result.style.sha256 == next(style.sha256 for style in available_styles() if style.id == 'apa')

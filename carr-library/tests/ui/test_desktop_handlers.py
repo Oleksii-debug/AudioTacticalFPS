@@ -20,6 +20,7 @@ from carr_library.research.anchored_export import SavedEvidence
 from carr_library.research.topic_search import TopicHit
 from carr_library.ui.search_model import Hit, SearchModel
 from carr_library.ui.scope_bindings import ScopeServices, scope_labels
+from carr_library.extract.document_formats import file_dialog_wildcard, supported_formats_text
 
 
 class BaseFrame:
@@ -125,7 +126,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     installers = {name: Mock() for name in (
         'install_research_actions', 'install_source_review_actions', 'install_academic_actions',
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
-        'install_federated_search_actions', 'install_query_manager_actions')}
+        'install_federated_search_actions', 'install_query_manager_actions',
+        'install_academic_comparison_actions', 'install_library_assistant_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -137,10 +139,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('transcription_dialog', 'install_transcription_actions'),
                               ('studio_dialog', 'install_studio_actions'),
                               ('assistant_dialog', 'install_assistant_actions'),
+                              ('workflow_templates', 'install_workflow_templates_actions'),
                               ('document_conversion', 'install_conversion_actions'),
-                              ('keyboard_settings', 'install_keyboard_settings'),
                               ('citation_formatting', 'install_citation_actions'),
-                              ('operation_progress', 'install_operation_progress'),
                               ('operations_dialog', 'install_operations_actions'),
                               ('save_actions', 'install_save_actions'),
                               ('portable_sync', 'install_portable_sync_actions'),
@@ -149,6 +150,14 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         new_installers.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
                             SimpleNamespace(**{installer: callback}))
+    keyboard = Mock()
+    register_command = Mock()
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.keyboard_settings',
+                        SimpleNamespace(install_keyboard_settings=keyboard,
+                                        register_menu_command=register_command))
+    progress = Mock()
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.progress_panel',
+                        SimpleNamespace(install_progress_panel=progress))
 
     value._menus()
 
@@ -157,9 +166,14 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert len(shortcuts) == len(set(shortcuts))
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'Import Center: files, folders and queues' in labels
+    registered_frame, registered_spec, registered_item = register_command.call_args.args
+    assert registered_frame is value
+    assert registered_spec.command_id == 'research.advanced_query'
+    assert registered_spec.default_shortcut == 'Ctrl+Alt+Q'
+    assert registered_item.title.startswith('Build advanced query')
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
-    for installer in (*installers.values(), ebook, *new_installers):
+    for installer in (*installers.values(), ebook, *new_installers, keyboard, progress):
         installer.assert_called_once_with(value)
     value.help(None)
     guide = env['show_text'].call_args.args[2]
@@ -167,6 +181,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Library, Import Center' in guide
     assert 'Ctrl+Shift+B opens Import Center' not in guide
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
+    assert 'Ctrl+Alt+Q opens the advanced query builder' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
 
 
@@ -625,7 +640,7 @@ def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     f._drop,f.refresh_scopes = Mock(),Mock()
     f.scopes = []
     f.remember_data_dir = Mock()
-    f.keyboard_settings, f.operation_progress = Mock(), Mock()
+    f.keyboard_commands, f.progress_panel = Mock(), Mock()
     (tmp_path / 'library.sqlite').write_bytes(b'fixture')
     candidate = SimpleNamespace(root=tmp_path,list_scopes=Mock(return_value=()))
     classes[0]['LibraryApp'].return_value = candidate
@@ -633,8 +648,8 @@ def test_folder_switch_remembers_only_valid_opened_library(classes,tmp_path):
     assert f.library is candidate
     f.remember_data_dir.assert_called_once_with(tmp_path)
     f._drop.assert_called_once()
-    f.keyboard_settings.reload.assert_called_once_with()
-    f.operation_progress.reload_preferences.assert_called_once_with()
+    f.keyboard_commands.change_root.assert_called_once_with(tmp_path)
+    f.progress_panel.change_root.assert_called_once_with(tmp_path)
 
 
 def test_folder_switch_during_work_never_rebinds_current_job(classes,tmp_path):
@@ -806,4 +821,44 @@ def test_save_presentation_equivalent_topic_labels(classes, names, index):
     p.frame.library.save_hit.assert_called_once_with(
         'a', f'topic-{index}', 'hit', 'revision',
         authorized_topic=None, cancelled=p.frame.cancel_event.is_set)
+    chooser.return_value.Destroy.assert_called_once()
+
+@pytest.mark.parametrize('names', [
+    ('Café', 'Cafe\u0301'), ('Історія', 'Історія '),
+    ('Research  methods', 'Research methods'), ('Clinical\u00a0study', 'Clinical study'),
+    ('Research', 'research'), ('Fußnote', 'FUSSNOTE'),
+])
+def test_real_topic_save_labels_are_distinct_without_changing_names_or_routing(classes, tmp_path, names):
+    import unicodedata
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Topic choices')
+    with app.topic_transaction(workspace) as service:
+        for number, name in enumerate(names, 1):
+            service.create(f'topic-{number}', name)
+    topics = tuple(app.topics(workspace))
+    assert tuple(topic.name for topic in topics) == names
+    app.add_text(workspace, 'Original source', 'Exact historical railway passage.')
+    source, = app.search(workspace, 'railway passage')
+    hit = Hit(source.workspace, source.ref, source.revision, source.title, source.author,
+              source.edition, source.page, source.quote, source.citation)
+    p = panel(classes)
+    p.frame.library = p.bound_library = app
+    p.frame.active = workspace, None
+    p.bound_workspace = workspace
+    p.model.set_workspace(workspace)
+    p.selected = lambda: hit
+    chooser = classes[0]['wx'].SingleChoiceDialog
+    chooser.return_value.GetSelection.return_value = 1
+
+    p.save_selected(None)
+    labels = chooser.call_args.args[3]
+    assert len({' '.join(unicodedata.normalize('NFC', label).split()).casefold()
+                for label in labels}) == 2
+    assert all(label.startswith(topic.name) and f'topic {topic.id}' in label
+               for label, topic in zip(labels, topics))
+    saved = p.frame.run_job.call_args.args[1]()
+    assert [row.evidence_id for row in app.evidence(workspace, topics[1].id)] == [saved]
+    assert app.evidence(workspace, topics[0].id) == ()
+    assert tuple(app.topics(workspace)) == topics
     chooser.return_value.Destroy.assert_called_once()

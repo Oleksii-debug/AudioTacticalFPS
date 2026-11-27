@@ -63,6 +63,21 @@ def test_base_native_extensions_are_loaded_without_optional_engines(tmp_path, mo
     assert report['semantic']['status'] == report['ocr']['status'] == 'NOT_INCLUDED'
 
 
+@pytest.mark.parametrize('declared', [False, True])
+def test_new_audio_layout_cannot_report_success_when_missing_or_unannounced(tmp_path, monkeypatch, declared):
+    manifest = bundle(tmp_path)
+    if declared:
+        manifest['bundled_audio_runtime'] = True
+        (tmp_path / 'bundle-manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+    else:
+        (tmp_path / 'audio-runtime').mkdir()
+    controlled_imports(monkeypatch, [])
+    report = native_checks.check_native_dependencies(tmp_path)
+    assert report['status'] == 'FAIL'
+    assert report['failed_component'] == 'sealed local audio runtime inventory'
+    assert ('missing' if declared else 'Unannounced') in report['error']
+
+
 def _native_manifest(tmp_path, monkeypatch):
     import hashlib
     from carr_library import native_launcher

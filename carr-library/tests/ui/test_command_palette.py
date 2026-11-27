@@ -7,8 +7,11 @@ import sys
 import pytest
 
 from carr_library.ui.command_palette import (CommandChoice, CommandPalette,
-    CommandPaletteActions, MAX_QUERY, PALETTE_IDENTITY, show_command_palette, install_command_palette)
-from carr_library.ui.keyboard_settings import KeyboardSettings, MenuCommand, install_keyboard_settings
+    CommandPaletteActions, MAX_QUERY, PALETTE_IDENTITY, PALETTE_SHORTCUT,
+    show_command_palette, install_command_palette)
+from carr_library.keyboard_preferences import KeymapStore
+from carr_library.ui.command_registry import CommandRegistry, CommandSpec
+from carr_library.ui.keyboard_settings import KeyboardManager, install_keyboard_settings
 
 
 class Item:
@@ -19,6 +22,7 @@ class Item:
         self.identity = Item.next_id
         Item.next_id += 1
 
+    def __bool__(self): return not getattr(self, 'deleted', False)
     def IsSeparator(self): return self.label is None
     def GetItemLabel(self): return self.label
     def SetItemLabel(self, label): self.label = label
@@ -64,7 +68,11 @@ def wx(monkeypatch):
         WXK_RETURN=13, WXK_NUMPAD_ENTER=313, ID_ANY=-1, Menu=Menu,
         ACCEL_CTRL=1, ACCEL_ALT=2, ACCEL_SHIFT=4, AcceleratorTable=lambda rows: tuple(rows),
         **{'WXK_F' + str(index): 1000 + index for index in range(1, 25)})
+    module.CallAfter = lambda callback, *args: callback(*args)
     monkeypatch.setitem(sys.modules, 'wx', module)
+    # Key parsing is an explicit headless double; native dispatch has its own probe.
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
+                        lambda key, identity: (0, key, int(identity)))
     return module
 
 
@@ -72,7 +80,8 @@ def make_frame(root, bar):
     root.mkdir(exist_ok=True, parents=True)
     frame = SimpleNamespace(menu_bar=bar, library=SimpleNamespace(root=root), active=('library', 'topic'),
                             working=False, busy=False, _closing=False, report=Mock(),
-                            IsBeingDeleted=lambda: False, Bind=Mock(), choice=Control(), status=Control())
+                            IsBeingDeleted=lambda: False, IsEnabled=lambda: True,
+                            Bind=Mock(), choice=Control(), status=Control())
     frame.handler = SimpleNamespace(ProcessEvent=Mock(return_value=True))
     frame.GetEventHandler = lambda: frame.handler
     frame.GetMenuBar = lambda: bar
@@ -87,19 +96,41 @@ def keyboard(tmp_path, wx):
     bar = MenuBar([('&File', Menu([save, Item(None), nested])),
                    ('&Help', Menu([Item('&Find a command...\tCtrl+Shift+P'), Item('Українська довідка')]))])
     frame = make_frame(tmp_path, bar)
-    action = KeyboardSettings(frame, wx_module=wx)
-    frame.keyboard_settings = action
+    action = KeyboardManager(frame, store=KeymapStore(tmp_path / 'keyboard-shortcuts.json'),
+                             registry=CommandRegistry())
+    frame.keyboard_commands = action
+    for spec, item in (
+            (CommandSpec('file.save', 'Save', default_shortcut='Ctrl+S'), save),
+            (CommandSpec('file.export_bookmarks', 'Export bookmarks', default_shortcut='Ctrl+Shift+B'), archive),
+            (CommandSpec(PALETTE_IDENTITY, 'Find a command', default_shortcut=PALETTE_SHORTCUT), bar.GetMenu(1).items[0]),
+            (CommandSpec('help.ukrainian', 'Українська довідка'), bar.GetMenu(1).items[1])):
+        action.register_menu_command(spec, item)
     return action
+
+
+def test_shortcut_filter_distinguishes_save_from_save_all(keyboard):
+    item = Item('Save &all\tCtrl+Shift+S')
+    keyboard.frame.menu_bar.GetMenu(0).items.append(item)
+    keyboard.register_menu_command(
+        CommandSpec('file.save_all', 'Save all', default_shortcut='Ctrl+Shift+S'), item)
+    palette = CommandPalette(keyboard)
+    save, = palette.matching('file/save Ctrl+S')
+    assert save.command.command_id == 'file.save'
+    save_all, = palette.matching('file/save Ctrl+Shift+S')
+    assert save_all.command.command_id == 'file.save_all'
+    keyboard.apply_overrides({'file.save': 'Ctrl+Alt+S'})
+    assert palette.matching('file/save Ctrl+S') == ()
+    assert palette.matching('file/save Ctrl+Shift+S')[0].command.command_id == 'file.save_all'
 
 
 def test_filter_uses_menu_path_unicode_words_and_current_native_shortcut(keyboard):
     palette = CommandPalette(keyboard)
     export, = palette.matching('book tools export')
-    assert export.command.action == 'file/book tools/export bookmarks'
+    assert export.command.command_id == 'file.export_bookmarks'
     assert export.shortcut == 'Ctrl+Shift+B'
-    assert all(row.command.action != PALETTE_IDENTITY for row in palette.matching(''))
-    assert palette.matching('УКРАЇНСЬКА')[0].command.title == 'Help / Українська довідка'
-    keyboard.apply({'file/save': 'Ctrl+Alt+S'})
+    assert all(row.command.command_id != PALETTE_IDENTITY for row in palette.matching(''))
+    assert palette.matching('УКРАЇНСЬКА')[0].title == 'Help / Українська довідка'
+    keyboard.apply_overrides({'file.save': 'Ctrl+Alt+S'})
     save, = palette.matching('ctrl+alt+s')
     assert save.label == 'File / Save; Ctrl+Alt+S; available now'
     assert palette.matching('File/Save ctrl+s') == ()
@@ -113,7 +144,7 @@ def test_dispatch_reuses_exact_menu_id_and_original_frame_handler(keyboard):
     choice, = palette.matching('file/save')
     assert palette.dispatch(choice)
     event, = keyboard.frame.handler.ProcessEvent.call_args.args
-    assert (event.kind, event.identity, event.source) == (7, choice.command.item.GetId(), keyboard.frame)
+    assert (event.kind, event.identity, event.source) == (7, choice.binding.item.GetId(), keyboard.frame)
 
 
 @pytest.mark.parametrize('disabled', ['leaf', 'parent', 'top'])
@@ -121,7 +152,7 @@ def test_leaf_ancestor_and_top_menu_disabling_prevent_dispatch(keyboard, disable
     palette = CommandPalette(keyboard)
     selected, = palette.matching('Export bookmarks')
     if disabled == 'leaf':
-        selected.command.item.enabled = False
+        selected.binding.item.enabled = False
     elif disabled == 'parent':
         keyboard.frame.menu_bar.GetMenu(0).items[-1].enabled = False
     else:
@@ -141,9 +172,9 @@ def test_changed_scope_or_inactive_frame_rejects_previously_selected_command(key
     frame = keyboard.frame
     if change == 'library': frame.library = object()
     elif change == 'root': frame.library.root = frame.library.root / 'changed'
-    elif change == 'keyboard_root': keyboard.root = keyboard.root / 'changed'
+    elif change == 'keyboard_root': keyboard.store.path = keyboard.store.path.parent / 'changed' / keyboard.store.path.name
     elif change == 'topic': frame.active = ('library', 'another topic')
-    elif change == 'registry': frame.keyboard_settings = object()
+    elif change == 'registry': frame.keyboard_commands = object()
     elif change == 'menu_bar': frame.menu_bar = object()
     elif change == 'detached_bar': frame.GetMenuBar = lambda: None
     elif change == 'closing': frame._closing = True
@@ -160,15 +191,18 @@ def test_stale_item_or_registry_binding_is_not_resolved_by_reused_label_or_id(ke
     selected, = palette.matching('file/save')
     menu = keyboard.frame.menu_bar.GetMenu(0)
     if change == 'detached':
-        menu.items.remove(selected.command.item)
+        menu.items.remove(selected.binding.item)
     elif change == 'replaced':
-        replacement = Item(selected.command.item.label)
+        replacement = Item(selected.binding.item.label)
+        # A replacement native menu item deletes the old retained native peer;
+        # merely creating a second wx wrapper does not change this flag.
+        selected.binding.item.deleted = True
         replacement.identity = selected.menu_id
         menu.items[0] = replacement
     elif change == 'id_changed':
-        selected.command.item.identity += 1
+        selected.binding.item.identity += 1
     else:
-        keyboard.commands = tuple(replace(row) for row in keyboard.commands)
+        keyboard.registry = CommandRegistry(replace(row) for row in keyboard.registry.commands())
     with pytest.raises(ValueError):
         palette.dispatch(selected)
     keyboard.frame.handler.ProcessEvent.assert_not_called()
@@ -177,10 +211,10 @@ def test_stale_item_or_registry_binding_is_not_resolved_by_reused_label_or_id(ke
 def test_forged_selection_and_palette_recursion_cannot_dispatch(keyboard):
     palette = CommandPalette(keyboard)
     item = Item('Save')
-    fake = MenuCommand('file/save', 'File / Save', item.GetId(), 'Ctrl+S', 'Save', item)
-    recursive = next(command for command in keyboard.commands if command.action == PALETTE_IDENTITY)
-    for selected in (None, 'file/save', CommandChoice(fake, fake.item.GetId(), '', True),
-                     CommandChoice(recursive, recursive.item.GetId(), '', True)):
+    fake = CommandSpec('file.save', 'Save', default_shortcut='Ctrl+S')
+    recursive = keyboard.registry.get(PALETTE_IDENTITY)
+    for selected in (None, 'file/save', CommandChoice(fake, item.GetId(), '', True),
+                     CommandChoice(recursive, keyboard.bindings[PALETTE_IDENTITY].item.GetId(), '', True)):
         with pytest.raises(ValueError):
             palette.dispatch(selected)
     keyboard.frame.handler.ProcessEvent.assert_not_called()
@@ -230,7 +264,7 @@ def test_disabled_or_newly_stale_choice_keeps_palette_open(dialog, keyboard):
     dialog.filter.SetValue('save')
     dialog.refresh()
     selected = dialog.rows[0]
-    selected.command.item.enabled = False
+    selected.binding.item.enabled = False
     dialog.accept()
     assert not dialog.run.enabled and 'unavailable now' in dialog.status.value
     assert dialog.result is None
@@ -244,7 +278,7 @@ def test_enter_selects_without_dispatch_until_modal_adapter_closes(dialog, keybo
     enter = SimpleNamespace(GetKeyCode=lambda: 13, Skip=Mock())
     dialog.list_key(enter)
     dialog.EndModal.assert_called_once_with(1)
-    assert dialog.result.command.action == 'file/save'
+    assert dialog.result.command.command_id == 'file.save'
     keyboard.frame.handler.ProcessEvent.assert_not_called()
     enter.Skip.assert_not_called()
     arrow = SimpleNamespace(GetKeyCode=lambda: 38, Skip=Mock())
@@ -269,7 +303,7 @@ def test_modal_adapter_checks_enablement_again_after_close(keyboard, monkeypatch
     controller = CommandPalette(keyboard)
     selected, = controller.matching('save')
     dialog = SimpleNamespace(controller=controller, result=selected, ShowModal=lambda: 1,
-                             Destroy=lambda: setattr(selected.command.item, 'enabled', False))
+                             Destroy=lambda: setattr(selected.binding.item, 'enabled', False))
     monkeypatch.setattr('carr_library.ui.command_palette.create_command_palette', lambda _: dialog)
     assert not show_command_palette(keyboard)
     keyboard.frame.handler.ProcessEvent.assert_not_called()
@@ -314,52 +348,57 @@ def test_installer_registers_palette_in_the_same_shortcut_inventory(tmp_path, wx
     frame = make_frame(tmp_path, MenuBar([('&Library', Menu([Item('Import books\tCtrl+I')]))]))
     installed = install_command_palette(frame)
     keyboard = install_keyboard_settings(frame)
-    palette, = [command for command in keyboard.commands if command.action == PALETTE_IDENTITY]
-    assert palette.default == 'Ctrl+Shift+P'
-    assert palette.item.GetItemLabel().endswith('\tCtrl+Shift+P')
-    assert keyboard is frame.keyboard_settings and install_keyboard_settings(frame) is keyboard
-    assert install_command_palette(frame) is installed is palette.item
-    assert sum(command.default == 'Ctrl+Shift+P' for command in keyboard.commands) == 1
+    palette = keyboard.registry.get(PALETTE_IDENTITY)
+    item = keyboard.bindings[PALETTE_IDENTITY].item
+    assert palette.default_shortcut == 'Ctrl+Shift+P'
+    assert item.GetItemLabel().endswith('\tCtrl+Shift+P')
+    assert keyboard is frame.keyboard_commands and install_keyboard_settings(frame) is keyboard
+    assert install_command_palette(frame) is installed is item
+    assert sum(command.default_shortcut == 'Ctrl+Shift+P'
+               for command in keyboard.registry.commands('main')) == 1
 
 
 def test_palette_default_cannot_silently_reassign_an_existing_shortcut(tmp_path, wx):
-    frame = make_frame(tmp_path, MenuBar([('&Library', Menu([Item('Existing command\tCtrl+Shift+P')]))]))
-    install_command_palette(frame)
-    with pytest.raises(ValueError, match='already assigned'):
-        install_keyboard_settings(frame)
+    existing = Item('Existing command\tCtrl+Shift+P')
+    frame = make_frame(tmp_path, MenuBar([('&Library', Menu([existing]))]))
+    item = install_command_palette(frame)
+    keyboard = install_keyboard_settings(frame)
+    assert existing.GetItemLabel() == 'Existing command\tCtrl+Shift+P'
+    assert keyboard.shortcut(PALETTE_IDENTITY) == ''
+    assert '\t' not in item.GetItemLabel() and 'unassigned' in keyboard.load_notice
+    assert not (tmp_path / 'keyboard-shortcuts.json').exists()
 
 
 def test_existing_saved_shortcut_keeps_ownership_when_palette_default_is_added(tmp_path, wx):
-    def frame():
-        return make_frame(tmp_path, MenuBar([('&Library', Menu([Item('Import books\tCtrl+I')]))]))
-    previous = frame()
-    # Simulate the previous installed menu catalogue, before the new palette
-    # entry existed. The current installer now always includes the palette.
-    keyboard = KeyboardSettings(previous, wx_module=wx)
-    previous.keyboard_settings = keyboard
-    keyboard.apply({'library/import books': 'Ctrl+Shift+P'})
+    from carr_library.durable_state import atomic_json
     path = tmp_path / 'state' / 'ui' / 'shortcuts.json'
+    atomic_json(path, {'schema': 1,
+        'overrides': {'library/import books': 'Ctrl+Shift+P'},
+        'originals': {'library/import books': 'Ctrl+I'}})
     before = path.read_bytes()
-    upgraded = frame()
+    upgraded = make_frame(tmp_path, MenuBar([('&Library', Menu([Item('Import books\tCtrl+I')]))]))
     item = install_command_palette(upgraded)
     current = install_keyboard_settings(upgraded)
-    assert current.overrides['library/import books'] == 'Ctrl+Shift+P'
+    assert current.overrides['library.import'] == 'Ctrl+Shift+P'
     assert current.overrides[PALETTE_IDENTITY] == ''
-    assert item.GetItemLabel() == 'Find a command...'
+    assert item.GetItemLabel().replace('&', '') == 'Find a command...'
     assert 'preserve your saved choices' in current.load_notice
+    assert current.store.legacy and current.store.path == path
     assert path.read_bytes() == before
+    assert not (tmp_path / 'keyboard-shortcuts.json').exists()
     result, = CommandPalette(current).matching('ctrl+shift+p')
-    assert result.command.action == 'library/import books'
+    assert result.command.command_id == 'library.import'
 
 
 def test_late_palette_install_cannot_leave_an_uncaptured_native_action(tmp_path, wx):
     frame = make_frame(tmp_path, MenuBar([('&Library', Menu([Item('Import books\tCtrl+I')]))]))
-    keyboard = KeyboardSettings(frame, wx_module=wx)
-    frame.keyboard_settings = keyboard
-    before = tuple(keyboard.commands)
-    with pytest.raises(ValueError, match='before capturing'):
-        install_command_palette(frame)
-    assert keyboard.commands == before and not hasattr(frame, 'command_palette_item')
+    keyboard = install_keyboard_settings(frame)
+    before = keyboard.registry.commands(), frame.menu_bar.GetMenuCount()
+    item = install_command_palette(frame)
+    assert keyboard.registry.commands() == before[0] and frame.menu_bar.GetMenuCount() == before[1]
+    assert frame.command_palette_item is item is keyboard.bindings[PALETTE_IDENTITY].item
+    assert sum(command.command_id == PALETTE_IDENTITY
+               for command in keyboard.registry.commands('main')) == 1
 
 
 @pytest.mark.parametrize('change', ['duplicate_id', 'renamed_item', 'moved_item', 'renamed_parent'])
@@ -372,10 +411,10 @@ def test_current_menu_identity_is_verified_again_before_existing_handler_runs(ke
         extra.identity = selected.menu_id
         bar.GetMenu(1).items.append(extra)
     elif change == 'renamed_item':
-        selected.command.item.label = 'Different action'
+        selected.binding.item.label = 'Different action'
     elif change == 'moved_item':
-        bar.GetMenu(0).items.remove(selected.command.item)
-        bar.GetMenu(1).items.append(selected.command.item)
+        bar.GetMenu(0).items.remove(selected.binding.item)
+        bar.GetMenu(1).items.append(selected.binding.item)
     else:
         bar.menus[0] = ('&Different menu', bar.GetMenu(0))
     with pytest.raises(ValueError, match='IDs|changed'):
@@ -386,8 +425,8 @@ def test_current_menu_identity_is_verified_again_before_existing_handler_runs(ke
 def test_display_label_can_change_when_registry_explicitly_keeps_the_same_action(keyboard):
     palette = CommandPalette(keyboard)
     selected, = palette.matching('file/save')
-    selected.command.item.carr_command_name = 'save'
-    selected.command.item.label = 'Save a verified copy\tCtrl+S'
+    selected.binding.item.carr_command_name = 'save'
+    selected.binding.item.label = 'Save a verified copy\tCtrl+S'
     assert palette.dispatch(selected)
     keyboard.frame.handler.ProcessEvent.assert_called_once()
 
@@ -458,3 +497,18 @@ def test_queued_palette_ready_callback_is_discarded_after_native_detachment(keyb
     queued.pop()()
     assert not called
     keyboard.frame.handler.ProcessEvent.assert_not_called()
+
+
+def test_current_frame_facade_and_palette_share_the_installed_manager(tmp_path, wx):
+    from carr_library.ui.keyboard_settings import KeyboardSettings
+    frame = make_frame(tmp_path, MenuBar([('&File', Menu([Item('Save\tCtrl+S')]))]))
+    manager = install_keyboard_settings(frame)
+    facade = frame.keyboard_settings
+    assert isinstance(facade, KeyboardSettings) and facade.manager is manager
+    manager_from_palette = CommandPalette(facade).keyboard
+    assert manager_from_palette is manager
+    facade.apply({'file/save': 'Ctrl+Shift+S'})
+    choice, = CommandPalette(facade).matching('file/save Ctrl+Shift+S')
+    assert choice.binding.item.GetId() == facade.commands[0].menu_id
+    assert manager.shortcut(choice.command.command_id) == 'Ctrl+Shift+S'
+    assert facade.manager.registry is manager.registry

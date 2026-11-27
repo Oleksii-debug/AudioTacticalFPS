@@ -13,7 +13,8 @@ import subprocess
 import tempfile
 
 from ..durable_state import atomic_json, local_path, regular, read_json, sync_directory, _unique
-from .ocr_runtime import discover_ocr_runtime, OcrRuntimeError, NON_READING_MODELS
+from .ocr_runtime import discover_ocr_runtime, OcrRuntimeError
+from .ocr_languages import reading_model_ids
 
 CODE = re.compile(r'(?:script/)?[A-Za-z][A-Za-z0-9_]{0,79}')
 NAMES = {'eng': 'English', 'ukr': 'Ukrainian', 'slk': 'Slovak', 'ces': 'Czech',
@@ -65,10 +66,10 @@ def language_selection(codes, available, *, max_models=8):
     codes = tuple(codes)
     if not 1 <= len(codes) <= max_models or len(set(codes)) != len(codes):
         raise ValueError(f'Choose 1 to {max_models} distinct models for one OCR pass.')
-    supported = {model.code for model in available
-                 if model.kind in ('language', 'script') and model.code not in NON_READING_MODELS}
+    reading_model_ids('+'.join(codes))
+    supported = {model.code for model in available if model.kind in ('language', 'script')}
     if any(code not in supported for code in codes):
-        raise ValueError('Choose installed reading languages or scripts; special detectors are separate.')
+        raise ValueError('Choose installed reading models; orientation is a separate option.')
     return '+'.join(codes)
 
 

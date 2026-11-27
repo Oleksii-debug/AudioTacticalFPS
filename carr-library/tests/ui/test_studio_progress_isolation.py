@@ -59,6 +59,8 @@ def make(progress, executor, wx, report, service):
     busy, alive = False, True
     current_job = 'saved-production'
     cancel = threading.Event()
+    owned_progress_voices = set()
+    retire_progress_voice = lambda provider: provider.close()
     controls = lambda: None
     def close():
         nonlocal alive
@@ -214,12 +216,13 @@ def test_studio_close_retains_parent_observer_when_device_and_local_feedback_bot
     source = Path(find_spec('carr_library.ui.studio_dialog').origin)
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     window = next(node for node in parsed.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
-    names = {'close', 'cleanup', 'dispose', 'release_service'}
+    names = {'close', 'cleanup', 'dispose', 'retire_progress_voice', 'release_service'}
     handlers = [node for node in window.body if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in handlers} == names
     factory = ast.parse('''
 def make(autosave, cancel, service, timer, dialog, progress, parent_progress, report, executor):
     alive, busy, cleanup_started = True, False, False
+    owned_progress_voices, cleanup_retry_registered = set(), False
     current_job = None
     frame = SimpleNamespace(report=report)
     return close
@@ -385,3 +388,89 @@ def make(wx, frame, dialog, service, controller, project, status, editor, title,
     assert destroyed and not bound.is_alive() and bound.cancel.is_set()
     assert peers and all(not peer for peer in peers)
     assert forbidden == []
+
+
+@pytest.mark.parametrize(('result', 'expected'), [
+    ({'status': 'paused'}, 'paused'),
+    ({'status': 'failed'}, 'failed'),
+    ({'status': 'cancelled'}, 'cancelled'),
+    ({'status': 'queued'}, 'paused'),
+    ({'status': 'complete', 'rows': [{'status': 'paused'}]}, 'paused'),
+    ({'status': 'complete', 'results': [{'state': 'failed'}]}, 'failed'),
+    ([{'status': 'complete'}, {'rows': [{'state': 'cancelled'}]}], 'cancelled'),
+])
+def test_broken_feedback_classifier_never_applies_explicit_or_nested_partial_result(
+        studio, monkeypatch, result, expected):
+    future = Future()
+    studio.executor.submit.return_value = future
+    def broken_feedback(_result):
+        raise RuntimeError('Synthetic unavailable classifier feedback')
+    monkeypatch.setitem(studio.environment, 'operation_outcome', broken_feedback)
+    complete = Mock()
+    studio.handler.run(lambda: result, complete)
+    future.set_result(studio.executor.submit.call_args.args[0]())
+    drain(studio)
+    complete.assert_not_called()
+    assert not studio.handler.is_busy()
+    assert studio.progress.tracker.event.state == 'incomplete'
+    assert not any(event.percent == 100 for event in studio.progress.history)
+    assert studio.reports == ['Audio Studio operation: ' + expected + '. Saved work is retained.']
+    assert 'Synthetic unavailable classifier feedback' in studio.progress.reporting_error
+
+
+def test_broken_feedback_classifier_keeps_raw_result_callback_as_publication_owner(
+        studio, tmp_path, monkeypatch):
+    future = Future()
+    studio.executor.submit.return_value = future
+    output = tmp_path / 'callback-published.txt'
+    payload = 'Reviewed data awaiting the existing completion callback.'
+    def broken_feedback(_result):
+        raise RuntimeError('Synthetic unavailable classifier feedback')
+    monkeypatch.setitem(studio.environment, 'operation_outcome', broken_feedback)
+    callbacks = []
+    def publish(result):
+        assert not output.exists()
+        assert not any(event.percent == 100 for event in studio.progress.history)
+        output.write_text(result, encoding='utf-8')
+        callbacks.append(result)
+        studio.report('Saved exact callback output to ' + str(output))
+    studio.handler.run(lambda: payload, publish)
+    future.set_result(studio.executor.submit.call_args.args[0]())
+    drain(studio)
+    assert callbacks == [payload]
+    assert output.read_text(encoding='utf-8') == payload
+    assert studio.reports == ['Saved exact callback output to ' + str(output)]
+    assert studio.progress.tracker.event.state == 'incomplete'
+    assert not any(event.percent == 100 for event in studio.progress.history)
+    assert not studio.handler.is_busy()
+
+
+@pytest.mark.parametrize('malformed', ['cyclic-receipt', 'validator-error'])
+def test_failed_business_receipt_validation_cannot_be_replaced_by_feedback_success(
+        studio, tmp_path, monkeypatch, malformed):
+    from carr_library import progress as shared_progress
+    future = Future()
+    studio.executor.submit.return_value = future
+    def broken_feedback(_result):
+        raise RuntimeError('Synthetic unavailable classifier feedback')
+    monkeypatch.setitem(studio.environment, 'operation_outcome', broken_feedback)
+    result = {'status': 'complete'}
+    if malformed == 'cyclic-receipt':
+        # Exercise the real canonical traversal budget, not a fake outcome.
+        result['rows'] = [result]
+    else:
+        def invalid_receipt(_result):
+            raise ValueError('Synthetic canonical receipt validation failure')
+        monkeypatch.setattr(shared_progress, 'operation_outcome', invalid_receipt)
+    output = tmp_path / 'must-not-be-published.txt'
+    complete = Mock(side_effect=lambda value: output.write_text('incorrect completion', encoding='utf-8'))
+    studio.handler.run(lambda: result, complete)
+    future.set_result(studio.executor.submit.call_args.args[0]())
+    drain(studio)
+    complete.assert_not_called()
+    assert not output.exists() and not studio.handler.is_busy()
+    assert studio.progress.tracker.event.state == 'incomplete'
+    assert not any(event.percent == 100 for event in studio.progress.history)
+    assert len(studio.reports) == 1 and 'completion state could not be verified' in studio.reports[0]
+    expected = 'progress receipt limit' if malformed == 'cyclic-receipt' else 'canonical receipt validation failure'
+    assert expected in studio.reports[0]

@@ -279,8 +279,9 @@ def test_keymap_roundtrips_actual_manifest_bound_library_backup(wx, tmp_path):
     backup = tmp_path / 'Резервна копія'
     digest = create_backup(original, backup)
     manifest = json.loads((backup / 'manifest.json').read_bytes())
-    entry, = [row for row in manifest['state'] if row['filename'] == 'ui/shortcuts.json']
-    assert entry == {'filename': 'ui/shortcuts.json', 'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()}
+    assert manifest['version'] == 4
+    entry, = [row for row in manifest['sidecars'] if row['filename'] == 'state/ui/shortcuts.json']
+    assert entry == {'filename': 'state/ui/shortcuts.json', 'size_bytes': len(raw), 'sha256': sha256(raw).hexdigest()}
     restored = LibraryApp(restore_backup(backup, tmp_path / 'Відновлена бібліотека', digest))
     restored_frame = Frame(restored.root); restored_frame.library = restored
     reopened = KeyboardSettings(restored_frame, wx_module=wx)

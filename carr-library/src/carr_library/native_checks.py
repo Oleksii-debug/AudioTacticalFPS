@@ -50,7 +50,8 @@ def _manifest(root):
         raise ValueError('The installation manifest changed while being read.')
     value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_object)
     required = {'schema', 'target', 'bundled_python', 'bundled_model', 'bundled_ocr', 'files'}
-    optional_flags = ('bundled_native_runtime', 'bundled_audio', 'bundled_citation_runtime')
+    optional_flags = ('bundled_native_runtime', 'bundled_audio', 'bundled_citation_runtime',
+                      'bundled_audio_runtime')
     identities = {'source_commit': 40, 'source_tree': 40,
                   'parent_source_commit': 40, 'parent_manifest_sha256': 64}
     optional = {*optional_flags, *identities, 'use_scope', 'native_launcher'}
@@ -96,6 +97,7 @@ def check_native_dependencies(bundle_root):
               'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN', 'checks': [],
               'semantic': {'status': 'NOT_INCLUDED'}, 'ocr': {'status': 'NOT_INCLUDED'},
               'native_launcher': {'status': 'NOT_INCLUDED'}, 'audio': {'status': 'NOT_INCLUDED'},
+              'audio_runtime': {'status': 'NOT_INCLUDED'},
               'citations': {'status': 'NOT_INCLUDED'}}
     component = 'installation manifest'
     _runtime_handle = None
@@ -157,6 +159,13 @@ def check_native_dependencies(bundle_root):
             report[key] = verify_optional_runtime(root, manifest, directory, execute=True)
             if report[key]['status'] == 'PASS':
                 report['checks'].append(component)
+        component = 'sealed local audio runtime inventory'
+        from .audio_runtime import bundled_audio_tools
+        tools = bundled_audio_tools(root)
+        if tools is not None:
+            report['audio_runtime'] = {'status': 'VERIFIED', 'tools': tools,
+                                       'native_execution': 'NOT_RUN'}
+            report['checks'].append(component)
         report['status'] = 'PASS'
     except Exception as exc:
         report['failed_component'] = component
@@ -169,6 +178,10 @@ def check_native_dependencies(bundle_root):
     return report
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle-root', required=True, type=Path)

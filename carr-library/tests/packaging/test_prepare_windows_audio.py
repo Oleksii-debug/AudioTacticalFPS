@@ -201,3 +201,17 @@ def test_directory_publication_never_replaces_existing_empty_directory(tmp_path)
         audio._publish_directory(staged, output)
     assert output.is_dir() and not list(output.iterdir())
     assert (staged / 'file').read_bytes() == b'new'
+
+
+def test_raw_zip_name_is_validated_before_platform_normalization(tmp_path, monkeypatch):
+    path, cache, output, lock = fixture(tmp_path, extra=((r'release\escape', b'evil'),))
+    original = zipfile.ZipFile.infolist
+    def windows_members(archive):
+        members = original(archive)
+        for member in members:
+            member.filename = member.orig_filename.replace(chr(92), '/')
+        return members
+    monkeypatch.setattr(zipfile.ZipFile, 'infolist', windows_members)
+    with pytest.raises(ValueError, match='path'):
+        audio.prepare(path, cache, output)
+    assert not output.exists()

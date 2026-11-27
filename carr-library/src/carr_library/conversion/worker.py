@@ -3,6 +3,33 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
+
+
+def _calibre_result(source, budget, deadline, selection):
+    from hashlib import sha256
+    from .calibre import calibre_records
+    from .formats import TextOutput
+    from .office import file_identity, regular_file, verified_reader
+    info = regular_file(source)
+    if info.st_nlink != 1 or not 0 < info.st_size <= budget.max_source_bytes:
+        raise ValueError('The selected book exceeds its retained snapshot budget.')
+    with verified_reader(source, expected_identity=file_identity(info)) as stream:
+        data = stream.read(info.st_size + 1)
+    if len(data) != info.st_size:
+        raise ValueError('The selected book changed during its bounded read.')
+    engine, _separator, records, warnings = calibre_records(source, data,
+        source.suffix.casefold(), budget, deadline, selection)
+    text = TextOutput(budget)
+    for record in records:
+        text.add(record['raw_text'], str(record.get('logical_locator') or {}))
+    text.warnings.extend(warnings)
+    selection_digest = sha256(json.dumps(selection, sort_keys=True, ensure_ascii=False,
+        separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+    return text.result(engine, {'selected_core_sha256': selection_digest,
+        'source_format': source.suffix.casefold(),
+        'source_locators': [record.get('logical_locator') for record in records],
+        'source_review_required': True})
 
 
 def main():
@@ -14,11 +41,14 @@ def main():
     request = json.loads(request_path.read_text(encoding='utf-8'))
     from .models import ConversionBudget
     budget = ConversionBudget(**request['budget'])
+    operation = request.get('operation', 'extract')
+    deadline = time.monotonic() + budget.timeout
     if os.name == 'posix':
         import resource
         resource.setrlimit(resource.RLIMIT_AS, (budget.memory_bytes, budget.memory_bytes))
-        resource.setrlimit(resource.RLIMIT_FSIZE, (budget.max_text_bytes + 16 * 1024 * 1024,
-                                                  budget.max_text_bytes + 16 * 1024 * 1024))
+        file_limit = max(budget.max_text_bytes + 16 * 1024 * 1024,
+                         budget.max_source_bytes if operation in ('office', 'calibre') else 0)
+        resource.setrlimit(resource.RLIMIT_FSIZE, (file_limit, file_limit))
         resource.setrlimit(resource.RLIMIT_CPU, (max(1, int(budget.timeout)), max(2, int(budget.timeout) + 1)))
     stage = request_path.parent
     source = Path(request['source']).resolve(strict=True)
@@ -26,9 +56,25 @@ def main():
     report = Path(request['report']).resolve()
     if any(not path.is_relative_to(stage) for path in (source, output, report)):
         raise ValueError('Conversion worker paths escaped private staging.')
+    office_executable = None
+    calibre_executable = None
+    if operation == 'office':
+        from .office import _admit, OFFICE_SUFFIXES
+        if source.suffix.casefold() not in OFFICE_SUFFIXES:
+            raise ValueError('Unsupported selected office input family.')
+        office_executable = str(_admit(request['office'], source.suffix.casefold(), deadline))
+    elif operation == 'calibre':
+        from .calibre import _admit, CALIBRE_SUFFIXES
+        if source.suffix.casefold() not in CALIBRE_SUFFIXES:
+            raise ValueError('Unsupported selected book input family.')
+        calibre_executable = str(_admit(request['calibre'], deadline))
     def audit(event, args):
-        if event.startswith('socket.') or event in ('subprocess.Popen', 'os.system', 'os.posix_spawn'):
-            raise PermissionError('The document conversion worker does not permit network or child commands.')
+        if event == 'subprocess.Popen':
+            selected_executable = office_executable or calibre_executable
+            if selected_executable is None or not args or str(args[0]) != selected_executable:
+                raise PermissionError('The conversion worker permits only its selected fixed converter.')
+        elif event.startswith('socket.') or event in ('os.system', 'os.posix_spawn'):
+            raise PermissionError('The document conversion worker does not permit network or unselected child commands.')
         if event == 'open' and args and isinstance(args[0], (str, bytes)):
             mode = args[1] if len(args) > 1 else None
             flags = args[2] if len(args) > 2 else 0
@@ -56,7 +102,35 @@ def main():
                 if not 0 < pixels <= budget.max_image_pixels or total > budget.max_total_image_pixels:
                     raise ConversionError('Raster dimensions exceed the OCR pixel budget.')
             result = {'image_format': image.format, 'image_frames': frames, 'image_pixels': total}
-    elif request.get('operation', 'extract') == 'extract':
+    elif operation == 'office':
+        from hashlib import sha256
+        from .office import office_records, PROFILE
+        from .formats import TextOutput
+        from .office import file_identity, regular_file, verified_reader
+        info = regular_file(source)
+        if info.st_nlink != 1 or not 0 < info.st_size <= budget.max_source_bytes:
+            raise ValueError('The selected office source exceeds its retained snapshot budget.')
+        with verified_reader(source, expected_identity=file_identity(info)) as stream:
+            data = stream.read(budget.max_source_bytes + 1)
+        engine, _separator, records, warnings = office_records(source, data,
+            source.suffix.casefold(), budget, deadline, request['office'])
+        text = TextOutput(budget)
+        for record in records:
+            text.add(record['raw_text'], str(record.get('logical_locator') or {}))
+        text.warnings.extend(warnings)
+        selection_digest = sha256(json.dumps(request['office'], sort_keys=True,
+            separators=(',', ':')).encode()).hexdigest()
+        result = text.result(engine, {'selected_components_sha256': selection_digest,
+            'source_format': source.suffix.casefold(), 'private_profile_sha256': sha256(PROFILE).hexdigest(),
+            'source_locators': [record.get('logical_locator') for record in records],
+            'source_review_required': True})
+        value = result.pop('text')
+        output.write_bytes(value.encode('utf-8'))
+    elif operation == 'calibre':
+        result = _calibre_result(source, budget, deadline, request['calibre'])
+        value = result.pop('text')
+        output.write_bytes(value.encode('utf-8'))
+    elif operation == 'extract':
         from .formats import extract_builtin
         result = extract_builtin(source, budget, encoding=request.get('encoding'))
         value = result.pop('text')

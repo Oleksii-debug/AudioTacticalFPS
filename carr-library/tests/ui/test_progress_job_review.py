@@ -35,6 +35,9 @@ class Progress:
 
 @pytest.fixture
 def desktop():
+    from carr_library.progress import ProgressHub
+    from carr_library.ui.progress_panel import NativeProgressPanel
+
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     cls = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'DesktopFrame')
@@ -43,10 +46,44 @@ def desktop():
     env = dict(__package__='carr_library.ui', wx=SimpleNamespace(CallAfter=queued.append))
     exec(compile(ast.Module(body=functions, type_ignores=[]), str(path), 'exec'), env)
     frame = SimpleNamespace(_closing=False, working=False, busy=False, cancel_event=threading.Event(),
-        choice=Mock(), book=Mock(), cancel_button=Mock(), executor=Mock(), operation_progress=Progress())
+        choice=Mock(), book=Mock(), cancel_button=Mock(), executor=Mock())
     frame.menu_bar = Mock()
     frame.menu_bar.GetMenuCount.return_value = 2
-    frame.menu_bar.GetMenuLabel.side_effect = lambda index: ('&Library', '&Help')[index]
+    frame.menu_bar.GetMenuLabel.side_effect = lambda index: ('&Library', '&Options')[index]
+    frame.menu_bar.IsEnabledTop.return_value = True
+
+    def menu_item(identity):
+        item = Mock()
+        item.GetId.return_value = identity
+        item.IsSeparator.return_value = False
+        item.GetSubMenu.return_value = None
+        item.IsEnabled.return_value = True
+        return item
+
+    library_item, query_item, settings_item = [menu_item(index) for index in (1, 2, 3)]
+    menus = (SimpleNamespace(GetMenuItems=lambda: [library_item]),
+             SimpleNamespace(GetMenuItems=lambda: [query_item, settings_item]))
+    frame.menu_bar.GetMenu.side_effect = lambda index: menus[index]
+    frame.GetMenuBar = lambda: frame.menu_bar
+    # Exercise the production panel/task/compatibility objects; only native
+    # display controls are replaced, so observer tests cannot invent a state.
+    panel = NativeProgressPanel.__new__(NativeProgressPanel)
+    panel.frame, panel.wx, panel.hub = frame, env['wx'], ProgressHub()
+    panel.active_task, panel.closed, panel.notice = None, False, ''
+    panel._last_revision = panel._reporting_failure = None
+    panel._busy_menus = panel._busy_items = None
+    panel.query_item, panel.settings_button = query_item, Mock()
+    panel.feedback = SimpleNamespace(suspend=Mock())
+    frame.progress_panel = panel
+    frame.operation_progress = panel.legacy
+    frame.operation_progress.history = []
+
+    def observe_display():
+        frame.operation_progress._sync()
+        if panel.active_task is not None:
+            frame.operation_progress.history.append(frame.operation_progress.event)
+
+    panel.refresh = observe_display
     text, reports = ['Ready'], []
     frame.status = SimpleNamespace(GetValue=lambda: text[0])
     def report(message):
@@ -202,7 +239,22 @@ def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, obs
     frame, queued, reports = desktop
     future, done, failed = Future(), Mock(), Mock()
     frame.executor.submit.return_value = future
-    setattr(frame.operation_progress, observer, Mock(side_effect=RuntimeError('Progress device unavailable')))
+    failure = RuntimeError('Progress device unavailable')
+    if observer == 'start':
+        frame.progress_panel.begin = Mock(side_effect=failure)
+    elif observer in ('update', 'succeed'):
+        begin = frame.progress_panel.begin
+        def begin_with_failing_observer(*args, **kwargs):
+            task = begin(*args, **kwargs)
+            setattr(task, observer, Mock(side_effect=failure))
+            return task
+        frame.progress_panel.begin = begin_with_failing_observer
+    else:
+        finish = frame.progress_panel.finish
+        def finish_then_fail_display(*args, **kwargs):
+            finish(*args, **kwargs)
+            raise failure
+        frame.progress_panel.finish = finish_then_fail_display
     def operation(report):
         report(1, 2, 'Importing files')
         return {'state': 'complete', 'destination': 'committed output'}
@@ -212,11 +264,11 @@ def test_progress_observer_failure_cannot_reclassify_committed_work(desktop, obs
     done.assert_called_once_with({'state': 'complete', 'destination': 'committed output'})
     failed.assert_not_called()
     assert not frame.working and not frame.busy
-    assert 'Progress reporting is unavailable' in reports[-1]
+    assert 'Progress reporting is unavailable' in frame.progress_panel.notice
 
 
 def test_receipt_classifier_failure_preserves_successful_publication(desktop, monkeypatch):
-    import carr_library.ui.operation_progress as progress_module
+    import carr_library.progress as progress_module
     frame, queued, reports = desktop
     future, done, failed = Future(), Mock(), Mock()
     frame.executor.submit.return_value = future
@@ -227,7 +279,7 @@ def test_receipt_classifier_failure_preserves_successful_publication(desktop, mo
     done.assert_called_once_with('committed')
     failed.assert_not_called()
     assert not frame.working
-    assert 'Progress reporting is unavailable' in reports[-1]
+    assert 'Progress reporting is unavailable' in frame.progress_panel.notice
     assert not any(event.percent == 100 for event in frame.operation_progress.history)
 
 
@@ -237,7 +289,11 @@ def test_observer_failure_and_late_cancel_keep_the_real_business_error(desktop, 
     frame, queued, reports = desktop
     future, done, failed = Future(), Mock(), Mock()
     frame.executor.submit.return_value = future
-    frame.operation_progress.finalize = Mock(side_effect=RuntimeError('Closed progress control'))
+    finish = frame.progress_panel.finish
+    def finish_then_fail_display(*args, **kwargs):
+        finish(*args, **kwargs)
+        raise RuntimeError('Closed progress control')
+    frame.progress_panel.finish = finish_then_fail_display
     frame.run_job('Export', lambda: None, done, failed)
     frame.cancel_event.set()
     future.set_exception(worker_error)
@@ -251,7 +307,7 @@ def test_observer_failure_and_late_cancel_keep_the_real_business_error(desktop, 
 
 def test_executor_failure_still_unlocks_controls_when_progress_start_fails(desktop):
     frame, queued, _ = desktop
-    frame.operation_progress.start = Mock(side_effect=RuntimeError('Progress unavailable'))
+    frame.progress_panel.begin = Mock(side_effect=RuntimeError('Progress unavailable'))
     error, done, failed = RuntimeError('Executor unavailable'), Mock(), Mock()
     frame.executor.submit.side_effect = error
     frame.run_job('Export', lambda: None, done, failed)
@@ -275,7 +331,7 @@ def test_measurements_use_captured_token_and_late_updates_do_not_touch_next_job(
     observers[0](2, 2, 'Old operation finished')
     event = frame.operation_progress.tracker.event
     assert event.state == 'running' and event.phase == 'Second'
-    assert event.percent is None and event.completed is None
+    assert event.percent is None and event.completed == 0
 
 
 @pytest.fixture
@@ -291,6 +347,8 @@ def make(progress, executor, wx, report, service):
     alive = True
     current_job = 'saved-production'
     cancel = threading.Event()
+    owned_progress_voices = set()
+    retire_progress_voice = lambda provider: provider.close()
     controls = lambda: None
     return SimpleNamespace(run=run, cancel=cancel, is_busy=lambda: busy)
 ''')
@@ -429,7 +487,7 @@ def test_studio_close_releases_device_and_both_observers_even_after_device_failu
     path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
     tree = ast.parse(path.read_text(encoding='utf-8'))
     studio = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'show_studio')
-    names = ('dispose', 'release_service', 'cleanup', 'close')
+    names = ('dispose', 'retire_progress_voice', 'release_service', 'cleanup', 'close')
     helpers = [next(node for node in studio.body
                     if isinstance(node, ast.FunctionDef) and node.name == name) for name in names]
     factory = ast.parse('''
@@ -437,6 +495,7 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     alive = True
     busy = True
     cleanup_started = False
+    owned_progress_voices, cleanup_retry_registered = set(), False
     current_job = 'saved-production'
     frame = SimpleNamespace(report=report)
     return close, cleanup, lambda: alive
@@ -500,3 +559,4 @@ def make(autosave, cancel, service, timer, dialog, progress, parent_progress, re
     working.result()
     service.close.assert_called_once_with()
     assert released.is_set()
+    assert progress.close.call_count == 2  # Initial detach, then owned worker retry.

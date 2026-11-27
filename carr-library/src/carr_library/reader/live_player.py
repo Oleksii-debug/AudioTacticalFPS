@@ -21,6 +21,12 @@ class CanonicalPlayer:
         self.duration = 0.0
         self._digest = None
         self._started = False
+        self._listening = False
+
+    def select_output(self, selected):
+        if self.path is not None:
+            raise ValueError('Close the current speech chunk before changing its output.')
+        self.backend.select_output(selected)
 
     def available(self):
         return bool(self.backend.available)
@@ -51,9 +57,43 @@ class CanonicalPlayer:
     def play(self):
         if self.path is None or digest(local_file(self.path)) != self._digest:
             raise ValueError('The checked speech chunk changed before native playback.')
-        self.backend.play(self.path)
+        if self._listening:
+            self.backend.play_current()
+        else:
+            self.backend.play(self.path)
         self._started = True
         return self.status()
+
+    @property
+    def listening_duration_seconds(self):
+        return (self.backend.listening_duration_seconds if self._listening else self.duration)
+
+    def prepare_listening(self, settings, directory, *, state_root, cancelled, budget):
+        """Use this source worker for a derivative; native admission stays silent."""
+        from ..speech.listening import ListeningSettings
+        if (type(settings) is not ListeningSettings or self.path is None
+                or self._started or digest(local_file(self.path)) != self._digest):
+            raise ValueError('Prepare listening settings for the current unopened speech chunk.')
+        self.backend.open(self.path)
+        request = self.backend.listening_request(settings.speed, settings.pitch_semitones)
+        prepared = self.backend.prepare_listening(request, directory, state_root=state_root,
+                                                   cancelled=cancelled, budget=budget)
+        try:
+            from ..audio.models import AudioCancelled
+            if cancelled():
+                raise AudioCancelled('Listening preparation stopped before native admission.')
+            if prepared.source_sha256 != self._digest:
+                raise ValueError('The speech chunk changed before listening adoption.')
+            self.backend.apply_listening(prepared)
+            self._listening = True
+        except BaseException:
+            if prepared._owner is None:
+                prepared.close()
+            raise
+        return self.status()
+
+    def set_levels(self, volume, *, muted=False, balance=0):
+        return self.backend.set_levels(volume, muted=muted, balance=balance)
 
     def pause(self):
         self.backend.pause()
@@ -76,6 +116,8 @@ class CanonicalPlayer:
         return self.status()
 
     def close(self):
-        self.backend.close()
+        if self.backend.close() is False:
+            raise RuntimeError('The native speech player has not confirmed closure.')
         self.path, self.duration, self._digest, self._started = None, 0.0, None, False
+        self._listening = False
         return self.status()

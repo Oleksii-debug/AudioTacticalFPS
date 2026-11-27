@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "id": "carr-citeproc-sort-macros/1",
+  "resource_profile": "document-v1-sort-cache/1",
+  "upstream_revision": "adffcfa3189ed21cbdb5272a74a8edbf817ac326",
+  "upstream_pull_request": "https://github.com/Juris-M/citeproc-js/pull/276",
+  "upstream_source": "https://github.com/Juris-M/citeproc-js/blob/adffcfa3189ed21cbdb5272a74a8edbf817ac326/src/util_nodes.js",
+  "upstream_status": "Unmerged upstream compatibility patch; not an official processor release.",
+  "license": "CPAL-1.0",
+  "attribution": "citeproc-js by Frank Bennett; sort-mode macro cache contributed by Dan Stillman, PR276. Original CPAL license and attribution retained beside the original processor.",
+  "base_processor_sha256": "8d80b2d4ad5d249178ddfa4c535bb72bbd1883521a88e9362686558e2f82029d",
+  "adapted_processor_sha256": "48ba59a83c32ca25f8a2c7ca4bf834331aefcc6b8cc66876c1c2bbdd882810ee",
+  "edits": [
+    {
+      "before": "        CSL.buildMacro.call(this, mytarget, macro_nodes);\n        CSL.configureMacro.call(this, mytarget);\n    }\n    if (!this.build.extension) {\n        var func = (function(macro_name) {\n            return function (state, Item, item) {\n                var next = 0;\n",
+      "after": "        CSL.buildMacro.call(this, mytarget, macro_nodes);\n        CSL.configureMacro.call(this, mytarget);\n    }\n    if (this.build.extension) {\n        var func = (function(macro_name) {\n            return function (state, Item, item) {\n                var next = 0;\n                while (next < state.sort_macros[macro_name].length) {\n                    next = CSL.tokenExec.call(state, state.sort_macros[macro_name][next], Item, item);\n                }\n            };\n        }(mkey));\n        var text_node = new CSL.Token(\"text\", CSL.SINGLETON);\n        text_node.execs.push(func);\n        target.push(text_node);\n    } else {\n        var func = (function(macro_name) {\n            return function (state, Item, item) {\n                var next = 0;\n"
+    },
+    {
+      "before": "CSL.getMacroTarget = function (mkey) {\n    var mytarget = false;\n    if (this.build.extension) {\n        mytarget = this[this.build.root + this.build.extension].tokens;\n    } else if (!this.macros[mkey]) {\n        mytarget = [];\n        this.macros[mkey] = mytarget;\n",
+      "after": "CSL.getMacroTarget = function (mkey) {\n    var mytarget = false;\n    if (this.build.extension) {\n        // Cache sort-mode macro expansions separately, just like non-sort macros.\n        // This avoids duplicating tokens when the same macro is referenced by\n        // multiple sort keys.\n        if (!this.sort_macros) {\n            this.sort_macros = {};\n        }\n        if (!this.sort_macros[mkey]) {\n            mytarget = [];\n            this.sort_macros[mkey] = mytarget;\n        }\n    } else if (!this.macros[mkey]) {\n        mytarget = [];\n        this.macros[mkey] = mytarget;\n"
+    },
+    {
+      "before": "};\n\nCSL.configureMacro = function (mytarget) {\n    if (!this.build.extension) {\n        this.configureTokenList(mytarget);\n    }\n};\n\n\n",
+      "after": "};\n\nCSL.configureMacro = function (mytarget) {\n    this.configureTokenList(mytarget);\n};\n\n\n"
+    }
+  ],
+  "application_adapter": "carr-academic-runtime/1",
+  "modified_on": "2026-11-27",
+  "upstream_patch_sha256": "d811d34432150559e80bd338650456b3d592cca03474b77bbc09e818b8cc2703"
+}

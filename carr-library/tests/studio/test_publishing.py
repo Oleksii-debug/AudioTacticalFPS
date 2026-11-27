@@ -688,12 +688,13 @@ def test_real_library_backup_restores_receipt_metadata_without_exported_audio_or
     backup = tmp_path / 'full-library-backup'
     identity = create_backup(library, backup)
     manifest = read_json(backup / 'manifest.json')
-    relative = 'studio/publications/' + result['id'] + '.json'
-    assert any(item['filename'] == relative for item in manifest['state'])
-    assert read_json(backup / 'state' / relative) == saved
+    relative = 'state/studio/publications/' + result['id'] + '.json'
+    assert manifest['version'] == 4
+    assert any(item['filename'] == relative for item in manifest['sidecars'])
+    assert read_json(backup / relative) == saved
     assert manifest['generated_audio_included'] is False
     assert not any(Path(item['filename']).suffix.lower() in ('.wav', '.mp3', '.epub')
-                   for item in manifest['state'])
+                   for item in manifest['sidecars'])
     assert not list(backup.rglob('*.epub')) and not list(backup.rglob('*.mp3'))
     restored_root = restore_backup(backup, tmp_path / 'restored-library', identity)
     restored = PublicationService(ProductionService(restored_root / 'state' / 'studio'))

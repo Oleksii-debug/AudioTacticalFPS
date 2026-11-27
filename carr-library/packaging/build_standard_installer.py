@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import subprocess
 import tempfile
+import zipfile
 
 HERE = Path(__file__).resolve().parent
 
@@ -69,10 +70,37 @@ def recipe(files, source_commit, manifest_sha256):
     return text
 
 
+def _update_envelope(stage, report, manifest_raw, cancelled):
+    """Package the existing compiled setup for separate owner TUF publication."""
+    delivery = _delivery()
+    if report.get("status") != "compiled" or report.get("kind") != "standard-windows-installer":
+        raise ValueError("A signed-update envelope requires a compiled current standard installer.")
+    executable = stage / report["installer"]["path"]
+    target = stage / ("Resonance-Update-" + report["source_commit"][:12] + ".zip")
+    with target.open("xb") as output:
+        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
+            with delivery._file(executable) as source:
+                with archive.open("ResonanceSetup.exe", "w", force_zip64=True) as member:
+                    digest, size = delivery._stream(source, cancelled, destination=member,
+                                                    limit=delivery.MAX_FILE)
+            if (digest, size) != (report["installer"]["sha256"], report["installer"]["bytes"]):
+                raise ValueError("Compiled setup changed while preparing its update envelope.")
+            archive.writestr("installer-build.json", (json.dumps(report, indent=2) + "\n").encode("utf-8"))
+            archive.writestr("bundle-manifest.json", manifest_raw)
+        output.flush()
+        os.fsync(output.fileno())
+    with delivery._file(target) as stream:
+        digest, size = delivery._stream(stream, cancelled, limit=delivery.MAX_TOTAL)
+    return {"path": target.name, "sha256": digest, "bytes": size,
+            "authority": "none; publish this exact file through the separately configured signed TUF repository"}
+
+
 def prepare(bundle, source_commit, manifest_sha256, output, *, compiler=None,
-            compiler_sha256=None, cancelled=lambda: False):
+            compiler_sha256=None, cancelled=lambda: False, update_envelope=False):
     delivery = _delivery()
     delivery._check(cancelled)
+    if type(update_envelope) is not bool or (update_envelope and compiler is None):
+        raise ValueError("Update envelopes require an explicitly requested native compilation.")
     manifest_sha256 = _hash(manifest_sha256, "Bundle manifest digest")
     if (compiler is None) != (compiler_sha256 is None):
         raise ValueError("Supply both the local Inno compiler and its recorded SHA256.")
@@ -98,6 +126,8 @@ def prepare(bundle, source_commit, manifest_sha256, output, *, compiler=None,
     manifest = delivery._manifest(raw, source_commit)
     delivery._require_transferable_audio_inventory(manifest)
     files = manifest["files"]
+    if "portable-update.ini" in files or os.path.lexists(bundle / "portable-update.ini"):
+        raise ValueError("Use the ordinary sealed bundle for a standard installer; portable ownership is a separate layout.")
     if any("{" in name or "}" in name for name in files):
         # Inno has both runtime constants and an inline preprocessor. Reject
         # these rare inventory names rather than interpret them as build code.
@@ -172,13 +202,17 @@ def prepare(bundle, source_commit, manifest_sha256, output, *, compiler=None,
         if {p.relative_to(payload).as_posix() for p in payload.rglob("*") if p.is_file()} != {*files, delivery.MANIFEST}:
             raise ValueError("Unexpected installer payload files.")
         (stage / "installer-build.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        envelope = _update_envelope(stage, report, raw, cancelled) if update_envelope else None
         delivery._check(cancelled)
         delivery._unchanged_directories(parents)
         if delivery._identity(delivery._plain(stage, directory=True)) != identity:
             raise ValueError("Installer staging directory changed before publication.")
         delivery._publish(stage, output, parent_fd)
         stage = None
-        return {"output": str(output), **report}
+        result = {"output": str(output), **report}
+        if envelope is not None:
+            result["update_envelope"] = envelope
+        return result
     finally:
         try:
             if stage is not None:
@@ -196,9 +230,12 @@ def main(argv=None):
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--compiler", type=Path, help="Explicit local Inno Setup 6.4+ ISCC.exe; no download")
     parser.add_argument("--compiler-sha256")
+    parser.add_argument("--update-envelope", action="store_true",
+                        help="Prepare the exact setup ZIP for separate signed TUF publication")
     args = parser.parse_args(argv)
     print(json.dumps(prepare(args.bundle, args.source_commit, args.manifest_sha256, args.output,
-                             compiler=args.compiler, compiler_sha256=args.compiler_sha256), indent=2))
+                             compiler=args.compiler, compiler_sha256=args.compiler_sha256,
+                             update_envelope=args.update_envelope), indent=2))
 
 
 if __name__ == "__main__":

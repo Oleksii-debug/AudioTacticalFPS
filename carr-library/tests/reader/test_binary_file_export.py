@@ -156,9 +156,9 @@ def test_late_cancellation_or_callback_failure_preserves_old_file_and_cleans_tem
     actual_fsync = export_file.os.fsync
     validations = 0
 
-    def validate(*args):
+    def validate(*args, **kwargs):
         nonlocal validations
-        result = actual_destination(*args)
+        result = actual_destination(*args, **kwargs)
         validations += 1
         if (stage == 'initial_validation' and validations == 1 or
                 stage == 'final_validation' and validations == 2):

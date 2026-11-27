@@ -131,6 +131,8 @@ def _publication_state(db, record, revision, *, allow_superseded=False):
     if catalog is None:
         raise ValueError('Import publication registration is missing.')
     manifest = dict(sha256=catalog[1], mime=catalog[2], size=catalog[3])
+    if manifest['mime'] == 'application/pdf' and record.get('job') != revision:
+        raise ValueError('Import publication differs from its saved PDF job.')
     if (tuple(catalog[:2]) != (metadata['work_id'], record.get('asset_sha256'))
             or (record.get('expected_manifest') is not None
                 and record['expected_manifest'] != manifest)):

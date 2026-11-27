@@ -39,6 +39,7 @@ class TextOutput:
         self.budget = budget
         self.parts, self.sections, self.warnings = [], [], []
         self.size = 0
+        self.characters = 0
 
     def add(self, value, label, *, physical_index=None):
         if not isinstance(value, str) or '\x00' in value:
@@ -47,9 +48,12 @@ class TextOutput:
         self.size += len(raw) + (2 if self.parts else 0)
         if self.size > self.budget.max_text_bytes or len(self.sections) >= self.budget.max_sections:
             raise ConversionError('Extracted text exceeds its selected output budget.')
+        start = self.characters + (2 if self.parts else 0)
+        self.characters = start + len(value)
         self.parts.append(value)
         self.sections.append({'label': str(label)[:512], 'physical_index': physical_index,
-                              'printed_label': None, 'text_sha256': sha256(raw).hexdigest()})
+                              'printed_label': None, 'text_sha256': sha256(raw).hexdigest(),
+                              'start': start, 'end': self.characters})
 
     def result(self, engine, metadata=None):
         value = '\n\n'.join(self.parts)
@@ -415,6 +419,76 @@ def fictionbook(data, suffix, output):
     return output.result('safe-fictionbook-xml/1')
 
 
+def mhtml(data, output, encoding=None):
+    """Read the declared MIME root without opening attached or remote content."""
+    message = BytesParser(policy=policy.default).parsebytes(data)
+    if message.get_content_type() != 'multipart/related':
+        raise ConversionError('MHTML requires an actual multipart/related MIME archive.')
+    parts = list(message.walk())
+    if len(parts) > min(1000, output.budget.max_members) or any(part.defects for part in parts):
+        raise ConversionError('MHTML is malformed or exceeds its MIME part budget.')
+    identifiers = {}
+    for part in parts[1:]:
+        identity = part.get('Content-ID')
+        if identity is not None:
+            identity = str(identity).strip()
+            if identity in identifiers:
+                raise ConversionError('MHTML has duplicate content identifiers.')
+            identifiers[identity] = part
+    start = message.get_param('start')
+    if start is not None:
+        body = identifiers.get(str(start).strip())
+        if body is None:
+            raise ConversionError('MHTML references a missing root part.')
+    else:
+        direct = list(message.iter_parts())
+        body = direct[0] if direct else None
+    if (body is None or body.is_multipart() or body.get_content_disposition() == 'attachment'
+            or body.get_content_type() not in ('text/html', 'text/plain')):
+        raise ConversionError('MHTML has no supported declared text root.')
+    raw = body.get_payload(decode=True)
+    if not isinstance(raw, bytes) or len(raw) > output.budget.max_member_bytes or body.defects:
+        raise ConversionError('MHTML root exceeds its text budget or encoding is malformed.')
+    text = decode(raw, encoding or body.get_content_charset() or 'ascii')
+    if body.get_content_type() == 'text/html':
+        text = html_text(text, output.budget)
+    output.add(text, 'MHTML declared root')
+    output.warnings.extend([
+        'Only the declared MHTML root was read. Attached resources and external URLs were not fetched.',
+        'Scripts, active content and visual layout are not retained; review the reading text against the original.',
+    ])
+    return output.result('stdlib-mhtml-root/1', {'mime_parts': len(parts),
+        'root_content_type': body.get_content_type()})
+
+
+def text_archive(data, suffix, output, encoding=None):
+    """Use the existing bounded ZIP reader for inert selected text families."""
+    archive = Archive(data, output.budget)
+    text_suffixes = ('.txt',) if suffix == '.txtz' else ('.txt', '.md', '.markdown', '.html', '.htm', '.xhtml')
+    selected = sorted(name for name, info in archive.names.items()
+                      if not info.is_dir() and PurePosixPath(name).suffix.casefold() in text_suffixes)
+    if not selected or suffix == '.txtz' and len(selected) != 1:
+        raise ConversionError('TXTZ requires exactly one TXT member; a ZIP needs at least one supported text member.')
+    if len(selected) > output.budget.max_sections:
+        raise ConversionError('Text archive has too many reading members.')
+    for name in selected:
+        raw = archive.read(name)
+        text = decode(raw, encoding)
+        if PurePosixPath(name).suffix.casefold() in ('.html', '.htm', '.xhtml'):
+            text = html_text(text, output.budget)
+        output.add(text, 'Archive member: ' + name)
+    omitted = sum(not info.is_dir() for info in archive.names.values()) - len(selected)
+    output.warnings.extend([
+        'Archive members were read without extraction, executable content, nested archives or external resources.',
+        'Text members use lexicographic path order; that order is not a reconstructed book structure.',
+        'Markdown remains literal and HTML layout is not preserved. Review each source member before quotation.',
+    ])
+    if omitted:
+        output.warnings.append(str(omitted) + ' non-text member(s) were omitted from this reading derivative.')
+    return output.result('bounded-' + suffix[1:] + '-text-members/1',
+        {'members': selected, 'omitted_members': omitted, 'ordering': 'lexicographic-path'})
+
+
 def extract_builtin(path, budget, *, encoding=None):
     path = Path(path)
     if path.stat().st_size > budget.max_source_bytes:
@@ -427,6 +501,10 @@ def extract_builtin(path, budget, *, encoding=None):
         if suffix != '.txt':
             output.warnings.append('Markdown markup is preserved. Choose the Pandoc reader to create plain narration text.')
         return output.result('strict-text-decoder/1')
+    if suffix in ('.mht', '.mhtml'):
+        return mhtml(data, output, encoding)
+    if suffix in ('.txtz', '.zip'):
+        return text_archive(data, suffix, output, encoding)
     if suffix in ('.html', '.htm', '.xhtml'):
         output.add(html_text(decode(data, encoding), budget), 'HTML body')
         output.warnings.append('Scripts, styles, frames, active objects and embedded mathematics were excluded; external resources were not fetched. CSS visibility and visual layout are not reproduced.')

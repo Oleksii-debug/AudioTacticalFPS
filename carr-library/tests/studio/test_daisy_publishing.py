@@ -377,10 +377,19 @@ def test_typed_media_backup_retains_each_publication_format_without_external_byt
     checksum = create_backup(app, backup)
     manifest = read_json(backup / 'manifest.json')
     relative = 'studio/publications/' + result['id'] + '.json'
-    assert manifest['version'] == 5
-    assert relative in manifest['extensions']['studio_publications']
+    assert manifest['version'] == 4
+    entry, = [item for item in manifest['sidecars'] if item['filename'] == 'state/' + relative]
+    raw = (backup / 'state' / relative).read_bytes()
+    assert entry['sha256'] == sha256(raw).hexdigest() and entry['size_bytes'] == len(raw)
+    # The common inventory carries the same exact producer records. Retain the
+    # old external-dependency assertion through the actual passive validator.
+    from carr_library.backup_current import state_entries
+    from carr_library.backup_extensions import inspect_media_state
+    media, required, _ = inspect_media_state(backup / 'state', state_entries(manifest['sidecars']),
+                                            independent=True)
+    assert relative in media['studio_publications']
     assert {'component': 'state/' + relative, 'kind': 'publication-output',
-            'reference': saved['output'], 'included': False} in manifest['extensions']['required_inputs']
+            'reference': saved['output'], 'included': False} in required
     assert read_json(backup / 'state' / relative) == saved
     assert manifest['generated_audio_included'] is False
     assert not any(path.suffix.lower() in ('.wav', '.mp3', '.epub', '.zip')

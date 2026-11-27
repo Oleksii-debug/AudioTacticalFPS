@@ -1,65 +1,83 @@
 """Find and invoke existing native menu commands without a second registry."""
 from dataclasses import dataclass
+from pathlib import Path
 
-from .keyboard_settings import MenuCommand, capture_commands, effective_shortcuts, _part
+from .command_registry import CommandSpec, normalize_shortcut
+from .builtin_keyboard_commands import plain_caption
 
-PALETTE_IDENTITY = 'help/find a command'
+PALETTE_IDENTITY = 'commands.find'
 PALETTE_SHORTCUT = 'Ctrl+Shift+P'
 MAX_QUERY = 300
 
 
 @dataclass(frozen=True)
 class CommandChoice:
-    command: MenuCommand
+    command: CommandSpec
     menu_id: int
     shortcut: str
     enabled: bool
+    binding: object = None
+    path: tuple[str, ...] = ()
+    title: str = ''
 
     @property
     def label(self):
-        return (self.command.title + '; ' + (self.shortcut or 'No shortcut')
+        return ((self.title or self.command.label) + '; ' + (self.shortcut or 'No shortcut')
                 + ('; available now' if self.enabled else '; unavailable now'))
 
 
 class CommandPalette:
-    """Read the current keyboard registry and recheck its native menu boundary."""
+    """Use the one canonical registry and recheck the retained native binding."""
     def __init__(self, keyboard):
+        keyboard = getattr(keyboard, 'manager', keyboard)
         self.keyboard = keyboard
         self.frame = keyboard.frame
         self.menu_bar = self.frame.menu_bar
         self.library = self.frame.library
         self.active = self.frame.active
-        self.root = keyboard.root
+        self.registry, self.store = keyboard.registry, keyboard.store
+        self.root = Path(getattr(self.store, 'library_root', self.store.path.parent)
+                         if self.store is not None else self.library.root)
+        self._guard()
+        live = self._live_items()
+        self._paths = {identity: live[binding.item.GetId()][2]
+                       for identity, binding in keyboard.bindings.items()
+                       if binding.item.GetId() in live}
 
     def _guard(self):
         frame = self.frame
         if (not frame or getattr(frame, '_closing', False) or frame.IsBeingDeleted()
                 or getattr(frame, 'working', False) or getattr(frame, 'busy', False)):
             raise ValueError('Wait for the current operation before running a command.')
-        if (frame.keyboard_settings is not self.keyboard or frame.menu_bar is not self.menu_bar
-                or frame.GetMenuBar() is not self.menu_bar
+        if (getattr(frame, 'keyboard_commands', None) is not self.keyboard
+                or frame.menu_bar is not self.menu_bar or frame.GetMenuBar() is not self.menu_bar
                 or frame.library is not self.library or frame.active != self.active
-                or self.keyboard.root != self.root or frame.library.root != self.root):
+                or self.keyboard.registry is not self.registry or self.keyboard.store is not self.store
+                or Path(self.library.root) != self.root
+                or self.store is not None and Path(getattr(self.store, 'library_root', self.store.path.parent)) != self.root):
             raise ValueError('The library or command list changed. Open Find a command again.')
 
     def _live_items(self):
-        """Include ancestor and top-menu enablement, not just leaf flags."""
-        # Reuse the keyboard registry's exact stable-name/path and unique-ID
-        # validation. Presence of the old object alone cannot authorize an ID
-        # reused by another item or an action moved to a different menu path.
-        current = {id(command.item): command for command in capture_commands(self.menu_bar)}
-        states = {}
+        """Observe retained native IDs, complete paths and ancestor enablement."""
+        from .keyboard_settings import _capture_shared_commands
+        current = {row.menu_id: row for row in _capture_shared_commands(self.menu_bar)}
+        states, native_ids = {}, set()
 
         def walk(menu, enabled):
             for item in menu.GetMenuItems():
                 if item.IsSeparator():
                     continue
-                available = enabled and item.IsEnabled()
+                native_id = item.GetId()
+                if native_id in native_ids:
+                    raise ValueError('Native menu IDs changed or are reused by more than one action.')
+                native_ids.add(native_id)
+                active = enabled and item.IsEnabled()
                 child = item.GetSubMenu()
                 if child is None:
-                    states[id(item)] = (item, available, current[id(item)].action)
+                    row = current[native_id]
+                    states[native_id] = (item, active, tuple(row.action.split('/')), row.title)
                 else:
-                    walk(child, available)
+                    walk(child, active)
 
         for index in range(self.menu_bar.GetMenuCount()):
             walk(self.menu_bar.GetMenu(index), self.menu_bar.IsEnabledTop(index))
@@ -69,46 +87,59 @@ class CommandPalette:
         self._guard()
         if not isinstance(query, str) or len(query) > MAX_QUERY:
             raise ValueError(f'Use at most {MAX_QUERY} characters to find a command.')
-        words = query.casefold().split()
+        words = []
+        for word in query.casefold().split():
+            shortcut = None
+            if '+' in word or (word.startswith('f') and word[1:].isdigit()):
+                try:
+                    shortcut = normalize_shortcut(word)
+                except ValueError:
+                    pass
+            words.append((word, shortcut))
         live, result = self._live_items(), []
-        keys = effective_shortcuts(self.keyboard.commands, self.keyboard.overrides)
-        for command in self.keyboard.commands:
-            if command.action == PALETTE_IDENTITY:
+        keys = self.registry.effective(self.keyboard.overrides)
+        for command in self.registry.commands('main'):
+            if command.command_id == PALETTE_IDENTITY:
                 continue
-            item = live.get(id(command.item))
-            if (item is None or item[0] is not command.item or command.item.GetId() != command.menu_id
-                    or item[2] != command.action):
+            binding = self.keyboard.bindings.get(command.command_id)
+            if binding is None:
                 continue
-            shortcut = keys[command.action]
-            searchable = (command.title + ' ' + command.action + ' ' + shortcut).casefold()
-            if all(word in searchable for word in words):
-                result.append(CommandChoice(command, command.menu_id, shortcut, item[1]))
+            native_id = binding.item.GetId()
+            item = live.get(native_id)
+            if (item is None or item[0].GetId() != binding.item.GetId()
+                    or item[2] != self._paths.get(command.command_id)):
+                continue
+            shortcut = keys[command.command_id]
+            searchable = (' '.join((item[3], '/'.join(item[2]),
+                                   command.command_id, command.label, shortcut))).casefold()
+            if all(shortcut == exact if exact is not None else word in searchable
+                   for word, exact in words):
+                result.append(CommandChoice(command, native_id, shortcut, item[1],
+                                            binding, item[2], item[3]))
         return tuple(result)
 
     def validate(self, choice):
         self._guard()
         if (not isinstance(choice, CommandChoice)
-                or not isinstance(choice.command, MenuCommand)
-                or choice.command.action == PALETTE_IDENTITY
-                or not any(command is choice.command for command in self.keyboard.commands)):
+                or not isinstance(choice.command, CommandSpec)
+                or choice.command.command_id == PALETTE_IDENTITY
+                or not any(command is choice.command for command in self.registry.commands('main'))):
             raise ValueError('That command is no longer available. Find it again.')
-        item = self._live_items().get(id(choice.command.item))
-        if (item is None or item[0] is not choice.command.item
-                or choice.command.menu_id != choice.menu_id
-                or choice.command.item.GetId() != choice.menu_id
-                or item[2] != choice.command.action):
+        binding = self.keyboard.bindings.get(choice.command.command_id)
+        item = self._live_items().get(choice.menu_id)
+        if (binding is None or not binding.item or binding is not choice.binding
+                or item is None or item[0].GetId() != binding.item.GetId()
+                or binding.item.GetId() != choice.menu_id
+                or item[2] != choice.path or item[2] != self._paths.get(choice.command.command_id)):
             raise ValueError('That menu command changed. Open Find a command again.')
         if not item[1]:
             raise ValueError('That command is unavailable now. Wait or choose another command.')
         return choice.menu_id
 
     def dispatch(self, choice):
-        """Call only after the palette closes; original handlers keep scope checks."""
-        import wx
-        menu_id = self.validate(choice)
-        event = wx.CommandEvent(wx.EVT_MENU.typeId, menu_id)
-        event.SetEventObject(self.frame)
-        if not self.frame.GetEventHandler().ProcessEvent(event):
+        """Dispatch after modal close through the original canonical manager."""
+        self.validate(choice)
+        if not self.keyboard.invoke(choice.command.command_id):
             raise ValueError('The command could not be started. Open Find a command again.')
         return True
 
@@ -289,19 +320,11 @@ def show_command_palette(keyboard, *, on_ready=None):
 
 
 def install_command_palette(frame):
-    """Add one native action before KeyboardSettings captures the final menus."""
-    import wx
-    existing = getattr(frame, 'command_palette_item', None)
-    if existing is not None:
-        return existing
-    if getattr(frame, 'keyboard_settings', None) is not None:
-        raise ValueError('Install command search before capturing keyboard shortcuts.')
-    menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
-                 if _part(frame.menu_bar.GetMenuLabel(index)) == 'help'), None)
-    if menu is None:
-        menu = wx.Menu()
-        frame.menu_bar.Append(menu, '&Help')
-    item = menu.Append(wx.ID_ANY, 'Find a command...\t' + PALETTE_SHORTCUT)
-    frame.Bind(wx.EVT_MENU, lambda event: show_command_palette(frame.keyboard_settings), item)
-    frame.command_palette_item = item
-    return item
+    """Expose the existing canonical Find a command action exactly once."""
+    from .keyboard_settings import install_keyboard_settings
+    manager = install_keyboard_settings(frame)
+    binding = manager.bindings.get(PALETTE_IDENTITY)
+    if binding is None:
+        raise ValueError('The canonical Find a command menu is unavailable.')
+    frame.command_palette_item = binding.item
+    return binding.item

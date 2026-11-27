@@ -8,7 +8,7 @@ reused; no faster-whisper dependency is imported into the desktop process.
 """
 from __future__ import annotations
 
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
@@ -173,7 +173,29 @@ class SuppliedWhisperRuntime:
     """
     def __init__(self, manifest):
         self.manifest_path = local_path(manifest, exists=True)
-        self.data = read_json(self.manifest_path)
+        self._configure(read_json(self.manifest_path))
+
+    @classmethod
+    def from_reviewed_data(cls, data, *, source_manifest_sha256, python_version):
+        """Explicit compatibility enrollment; all ordinary review checks apply.
+
+        The caller retains the separately pinned legacy manifest. No review
+        flags are inferred from a hash, installed files or provenance notices.
+        """
+        _sha(source_manifest_sha256)
+        if not isinstance(python_version, str) or re.fullmatch(r'\d+\.\d+\.\d+', python_version) is None:
+            raise ValueError('The reviewed interpreter version is invalid.')
+        runtime = cls.__new__(cls)
+        runtime.manifest_path = None
+        runtime._configure(data)
+        runtime._compatibility = {'manifest_sha256': source_manifest_sha256,
+                                  'python_version': python_version}
+        return runtime
+
+    def _configure(self, data):
+        # Own an immutable value snapshot rather than the caller's nested maps.
+        self.data = json.loads(encode(data))
+        self._compatibility = None
         fields = {'schema', 'engine', 'python', 'python_sha256', 'worker',
                   'runtime_directory', 'runtime_files', 'models_directory',
                   'model', 'model_files', 'rights_reviewed', 'runtime_reviewed', 'rights_notice'}
@@ -209,6 +231,8 @@ class SuppliedWhisperRuntime:
                     'source_sha256': sha256(raw).hexdigest(), 'prepared_sha256': sha256(prepared).hexdigest(),
                     'python_sha256': data['python_sha256'], 'runtime_files': data['runtime_files'],
                     'model_files': data['model_files'], 'model': data['model']}
+        if getattr(self, '_compatibility', None) is not None:
+            identity['compatibility'] = self._compatibility
         package = Path(__file__).parent.parent
         identity['adapter_files'] = {name: _file_digest(package / name, cancelled)
             for name in ('audio/transcription.py', 'audio/transcription_protocol.py',
@@ -452,12 +476,27 @@ def _outputs(result):
 
 
 _BOOTSTRAP = r'''
-import json, pathlib, runpy, sys
-worker, job, runtime = sys.argv[1:]
-sys.path.insert(0, runtime)
+import json, os, pathlib, runpy, sys
+worker, job, runtime, *version = sys.argv[1:]
+if version and version[0] and '.'.join(map(str, sys.version_info[:3])) != version[0]:
+    raise RuntimeError('The selected transcription Python version changed.')
+stage = pathlib.Path(job).resolve()
+# A canonical profile may pin several site-packages roots. Never execute site,
+# .pth or sitecustomize while admitting the separately reviewed worker.
+roots = json.loads(runtime) if runtime.startswith('[') else [runtime]
+if not isinstance(roots, list) or not roots or not all(isinstance(p, str) and pathlib.Path(p).is_absolute() for p in roots):
+    raise ValueError('An explicit reviewed runtime search path is required.')
+sys.path[:0] = roots
 def audit(event, args):
     if event.startswith('socket.') or event in ('subprocess.Popen','os.system','os.posix_spawn'):
         raise PermissionError('The supplied local transcription worker denies network and child commands.')
+    if event == 'open' and args and isinstance(args[0], (str, bytes)):
+        mode = args[1] if len(args) > 1 else None
+        flags = args[2] if len(args) > 2 else 0
+        writing = (isinstance(mode, str) and any(c in mode for c in 'wax+')) or (
+            isinstance(flags, int) and flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC))
+        if writing and not pathlib.Path(os.fsdecode(args[0])).resolve().is_relative_to(stage):
+            raise PermissionError('Transcription writes only to its private staging directory.')
 sys.addaudithook(audit)
 sys.argv = [worker, '--job-dir', job]
 runpy.run_path(worker, run_name='__main__')
@@ -465,8 +504,11 @@ runpy.run_path(worker, run_name='__main__')
 
 
 _HARDENED_BOOTSTRAP = r'''
-import importlib.util, pathlib, socket, sys
-worker, job, runtime = sys.argv[1:]
+import importlib.util, os, pathlib, socket, sys
+worker, job, runtime, *version = sys.argv[1:]
+if version and version[0] and '.'.join(map(str, sys.version_info[:3])) != version[0]:
+    raise RuntimeError('The selected transcription Python version changed.')
+stage = pathlib.Path(job).resolve()
 sys.path.insert(0, runtime)
 def audit(event, args):
     # multiprocessing's local duplex Pipe uses AF_UNIX on POSIX. Internet
@@ -479,6 +521,13 @@ def audit(event, args):
             raise PermissionError('The local transcription worker denies network access.')
     if event in ('subprocess.Popen', 'os.system', 'os.posix_spawn'):
         raise PermissionError('The local transcription worker denies child commands.')
+    if event == 'open' and args and isinstance(args[0], (str, bytes)):
+        mode = args[1] if len(args) > 1 else None
+        flags = args[2] if len(args) > 2 else 0
+        writing = (isinstance(mode, str) and any(c in mode for c in 'wax+')) or (
+            isinstance(flags, int) and flags & (os.O_WRONLY | os.O_RDWR | os.O_CREAT | os.O_TRUNC))
+        if writing and not pathlib.Path(os.fsdecode(args[0])).resolve().is_relative_to(stage):
+            raise PermissionError('Transcription writes only to its private staging directory.')
 sys.addaudithook(audit)
 spec = importlib.util.spec_from_file_location('_carr_reviewed_worker', worker)
 module = importlib.util.module_from_spec(spec)
@@ -491,6 +540,52 @@ if __name__ == '__main__':
     raise SystemExit({'succeeded': 0, 'partial': 1, 'failed': 1, 'cancelled': 3}[result['state']])
 '''
 
+def _run_owned_worker(stage, worker, python, runtime_paths, *, budget, cancelled,
+                      hardened=False, python_version=None, watch=None, owned_tree=None):
+    """One isolated process owner for both saved transcription codecs.
+
+    Runtime paths are explicitly inspected installation roots. No site hook,
+    network capability or ambient Python path is inherited by either codec.
+    AudioCleanupPending retains the actual process owner for the caller.
+    """
+    stage, worker = Path(stage), Path(worker)
+    env = {name: os.environ[name] for name in ('PATH', 'SYSTEMROOT', 'WINDIR', 'LANG', 'TEMP', 'TMP') if name in os.environ}
+    private = '.pending-' if isinstance(runtime_paths, (list, tuple)) else ''
+    env.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', HF_DATASETS_OFFLINE='1',
+               HF_HUB_DISABLE_TELEMETRY='1', PYTHONDONTWRITEBYTECODE='1',
+               TEMP=str(stage), TMP=str(stage), TMPDIR=str(stage),
+               HF_HOME=str(stage / (private + 'hf-cache')), XDG_CACHE_HOME=str(stage / (private + 'cache')))
+    entrypoint = ['-c', _BOOTSTRAP]
+    if hardened:
+        bootstrap = stage / 'host_bootstrap.py'
+        atomic_bytes(bootstrap, _HARDENED_BOOTSTRAP.encode('utf-8'))
+        entrypoint = [str(bootstrap)]
+    paths = (json.dumps([str(path) for path in runtime_paths])
+             if isinstance(runtime_paths, (list, tuple)) else str(runtime_paths))
+    invocation = [str(python), '-I', '-S', '-B', '-X', 'utf8',
+                  '-X', 'pycache_prefix=' + str(stage / (private + 'bytecode')), *entrypoint,
+                  str(worker), str(stage), paths]
+    if python_version is not None:
+        invocation.append(python_version)
+    return run_process(invocation, budget=budget, cancelled=cancelled,
+                       watch=tuple(watch) if watch is not None else (stage,),
+                       env=env, cwd=stage,
+                       owned_tree=hardened if owned_tree is None else owned_tree)
+
+
+@contextmanager
+def _retained_admission(broker, request, *, operation_id, cancelled, timeout=60):
+    """Release admission only after the actual owned worker tree is quiescent."""
+    with ExitStack() as admission:
+        lease = admission.enter_context(broker.reserve(request, operation_id=operation_id,
+                                                      cancelled=cancelled, timeout=timeout))
+        try:
+            yield lease
+        except AudioCleanupPending as pending:
+            retained = admission.pop_all()
+            pending.cleanup_owner.add_quiescent_callback(retained.close)
+            raise
+
 
 class TranscriptionService:
     """Typed ASR operations below the existing application state/backup tree."""
@@ -502,6 +597,21 @@ class TranscriptionService:
         self.runtime = runtime
         self.budget = budget or AudioBudget()
         self._broker = broker
+
+    def _coordinator(self):
+        # Historical imports remain supported, while every new/resumed run is
+        # dispatched by the one public service using the exact saved codec.
+        from ..transcription.service import TranscriptionService as Coordinator
+        return Coordinator(self.root, legacy_backend=self, broker=self._broker, budget=self.budget)
+
+    def create(self, sources, *, settings=None, formats=FORMATS, cancelled=lambda: False):
+        return self._coordinator().create(sources, settings=settings, formats=formats, cancelled=cancelled)
+
+    def control(self, job_id, command):
+        return self._coordinator().control(job_id, command)
+
+    def run(self, job_id, *, cancelled=lambda: False, on_status=lambda text: None):
+        return self._coordinator().run(job_id, cancelled=cancelled, on_status=on_status)
 
     @property
     def broker(self):
@@ -578,7 +688,7 @@ class TranscriptionService:
                 raise AudioError('The selected audio exceeds the configured job disk allowance.')
         return sorted(selected, key=lambda value: (value.casefold(), value))
 
-    def create(self, sources, *, settings=None, formats=FORMATS, cancelled=lambda: False):
+    def _create_legacy(self, sources, *, settings=None, formats=FORMATS, cancelled=lambda: False):
         if self.runtime is None:
             raise ValueError('Select a reviewed local transcription runtime before creating a job.')
         settings = settings or TranscriptionSettings()
@@ -765,7 +875,7 @@ class TranscriptionService:
             raise ValueError('This transcript exceeds the reading-copy character budget.')
         return text, output['label']
 
-    def control(self, job_id, command):
+    def _control_legacy(self, job_id, command):
         if command not in ('run', 'pause', 'cancel'):
             raise ValueError('Select run, pause or cancel.')
         if command == 'run':
@@ -799,7 +909,7 @@ class TranscriptionService:
                 raise ValueError('An existing transcript was changed; it is preserved for review.')
         return receipt
 
-    def run(self, job_id, *, cancelled=lambda: False, on_status=lambda text: None):
+    def _run_legacy(self, job_id, *, cancelled=lambda: False, on_status=lambda text: None):
         from ..operations import ResourceCancelled
         if self.runtime is None:
             raise ValueError('Select a reviewed local transcription runtime before resuming a job.')
@@ -850,20 +960,12 @@ class TranscriptionService:
                             save('queued')
                             notify('Waiting for shared local transcription resources.')
                             try:
-                                with ExitStack() as admission:
-                                    lease = admission.enter_context(self.broker.reserve(resource,
-                                        operation_id='asr:' + job_id, cancelled=stopped, timeout=60))
+                                with _retained_admission(self.broker, resource,
+                                        operation_id='asr:' + job_id, cancelled=stopped, timeout=60) as lease:
                                     save('running')
                                     notify(f'Transcribing file {index} of {len(request["inputs"])} locally.')
-                                    try:
-                                        notice = self._run_one(directory, item, request, source, settings,
-                                            prepared, python, runtime_root, model_root, lease.cancelled)
-                                    except AudioCleanupPending as pending:
-                                        # The existing lease remains owned until the worker's
-                                        # native tree has actually stopped, including descendants.
-                                        retained = admission.pop_all()
-                                        pending.cleanup_owner.add_quiescent_callback(retained.close)
-                                        raise
+                                    notice = self._run_one(directory, item, request, source, settings,
+                                        prepared, python, runtime_root, model_root, lease.cancelled)
                             except ResourceCancelled as exc:
                                 raise AudioCancelled('Transcription stopped while waiting for shared resources.') from exc
                             if lease.cleanup_pending:
@@ -927,20 +1029,11 @@ class TranscriptionService:
             if hardened:
                 config.update(protocol_version=1, job_id=directory.name)
             atomic_json(stage / 'job_config.json', config)
-            env = {name: os.environ[name] for name in ('PATH', 'SYSTEMROOT', 'WINDIR', 'LANG', 'TEMP', 'TMP') if name in os.environ}
-            env.update(HF_HUB_OFFLINE='1', TRANSFORMERS_OFFLINE='1', HF_DATASETS_OFFLINE='1',
-                       HF_HUB_DISABLE_TELEMETRY='1', PYTHONDONTWRITEBYTECODE='1')
-            entrypoint = ['-c', _BOOTSTRAP]
-            if hardened:
-                bootstrap = stage / 'host_bootstrap.py'
-                atomic_bytes(bootstrap, _HARDENED_BOOTSTRAP.encode('utf-8'))
-                entrypoint = [str(bootstrap)]
+            version = (getattr(self.runtime, '_compatibility', None) or {}).get('python_version')
             try:
-                run_process([str(python), '-I', '-S', '-B', '-X', 'utf8',
-                             '-X', 'pycache_prefix=' + str(stage / 'bytecode'), *entrypoint,
-                             str(worker), str(stage), str(runtime_root)],
-                            budget=self.budget, cancelled=cancelled, watch=(stage,), env=env, cwd=stage,
-                            owned_tree=hardened)
+                _run_owned_worker(stage, worker, python, runtime_root,
+                    budget=self.budget, cancelled=cancelled, hardened=hardened,
+                    python_version=version)
             except (AudioCancelled, AudioCleanupPending):
                 raise
             except AudioError as exc:

@@ -27,6 +27,10 @@ from .anchors import Anchor, AnchorStore
 from .updates import Release, UpdateCancelled, UpdatePolicy, VerifiedPackage, _cancel, relative_path, require_verified_package
 
 
+class ActivationCleanupError(TrustError):
+    """A native activation owner remains unconfirmed; no movement is safe."""
+
+
 class BundleAdapter(Protocol):
     def verify(self, root: Path) -> None: ...
     def prepare(self, root: Path, release: Release) -> None: ...
@@ -52,10 +56,13 @@ def _verified_snapshot(package, parent, cancelled):
     if shutil.disk_usage(parent).free < info.st_size + 16 * 1024**2:
         raise TrustError('Not enough free space to verify the update package.')
     with tempfile.TemporaryFile(dir=parent) as snapshot:
-        descriptor = os.open(package.path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
-        with os.fdopen(descriptor, 'rb') as source:
+        from ..durable_state import _open_json_file
+        with _open_json_file(package.path) as source:
             opened = os.fstat(source.fileno())
-            if (opened.st_dev, opened.st_ino, opened.st_size) != (info.st_dev, info.st_ino, info.st_size):
+            if (not stat.S_ISREG(opened.st_mode) or opened.st_nlink != 1
+                    or getattr(opened, 'st_file_attributes', 0) & 0x400
+                    or (opened.st_dev, opened.st_ino, opened.st_size)
+                    != (info.st_dev, info.st_ino, info.st_size)):
                 raise TrustError('The reviewed update package changed while opening.')
             digest, count = hashlib.sha256(), 0
             while block := source.read(65536):
@@ -189,6 +196,33 @@ def unpack(package, destination, policy, *, cancelled=lambda: False):
     return destination
 
 
+# Private fixed health operation. It cannot dispatch desktop/library commands
+# and does not bypass the shared lease on any public CLI. The update host owns
+# the exclusive installation lease while this synthetic check runs.
+_HEALTH_PROGRAM = """\
+from importlib.metadata import version
+from pathlib import Path
+import sys
+import carr_library
+root = Path(sys.argv[1]).resolve(strict=True)
+environment = root / '.venv'
+if not Path(carr_library.__file__).resolve(strict=True).is_relative_to(environment):
+    raise RuntimeError('Update health imported a package outside the installed environment.')
+if version('universal-research-library') != sys.argv[2]:
+    raise RuntimeError('The installed application version differs from the signed release.')
+from carr_library.native_runtime import activate_bundled_runtime
+handle = activate_bundled_runtime()
+try:
+    from carr_library.__main__ import self_test
+    result = self_test()
+    if type(result) is not dict or result.get('status') != 'PASS':
+        raise RuntimeError('The isolated application self-test did not pass.')
+finally:
+    if handle is not None:
+        handle.close()
+"""
+
+
 class WindowsBundleAdapter:
     """Use the installed, reviewed packaging verifier and signed bundle installer.
 
@@ -206,7 +240,8 @@ class WindowsBundleAdapter:
     @staticmethod
     def _require_portable(root):
         root = Path(root)
-        if root.name.casefold() == 'app' and os.path.lexists(root.parent / 'managed-install.ini'):
+        from ..portable_entry import managed_layout
+        if managed_layout(root):
             raise TrustError('This managed installation requires its reviewed setup/maintenance procedure. '
                              'A program-only update cannot replace installer ownership receipts.')
 
@@ -214,10 +249,11 @@ class WindowsBundleAdapter:
         self._require_portable(root)
         self.verify_bundle(root)
 
-    def _verify_release(self, root, release):
+    def _verify_release(self, root, release, *, manifest_bytes=None):
         # Bind the trusted verifier to the same bounded manifest snapshot whose
         # source identity we compare with the authenticated TUF target metadata.
-        raw = read_bytes(root / 'bundle-manifest.json', 16 * 1024**2)
+        raw = (read_bytes(root / 'bundle-manifest.json', 16 * 1024**2)
+               if manifest_bytes is None else manifest_bytes)
         manifest = json_value(raw, maximum=16 * 1024**2)
         if type(manifest) is not dict or manifest.get('source_commit') != release.source_commit:
             raise TrustError('The bundle source commit differs from the signed release.')
@@ -259,7 +295,12 @@ class WindowsBundleAdapter:
             # back before the owned child stops could retarget a live installer.
             # This wait occurs off the desktop thread, with the owner still
             # retrying its bounded native cleanup. There is no success fallback.
-            error.cleanup_owner.quiescent_event.wait()
+            try:
+                error.cleanup_owner.quiescent_event.wait()
+            except BaseException as interrupted:
+                raise ActivationCleanupError(
+                    'Installer cleanup is still unconfirmed. Preserve the program, backup '
+                    'and owner receipt; no further program movement is safe.') from interrupted
             raise TrustError('The installer needed deferred native cleanup. The update was not accepted.') from None
         except (AudioError, OSError, subprocess.SubprocessError):
             raise TrustError('The owned installer could not complete within its selected limits.') from None
@@ -296,14 +337,9 @@ class WindowsBundleAdapter:
         python = root / '.venv' / 'Scripts' / 'python.exe'
         file_info(python)
         self._verify_release(root, release)
-        status = self._run_owned([python, '-I', '-B', '-X', 'utf8', '-m', 'carr_library', '--self-test'],
-                                 root=root, timeout=min(180, self.timeout))
-        if status:
-            return False
-        identity = self._run_owned([python, '-I', '-B', '-X', 'utf8', '-c',
-            "from importlib.metadata import version; import sys; sys.exit(version('universal-research-library') != sys.argv[1])",
-            release.version], root=root, timeout=min(60, self.timeout))
-        return identity == 0
+        return self._run_owned([python, '-I', '-B', '-X', 'utf8', '-c',
+            _HEALTH_PROGRAM, str(root), release.version],
+            root=root, timeout=min(180, self.timeout)) == 0
 
 
 class UpdateTransaction:
@@ -380,10 +416,13 @@ class UpdateTransaction:
             os.rename(previous, self.installed)
             sync_directory(self.installed.parent)
         else:
-            # Directory existence cannot prove that rollback already restored A.
-            # Only the live no-rename cancellation owner can terminalize without
-            # this retained previous installation.
-            raise TrustError('Previous installation is unavailable. Keep the backup and ask the owner to recover.')
+            # Only an adapter independently pinned to the original manifest
+            # may recognize A after interruption before/after its first rename.
+            # Directory existence and the mutable journal alone are insufficient.
+            verify_original = getattr(self.adapter, 'verify_rollback_current', None)
+            if verify_original is None:
+                raise TrustError('Previous installation is unavailable. Keep the backup and ask the owner to recover.')
+            verify_original(self.installed)
         self._write(record, 'rolled-back')
 
     def recover(self):
@@ -466,6 +505,10 @@ class UpdateTransaction:
                     self._write(record, 'health-checked')
                     replacement = Anchor(release.build, release.sha256, max(before.max_utc, now))
                     self.anchor.compare_and_set(before, replacement)
+                except ActivationCleanupError:
+                    # Native ownership is still unresolved. The external owner
+                    # keeps its veto; moving either installation would be unsafe.
+                    raise
                 except Exception:
                     # A committed anchor must never be rolled back after a
                     # final-journal write failure. Recover() can finalize it.

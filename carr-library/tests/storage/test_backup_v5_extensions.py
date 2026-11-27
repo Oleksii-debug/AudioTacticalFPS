@@ -14,12 +14,17 @@ from carr_library.durable_state import atomic_json
 from carr_library.extract.page_ocr import Config
 from carr_library.catalog.intake import snapshot
 from carr_library.ingest.worker import prepare_request, record_progress, load_request
-from carr_library.library_backup import create_backup, restore_backup, INCOMPLETE
+from carr_library.library_backup import restore_backup, INCOMPLETE
 from carr_library.reader.reading_state import ReadingLocation, ReadingState
 from carr_library.reader.live_state import LiveState
 from carr_library.speech.reading import ReadingDocument
 from carr_library.speech.session import ReaderDraftStore, ReaderResume
 from carr_library.storage.revisions import Storage
+
+import runpy
+
+# Preserve the exact historical writer envelope while exercising today's reader.
+create_backup = runpy.run_path(str(Path(__file__).with_name('legacy_state_writer.py')))['create_backup']
 
 
 def source_location(app, workspace):

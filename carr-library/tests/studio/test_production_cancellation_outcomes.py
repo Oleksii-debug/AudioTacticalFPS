@@ -135,3 +135,38 @@ def test_stop_during_staged_master_validation_prevents_publication_and_resumes(t
     assert completed['status'] == 'complete'
     service._verify_artifacts(completed)
     assert (output / 'master.wav').is_file()
+
+
+@pytest.mark.parametrize('stop_kind', ['pause', 'cancel', 'predicate'])
+def test_late_stop_does_not_hide_artifact_verifier_failure(tmp_path, voices, monkeypatch, stop_kind):
+    service, job = production(tmp_path, voices)
+    verify = service._verify_artifacts
+    stopping, accepted = [False], {}
+
+    def verify_then_fail(state, *, cancelled=lambda: False):
+        verify(state, cancelled=cancelled)
+        # Artifact verification precedes the durable completion receipt.
+        assert state['status'] == 'running' and state['artifacts']
+        for artifact in state['artifacts']:
+            path = Path(artifact['path'])
+            accepted[str(path)] = (path.stat().st_size, sha256(path.read_bytes()).hexdigest())
+        if stop_kind == 'pause':
+            service.request_pause(job)
+        elif stop_kind == 'cancel':
+            service.cancel(job)
+        else:
+            stopping[0] = True
+        raise OSError('Synthetic final receipt publication failure')
+
+    monkeypatch.setattr(service, '_verify_artifacts', verify_then_fail)
+    with pytest.raises(OSError, match='final receipt publication'):
+        service.run(job, cancelled=lambda: stopping[0])
+    saved = service.get(job)
+    assert saved['status'] == 'failed'
+    assert saved['error'] == 'Synthetic final receipt publication failure'
+    assert saved['artifacts'] and accepted
+    for filename, before in accepted.items():
+        path = Path(filename)
+        assert (path.stat().st_size, sha256(path.read_bytes()).hexdigest()) == before
+    verify(saved)  # The genuine error does not delete or rewrite accepted files.
+

@@ -594,9 +594,10 @@ def test_full_backup_keeps_decoded_translation_evidence_and_offline_authority(tm
     backup = tmp_path / 'backup'
     checksum = app.backup(backup)
     manifest = read_json(backup / 'manifest.json')
-    inventory = {item['filename']: item for item in manifest['state']}
+    assert manifest['version'] == 4
+    inventory = {item['filename']: item for item in manifest['sidecars']}
     for relative, raw in original_files.items():
-        entry = inventory[relative.as_posix()]
+        entry = inventory['state/' + relative.as_posix()]
         assert entry['size_bytes'] == len(raw) and entry['sha256'] == sha256(raw).hexdigest()
         assert (backup / 'state' / relative).read_bytes() == raw
 
@@ -994,35 +995,74 @@ def translation_window(monkeypatch, tmp_path):
             self.items = kwargs.get('choices', [])
             self.selection = -1
             self.enabled, self.editable, self.destroyed = True, True, False
-            self.handlers = {}
+            self.handlers, self.modal = {}, False
+            self.native_id = len(controls) + 1000
             controls.append(self)
+        def __bool__(self): return not self.destroyed
+        def native(self, method):
+            if self.destroyed:
+                state.setdefault('forbidden', []).append(method)
+                raise AssertionError('Native method on a deleted translation peer: ' + method)
+        def GetId(self):
+            self.native('GetId')
+            return self.native_id
         def SetName(self, value): self.name = value
         def SetSizer(self, value): pass
         def Add(self, *args, **kwargs): pass
-        def SetSelection(self, value): self.selection = value
-        def GetSelection(self): return self.selection
-        def SetEditable(self, value): self.editable = value
-        def Enable(self, value=True): self.enabled = value
-        def Disable(self): self.enabled = False
-        def GetValue(self): return self.value
+        def SetSelection(self, value):
+            self.native('SetSelection')
+            self.selection = value
+        def GetSelection(self):
+            self.native('GetSelection')
+            return self.selection
+        def SetEditable(self, value):
+            self.native('SetEditable')
+            self.editable = value
+        def Enable(self, value=True):
+            self.native('Enable')
+            self.enabled = value
+        def Disable(self): self.Enable(False)
+        def GetValue(self):
+            self.native('GetValue')
+            return self.value
         def ChangeValue(self, value):
-            assert not self.destroyed, 'Late callback touched a destroyed control'
+            self.native('ChangeValue')
             self.value = value
         def SetFocus(self):
-            assert not self.destroyed, 'Late callback focused a destroyed control'
+            self.native('SetFocus')
             state['focused'] = self.name
         def Bind(self, event, callback, **kwargs): self.handlers[event] = callback
-        def EndModal(self, value): self.result = value
+        def EndModal(self, value):
+            self.native('EndModal')
+            self.result, self.modal = value, False
+        def IsModal(self):
+            self.native('IsModal')
+            return self.modal
         def ShowModal(self):
+            self.native('ShowModal')
+            self.modal = True
             if self.title == 'Translation — selected text derivatives':
                 state['scenario']()
+            self.modal = False
             return 10
-        def Destroy(self):
-            self.destroyed = True
-            for control in controls:
+        def _native_destroy(self):
+            if self.destroyed:
+                return False
+            for control in tuple(controls):
                 if control.parent is self:
-                    control.destroyed = True
-
+                    control._native_destroy()
+            self.destroyed = True
+            event = SimpleNamespace(GetId=lambda: self.native_id, Skip=lambda: None,
+                GetEventObject=lambda: SimpleNamespace(GetId=lambda: self.native_id))
+            peer = self
+            while isinstance(peer, Control):
+                if 'destroy' in peer.handlers:
+                    peer.handlers['destroy'](event)
+                peer = peer.parent
+            return True
+        def Destroy(self):
+            self.native('Destroy')
+            return self._native_destroy()
     class ChoiceDialog(Control):
         def __init__(self, parent, message, title, rows):
             super().__init__(parent, title=title, choices=rows)
@@ -1048,12 +1088,13 @@ def translation_window(monkeypatch, tmp_path):
         return state['approval']
 
     identities = itertools.count(100)
+    automatic_menu_ids = itertools.count(200)
     wx = SimpleNamespace(Dialog=Control, TextCtrl=Control, StaticText=Control, Choice=Control,
         Button=Control, BoxSizer=Control, SingleChoiceDialog=ChoiceDialog, DirDialog=DirectoryDialog,
         TextEntryDialog=RangeDialog, DEFAULT_DIALOG_STYLE=1, RESIZE_BORDER=2, VERTICAL=3,
         HORIZONTAL=4, TE_MULTILINE=8, TE_READONLY=16, EXPAND=32, ALL=64,
-        YES_NO=128, NO_DEFAULT=256, YES=1, NO=0, ID_OK=10, ID_CLOSE=11,
-        EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu',
+        YES_NO=128, NO_DEFAULT=256, YES=1, NO=0, ID_OK=10, ID_CLOSE=11, ID_ANY=-1,
+        EVT_BUTTON='button', EVT_CLOSE='close', EVT_MENU='menu', EVT_WINDOW_DESTROY='destroy',
         MessageBox=message_box, CallAfter=lambda function, *args: function(*args),
         NewIdRef=lambda: next(identities))
     monkeypatch.setitem(sys.modules, 'wx', wx)
@@ -1073,9 +1114,16 @@ def translation_window(monkeypatch, tmp_path):
         panel = SimpleNamespace(workspace=case.workspace, ready=True, rows=rows, books=Control(),
             _selection=lambda: (None, None, case.imported['edition']))
         frame.book = SimpleNamespace(GetPage=lambda index: panel)
+        def append(identity, label):
+            native_id = next(automatic_menu_ids) if int(identity) == wx.ID_ANY else int(identity)
+            return SimpleNamespace(GetId=lambda: native_id, GetItemLabel=lambda: label)
         frame.menu_bar = SimpleNamespace(GetMenuCount=lambda: 1, GetMenuLabel=lambda index: '&Tools',
-            GetMenu=lambda index: SimpleNamespace(Append=lambda *args: None))
-        frame.Bind = lambda event, callback, **kwargs: menu_handlers.update({kwargs['id']: callback})
+            GetMenu=lambda index: SimpleNamespace(Append=append))
+        def bind_menu(event, callback, item=None, **kwargs):
+            native_id = item.GetId() if item is not None else kwargs['id']
+            assert native_id not in menu_handlers
+            menu_handlers[native_id] = callback
+        frame.Bind = bind_menu
         def run_job(title, operation, done=None, failed=None):
             runs.append(title)
             frame.cancel_event.clear()
@@ -1217,6 +1265,9 @@ def test_book_translation_menu_reuses_authorized_reader_and_exact_source_range(
         observed.append(source)
     monkeypatch.setattr(window.ui, 'show_translation', opened)
     window.ui.install_translation_actions(frame)
+    commands = {spec.command_id: item.GetId() for spec, item in frame._pending_keyboard_commands}
+    assert commands == {'tools.translation': 100, 'tools.translation_batch': 200}
+    assert set(window.menu_handlers) == {100, 101, 200}
     window.menu_handlers[101](None)
     if revoked:
         assert not observed and 'archived' in window.errors[-1]
@@ -1557,16 +1608,20 @@ def test_native_completed_export_keeps_original_lineage_without_current_account(
 
 def test_native_account_revoked_after_accepted_chunk_stops_next_request(
         tmp_path, connection, translation_window):
-    from types import SimpleNamespace
+    from carr_library.progress import ProgressHub, bind_progress
     case = bound_ready(tmp_path, connection)
     window = translation_window
     frame = window.bind(case)
     revoked = []
-    def progress(done, total, phase, *, token):
-        if done == 1 and not revoked:
+    task = ProgressHub().start('Approved translation', unit='chunks')
+    update = task.update
+    def progress(*, completed, total, phase):
+        snapshot = update(completed=completed, total=total, phase=phase)
+        if completed == 1 and not revoked:
             change_saved_account(case, 'disabled')
             revoked.append(True)
-    frame.operation_progress = SimpleNamespace(event=SimpleNamespace(token='account-test'), update=progress)
+        return snapshot
+    task.update = progress
     calls = len(connection['calls'])
     def scenario():
         window.find('Maximum approved').ChangeValue('2')
@@ -1582,5 +1637,8 @@ def test_native_account_revoked_after_accepted_chunk_stops_next_request(
         assert window.state['focused'] == status.name
         window.click('Close')
     window.state['scenario'] = scenario
-    window.ui.show_translation(frame, source_loader=lambda cancelled: case.source, source_topic=case.topic)
+    # Desktop workers now bind the shared ProgressTask explicitly.
+    with bind_progress(task):
+        window.ui.show_translation(frame, source_loader=lambda cancelled: case.source, source_topic=case.topic)
+    assert task.snapshot().completed == 1
     assert not window.errors

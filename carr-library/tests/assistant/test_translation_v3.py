@@ -451,7 +451,13 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         def __init__(self, parent=None, *args, value='', label='', choices=(), **kwargs):
             self.value, self.name, self.label, self.choices = value, '', label, choices
             self.enabled, self.selection, self.bindings, self.focused = True, -1, {}, False
+            self.parent, self.live, self.modal = parent, True, False
+            self.native_id = len(state['widgets']) + 1000
             state['widgets'].append(self)
+        def __bool__(self): return self.live
+        def GetId(self):
+            assert self.live
+            return self.native_id
         def SetName(self, name): self.name = name
         def SetSelection(self, value): self.selection = value
         def GetSelection(self): return self.selection
@@ -463,17 +469,32 @@ def translation_handlers(tmp_path, transport, monkeypatch):
         def SetFocus(self): self.focused = True
         def Bind(self, event, callback): self.bindings[event] = callback
         def SetSizer(self, sizer): pass
-        def EndModal(self, result): pass
-        def Destroy(self): pass
+        def EndModal(self, result): self.modal = False
+        def IsModal(self): return self.modal
+        def Destroy(self):
+            assert self.live
+            for child in state['widgets']:
+                if child.parent is self and child.live:
+                    Widget.Destroy(child)
+            self.live = False
+            event = SimpleNamespace(GetId=lambda: self.native_id, Skip=lambda: None)
+            peer = self
+            while isinstance(peer, Widget):
+                if wx.EVT_WINDOW_DESTROY in peer.bindings:
+                    peer.bindings[wx.EVT_WINDOW_DESTROY](event)
+                peer = peer.parent
+            return True
         def ShowModal(self):
+            self.modal = True
             state['scenario']()
+            self.modal = False
             return 1
     class Sizer:
         def __init__(self, *args, **kwargs): pass
         def Add(self, *args, **kwargs): pass
     wx = SimpleNamespace(**{name: index + 1 for index, name in enumerate((
         'DEFAULT_DIALOG_STYLE', 'RESIZE_BORDER', 'VERTICAL', 'HORIZONTAL', 'ALL', 'EXPAND',
-        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE'))})
+        'TE_MULTILINE', 'TE_READONLY', 'YES_NO', 'NO_DEFAULT', 'YES', 'ID_OK', 'ID_CLOSE', 'EVT_BUTTON', 'EVT_CLOSE', 'EVT_WINDOW_DESTROY'))})
     for name in ('Dialog', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Widget)
     wx.BoxSizer = Sizer
@@ -691,3 +712,24 @@ def test_advanced_discovery_rechecks_account_after_gateway_construction(
         status = e.find('Preview, supported languages and job status')
         assert 'unavailable, disabled or changed' in status.value and status.focused
     e.scenario(scenario)
+
+
+@pytest.mark.parametrize('damage', ('integer-zero', 'missing-field'))
+def test_saved_glossary_provenance_requires_exact_declared_boolean(tmp_path, transport, damage):
+    service, profile, vault = ready(tmp_path, transport)
+    identity, _authorization = submit(service, profile, glossary=GLOSSARY)
+    assert service.resume(identity)['status'] == 'complete'
+    value = service.jobs.load(identity)
+    if damage == 'integer-zero':
+        value['receipts'][0]['glossary_config']['ignoreCase'] = 0
+    else:
+        del value['receipts'][0]['glossary_config']
+    service.jobs.save(value)
+    before = service.jobs.load(identity)
+    calls, credentials = len(transport['calls']), len(vault.calls)
+    destination = tmp_path / 'unverified-glossary-export'
+    with pytest.raises(ValueError, match='model/glossary provenance'):
+        service.export(identity, destination)
+    assert not destination.exists()
+    assert service.jobs.load(identity) == before
+    assert len(transport['calls']) == calls and len(vault.calls) == credentials

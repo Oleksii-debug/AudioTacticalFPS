@@ -205,7 +205,7 @@ def test_persisted_python_helper_configuration_reloads_and_enumerates(helper, tm
     assert persisted["voice_helpers"][0]["script"] == str(helper[1])
     assert persisted["voice_helpers"][0]["script_sha256"] == sha256(helper[1].read_bytes()).hexdigest()
     # Isolate optional OS/FFmpeg discovery; the registered helper still runs.
-    def configured_registry(cls, *, ffmpeg, cancelled, timeout_seconds, extra_providers):
+    def configured_registry(cls, *, ffmpeg, cancelled, timeout_seconds, extra_providers=()):
         return cls(extra_providers, cancelled=cancelled, timeout_seconds=timeout_seconds)
 
     monkeypatch.setattr(VoiceRegistry, "discover", classmethod(configured_registry))

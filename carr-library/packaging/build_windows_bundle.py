@@ -150,9 +150,50 @@ def verify_dependency_closure(selected):
                 raise ValueError(f"unsatisfied Windows dependency: {req}")
 
 
+def verify_portable_entry_sources(wheel):
+    """Bind the opt-in owner contract to the exact wheel and reviewed native build."""
+    import ast
+    package = HERE.parent / "src" / "carr_library"
+    entry = regular(package / "portable_entry.py").read_bytes()
+    syntax = ast.parse(entry)
+    declared = [node.value for node in syntax.body if isinstance(node, ast.Assign)
+                and any(isinstance(target, ast.Name) and target.id == "OWNED_SOURCES"
+                        for target in node.targets)]
+    if len(declared) != 1:
+        raise ValueError("portable ownership source inventory is ambiguous")
+    sources = ast.literal_eval(declared[0])
+    if (type(sources) is not tuple or not 1 <= len(sources) <= 64
+            or len(sources) != len(set(sources))
+            or any(not isinstance(item, str) or not item.endswith(".py")
+                   or item.startswith("/") or "\\" in item or ".." in item.split("/")
+                   for item in sources)):
+        raise ValueError("invalid portable ownership source inventory")
+    with ZipFile(wheel) as archive:
+        for relative in sources:
+            current = regular(package / relative).read_bytes()
+            name = "carr_library/" + relative
+            names = [info for info in archive.infolist() if info.filename.casefold() == name.casefold()]
+            if (len(names) != 1 or names[0].filename != name
+                    or names[0].file_size != len(current) or archive.read(names[0]) != current):
+                raise ValueError("portable ownership code differs from the exact application wheel")
+    return tuple(sources)
+
+
+def reviewed_portable_launcher(native_launcher, build_evidence, native_probe, source_commit):
+    """Reuse the existing exact source/build/native-process evidence verifier."""
+    spec = importlib.util.spec_from_file_location(
+        "carr_portable_launcher_admission", HERE / "native-launcher" / "verify_launcher.py")
+    if spec is None or spec.loader is None:
+        raise ValueError("reviewed native launcher admission helper is unavailable")
+    verifier = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(verifier)
+    return verifier.verify_launcher(native_launcher, build_evidence, native_probe, source_commit)
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
-                 ocr_source_archive=None, native_launcher=None, native_launcher_sha256=None):
+                 ocr_source_archive=None, native_launcher=None, native_launcher_sha256=None,
+                 *, portable_updates=False, native_launcher_build=None, native_launcher_probe=None):
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
@@ -164,6 +205,18 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     if native_launcher is not None else None)
     if native_bytes is not None and (python_archive is None or source_commit is None):
         raise ValueError("native launcher requires bundled Python and an exact source commit")
+    if type(portable_updates) is not bool:
+        raise ValueError("portable_updates must be an explicit boolean")
+    if portable_updates:
+        if native_bytes is None or native_launcher_build is None or native_launcher_probe is None:
+            raise ValueError("portable updates require the exact launcher and build/native-process evidence")
+        verify_portable_entry_sources(wheel)
+        reviewed = reviewed_portable_launcher(
+            native_launcher, native_launcher_build, native_launcher_probe, source_commit)
+        if reviewed != native_bytes:
+            raise ValueError("native launcher changed between capture and portable admission")
+    elif native_launcher_build is not None or native_launcher_probe is not None:
+        raise ValueError("portable launcher evidence requires --portable-updates")
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
         raise ValueError("expected a dedicated wheel directory")
     pins = read_lock(lock)
@@ -330,10 +383,43 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     raise ValueError("OCR source archive changed during bundle assembly")
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
+        # Setup helpers are source only. A user may explicitly acquire and
+        # prepare the pinned runtime on their own machine; transfer archives
+        # never include that runtime. Copy only this reviewed file inventory.
+        shutil.copyfile(regular(HERE / "SetupLocalAudio.cmd"), staged / "SetupLocalAudio.cmd")
+        for relative in (
+            "setup_local_audio.py",
+            "acquire_audio_runtime.py",
+            "prepare_audio_runtime.py",
+            "audio-runtime/README.txt",
+            "audio-runtime/licenses/BUILD_RECIPES_LICENSE",
+            "audio-runtime/licenses/COPYING.GPLv2",
+            "audio-runtime/licenses/COPYING.GPLv3",
+            "audio-runtime/licenses/COPYING.LGPLv2.1",
+            "audio-runtime/licenses/COPYING.LGPLv3",
+            "audio-runtime/licenses/LICENSE.md",
+            "audio-runtime/provenance/build-configuration.txt",
+            "audio-runtime/provenance/checksums.sha256",
+            "audio-runtime/provenance/dependency-source-index.json",
+            "audio-runtime/source-lock.json",
+        ):
+            target = staged / "tools" / "audio-setup" / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(regular(HERE / relative), target)
         shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
         shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
+        shutil.copyfile(HERE.parent / "docs" / "START_V3_UK.txt", staged / "START_V3_UK.txt")
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
+        if source_evidence is not None:
+            # Retain the verifier's exact commit/tree/wheel binding inside the
+            # sealed payload, so installed acceptance can attest those same
+            # bytes. Use deterministic LF bytes on both build platforms.
+            (staged / "application-source.json").write_bytes(
+                (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
+        if portable_updates:
+            (staged / "portable-update.ini").write_bytes(
+                b"[Resonance portable updates]\nProtocol=2\nOwner=windows-job-receipt-v1\n")
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         if native_bytes is not None and files["ResearchLibrary.exe"] != native_launcher_sha256:
@@ -342,8 +428,11 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "bundled_model": model_dir is not None,
                     "bundled_ocr": ocr_dir is not None,
                     "files": files}
+        if portable_updates:
+            manifest["bundled_launcher"] = True
         if source_commit is not None:
             manifest["source_commit"] = source_commit
+            manifest["source_tree"] = source_evidence["source_tree"]
         (staged / "bundle-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         # Reserve a fresh destination; never overwrite an existing installation.
@@ -375,11 +464,18 @@ def main():
                         help="Optional explicitly built unsigned ResearchLibrary.exe")
     parser.add_argument("--native-launcher-sha256",
                         help="Expected SHA256 from this launcher's build and native process evidence")
+    parser.add_argument("--portable-updates", action="store_true",
+                        help="Seal reviewed portable child ownership; requires matching launcher evidence")
+    parser.add_argument("--native-launcher-build", type=Path)
+    parser.add_argument("--native-launcher-probe", type=Path)
     args = parser.parse_args()
     print(json.dumps(build_bundle(args.wheel, args.wheelhouse, args.lock, args.output,
                                   args.python_archive, args.model_dir, args.model_manifest,
                                   args.sbom, args.source_commit, args.ocr_dir, args.ocr_source_archive,
-                                  args.native_launcher, args.native_launcher_sha256)))
+                                  args.native_launcher, args.native_launcher_sha256,
+                                  portable_updates=args.portable_updates,
+                                  native_launcher_build=args.native_launcher_build,
+                                  native_launcher_probe=args.native_launcher_probe)))
 
 
 if __name__ == "__main__":

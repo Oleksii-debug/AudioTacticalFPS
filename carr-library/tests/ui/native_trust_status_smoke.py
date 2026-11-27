@@ -55,6 +55,8 @@ def _run(args):
             errors.append(traceback.format_exc())
             return False
     app = ProbeApp(False)
+    # Phoenix may return before queued work when no native top-level exists.
+    loop_owner = wx.Frame(None, title='Signed client probe lifetime')
     checks = []
     def check(name, condition):
         if not condition:
@@ -72,6 +74,7 @@ def _run(args):
             self.value = replacement
     def exercise():
         try:
+            check('Actual wx main loop is active', app.IsMainLoopRunning())
             with TemporaryDirectory(prefix='carr-trusted-native-') as temporary:
                 root = Path(temporary)
                 frame = DesktopFrame(LibraryApp(root / 'library'))
@@ -108,7 +111,8 @@ def _run(args):
                           and bool(default.text.GetWindowStyleFlag() & wx.TE_READONLY)
                           and bool(default.text.GetWindowStyleFlag() & wx.TE_MULTILINE))
                     check('Private default shows perpetual operation and no fake authority actions',
-                          'Private perpetual' in default.text.GetValue() and not default.buttons)
+                          'Private perpetual' in default.text.GetValue()
+                          and [button.GetName() for button in default.buttons] == ['Review owner update configuration'])
                     default.Destroy()
                     for termination in ('direct', 'native_parent'):
                         owner = wx.Frame(frame, title='Synthetic signed-status owner')
@@ -132,7 +136,7 @@ def _run(args):
                         check('Native status owner deletion observed once: ' + termination,
                               not detached and events == [native_id] and not detached._alive)
                         def after_deletion():
-                            for action in (detached.on_status, detached.on_import, detached.on_refresh, detached.on_update):
+                            for action in (detached.on_status, detached.on_import, detached.on_refresh, detached.on_update, detached.on_maintenance):
                                 action()
                             delivered.append(True)
                         wx.CallAfter(after_deletion)
@@ -185,6 +189,8 @@ def _run(args):
         except BaseException:
             errors.append(traceback.format_exc())
         finally:
+            if loop_owner:
+                loop_owner.Destroy()
             app.ExitMainLoop()
     wx.CallAfter(exercise)
     app.MainLoop()

@@ -88,6 +88,9 @@ class Control:
             return -1
         return sum(count(line) + 2 for line in lines[:row]) + column
 
+    def GetLastPosition(self):
+        return len(self.value.replace('\n', '\r\n').encode('utf-16-le')) // 2
+
     def GetRange(self, start, end):
         native = self.value.replace('\n', '\r\n').encode('utf-16-le')
         return native[start * 2:end * 2].decode('utf-16-le').replace('\r\n', '\n')
@@ -314,6 +317,9 @@ def test_unavailable_native_position_keeps_chapter_and_explains_fallback(monkeyp
     def interaction(wx):
         reader = wx.named(NOTICE)
         reader.XYToPosition = lambda column, row: -1
+        # With no exact substring proof, neither coordinate nor linear
+        # candidates may claim that a source destination was reached.
+        reader.GetRange = lambda start, end: ''
         contents = wx.named('Book contents (levels and chapter destinations)')
         contents.SetSelection(1)
         contents.handlers[wx.EVT_CHOICE](None)
@@ -581,3 +587,110 @@ def test_menu_installation_is_idempotent_and_binds_keyboard_command(monkeypatch)
     assert install_ebook_actions(frame) is first
     menu.Append.assert_called_once_with(wx.ID_ANY, 'Read electronic book contents\tCtrl+Shift+O')
     assert frame.Bind.call_args.args[1] == first.open
+
+
+class WrappedMSWText:
+    """MSW edit coordinates: visual lines, UTF-16 units, canonical GetRange.
+
+    This models the documented EM_LINEINDEX/EM_LINELENGTH coordinate boundary,
+    not a native Windows execution. Soft wrapping never changes stored bytes.
+    """
+    def __init__(self, raw, *, columns, newline):
+        self.raw = raw
+        self.native = raw.replace('\n', newline).encode('utf-16-le')
+        self.selection = (0, 0)
+        self.shown = None
+        self.physical = []
+        position = 0
+        for number, line in enumerate(raw.split('\n')):
+            start, used = position, 0
+            for character in line:
+                size = len(character.encode('utf-16-le')) // 2
+                if used and used + size > columns:
+                    self.physical.append((start, used))
+                    start, used = position, 0
+                position += size
+                used += size
+            self.physical.append((start, used))
+            if number < raw.count('\n'):
+                position += len(newline)
+
+    def GetValue(self):
+        return self.raw
+
+    def GetLastPosition(self):
+        return len(self.native) // 2
+
+    def XYToPosition(self, column, row):
+        if not 0 <= row < len(self.physical):
+            return -1
+        start, width = self.physical[row]
+        return start + column if 0 <= column <= width else -1
+
+    def GetRange(self, start, end):
+        return self.native[start * 2:end * 2].decode('utf-16-le').replace(
+            '\r\n', '\n').replace('\r', '\n')
+
+    def SetSelection(self, start, end):
+        assert 0 <= start <= end <= self.GetLastPosition()
+        self.selection = start, end
+
+    def ShowPosition(self, position):
+        self.shown = position
+
+
+@pytest.mark.parametrize('columns', [5, 11])
+@pytest.mark.parametrize('newline', ['\r\n', '\n'])
+def test_recorded_overlay_highlight_uses_exact_source_despite_native_soft_wrapping(columns, newline):
+    from carr_library.ui.ebook_audio_dialog import EbookAudioDialog
+
+    raw = 'A long 😀 heading wraps without modifying source.\nExact α 😀 source & words.\nAfterward.'
+    expected = 'Exact α 😀 source & words.'
+    start = raw.index(expected)
+    control = WrappedMSWText(raw, columns=columns, newline=newline)
+    # This is the former source-row/visual-row mismatch, not a text mutation.
+    wrong = control.XYToPosition(0, raw[:start].count('\n'))
+    assert wrong >= 0 and control.GetRange(0, wrong) != raw[:start]
+    owner = object.__new__(EbookAudioDialog)
+    owner.text = control
+    owner.transport = SimpleNamespace(index=0)
+    owner.session = SimpleNamespace(page=SimpleNamespace(raw_text=raw),
+        chapter=SimpleNamespace(cues=(SimpleNamespace(start=start, end=start + len(expected)),)))
+    owner._highlight()
+    assert control.GetRange(*control.selection) == expected
+    assert control.GetRange(0, control.selection[0]) == raw[:start]
+    assert control.GetRange(control.selection[1], control.GetLastPosition()) == raw[start + len(expected):]
+    assert control.shown == control.selection[0]
+    assert control.GetValue() == raw
+    # Resizing changes visual rows only, never the admitted absolute selection.
+    other = WrappedMSWText(raw, columns=columns + 3, newline=newline)
+    assert native_position(other, raw, start) == control.selection[0]
+
+
+@pytest.mark.parametrize('newline', ['\r\n', '\n'])
+def test_wrapped_native_positions_reject_partial_utf16_and_half_newline_boundaries(newline):
+    raw = '😀 α\nExact 😀 end.\n'
+    control = WrappedMSWText(raw, columns=3, newline=newline)
+    for offset in range(len(raw) + 1):
+        position = native_position(control, raw, offset)
+        assert control.GetRange(0, position) == raw[:offset]
+        assert control.GetRange(position, control.GetLastPosition()) == raw[offset:]
+        if offset and raw[offset - 1] == '\n':
+            # Prefix normalization alone also accepts the CR-only boundary on
+            # MSW. The suffix must prove that the native LF was consumed too.
+            assert control.GetRange(position, control.GetLastPosition()) == raw[offset:]
+
+
+def test_native_mapping_cannot_accept_a_matching_prefix_with_changed_suffix():
+    raw = 'Exact α 😀 source & words.\nUnchanged tail.'
+    control = WrappedMSWText(raw, columns=5, newline='\r\n')
+    actual = control.GetRange
+    offset = raw.index('source')
+    prefix = raw[:offset]
+    def altered(start, end):
+        value = actual(start, end)
+        return value if start == 0 else value + 'changed'
+    control.GetRange = altered
+    with pytest.raises(ValueError, match='exact extracted-text position'):
+        native_position(control, raw, offset)
+    assert control.selection == (0, 0) and control.GetValue() == raw

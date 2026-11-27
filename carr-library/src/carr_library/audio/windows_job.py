@@ -75,8 +75,14 @@ def _kernel():
         'CreateProcessW': ([ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_void_p,
                            ctypes.c_void_p, BOOL, DWORD, ctypes.c_void_p,
                            ctypes.c_wchar_p, ctypes.c_void_p, ctypes.POINTER(_ProcessInfo)], BOOL),
+        'AssignProcessToJobObject': ([HANDLE, HANDLE], BOOL),
+        'ResumeThread': ([HANDLE], DWORD),
         'WaitForSingleObject': ([HANDLE, DWORD], DWORD),
         'GetExitCodeProcess': ([HANDLE, ctypes.POINTER(DWORD)], BOOL),
+        'OpenProcess': ([DWORD, BOOL, DWORD], HANDLE),
+        'GetProcessId': ([HANDLE], DWORD),
+        'IsProcessInJob': ([HANDLE, HANDLE, ctypes.POINTER(BOOL)], BOOL),
+        'TerminateProcess': ([HANDLE, DWORD], BOOL),
         'TerminateJobObject': ([HANDLE, DWORD], BOOL),
         'CloseHandle': ([HANDLE], BOOL),
     }
@@ -84,6 +90,105 @@ def _kernel():
         function = getattr(api, name)
         function.argtypes, function.restype = arguments, result
     return api
+
+
+class _ProcessIds(ctypes.Structure):
+    _fields_ = [('assigned', DWORD), ('count', DWORD),
+                ('identities', SIZE_T * 256)]
+
+
+def _stop_and_wait_members(kernel, job, retained, *, process=None, deadline=None):
+    """Stop the same owned job and confirm exact process-object termination.
+
+    Job accounting and an empty PID list alone do not signal process objects.
+    Reuse the lifetime guardian's bounded member enumeration, retaining opened
+    handles across failed cleanup so a retry can still wait for the same objects.
+    No bulk job termination precedes handle capture.
+    """
+    if deadline is None:
+        deadline = time.monotonic() + 5
+
+    def error():
+        return ctypes.WinError(ctypes.get_last_error())
+
+    def members():
+        value = _ProcessIds()
+        if not kernel.QueryInformationJobObject(
+                job, 3, ctypes.byref(value), ctypes.sizeof(value), None):
+            raise error()
+        if value.assigned > 256 or value.count > 256 or value.count < value.assigned:
+            raise OSError('The owned process tree exceeds its cleanup allowance.')
+        return tuple(value.identities[:value.count])
+
+    def status(value, milliseconds=0):
+        result = kernel.WaitForSingleObject(value, milliseconds)
+        if result not in (0, 258):
+            raise error()
+        return result
+
+    # An opened handle whose membership query failed must only be released.
+    # It must never become authority to stop an unrelated process on retry.
+    for identity, (value, verified) in tuple(retained.items()):
+        if not verified:
+            if not kernel.CloseHandle(value):
+                raise error()
+            del retained[identity]
+
+    borrowed = {}
+    if process is not None:
+        identity = kernel.GetProcessId(process)
+        if not identity:
+            raise error()
+        # The caller owns this exact creation/assignment handle. Borrow it
+        # even after its exit; membership re-query is only for newly opened PIDs.
+        borrowed[identity] = process
+
+    stop_errors = {}
+    while True:
+        if time.monotonic() >= deadline:
+            raise TimeoutError('Owned process cleanup exceeded its time allowance.')
+        handles = {identity: value for identity, (value, verified) in retained.items()
+                   if verified}
+        handles.update(borrowed)
+        for identity in members():
+            if identity in handles:
+                continue
+            if len(handles) >= 256:
+                raise OSError('The owned process tree exceeds its cleanup allowance.')
+            value = kernel.OpenProcess(0x00100000 | 0x1000 | 0x0001, False, identity)
+            if not value:
+                if ctypes.get_last_error() == 87:
+                    continue
+                raise error()
+            retained[identity] = (value, False)
+            member = BOOL()
+            if not kernel.IsProcessInJob(value, job, ctypes.byref(member)):
+                raise error()
+            if not member.value:
+                raise OSError('Owned process identity changed during cleanup.')
+            retained[identity] = (value, True)
+            handles[identity] = value
+
+        for value in handles.values():
+            if status(value) == 258 and not kernel.TerminateProcess(value, 1):
+                # A concurrent exit can refuse another stop before signaling.
+                # Only the exact-handle wait below can confirm completion.
+                stop_errors[value] = ctypes.get_last_error()
+        for value in handles.values():
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or status(value, max(1, int(remaining * 1000))) != 0:
+                detail = (' (WinError ' + str(stop_errors[value]) + ')'
+                          if value in stop_errors else '')
+                raise TimeoutError('Owned process termination remains unconfirmed.' + detail)
+        if all(identity in handles and status(handles[identity]) == 0
+               for identity in members()):
+            # A failed close retains that exact handle, plus every not-yet-
+            # released handle. The caller continues to own the original job.
+            for identity, (value, _verified) in tuple(retained.items()):
+                if not kernel.CloseHandle(value):
+                    raise error()
+                del retained[identity]
+            return
 
 
 class JobProcess:
@@ -96,6 +201,7 @@ class JobProcess:
         self._api, self._process, self._job = _kernel(), _ProcessInfo(), None
         self.stdin = self.stdout = self.stderr = None
         self._cleanup_lock = threading.Lock()
+        self._member_handles = {}
         attributes, initialized, descriptors = None, False, []
         cleanup_deferred = False
         try:
@@ -218,8 +324,16 @@ class JobProcess:
         return self.poll()
 
     def terminate(self):
-        if self._job and not self._api.TerminateJobObject(self._job, 1):
-            raise ctypes.WinError(ctypes.get_last_error())
+        # Do not erase discoverable descendants with TerminateJobObject before
+        # retaining their process handles. Use the same bounded drain as close.
+        if not self._cleanup_lock.acquire(blocking=False):
+            raise RuntimeError('Audio process cleanup is already in progress.')
+        try:
+            if self._job:
+                _stop_and_wait_members(self._api, self._job, self._member_handles,
+                                      process=self._process.hProcess or None)
+        finally:
+            self._cleanup_lock.release()
 
     kill = terminate
 
@@ -240,9 +354,13 @@ class JobProcess:
             raise RuntimeError('Audio process cleanup is already in progress.')
         deadline = time.monotonic() + 5
         try:
-            if self._job and self._active_processes():
-                if not self._api.TerminateJobObject(self._job, 1):
-                    raise ctypes.WinError(ctypes.get_last_error())
+            if self._job:
+                try:
+                    _stop_and_wait_members(self._api, self._job, self._member_handles,
+                                          process=self._process.hProcess or None,
+                                          deadline=deadline)
+                except TimeoutError as error:
+                    raise subprocess.TimeoutExpired(self.args, 5) from error
             if self._process.hProcess:
                 timeout = max(0, min(5000, int((deadline - time.monotonic()) * 1000)))
                 outcome = self._api.WaitForSingleObject(self._process.hProcess, timeout)
@@ -262,13 +380,64 @@ class JobProcess:
                     raise ctypes.WinError(ctypes.get_last_error())
                 self._process.hThread = None
             if self._job:
-                while self._active_processes():
-                    if time.monotonic() >= deadline:
-                        raise subprocess.TimeoutExpired(self.args, 5)
-                    time.sleep(min(.02, max(0, deadline - time.monotonic())))
                 if not self._api.CloseHandle(self._job):
                     raise ctypes.WinError(ctypes.get_last_error())
                 self._job = None
             return True
         finally:
             self._cleanup_lock.release()
+
+
+class LifetimeJob:
+    def __init__(self):
+        from types import SimpleNamespace
+        self.api = SimpleNamespace(kernel=_kernel(),
+            error=lambda: ctypes.WinError(ctypes.get_last_error()))
+        self._member_handles = {}
+        self.handle = self.api.kernel.CreateJobObjectW(None, None)
+        if not self.handle:
+            raise self.api.error()
+        limits = _ExtendedLimits()
+        limits.BasicLimitInformation.LimitFlags = 0x00002000
+        try:
+            if not self.api.kernel.SetInformationJobObject(
+                    self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
+                raise self.api.error()
+        except BaseException:
+            self.close()
+            raise
+
+    def assign(self, process):
+        if not self.api.kernel.AssignProcessToJobObject(self.handle, process):
+            raise self.api.error()
+
+    def resume(self, thread):
+        previous = self.api.kernel.ResumeThread(thread)
+        if previous == 0xFFFFFFFF:
+            raise self.api.error()
+        if previous != 1:
+            raise OSError('The local worker initial thread did not resume from its owned suspended state.')
+
+    def stop_and_wait(self, process=None):
+        """Confirm exact member exit before a caller releases an idle lease.
+
+        This is separate from close(): the existing launcher and crash cleanup
+        keep their original semantics. A bounded failure does not certify idle.
+        The caller must retain an unclean-owner receipt before releasing its
+        lease after any failure or abrupt owner death.
+        """
+        if self.handle is None:
+            raise OSError('Owned Job cleanup has already released its handle.')
+        _stop_and_wait_members(self.api.kernel, self.handle, self._member_handles,
+                              process=process)
+
+    def close(self):
+        """Retain an unconfirmed Job handle so the caller can retry cleanup."""
+        if self.handle is None:
+            return True
+        self.stop_and_wait()
+        if not self.api.kernel.CloseHandle(self.handle):
+            raise self.api.error()
+        self.handle = None
+        return True
+

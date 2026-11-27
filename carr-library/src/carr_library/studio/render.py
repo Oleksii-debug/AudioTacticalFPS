@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import threading
 import time
 from uuid import uuid4
@@ -92,7 +93,12 @@ def _output_name(title):
 
 
 class ProductionService:
-    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(), broker=None):
+    def __init__(self, directory, *, voices=None, runtime_factory=None, input_roots=(),
+                 broker=None, total_disk_bytes=32 * 1024**3):
+        """Bound retained private/output bytes independently of broker estimates."""
+        if type(total_disk_bytes) is not int or not 1024**2 <= total_disk_bytes <= 2**63 - 1:
+            raise ValueError('Total production disk budget must be an integer of at least one MiB.')
+        self.total_disk_bytes = total_disk_bytes
         self.root = local_path(directory)
         self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.projects = ProjectStore(self.root / 'projects')
@@ -241,8 +247,13 @@ class ProductionService:
                           'not a measured speech duration or hard output cap',
             'enforcement': 'cooperative admission; existing bounded worker checks still apply'}
 
+    def _check_open(self):
+        if self._closed.is_set():
+            raise RuntimeError('Production service is closed.')
+
     @property
     def voices(self):
+        self._check_open()
         return self.discover_voices()
 
     def discover_voices(self, *, cancelled=lambda: False):
@@ -294,11 +305,13 @@ class ProductionService:
         return True
 
     def create(self, text, *, title='Audio production', voice_ids=(), mode='faithful'):
+        self._check_open()
         project = parse_script(text, title=title, voice_ids=voice_ids, mode=mode)
         self.projects.save(project)
         return project
 
     def submit(self, project, destination, *, format='wav', stems=True, operation_id=None):
+        self._check_open()
         if format not in ('wav', 'flac', 'mp3', 'ogg', 'opus', 'm4a', 'm4b', 'aiff', 'wma'):
             raise ValueError('Choose a supported local audio output format.')
         if type(stems) is not bool or not isinstance(project, Project):
@@ -444,7 +457,8 @@ class ProductionService:
                              input_roots=(self.cache, *self.input_roots, *reviewed_roots), budget=budget)
 
     def run(self, job_id, *, cancelled=lambda: False, progress=None):
-        from ..audio import AudioCancelled, AudioCleanupPending, Track, MusicSpec
+        self._check_open()
+        from ..audio import AudioError, AudioCancelled, AudioCleanupPending, Track, MusicSpec
         from ..audio.cleanup import retained_state_lock
         from ..speech import SpeechSettings
         job_root = self.jobs_root / _id(job_id)
@@ -454,7 +468,7 @@ class ProductionService:
                     or state.get('recovery', {}).get('requires_output_directory') is True):
                 raise ValueError('Choose a new output directory for this restored production job first.')
             if state['status'] == 'complete':
-                self._verify_artifacts(state)
+                self._verify_artifacts(state, cancelled=cancelled)
                 return state
             project = Project.from_dict(state['project'])
             control = job_root / 'control.json'
@@ -515,10 +529,33 @@ class ProductionService:
                     raise InterruptedError('Production paused or cancelled while waiting for resources.') from exc
                 raise
             state['status'], state['error'] = 'running', ''
+            state['total_disk_bytes'] = self.total_disk_bytes
             self._save(state)
 
-            def stopping():
+            def requested_stop():
                 return self._closed.is_set() or lease.cancelled()
+
+            last_disk_check, retained = 0.0, 0
+
+            def capacity(additional=0, *, force=False, honor_cancel=True):
+                nonlocal last_disk_check, retained
+                now = time.monotonic()
+                if force or now - last_disk_check >= .2:
+                    retained = _retained_bytes((self.root, Path(state['destination'])),
+                                               requested_stop if honor_cancel else lambda: False)
+                    # A slow scan must not consume its own polling interval:
+                    # otherwise every subsequent cancel check rescans the tree.
+                    last_disk_check = time.monotonic()
+                if retained + additional > self.total_disk_bytes:
+                    raise AudioError('The total production disk budget would be exceeded. '
+                                     'Increase total_disk_bytes to resume; completed files are retained.')
+                return self.total_disk_bytes - retained - additional
+
+            def stopping():
+                if requested_stop():
+                    return True
+                capacity()
+                return False
 
             def check():
                 if stopping():
@@ -529,6 +566,27 @@ class ProductionService:
                 self._save(state)
                 if progress is not None:
                     progress(message)
+
+            def generate(path, operation):
+                remaining = capacity(65536, force=True)
+                if remaining < 4096:
+                    raise AudioError('The total production disk budget has no room for another audio step.')
+                previous_budget = runtime.budget
+                runtime.budget = replace(previous_budget,
+                    max_output_bytes=min(previous_budget.max_output_bytes, remaining))
+                try:
+                    operation(path)
+                    capacity(force=True, honor_cancel=False)
+                except AudioCleanupPending:
+                    # The existing cleanup owner still holds child handles,
+                    # staging and reservations. Leave its output path intact.
+                    raise
+                except AudioError:
+                    # Only this unaccepted fresh attempt belongs to cleanup.
+                    path.unlink(missing_ok=True)
+                    raise
+                finally:
+                    runtime.budget = previous_budget
 
             def node(kind, identity, operation, *, cached_check=None):
                 check()
@@ -553,7 +611,7 @@ class ProductionService:
                 report(f'{kind}: rendering local audio')
                 # Each attempt gets a fresh path, including recovery from corrupt cache bytes.
                 path = self.cache / (key + '-' + uuid4().hex[:10] + '.wav')
-                operation(path)
+                generate(path, operation)
                 # The provider has atomically completed a real output. Verify
                 # and receipt it before honoring cancellation of the next step,
                 # so resume cannot silently repeat accepted expensive work.
@@ -577,7 +635,7 @@ class ProductionService:
 
             roles = {role.id: role for role in project.roles}
             timeline, scene_results, stem_scenes, chapter_data = [], [], {}, []
-            clip_timeline, clip_stems = [], {}
+            clip_timeline, clip_stems, marker_timeline = [], {}, []
             offset = 0.0
             try:
                 check()
@@ -642,10 +700,13 @@ class ProductionService:
                             speech, info = node('speech', [line.text, voice_identity, asdict(settings)],
                                 speak, cached_check=verify_voice)
                             duration = round((info.duration + line.pause_after) * project.sample_rate) / project.sample_rate
-                            clip, clip_info = node('voice placement', [digest_file(speech), duration,
-                                                   role.pan, role.gain_db, project.sample_rate],
+                            placement_identity = [digest_file(speech), duration,
+                                                  role.pan, role.gain_db, project.sample_rate]
+                            if role.effects:
+                                placement_identity.append([effect.to_dict() for effect in role.effects])
+                            clip, clip_info = node('voice placement', placement_identity,
                                 lambda target, speech=speech, role=role, duration=duration:
-                                runtime.mix((Track(speech, gain_db=role.gain_db, pan=role.pan),), target,
+                                runtime.mix((Track(speech, gain_db=role.gain_db, pan=role.pan, effects=role.effects),), target,
                                             duration=duration, sample_rate=project.sample_rate, cancelled=stopping))
                             scene_lines.append({'scene': scene.id, 'line': line.id, 'role': role.id,
                                 'text': line.text, 'start': offset + cursor, 'end': offset + cursor + info.duration,
@@ -673,7 +734,8 @@ class ProductionService:
                                   if project.schema >= 2 else cue.start)
                         required_duration = max(required_duration, placed + selected)
                         track = Track(source, cue.start, cue.gain_db, cue.pan, cue.role,
-                                      cue.trim_start, cue.duration, cue.fade_in, cue.fade_out)
+                                      cue.trim_start, cue.duration, cue.fade_in, cue.fade_out,
+                                      effects=() if cue.effects_bypassed else cue.effects, routing=cue.routing)
                         cue_tracks.append(track)
                         if project.schema >= 2:
                             clip_timeline.append({'scene': scene.id, 'id': cue.id, 'role': cue.role, 'title': cue.title,
@@ -718,10 +780,15 @@ class ProductionService:
                                 sample_rate=project.sample_rate, cancelled=stopping))[0]
                         tracks.append(Track(music, gain_db=scene.music.gain_db, role='music', routing='stereo'))
                     tracks.extend(cue_tracks)
-                    final_scene, final_info = node('scene mix',
-                        {'tracks': [track_identity(t) for t in tracks], 'sample_rate': project.sample_rate},
+                    scene_identity = {'tracks': [track_identity(t) for t in tracks],
+                                      'sample_rate': project.sample_rate,
+                                      'selection_grid': 'resample-before-cut-v1'}
+                    if scene.effects:
+                        scene_identity['effects'] = [effect.to_dict() for effect in scene.effects]
+                    final_scene, final_info = node('scene mix', scene_identity,
                         lambda target: runtime.mix(tracks, target, sample_rate=project.sample_rate,
-                                                   duration=voice_info.duration, cancelled=stopping))
+                                                   duration=voice_info.duration, effects=scene.effects,
+                                                   cancelled=stopping))
                     scene_results.append((scene, final_scene, final_info))
                     if state['stems']:
                         for role_id in roles:
@@ -746,12 +813,25 @@ class ProductionService:
                                         sample_rate=project.sample_rate, cancelled=stopping))
                                 clip_stems.setdefault(role, {})[scene.id] = stem
                     timeline.extend(scene_lines)
+                    if project.schema >= 3:
+                        marker_timeline.extend({'scene': scene.id, 'id': item.id, 'label': item.label,
+                            'position': round(item.position * project.sample_rate) / project.sample_rate,
+                            'start': offset + round(item.position * project.sample_rate) / project.sample_rate}
+                            for item in scene.markers)
                     chapter_data.append({'id': scene.id, 'title': scene.title, 'start': offset,
                                          'end': offset + final_info.duration})
                     offset += final_info.duration
                 master, master_info = node('master assembly', [digest_file(row[1]) for row in scene_results],
                     lambda target: runtime.concatenate([row[1] for row in scene_results], target,
                         sample_rate=project.sample_rate, cancelled=stopping))
+                if any(effect.enabled for effect in project.effects):
+                    unprocessed_master = master
+                    master, master_info = node('master effects',
+                        {'source': digest_file(unprocessed_master), 'sample_rate': project.sample_rate,
+                         'effects': [effect.to_dict() for effect in project.effects]},
+                        lambda target: runtime.mix((Track(unprocessed_master, routing='stereo'),),
+                            target, duration=master_info.duration, sample_rate=project.sample_rate,
+                            effects=project.effects, cancelled=stopping))
                 output = local_path(state['destination'])
                 marker = output / 'production-owner.json'
                 if output.exists():
@@ -778,11 +858,20 @@ class ProductionService:
                         if digest_file(target) != identity:
                             raise FileExistsError('An output was changed externally; it will not be overwritten.')
                     else:
+                        def reserve_copy(size):
+                            # Output may live on another volume than the cache.
+                            required = size + runtime.budget.reserve_disk_bytes + 65536
+                            if shutil.disk_usage(target.parent).free < required:
+                                raise AudioError('Not enough output disk space to publish while preserving the configured reserve.')
+                            capacity(size + 65536, force=True)
+
+                        reserve_copy(artifact['size'])
                         temporary = target.parent / ('.pending-' + uuid4().hex)
                         try:
                             with Path(source).open('rb') as read, temporary.open('xb') as write:
                                 while block := read.read(1024 * 1024):
                                     check()
+                                    reserve_copy(len(block))
                                     write.write(block)
                                 write.flush()
                                 os.fsync(write.fileno())
@@ -798,6 +887,16 @@ class ProductionService:
 
                 publish(master, 'master.wav')
                 for index, (scene, path, info) in enumerate(scene_results, 1):
+                    if any(effect.enabled for effect in project.effects):
+                        chapter = chapter_data[index - 1]
+                        path, _ = node('mastered chapter',
+                            {'source': digest_file(master), 'start': chapter['start'],
+                             'end': chapter['end'], 'sample_rate': project.sample_rate,
+                             'selection_grid': 'resample-before-cut-v1'},
+                            lambda target, chapter=chapter: runtime.mix((Track(master, routing='stereo',
+                                trim_start=chapter['start'], duration=chapter['end'] - chapter['start']),),
+                                target, duration=chapter['end'] - chapter['start'],
+                                sample_rate=project.sample_rate, cancelled=stopping))
                     publish(path, f'chapters/{index:04d}-{_output_name(scene.title)}.wav')
                 if state['format'] != 'wav':
                     # Codec selection is delegated to the verified local runtime inventory.
@@ -823,11 +922,13 @@ class ProductionService:
                             def audiobook_warning(message):
                                 state.setdefault('warnings', []).append(str(message)[:1800])
                                 report(str(message))
-                            runtime.audiobook(master, encoded, chapters=chapter_data, title=project.title,
-                                              sample_rate=project.sample_rate, cancelled=stopping,
-                                              warning=audiobook_warning)
+                            generate(encoded, lambda target: runtime.audiobook(master, target,
+                                chapters=chapter_data, title=project.title,
+                                sample_rate=project.sample_rate, cancelled=stopping,
+                                warning=audiobook_warning))
                         else:
-                            runtime.convert(master, encoded, sample_rate=project.sample_rate, cancelled=stopping)
+                            generate(encoded, lambda target: runtime.convert(master, target,
+                                sample_rate=project.sample_rate, cancelled=stopping))
                         atomic_json(receipt, {'sha256': digest_file(encoded), 'file': encoded.name}, replace=receipt.exists())
                     publish(encoded, 'audiobook.' + state['format'])
                 for role_id, paths in stem_scenes.items():
@@ -866,6 +967,19 @@ class ProductionService:
                     metadata['clips'] = clip_timeline
                     metadata['clip_stems_notice'] = ('Clip stems align to the full master timeline. '
                         'Music stems are before ducking; recorded clips have no inferred transcript.')
+                if project.schema >= 3:
+                    metadata['effects'] = {
+                        'master': [effect.to_dict() for effect in project.effects],
+                        'roles': {role.id: [effect.to_dict() for effect in role.effects] for role in project.roles},
+                        'scenes': {scene.id: [effect.to_dict() for effect in scene.effects] for scene in project.scenes},
+                        'clips': {scene.id: {cue.id: [effect.to_dict() for effect in cue.effects]
+                                  for cue in scene.cues} for scene in project.scenes},
+                        'stems': 'Track effects are included. Scene and master effects apply only to their mixed buses.'}
+                    metadata['effects']['clip_bypass'] = {
+                        scene.id: {cue.id: cue.effects_bypassed for cue in scene.cues}
+                        for scene in project.scenes}
+                    metadata['markers'] = marker_timeline
+                    metadata['marker_notice'] = 'Authored scene annotations; not transcript alignment or source citations.'
                 from ..audio.audiobook import line_lrc
                 for name, raw in [('script.vtt', '\n'.join(subtitles).encode('utf-8')),
                                   ('script.srt', '\n'.join(srt).encode('utf-8')),
@@ -911,11 +1025,13 @@ class ProductionService:
                     exc.status_publication_error = status_error
                 raise
 
-    def _verify_artifacts(self, state):
+    def _verify_artifacts(self, state, *, cancelled=lambda: False):
+        if cancelled():
+            raise InterruptedError('Production output verification cancelled.')
         root = local_path(state['destination'], exists=True)
         for artifact in state['artifacts']:
             path = local_path(artifact['path'], root=root, exists=True)
-            if path.stat().st_size != artifact['size'] or digest_file(path) != artifact['sha256']:
+            if path.stat().st_size != artifact['size'] or digest_file(path, cancelled=cancelled) != artifact['sha256']:
                 raise ValueError('A rendered output is missing or its checksum changed.')
 
     def assistant_callback(self, arguments, output_directory, cancelled, progress):
@@ -934,6 +1050,39 @@ class ProductionService:
                 'artifacts': [item['path'] for item in result['artifacts']]}
 
 
+_MAX_RETAINED_ENTRIES = 1_000_000
+
+
+def _retained_bytes(roots, cancelled):
+    """Count disjoint private/output trees without reading waveforms or links."""
+    pending, total = list(roots), 0
+    counted = 0
+    while pending:
+        if cancelled():
+            raise InterruptedError('Production disk accounting cancelled.')
+        path = pending.pop()
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise ValueError('Production disk accounting cannot follow links or reparse points.')
+        if stat.S_ISDIR(info.st_mode):
+            with os.scandir(path) as entries:
+                for entry in entries:
+                    if cancelled():
+                        raise InterruptedError('Production disk accounting cancelled.')
+                    counted += 1
+                    if counted > _MAX_RETAINED_ENTRIES:
+                        raise ValueError('Production disk accounting exceeds its entry limit.')
+                    pending.append(Path(entry.path))
+        elif stat.S_ISREG(info.st_mode):
+            total += info.st_size
+        else:
+            raise ValueError('Production state contains an unsupported special file.')
+    return total
+
+
 def json_safe(value):
     if isinstance(value, dict):
         return {str(k): json_safe(v) for k, v in value.items()}
@@ -947,7 +1096,8 @@ def json_safe(value):
 
 
 def track_identity(track):
-    return {'sha256': digest_file(track.path), 'start': track.start, 'gain_db': track.gain_db,
+    return {'selection_grid': 'resample-before-cut-v1',
+            'sha256': digest_file(track.path), 'start': track.start, 'gain_db': track.gain_db,
             'pan': track.pan, 'role': track.role, 'routing': track.routing,
             'trim_start': track.trim_start, 'duration': track.duration,
             'fade_in': track.fade_in, 'fade_out': track.fade_out,

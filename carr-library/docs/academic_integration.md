@@ -3,9 +3,11 @@
 The `carr_library.academic_integration` package formats actual CSL JSON references
 with a pinned, unmodified **citeproc-js** processor. It creates in-text citations,
 numbered citations, note citations and bibliographies. It does not approximate
-these formats with handwritten templates. The local processor needs an installed
-**Node.js 18 or newer** executable; use an administrator-supported current Node
-runtime. CARR neither downloads Node nor runs npm during citation formatting.
+these formats with handwritten templates. Both the current style workflow and
+historical DOCX regeneration use the same installed **QuickJS** executor through
+`quickjs-ng`. Formatting performs no runtime download and requires no Node or npm
+installation. Historical documents keep their exact pinned processor/style
+resource profile; sharing the executor does not rewrite that provenance.
 
 The existing Python `python-docx` dependency creates editable DOCX output. There
 is no Python `citeproc-py` production dependency. Evaluation of that engine found
@@ -70,7 +72,6 @@ result = render_citations(
                          locator_verified=True),),
         id="claim-4-citation",
     )],
-    # node_path=r"C:\Program Files\nodejs\node.exe",  # Optional explicit local runtime.
     cancelled=lambda: False,
 )
 print(result.citations[0].text)
@@ -127,15 +128,16 @@ macros, recursive macros and excessive macro depth are rejected. lxml does not
 resolve network resources. JavaScript code is never constructed from style XML
 or reference text.
 
-Default operation bounds are 1,000 references, 5,000 clusters, 100 citation items
-per cluster, 16 MB of input/output, a 256 MB Node heap and a 30-second overall
-deadline (configurable up to 60 seconds). Parent cancellation terminates the
-worker. Fixed argv is passed without a shell. `NODE_OPTIONS` and environment
-preload settings are excluded. Node's VM receives only JSON data and the pinned
-processor, with dynamic string-code generation disabled; `process`, `require`,
-filesystem and networking objects are not exposed to it. This is a constrained
-data-processing design with process resource limits, not a claim that Node VM
-is a general hostile-JavaScript security sandbox.
+Default bounds for this historical-document API are 1,000 references, 5,000
+clusters, 100 citation items per cluster, 16 MB input/output, 256 MiB QuickJS
+memory, a 4 MiB JavaScript stack and 30 seconds of CPU time (configurable up to
+60 seconds here). The shared executor checks cancellation before and after
+bounded evaluation; it does not claim immediate interruption in the middle of
+a JavaScript instruction. Only JSON data and verified local resource bytes enter
+the context. No Python callback, filesystem, process or network API is installed.
+The legacy `node_path` argument rejects an explicitly supplied runtime rather
+than silently ignoring the caller's choice. Historical `csl_worker.cjs` bytes
+remain inert package resources; no competing Node worker is launched.
 
 Errors expose short operational explanations rather than raw processor traces
 or source passages. Returned HTML retains only a small formatting allowlist;
@@ -283,21 +285,22 @@ newlines may have been normalized on retrieval. UI and exported documents show
 `result.attribution`, crediting citeproc-js/Frank Bennett and the
 [Citation Style Language project](https://citationstyles.org/).
 
-Package data must include `UPSTREAM.json`, `csl_worker.cjs`, `styles/*.csl`,
-`locales/*.xml`, and **all** `vendor/*` files. Python code also needs the existing
-`python-docx`/lxml runtime dependencies. A separate Node installer/runtime is an
-explicit deployment prerequisite; app startup and the offline library remain
-available when citation formatting cannot find it.
+Package data retains `UPSTREAM.json`, historical `csl_worker.cjs`, `styles/*.csl`,
+`locales/*.xml`, and **all** `vendor/*` files for original provenance and document
+regeneration. The installed dependency closure includes `quickjs-ng`,
+`python-docx` and lxml with their exact notices. Missing QuickJS produces a clear
+formatting error; library startup performs no runtime acquisition or fallback.
 
 ## Acceptance evidence
 
-Run `python -m pytest -q tests/academic_integration` with actual Node installed.
+Run `python -m pytest -q tests/academic_integration` with the declared academic
+runtime installed. These tests exercise actual QuickJS evaluation.
 Tests run the vendored processor for every bundled style and verify actual
 names, dates, publication page extents, verified pinpoints, disambiguation,
 numeric ordering, repeated notes, Ukrainian/Slovak locales, native DOCX endnote
 parts, editable italic runs, stable metadata roundtrip and original preservation.
 Additional checks cover XML/macro rejection, asset integrity, cancellation,
-timeout, runtime preload isolation, path safety and corruption handling.
+bounded evaluation, data/code separation, path safety and corruption handling.
 Online adapter tests exercise the explicit transport boundary without querying
 a user's account or claiming a real external lookup. Native Windows Word/NVDA
 interaction remains a separate platform acceptance check.

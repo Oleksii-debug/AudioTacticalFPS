@@ -28,6 +28,15 @@ def callbacks(filename, window_name, names, values, *, globals_=None, cleanup=Fa
         names.update(('detach_reader', 'transfer_owner', 'release_owner'))
         values = dict(values)
         values.setdefault('appearance', None)
+    if filename == 'studio_dialog.py':
+        values = dict(values)
+        values.setdefault('owned_progress_voices', set())
+        values.setdefault('cleanup_retry_registered', False)
+        if names.intersection(('release_service', 'select_progress_voice')):
+            names.update(('retire_progress_voice', 'release_service'))
+            values.setdefault('frame', SimpleNamespace(_closing=True))
+            values.setdefault('wx', SimpleNamespace(CallAfter=lambda callback: None))
+            values.setdefault('service', SimpleNamespace(close=lambda: None))
     definitions = [node for node in window.body
                    if isinstance(node, ast.FunctionDef) and node.name in names]
     assert {node.name for node in definitions} == set(names)

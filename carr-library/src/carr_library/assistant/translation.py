@@ -132,6 +132,19 @@ def _assemble_translation(chunks, receipts):
     return ''.join(parts)
 
 
+def _preview_fields(profile, value, parts, source, target, *, rate_per_million=None, glossary=None):
+    """Pure existing review fields; no language fetch, account or provider call."""
+    estimate = None
+    if rate_per_million not in (None, ''):
+        estimate = str((money(rate_per_million) * len(value) / Decimal(1_000_000)).quantize(Decimal('0.000001'), rounding=ROUND_UP))
+    return {'source_sha256': _hash(value), 'characters': len(value),
+        'calls': sum(bool(part.strip()) for part in parts), 'source': source, 'target': target,
+        'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
+        'glossary': glossary, 'glossary_matching': 'case sensitive' if glossary else None,
+        'estimated_cost': estimate, 'estimate_basis': 'owner-entered rate per million characters; not a provider quote',
+        'preservation': 'plain text derivative; document formatting is not retained'}
+
+
 class TranslationService:
     def __init__(self, directory, *, gateway=None, library=None):
         self.directory = local_path(directory, must_exist=False)
@@ -313,17 +326,10 @@ class TranslationService:
             raise ValueError('The chosen source or target is not declared supported by this provider model.')
         if source == target:
             raise ValueError('Choose a target language different from the source.')
-        estimate = None
-        if rate_per_million not in (None, ''):
-            estimate = str((money(rate_per_million) * len(value) / Decimal(1_000_000)).quantize(Decimal('0.000001'), rounding=ROUND_UP))
-        return {'source_sha256': _hash(value), 'characters': len(value),
-            'calls': sum(bool(part.strip()) for part in parts), 'source': source, 'target': target,
-            'provider_adapter': profile.adapter, 'endpoint': profile.endpoint, 'model': profile.model,
-            'glossary': glossary, 'glossary_matching': 'case sensitive' if glossary else None,
-            'estimated_cost': estimate, 'estimate_basis': 'owner-entered rate per million characters; not a provider quote',
-            'preservation': 'plain text derivative; document formatting is not retained'}
+        return _preview_fields(profile, value, parts, source, target,
+                               rate_per_million=rate_per_million, glossary=glossary)
 
-    def submit(self, profile, value, source, target, *, title='Translation', authorization,
+    def _prepared_job(self, profile, value, source, target, *, title='Translation', authorization,
                per_call_cost, glossary=None, source_document=None, topic=None,
                cancelled=lambda: False, guard=lambda: None):
         preview = self.preview(profile, value, source, target, glossary=glossary)
@@ -352,6 +358,15 @@ class TranslationService:
         elif topic is not None:
             raise ValueError('A source topic requires a bound library document.')
         self._admission_budget(job)
+        return job
+
+    def submit(self, profile, value, source, target, *, title='Translation', authorization,
+               per_call_cost, glossary=None, source_document=None, topic=None,
+               cancelled=lambda: False, guard=lambda: None):
+        job = self._prepared_job(profile, value, source, target, title=title,
+            authorization=authorization, per_call_cost=per_call_cost, glossary=glossary,
+            source_document=source_document, topic=topic, cancelled=cancelled, guard=guard)
+        identity = job['id']
         desk = self._source_context(job, cancelled=cancelled, guard=guard)
         with exclusive_writer(self.library.root) if desk is not None else nullcontext():
             self._source_current(desk, cancelled=cancelled, guard=guard)
@@ -400,8 +415,11 @@ class TranslationService:
                 raise ValueError('A completed translation chunk is damaged.')
             if advanced and job['chunks'][index].strip():
                 expected_glossary = {'glossary': job['glossary'], 'ignoreCase': False} if job.get('glossary') else None
+                observed_glossary = row.get('glossary_config')
                 if (row.get('reported_model') != google_v3_parent(profile.endpoint) + '/models/' + profile.model
-                        or row.get('glossary_config') != expected_glossary):
+                        or 'glossary_config' not in row or observed_glossary != expected_glossary
+                        or (expected_glossary is not None and (type(observed_glossary) is not dict
+                                                              or observed_glossary.get('ignoreCase') is not False))):
                     raise ValueError('The Advanced v3 receipt has no verified model/glossary provenance.')
             if requests[index] is None:
                 if (row['text'] != job['chunks'][index] or row.get('request_sha256') is not None
@@ -447,9 +465,10 @@ class TranslationService:
         return self._load(identity)
 
     def resume(self, identity, *, cancelled=lambda: False, progress=lambda *args: None,
-               guard=lambda: None):
+               guard=lambda: None, before_resume=lambda job: None):
         with self.jobs.lock(identity):
             job = self._load(identity)
+            before_resume(job)
             profile = ProviderProfile(**job['profile'])
             authorization = Authorization(**job['authorization'])
             total = len(job['chunks'])

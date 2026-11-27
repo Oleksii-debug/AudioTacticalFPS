@@ -363,3 +363,37 @@ def test_dictionary_roundtrip_no_automatic_execution(tmp_path):
 def test_invalid_source_unicode_rejected(raw):
     with pytest.raises(ValueError):
         ReadingDocument(raw)
+
+
+def test_regex_child_preserves_runtime_bytecode_and_unicode_protocol(tmp_path, monkeypatch):
+    """Use the real bounded regex worker after importing a stale cache fixture."""
+    import py_compile
+    from carr_library.speech import reading
+
+    worker = Path(reading.__file__).with_name('regex_worker.py')
+    sealed = tmp_path / 'sealed-runtime'
+    sealed.mkdir()
+    module = sealed / 'bytecode_probe.py'
+    module.write_text("marker = 'old'\n", encoding='utf-8')
+    py_compile.compile(str(module), doraise=True,
+                       invalidation_mode=py_compile.PycInvalidationMode.TIMESTAMP)
+    module.write_text("marker = 'current approved source'\n", encoding='utf-8')
+    before = {path.relative_to(sealed): path.read_bytes()
+              for path in sealed.rglob('*') if path.is_file()}
+    helper = tmp_path / 'regex_worker.py'
+    helper.write_text(
+        "import runpy, sys\n"
+        f"sys.path.insert(0, {str(sealed)!r})\n"
+        "import bytecode_probe\n"
+        "assert bytecode_probe.marker == 'current approved source'\n"
+        f"runpy.run_path({str(worker)!r}, run_name='__main__')\n",
+        encoding='utf-8')
+    monkeypatch.setattr(reading, '__file__', str(tmp_path / 'reading.py'))
+    monkeypatch.setenv('PYTHONDONTWRITEBYTECODE', '1')
+    copy = ReadingDocument('Назва 12 кг.')
+    copy.apply_pronunciations(
+        [PronunciationRule(r'(\d+) кг', r'\1 кілограмів', regex=True)], timeout=10)
+    assert copy.text == 'Назва 12 кілограмів.'
+    assert copy.source_text == 'Назва 12 кг.'
+    assert {path.relative_to(sealed): path.read_bytes()
+            for path in sealed.rglob('*') if path.is_file()} == before

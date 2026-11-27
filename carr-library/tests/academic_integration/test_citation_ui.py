@@ -1,4 +1,4 @@
-"""Headless native-action controllers against real SQLite, Node CSL and DOCX."""
+"""Headless native-action controllers against real SQLite, embedded CSL and DOCX."""
 from dataclasses import replace
 from concurrent.futures import Future
 import json
@@ -375,7 +375,7 @@ def held_native_task(prepared, tmp_path, monkeypatch, *, regenerate=False):
     dialog.executor = Executor()
     if regenerate:
         dialog.document = controller.inspect_docx(source)
-        dialog.style_path = dialog.node = SimpleNamespace(GetValue=lambda: '')
+        dialog.style_path = SimpleNamespace(GetValue=lambda: '')
         invoke = dialog.regenerate
     else:
         dialog.snapshot = controller.load()

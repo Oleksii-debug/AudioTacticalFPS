@@ -71,16 +71,19 @@ def test_authentic_legacy_restores_core_and_preserves_every_original_component_i
 
 
 @pytest.mark.parametrize('version', ['v3', 'v4', 'v3-empty'])
-def test_restored_legacy_archive_survives_v5_rebackup_without_losing_empty_originals(tmp_path, version):
+def test_restored_legacy_archive_survives_common_rebackup_without_losing_empty_originals(tmp_path, version):
     source, data = archive(tmp_path, version)
     destination = restore_backup(source, tmp_path / 'first', data['manifest_sha256'])
     app = LibraryApp(destination)
     complete = tmp_path / 'v5'
     digest = create_backup(app, complete)
     value = json.loads((complete / 'manifest.json').read_text())
-    assert value['version'] == 5
-    assert value['extensions']['legacy_archives'] == [dict(manifest_sha256=data['manifest_sha256'],
-        format='legacy-recovery-v4' if version == 'v4' else 'legacy-sidecars-v3', status='inert')]
+    assert value['version'] == 4
+    prefix = 'legacy-backups/' + data['manifest_sha256'] + '/'
+    assert {row['filename'].removeprefix(prefix) for row in value['sidecars']
+            if row['filename'].startswith(prefix)} == set(file_bytes(source))
+    notice, = recovery_notices(destination)
+    assert notice['archive_status'] == 'inert'
     final = restore_backup(complete, tmp_path / 'second', digest)
     assert file_bytes(final / 'legacy-backups' / data['manifest_sha256']) == file_bytes(source)
     assert (final / 'legacy-backups' / data['manifest_sha256'] / 'originals').is_dir()
@@ -93,8 +96,8 @@ def test_workspace_scope_omits_independent_inert_legacy_archives(tmp_path):
     backup = tmp_path / 'scoped'
     digest = create_backup(app, backup, authorized_workspaces={data['workspace']})
     value = json.loads((backup / 'manifest.json').read_text())
-    assert value['extensions']['legacy_archives'] == []
-    assert not (backup / 'extensions/legacy-backups').exists()
+    assert not any(row['filename'].startswith('legacy-backups/') for row in value['sidecars'])
+    assert not (backup / 'legacy-backups').exists()
     destination = restore_backup(backup, tmp_path / 'scoped-restored', digest)
     assert not (destination / 'legacy-backups').exists()
 

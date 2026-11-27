@@ -25,23 +25,30 @@ def local_path(value, *, root=None, exists=False):
     path = Path(value).absolute()
     if str(value).startswith(('//', '\\\\')) or '\x00' in str(value):
         raise ValueError('Choose a local path.')
-    for parent in reversed((path, *path.parents)):
-        if os.path.lexists(parent):
-            if parent != path or parent.is_dir():
-                regular(parent, directory=True)
-            else:
-                regular(parent)
+    for parent in reversed(path.parents):
+        try:
+            regular(parent, directory=True)
+        except FileNotFoundError:
+            # Preserve the existing missing-ancestor policy; strict resolution
+            # below still rejects an absent requested path when exists=True.
+            continue
+    if os.path.lexists(path):
+        regular(path, directory=path.is_dir())
     path = path.resolve(strict=exists)
     if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):
         raise ValueError('The path is outside the selected directory.')
     return path
 
 
-def digest_file(path):
+def digest_file(path, *, cancelled=lambda: False):
     regular(path)
     digest = sha256()
     with Path(path).open('rb') as stream:
+        if cancelled():
+            raise InterruptedError('File verification cancelled.')
         while block := stream.read(1024 * 1024):
+            if cancelled():
+                raise InterruptedError('File verification cancelled.')
             digest.update(block)
     return digest.hexdigest()
 
@@ -71,7 +78,16 @@ def _open_json_file(path):
     filesystems without that operation retain the bounded replacement retry.
     """
     if os.name != 'nt':
-        return path.open('rb')
+        # Refuse a substituted FIFO before any potentially blocking read.
+        # The shared reader validates the opened descriptor before consuming it.
+        descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK
+                             | getattr(os, 'O_NOFOLLOW', 0)
+                             | getattr(os, 'O_CLOEXEC', 0))
+        try:
+            return os.fdopen(descriptor, 'rb')
+        except BaseException:
+            os.close(descriptor)
+            raise
     import ctypes
     from ctypes import wintypes
     import msvcrt
@@ -100,13 +116,15 @@ def _open_json_file(path):
         raise
 
 
-def read_json(path):
+def read_json(path, *, maximum=MAX_JSON_BYTES):
+    if type(maximum) is not int or not 0 < maximum <= MAX_JSON_BYTES:
+        raise ValueError('Choose a positive JSON byte budget within the shared limit.')
     # An atomic writer can win between lstat and open. Retry that race only;
     # linked paths and invalid opened objects still fail before reading bytes.
     for _ in range(8):
         path = local_path(path, exists=True)
         before = regular(path)
-        if before.st_size > MAX_JSON_BYTES:
+        if before.st_size > maximum:
             raise ValueError('State exceeds its configured JSON budget.')
         with _open_json_file(path) as stream:
             opened = os.fstat(stream.fileno())
@@ -120,13 +138,13 @@ def read_json(path):
                 continue
             # Recheck ancestors after opening, before consuming the bound handle.
             local_path(path, exists=True)
-            if opened.st_size > MAX_JSON_BYTES:
+            if opened.st_size > maximum:
                 raise ValueError('State exceeds its configured JSON budget.')
-            raw = stream.read(MAX_JSON_BYTES + 1)
+            raw = stream.read(maximum + 1)
         break
     else:
         raise ValueError('State changed repeatedly while opening; retry the operation.')
-    if len(raw) > MAX_JSON_BYTES:
+    if len(raw) > maximum:
         raise ValueError('State grew beyond its JSON budget.')
     return json.loads(raw.decode('utf-8'), object_pairs_hook=_unique,
                       parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))

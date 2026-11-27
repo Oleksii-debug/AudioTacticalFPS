@@ -23,12 +23,13 @@ import wave
 import weakref
 
 from ..durable_state import atomic_json, local_path, read_json, regular, state_lock
+from ..progress import ProgressHub, ProgressState
 
-_ACTIVE = {'running', 'paused'}
+_ACTIVE = {'running', 'paused', 'cancelling'}
 _TERMINAL = {'succeeded', 'failed', 'cancelled', 'incomplete'}
 _LABELS = {'idle': 'Ready', 'running': 'In progress', 'paused': 'Paused',
            'succeeded': 'Completed', 'failed': 'Failed', 'cancelled': 'Cancelled',
-           'incomplete': 'Ended without confirmed completion'}
+           'incomplete': 'Ended without confirmed completion', 'cancelling': 'Cancellation requested'}
 
 
 def operation_outcome(result):
@@ -99,10 +100,13 @@ class ProgressEvent:
 
 
 class ProgressTracker:
-    """Thread-safe measured state; no timer guesses and no fabricated totals."""
-    def __init__(self, *, clock=time.monotonic):
+    """Legacy event vocabulary projected from the shared measured progress hub."""
+    def __init__(self, *, clock=time.monotonic, hub=None):
         self.clock = clock
-        self._lock = threading.RLock()
+        self.hub = hub if hub is not None else ProgressHub(clock=clock)
+        self._lock = self.hub._lock
+        self.task = None
+        self._revision = None
         self._event = ProgressEvent()
         self._started = self._paused_at = None
         self._paused_seconds = 0.0
@@ -111,6 +115,8 @@ class ProgressTracker:
     @property
     def event(self):
         with self._lock:
+            if self.task is not None and self.task.snapshot().revision != self._revision:
+                self._project()
             return self._event
 
     def _elapsed(self, now):
@@ -123,11 +129,44 @@ class ProgressTracker:
         self._event = replace(self._event, sequence=self._event.sequence + 1, **changes)
         return self._event
 
+    def adopt(self, task):
+        with self._lock:
+            if task is self.task:
+                return self.event
+            previous = self._event
+            self.task = task
+            self._samples.clear()
+            self._paused_at = None
+            self._paused_seconds = 0.0
+            self._event = ProgressEvent(token=previous.token + 1, sequence=previous.sequence + 1)
+            self._revision = None
+            if task is None:
+                self._started = None
+                return self._event
+            snapshot = task.snapshot()
+            self._started = snapshot.started_at
+            return self._project(eta_seconds=snapshot.eta_seconds,
+                                 elapsed_seconds=max(0.0, snapshot.updated_at - snapshot.started_at))
+
+    def _project(self, **changes):
+        snapshot = self.task.snapshot()
+        self._revision = snapshot.revision
+        state = 'incomplete' if snapshot.state == ProgressState.UNAVAILABLE else snapshot.state.value
+        values = dict(state=state, phase=snapshot.phase or snapshot.title,
+                      completed=snapshot.completed, total=snapshot.total, percent=snapshot.percent)
+        values.update(changes)
+        return self._replace(**values)
+
     def start(self, phase, total=None):
         phase = _phase(phase)
         if total is not None:
             _number(total, 'total', positive=True)
         with self._lock:
+            if self.task is not None and not self.task.snapshot().terminal:
+                self.task.unavailable('This legacy observer was superseded by a new operation.')
+            self.task = self.hub.start_measured(phase, total=total)
+            self.task.update(phase=phase)
+            self._revision = self.task.snapshot().revision
             self._started, self._paused_at, self._paused_seconds = self.clock(), None, 0.0
             self._samples.clear()
             if total is not None:
@@ -138,7 +177,8 @@ class ProgressTracker:
             return self._event
 
     def _current(self, token, *, running=False):
-        return (token is None or token == self._event.token) and self._event.state in ({'running'} if running else _ACTIVE)
+        event = self.event
+        return (token is None or token == event.token) and event.state in ({'running'} if running else _ACTIVE)
 
     def update(self, completed=None, total=None, phase=None, *, token=None):
         if completed is not None:
@@ -152,7 +192,7 @@ class ProgressTracker:
         with self._lock:
             if not self._current(token, running=True):
                 return None
-            previous = self._event
+            previous = self.event
             current_phase = phase or previous.phase
             changed = previous.total is not None and total != previous.total
             if changed and current_phase == previous.phase:
@@ -165,9 +205,6 @@ class ProgressTracker:
             if completed is not None and total is not None:
                 if not self._samples or completed > self._samples[-1][1]:
                     self._samples.append((elapsed, completed))
-                percent = min(99, math.floor(100 * completed / total))
-            else:
-                percent = None
             eta = None
             if total is not None and completed < total and len(self._samples) >= 3:
                 first, last = self._samples[0], self._samples[-1]
@@ -176,8 +213,8 @@ class ProgressTracker:
                     estimate = (total - completed) * duration / count
                     if math.isfinite(estimate) and 0 <= estimate <= 30 * 24 * 3600:
                         eta = estimate
-            return self._replace(phase=current_phase, completed=completed, total=total, percent=percent,
-                                 elapsed_seconds=elapsed, eta_seconds=eta,
+            self.task.update(completed=completed, total=total, phase=current_phase)
+            return self._project(elapsed_seconds=elapsed, eta_seconds=eta,
                                  total_changed=changed or (previous.total_changed and current_phase == previous.phase))
 
     def transition(self, state, phase=None, *, token=None):
@@ -201,11 +238,28 @@ class ProgressTracker:
                 self._samples.clear()
                 if self._event.completed is not None:
                     self._samples.append((self._elapsed(now), self._event.completed))
-            percent = 100 if state == 'succeeded' else self._event.percent
-            completed = self._event.total if state == 'succeeded' and self._event.total is not None else self._event.completed
-            return self._replace(state=state, phase=phase or self._event.phase, completed=completed,
-                                 percent=percent, eta_seconds=None, elapsed_seconds=self._elapsed(now))
-
+            if phase is not None and self.task.snapshot().state == ProgressState.RUNNING:
+                self.task.update(phase=phase)
+            message = phase or self._event.phase
+            if state == 'paused':
+                self.task.pause(message)
+            elif state == 'running':
+                self.task.resume(message)
+            elif state == 'succeeded':
+                snapshot = self.task.snapshot()
+                if snapshot.state == ProgressState.PAUSED:
+                    self.task.resume(message)
+                if snapshot.total is not None and snapshot.completed != snapshot.total:
+                    self.task.update(completed=snapshot.total)
+                self.task.succeed(durable=True, message=message)
+            elif state == 'failed':
+                self.task.fail(message)
+            elif state == 'cancelled':
+                self.task.cancelled(message)
+            else:
+                self.task.unavailable(message)
+            return self._project(phase=phase or self._event.phase, eta_seconds=None,
+                                 elapsed_seconds=self._elapsed(now))
 
 def describe_progress(event):
     parts = [_LABELS[event.state] + ': ' + event.phase + '.']
@@ -335,12 +389,19 @@ class WindowsProgressSound:
             except ImportError:
                 backend = None
         self.backend, self.available = backend, backend is not None
-        self._lock, self._thread = threading.RLock(), None
+        from ..progress_feedback import ProgressFeedback
+        from ..progress_preferences import ProgressPreferences as SharedPreferences
+        self.feedback = ProgressFeedback(SharedPreferences(), idle_exit=True)
+        self._lock = threading.RLock()
         self._muted, self.closed, self.last_error = False, False, None
         self._cancel = threading.Event()
         self._speech_provider, self._active_provider = None, None
         self._uncertain_providers = []
         self._kind = None
+
+    @property
+    def _thread(self):
+        return self.feedback._worker or self.feedback._last_worker
 
     @property
     def muted(self):
@@ -379,6 +440,7 @@ class WindowsProgressSound:
     def cancel(self):
         with self._lock:
             self._cancel.set()
+            self.feedback.suspend()
 
     def set_speech_provider(self, provider):
         if provider is not None and (not callable(getattr(provider, 'speak_progress', None))
@@ -400,10 +462,10 @@ class WindowsProgressSound:
             self._cancel = cancelled = threading.Event()
             self._kind, self._active_provider = kind, provider
 
-            def run():
+            def run(shared_cancelled):
                 try:
-                    if not self.closed and not self.muted and not cancelled.is_set():
-                        operation(cancelled.is_set)
+                    if not self.closed and not self.muted and not cancelled.is_set() and not shared_cancelled():
+                        operation(lambda: cancelled.is_set() or shared_cancelled())
                 except Exception as exc:
                     if not cancelled.is_set():
                         self.last_error = str(exc)
@@ -414,9 +476,7 @@ class WindowsProgressSound:
                                 self._uncertain_providers.append(provider)
                             self.last_error = 'The progress audio device has not confirmed silence.'
 
-            self._thread = threading.Thread(target=run, name='carr-progress-sound', daemon=True)
-            self._thread.start()
-            return True
+            return self.feedback.try_play(run, provider=provider)
 
     def play(self, percent, *, volume, state='running'):
         if not self.available or volume == 0:
@@ -455,6 +515,7 @@ class WindowsProgressSound:
     def close(self):
         self.closed = self.muted = True
         self.set_speech_provider(None)
+        self.feedback.close()
 
 
 class _AudioQuietHold:
@@ -1001,30 +1062,204 @@ class OperationProgress:
             dialog.Destroy()
 
 
+class ProgressCompatibility:
+    """Old call vocabulary over the one native panel, task hub and audio owner."""
+    def __init__(self, panel):
+        self.panel, self.frame, self.wx = panel, panel.frame, panel.wx
+        self.tracker = ProgressTracker(hub=panel.hub, clock=panel.hub._clock)
+        self._pending_lock = threading.Lock()
+        self._scheduled = False
+
+    def _sync(self):
+        if self.tracker.hub is not self.panel.hub:
+            self.tracker.hub = self.panel.hub
+            self.tracker.clock = self.panel.hub._clock
+            self.tracker._lock = self.panel.hub._lock
+            self.tracker.adopt(None)
+        self.tracker.adopt(self.panel.active_task)
+
+    @property
+    def event(self):
+        self._sync()
+        return self.tracker.event
+
+    @property
+    def closed(self):
+        return self.panel.closed
+
+    @property
+    def root(self):
+        return self.panel.store.library_root
+
+    @property
+    def speech_provider(self):
+        return self.panel.speech_provider
+
+    @property
+    def live_media_feedback(self):
+        return self.panel.media.live_feedback
+
+    @property
+    def preferences(self):
+        value = self.panel.preferences
+        return ProgressPreferences(mode='both' if value.mode == 'beep_speech' else value.mode,
+            interval_seconds=value.interval_seconds, volume=value.volume / 100,
+            quiet=value.muted, background=value.allow_background,
+            mute_during_audio=value.quiet_during_media)
+
+    @property
+    def reporting_error(self):
+        value = self.panel._reporting_failure
+        return value[2] if value is not None else None
+
+    @reporting_error.setter
+    def reporting_error(self, value):
+        if value is None:
+            self.panel._reporting_failure = None
+        else:
+            self.panel.notice = str(value)
+
+    def configure(self, preferences):
+        from decimal import Decimal
+        from ..progress_preferences import ProgressPreferences as SharedPreferences, LegacyProgressPreferences
+        if not isinstance(preferences, ProgressPreferences):
+            raise ValueError('Validated progress preferences are required.')
+        measured = Decimal(str(preferences.volume)) * 100
+        volume = int(measured) if measured == measured.to_integral_value() else float(measured)
+        policy_type = LegacyProgressPreferences if self.panel.store.legacy else SharedPreferences
+        self.panel.save_preferences(policy_type(
+            mode='beep_speech' if preferences.mode == 'both' else preferences.mode,
+            interval_seconds=preferences.interval_seconds, volume=volume,
+            muted=preferences.quiet, allow_background=preferences.background,
+            quiet_during_media=preferences.mute_during_audio))
+
+    def _refresh(self):
+        if self.closed:
+            return
+        if threading.get_ident() == self.panel.media.ui_thread:
+            self.panel.refresh()
+            return
+        with self._pending_lock:
+            if self._scheduled:
+                return
+            self._scheduled = True
+
+        def flush():
+            with self._pending_lock:
+                self._scheduled = False
+            if not self.closed:
+                self.panel.refresh()
+        self.wx.CallAfter(flush)
+
+    def start(self, phase, total=None):
+        if self.closed:
+            return None
+        self._sync()
+        value = self.tracker.start(phase, total)
+        self.panel.active_task = self.tracker.task
+        self.panel._last_revision = None
+        self.panel._reporting_failure = None
+        self._refresh()
+        return value.token
+
+    def update(self, completed=None, total=None, phase=None, *, token=None):
+        if self.closed:
+            return None
+        self._sync()
+        if completed is None and total is None and phase is not None:
+            with self.tracker._lock:
+                if not self.tracker._current(token, running=True):
+                    return None
+                self.tracker.task.update(phase=_phase(phase))
+                value = self.tracker.event
+        else:
+            value = self.tracker.update(completed, total, phase, token=token)
+        if value is not None:
+            self._refresh()
+        return value
+
+    def _transition(self, state, phase=None, *, token=None):
+        if self.closed:
+            return None
+        self._sync()
+        value = self.tracker.transition(state, phase, token=token)
+        if value is not None:
+            self._refresh()
+        return value
+
+    def pause(self, phase=None, *, token=None):
+        return self._transition('paused', phase, token=token)
+
+    def resume(self, phase=None, *, token=None):
+        return self._transition('running', phase, token=token)
+
+    def succeed(self, phase=None, *, token=None):
+        return self._transition('succeeded', phase, token=token)
+
+    def fail(self, phase=None, *, token=None):
+        return self._transition('failed', phase, token=token)
+
+    def cancel(self, phase=None, *, token=None):
+        return self._transition('cancelled', phase, token=token)
+
+    success, failed, cancelled, paused = succeed, fail, cancel, pause
+
+    def finalize(self, *, token=None):
+        if self.closed:
+            return None
+        self._sync()
+        value = self.tracker.event
+        if token is not None and token != value.token:
+            return None
+        if value.state == 'running':
+            return self._transition('incomplete', token=token)
+        self._refresh()
+        return value
+
+    def set_audio_active(self, active=True):
+        if type(active) is not bool:
+            raise ValueError('Audio activity must be boolean.')
+        self.panel.media.audio_active = active
+        self.panel.refresh_audio_state()
+
+    def reload_preferences(self):
+        from ..durable_state import local_path
+        root = local_path(self.frame.library.root, exists=True)
+        if root != local_path(self.root, exists=True):
+            return self.panel.change_root(root)
+        self.panel.feedback.suspend()
+        self.panel.preferences = self.panel._read_preferences()
+        self.panel.feedback.set_preferences(self.panel._effective_preferences(self.panel.preferences))
+        if not self.closed:
+            self.panel.mute.SetValue(self.panel.preferences.muted)
+            self._refresh()
+
+    def hold_audio(self, *, recording=False):
+        return self.panel.hold_audio(recording=recording)
+
+    def register_player(self, player):
+        return self.panel.register_player(player)
+
+    def unregister_player(self, player, *, silence_confirmed=True):
+        return self.panel.unregister_player(player, silence_confirmed=silence_confirmed)
+
+    def refresh_audio_state(self):
+        return self.panel.refresh_audio_state()
+
+    def set_speech_provider(self, provider, *, root=None):
+        return self.panel.set_speech_provider(provider, root=root)
+
+    def settings_dialog(self, event=None):
+        return self.panel.settings(event)
+
+    def query(self, event=None):
+        return self.panel.query(event)
+
+    def close(self):
+        return self.panel.close()
+
+
 def install_operation_progress(frame):
-    """Install once after normal menus and before configurable shortcuts."""
-    import wx
-    if getattr(frame, 'operation_progress', None) is not None:
-        frame.operation_progress.reload_preferences()
-        return frame.operation_progress
-    label = wx.StaticText(frame.host, label='Ready')
-    gauge = wx.Gauge(frame.host, range=100, style=wx.GA_HORIZONTAL)
-    frame.layout.Insert(1, label, 0, wx.EXPAND | wx.ALL, 4)
-    frame.layout.Insert(2, gauge, 0, wx.EXPAND | wx.ALL, 4)
-    controller = OperationProgress(frame, gauge, label)
-    frame.operation_progress = controller
-    menu = next((frame.menu_bar.GetMenu(index) for index in range(frame.menu_bar.GetMenuCount())
-                 if frame.menu_bar.GetMenuLabel(index).replace('&', '').casefold() == 'help'), None)
-    if menu is None:
-        menu = wx.Menu()
-        frame.menu_bar.Append(menu, '&Help')
-    for title, handler in [('Current operation progress\tCtrl+Alt+P', controller.query),
-                            ('Progress sound settings...', controller.settings_dialog)]:
-        item = menu.Append(wx.ID_ANY, title)
-        frame.Bind(wx.EVT_MENU, handler, item)
-    def destroy(event):
-        if event.GetEventObject() is frame:
-            controller.close()
-        event.Skip()
-    frame.Bind(wx.EVT_WINDOW_DESTROY, destroy)
-    return controller
+    """Install the shared observer once and expose the legacy call vocabulary."""
+    from .progress_panel import install_progress_panel
+    return install_progress_panel(frame).legacy

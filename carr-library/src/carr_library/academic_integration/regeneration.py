@@ -8,6 +8,7 @@ from carr_library.durable_state import local_path, regular
 from .documents import (
     CitationParagraph, _MAX_DOCUMENT, _read_citation_docx_bytes, export_citation_docx,
 )
+from .runtime_adapter import supported_processor_identity
 from .formatting import (
     CitationCancelled, CitationCluster, CitationError, CitationRequest,
     _MAX_CLUSTERS, _MAX_REFERENCES, _clusters, _identifier, _manifest, _reference, _text,
@@ -71,8 +72,10 @@ def regenerate_citation_docx(source, destination, *, references=None, citations=
     Declare source changes absent from CSL metadata in ``changed_reference_ids``.
     Retained locators for changed references require explicit newly reviewed
     citation requests. Saved locator checks are prior caller assertions, not
-    fresh source verification. The exact saved processor and style are required;
-    a custom style additionally needs its explicitly selected local file.
+    fresh source verification. The exact saved original processor or recognized
+    runtime-adapter identity and style are required. An original receipt is
+    preserved; the new document records the current explicit adapter. A custom
+    style additionally needs its explicitly selected local file.
     ``expected_source_sha256`` binds a reviewed document selection across queued
     work. ``before_publish`` can recheck caller authorization after rendering.
     """
@@ -104,7 +107,7 @@ def regenerate_citation_docx(source, destination, *, references=None, citations=
     del raw
     if type(snapshot.get('schema')) is not int or snapshot['schema'] != 1:
         raise CitationError('The saved citation document uses an unsupported schema.')
-    if snapshot.get('processor') != _manifest()['processor']:
+    if not supported_processor_identity(snapshot.get('processor'), _manifest()['processor']):
         raise CitationError('The saved processor identity changed; review and explicitly format a new document.')
     saved_refs = _references(snapshot.get('references'))
     if saved_refs != snapshot['references']:

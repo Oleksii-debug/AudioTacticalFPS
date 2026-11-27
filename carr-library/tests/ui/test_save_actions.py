@@ -1,109 +1,103 @@
-"""Draft timer lifetime; native owner destruction is also checked on Windows."""
-from contextlib import ExitStack
+"""Recovery timer lifetime on the current evidence-panel owner.
+
+The shared fixture uses a real library and EvidenceDrafts store. Only native
+controls are doubles; installed Windows timer delivery has its separate probe.
+"""
 from pathlib import Path
-import sys
+import runpy
 from types import SimpleNamespace
-import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
-from carr_library.ui import save_actions
+import pytest
 
-
-class SaveActionsLifetime(unittest.TestCase):
-    def setUp(self):
-        stack = ExitStack()
-        self.addCleanup(stack.close)
-        self.bindings = {}
-        self.timer = SimpleNamespace(running=False, interval=None)
-
-        def start(interval):
-            self.timer.running, self.timer.interval = True, interval
-
-        def stop():
-            self.timer.running = False
-
-        self.timer.Start, self.timer.Stop = start, Mock(side_effect=stop)
-        self.native_id = 4101
-        self.frame = SimpleNamespace(
-            GetId=Mock(return_value=self.native_id),
-            working=False, _closing=False, active=('library', 'topic'),
-            library=SimpleNamespace(root=Path('synthetic-library')),
-            _dirty=Mock(return_value=True), menu_bar=Mock(), report=Mock(), Close=Mock(),
-            evidence=SimpleNamespace(displayed=SimpleNamespace(evidence_id='evidence'),
-                                     note=Mock()))
-        self.frame.evidence.note.GetValue.return_value = 'Retained editable note.'
-        self.frame.Bind = lambda event, handler, *args: self.bindings.setdefault(event, handler)
-        self.frame.Unbind = Mock(side_effect=lambda event, **kwargs: self.bindings.pop(event, None))
-        wx = SimpleNamespace(Menu=Mock(), Timer=Mock(return_value=self.timer),
-                             ID_ANY=-1, ID_EXIT=1, EVT_MENU='menu',
-                             EVT_TIMER='timer', EVT_WINDOW_DESTROY='destroy')
-        stack.enter_context(patch.dict(sys.modules, {'wx': wx}))
-        self.write = stack.enter_context(patch.object(save_actions, 'atomic_json'))
-        save_actions.install_save_actions(self.frame)
-        self.tick = self.bindings['timer']
-        wx.Timer.assert_called_once_with(self.frame)
-        self.assertTrue(self.timer.running)
-        self.assertEqual(self.timer.interval, 3000)
-
-    def destroy(self, owner, native_id=None):
-        identity = native_id if native_id is not None else (self.native_id if owner is self.frame else 4102)
-        event = SimpleNamespace(GetEventObject=lambda: owner, GetId=lambda: identity, Skip=Mock())
-        callback = self.bindings.get('destroy')
-        if callback is not None:
-            callback(event)
-            event.Skip.assert_called_once_with()
-
-    def test_live_draft_timer_saves_and_deduplicates_the_current_note(self):
-        self.bindings['timer'](None)
-        self.bindings['timer'](None)
-        self.write.assert_called_once()
-        path, value = self.write.call_args.args
-        self.assertEqual(path, Path('synthetic-library/state/recovery/research-note.json'))
-        self.assertEqual(value['note'], 'Retained editable note.')
-        self.assertEqual((value['workspace'], value['topic'], value['evidence']),
-                         ('library', 'topic', 'evidence'))
-
-    def test_child_destruction_keeps_the_live_frame_autosave_running(self):
-        self.destroy(object())
-        self.assertTrue(self.timer.running)
-        self.timer.Stop.assert_not_called()
-        self.frame.Unbind.assert_not_called()
-        self.bindings['timer'](None)
-        self.write.assert_called_once()
-
-    def assert_owner_stopped(self):
-        self.destroy(self.frame)
-        self.assertFalse(self.timer.running)
-        self.timer.Stop.assert_called_once_with()
-        self.frame.Unbind.assert_called_once_with('timer', handler=self.tick, source=self.timer)
-        self.frame._dirty.side_effect = AssertionError('A queued tick touched a destroyed frame.')
-        self.tick(None)
-        self.frame._dirty.assert_not_called()
-        self.write.assert_not_called()
-
-    def test_normal_close_stops_the_timer_before_native_owner_deletion(self):
-        self.frame._closing = True
-        self.assert_owner_stopped()
-
-    def test_direct_destroy_also_blocks_a_previously_queued_autosave(self):
-        self.assert_owner_stopped()
-
-    def test_rewrapped_native_owner_stops_without_accessing_the_invalid_original_wrapper(self):
-        current = SimpleNamespace(Unbind=Mock(
-            side_effect=lambda event, **kwargs: self.bindings.pop(event, None)))
-        self.frame.GetId.side_effect = AssertionError('The original native wrapper is invalid.')
-        self.frame.Unbind.side_effect = AssertionError('The original native wrapper is invalid.')
-        self.destroy(current, native_id=self.native_id)
-        self.assertFalse(self.timer.running)
-        self.timer.Stop.assert_called_once_with()
-        current.Unbind.assert_called_once_with('timer', handler=self.tick, source=self.timer)
-        self.frame.Unbind.assert_not_called()
-        self.frame.GetId.assert_called_once_with()
-        self.frame._dirty.side_effect = AssertionError('A queued tick touched a destroyed frame.')
-        self.tick(None)
-        self.frame._dirty.assert_not_called()
-        self.write.assert_not_called()
+# Keep one real-library recovery fixture across the two regression suites.
+recovery = runpy.run_path(str(Path(__file__).with_name(
+    'test_evidence_draft_recovery.py')))['recovery']
 
 
-if __name__ == '__main__':
-    unittest.main()
+def edit(panel, text):
+    panel.note.SetValue(text)
+    event = SimpleNamespace(Skip=Mock())
+    panel._recovery_edited(event)
+    event.Skip.assert_called_once_with()
+
+
+def destroyed(panel, owner, native_id):
+    event = SimpleNamespace(GetId=lambda: native_id,
+                            GetEventObject=lambda: owner, Skip=Mock())
+    panel._recovery_destroy(event)
+    event.Skip.assert_called_once_with()
+
+
+def test_live_draft_timer_saves_and_deduplicates_the_current_note(recovery):
+    panel, app, _, _, _ = recovery
+    write = panel._recovery_store.checkpoint = Mock(
+        wraps=panel._recovery_store.checkpoint)
+    edit(panel, 'Retained editable note.')
+    panel._recovery_timer.StartOnce.assert_called_once_with(1000)
+    panel._flush_recovery()
+    panel._flush_recovery()
+    write.assert_called_once()
+    draft = panel._recovery_store.get(panel.workspace, panel.topic,
+                                      panel.displayed.evidence_id)
+    assert draft.text == 'Retained editable note.'
+    assert draft.matches(panel.displayed)
+    assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'
+
+
+def test_child_destruction_keeps_the_live_panel_autosave_running(recovery):
+    panel, _, _, _, _ = recovery
+    edit(panel, 'First checkpoint')
+    edit(panel, 'Coalesced child-safe edit')
+    destroyed(panel, object(), panel._recovery_native_id + 1)
+    assert not panel._recovery_disposed
+    panel._recovery_timer.Stop.assert_not_called()
+    panel.Unbind.assert_not_called()
+    assert panel._flush_recovery()
+    assert panel._recovery_store.get(panel.workspace, panel.topic,
+        panel.displayed.evidence_id).text == 'Coalesced child-safe edit'
+
+
+def assert_owner_stopped(recovery, *, rewrapped=False):
+    panel, _, _, wx, _ = recovery
+    edit(panel, 'First checkpoint')
+    edit(panel, 'Final cached edit before deletion')
+    panel.note.GetValue = Mock(side_effect=AssertionError(
+        'A queued callback read a destroyed text control.'))
+    panel._dirty = Mock(side_effect=AssertionError(
+        'A queued callback touched a destroyed native owner.'))
+    panel.GetId = Mock(side_effect=AssertionError(
+        'The original native wrapper is invalid.'))
+    owner = SimpleNamespace(Unbind=Mock()) if rewrapped else panel
+    if rewrapped:
+        panel.Unbind.side_effect = AssertionError(
+            'The original native wrapper is invalid.')
+    destroyed(panel, owner, panel._recovery_native_id)
+    assert panel._recovery_disposed
+    panel._recovery_timer.Stop.assert_called_once_with()
+    owner.Unbind.assert_called_once_with(wx.EVT_TIMER,
+        handler=panel._flush_recovery, source=panel._recovery_timer)
+    if rewrapped:
+        panel.Unbind.assert_not_called()
+    panel.GetId.assert_not_called()
+    saved = panel._recovery_store.path.read_bytes()
+    assert panel._recovery_store.get(panel.workspace, panel.topic,
+        panel.displayed.evidence_id).text == 'Final cached edit before deletion'
+    panel._recovery_pending = panel.displayed, 'Obsolete queued edit'
+    assert panel._flush_recovery(None) is False
+    assert panel._recovery_store.path.read_bytes() == saved
+    panel.note.GetValue.assert_not_called()
+    panel._dirty.assert_not_called()
+
+
+def test_normal_close_stops_the_timer_before_native_owner_deletion(recovery):
+    recovery[0].frame._closing = True
+    assert_owner_stopped(recovery)
+
+
+def test_direct_destroy_also_blocks_a_previously_queued_autosave(recovery):
+    assert_owner_stopped(recovery)
+
+
+def test_rewrapped_native_owner_stops_without_accessing_invalid_original_wrapper(recovery):
+    assert_owner_stopped(recovery, rewrapped=True)

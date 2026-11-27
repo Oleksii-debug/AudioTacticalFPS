@@ -21,6 +21,9 @@ from ..speech.live_adapter import SpeechRequest, discover_voices, render_speech
 from ..speech.runtime import split_utterances
 from .live_player import CanonicalPlayer as LocalPlayer
 from .live_state import LiveState
+from ..speech.listening import ListeningSettings
+from ..speech._wave_output import PlaybackLevels
+from ..audio.models import AudioBudget, AudioCleanupPending
 
 
 # A failed native close can leave a device using its private WAV. These plain
@@ -235,6 +238,11 @@ class LiveStatus:
     duration_seconds: float = 0.0
     warning: str = ""
     position_is_approximate: bool = False
+    listening_speed: float = 1.0
+    listening_pitch: float = 0.0
+    playback_volume: float = 100.0
+    playback_muted: bool = False
+    playback_balance: float = 0.0
 
 
 class LiveReader:
@@ -254,6 +262,10 @@ class LiveReader:
         self._future = None
         self._closed = self._pause = False
         self._pending_seek = None
+        self._output_device = None
+        self._listening_settings = ListeningSettings()
+        self._playback_levels = PlaybackLevels()
+        self._levels_serial = 0
         self._possibly_audible = False
         self._retained_resources = None
         self._stop_message = "Live reading stopped. Resume restarts the current verified chunk."
@@ -273,6 +285,51 @@ class LiveReader:
     def silence_uncertain(self):
         with self._lock:
             return self._possibly_audible and (self._closed or not self.busy)
+
+    @property
+    def output_device(self):
+        with self._lock:
+            return self._output_device
+
+    def set_output_device(self, selected):
+        from ..audio.output_devices import OutputDevice
+        if selected is not None and type(selected) is not OutputDevice:
+            raise ValueError('Choose a device from the current output list.')
+        with self._lock:
+            if self._closed or self.busy or self._retained_resources is not None or self._possibly_audible:
+                raise ValueError('Stop reading and confirm device cleanup before changing the playback output.')
+            self._output_device = selected
+        return selected
+
+    @property
+    def listening_settings(self):
+        with self._lock:
+            return self._listening_settings
+
+    @property
+    def playback_levels(self):
+        with self._lock:
+            return self._playback_levels
+
+    def set_listening_settings(self, speed, pitch_semitones=0):
+        """The next explicit read uses these playback settings, never synthesis settings."""
+        selected = ListeningSettings(speed, pitch_semitones)
+        with self._lock:
+            if self._closed or self.busy or self._retained_resources is not None or self._possibly_audible:
+                raise ValueError('Stop reading and wait for cleanup before changing listening speed or pitch.')
+            self._listening_settings = selected
+        return selected
+
+    def set_playback_levels(self, volume, *, muted=False, balance=0):
+        """Queue instance levels for the existing worker; no native calls on the UI."""
+        selected = PlaybackLevels(volume, muted, balance)
+        with self._lock:
+            if self._closed or self._retained_resources is not None:
+                raise ValueError('This playback owner is closed or still awaiting device cleanup.')
+            self._playback_levels = selected
+            self._levels_serial += 1
+        self._wake.set()
+        return selected
 
     def status(self):
         with self._lock:
@@ -367,7 +424,11 @@ class LiveReader:
                 or type(continuous) is not bool or type(resume) is not bool):
             raise ValueError("Invalid live-reading voice settings.")
         voice = next(voice for voice in voices if voice.id == voice_id)
-        return self._submit(lambda: self._read(ordinal, start, end, voice, rate, volume, continuous, resume))
+        with self._lock:
+            selected = self._output_device
+            listening = self._listening_settings
+            return self._submit(lambda: self._read(ordinal, start, end, voice, rate, volume, continuous, resume,
+                                                   output_device=selected, listening=listening))
 
     def toggle_pause(self):
         if not self.busy or self.status().state in ("discovering", "stopping"):
@@ -429,7 +490,7 @@ class LiveReader:
             # A full disk must not silently erase an earlier valid resume point.
             self._emit(warning="The current chunk position could not be saved: " + str(exc))
 
-    def _read(self, ordinal, start, end, voice, rate, volume, continuous, resume):
+    def _read(self, ordinal, start, end, voice, rate, volume, continuous, resume, *, output_device=None, listening=ListeningSettings()):
         began = self.clock()
         self._emit(state="loading", message="Checking the exact reading source…", warning="",
                    audio_seconds=0.0, duration_seconds=0.0)
@@ -456,7 +517,13 @@ class LiveReader:
         player = self.player_factory()
         directory = None
         total_characters, total_seconds = 0, 0.0
+        applied_levels = -1
         try:
+            if output_device is not None:
+                choose = getattr(player, 'select_output', None)
+                if choose is None:
+                    raise ValueError('This playback backend does not support an explicit output device.')
+                choose(output_device)
             if not player.available():
                 reason = player.status().get("reason") or "No native audio output device is available."
                 raise ValueError(reason)
@@ -505,7 +572,6 @@ class LiveReader:
                     duration = result.duration_seconds
                     if (type(duration) not in (int, float) or not math.isfinite(duration)
                             or not 0 < duration <= self.budget.chunk_audio_seconds
-                            or total_seconds + duration > self.budget.session_audio_seconds
                             or target.stat().st_size > self.budget.chunk_bytes):
                         raise ValueError("The speech chunk exceeded the live-reading audio budget.")
                     with target.open("rb") as stream:
@@ -514,6 +580,27 @@ class LiveReader:
                     self._check()
                     self._await_display(section)
                     opened = player.open(target)
+                    if listening != ListeningSettings():
+                        prepare = getattr(player, 'prepare_listening', None)
+                        if prepare is None:
+                            raise ValueError('This playback backend cannot prepare independent speed and pitch.')
+                        self._emit(state="preparing_playback",
+                            message="Preparing independent playback speed and pitch; synthesis is unchanged.")
+                        prepare(listening, Path(directory.name), state_root=self.root / 'state',
+                            cancelled=cancelled,
+                            budget=AudioBudget(timeout=self.budget.chunk_timeout_seconds,
+                                max_output_bytes=self.budget.chunk_bytes,
+                                reserve_disk_bytes=self.budget.minimum_free_bytes,
+                                max_inputs=1, max_staging_files=8, threads=1))
+                        self._check()
+                        self.source.check(section, self._stopped, full=True)
+                        self._await_display(section)
+                    heard_duration = (player.listening_duration_seconds
+                                      if listening != ListeningSettings() else duration)
+                    if (not 0 < heard_duration <= self.budget.chunk_audio_seconds
+                            or total_seconds + heard_duration > self.budget.session_audio_seconds):
+                        raise ValueError('The prepared listening copy exceeded the live-reading audio budget.')
+                    self._emit(listening_speed=listening.speed, listening_pitch=listening.pitch_semitones)
                     if abs(opened["duration_seconds"] - duration) > .02:
                         raise ValueError("The measured playback duration differs from the checked speech chunk.")
                     self._remember(section, chunk_start, end, voice, rate, volume)
@@ -527,8 +614,18 @@ class LiveReader:
                         self.source.check(section, self._stopped)
                         with self._lock:
                             paused = self._pause
+                            levels, levels_serial = self._playback_levels, self._levels_serial
                             seek = self._pending_seek
                             self._pending_seek = None
+                        if applied_levels != levels_serial:
+                            if levels != PlaybackLevels() or applied_levels >= 0:
+                                adjust = getattr(player, 'set_levels', None)
+                                if adjust is None:
+                                    raise ValueError('This playback backend has no instance volume, mute or balance.')
+                                adjust(levels.volume, muted=levels.muted, balance=levels.balance)
+                            applied_levels = levels_serial
+                            self._emit(playback_volume=levels.volume, playback_muted=levels.muted,
+                                       playback_balance=levels.balance)
                         if seek is not None:
                             if seek[:3] != (section, chunk_start, chunk_end):
                                 self._emit(warning='The previous speech chunk ended before seeking; the new chunk was not moved.')
@@ -572,7 +669,7 @@ class LiveReader:
                     player.close()
                     target.unlink()
                     total_characters += len(text)
-                    total_seconds += duration
+                    total_seconds += heard_duration
                 if not continuous or end != len(section.text) or section.ordinal >= section.total:
                     self._emit(state="complete", chunk_start=end, chunk_end=end, audio_seconds=0.0,
                                duration_seconds=0.0, message="The requested reading range is complete.")
@@ -580,6 +677,24 @@ class LiveReader:
                 self._emit(state="loading", message="Continuing to the next source location you enabled…")
                 section = self.source.load(section.ordinal + 1, self._stopped)
                 start, end = 0, len(section.text)
+        except AudioCleanupPending as exc:
+            # Keep the enclosing chunk directory and the same native owner
+            # visible to Stop/assistant status until actual cleanup is confirmed.
+            retained = (exc.cleanup_owner, directory)
+            with self._lock:
+                self._retained_resources = retained
+                _RETAINED_MEDIA.append(retained)
+            def released():
+                if retained[1] is not None:
+                    retained[1].cleanup()
+                with self._lock:
+                    if self._retained_resources is retained:
+                        self._retained_resources = None
+                    if retained in _RETAINED_MEDIA:
+                        _RETAINED_MEDIA.remove(retained)
+            exc.cleanup_owner.add_quiescent_callback(released)
+            directory = None
+            raise
         finally:
             cleanup_errors = []
             silence_confirmed, device_closed = False, False

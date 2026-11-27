@@ -668,9 +668,12 @@ def test_prepared_receipt_full_backup_preserves_only_actual_pcm_and_restart_trut
     backup = tmp_path / 'prepared-backup'
     digest = capture.app.backup(backup)
     manifest = json.loads((backup / 'manifest.json').read_text())
-    relative = 'studio/recordings/' + identity + '.json'
-    assert manifest['version'] == 5 and relative in manifest['extensions']['studio_recordings']
-    names = {item['filename'] for item in manifest['state']}
+    relative = 'state/studio/recordings/' + identity + '.json'
+    assert manifest['version'] == 4
+    names = {item['filename'] for item in manifest['sidecars']}
+    assert relative in names
+    entry, = [item for item in manifest['sidecars'] if item['filename'] == relative]
+    assert entry['sha256'] == sha256(original).hexdigest() and entry['size_bytes'] == len(original)
     assert (relative.removesuffix('.json') + '.wav' in names) is published
     restored = restore_backup(backup, tmp_path / 'prepared-restored', digest)
     reopened = RecordingService(restored)

@@ -34,6 +34,33 @@ class CIEntrypointTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('passed=1, failed=0, skipped=0', result.stdout)
 
+    def test_selected_node_executes_actual_case_without_running_other_cases(self):
+        result = self.run_fixture(
+            'def test_selected(): assert True\ndef test_unselected(): assert False\n',
+            'test_sample.py::test_selected')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('junit_passed=1, failed=0, skipped=0', result.stdout)
+
+    def test_selected_parameter_keeps_its_identity_and_does_not_collect_all_parameters(self):
+        source = ("import pytest\n@pytest.mark.parametrize('value', [1, 2], ids=['keep', 'reject'])\n"
+                  "def test_parameter(value): assert value == 1\n")
+        result = self.run_fixture(source, 'test_sample.py::test_parameter[keep]')
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('junit_passed=1, failed=0, skipped=0', result.stdout)
+
+    def test_missing_selected_node_remains_failed_beside_actual_passing_node(self):
+        result = self.run_fixture('def test_ok(): assert True\n',
+                                  'test_sample.py::test_ok', 'test_sample.py::test_missing')
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('Required suites complete: 2; passed=1; failed=1', result.stdout)
+
+    def test_selected_node_cannot_authorize_outside_tree_or_empty_file(self):
+        for selector in ('..::test_ok', '::test_ok', 'test_sample.py::'):
+            with self.subTest(selector=selector):
+                result = self.run_fixture('def test_ok(): assert True\n', selector)
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn('missing or out-of-tree', result.stdout)
+
     def test_offline_gate_blocks_connections_and_name_resolution(self):
         source = '''import socket
 import pytest
@@ -141,6 +168,76 @@ def test_parallel_barrier():
                                           '--jobs', workers, 'test_sample.py')
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
 
+    def _run_report_cleanup_fixture(self, failures, *, timed_out=False):
+        spec = importlib.util.spec_from_file_location('cleanup_ci_check', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        original_temp = tempfile.TemporaryDirectory
+        directories, attempts = [], []
+        output = io.StringIO()
+        with original_temp(prefix='CARR report cleanup ') as temporary:
+            root = Path(temporary).resolve()
+            (root / 'test_sample.py').write_text('def test_ok(): assert True\n', encoding='utf-8')
+
+            def report_directory(*args, **kwargs):
+                directory = original_temp(*args, dir=root, **kwargs)
+                directories.append(directory)
+
+                def cleanup():
+                    attempts.append(directory.name)
+                    if len(attempts) <= failures:
+                        raise PermissionError('Synthetic report handle is still held')
+                    directory.cleanup()
+
+                return types.SimpleNamespace(name=directory.name, cleanup=cleanup)
+
+            def completed_child(command, *, env):
+                if timed_out:
+                    raise subprocess.TimeoutExpired('synthetic required suite', .15)
+                report = Path(command[command.index('--junitxml') + 1])
+                report.write_text(
+                    '<testsuites><testsuite><testcase name="test_ok"/></testsuite></testsuites>',
+                    encoding='utf-8')
+                return 0
+
+            try:
+                with (mock.patch.object(runner, 'ROOT', root),
+                      mock.patch.object(runner, 'tempfile',
+                          types.SimpleNamespace(TemporaryDirectory=report_directory)),
+                      mock.patch.object(runner, '_run_test_process', side_effect=completed_child) as child,
+                      mock.patch.object(runner, 'sleep'),
+                      contextlib.redirect_stdout(output)):
+                    result = runner.run_suite('test_sample.py')
+                child.assert_called_once()
+            finally:
+                for directory in directories:
+                    directory.cleanup()
+        return result, output.getvalue(), len(attempts)
+
+    def test_transient_report_cleanup_permission_error_is_retried_before_pass(self):
+        result, output, attempts = self._run_report_cleanup_fixture(1)
+        self.assertTrue(result, output)
+        self.assertEqual(attempts, 2)
+        self.assertIn('PASS: test_sample.py:', output)
+        self.assertNotIn('FAIL:', output)
+
+    def test_persistent_report_cleanup_permission_error_is_named_and_never_passes(self):
+        result, output, attempts = self._run_report_cleanup_fixture(5)
+        self.assertFalse(result, output)
+        self.assertEqual(attempts, 5)
+        self.assertIn('FAIL: test_sample.py:', output)
+        self.assertIn('PermissionError', output)
+        self.assertNotIn('PASS:', output)
+
+    def test_report_cleanup_permission_error_preserves_original_timeout(self):
+        result, output, attempts = self._run_report_cleanup_fixture(5, timed_out=True)
+        self.assertFalse(result, output)
+        self.assertEqual(attempts, 5)
+        self.assertIn('FAIL: test_sample.py:', output)
+        self.assertIn('TimeoutExpired', output)
+        self.assertIn('PermissionError', output)
+        self.assertNotIn('PASS:', output)
+
     def test_windows_delayed_descendant_exit_precedes_temporary_cleanup(self):
         spec = importlib.util.spec_from_file_location('reviewed_ci_check', SCRIPT)
         runner = importlib.util.module_from_spec(spec)
@@ -186,8 +283,8 @@ def test_parallel_barrier():
         directories = []
 
         @contextlib.contextmanager
-        def temporary_with_open_file_guard(*args, **kwargs):
-            with original_temp(*args, **kwargs) as name:
+        def temporary_with_open_file_guard(suite):
+            with original_temp(prefix='carr-ci-') as name:
                 directories.append(Path(name))
                 try:
                     yield name
@@ -204,8 +301,7 @@ def test_parallel_barrier():
                   mock.patch.object(runner, 'os', types.SimpleNamespace(name='nt', environ=os.environ)),
                   mock.patch.object(runner, 'subprocess', api),
                   mock.patch.object(runner, '_WindowsDescendants', return_value=descendants),
-                  mock.patch.object(runner, 'tempfile', types.SimpleNamespace(
-                      TemporaryDirectory=temporary_with_open_file_guard)),
+                  mock.patch.object(runner, '_report_directory', temporary_with_open_file_guard),
                   contextlib.redirect_stdout(output)):
                 self.assertFalse(runner.run_suite('test_wait.py'))
             self.assertIn('TimeoutExpired', output.getvalue())
@@ -310,7 +406,18 @@ def test_parallel_barrier():
             (root / 'descendant.py').write_text(
                 "from pathlib import Path\nimport os,sys,time\n"
                 "held = open(sys.argv[1], 'wb')\n"
-                "Path(sys.argv[2]).write_text(str(os.getpid()), encoding='ascii')\n"
+                "marker = Path(sys.argv[2])\n"
+                "staged = marker.with_suffix('.pending')\n"
+                "with staged.open('x', encoding='ascii') as stream:\n"
+                "    marker.with_suffix('.starting').touch()\n"
+                "    deadline = time.monotonic() + 30\n"
+                "    while not marker.with_suffix('.publish').exists():\n"
+                "        if time.monotonic() >= deadline: raise TimeoutError('Readiness was not acknowledged')\n"
+                "        time.sleep(.01)\n"
+                "    stream.write(str(os.getpid()))\n"
+                "    stream.flush()\n"
+                "    os.fsync(stream.fileno())\n"
+                "os.replace(staged, marker)\n"
                 "while True: time.sleep(1)\n", encoding='utf-8')
             (root / 'test_timeout.py').write_text(
                 "from pathlib import Path\nimport json,os,pytest,subprocess,sys,time\n"
@@ -328,22 +435,38 @@ def test_parallel_barrier():
                 processes.append(process)
                 if Path(args[0][-1]).name != 'test_timeout.py':
                     return process
-                deadline = time.monotonic() + 30
-                while not marker.exists():
-                    self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
-                    self.assertLess(time.monotonic(), deadline, 'Synthetic child did not start')
-                    time.sleep(.02)
-                pid = int(marker.read_text(encoding='ascii'))
-                observed['pid'] = pid
-                observed['suite'] = json.loads((root / 'suite-owner.json').read_text(encoding='utf-8'))
-                if kernel is not None:
-                    handle = kernel.OpenProcess(0x100001, False, pid)  # SYNCHRONIZE | TERMINATE
-                    self.assertTrue(handle, ctypes.get_last_error())
-                    observed['handle'] = handle
-                    self.assertEqual(kernel.WaitForSingleObject(handle, 0), 258)  # alive
-                else:
-                    self.assertEqual(os.getpgid(process.pid), process.pid)
-                    self.assertEqual(os.getpgid(pid), process.pid)
+                try:
+                    deadline = time.monotonic() + 30
+                    # Exercise the real creation/write gap deterministically. The
+                    # PID is published only after its staged stream is closed; mere
+                    # existence of that empty staging file cannot admit the suite.
+                    while not marker.with_suffix('.starting').exists():
+                        self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
+                        self.assertLess(time.monotonic(), deadline, 'Synthetic child did not stage readiness')
+                        time.sleep(.02)
+                    self.assertEqual(marker.with_suffix('.pending').read_bytes(), b'')
+                    self.assertFalse(marker.exists())
+                    marker.with_suffix('.publish').touch()
+                    while not marker.exists():
+                        self.assertIsNone(process.poll(), 'Synthetic pytest exited before starting its child')
+                        self.assertLess(time.monotonic(), deadline, 'Synthetic child did not start')
+                        time.sleep(.02)
+                    pid = int(marker.read_text(encoding='ascii'))
+                    observed['pid'] = pid
+                    observed['suite'] = json.loads((root / 'suite-owner.json').read_text(encoding='utf-8'))
+                    if kernel is not None:
+                        handle = kernel.OpenProcess(0x100001, False, pid)  # SYNCHRONIZE | TERMINATE
+                        self.assertTrue(handle, ctypes.get_last_error())
+                        observed['handle'] = handle
+                        self.assertEqual(kernel.WaitForSingleObject(handle, 0), 258)  # alive
+                    else:
+                        self.assertEqual(os.getpgid(process.pid), process.pid)
+                        self.assertEqual(os.getpgid(pid), process.pid)
+                except BaseException:
+                    # The observing Popen wrapper has not transferred ownership
+                    # to the runner yet. Clean up its real tree on setup errors.
+                    runner._terminate_process_tree(process)
+                    raise
                 return process
 
             def tracked_temporary(*args, **kwargs):
@@ -426,6 +549,163 @@ def test_parallel_barrier():
                     if observed.get('pid') and not observed.get('reaped'):
                         os.waitpid(observed['pid'], 0)
                     libc.prctl(36, previous_subreaper.value, 0, 0, 0)
+
+
+class CISuiteTimeoutTests(unittest.TestCase):
+    @staticmethod
+    def runner():
+        spec = importlib.util.spec_from_file_location('budget_ci_check', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        return runner
+
+    def test_only_the_exact_selected_node_receives_its_explicit_budget(self):
+        selected = 'test_sample.py::test_parameter[value=long]'
+        other = 'test_sample.py::test_parameter[value=short]'
+        for jobs in (1, 2):
+            with self.subTest(jobs=jobs):
+                runner = self.runner()
+                self.assertEqual(runner.SUITE_TIMEOUT_SECONDS, 600)
+                argv = ['ci_check.py', '--jobs', str(jobs), '--diagnostics',
+                        '--suite-timeout', selected + '=900', selected, other]
+                with (mock.patch.object(sys, 'argv', argv),
+                      mock.patch.object(runner, 'run_suite', return_value=True) as run,
+                      contextlib.redirect_stdout(io.StringIO())):
+                    self.assertEqual(runner.main(), 0)
+                self.assertCountEqual(run.call_args_list, [
+                    mock.call(selected, diagnostics=True, timeout_seconds=900),
+                    mock.call(other, diagnostics=True),
+                ])
+                self.assertEqual(runner.SUITE_TIMEOUT_SECONDS, 600)
+
+    def test_invalid_or_unselected_overrides_never_start_a_suite(self):
+        invalid = [
+            ['--suite-timeout', 'test_sample.py=0'],
+            ['--suite-timeout', 'test_sample.py=-1'],
+            ['--suite-timeout', 'test_sample.py=1801'],
+            ['--suite-timeout', 'test_sample.py=1.5'],
+            ['--suite-timeout', 'test_sample.py=nan'],
+            ['--suite-timeout', 'test_sample.py='],
+            ['--suite-timeout', '=900'],
+            ['--suite-timeout', 'test_sample.py'],
+            ['--suite-timeout', 'missing.py=900'],
+            ['--suite-timeout', 'test_sample.py::test_one=900'],
+            ['--suite-timeout', 'test_sample.py=900', '--suite-timeout', 'test_sample.py=900'],
+        ]
+        for options in invalid:
+            with self.subTest(options=options):
+                runner = self.runner()
+                argv = ['ci_check.py', *options, 'test_sample.py']
+                with (mock.patch.object(sys, 'argv', argv),
+                      mock.patch.object(runner, 'run_suite') as run,
+                      contextlib.redirect_stderr(io.StringIO()),
+                      self.assertRaises(SystemExit) as error):
+                    runner.main()
+                self.assertEqual(error.exception.code, 2)
+                run.assert_not_called()
+
+    def test_invalid_direct_budget_never_creates_a_process(self):
+        runner = self.runner()
+        for value in (True, False, 0, -1, 1801, .5, float('inf'), '900'):
+            with self.subTest(value=value), mock.patch.object(runner.subprocess, 'Popen') as popen:
+                with self.assertRaises(ValueError):
+                    runner._run_test_process([sys.executable, '-c', 'pass'],
+                                             env=os.environ, timeout_seconds=value)
+                popen.assert_not_called()
+
+    def test_override_preserves_actual_skip_failure_empty_and_xfail_refusals(self):
+        cases = [
+            ('import pytest\n@pytest.mark.skip\ndef test_skip(): pass\n', 'skipped=1'),
+            ('def test_bad(): assert False\n', 'failed=1'),
+            ('# no tests\n', 'pytest_exit=5'),
+            ("import pytest\n@pytest.mark.xfail(reason='unfinished')\ndef test_xfail(): assert False\n",
+             'FAIL: pytest reported XFAIL or XPASS'),
+        ]
+        fixture = CIEntrypointTests()
+        for source, expected in cases:
+            with self.subTest(expected=expected):
+                result = fixture.run_fixture(source, '--suite-timeout',
+                                             'test_sample.py=10', 'test_sample.py')
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertIn(expected, result.stdout + result.stderr)
+
+    def test_actual_selected_budget_preserves_other_deadlines_and_owned_cleanup(self):
+        import threading
+
+        runner = self.runner()
+        original_popen = subprocess.Popen
+        processes, release_threads = [], []
+        with tempfile.TemporaryDirectory(prefix='CARR suite budgets Ž ') as temporary:
+            root = Path(temporary).resolve(strict=True)
+            for name in ('default', 'allowed', 'expired'):
+                (root / f'test_{name}.py').write_text(
+                    "from pathlib import Path\nimport time\n"
+                    "def test_wait():\n"
+                    f"    ready = Path.cwd() / '{name}.ready'\n"
+                    f"    release = Path.cwd() / '{name}.release'\n"
+                    f"    done = Path.cwd() / '{name}.done'\n"
+                    "    ready.write_text('actual pytest case', encoding='utf-8')\n"
+                    "    while not release.exists(): time.sleep(.01)\n"
+                    "    done.write_text('actual completion', encoding='utf-8')\n",
+                    encoding='utf-8')
+
+            def observed_popen(command, *args, **kwargs):
+                process = original_popen(command, *args, **kwargs)
+                processes.append(process)
+                name = Path(command[-1]).stem.removeprefix('test_')
+                ready = root / f'{name}.ready'
+                try:
+                    deadline = time.monotonic() + 20
+                    while not ready.exists():
+                        self.assertIsNone(process.poll(), 'The actual case exited before its readiness marker')
+                        self.assertLess(time.monotonic(), deadline, 'The actual case never became ready')
+                        time.sleep(.01)
+                    if name == 'allowed':
+                        def release():
+                            # The unchanged default budget is shorter than this
+                            # real wait. Only the exact selected case may finish.
+                            time.sleep(.4)
+                            (root / 'allowed.release').touch()
+                        thread = threading.Thread(target=release)
+                        release_threads.append(thread)
+                        thread.start()
+                    return process
+                except BaseException:
+                    runner._terminate_process_tree(process)
+                    raise
+
+            api = types.SimpleNamespace(**vars(subprocess))
+            api.Popen = observed_popen
+            output = io.StringIO()
+            argv = ['ci_check.py',
+                    '--suite-timeout', 'test_allowed.py=5',
+                    '--suite-timeout', 'test_expired.py=1',
+                    'test_default.py', 'test_allowed.py', 'test_expired.py']
+            try:
+                with (mock.patch.object(runner, 'ROOT', root),
+                      mock.patch.object(runner, 'SUITE_TIMEOUT_SECONDS', .1),
+                      mock.patch.object(runner, 'subprocess', api),
+                      mock.patch.object(sys, 'argv', argv),
+                      contextlib.redirect_stdout(output)):
+                    result = runner.main()
+                self.assertEqual(result, 1, output.getvalue())
+                self.assertEqual(len(processes), 3)
+                self.assertTrue(all(process.returncode is not None for process in processes))
+                self.assertTrue((root / 'allowed.done').is_file())
+                self.assertFalse((root / 'default.done').exists())
+                self.assertFalse((root / 'expired.done').exists())
+                self.assertEqual(output.getvalue().count('TimeoutExpired:'), 2)
+                self.assertIn('PASS: test_allowed.py: junit_passed=1, failed=0, skipped=0',
+                              output.getvalue())
+                self.assertIn('Required suites complete: 3; passed=1; failed=2', output.getvalue())
+            finally:
+                for thread in release_threads:
+                    thread.join(timeout=5)
+                    self.assertFalse(thread.is_alive())
+                for process in processes:
+                    if process.poll() is None:
+                        runner._terminate_process_tree(process)
+                    process.wait(timeout=5)
 
 
 if __name__ == '__main__':

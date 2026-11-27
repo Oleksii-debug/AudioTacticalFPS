@@ -380,7 +380,12 @@ def test_batch_native_formats_keep_existing_unverified_authority(app, tmp_path, 
 
 
 def test_folder_epub_batch_keeps_planned_bytes_stable_identity_and_unverified_authority(app, tmp_path):
-    from tests.e2e.test_epub_import import FIRST_TEXT, SECOND_TEXT, write_epub
+    # Load only this adjacent synthetic fixture. The installed product keeps
+    # normal import resolution; no checkout or tests namespace is injected.
+    from runpy import run_path
+    fixture = run_path(str(Path(__file__).with_name('test_epub_import.py')))
+    FIRST_TEXT, SECOND_TEXT, write_epub = (fixture[name] for name in
+        ('FIRST_TEXT', 'SECOND_TEXT', 'write_epub'))
     selected = tmp_path / 'selected-books'
     selected.mkdir()
     original = selected / 'Academic source.epub'

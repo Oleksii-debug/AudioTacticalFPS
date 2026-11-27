@@ -10,14 +10,20 @@ from ..research.export_file import write_export, export_completion
 from .export_destination import confirm_export_destination
 
 
-def create_assistant_dialog(frame, *, wx_module=None):
+def create_assistant_dialog(frame, *, wx_module=None, initial_instruction=None, reader_controls=None):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
     from ..assistant import AssistantService, Scope, HELP, Plan, Step
     from ..studio.render import ProductionService
     production = ProductionService(frame.library.root / 'state' / 'studio')
-    service = AssistantService(frame.library, production=production.assistant_callback)
+    player = None
+    if reader_controls is not None:
+        from ..assistant.player_tools import LivePlayerBridge
+        player = LivePlayerBridge(frame.library, reader_controls)
+    service = (AssistantService(frame.library, production=production.assistant_callback, player=player)
+               if player is not None else
+               AssistantService(frame.library, production=production.assistant_callback))
     class AssistantDialog(wx.Dialog):
         def Destroy(self):
             callback = getattr(self, '_assistant_dispose', None)
@@ -28,7 +34,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
             self._assistant_destroy_requested = True
             return super().Destroy()
 
-    dialog = AssistantDialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
+    dialog = AssistantDialog(reader_controls.dialog if reader_controls is not None else frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     native_id = dialog.GetId()
     dialog._assistant_destroy_requested = False
@@ -62,6 +68,8 @@ def create_assistant_dialog(frame, *, wx_module=None):
             return
         alive = False
         cancel.set()
+        if player is not None:
+            player.close()
         # The shared cancellation callback makes a running assistant job pause.
         # Queue registry cleanup after this dialog's already-owned worker.
         executor.submit(close_production)
@@ -85,7 +93,8 @@ def create_assistant_dialog(frame, *, wx_module=None):
 
     scope_choice = field('&Library scope', wx.Choice,
         choices=['Create a new library / list libraries only'] + [row.name for row in workspaces])
-    current = frame.active[0] if frame.active else None
+    current = (reader_controls.source.desk.workspace if reader_controls is not None else
+               frame.active[0] if frame.active else None)
     scope_choice.SetSelection(next((i + 1 for i, row in enumerate(workspaces) if row.id == current), 0))
     input_folder = field('Allowed &input folder (optional; no other folders are readable)')
     output_folder = field('Chosen &output folder (required for audio, extraction or backup)')
@@ -129,13 +138,13 @@ def create_assistant_dialog(frame, *, wx_module=None):
     planning_notice.Wrap(850)
     layout.Add(planning_notice, 0, wx.ALL | wx.EXPAND, 5)
     instruction = field('&Goal — guided English/Ukrainian commands or typed JSON plan', proportion=1,
-                        style=wx.TE_MULTILINE, value='Покажи бібліотеки')
+                        style=wx.TE_MULTILINE, value='Покажи бібліотеки' if initial_instruction is None else initial_instruction)
     review = field('Plan &preview and actual results', proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='LOCAL ONLY. Nothing executes until you review the plan and choose Run.')
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
     for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
-                             ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
+                             ('jobs', 'Saved &jobs'), ('template', 'Save as &template'), ('help', '&Help'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
@@ -175,7 +184,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
         try:
             if selected_inputs != input_identity():
                 raise ValueError('The goal or selected scope changed. Preview the current inputs again.')
-            if any(step.tool == 'audio.produce' and not step.arguments.get('voice_ids') and 'script' not in step.arguments
+            if any(step.tool in ('audio.produce', 'audio.render') and not step.arguments.get('voice_ids') and 'script' not in step.arguments
                    for step in candidate.steps):
                 if voice_inventory is None:
                     # Cold private voice discovery can load model metadata.
@@ -387,6 +396,26 @@ def create_assistant_dialog(frame, *, wx_module=None):
             if choice:
                 choice.Destroy()
 
+    def save_template(event=None):
+        if not alive or busy:
+            return
+        try:
+            if frame.library.root != library_root:
+                raise ValueError('The library changed. Reopen the assistant.')
+            selected_plan = plan
+            if selected_plan is not None and approved_inputs != input_identity():
+                raise ValueError('Preview the current typed plan before saving its reusable operations.')
+            if selected_plan is None and job_id is not None:
+                _record, selected_plan = service._load(job_id)
+            if selected_plan is None:
+                raise ValueError('Preview a typed plan or select a saved job first.')
+            from ..assistant.templates import definition_from_plan
+            from .workflow_templates import show_workflow_templates
+            definition = definition_from_plan(selected_plan)
+            show_workflow_templates(frame, initial=('assistant', definition))
+        except Exception as exc:
+            report(exc)
+
     def close(event=None):
         if not alive:
             return
@@ -404,7 +433,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
         show_text(dialog, 'Local assistant commands', HELP)
 
     for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+                               'jobs': jobs, 'template': save_template, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -421,8 +450,13 @@ def create_assistant_dialog(frame, *, wx_module=None):
     return dialog
 
 
-def show_assistant(frame):
-    dialog = create_assistant_dialog(frame)
+def show_assistant(frame, *, initial_instruction=None, reader_controls=None):
+    options = {}
+    if initial_instruction is not None:
+        options['initial_instruction'] = initial_instruction
+    if reader_controls is not None:
+        options['reader_controls'] = reader_controls
+    dialog = create_assistant_dialog(frame, **options)
     try:
         dialog.ShowModal()
     finally:
@@ -627,9 +661,13 @@ def show_provider_settings(frame):
 
 def install_assistant_actions(frame):
     import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
     menu = wx.Menu()
-    for title, handler in [('Local assistant...\tCtrl+Alt+J', lambda e: show_assistant(frame)),
-                            ('AI and API connections...', lambda e: show_provider_settings(frame))]:
+    for identity, title, shortcut, handler in [
+            ('assistant.local', 'Local assistant...', 'Ctrl+Alt+J', lambda e: show_assistant(frame)),
+            ('assistant.providers', 'AI and API connections...', '', lambda e: show_provider_settings(frame))]:
         item = menu.Append(wx.ID_ANY, title)
         frame.Bind(wx.EVT_MENU, handler, item)
+        register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
     frame.menu_bar.Append(menu, '&Tools')

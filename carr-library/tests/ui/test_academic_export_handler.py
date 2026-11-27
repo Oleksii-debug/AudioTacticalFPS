@@ -156,6 +156,7 @@ def test_document_filter_appends_its_suffix_and_publishes_exact_payload(
     assert len(h.jobs) == 1 and not target.exists()
     dialog, = h.dialogs
     assert dialog.destroyed and dialog.options['defaultFile'] == 'research-topic'
+    assert dialog.options['style'] & h.wx.FD_SAVE
     assert not dialog.options['style'] & h.wx.FD_OVERWRITE_PROMPT
     assert dialog.options['wildcard'].split('|')[index * 2 + 1] == '*' + suffix
     h.wx.MessageBox.assert_not_called()
@@ -409,5 +410,37 @@ def test_real_document_export_preserves_file_changed_during_confirmation(
     h.run()
     assert h.backend.call_count == 1
     assert target.read_bytes() == competing
+    assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+@pytest.mark.parametrize('index,format,suffix', FORMATS)
+@pytest.mark.parametrize('change', ['created', 'modified', 'replaced', 'removed'])
+def test_destination_changed_during_render_preserves_independent_work(
+        harness, tmp_path, index, format, suffix, change):
+    target = tmp_path / ('chosen' + suffix)
+    if change != 'created':
+        target.write_bytes(b'Previously approved output.')
+    h = harness(target, index)
+    h.wx.MessageBox.return_value = h.wx.YES
+    independent = b'Independent work written while rendering.'
+
+    def change_destination():
+        if change == 'removed':
+            target.unlink()
+        elif change == 'replaced':
+            replacement = tmp_path / 'replacement.tmp'
+            replacement.write_bytes(independent)
+            replacement.replace(target)
+        else:
+            target.write_bytes(independent)
+
+    h.after_render = change_destination
+    h.invoke()
+    h.run()
+    if change == 'removed':
+        assert not target.exists()
+    else:
+        assert target.read_bytes() == independent
     assert len(h.reports) == 1 and 'destination changed' in h.reports[0]
     assert not list(tmp_path.glob('.research-export-*'))

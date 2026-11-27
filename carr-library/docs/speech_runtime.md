@@ -258,3 +258,14 @@ Primary API references inspected for the adapters:
 - [FFmpeg Flite source filter](https://ffmpeg.org/ffmpeg-filters.html#flite)
 - [eSpeak CLI documentation](https://espeak.sourceforge.net/commands.html)
 - [Piper official CLI source](https://github.com/OHF-Voice/piper1-gpl/blob/6aacdbc98eda4b1cb81d960bef7c7fae710b13fd/src/piper/__main__.py)
+
+## Current reading workflow inventory
+
+Use [the finite reading workflow checklist](READING_WORKFLOW_CHECKLIST.md) for
+the current scenario-by-scenario source status. The native session additions are
+documented in [output selection](OUTPUT_DEVICES.md) and
+[tray/session controls](READ12_SESSION_CONTROLS.md); document preparation and
+offline effects use [retained batches](DOCUMENT_BATCHES.md) and
+[ordered effect chains](ORDERED_AUDIO_EFFECTS.md).
+Each page separates source implementation from exact-build native execution,
+physical listening, human NVDA and engine/model qualification.

@@ -28,7 +28,7 @@ class Item:
         self.record = record
     def GetId(self): return self.record.identity
     def IsSeparator(self): return self.record.label is None
-    def GetSubMenu(self): return None
+    def GetSubMenu(self): return getattr(self.record, "submenu", None)
     def GetItemLabel(self): return self.record.label
     def SetItemLabel(self, label): self.record.label = label
     def Enable(self, value=True): self.record.enabled = value
@@ -49,6 +49,10 @@ class Menu:
                                  label=label, enabled=True)
         self.records.append(record)
         return self.wrap(record)
+    def AppendSubMenu(self, menu, label):
+        item = self.Append(-1, label)
+        item.record.submenu = menu
+        return item
     def AppendSeparator(self):
         self.Append(-1, None)
     def GetMenuItems(self): return [self.wrap(record) for record in self.records]
@@ -64,6 +68,8 @@ class MenuBar:
     def GetMenuCount(self): return len(self.menus)
     def GetMenu(self, index): return self.menus[index][1]
     def GetMenuLabel(self, index): return self.menus[index][0]
+    def IsEnabledTop(self, index): return True
+    def EnableTop(self, index, value): pass
     def FindMenu(self, label):
         return next((i for i, (title, _) in enumerate(self.menus)
                      if title.replace('&', '') == label), -1)
@@ -72,12 +78,21 @@ class MenuBar:
 class Control:
     def __init__(self, *args, **kwargs):
         self.value, self.enabled, self.name = '', True, ''
+        self.identity = next(_ids)
     def Bind(self, *args, **kwargs): pass
     def Disable(self): self.enabled = False
     def Enable(self, value=True): self.enabled = value
     def SetName(self, value): self.name = value
     def SetLabel(self, value): self.value = value
     def SetValue(self, value): self.value = value
+    def ChangeValue(self, value): self.value = value
+    def GetValue(self): return self.value
+    def GetId(self): return self.identity
+    def SetMinSize(self, value): self.minimum_size = value
+    def SetSizer(self, value): self.sizer = value
+    def Layout(self): pass
+    def Add(self, *args, **kwargs): pass
+    def Pulse(self): pass
     def SetRange(self, value): self.range = value
     def SetFocus(self): pass
     def Insert(self, *args, **kwargs): pass
@@ -91,12 +106,16 @@ def native_menus(tmp_path, monkeypatch, request):
     wx.Menu, wx.MenuBar = Menu, MenuBar
     wx.Dialog = wx.Frame = wx.Panel = wx.Window = Control
     wx.Button = wx.StaticText = wx.Gauge = wx.Timer = Control
+    wx.TextCtrl = wx.CheckBox = wx.WrapSizer = wx.BoxSizer = Control
+    wx.CallAfter = lambda callback, *args: callback(*args)
     wx.AcceleratorTable = tuple
     wx.NewIdRef = lambda: next(_ids)
-    for name in ('ALL', 'EXPAND', 'GA_HORIZONTAL', 'ACCEL_CTRL', 'ACCEL_ALT', 'ACCEL_SHIFT'):
+    for name in ('ALL', 'EXPAND', 'GA_HORIZONTAL', 'ACCEL_CTRL', 'ACCEL_ALT', 'ACCEL_SHIFT',
+                 'VERTICAL', 'HORIZONTAL', 'LEFT', 'RIGHT', 'TOP', 'TE_READONLY', 'TE_MULTILINE',
+                 'ALIGN_CENTER_VERTICAL'):
         setattr(wx, name, 1)
     wx.ID_ANY, wx.ID_EXIT = -1, 500
-    for name in ('EVT_MENU', 'EVT_BUTTON', 'EVT_WINDOW_DESTROY', 'EVT_TIMER'):
+    for name in ('EVT_MENU', 'EVT_BUTTON', 'EVT_WINDOW_DESTROY', 'EVT_TIMER', 'EVT_CHECKBOX'):
         setattr(wx, name, name)
     for number in range(1, 25): setattr(wx, 'WXK_F' + str(number), 2000 + number)
     if request.param == 'cached-native-import':
@@ -109,6 +128,8 @@ def native_menus(tmp_path, monkeypatch, request):
         cached = importlib.import_module('carr_library.ui.trust_status')
         monkeypatch.setattr(cached, 'wx', previous)
     monkeypatch.setitem(sys.modules, 'wx', wx)
+    monkeypatch.setattr('carr_library.ui.keyboard_settings.accelerator_tuple',
+                        lambda key, identity: (0, key, int(identity)))
     source = Path(importlib.util.find_spec('carr_library.ui.desktop_app').origin)
     tree = ast.parse(source.read_text(encoding='utf-8'))
     owner = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'DesktopFrame')
@@ -116,8 +137,10 @@ def native_menus(tmp_path, monkeypatch, request):
     bindings, notices = {}, []
     frame = SimpleNamespace(library=LibraryApp(tmp_path / 'library'), cancel_event=Event(),
         _closing=False, working=False, busy=False, host=Control(), layout=Control(),
+        IsActive=lambda: True, IsEnabled=lambda: True, IsBeingDeleted=lambda: False,
         choice=Control(), status=Control(), GetId=lambda: 71, SetAcceleratorTable=lambda value: None,
-        report=notices.append, Unbind=lambda *args, **kwargs: True)
+        report=notices.append, Unbind=lambda *args, **kwargs: True,
+        evidence=None, _dirty=lambda: False, _restore_note_focus=lambda: None)
     def bind(event, callback, item=None, **kwargs):
         if event == wx.EVT_MENU:
             identity = item.GetId() if item is not None else kwargs['id']
@@ -176,6 +199,9 @@ def test_actual_desktop_installers_retain_every_native_command_across_wrapper_re
     effective_shortcuts(commands, {})  # All actual unchanged defaults coexist.
     assert not native_menus.notices
     controller = frame.keyboard_settings
+    # wx can expose new Python wrappers while the retained native IDs survive.
+    for _, menu in frame.menu_bar.menus:
+        menu.wrappers.clear()
     change = controller.apply_with_undo({published.action: 'Ctrl+Shift+9'})
     controller._guard()
     assert effective_shortcuts(controller.commands, controller.overrides)[published.action] == 'Ctrl+Shift+9'
@@ -196,7 +222,10 @@ def test_publication_alias_and_saved_key_survive_discarded_item_wrapper(native_m
     bar.menus.clear()
     install_studio_actions(frame)
     menu = bar.GetMenu(0)
-    assert not menu.wrappers  # Append's temporary wrappers are really gone.
+    # Canonical pending CommandSpec entries retain their original wrappers;
+    # force a later wx wrapper view while preserving the actual native records.
+    menu.wrappers.clear()
+    assert not menu.wrappers
     controller = KeyboardSettings(frame, wx_module=native_menus.wx)
     row = next(row for row in controller.commands if row.action == action)
     assert row.default == '' and 'EPUB3 / DAISY' in row.title
@@ -221,3 +250,99 @@ def test_retained_alias_rejects_rebinding_reused_ids_and_unknown_slash_paths():
     item.SetItemLabel('Unregistered / ambiguous command')
     with pytest.raises(ValueError, match='stable, unambiguous'):
         capture_commands(bar)
+
+
+
+def test_progress_installer_adds_two_commands_to_the_existing_shared_manager(native_menus):
+    from carr_library.ui.keyboard_settings import install_keyboard_settings
+    from carr_library.ui.progress_panel import install_progress_panel
+
+    frame = native_menus.frame
+    frame.menu_bar = MenuBar()
+    options = Menu()
+    frame.menu_bar.Append(options, '&Options')
+    retained = options.Append(-1, 'Retained action\tCtrl+Shift+7')
+    frame.Bind(native_menus.wx.EVT_MENU, lambda event: None, retained)
+    manager = install_keyboard_settings(frame)
+    original = {row.menu_id for row in frame.keyboard_settings.commands}
+
+    # This is the real installer after the real manager is active, matching
+    # DesktopFrame._menus. Both callbacks must become registered native leaves.
+    panel = install_progress_panel(frame)
+    assert frame.keyboard_commands is manager
+    assert frame.keyboard_settings.manager is manager
+    query = manager.bindings['progress.query'].item
+    settings = manager.bindings['options.progress'].item
+    assert query.GetId() != settings.GetId()
+    assert manager.registry.get('progress.query').default_shortcut == 'Ctrl+Shift+Q'
+    assert native_menus.bindings[query.GetId()].__self__ is panel
+    assert native_menus.bindings[settings.GetId()].__self__ is panel
+    observed = {row.menu_id for row in frame.keyboard_settings.commands}
+    assert observed == original | {query.GetId(), settings.GetId()}
+    assert retained.GetId() in observed
+    manager.guard_native()
+    frame.keyboard_settings._guard()
+
+    # Reinstalling the observer must keep one owner and the same semantic IDs.
+    assert install_progress_panel(frame) is panel
+    assert frame.operation_progress is panel.legacy
+    assert {row.menu_id for row in frame.keyboard_settings.commands} == observed
+    assert len(options.GetMenuItems()) == len(observed)
+
+
+def test_active_manager_still_rejects_an_unregistered_second_native_leaf(native_menus):
+    from carr_library.ui.command_registry import CommandSpec
+    from carr_library.ui.keyboard_settings import install_keyboard_settings, register_menu_command
+
+    frame = native_menus.frame
+    frame.menu_bar = MenuBar()
+    options = Menu()
+    frame.menu_bar.Append(options, '&Options')
+    manager = install_keyboard_settings(frame)
+    first = options.Append(-1, 'Explicit dynamic command')
+    second = options.Append(-1, 'Unregistered dynamic command')
+    frame.Bind(native_menus.wx.EVT_MENU, lambda event: None, first)
+
+    # This intentionally repeats the faulty two-append sequence. The fix is in
+    # the progress installer; relaxing the manager's identity guard is unsafe.
+    with pytest.raises(ValueError, match='A new native command must register its semantic identity'):
+        register_menu_command(frame, CommandSpec('test.dynamic', 'Explicit dynamic command'), first)
+    assert second.GetId() not in {binding.item.GetId() for binding in manager.bindings.values()}
+    with pytest.raises(ValueError, match='menu commands changed'):
+        manager.guard_native()
+
+
+def test_named_workflow_macros_use_one_manager_and_only_open_new_review(native_menus, monkeypatch):
+    from carr_library.assistant import AssistantService
+    from carr_library.assistant.templates import TemplateStore
+    from carr_library.ui import workflow_templates
+    from carr_library.ui.keyboard_settings import install_keyboard_settings
+
+    frame = native_menus.frame
+    store = TemplateStore(frame.library.root)
+    recipe = store.save('Create after review', 'assistant',
+        {'steps': [{'tool': 'library.create', 'arguments': {'name': 'Not yet created'}}]})
+    frame.menu_bar = MenuBar(); frame.menu_bar.Append(Menu(), '&Options')
+    manager = install_keyboard_settings(frame)
+    called = []
+    monkeypatch.setattr(workflow_templates, 'show_workflow_templates',
+        lambda actual, **kwargs: called.append((actual, kwargs)))
+    workflow_templates.install_workflow_templates_actions(frame)
+    assert frame.keyboard_commands is manager
+    binding = manager.bindings[recipe.command_id]
+    assert binding.item.GetId() in native_menus.bindings
+    assert manager.registry.get(recipe.command_id).default_shortcut == ''
+    manager.apply_overrides({recipe.command_id: 'Ctrl+Alt+Shift+F9'})
+    manager.guard_native(); frame.keyboard_settings._guard()
+    native_menus.bindings[binding.item.GetId()](SimpleNamespace())
+    assert called == [(frame, {'selected_id': recipe.id})]
+    assert frame.library.workspaces() == () and AssistantService(frame.library).jobs() == ()
+    before = set(native_menus.bindings)
+    workflow_templates.install_workflow_templates_actions(frame)
+    assert set(native_menus.bindings) == before
+    assert manager.shortcut(recipe.command_id) == 'Ctrl+Alt+Shift+F9'
+
+    # Another library must not inherit an old menu's stored recipe authority.
+    frame.library = LibraryApp(frame.library.root.parent / 'other-library')
+    native_menus.bindings[binding.item.GetId()](SimpleNamespace())
+    assert len(called) == 1 and 'library changed' in native_menus.notices[-1].lower()

@@ -13,6 +13,7 @@ from ..audio.transcription import (AUDIO_EXTENSIONS, FORMATS, SuppliedWhisperRun
 from ..audio import transcription_settings as connection_settings
 from ..durable_state import local_path, regular
 from .import_center import readable
+from .transcription_workstation import ProfileTranscriptionController, TranscriptionActions
 
 
 def prepare_reading_copy(library_root, service, job_id, source_file, *, cancelled=lambda: False):
@@ -39,7 +40,14 @@ def prepare_reading_copy(library_root, service, job_id, source_file, *, cancelle
 
 
 class TranscriptionController:
-    """UI-independent actions; expensive work goes through frame.run_job."""
+    """UI-independent legacy actions, using the same public orchestration boundary."""
+    def __new__(cls, frame, *args, **kwargs):
+        if cls is TranscriptionController and not hasattr(frame, 'library'):
+            # Preserve the canonical headless controller/root API without a
+            # second native window or process owner.
+            return ProfileTranscriptionController(frame, *args, **kwargs)
+        return super().__new__(cls)
+
     def __init__(self, frame, *, changed=lambda focus=False: None,
                  dispatch=lambda callback: callback(), service_factory=TranscriptionService,
                  runtime_factory=SuppliedWhisperRuntime):
@@ -130,12 +138,22 @@ class TranscriptionController:
                 or self.closed or getattr(self.frame, '_closing', False)
                 or self.frame.library is not self.library)
 
-    def _progress(self, token, text, progress_token):
+    def _progress(self, token, text, progress_token, *, progress_task=None):
         if self.closed or self._token is not token:
             return
-        progress = getattr(self.frame, 'operation_progress', None)
-        if progress is not None:
-            progress.update(phase=readable(text)[:512], token=progress_token)
+        if progress_task is not None:
+            from ..progress import ProgressError, ProgressState
+            try:
+                progress_task.update(phase=readable(text)[:200])
+            except ProgressError:
+                # A concurrent cancellation/terminal observer transition is
+                # not a failure of the actual ASR operation or its receipt.
+                if progress_task.snapshot().state == ProgressState.RUNNING:
+                    raise
+        else:
+            progress = getattr(self.frame, 'operation_progress', None)
+            if progress is not None:
+                progress.update(phase=readable(text)[:512], token=progress_token)
         def apply():
             if not self.closed and self._token is token and self.busy:
                 self.report(text)
@@ -159,10 +177,13 @@ class TranscriptionController:
 
         def work():
             self.guard()
-            progress = getattr(self.frame, 'operation_progress', None)
+            from ..progress import current_progress
+            progress_task = current_progress()
+            progress = getattr(self.frame, 'operation_progress', None) if progress_task is None else None
             progress_token = progress.event.token if progress is not None else None
             try:
-                return operation(lambda text: self._progress(token, text, progress_token))
+                return operation(lambda text: self._progress(
+                    token, text, progress_token, progress_task=progress_task))
             except AudioCancelled:
                 return {'status': 'cancelled', 'preparation_cancelled': True}
 
@@ -366,7 +387,7 @@ class TranscriptionController:
         return True
 
 
-def create_transcription_dialog(frame, *, controller_factory=TranscriptionController):
+def create_transcription_dialog(frame, *, controller_factory=TranscriptionController, profile_controller=None):
     """Construct real wx controls separately so native CI can exercise the view."""
     import wx
 
@@ -381,7 +402,10 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             root_layout = wx.BoxSizer(wx.VERTICAL)
             self.pages = wx.Notebook(self)
             self.pages.SetName('Transcription pages')
-            input_page, job_page = wx.Panel(self.pages), wx.Panel(self.pages)
+            input_page, job_page = wx.ScrolledWindow(self.pages), wx.ScrolledWindow(self.pages)
+            for page in (input_page, job_page):
+                page.SetScrollRate(0, 16)
+                page.SetMinSize((640, 320))
             panel = input_page
             layout = wx.BoxSizer(wx.VERTICAL)
 
@@ -454,32 +478,40 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             self.edit_button, self.folder_button = buttons([
                 ('&Edit TXT reading copy', self.edit), ('Open result f&older', self.open_folder)])
             job_page.SetSizer(layout)
-            self.pages.AddPage(job_page, 'Saved jobs and results')
+            self.pages.AddPage(job_page, 'Saved manifest jobs and results')
+            from .transcription_workstation import build_profile_page
+            self.profile_view = build_profile_page(self.pages, self.controller.frame,
+                controller=profile_controller, close_window=self.close,
+                state_changed=self.refresh_shared_actions)
+            self.pages.AddPage(self.profile_view, 'Registered profiles and transcript edits')
             root_layout.Add(self.pages, 1, wx.EXPAND | wx.ALL, 6)
             panel, layout = self, root_layout
             self.start_button, self.pause_button, self.cancel_button = buttons([
                 ('&Start / resume (F6)', self.start),
-                ('&Pause (F8)', lambda event: self.controller.request_stop('pause')),
-                ('&Cancel operation', lambda event: self.controller.request_stop('cancel'))])
+                ('&Pause (F8)', self.pause),
+                ('&Cancel operation', self.cancel)])
             self.status = field('Transcription status (Ctrl+Alt+G)', wx.TextCtrl,
                                 style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 100))
             self.query_button, self.close_button = buttons([
-                ('Read pro&gress (Ctrl+Alt+G)', lambda event: self.status.SetFocus()),
+                ('Read pro&gress (Ctrl+Alt+G)', self.query_progress),
                 ('Close (Esc)', self.close)])
             self.SetSizer(layout)
             self.SetEscapeId(self.close_button.GetId())
             self.Bind(wx.EVT_CLOSE, self.close)
             self.Bind(wx.EVT_WINDOW_DESTROY, self.on_destroy)
+            self.pages.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.page_changed)
             accelerators = []
             for flags, key, handler in [
                     (wx.ACCEL_NORMAL, wx.WXK_F6, self.start),
-                    (wx.ACCEL_NORMAL, wx.WXK_F8, lambda event: self.controller.request_stop('pause')),
-                    (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('G'), lambda event: self.status.SetFocus())]:
+                    (wx.ACCEL_NORMAL, wx.WXK_F8, self.pause),
+                    (wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('G'), self.query_progress)]:
                 identifier = wx.NewIdRef()
                 self.Bind(wx.EVT_MENU, handler, id=identifier)
                 accelerators.append((flags, key, identifier))
             self.SetAcceleratorTable(wx.AcceleratorTable(accelerators))
-            self.SetMinSize((750, 740))
+            self.Layout()
+            minimum = root_layout.GetMinSize()
+            self.SetMinClientSize((max(720, minimum.width), max(660, minimum.height)))
             self.render()
 
         def render(self, focus=False):
@@ -525,15 +557,60 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
                 control.Enable(not controller.busy)
             for control in self.settings_controls + list(self.formats.values()):
                 control.Enable(not controller.busy and controller.job_id is None)
-            self.start_button.Enable(not controller.busy and bool(controller.manifest)
-                                     and bool(controller.paths or controller.job_id))
-            self.pause_button.Enable(controller.busy and controller.mode == 'run')
-            self.cancel_button.Enable(controller.busy)
+            self.refresh_shared_actions()
             output = self.selected_output()
             self.edit_button.Enable(not controller.busy and output is not None and 'txt' in output['formats'])
             self.folder_button.Enable(not controller.busy and output is not None)
-            if focus:
+            if focus and not self._profile_active():
                 self.status.SetFocus()
+
+        def _profile_active(self):
+            # The one pending owner wins even if the operator changes pages.
+            profile = getattr(self, 'profile_view', None)
+            if self.controller.busy or profile is None or profile.closed:
+                return False
+            return profile.pending or self.pages.GetSelection() == 2
+
+        def refresh_shared_actions(self):
+            if self.controller.closed or not self or not hasattr(self, 'start_button'):
+                return
+            if self._profile_active():
+                profile = self.profile_view
+                self.start_button.Enable(not profile.pending and
+                    (profile.current_job is None or profile.current_job.get('status') != 'complete'))
+                self.pause_button.Enable(profile.pending and profile._kind == 'transcribe')
+                self.cancel_button.Enable(profile.pending)
+            else:
+                controller = self.controller
+                self.start_button.Enable(not controller.busy and bool(controller.manifest)
+                                         and bool(controller.paths or controller.job_id))
+                self.pause_button.Enable(controller.busy and controller.mode == 'run')
+                self.cancel_button.Enable(controller.busy)
+
+        def page_changed(self, event):
+            self.refresh_shared_actions()
+            event.Skip()
+
+        def pause(self, event=None):
+            if self.controller.closed or not self:
+                return
+            if self._profile_active():
+                self.profile_view.pause(event)
+            else:
+                self.controller.request_stop('pause')
+
+        def cancel(self, event=None):
+            if self.controller.closed or not self:
+                return
+            if self._profile_active():
+                self.profile_view.cancel(event)
+            else:
+                self.controller.request_stop('cancel')
+
+        def query_progress(self, event=None):
+            if self.controller.closed or not self:
+                return
+            (self.profile_view.status if self._profile_active() else self.status).SetFocus()
 
         def choose_manifest(self, event=None):
             with wx.FileDialog(self, 'Choose a reviewed local transcription runtime manifest',
@@ -562,6 +639,11 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
                 self.controller.inspect(self.controller.jobs[index]['id'])
 
         def start(self, event=None):
+            if self.controller.closed or not self:
+                return
+            if self._profile_active():
+                self.profile_view.start(event)
+                return
             try:
                 settings = TranscriptionSettings(language=self.language.GetValue().strip(),
                     task='translate' if self.task.GetSelection() == 1 else 'transcribe',
@@ -594,15 +676,25 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
             controller = getattr(self, 'controller', None)
             if controller is not None:
                 controller.dispose()
+            profile = getattr(self, 'profile_view', None)
+            if profile is not None:
+                profile.dispose()
             return super().Destroy() if self else False
 
         def on_destroy(self, event):
             # The original Python wrapper can already be invalid here.
             if event.GetId() == self._native_id:
                 self.controller.dispose()
+                profile = getattr(self, 'profile_view', None)
+                if profile is not None:
+                    profile.dispose()
             event.Skip()
 
         def close(self, event=None):
+            profile = getattr(self, 'profile_view', None)
+            if not self.controller.busy and profile is not None and not profile.closed:
+                profile.close(event)
+                return
             if not self.controller.close():
                 if event is not None and hasattr(event, 'CanVeto') and event.CanVeto():
                     event.Veto()
@@ -612,17 +704,28 @@ def create_transcription_dialog(frame, *, controller_factory=TranscriptionContro
     return TranscriptionDialog()
 
 
-def show_transcription(frame, *, job_id=None):
+def show_transcription(frame, *, job_id=None, profile_controller=None, profiles=False):
     import wx
-    dialog = create_transcription_dialog(frame)
+    dialog = (create_transcription_dialog(frame) if profile_controller is None else
+              create_transcription_dialog(frame, profile_controller=profile_controller))
     try:
         dialog.CentreOnParent()
-        if job_id is not None:
+        if job_id is not None and len(job_id) == 32:
+            dialog.pages.SetSelection(2)
+            dialog.profile_view.submit('Opening saved profile transcription job',
+                lambda service, cancel, progress: service.get_job(job_id), dialog.profile_view.publish_job)
+        elif job_id is not None:
             dialog.pages.SetSelection(1)
             wx.CallAfter(dialog.controller.inspect, job_id)
+        elif profiles:
+            dialog.pages.SetSelection(2)
+            wx.CallAfter(dialog.profile_view.refresh)
         dialog.ShowModal()
     finally:
         dialog.controller.dispose()
+        profile = getattr(dialog, 'profile_view', None)
+        if profile is not None:
+            profile.dispose()
         if dialog:
             dialog.Destroy()
 
@@ -635,5 +738,39 @@ def install_transcription_actions(frame):
     if menu is None:
         raise RuntimeError('Install the shared Tools menu before transcription actions.')
     identity = wx.NewIdRef()
-    menu.Append(identity, 'Local audio and video &transcription...')
+    item = menu.Append(identity, 'Local audio and video &transcription...')
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    register_menu_command(frame, CommandSpec('audio.transcription_panel',
+                                            'Local audio and video transcription'), item)
     frame.Bind(wx.EVT_MENU, lambda event: show_transcription(frame), id=int(identity))
+    install_transcription_menu(frame, menu)
+
+
+def build_transcription_dialog(frame, controller=None):
+    """Canonical entry point: the same native notebook, with profile actions."""
+    dialog = create_transcription_dialog(frame, profile_controller=controller)
+    dialog.pages.SetSelection(2)
+    return dialog
+
+
+def show_transcription_dialog(frame, controller=None):
+    return show_transcription(frame, profile_controller=controller, profiles=True)
+
+
+def install_transcription_menu(frame, menu):
+    """Stable canonical action opens the profile page of the existing window."""
+    import wx
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_menu_command
+    def open_profiles(event=None):
+        if getattr(frame, '_closing', False):
+            return
+        if getattr(frame, 'working', False) or getattr(frame, 'busy', False):
+            frame.report('Wait for the current operation or cancel it before opening transcription.')
+            return
+        show_transcription_dialog(frame)
+    item = menu.Append(wx.ID_ANY, 'Registered transcription &profiles...')
+    frame.Bind(wx.EVT_MENU, open_profiles, item)
+    register_menu_command(frame, CommandSpec('tools.transcription', 'Local transcription'), item)
+    return open_profiles

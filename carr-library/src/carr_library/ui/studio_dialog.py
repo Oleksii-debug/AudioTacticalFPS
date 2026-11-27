@@ -9,7 +9,8 @@ from ..durable_state import atomic_json, encode, read_json
 from ..research.export_file import write_binary_export, export_completion
 from ..studio.project import Project, parse_script
 from ..studio.render import ProductionService
-from .operation_progress import OperationProgress, operation_outcome
+from .operation_progress import operation_outcome
+from .progress_panel import NativeProgressPanel
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from .export_destination import confirm_export_destination
 
@@ -60,29 +61,38 @@ class StudioController:
                                    mode=previous_project.mode if previous_project else 'faithful',
                                    project_id=previous_project.id if previous_project else None)
         if previous_project and text != previous_project.original_script:
-            attached = {scene.id: scene for scene in previous_project.scenes if scene.cues}
+            attached = {scene.id: scene for scene in previous_project.scenes
+                        if scene.cues or scene.effects or scene.markers}
             current = {scene.id: scene for scene in project.scenes}
             if any(identity not in current or current[identity].title != old.title
                    for identity, old in attached.items()):
-                raise ValueError('A scene with attached audio changed its identity. '
-                                 'Move or remove its clips in the scene audio editor before changing scene structure.')
-            scenes = tuple(replace(scene, cues=attached[scene.id].cues)
+                raise ValueError('A scene with attached audio, effects or markers changed its identity. '
+                                 'Review those items in the scene audio editor before changing scene structure.')
+            scenes = tuple(replace(scene, cues=attached[scene.id].cues, effects=attached[scene.id].effects,
+                                   markers=attached[scene.id].markers,
+                                   minimum_duration=max(scene.minimum_duration, attached[scene.id].minimum_duration))
                            if scene.id in attached else scene for scene in project.scenes)
             previous = {role.name.casefold(): role for role in self.project.roles}
+            present_roles = {role.name.casefold() for role in project.roles}
+            if any(role.effects and role.name.casefold() not in present_roles for role in previous_project.roles):
+                raise ValueError('A processed speaking role would be removed. Review its effects before changing roles.')
             roles = tuple(replace(role, voice_id=previous[role.name.casefold()].voice_id,
                                   language=previous[role.name.casefold()].language,
                                   pan=previous[role.name.casefold()].pan,
                                   gain_db=previous[role.name.casefold()].gain_db,
                                   rate=previous[role.name.casefold()].rate,
-                                  volume=previous[role.name.casefold()].volume)
+                                  volume=previous[role.name.casefold()].volume,
+                                  effects=previous[role.name.casefold()].effects)
                           if role.name.casefold() in previous else role for role in project.roles)
             project = replace(project, roles=roles, scenes=scenes,
                               sample_rate=previous_project.sample_rate,
-                              schema=previous_project.schema, revision=previous_project.revision)
+                              schema=previous_project.schema, revision=previous_project.revision,
+                              effects=previous_project.effects)
         if previous_project and project.to_dict() != previous_project.to_dict():
             project = replace(project, revision=previous_project.revision + 1)
         self.service.projects.save(project,
-            expected_revision=previous_project.revision if previous_project else None)
+            expected_revision=previous_project.revision if previous_project else None,
+            expected_fingerprint=previous_project.fingerprint if previous_project else None)
         self.project = project
         return project
 
@@ -90,6 +100,7 @@ class StudioController:
 def show_studio(frame):
     import wx
     controller = StudioController(frame.library)
+    library_root = frame.library.root
     service = controller.service
     class StudioDialog(wx.Dialog):
         def Destroy(self):
@@ -108,6 +119,9 @@ def show_studio(frame):
     cancel = threading.Event()
     voices, current_job, alive, busy = (), None, True, False
     draft_dirty = False
+    saved_signature = None
+    owned_progress_voices = set()
+    cleanup_retry_registered = False
     cleanup_started = False
     native_id = dialog.GetId()
     dialog._native_id = native_id
@@ -145,10 +159,6 @@ def show_studio(frame):
     layout.Add(stems, 0, wx.ALL, 6)
     status = field('Production and save status', style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='Loading installed local voices. No audio starts automatically.', size=(-1, 100))
-    progress_label = wx.StaticText(dialog, label='Ready')
-    progress_gauge = wx.Gauge(dialog, range=100, style=wx.GA_HORIZONTAL)
-    layout.Add(progress_label, 0, wx.EXPAND | wx.ALL, 6)
-    layout.Add(progress_gauge, 0, wx.EXPAND | wx.ALL, 6)
     buttons = {}
     for row in ((('save', '&Save (Ctrl+S)'), ('open', '&Open project'), ('saveas', 'Save &as (Ctrl+Shift+S)'),
                  ('roles', 'Edit &roles and voices'), ('help', '&Help')),
@@ -156,7 +166,7 @@ def show_studio(frame):
                  ('preview', 'Listen to &output'), ('close', '&Close')),
                 (('progress_voice', 'Use voice for progress...'),
                  ('navigation', 'Playback navigation...'), ('pause_preview', 'Pause/resume playback'),
-                 ('stop_preview', 'Stop playback'))):
+                 ('stop_preview', 'Stop playback'), ('output_device', 'Playback output...'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
@@ -175,7 +185,14 @@ def show_studio(frame):
 
     dialog.library, dialog.status = frame.library, status
     dialog.report = lambda message: report(message, True)
-    progress = OperationProgress(dialog, progress_gauge, progress_label, wx_module=wx)
+    dialog.host, dialog.layout, dialog.working = dialog, layout, False
+    progress_panel = NativeProgressPanel(dialog, accessible_name='Audio Studio operation progress',
+        details_name='Audio Studio current progress and phase', query_name='Query Audio Studio progress')
+    parent_panel = getattr(frame, 'progress_panel', None)
+    if parent_panel is not None:
+        progress_panel.hub = parent_panel.hub
+    progress = progress_panel.legacy
+    dialog.progress_panel, dialog.operation_progress = progress_panel, progress
     parent_progress = getattr(frame, 'operation_progress', None)
     if parent_progress is not None and parent_progress.speech_provider is not None:
         try:
@@ -195,6 +212,8 @@ def show_studio(frame):
     def controls():
         if not alive:
             return
+        dialog.working = busy
+        progress_panel.settings_button.Enable(not busy)
         for name in ('render', 'open', 'roles', 'jobs'):
             buttons[name].Enable(not busy)
         buttons['pause'].Enable(busy)
@@ -202,6 +221,7 @@ def show_studio(frame):
         buttons['navigation'].Enable(not busy and getattr(dialog, '_playback_navigation', None) is not None)
         buttons['pause_preview'].Enable(not busy and getattr(dialog, '_audio_player', None) is not None)
         buttons['stop_preview'].Enable(getattr(dialog, '_audio_player', None) is not None)
+        buttons['output_device'].Enable(not busy)
         selected = voice_choice.GetSelection()
         buttons['progress_voice'].Enable(not busy and 0 <= selected < len(voices)
                                           and 'volume' in voices[selected].capabilities)
@@ -209,10 +229,10 @@ def show_studio(frame):
         title.Enable(not busy)
         voice_choice.Enable(not busy)
 
-    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False):
+    def run(operation, complete, *, phase='Audio Studio operation', with_progress=False, on_failed=None):
         nonlocal busy
         if busy or not alive:
-            return
+            return False
         busy = True
         cancel.clear()
         controls()
@@ -266,9 +286,10 @@ def show_studio(frame):
                 # interrupt the production service after it saved a receipt.
                 unavailable(exc)
 
-        def failed_operation(exc, *, worker=False):
+        def failure_outcome(exc, *, worker=False):
+            from concurrent.futures import CancelledError
             from carr_library.audio.models import AudioCancelled
-            interrupted = worker and isinstance(exc, (InterruptedError, AudioCancelled))
+            interrupted = worker and isinstance(exc, (InterruptedError, AudioCancelled, CancelledError))
             state = 'paused' if interrupted else 'failed'
             if worker and with_progress and job_identity is not None:
                 try:
@@ -277,6 +298,13 @@ def show_studio(frame):
                         state = saved_state
                 except Exception:
                     pass  # A missing receipt cannot hide the original error.
+            return state
+
+        def failed_operation(exc, *, worker=False):
+            if not alive:
+                finish_detached_task(error=exc, worker=worker)
+                return
+            state = failure_outcome(exc, worker=worker)
             if state == 'cancelled':
                 observe('cancel', phase + ': cancelled', token=token)
             elif state == 'paused':
@@ -285,24 +313,76 @@ def show_studio(frame):
                 observe('fail', phase + ': failed', token=token)
             observe('finalize', token=token)
             report(str(exc), True)
+            if on_failed is not None and alive:
+                try:
+                    on_failed(exc)
+                except (Exception, KeyboardInterrupt) as feedback_error:
+                    unavailable(feedback_error)
+
+        task = getattr(getattr(progress, 'tracker', None), 'task', None)
+
+        def perform():
+            from carr_library.progress import ProgressTask, bind_progress
+            if isinstance(task, ProgressTask):
+                with bind_progress(task):
+                    return operation(measured_phase) if with_progress else operation()
+            return operation(measured_phase) if with_progress else operation()
+
+        def finish_detached_task(result=None, *, error=None, worker=False, applied=False):
+            # The shared task outlives its native observer. Only a returned
+            # durable receipt or a completed result callback can claim success;
+            # an unapplied value may still require publication by that callback.
+            from carr_library.progress import ProgressTask
+            if not isinstance(task, ProgressTask) or task.snapshot().terminal:
+                return
+            try:
+                if error is not None:
+                    outcome = failure_outcome(error, worker=worker)
+                elif applied or isinstance(result, dict) and any(key in result for key in ('status', 'state')):
+                    outcome = operation_outcome(result)
+                else:
+                    outcome = 'unavailable'
+                message = (phase + ': ' + outcome + '; the view has closed. ' +
+                           ('The returned saved receipt is retained.' if outcome == 'succeeded'
+                            else 'Review the saved operation before continuing.'))
+                if outcome == 'succeeded':
+                    task.succeed(durable=True, message=message)
+                elif outcome == 'failed':
+                    task.fail(message)
+                elif outcome == 'cancelled':
+                    task.cancelled(message)
+                elif outcome == 'paused':
+                    task.pause(message)
+                else:
+                    task.unavailable(message)
+            except (Exception, KeyboardInterrupt):
+                if not task.snapshot().terminal:
+                    task.unavailable('The view closed before its operation outcome could be confirmed.')
 
         try:
-            future = executor.submit(lambda: operation(measured_phase) if with_progress else operation())
+            future = executor.submit(perform)
         except Exception as exc:
             finished.set()
             busy = False
             controls()
             failed_operation(exc)
-            return
+            return False
 
         def discard_result(done):
+            nonlocal busy
+            finished.set()
+            busy = False
             try:
                 result = done.result()
-            except Exception:
+            except (Exception, KeyboardInterrupt) as exc:
+                finish_detached_task(error=exc, worker=True)
                 return
-            release = getattr(result, 'close', None)
-            if callable(release):
-                release()
+            # Keep result cleanup independent of a delivered GUI callback, and
+            # retain a failed owner before recording the shared task outcome.
+            if callable(getattr(result, 'close', None)):
+                owned_progress_voices.add(result)
+                retire_progress_voice(result)
+            finish_detached_task(result)
 
         def finish(done):
             if not alive:
@@ -322,18 +402,31 @@ def show_studio(frame):
                     failed_operation(exc, worker=True)
                     return
                 try:
+                    outcome = operation_outcome(result)
+                except Exception as exc:
+                    unavailable(exc)
+                    # Optional feedback failure cannot discard a returned
+                    # business result. Reuse the canonical bounded receipt
+                    # validator; do not infer completion from a failed observer.
+                    try:
+                        from carr_library.progress import operation_outcome as receipt_outcome
+                        outcome = receipt_outcome(result)
+                    except Exception as receipt_error:
+                        report('The operation returned a result, but its completion state '
+                               'could not be verified. ' + str(receipt_error), True)
+                        return
+                try:
                     # Completion may verify or publish a final artifact. It is
                     # business work and must finish before any success signal.
-                    complete(result)
+                    if outcome == 'succeeded':
+                        complete(result)
+                    else:
+                        report(phase + ': ' + outcome + '. Saved work is retained.', True)
                 except Exception as exc:
                     failed_operation(exc)
                     return
                 if not alive:
-                    return
-                try:
-                    outcome = operation_outcome(result)
-                except Exception as exc:
-                    unavailable(exc)
+                    finish_detached_task(result, applied=outcome == 'succeeded')
                     return
                 if outcome == 'succeeded':
                     observe('succeed', phase + ': verified complete', token=token)
@@ -346,6 +439,23 @@ def show_studio(frame):
                 observe('finalize', token=token)
             wx.CallAfter(apply)
         future.add_done_callback(finish)
+        return True
+
+    def retire_progress_voice(provider):
+        # Keep failed cleanup reachable independently of a delivered UI callback.
+        nonlocal cleanup_retry_registered
+        try:
+            if provider.close() is False:
+                raise RuntimeError('A progress voice has not confirmed closure.')
+        except (Exception, KeyboardInterrupt):
+            owned_progress_voices.add(provider)
+            if not cleanup_retry_registered:
+                import atexit
+                atexit.register(release_service)
+                cleanup_retry_registered = True
+            return False
+        owned_progress_voices.discard(provider)
+        return True
 
     def select_progress_voice(event=None):
         if not alive:
@@ -356,30 +466,47 @@ def show_studio(frame):
         root = Path(dialog.library.root)
         voice_id = voices[selected].id
 
+        def activate():
+            provider = activate_progress_voice(root, voice_id, cancelled=cancel.is_set)
+            # The executor owns this result before any optional GUI delivery.
+            owned_progress_voices.add(provider)
+            return provider
+
         def activated(provider):
             try:
                 progress.set_speech_provider(provider, root=root)
-                if parent_progress is not None:
-                    parent_progress.set_speech_provider(provider.copy_selection(), root=root)
-            except Exception:
-                provider.close()
+            except (Exception, KeyboardInterrupt):
+                retire_progress_voice(provider)
                 raise
-            progress.settings_dialog()
+            owned_progress_voices.discard(provider)  # Ownership transferred.
             if parent_progress is not None:
+                copied = provider.copy_selection()
+                owned_progress_voices.add(copied)
+                try:
+                    parent_progress.set_speech_provider(copied, root=root)
+                except (Exception, KeyboardInterrupt):
+                    retire_progress_voice(copied)
+                    raise
+                owned_progress_voices.discard(copied)
+            progress.settings_dialog()
+            if not alive:
+                return
+            if parent_progress is not None and not parent_progress.closed:
                 parent_progress.reload_preferences()
             report(f'Progress voice selected for this session: {provider.label}. '
                    f'Sound mode: {progress.preferences.mode}.')
 
-        run(lambda: activate_progress_voice(root, voice_id, cancelled=cancel.is_set), activated,
-            phase='Selecting a local progress voice')
+        run(activate, activated, phase='Selecting a local progress voice')
 
     def save(event=None):
-        nonlocal draft_dirty
+        nonlocal draft_dirty, saved_signature
         if not alive:
             return
         try:
-            result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
+            signature = (editor.GetValue(), title.GetValue(), selected_voices())
+            result = controller.save(*signature)
             draft_dirty = False
+            saved_signature = signature
             report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.', True)
             return result
         except Exception as exc:
@@ -633,6 +760,54 @@ def show_studio(frame):
         except Exception as exc:
             report(f'Playback stop needs attention: {exc}', True)
 
+    def choose_playback_output(event=None):
+        if not alive:
+            return
+        player = getattr(dialog, '_audio_player', None)
+        generation = getattr(dialog, '_playback_generation', 0)
+
+        def guard():
+            if (not alive or not dialog or busy
+                    or generation != getattr(dialog, '_playback_generation', 0)
+                    or getattr(dialog, '_audio_player', None) is not player):
+                raise ValueError('The Studio or playback changed. Choose its output again when idle.')
+            if player is not None and player.state in ('playing', 'paused'):
+                raise ValueError('Stop the Studio preview before changing its playback output.')
+
+        try:
+            from .output_devices import choose_output_device
+            guard()
+            choice = choose_output_device(dialog, current=getattr(dialog, '_output_device', None), guard=guard)
+            if choice is None:
+                return
+            guard()
+            dialog._playback_generation = generation + 1
+            navigation = getattr(dialog, '_playback_navigation', None)
+            if navigation is not None:
+                navigation.invalidate()
+            if player is not None:
+                if player.close() is False:
+                    raise RuntimeError('The previous playback device has not confirmed closure.')
+                player.select_output(choice.device)
+            dialog._output_device = choice.device
+            label = choice.device.name if choice.device is not None else 'the Windows system default'
+            report(f'Preview output selected: {label}. Listen to output when ready.', True)
+        except Exception as exc:
+            report(f'Playback output was not changed. {exc}', True)
+
+    def prepare_playback(request, completed, failed, *, cancelled):
+        player = getattr(dialog, '_audio_player', None)
+        expected_root = library_root
+        def stopped():
+            return (cancelled() or cancel.is_set() or not alive
+                    or getattr(getattr(frame, 'library', None), 'root', None) != expected_root)
+        def work():
+            if player is None:
+                raise ValueError('Select a rendered recording before changing playback.')
+            return player.prepare_listening(request, expected_root,
+                state_root=expected_root / 'state', cancelled=stopped)
+        return run(work, completed, phase='Preparing independent playback settings', on_failed=failed)
+
     def playback_navigation(event=None):
         if not alive:
             return
@@ -681,8 +856,13 @@ def show_studio(frame):
                 raise ValueError('There is no completed master yet; render or resume the job.')
             from ..speech.player import WavePlayer
             from .playback_navigation import PlaybackNavigationHost
-            player = getattr(dialog, '_audio_player', None) or WavePlayer()
-            dialog._audio_player = player
+            player = getattr(dialog, '_audio_player', None)
+            if player is None:
+                player = WavePlayer()
+                dialog._audio_player = player
+                selected_output = getattr(dialog, '_output_device', None)
+                if selected_output is not None:
+                    player.select_output(selected_output)
             dialog._playback_generation = getattr(dialog, '_playback_generation', 0) + 1
             generation = dialog._playback_generation
             navigation = getattr(dialog, '_playback_navigation', None)
@@ -690,7 +870,7 @@ def show_studio(frame):
                 navigation = PlaybackNavigationHost(dialog, player,
                     generation=lambda: dialog._playback_generation, alive=lambda: alive,
                     stop_current=stop_preview, progress=(progress, parent_progress),
-                    report=report, wx_module=wx)
+                    report=report, wx_module=wx, prepare=prepare_playback)
                 dialog._playback_navigation = navigation
             navigation.invalidate()
             progress.register_player(player)
@@ -714,15 +894,38 @@ def show_studio(frame):
         show_text(dialog, 'Audio Studio keyboard and script guide', SCRIPT_HELP)
 
     def release_service():
-        # This runs behind owned work on the existing executor.
+        # This runs behind owned discovery/render on the existing executor.
+        nonlocal cleanup_retry_registered
+        pending = []
+        # An already detached panel retries only retained Python/native owners,
+        # without querying a destroyed control. Accepted selections also need
+        # this owner when their first close could not confirm native silence.
+        try:
+            if progress.close() is False:
+                raise RuntimeError('The progress view retains an unconfirmed voice owner.')
+        except (Exception, KeyboardInterrupt) as exc:
+            pending.append(str(exc)[:1000])
+        for provider in tuple(owned_progress_voices):
+            if not retire_progress_voice(provider):
+                pending.append('A progress voice has not confirmed closure.')
         try:
             if service.close() is False:
                 raise RuntimeError('An owned voice worker has not confirmed closure.')
-        except Exception as exc:
-            notice = 'Studio voice cleanup needs attention: ' + str(exc)[:1000]
+        except (Exception, KeyboardInterrupt) as exc:
+            pending.append(str(exc)[:1000])
+        import atexit
+        if pending and not cleanup_retry_registered:
+            atexit.register(release_service)
+            cleanup_retry_registered = True
+        elif not pending and cleanup_retry_registered:
+            atexit.unregister(release_service)
+            cleanup_retry_registered = False
+        if pending:
+            notice = 'Studio voice cleanup needs attention: ' + ' '.join(pending)
             def notify():
                 try:
-                    frame.report(notice)
+                    if frame and not getattr(frame, '_closing', False):
+                        frame.report(notice)
                 except (RuntimeError, AttributeError):
                     pass
             try:
@@ -766,7 +969,11 @@ def show_studio(frame):
         if close_notices:
             report(' '.join(close_notices))
 
-        progress.close()
+        try:
+            if progress.close() is False:
+                report('Progress voice cleanup remains pending; its owner will retry behind the worker.')
+        except (Exception, KeyboardInterrupt) as exc:
+            report(f'Progress voice cleanup needs attention: {exc}')
         # The same executor owns discovery/render and its registry cleanup.
         # Do not cancel the queued close or close an active borrowed registry.
         try:
@@ -792,7 +999,7 @@ def show_studio(frame):
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
                            'preview': preview, 'help': help_text, 'close': close,
                            'navigation': playback_navigation, 'pause_preview': pause_preview,
-                           'stop_preview': stop_preview,
+                           'stop_preview': stop_preview, 'output_device': choose_playback_output,
                            'progress_voice': select_progress_voice}.items():
         buttons[name].Bind(wx.EVT_BUTTON, callback)
     bindings = []
@@ -812,7 +1019,7 @@ def show_studio(frame):
     timer.Start(4000)
 
     def loaded(result):
-        nonlocal voices, draft_dirty
+        nonlocal voices, draft_dirty, saved_signature
         if not alive:
             return
         voices = result
@@ -836,16 +1043,38 @@ def show_studio(frame):
                 return
         draft_dirty = False
         controls()
+        if controller.project is not None and (editor.GetValue(), title.GetValue()) == (
+                controller.project.original_script, controller.project.title):
+            saved_signature = (editor.GetValue(), title.GetValue(), selected_voices())
         report(f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
 
+    from .save_all import SaveResult, coordinator_for
+    coordinator = coordinator_for(frame)
+    def unsaved():
+        return (alive and bool(editor.GetValue())
+                and (editor.GetValue(), title.GetValue(), selected_voices()) != saved_signature)
+    def save_registered(completed):
+        if not alive:
+            completed(SaveResult(False, 'The Audio Studio view has closed.'))
+        elif busy:
+            completed(SaveResult(False, 'Audio production is running; pause it before saving the project.'))
+        else:
+            completed(SaveResult(save() is not None, 'Project validation or saving did not complete.'))
+    def focus_registered():
+        if alive and dialog:
+            editor.SetFocus()
+    unregister = (coordinator.register('studio.' + str(id(controller)), 'Audio Studio project',
+                    dirty=unsaved, save=save_registered, focus=focus_registered)
+                  if coordinator is not None else lambda: None)
     run(lambda: service.discover_voices(cancelled=cancel.is_set).voices(), loaded,
         phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:
         try:
+            unregister()
             if alive:
                 close()
         finally:
@@ -887,6 +1116,8 @@ def show_audio_conversion(frame):
     import os
     from uuid import uuid4
     from ..durable_state import local_path
+    from ..audio.effect_presets import checked_chain
+    from .effects_dialog import _owned_window, _alive, _close, show_effect_chain
     from ..research.export_file import capture_export_destination
     selected_library = frame.library
     selected_root = local_path(selected_library.root, exists=True)
@@ -911,7 +1142,9 @@ def show_audio_conversion(frame):
     finally:
         if chooser:
             chooser.Destroy()
-    dialog = wx.Dialog(frame, title='Convert audio and apply effects', size=(760, 750),
+    inspect_cancel = threading.Event()
+    dialog = _owned_window(wx, wx.Dialog, frame, on_dispose=inspect_cancel.set,
+                       title='Convert audio and apply effects', size=(760, 750),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     panel = wx.ScrolledWindow(dialog, style=wx.VSCROLL)
     panel.SetScrollRate(0, 12)
@@ -934,6 +1167,18 @@ def show_audio_conversion(frame):
     effects = wx.CheckBox(panel, label='Apply speech noise reduction and gentle compression')
     effects.SetName('Apply speech noise reduction and gentle compression')
     layout.Add(effects, 0, wx.ALL, 6)
+    advanced = wx.Button(panel, label='Edit ordered effect chain and presets')
+    advanced.SetName('Edit ordered effect chain and presets')
+    basic = wx.Button(panel, label='Use basic effect controls')
+    basic.SetName('Use basic effect controls')
+    basic.Enable(False)
+    layout.Add(advanced, 0, wx.ALL, 6)
+    layout.Add(basic, 0, wx.ALL, 6)
+    effect_status = wx.TextCtrl(panel,
+        value='Basic controls are active. Ordered effects use the current output sample rate.',
+        style=wx.TE_READONLY | wx.TE_MULTILINE)
+    effect_status.SetName('Audio conversion effect settings')
+    layout.Add(effect_status, 0, wx.EXPAND | wx.ALL, 6)
     notice = wx.StaticText(panel, label='The new filename selects its audio format. Bit depth applies to PCM/FLAC; '
         'bitrate applies to the listed compressed encoders. Ogg Vorbis uses the existing quality setting. '
         'The installed runtime verifies the actual rate and channels before saving. Originals stay unchanged.')
@@ -942,22 +1187,136 @@ def show_audio_conversion(frame):
     outer = wx.BoxSizer(wx.VERTICAL); outer.Add(panel, 1, wx.EXPAND)
     outer.Add(dialog.CreateButtonSizer(wx.OK | wx.CANCEL), 0, wx.ALL, 6)
     dialog.SetSizer(outer); panel.FitInside()
-    try:
-        if dialog.ShowModal() != wx.ID_OK or not dialog or not native_alive():
-            return
+
+    advanced_chain = None
+    pending = False
+    def editor_guard():
+        if not _alive(dialog):
+            raise ValueError('The audio conversion editor is closed.')
         guard()
-        options = audio_conversion_settings(sample_rate=int(sample_rate.GetValue()),
+        if not _alive(dialog):
+            raise ValueError('The audio conversion editor is closed.')
+
+    def read_options():
+        return audio_conversion_settings(sample_rate=int(sample_rate.GetValue()),
             channels=int(channels.GetValue()), bit_depth=int(bit_depth.GetValue()), bitrate=int(bitrate.GetValue()),
             start=float(start.GetValue()), duration=float(duration.GetValue()) if duration.GetValue().strip() else None,
-            gain=float(gain.GetValue()), tempo=float(tempo.GetValue()),
-            loudness=float(loudness.GetValue()) if loudness.GetValue().strip() else None,
-            cleanup=effects.GetValue())
+            gain=float(gain.GetValue()) if advanced_chain is None else 0,
+            tempo=float(tempo.GetValue()) if advanced_chain is None else 1,
+            loudness=(float(loudness.GetValue()) if loudness.GetValue().strip() else None)
+                     if advanced_chain is None else None,
+            cleanup=effects.GetValue() if advanced_chain is None else False)
+
+    def effect_message(message):
+        if _alive(dialog) and native_alive():
+            effect_status.ChangeValue(str(message))
+
+    def effect_controls():
+        if not _alive(dialog):
+            return
+        for control in (gain, tempo, loudness, effects):
+            control.Enable(not pending and advanced_chain is None)
+        for control in (start, duration, sample_rate, channels, bit_depth, bitrate):
+            control.Enable(not pending)
+        advanced.Enable(not pending)
+        basic.Enable(not pending and advanced_chain is not None)
+        dialog.FindWindowById(wx.ID_OK).Enable(not pending)
+
+    def use_basic(event=None):
+        nonlocal advanced_chain
+        if not _alive(dialog):
+            return
+        try:
+            editor_guard()
+            advanced_chain = None
+            effect_controls()
+            effect_message('Basic controls are active; ordered settings have been left unchanged in saved presets.')
+            gain.SetFocus()
+        except Exception as exc:
+            effect_message(exc)
+
+    def edit_chain(event=None):
+        nonlocal pending
+        if not _alive(dialog):
+            return
+        try:
+            editor_guard()
+            if pending or getattr(frame, 'working', False):
+                raise ValueError('Wait for the current operation or cancel it before reviewing effects.')
+            options = read_options()
+            selected_rate = options['sample_rate']
+            frozen = checked_chain(advanced_chain if advanced_chain is not None else options['effects'],
+                                   selected_rate)
+        except Exception as exc:
+            effect_message(exc)
+            return
+        pending = True
+        effect_controls()
+        effect_message('Checking installed local audio effects...')
+
+        def inspect():
+            from ..runtime_settings import audio_runtime
+            guard()
+            runtime = audio_runtime(selected_root / 'state' / 'audio-conversion',
+                                    state_root=selected_root / 'state', input_roots=(source.parent,))
+            service = ProductionService(selected_root / 'state' / 'studio')
+            cancelled = lambda: inspect_cancel.is_set() or frame.cancel_event.is_set()
+            with service._audio_admission(runtime, operation_id='effect-capabilities:' + uuid4().hex,
+                                           cancelled=cancelled) as stopping:
+                guard()
+                return tuple(runtime.capabilities(cancelled=stopping)['effects'])
+
+        def failed(error):
+            nonlocal pending
+            pending = False
+            if not _alive(dialog) or not native_alive():
+                return
+            effect_controls()
+            effect_message('Effect review did not open: ' + str(error))
+
+        def reviewed(available):
+            nonlocal pending, advanced_chain
+            if not _alive(dialog) or not native_alive():
+                return
+            try:
+                editor_guard()
+                value = show_effect_chain(dialog, selected_root, frozen,
+                    sample_rate=selected_rate, available=available, guard=editor_guard)
+                editor_guard()
+                if value is not None:
+                    advanced_chain = checked_chain(value, selected_rate, available=available)
+                    effect_message(f'Ordered chain active: {len(advanced_chain)} effects. Basic controls are inactive.')
+                else:
+                    effect_message('Effect review cancelled; previous settings are retained.')
+            except Exception as exc:
+                effect_message(exc)
+            finally:
+                pending = False
+                if _alive(dialog) and native_alive():
+                    effect_controls()
+                    advanced.SetFocus()
+
+        try:
+            frame.run_job('Checking local audio effects', inspect, reviewed, failed)
+        except Exception as exc:
+            failed(exc)
+
+    advanced.Bind(wx.EVT_BUTTON, edit_chain)
+    basic.Bind(wx.EVT_BUTTON, use_basic)
+    try:
+        if dialog.ShowModal() != wx.ID_OK or not _alive(dialog) or not native_alive():
+            return
+        editor_guard()
+        if pending:
+            raise ValueError('Wait for the effect inventory or cancel before converting audio.')
+        options = read_options()
+        if advanced_chain is not None:
+            options['effects'] = checked_chain(advanced_chain, options['sample_rate'])
     except Exception as exc:
         report_error(exc)
         return
     finally:
-        if dialog:
-            dialog.Destroy()
+        _close(dialog)
     chooser = wx.FileDialog(frame, 'Save converted audio to a new file', defaultFile=source.stem + '-converted.wav',
                             wildcard='Audio (*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma)|*.wav;*.flac;*.mp3;*.m4a;*.m4b;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma',
                             style=wx.FD_SAVE)
@@ -1001,7 +1360,8 @@ def show_audio_conversion(frame):
             inspected = runtime.inspect(source, cancelled=stopping)
         remaining = max(0, inspected.duration - options['start'])
         duration_seconds = remaining if options['duration'] is None else min(remaining, options['duration'])
-        speed = next(effect.parameters['factor'] for effect in options['effects'] if effect.kind == 'tempo')
+        speed = math.prod(float(effect.parameters.get('factor', 1)) for effect in options['effects']
+                          if effect.kind == 'tempo' and effect.enabled)
         expected_seconds = duration_seconds / speed
         reserved = 2 * math.ceil((expected_seconds + 1) * options['sample_rate']
             * options['channels'] * (options['bit_depth'] // 8)) + 1024**2 + runtime.budget.reserve_disk_bytes
@@ -1048,24 +1408,29 @@ def show_audio_conversion(frame):
 
 def install_studio_actions(frame):
     import wx
-    from .keyboard_settings import register_command_identity
+    from .command_registry import CommandSpec
+    from .keyboard_settings import register_command_identity, register_menu_command
     from .engine_settings import show_engine_settings
     from .studio_clips import show_clip_editor
     from .studio_pronunciation import show_studio_pronunciations
     from .recording_dialog import show_recording
     from .transcription_dialog import show_transcription
     from .publishing_dialog import show_publishing
+    from .audio_metadata_dialog import show_audio_metadata
     menu = wx.Menu()
-    for title, handler in [('Script and audio production...\tCtrl+Alt+A', lambda e: show_studio(frame)),
-                            ('Edit scene audio clips...', lambda e: show_clip_editor(frame)),
-                            ('Review spoken-line pronunciation...', lambda e: show_studio_pronunciations(frame)),
-                            ('Record microphone...', lambda e: show_recording(frame)),
-                            ('Publish synchronized EPUB3 / DAISY...', lambda e: show_publishing(frame)),
-                            ('Convert audio and apply effects...', lambda e: show_audio_conversion(frame)),
-                            ('Local transcription...', lambda e: show_transcription(frame)),
-                            ('Local voice and music engines...', lambda e: show_engine_settings(frame))]:
-        item = menu.Append(wx.ID_ANY, title)
-        if title == 'Publish synchronized EPUB3 / DAISY...':
+    for identity, title, shortcut, handler in [
+            ('audio.studio', 'Script and audio production...', 'Ctrl+Alt+A', lambda e: show_studio(frame)),
+            ('audio.clips', 'Edit scene audio clips...', '', lambda e: show_clip_editor(frame)),
+            ('audio.pronunciation', 'Review spoken-line pronunciation...', '', lambda e: show_studio_pronunciations(frame)),
+            ('audio.recording', 'Record microphone...', '', lambda e: show_recording(frame)),
+            ('audio.publishing', 'Publish synchronized EPUB3 / DAISY...', '', lambda e: show_publishing(frame)),
+            ('audio.convert', 'Convert audio and apply effects...', '', lambda e: show_audio_conversion(frame)),
+            ('audio.metadata', 'Review audio metadata and cover...', '', lambda e: show_audio_metadata(frame)),
+            ('audio.transcription', 'Local transcription...', '', lambda e: show_transcription(frame)),
+            ('audio.engines', 'Local voice and music engines...', '', lambda e: show_engine_settings(frame))]:
+        item = menu.Append(wx.ID_ANY, title + ('\t' + shortcut if shortcut else ''))
+        if identity == 'audio.publishing':
             register_command_identity(frame.menu_bar, item, 'publish synchronized epub3')
         frame.Bind(wx.EVT_MENU, handler, item)
+        register_menu_command(frame, CommandSpec(identity, title, 'main', shortcut), item)
     frame.menu_bar.Append(menu, 'Audio St&udio')

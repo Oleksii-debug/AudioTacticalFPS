@@ -27,7 +27,9 @@ def test_full_v4_roundtrip_published_and_pending_assets_and_settings(tmp_path):
     assert partial['counts']['complete'] == 1 and partial['counts']['queued'] == 2
     settings = app.root / 'state/ui/progress.json'
     settings.parent.mkdir(parents=True)
-    settings.write_text('{"private-setting":"preserved"}\n', encoding='utf-8')
+    settings.write_text(json.dumps(dict(schema=1, preferences=dict(
+        mode='beep', interval_seconds=12, volume=.35, quiet=True,
+        background=False, mute_during_audio=True))) + '\n', encoding='utf-8')
     backup = tmp_path / 'backup'
     saved_hash = create_backup(app, backup)
     manifest = json.loads((backup / 'manifest.json').read_bytes())

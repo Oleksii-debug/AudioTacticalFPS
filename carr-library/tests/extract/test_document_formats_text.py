@@ -305,7 +305,7 @@ def test_eml_malformed_structures_and_decodings_fail_closed(source):
 
 @pytest.mark.parametrize('payload', [
     b'YWJj=', b'YWJj==', b'YWJj===', b'YWJj====',
-    b'YQ=', b'YQ===', b'YWI==', b'=YQ==', b'YQ==YWJj',
+    b'YQ', b'Y=Q=', b'YQ=', b'YQ===', b'YWI==', b'=YQ==', b'YQ==YWJj',
     b'YR==', b'YWJ=', b'YWJj\x0b',
 ])
 def test_eml_base64_requires_canonical_padding_and_zero_pad_bits(payload):
@@ -395,3 +395,19 @@ def test_error_messages_never_include_private_source_values():
     with pytest.raises(ValueError) as caught:
         extract(b'<meta charset="PRIVATE-SECRET"><p>private</p>')
     assert 'PRIVATE' not in str(caught.value)
+
+
+@pytest.mark.parametrize(('encoded', 'expected'), [
+    (b'YQ==', 'a'),
+    (b'YWI=', 'ab'),
+    (b'YWJj', 'abc'),
+    (b' \tYQ\r\n==\t \r\n', 'a'),
+    (b'\tYW\r\nI=\t\r\n', 'ab'),
+    (b'\tYW\r\nJj \r\n', 'abc'),
+])
+def test_eml_valid_base64_quartets_preserve_body_with_mime_whitespace(encoded, expected):
+    source = b'Content-Transfer-Encoding: base64\r\n\r\n' + encoded
+    result = extract(source, '.eml')
+    assert texts(result) == [expected]
+    assert result['status'] == 'review_required'
+

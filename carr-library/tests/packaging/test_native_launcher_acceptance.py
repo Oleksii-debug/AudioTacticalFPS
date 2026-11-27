@@ -94,7 +94,8 @@ def synthetic_application_identity(monkeypatch):
     # The existing source-wheel suite separately rejects synthetic application
     # wheels. This fixture isolates launcher admission and copying, not that gate.
     monkeypatch.setattr(builder, "verify_application_source",
-                        lambda path, commit: {"wheel_sha256": builder.sha256(path)})
+                        lambda path, commit: {"wheel_sha256": builder.sha256(path),
+                                              "source_commit": commit, "source_tree": "b" * 40})
 
 
 

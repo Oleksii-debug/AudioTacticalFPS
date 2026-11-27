@@ -1174,3 +1174,5 @@ bibtexparser==2.1.0 \
     --hash=sha256:3b4b1de50ce45ee9091ccca72e1efc8732ab3ef615b70bcecc537c17cd84753e
 pylatexenc==2.11 \
     --hash=sha256:e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0
+quickjs-ng==0.18.0.2 \
+    --hash=sha256:b8d7376657094402ea6c214c9017633fb015568d0242ed1cb41c19620388864d

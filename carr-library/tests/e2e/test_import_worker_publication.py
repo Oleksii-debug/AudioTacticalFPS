@@ -43,11 +43,12 @@ def _metadata(collections=()):
                 work_id='source-work', edition_id='source-edition')
 
 
-def _barrier(monkeypatch, marker, *, boundary, exit_after=False, wait_until_ready=False):
+def _barrier(monkeypatch, marker, *, boundary, exit_after=False, startup_delay=0):
     """Pause the real child before/after commit, without replacing its result."""
     popen = subprocess.Popen
     code = f'''
 import os, time
+time.sleep({startup_delay!r})
 from pathlib import Path
 from carr_library.application import LibraryApp, _CatalogPublisher
 from carr_library.ingest import worker as _worker
@@ -55,7 +56,7 @@ def _pause():
     Path({str(marker)!r}).write_text('observed', encoding='utf-8')
     if {exit_after!r}:
         os._exit(7)
-    time.sleep(20)
+    time.sleep(60)
 '''
     if boundary == 'before':
         code += '''
@@ -85,8 +86,8 @@ LibraryApp._import_file = _replay
 
     def launch(command, **options):
         command = list(command)
-        # Popen is shared with subprocess.run: Windows cancellation invokes
-        # taskkill here as well. Only instrument the real import bootstrap.
+        # Only instrument the real import bootstrap. Other subprocess helpers
+        # retain the original implementation, including Windows taskkill.
         if '-c' not in command:
             return popen(command, **options)
         index = command.index('-c') + 1
@@ -95,24 +96,80 @@ LibraryApp._import_file = _replay
             return popen(command, **options)
         command[index] = ('import sys,runpy\nsys.path[:0]=sys.argv[1:]\n' + code
                           + "\nrunpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-        process = popen(command, **options)
-        if wait_until_ready:
-            # Establish the selected real commit boundary before the unchanged
-            # supervisor starts its timeout. Cold imports/extraction must not
-            # decide whether this test reaches the race it is meant to prove.
-            ready_deadline = time.monotonic() + 30.0
-            try:
-                while not marker.exists():
-                    assert process.poll() is None, 'Import exited before the publication barrier.'
-                    assert time.monotonic() < ready_deadline, 'Import did not reach the publication barrier.'
-                    time.sleep(.02)
-            except BaseException:
-                # Until Popen returns, the production supervisor cannot own it.
-                worker._stop(process)
-                raise
-        return process
+        return popen(command, **options)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    class WorkerSubprocess:
+        Popen = staticmethod(launch)
+
+        def __getattr__(self, name):
+            return getattr(subprocess, name)
+
+    # Keep the instrumentation local to the supervisor: replacing the shared
+    # stdlib Popen class also changes unrelated parsers and Windows helpers.
+    monkeypatch.setattr(worker, 'subprocess', WorkerSubprocess())
+
+
+def _observe_worker_stop(monkeypatch):
+    """Record the actual supervisor result before receipt reconciliation."""
+    outcomes = []
+    invoke = worker._invoke
+
+    def observe(*args, **kwargs):
+        result = invoke(*args, **kwargs)
+        outcomes.append(result['state'])
+        return result
+
+    monkeypatch.setattr(worker, '_invoke', observe)
+    return outcomes
+
+
+def _expire_at_barrier(monkeypatch, marker, *, timeout):
+    """Advance only the supervisor's clock after the real child reaches its barrier.
+
+    Cold native PDF imports can need more than three seconds on Windows. The
+    unchanged real deadline still bounds startup; the injected clock advances
+    only once the exact before/after-commit boundary has actually been reached.
+    Child parsing, process termination and publication recovery remain real.
+    """
+    clock = worker.time
+
+    class BarrierClock:
+        armed = False
+        expired = False
+
+        def monotonic(self):
+            now = clock.monotonic()
+            if self.armed and marker.exists():
+                self.expired = True
+            self.armed = True
+            return now + (timeout + 1 if self.expired else 0)
+
+        def __getattr__(self, name):
+            return getattr(clock, name)
+
+    monkeypatch.setattr(worker, 'time', BarrierClock())
+
+
+@pytest.mark.parametrize('marker_preexists', (False, True))
+def test_timeout_fixture_arms_deadline_before_expiring_at_barrier(tmp_path, monkeypatch,
+                                                               marker_preexists):
+    from types import SimpleNamespace
+
+    marker = tmp_path / 'observed-boundary'
+    if marker_preexists:
+        marker.write_text('observed', encoding='utf-8')
+    original_sleep = worker.time.sleep
+    clock = SimpleNamespace(monotonic=lambda: 100.0, sleep=original_sleep)
+    monkeypatch.setattr(worker, 'time', clock)
+    _expire_at_barrier(monkeypatch, marker, timeout=15.0)
+    assert worker.time.monotonic() == 100.0
+    assert worker.time.sleep is original_sleep
+    if not marker_preexists:
+        assert worker.time.monotonic() == 100.0
+        marker.write_text('observed', encoding='utf-8')
+    assert worker.time.monotonic() == 116.0
+    marker.unlink()
+    assert worker.time.monotonic() == 116.0
 
 
 @pytest.mark.parametrize('arguments, expected', [
@@ -122,6 +179,7 @@ LibraryApp._import_file = _replay
 def test_barrier_leaves_other_processes_unchanged(tmp_path, monkeypatch, arguments, expected):
     marker = tmp_path / 'worker-only'
     _barrier(monkeypatch, marker, boundary='after')
+    assert worker.subprocess.Popen is not subprocess.Popen
     result = subprocess.run([sys.executable, '-B', *arguments], capture_output=True,
                             text=True, timeout=5, check=True)
     assert expected in result.stdout + result.stderr
@@ -137,12 +195,20 @@ def test_stopped_child_reports_verified_fresh_commit(tmp_path, monkeypatch, kind
     source = _source(tmp_path, kind)
     original = source.read_bytes()
     marker = tmp_path / 'after-commit'
+    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
     _barrier(monkeypatch, marker, boundary='after', exit_after=termination == 'crash',
-             wait_until_ready=termination == 'timeout')
+             startup_delay=startup_delay)
+    if termination == 'timeout':
+        _expire_at_barrier(monkeypatch, marker, timeout=30.0)
+    outcomes = _observe_worker_stop(monkeypatch)
+    started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata((collection,)), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=30.0)
+    if startup_delay:
+        assert time.monotonic() - started > 3.0  # Real startup exceeds the old deadline.
     assert marker.exists(), result
+    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == 'complete', result
     assert result['publication_recovered'] is True
     if termination == 'timeout':
@@ -175,12 +241,20 @@ def test_stopped_child_before_commit_never_reports_completion(tmp_path, monkeypa
     workspace = app.create_workspace('Rollback')
     source = _source(tmp_path, kind)
     marker = tmp_path / 'before-commit'
+    startup_delay = 3.5 if (termination, kind) == ('timeout', 'pdf') else 0
     _barrier(monkeypatch, marker, boundary='before', exit_after=termination == 'crash',
-             wait_until_ready=termination == 'timeout')
+             startup_delay=startup_delay)
+    if termination == 'timeout':
+        _expire_at_barrier(monkeypatch, marker, timeout=30.0)
+    outcomes = _observe_worker_stop(monkeypatch)
+    started = time.monotonic()
     result = worker.run_request(app.root, workspace, source, _metadata(), Config(),
         cancelled=lambda: termination == 'cancel' and marker.exists(),
-        timeout=3.0 if termination == 'timeout' else 15.0)
+        timeout=30.0)
+    if startup_delay:
+        assert time.monotonic() - started > 3.0  # Real startup exceeds the old deadline.
     assert marker.exists(), result
+    assert outcomes == [{'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]]
     assert result['state'] == {'cancel': 'cancelled', 'crash': 'failed', 'timeout': 'timed_out'}[termination]
     assert app.browse(workspace) == ()
     with app.read(workspace) as db:

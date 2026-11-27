@@ -37,6 +37,10 @@ def _close_production(service):
         pass
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Local reading and audio production; no remote fallback')
     parser.add_argument('--data-dir', type=Path)
@@ -140,6 +144,7 @@ def main(argv=None):
         _close_production(service)
 
 
+@installed_entrypoint
 def assistant_main(argv=None):
     parser = argparse.ArgumentParser(description='Scoped local assistant; preview first, explicit --run executes')
     parser.add_argument('--data-dir', type=Path)

@@ -34,6 +34,13 @@ class NativeWidget:
     def GetId(self): self.native(); return self.identity
     def Bind(self, event, callback, *args, **kwargs): self.native(); self.handlers[event] = callback
     def SetName(self, name): self.native(); self.name = name
+    def GetName(self): self.native(); return self.name
+    def SetLabel(self, label): self.native(); self.label = label
+    def IsEnabled(self): self.native(); return self.enabled
+    def Unbind(self, event, *args, **kwargs):
+        self.native()
+        self.handlers.pop(event, None)
+        return True
     def SetToolTip(self, value): self.native(); self.tooltip = value
     def GetDefaultAttributes(self): self.native(); return SimpleNamespace(font=NativeFont())
     def SetFont(self, value): self.native(); self.font = value
@@ -116,16 +123,22 @@ def windows(monkeypatch, tmp_path):
     wx.SystemSettings = SimpleNamespace(GetColour=lambda colour: colour)
     wx.BoxSizer = wx.WrapSizer = Sizer
     wx.Timer = Timer
-    wx.NewIdRef = lambda: 100
+    from itertools import count
+    identifiers = count(100)
+    wx.NewIdRef = lambda: next(identifiers)
     wx.AcceleratorTable = tuple
     callbacks = Queue()
     wx.CallAfter = lambda callback: callbacks.put(callback)
     monkeypatch.setitem(sys.modules, 'wx', wx)
+    # Parsing is an explicit native seam; real wx keys are qualified separately.
+    import carr_library.ui.reading_shortcuts as shortcuts
+    monkeypatch.setattr(shortcuts, 'accelerator_tuple', lambda key, identifier: (0, key, int(identifier)))
     owners = []
     parent = SimpleNamespace(operation_progress=None, library=SimpleNamespace(root=tmp_path))
+    selected_library = parent.library
     def make(kind):
         desk = SimpleNamespace(title='Retained source', cancelled=lambda: False,
-                               library=parent.library)
+                               library=selected_library)
         owner = (EbookAudioDialog(parent, desk, 1, lambda: None) if kind == 'audio'
                  else ReadingDialog(parent, desk, object(), lambda: None))
         owners.append(owner)
@@ -512,3 +525,16 @@ def test_recorded_audio_guard_rechecks_live_ownership_after_modal_handoff(window
         assert guarded == [True] and owner._audio_dialog is None
     finally:
         owner.live.core = original_core
+
+
+def test_reading_appearance_uses_explicit_source_with_plain_native_parent(windows):
+    selected = windows.parent.library
+    del windows.parent.library
+    owner = windows.make('reading')
+    assert owner._appearance.library is selected
+    owner._appearance.check()
+    assert owner._appearance.current_library() is owner.controller.desk.library
+    # Adding a different host library later must still reject the old binding.
+    windows.parent.library = SimpleNamespace(root=selected.root)
+    with pytest.raises(ValueError, match='library changed'):
+        owner._appearance.check()

@@ -833,3 +833,50 @@ def test_native_copy_probe_loads_actual_source_keyed_draft_without_using_legacy_
     assert recovered.audio_seconds == 0 and recovered.document.undo()
     assert recovered.document.text == original
     assert legacy.path.read_bytes() == old_bytes
+
+def test_explicit_output_is_owned_by_current_reader_worker_and_preserves_exact_source(source, make_reader):
+    from carr_library.audio.output_devices import OutputDevice
+    app, _workspace, _book, desk, pages = source
+
+    class SelectedPlayer(SyntheticPlayer):
+        def __init__(self):
+            super().__init__(automatic=False)
+            self.outputs = []
+        def select_output(self, selected):
+            assert self.handle is None and not self.paths
+            self.outputs.append(selected)
+
+    player = SelectedPlayer()
+    reader, renderer, _ = make_reader(SourceSequence(desk), player=player)
+    selected = OutputDevice(1, 'explicit-fixture-endpoint', 'Headphones')
+    reader.set_output_device(selected)
+    assert reader.output_device is selected
+    future = reader.start(1, VOICE.id, start=0, end=12)
+    until(lambda: reader.status().state == 'playing')
+    assert player.outputs == [selected]
+    assert renderer.requests[0].text == pages[0][:12]
+    with pytest.raises(ValueError, match='Stop reading'):
+        reader.set_output_device(None)
+    assert reader.output_device is selected
+    reader.stop()
+    future.result(5)
+    assert player.handle is None and all(not path.exists() for path in player.paths)
+    assert not list(app.root.glob('.live-reading-*'))
+    reader.set_output_device(None)
+    assert reader.output_device is None
+    assert desk.page(1).raw_text == pages[0]
+    reader.close()
+    with pytest.raises(ValueError, match='Stop reading'):
+        reader.set_output_device(selected)
+
+
+def test_explicit_output_never_silently_falls_back_to_an_unsupported_player(source, make_reader):
+    from carr_library.audio.output_devices import OutputDevice
+    app, _workspace, _book, desk, _pages = source
+    reader, renderer, player = make_reader(SourceSequence(desk))
+    reader.set_output_device(OutputDevice(0, 'explicit-fixture', 'Speakers'))
+    reader.start(1, VOICE.id, start=0, end=12).result(5)
+    assert reader.status().state == 'error'
+    assert 'explicit output device' in reader.status().message
+    assert not renderer.requests and player.play_count == 0
+    assert player.close_count > 0 and not list(app.root.glob('.live-reading-*'))

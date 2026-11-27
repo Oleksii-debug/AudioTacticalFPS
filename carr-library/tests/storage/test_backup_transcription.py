@@ -52,11 +52,12 @@ def test_full_asr_restore_preserves_bytes_and_requires_review_before_any_resume(
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder)
     manifest = read_json(folder / 'manifest.json')
-    assert manifest['version'] == 5 and manifest['extensions']['version'] == 2
-    assert manifest['extensions']['transcription_jobs'] == ['transcription/' + record['id'] + '/job.json']
-    assert manifest['extensions']['required_inputs'] == [dict(
-        component='state/transcription/' + record['id'] + '/job.json', kind='local-asr-runtime',
-        reference=record['request']['runtime'], included=False)]
+    assert manifest['version'] == 4
+    prefix = 'state/transcription/' + record['id'] + '/'
+    assert {row['filename'] for row in manifest['sidecars']} == {prefix + name for name in before}
+    saved = read_json(folder / (prefix + 'job.json'))
+    assert saved['external_dependencies']['runtime_identity'] == record['request']['runtime']
+    assert saved['external_dependencies']['runtime_and_model_included'] is False
     destination = restore_backup(folder, tmp_path / 'restored', digest)
     recovered_dir = destination / 'state/transcription' / record['id']
     recovered = read_json(recovered_dir / 'job.json')
@@ -79,7 +80,7 @@ def test_workspace_scoped_backup_omits_independent_transcription_jobs(tmp_path):
     folder = tmp_path / 'backup'
     digest = create_backup(app, folder, authorized_workspaces={workspace})
     value = read_json(folder / 'manifest.json')
-    assert not value['state'] and not value['extensions'].get('transcription_jobs')
+    assert not value['sidecars']
     destination = restore_backup(folder, tmp_path / 'restored', digest)
     assert not (destination / 'state/transcription').exists()
 
@@ -117,7 +118,7 @@ def test_resealed_asr_input_change_is_rejected_before_restore_publication(tmp_pa
     name = 'transcription/' + record['id'] + '/inputs/' + record['request']['inputs'][0]['file']
     changed = b'Forged retained audio identity.'
     (folder / 'state' / name).write_bytes(changed)
-    next(item for item in manifest['state'] if item['filename'] == name).update(
+    next(item for item in manifest['sidecars'] if item['filename'] == 'state/' + name).update(
         size_bytes=len(changed), sha256=sha256(changed).hexdigest())
     raw = json.dumps(manifest).encode()
     (folder / 'manifest.json').write_bytes(raw)

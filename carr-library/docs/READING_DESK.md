@@ -23,7 +23,8 @@ Read selected book**. If no source is selected, a named book chooser opens.
 - **Ctrl+Shift+L:** focus the textual location and verification status.
 - **F1:** reader keyboard guide. **Escape:** close the reader.
 
-Every shortcut also has a named native button. Ordinary text-navigation keys
+Reading shortcuts can be configured separately from main-window shortcuts in
+the keyboard settings. The values above are defaults. Every shortcut also has a named native button. Ordinary text-navigation keys
 remain available in the source text control. To start a changed source afresh,
 choose **Start at first source location** explicitly; an unavailable old resume
 position is reported rather than silently redirected.
@@ -62,10 +63,23 @@ passages. Import validates every referenced source before making one atomic merg
 It preserves existing resume positions and rejects conflicting bookmark identities.
 Importing the same file again does not duplicate its bookmarks.
 
-The existing research-database backup does not yet include this sidecar. Keep the
-reading-state export with that backup when moving to another computer. A restored
-library retains the same source identities; a different library cannot accept
-the export. No cloud account or network retrieval is involved.
+Full-library backups include this sidecar when present. The current common
+format 4 records its size and SHA256 alongside the database, registered originals
+and supported typed state. Both snapshots use the same library writer lock;
+saved locations are checked against the copied source identities. Invalid or
+linked reading state stops the backup instead of being silently omitted.
+
+Restore creates a new data folder and preserves saved names, IDs and timestamps.
+Archived editions and old revisions remain archived or stale until an explicit
+user action; restore does not reassign bookmarks to another revision. Historical
+formats 1 and 2 contain no reading sidecar, so retain the separate reading-state
+export when recovering those backups. Other supported historical envelopes are
+validated according to their original manifests, without starting restored work.
+
+Keep the manifest SHA256 separately from the backup. A different library cannot
+accept a per-library reading export. No cloud account or network retrieval is
+involved. Audio exported outside the data folder and external model installations
+need their own copies; operating-system credential secrets are not included.
 
 ## Implementation and primary references
 

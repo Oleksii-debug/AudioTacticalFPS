@@ -79,7 +79,7 @@ def reseal(backup, manifest):
 def rewrite_state(backup, manifest, name, record):
     raw = encode(record)
     (backup / 'state' / name).write_bytes(raw)
-    entry = next(row for row in manifest['state'] if row['filename'] == name)
+    entry = next(row for row in manifest['sidecars'] if row['filename'] == 'state/' + name)
     entry.update(size_bytes=len(raw), sha256=sha256(raw).hexdigest())
 
 
@@ -93,14 +93,13 @@ def test_full_media_round_trip_keeps_exact_originals_and_inert_publication(
     backup = tmp_path / 'backup'
     digest = create_backup(app, backup, include_generated=include_generated)
     manifest = read_json(backup / 'manifest.json')
-    extension = manifest['extensions']
-    assert manifest['version'] == 5 and extension['version'] == 3
-    assert extension['studio_input_receipt'] is False
-    assert extension['studio_recordings'] == [audio.with_suffix('.json').relative_to(app.root / 'state').as_posix()]
-    assert extension['studio_unverified_recordings'] == [orphan.relative_to(app.root / 'state').as_posix()]
-    assert extension['studio_publications'] == [publication.relative_to(app.root / 'state').as_posix()]
-    assert dict(component='state/' + extension['studio_publications'][0],
-                kind='publication-output', reference=str(forbidden[1]), included=False) in extension['required_inputs']
+    assert manifest['version'] == 4
+    assert {row['filename'] for row in manifest['sidecars']} == {path.as_posix() for path in original}
+    assert not (backup / 'state/studio/backup-inputs.json').exists()
+    assert not any(path.suffix == '.epub' for path in backup.rglob('*') if path.is_file())
+    saved_publication = read_json(backup / publication.relative_to(app.root))
+    assert saved_publication['output'] == str(forbidden[1])
+    assert saved_publication['source']['job_sha256'] == '1' * 64
     destination = restore_backup(backup, tmp_path / 'restored', digest)
     assert {relative: (destination / relative).read_bytes() for relative in original} == original
     assert unverified_recording_files(destination) == (destination / orphan.relative_to(app.root),)
@@ -118,8 +117,7 @@ def test_workspace_backup_omits_all_independent_media_and_temporary_capture(tmp_
     backup = tmp_path / 'scoped'
     digest = create_backup(app, backup, authorized_workspaces={workspace})
     manifest = read_json(backup / 'manifest.json')
-    assert not manifest['extensions']['independent_state']
-    assert not manifest['state']
+    assert not manifest['sidecars']
     restored = restore_backup(backup, tmp_path / 'restored', digest)
     assert not (restored / 'state/studio').exists()
 
@@ -133,14 +131,14 @@ def test_full_backup_excludes_pending_capture_and_lock_but_keeps_final_orphan(tm
     backup = tmp_path / 'backup'
     create_backup(app, backup)
     manifest = read_json(backup / 'manifest.json')
-    names = {row['filename'] for row in manifest['state']}
-    assert orphan.relative_to(app.root / 'state').as_posix() in names
+    names = {row['filename'] for row in manifest['sidecars']}
+    assert orphan.relative_to(app.root).as_posix() in names
     assert not any('.pending-' in name or name.endswith('.lock') for name in names)
 
 
 @pytest.mark.parametrize('damage', [
     'pcm-header', 'recording-id', 'missing-wav', 'publication-id',
-    'unlisted-orphan', 'extension-downgrade',
+    'unlisted-orphan', 'mixed-manifest-layout',
 ])
 def test_resealed_media_semantic_corruption_fails_before_any_destination(tmp_path, damage):
     app, _, audio, orphan, publication, _ = media_library(tmp_path)
@@ -159,21 +157,41 @@ def test_resealed_media_semantic_corruption_fails_before_any_destination(tmp_pat
     elif damage == 'missing-wav':
         name = audio.relative_to(app.root / 'state').as_posix()
         (backup / 'state' / name).unlink()
-        manifest['state'] = [row for row in manifest['state'] if row['filename'] != name]
+        manifest['sidecars'] = [row for row in manifest['sidecars'] if row['filename'] != 'state/' + name]
     elif damage == 'publication-id':
         name = publication.relative_to(app.root / 'state').as_posix()
         value = read_json(backup / 'state' / name)
         value['source']['job_sha256'] = 'not-a-sha'
         rewrite_state(backup, manifest, name, value)
     elif damage == 'unlisted-orphan':
+        name = orphan.relative_to(app.root).as_posix()
+        manifest['sidecars'] = [row for row in manifest['sidecars'] if row['filename'] != name]
+    else:
+        manifest['extensions'] = dict(version=2, studio_publications=[])
+    digest = reseal(backup, manifest)
+    target = tmp_path / 'must-not-exist'
+    with pytest.raises(ValueError):
+        restore_backup(backup, target, digest)
+    assert not target.exists()
+
+
+@pytest.mark.parametrize('damage', ['unlisted-orphan', 'extension-downgrade'])
+def test_exact_historical_v5_media_declaration_cannot_omit_retained_files(tmp_path, damage):
+    import runpy
+    historical_create = runpy.run_path(str(Path(__file__).with_name('legacy_state_writer.py')))['create_backup']
+    app, _workspace, _audio, _orphan, _publication, _forbidden = media_library(tmp_path)
+    backup = tmp_path / 'historical-v5'
+    historical_create(app, backup)
+    manifest = read_json(backup / 'manifest.json')
+    assert manifest['version'] == 5 and manifest['extensions']['version'] == 3
+    if damage == 'unlisted-orphan':
         manifest['extensions']['studio_unverified_recordings'] = []
     else:
         manifest['extensions']['version'] = 2
         for field in ('studio_input_receipt', 'studio_publications', 'studio_recordings',
                       'studio_unverified_recordings'):
             manifest['extensions'].pop(field)
-    digest = reseal(backup, manifest)
     target = tmp_path / 'must-not-exist'
     with pytest.raises(ValueError):
-        restore_backup(backup, target, digest)
+        restore_backup(backup, target, reseal(backup, manifest))
     assert not target.exists()

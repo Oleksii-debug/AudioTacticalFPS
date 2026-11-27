@@ -43,3 +43,5 @@ class ConversionResult:
     path: Path
     report: dict
     report_path: Path
+    cleanup_warning: str | None = None
+
