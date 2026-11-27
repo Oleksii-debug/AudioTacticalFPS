@@ -1,7 +1,5 @@
-"""Compare one native-window lifetime variable; never qualify a release."""
+"""Run the unchanged native timer-shutdown probe against one pinned product."""
 import argparse
-import ast
-import copy
 import hashlib
 from importlib.metadata import version
 import json
@@ -14,61 +12,39 @@ import sysconfig
 import traceback
 
 
-SOURCE_COMMIT = 'de4dd799c74d28afd0b13891484c44f3f4f245ac'
-SOURCE_TREE = 'd6bd3e32124eb4f7cc60c08992b0b0b442badd61'
-BASELINE_BLOB = 'b5844fbe29cd214d0b7554e7204fcc974ab4aa7f'
-BASELINE_SHA256 = 'a1155c0d512c3c55d8557e18ab2cb4c350165f995081163be82a7f144d01d1f8'
-EXPECTED_CHECKS = 44
+SOURCE_COMMIT = 'a6aa369cb7454102642071abf115f1f1664cee09'
+SOURCE_TREE = '9543f5509fe9c9bdf2e7dcd8687244acb00ab634'
+PROBE_BLOB = '0b181a2bff9b54d7001ac64dd2ec057010693cae'
+PROBE_SHA256 = 'b9825f794658300767d683e1240f40c0d3f45038ba9470045b8e6d33c16cbf63'
+EXPECTED_CHECKS = 47
 CHILD_TIMEOUT = 180
+MODULES = (
+    'carr_library.ui.academic_library_dialog',
+    'carr_library.research.academic_library',
+    'carr_library.research.bibtex_import',
+    'carr_library.research.export_file',
+    'carr_library.ui.desktop_app',
+    'carr_library.ui.save_actions',
+    'carr_library.ui.workspace_shell',
+    'carr_library.academic_integration.formatting',
+)
+REQUIRED_PASS = (
+    'native_keyboard', 'native_bibtex_import', 'native_export_options',
+    'native_overwrite_confirmation', 'native_startup_citation_attribution',
+    'native_startup_draft_timer_shutdown',
+)
+REQUIRED_NOT_RUN = (
+    'native_overwrite_accessible_focus', 'manual_keyboard',
+    'native_file_pickers', 'nvda', 'installer',
+)
 
 
 def git_blob(data):
     return hashlib.sha1(b'blob ' + str(len(data)).encode('ascii') + b'\0' + data).hexdigest()
 
 
-def deferred_variant(data):
-    """Relocate the identical five statements and prove the remaining AST equal."""
-    if git_blob(data) != BASELINE_BLOB or hashlib.sha256(data).hexdigest() != BASELINE_SHA256:
-        raise ValueError('The original native probe differs from the pinned baseline.')
-    source = data.decode('utf-8')
-    first = '                startup_executor, startup_cancel = startup.executor, startup.cancel_event\n'
-    after = "                workspace = library.create_workspace('Synthetic native interchange')\n"
-    destination = "                check('all interchange operations stayed offline', not network_attempts)\n"
-    if any(source.count(marker) != 1 for marker in (first, after, destination)):
-        raise ValueError('The expected single relocation boundary changed.')
-    start, end = source.index(first), source.index(after)
-    block = source[start:end]
-    if not block.endswith('                startup = None\n'):
-        raise ValueError('Unexpected startup-close block ending.')
-    variant = source[:start] + source[end:]
-    variant = variant.replace(destination, destination + block, 1)
-    original_tree, variant_tree = ast.parse(source), ast.parse(variant)
-    original = next(node for node in ast.walk(original_tree)
-                    if isinstance(node, ast.FunctionDef) and node.name == 'scenarios')
-    normalized = copy.deepcopy(variant_tree)
-    changed = next(node for node in ast.walk(normalized)
-                   if isinstance(node, ast.FunctionDef) and node.name == 'scenarios')
-    dump = lambda node: ast.dump(node, include_attributes=False)
-    first_line, end_line = source[:start].count('\n') + 1, source[:end].count('\n') + 1
-    indices = [i for i, node in enumerate(original.body) if first_line <= node.lineno < end_line]
-    if len(indices) != 5 or indices != list(range(indices[0], indices[0] + 5)):
-        raise ValueError('Expected exactly five unchanged close/lifecycle statements.')
-    statements = original.body[indices[0]:indices[0] + 5]
-    matches = [i for i in range(len(changed.body) - 4)
-               if [dump(node) for node in changed.body[i:i + 5]] == [dump(node) for node in statements]]
-    if len(matches) != 1 or matches[0] + 5 != len(changed.body) - 1:
-        raise ValueError('The close block must move immediately before the final result.')
-    moved = changed.body[matches[0]:matches[0] + 5]
-    del changed.body[matches[0]:matches[0] + 5]
-    changed.body[indices[0]:indices[0]] = moved
-    if dump(original_tree) != dump(normalized):
-        raise ValueError('The variant changed more than startup-close ordering.')
-    compile(variant, '<deferred-startup-close>', 'exec')
-    return variant.encode('utf-8')
-
-
-def run_arm(name, script, interpreter, project, output):
-    stdout_path, stderr_path = output / (name + '.stdout.txt'), output / (name + '.stderr.txt')
+def run_probe(script, interpreter, project, output, expected_modules):
+    stdout_path, stderr_path = output / 'native.stdout.txt', output / 'native.stderr.txt'
     command = [interpreter, '-I', '-B', str(script)]
     timed_out, code, launch_error, pid = False, None, None, None
     try:
@@ -94,15 +70,20 @@ def run_arm(name, script, interpreter, project, output):
         if isinstance(value, dict) and ('result' in value or 'native_process_exit' in value):
             records.append(value)
     results = [value for value in records if 'native_bibtex_import' in value]
+    final = results[0] if len(results) == 1 else {}
     complete = (not timed_out and launch_error is None and code == 0
-                and len(passed) == EXPECTED_CHECKS and len(results) == 1
-                and results[0].get('result') == 'PASS' and results[0].get('checks') == EXPECTED_CHECKS)
-    result = dict(arm=name, classification='DIAGNOSTIC_ONLY', command=command, pid=pid,
-                  returncode=code, returncode_hex=None if code is None else f'0x{code & 0xffffffff:08X}',
-                  timed_out=timed_out, launch_error=launch_error, completed_44_checks=complete,
+                and len(passed) == EXPECTED_CHECKS and final.get('result') == 'PASS'
+                and final.get('checks') == EXPECTED_CHECKS
+                and final.get('installed_modules') == expected_modules
+                and all(final.get(key) == 'PASS' for key in REQUIRED_PASS)
+                and all(final.get(key) == 'NOT_RUN' for key in REQUIRED_NOT_RUN))
+    result = dict(classification='DIAGNOSTIC_ONLY', status='PASS' if complete else 'FAIL',
+                  command=command, pid=pid, returncode=code,
+                  returncode_hex=None if code is None else f'0x{code & 0xffffffff:08X}',
+                  timed_out=timed_out, launch_error=launch_error, completed_47_checks=complete,
                   checks_completed=len(passed), checks=passed, result_records=records,
                   stdout=stdout_path.name, stderr=stderr_path.name)
-    (output / (name + '.json')).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+    (output / 'native-result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(result), flush=True)
     return result
 
@@ -121,41 +102,49 @@ def main():
         raise RuntimeError('Use isolated native x64 CPython 3.11 with -I -B.')
     project, output = args.source_project.resolve(strict=True), args.output_dir.resolve()
     output.mkdir(parents=True, exist_ok=True)
+
     def revision(expression):
         return subprocess.run(['git', '-C', str(project.parent), 'rev-parse', expression],
                               check=True, capture_output=True, text=True, timeout=15).stdout.strip()
+
     if revision('HEAD') != SOURCE_COMMIT or revision('HEAD^{tree}') != SOURCE_TREE:
-        raise ValueError('The installed source checkout must be exact de4, not the diagnostic branch.')
-    original = project / 'scripts' / 'windows_bibliography_interchange_smoke.py'
-    baseline = original.read_bytes()
-    variant = deferred_variant(baseline)
-    baseline_copy, variant_path = output / 'A-baseline.py', output / 'B-deferred-close.py'
-    baseline_copy.write_bytes(baseline)
-    variant_path.write_bytes(variant)
+        raise ValueError('The source checkout must be the exact pinned timer correction.')
+    script = project / 'scripts' / 'windows_bibliography_interchange_smoke.py'
+    probe = script.read_bytes()
+    if git_blob(probe) != PROBE_BLOB or hashlib.sha256(probe).hexdigest() != PROBE_SHA256:
+        raise ValueError('The native 47-check probe differs from its unchanged source identity.')
+    (output / 'tested-native-probe.py').write_bytes(probe)
+
     import carr_library
     installed = Path(carr_library.__file__).resolve()
     purelib = Path(sysconfig.get_path('purelib')).resolve()
     if (not installed.is_relative_to(purelib)
             or installed.read_bytes() != (project / 'src/carr_library/__init__.py').read_bytes()):
         raise ValueError('The application must come from the installed pinned source package.')
+    expected_modules, installed_origins = {}, {}
+    for name in MODULES:
+        relative = Path(*name.split('.')[1:]).with_suffix('.py')
+        source = project / 'src/carr_library' / relative
+        actual = (installed.parent / relative).resolve(strict=True)
+        if not actual.is_relative_to(purelib) or actual.read_bytes() != source.read_bytes():
+            raise ValueError('An installed native probe module differs from the pinned source: ' + name)
+        expected_modules[name] = hashlib.sha256(actual.read_bytes()).hexdigest()
+        installed_origins[name] = str(actual)
     provenance = dict(classification='DIAGNOSTIC_ONLY', source_commit=SOURCE_COMMIT,
-        source_tree=SOURCE_TREE, baseline_blob=git_blob(baseline),
-        baseline_sha256=hashlib.sha256(baseline).hexdigest(), variant_blob=git_blob(variant),
-        variant_sha256=hashlib.sha256(variant).hexdigest(), normalized_ast_equal=True,
+        source_tree=SOURCE_TREE, probe_blob=git_blob(probe),
+        probe_sha256=hashlib.sha256(probe).hexdigest(), probe_unchanged=True,
         interpreter=sys.executable, python=sys.version, wx=version('wxPython'),
-        installed_package=str(installed), expected_checks=EXPECTED_CHECKS, child_timeout=CHILD_TIMEOUT,
-        only_variable='The identical startup-close block runs after all bibliography checks.')
+        installed_package=str(installed), installed_origins=installed_origins,
+        expected_installed_modules=expected_modules, expected_checks=EXPECTED_CHECKS,
+        child_timeout=CHILD_TIMEOUT, prior_ab_diagnostic_commit='606107f349707d329334098669828021e0b90bf5')
     (output / 'provenance.json').write_text(json.dumps(provenance, indent=2) + '\n', encoding='utf-8')
-    first = run_arm('A-baseline', original, sys.executable, project, output)
-    second = run_arm('B-deferred-close', variant_path, sys.executable, project, output)
-    summary = dict(**provenance, arms=[first, second], production_acceptance='NOT_CLAIMED',
-        causality='NOT_ESTABLISHED_BY_THIS_DIAGNOSTIC',
-        observation=('both_completed_no_reproduced_failure' if first['completed_44_checks']
-                     and second['completed_44_checks'] else 'deferred_close_completed_after_baseline_failure'
-                     if second['completed_44_checks'] else 'deferred_close_did_not_complete'))
+    result = run_probe(script, sys.executable, project, output, expected_modules)
+    summary = dict(**provenance, native_result=result,
+                   production_release_acceptance='NOT_CLAIMED',
+                   full_bundle='NOT_RUN', nvda='NOT_RUN', native_file_pickers='NOT_RUN')
     (output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
     print(json.dumps(summary), flush=True)
-    return 0 if second['completed_44_checks'] else 1
+    return 0 if result['completed_47_checks'] else 1
 
 
 if __name__ == '__main__':
