@@ -119,6 +119,86 @@ def test_export_payload_is_bounded_and_interruptible(tmp_path):
     assert path.read_bytes() == payload
 
 
+@pytest.mark.parametrize('operation', ['read', 'export'])
+def test_edited_copy_decodes_only_the_bytes_it_verifies(setup, monkeypatch, operation):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    source_id = state['results'][0]['source_id']
+    edited = service.save_edit(state['id'], source_id, 'Verified edit')
+    path = service._job_root(state['id']) / edited['path']
+    original = path.read_bytes()
+    changed = original.replace(b'Verified edit', b'Injected edit')
+    assert changed != original and len(changed) == len(original)
+    open_path = Path.open
+    reads = []
+
+    def swap_on_second_read(self, mode='r', *args, **kwargs):
+        if self == path and mode == 'rb':
+            reads.append(True)
+            if len(reads) == 2:
+                with open_path(path, 'wb') as stream:
+                    stream.write(changed)
+        return open_path(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', swap_on_second_read)
+    if operation == 'read':
+        assert service.read_transcript(state['id'], source_id, edited=True)['text'] == 'Verified edit'
+    else:
+        destination = runtime.root / 'edit-export'
+        destination.mkdir()
+        manifest = service.export(state['id'], destination, formats=['txt'])
+        exported = next(item for item in manifest['files'] if item['edited'])
+        assert Path(exported['path']).read_bytes() == b'Verified edit'
+    assert len(reads) == 1
+
+
+def test_edited_copy_export_uses_the_captured_revision(setup, monkeypatch):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    source_id = state['results'][0]['source_id']
+    service.save_edit(state['id'], source_id, 'Selected revision')
+    verify = service._verify_source
+    changed = []
+
+    def update_during_export(*args, **kwargs):
+        verify(*args, **kwargs)
+        if not changed:
+            changed.append(True)
+            service.save_edit(state['id'], source_id, 'Later revision')
+
+    monkeypatch.setattr(service, '_verify_source', update_during_export)
+    destination = runtime.root / 'edit-revision-export'
+    destination.mkdir()
+    manifest = service.export(state['id'], destination, formats=['txt'])
+    exported = next(item for item in manifest['files'] if item['edited'])
+    assert Path(exported['path']).read_bytes() == b'Selected revision'
+    assert service.read_transcript(state['id'], source_id, edited=True)['text'] == 'Later revision'
+
+
+def test_edited_copy_rejects_changed_bytes_and_observes_cancel(setup):
+    service, runtime, profile, sources = setup
+    state = service.run(service.create_job(profile['id'], sources[:1])['id'])
+    assert state['status'] == 'complete', state['error']
+    source_id = state['results'][0]['source_id']
+    edited = service.save_edit(state['id'], source_id, 'Verified edit')
+    state = service._load(state['id'])
+    path = service._job_root(state['id']) / edited['path']
+    polls = []
+
+    def cancel():
+        polls.append(True)
+        return len(polls) >= 3
+
+    with pytest.raises(InterruptedError):
+        service._read_edit(state, source_id, cancel=cancel)
+    path.write_bytes(path.read_bytes().replace(b'Verified edit', b'Injected edit'))
+    with pytest.raises(ValueError, match='changed before export'):
+        service.read_transcript(state['id'], source_id, edited=True)
+    assert service._load(state['id'])['edits'] == state['edits']
+
+
 @pytest.mark.parametrize('intent', ['pause', 'cancel'])
 def test_stop_interrupts_admission_hash_and_reaches_child_cleanup(setup, monkeypatch, intent):
     service, runtime, profile, sources = setup

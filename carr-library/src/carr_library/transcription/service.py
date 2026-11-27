@@ -17,7 +17,7 @@ from uuid import uuid4
 from ..audio.models import AudioBudget, AudioCancelled, AudioError
 from ..audio.process import publish_file, run_process
 from ..durable_state import (atomic_bytes, atomic_json, digest_file, encode, local_path,
-                             read_json, regular, state_lock, sync_directory)
+                             read_json, regular, state_lock, sync_directory, MAX_JSON_BYTES, _unique)
 from ..research.export_file import write_binary_export
 from .models import (AUDIO_EXTENSIONS, FORMATS, MAX_RESULT_BYTES, encoded_outputs,
                      fingerprint, settings as validate_settings, validated_result,
@@ -148,11 +148,11 @@ def _published_identity(path):
     return {'sha256': digest.hexdigest(), 'size': size}
 
 
-def _export_payload(path, record, *, cancel=None):
+def _export_payload(path, record, *, cancel=None, maximum=MAX_RESULT_BYTES):
     """Bind the actual bytes to the receipt before publishing outside the library."""
     stopped(cancel)
     size = record['size']
-    if type(size) is not int or not 0 <= size <= MAX_RESULT_BYTES:
+    if type(size) is not int or not 0 <= size <= maximum:
         raise ValueError('The transcript export exceeds its byte budget.')
     if regular(path).st_size != size:
         raise ValueError('A saved transcript changed before export; no changed bytes were published.')
@@ -797,6 +797,27 @@ class TranscriptionService:
             report('Transcript job ' + state['status'], terminal=True)
             return state
 
+    def _read_edit(self, state, source_id, *, cancel=None):
+        stopped(cancel)
+        record = state.get('edits', {}).get(source_id)
+        if record is None:
+            raise FileNotFoundError('No edited reading copy exists for this transcript.')
+        root = self._job_root(state['id'])
+        path = local_path(root / record['path'], root=root, exists=True)
+        # Old edit records have a digest but no size. Bound the read by
+        # the actual stat and the existing JSON budget, then decode only
+        # the very bytes that matched the saved digest.
+        payload = _export_payload(path, {'size': regular(path).st_size, 'sha256': record['sha256']},
+                                  cancel=cancel, maximum=MAX_JSON_BYTES)
+        value = json.loads(payload.decode('utf-8'), object_pairs_hook=_unique,
+                           parse_constant=lambda _: (_ for _ in ()).throw(ValueError('Non-finite state number.')))
+        if (not isinstance(value, dict) or value.get('id') != record['id']
+                or value.get('source_id') != source_id or value.get('edited') is not True
+                or not isinstance(value.get('text'), str) or not isinstance(value.get('provenance'), dict)):
+            raise ValueError('Invalid saved edited reading copy.')
+        stopped(cancel)
+        return value
+
     def read_transcript(self, identity, source_id=None, *, edited=False):
         state = self._load(identity)
         if source_id is None:
@@ -810,13 +831,7 @@ class TranscriptionService:
         self._verify_source(state, source)
         receipt = self._receipt(state, result)
         if edited:
-            record = state.get('edits', {}).get(source_id)
-            if record is None:
-                raise FileNotFoundError('No edited reading copy exists for this transcript.')
-            path = local_path(self._job_root(identity) / record['path'], root=self._job_root(identity), exists=True)
-            if digest_file(path) != record['sha256']:
-                raise ValueError('The saved edited reading copy changed.')
-            return read_json(path)
+            return self._read_edit(state, source_id)
         return {'text': receipt['result']['text'], 'source_id': source_id, 'edited': False,
                 'provenance': receipt['provenance'], 'segments': receipt['result']['segments'],
                 'language': receipt['result']['language'], 'duration': receipt['result']['duration']}
@@ -872,7 +887,7 @@ class TranscriptionService:
                 if published.cleanup_warning:
                     warnings.append(published.cleanup_warning)
             if include_edits and result['source_id'] in state.get('edits', {}):
-                edited = self.read_transcript(identity, result['source_id'], edited=True)
+                edited = self._read_edit(state, result['source_id'], cancel=cancel)
                 payload = edited['text'].encode('utf-8')
                 target = destination / f"transcript-{identity[:8]}-{result['source_id'][:12]}-edited.txt"
                 saved = write_binary_export(target, payload, private_root=self.library_root,
