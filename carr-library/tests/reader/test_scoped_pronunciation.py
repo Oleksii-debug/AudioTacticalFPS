@@ -75,7 +75,7 @@ def test_invalid_pattern_or_replacement_cannot_partially_edit_a_project(pattern,
 def _observe_children(monkeypatch):
     from carr_library.audio import engines
     started, children, commands = threading.Event(), [], []
-    real = engines.subprocess.Popen
+    real = engines.start_owned_process
     def launch(command, **kwargs):
         process = real(command, **kwargs)
         children.append(process)
@@ -83,7 +83,7 @@ def _observe_children(monkeypatch):
         if any(str(value).endswith('pronunciation_worker.py') for value in command):
             started.set()
         return process
-    monkeypatch.setattr(engines.subprocess, 'Popen', launch)
+    monkeypatch.setattr(engines, 'start_owned_process', launch)
     return started, children, commands
 
 
@@ -96,7 +96,7 @@ def test_actual_catastrophic_regex_hits_deadline_and_leaves_no_live_child(monkey
     assert children and all(process.poll() is not None for process in children)
     command, options = commands[0]
     assert '-I' in command and '-B' in command and '-S' in command
-    assert options['shell'] is False
+    assert isinstance(command, list) and options['stdin_file'] is not None
     assert 'a' * 100 not in ' '.join(str(part) for part in command)
 
 

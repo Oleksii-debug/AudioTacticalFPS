@@ -41,6 +41,76 @@ def payload(*, bound=True):
     return value
 
 
+def session_payload(*, bound=True):
+    document = payload(bound=bound)
+    snapshot = legacy.decode_snapshot(raw(document))
+    return dict(schema='carr.reader-session.v1', document=document,
+        voice_id='sapi5:historical-unavailable-voice', rate=-2, volume=64,
+        cursor=len(snapshot.text), audio_seconds=23.75)
+
+
+@pytest.mark.parametrize('bound', [False, True])
+def test_reader_session_envelope_retains_exact_bytes_redo_and_inert_presentation(bound, tmp_path):
+    value = session_payload(bound=bound)
+    data = (json.dumps(value, ensure_ascii=False, indent=3) + '\r\n').encode('utf-8')
+    snapshot = legacy.decode_snapshot(data)
+    assert snapshot.raw == data and snapshot.archive_sha256 == sha256(data).hexdigest()
+    assert snapshot.session == legacy.RecoveredSession(value['voice_id'], -2, 64, value['cursor'], 23.75)
+    assert snapshot.at(0).source_text == snapshot.source_text
+    assert snapshot.at(3).text.endswith('!')
+    # Historical cursor belongs to the saved revision, not the shorter selected
+    # revision or the retained original. Reopening either must remain possible.
+    assert snapshot.at(0).session == snapshot.session
+    legacy.LegacyReadingStore(tmp_path).retain(data)
+    project = legacy.project_from_snapshot(snapshot.at(0), title='Recovered original')
+    digest = NarrationStore(tmp_path).save(project)
+    reopened, actual_digest = NarrationStore(tmp_path).load(project.id)
+    assert reopened == project and actual_digest == digest
+    assert 'voice_id' not in json.loads(encode_project(project))
+    assert project.legacy_origin.archive_sha256 == sha256(data).hexdigest()
+    assert legacy.LegacyReadingStore(tmp_path).load(snapshot.archive_sha256).raw == data
+    assert 'Saved voice/rate/volume are inert' in legacy.history_description(snapshot)
+
+
+@pytest.mark.parametrize('change', ['extra', 'missing', 'nested-session', 'rate-bool', 'rate-range',
+    'volume-bool', 'volume-range', 'cursor-bool', 'cursor-past-text', 'seconds-bool',
+    'seconds-negative', 'seconds-nonfinite', 'voice-type', 'voice-large', 'bad-document'])
+def test_invalid_reader_session_never_becomes_a_retained_history(change):
+    value = session_payload()
+    if change == 'extra':
+        value['executable'] = 'not-a-runtime'
+    elif change == 'missing':
+        del value['cursor']
+    elif change == 'nested-session':
+        value['document'] = session_payload()
+    elif change == 'rate-bool':
+        value['rate'] = True
+    elif change == 'rate-range':
+        value['rate'] = 11
+    elif change == 'volume-bool':
+        value['volume'] = False
+    elif change == 'volume-range':
+        value['volume'] = 101
+    elif change == 'cursor-bool':
+        value['cursor'] = True
+    elif change == 'cursor-past-text':
+        value['cursor'] = 100000
+    elif change == 'seconds-bool':
+        value['audio_seconds'] = False
+    elif change == 'seconds-negative':
+        value['audio_seconds'] = -1
+    elif change == 'seconds-nonfinite':
+        value['audio_seconds'] = float('nan')
+    elif change == 'voice-type':
+        value['voice_id'] = []
+    elif change == 'voice-large':
+        value['voice_id'] = 'x' * 2049
+    else:
+        value['document']['source_sha256'] = '0' * 64
+    with pytest.raises(ValueError):
+        legacy.decode_snapshot(raw(value))
+
+
 def test_saved_cursor_and_redo_are_kept_without_full_revision_snapshots():
     data = raw(payload())
     snapshot = legacy.decode_snapshot(data)

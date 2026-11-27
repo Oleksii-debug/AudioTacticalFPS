@@ -91,6 +91,26 @@ class PresenterTests(unittest.TestCase):
             wx_module=self.wx, notifications=self.audio, clock=lambda: self.now[0], start_timer=False)
         self.addCleanup(self.presenter.close)
 
+    def test_changed_library_migrates_canonical_settings_with_speech_explicitly_muted(self):
+        root = self.root / 'canonical-library'
+        path = root / 'state' / 'ui' / 'progress.json'
+        path.parent.mkdir(parents=True)
+        raw = (json.dumps({'schema': 1, 'preferences': {
+            'mode': 'both', 'interval_seconds': 120, 'volume': .4,
+            'quiet': False, 'background': True, 'mute_during_audio': True}}) + '\r\n').encode('utf-8')
+        path.write_bytes(raw)
+        self.frame.library = SimpleNamespace(root=root)
+        self.presenter.change_root()
+        prefs = self.presenter.preferences
+        self.assertEqual((prefs.mode, prefs.interval_seconds, prefs.voice_id), ('beep_speech', 120, ''))
+        self.assertTrue(prefs.muted)
+        self.assertIsNone(self.audio.registry)
+        self.assertIn('Speech stays muted', self.presenter.load_notice)
+        self.assertEqual(path.read_bytes(), raw)
+        self.assertEqual(load_preferences(root), prefs)
+        with self.assertRaisesRegex(ValueError, 'explicit local voice'):
+            self.presenter.configure(replace(prefs, muted=False))
+
     def test_unknown_total_is_indeterminate_and_does_not_take_focus(self):
         self.presenter.start('Hashing source')
         self.presenter.tick()

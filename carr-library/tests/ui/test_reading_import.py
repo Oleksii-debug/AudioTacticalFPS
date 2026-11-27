@@ -192,6 +192,34 @@ def test_retained_history_reopens_original_cursor_and_redo_without_original_file
     assert len(list((frame.library.root / DIRECTORY).glob('*.json'))) == 1
 
 
+def test_current_history_action_discovers_canonical_recovery_envelope_without_running_saved_voice(flow):
+    frame, dialogs, actions, opened, path = flow
+    document = json.loads(path.read_bytes())
+    value = dict(schema='carr.reader-session.v1', document=document,
+        voice_id='old-unavailable-voice', rate=-3, volume=49, cursor=6, audio_seconds=12)
+    raw = (json.dumps(value, indent=3) + '\r\n').encode('utf-8')
+    session = frame.library.root / 'state' / 'speech' / (sha256(b'manual').hexdigest() + '.reader.json')
+    session.parent.mkdir(parents=True)
+    session.write_bytes(raw)
+    dialogs.choices = [0, 1]
+    actions.open_retained()
+    finish(frame)
+    assert len(opened) == 1 and len(dialogs.previews) == 1
+    preview = dialogs.previews[0]
+    assert preview.raw == raw and preview.session.voice_id == 'old-unavailable-voice'
+    project = opened[0][0][2]
+    assert project.current_text == 'Selected historical text'
+    assert project.original_path == str(session)
+    assert not hasattr(project, 'voice_id')
+    assert LegacyReadingStore(frame.library.root).load(project.legacy_origin.archive_sha256).raw == raw
+    assert session.read_bytes() == raw
+    # The retained copy and original recovery envelope share one listing entry.
+    dialogs.choices = [0, 0]
+    actions.open_retained()
+    finish(frame)
+    assert len(opened) == 2 and opened[1][0][2].current_text == 'Original'
+
+
 def test_busy_frame_rejects_a_second_import_without_opening_native_picker(flow):
     frame, dialogs, actions, opened, _ = flow
     frame.working = True

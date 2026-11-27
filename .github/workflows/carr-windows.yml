@@ -112,6 +112,8 @@ jobs:
             'tests/ui/test_audio_clips.py',
             'tests/audio/test_canonical_project_import.py',
             'tests/ui/test_legacy_studio_import.py',
+            'tests/conversion/test_selected_adapters.py',
+            'tests/storage/test_legacy_ui_preferences.py',
             'tests/audio/test_model_inventory.py',
             'tests/audio/test_model_snapshot.py',
             'tests/storage/test_legacy_state_portability.py',
@@ -864,6 +866,10 @@ jobs:
                             'tests/ui/test_export_destination_approval.py',
                             'tests/citations/test_regeneration.py',
                             'tests/conversion/test_conversion.py',
+                            'tests/conversion/test_selected_adapters.py',
+                            'tests/conversion/test_selected_adapters_native.py::test_real_existing_ocr_bridge_reads_every_selected_image_frame',
+                            'tests/conversion/test_selected_adapters_native.py::test_cancel_settles_existing_ocr_family_before_removing_its_private_files',
+                            'tests/storage/test_legacy_ui_preferences.py',
                             'tests/ingest/test_worker_publication_boundary.py',
                             'tests/conversion/test_conversion_ui.py',
                             'tests/search/test_semantic_cache.py',
@@ -887,7 +893,7 @@ jobs:
           '@
           $runInstalledTests | & $python -I -B - $bundle -o addopts= -o pythonpath= -o xfail_strict=true --import-mode=importlib --junitxml=ci-results/full-bundle-workflows.xml tests/e2e/test_semantic_runtime.py tests/e2e/test_import_worker.py tests/e2e/test_import_batches_ocr.py tests/e2e/test_notebook_research_workflow.py tests/e2e/test_epub_import.py tests/e2e/test_extended_document_workflows.py tests/reader/test_ebook_reader.py tests/e2e/test_catalog_insights_workflow.py tests/e2e/test_academic_workflows.py tests/e2e/test_academic_workflow.py tests/e2e/test_academic_document_export.py tests/e2e/test_result_presentation.py tests/e2e/test_advanced_research_search.py tests/search/test_advanced_search.py 2>&1 | Tee-Object 'ci-results/full-bundle-workflows.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_unreadable_directory_rejects_entire_inventory','test_empty_directory_inventory_has_a_bound','test_directory_inventory_checks_budget_between_entries','test_valid_unicode_metadata_is_stored_by_real_import[list]','test_valid_unicode_metadata_is_stored_by_real_import[tuple]','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
+          & $python -I -B -c "import json,xml.etree.ElementTree as E; cases=list(E.parse('ci-results/full-bundle-workflows.xml').iter('testcase')); failed=sum(any(c.find(t) is not None for t in ('failure','error')) for c in cases); skipped=sum(c.find('skipped') is not None for c in cases); passed=len(cases)-failed-skipped; required={'test_real_existing_ocr_bridge_reads_every_selected_image_frame[unicode-png]','test_real_existing_ocr_bridge_reads_every_selected_image_frame[two-frame-tiff]','test_cancel_settles_existing_ocr_family_before_removing_its_private_files','test_unreadable_directory_rejects_entire_inventory','test_empty_directory_inventory_has_a_bound','test_directory_inventory_checks_budget_between_entries','test_valid_unicode_metadata_is_stored_by_real_import[list]','test_valid_unicode_metadata_is_stored_by_real_import[tuple]','test_real_managed_batch_quarantines_reopens_reviews_and_resumes_without_source_changes','test_tampered_managed_model_blocks_reviewed_resume_without_publication','test_actual_semantic_snapshot_survives_concurrent_membership_revocation','test_actual_multilingual_ranker_and_complete_token_coverage','test_actual_application_semantic_scope_and_original_quotes','test_scanned_pdf_requires_explicit_review_for_each_exact_page_before_publication','test_reviewed_import_rejects_changed_approval_without_publishing','test_quarantined_batch_waits_for_explicit_review_and_refreshes_external_completion','test_notebook_search_fresh_navigation_and_backup_restore','test_academic_reference_roundtrip_preserves_source_evidence','test_academic_import_is_atomic_and_exports_preserve_metadata'} | {'test_long_ascii_source_search_copy_and_context_use_exact_tail['+mode+'-'+retrieval+']' for mode in ('short','thematic') for retrieval in ('thematic','semantic')} | {'test_application_exports_the_selected_topic_with_readable_title['+format+']' for format in ('docx','html')}; assert required<={c.get('name') for c in cases} and failed==skipped==0; print(json.dumps(dict(status='PASS',passed=passed,failed=failed,skipped=skipped,semantic_inference='PASS',scanned_source_workflow='PASS',import_batch_review='PASS',academic_workflow='PASS',notebook_research='PASS',large_source_presentation='PASS',academic_documents='PASS',nvda='NOT_RUN')))" | Tee-Object 'ci-results/full-bundle-workflows.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & (Join-Path $bundle 'runtime/python.exe') -I -B -c "import importlib.util,pathlib,sys; root=pathlib.Path(sys.argv[1]); spec=importlib.util.spec_from_file_location('bundle_verifier',root/'install_windows.py'); module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); module.verify(root); print('PASS: sealed bundle unchanged after native inference and OCR workflows')" $bundle
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1111,12 +1117,14 @@ jobs:
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
-      - name: Install the actual local speech runtime required by portable acceptance
+      - name: Install the actual local speech and conversion tools required by portable acceptance
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          sudo apt-get install -y --no-install-recommends ffmpeg pandoc tesseract-ocr tesseract-ocr-eng
           ffmpeg -hide_banner -version
+          pandoc --version
+          tesseract --version
       - name: Install the existing portable dependency profile and record source identity
         run: |
           set -euo pipefail
@@ -1153,6 +1161,9 @@ jobs:
             tests/ui/test_audio_clips.py \
             tests/audio/test_canonical_project_import.py \
             tests/ui/test_legacy_studio_import.py \
+            tests/conversion/test_selected_adapters.py \
+            tests/conversion/test_selected_adapters_native.py \
+            tests/storage/test_legacy_ui_preferences.py \
             tests/audio/test_model_inventory.py \
             tests/audio/test_model_snapshot.py \
             tests/storage/test_legacy_state_portability.py \

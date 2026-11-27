@@ -9,6 +9,7 @@ from uuid import uuid4
 import pytest
 
 from carr_library.application import LibraryApp
+from carr_library.audio import capture_process
 from carr_library.ingest import worker
 
 
@@ -36,7 +37,7 @@ def source_file(tmp_path, kind):
 
 def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
     """Only instrument the trusted child bootstrap around its real DB commit."""
-    popen = worker.subprocess.Popen
+    popen = capture_process.start_owned_process
     processes = []
 
     def launch(command, *args, **kwargs):
@@ -74,7 +75,7 @@ def publication_barrier(monkeypatch, marker, *, before=False, crash=False):
                 return process
         return popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    monkeypatch.setattr(capture_process, 'start_owned_process', launch)
     return processes
 
 
@@ -225,7 +226,7 @@ def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path,
     work_id, edition_id = uuid4().hex, uuid4().hex
     marker = tmp_path / 'replay-before-commit'
     processes = publication_barrier(monkeypatch, marker, before=True)
-    launch = worker.subprocess.Popen
+    launch = capture_process.start_owned_process
     published = []
 
     def intervening_import(command, *args, **kwargs):
@@ -237,7 +238,7 @@ def test_other_import_after_parent_snapshot_is_not_this_workers_commit(tmp_path,
                 work_id=work_id, edition_id=edition_id))
         return launch(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', intervening_import)
+    monkeypatch.setattr(capture_process, 'start_owned_process', intervening_import)
     result = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,
                             cancelled=marker.exists, timeout=30)
     assert published[0]['state'] == 'complete'

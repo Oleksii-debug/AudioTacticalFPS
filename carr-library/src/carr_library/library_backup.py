@@ -69,9 +69,12 @@ from .reader.legacy_reading import (
     MAX_SNAPSHOT_BYTES as MAX_READING_IMPORT_BYTES, snapshot_import_files,
     is_archive_path, validate_archive_payload, origin_archive, decode_origin,
     validate_anchor_database, LegacyReadingStore,
+    MAX_SESSION_SNAPSHOT_BYTES, MAX_SESSIONS, is_session_path, validate_session_payload,
+    snapshot_session_files, session_paths, session_snapshot_guard,
 )
 from .keybindings import FILENAME as KEYBINDINGS, MAX_BYTES as MAX_KEYBINDINGS, decode_preferences
 from .keyboard_preferences import MAX_BYTES as MAX_KEYMAP_BYTES, validate_keymap
+from .legacy_ui_preferences import VALIDATORS as LEGACY_UI_PREFERENCES, snapshot_guard as _legacy_ui_guard
 from .evidence_drafts import (
     FILENAME as EVIDENCE_DRAFTS, MAX_BYTES as MAX_EVIDENCE_DRAFTS, validate_evidence_drafts,
 )
@@ -108,8 +111,9 @@ _SIMPLE_SIDECARS = {
     EVIDENCE_DRAFTS: (MAX_EVIDENCE_DRAFTS, validate_evidence_drafts),
     PROGRESS_PREFERENCES: (MAX_PROGRESS_PREFERENCES, decode_progress_preferences),
     OCR_PRESETS: (MAX_PRESET_BYTES, validate_presets_bytes),
+    **LEGACY_UI_PREFERENCES,
 }
-MAX_READER_BYTES = (MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_READING_IMPORT_BYTES
+MAX_READER_BYTES = (MAX_READING_STATE + MAX_NARRATION_BYTES + MAX_READING_IMPORT_BYTES + MAX_SESSION_SNAPSHOT_BYTES
                     + sum(row[0] for row in _SIMPLE_SIDECARS.values()))
 
 
@@ -121,7 +125,7 @@ def _reader_limit(name):
         return MAX_READING_STATE
     if name in _SIMPLE_SIDECARS:
         return _SIMPLE_SIDECARS[name][0]
-    if is_archive_path(name):
+    if is_archive_path(name) or is_session_path(name):
         return MAX_ARCHIVE_BYTES
     if re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name):
         return MAX_PROJECT_BYTES
@@ -129,7 +133,7 @@ def _reader_limit(name):
 
 
 def _reader_path(name):
-    return (name == READING_STATE or name in _SIMPLE_SIDECARS or is_archive_path(name)
+    return (name == READING_STATE or name in _SIMPLE_SIDECARS or is_archive_path(name) or is_session_path(name)
             or re.fullmatch(re.escape(NARRATION_DIRECTORY) + r'/[0-9a-f]{32}(?:\.draft)?\.json', name))
 
 def _optional_sidecar(path, maximum):
@@ -157,8 +161,9 @@ def _snapshot_readers(root, *, cancelled=lambda: False):
     sidecars = {} if raw is None else {READING_STATE: raw}
     sidecars.update(snapshot_narration_files(root))
     sidecars.update(snapshot_import_files(root, cancelled=cancelled))
+    sidecars.update(snapshot_session_files(root, cancelled=cancelled))
     for name, (maximum, validate) in _SIMPLE_SIDECARS.items():
-        raw = _optional_sidecar(Path(root) / name, maximum)
+        raw = _optional_sidecar(local_path(Path(root) / name, root=root), maximum)
         if raw is not None:
             validate(raw)
             sidecars[name] = raw
@@ -202,6 +207,10 @@ def _validate_readers(db, sidecars, *, cancelled=lambda: False):
                 locations = set()
             elif is_archive_path(name):
                 snapshot = validate_archive_payload(name, raw, cancelled=cancelled)
+                validate_anchor_database(db, snapshot.source_anchor, cancelled=cancelled)
+                locations = set()
+            elif is_session_path(name):
+                snapshot = validate_session_payload(name, raw, cancelled=cancelled)
                 validate_anchor_database(db, snapshot.source_anchor, cancelled=cancelled)
                 locations = set()
             else:
@@ -442,7 +451,11 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
     transcription = ()
     resource_policy = _resource_policy_files(root, cancelled=cancelled)
     recordings = _recording_files(root, cancelled=cancelled)
+    sessions = session_paths(root, cancelled=cancelled)
     with ExitStack() as stack:
+        stack.enter_context(session_snapshot_guard(root, cancelled=cancelled))
+        if session_paths(root, cancelled=cancelled) != sessions:
+            raise RestoreError('Canonical reading drafts changed before backup. Retry when idle.')
         directory = root / 'state' / 'assistant'
         if os.path.lexists(directory):
             _plain(directory, directory=True)
@@ -475,6 +488,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
         stack.enter_context(_resource_policy_guard(root, cancelled=cancelled))
         if _resource_policy_files(root, cancelled=cancelled) != resource_policy:
             raise RestoreError('Resource allowances changed before backup; retry after the update.')
+        stack.enter_context(_legacy_ui_guard(root))
         keymap_lock = root / 'keyboard-shortcuts.json.lock'
         _regular_if_present(keymap_lock, empty=True)
         try:
@@ -500,7 +514,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
                     or _translation_files(root) != translation
                     or _transcription_files(root) != transcription
                     or _resource_policy_files(root, cancelled=cancelled) != resource_policy
-                    or _recording_files(root, cancelled=cancelled) != recordings):
+                    or _recording_files(root, cancelled=cancelled) != recordings
+                    or session_paths(root, cancelled=cancelled) != sessions):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
@@ -1030,6 +1045,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
             raise RestoreError('invalid sidecar manifest count')
         names, total, reader_total, narration_total, reader_count = {}, 0, 0, 0, 0
         reading_import_total, reading_import_count = 0, 0
+        reader_session_total, reader_session_count = 0, 0
         assistant_total, assistant_jobs, assistant_controls = 0, 0, 0
         translation_total, translation_jobs, translation_caches = 0, 0, 0
         transcription_total, transcription_files, transcription_jobs = 0, 0, set()
@@ -1073,8 +1089,13 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     reading_import_count += 1
                     if reading_import_total > MAX_READING_IMPORT_BYTES or reading_import_count > MAX_ARCHIVES:
                         raise RestoreError('Retained reading-history count or byte limit')
+                if is_session_path(entry[field]):
+                    reader_session_total += entry['size_bytes']
+                    reader_session_count += 1
+                    if reader_session_total > MAX_SESSION_SNAPSHOT_BYTES or reader_session_count > MAX_SESSIONS:
+                        raise RestoreError('Canonical reader-session count or byte limit')
             if (reader_total > MAX_READER_BYTES or narration_total > MAX_NARRATION_BYTES
-                    or reader_count > 1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2 + MAX_ARCHIVES):
+                    or reader_count > 1 + len(_SIMPLE_SIDECARS) + MAX_PROJECTS * 2 + MAX_ARCHIVES + MAX_SESSIONS):
                 raise RestoreError('reader sidecar count or byte limit')
             if _assistant_path(entry[field]):
                 assistant_total += entry['size_bytes']

@@ -2,7 +2,7 @@
 import importlib.util
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import sys
 from types import SimpleNamespace
 
@@ -39,16 +39,54 @@ def test_daisy_schema_boundary_refuses_changed_local_bytes_without_loading_lxml(
 def test_daisy_resolver_only_returns_explicit_local_aliases(tmp_path):
     checker = load_script('daisy_schema_acceptance.py')
     class Resolver:
-        def resolve_filename(self, filename, context):
-            return filename
+        def resolve_string(self, data, context, *, base_url):
+            return data, base_url
     paths = {'SMIL10.dtd': tmp_path / 'SMIL10.dtd', 'xhtml-lat1.ent': tmp_path / 'xhtml-lat1.ent'}
+    for name, path in paths.items():
+        path.write_bytes(name.encode())
     resolve = checker.local_resolver(SimpleNamespace(Resolver=Resolver), paths)().resolve
-    assert resolve('http://www.w3.org/TR/REC-SMIL/SMIL10.dtd', None, None) == str(paths['SMIL10.dtd'])
-    assert resolve(paths['xhtml-lat1.ent'].as_uri(), None, None) == str(paths['xhtml-lat1.ent'])
+    assert resolve('http://www.w3.org/TR/REC-SMIL/SMIL10.dtd', None, None) == (
+        b'SMIL10.dtd', 'http://www.w3.org/TR/REC-SMIL/SMIL10.dtd')
+    assert resolve(paths['xhtml-lat1.ent'].as_uri(), None, None) == (
+        b'xhtml-lat1.ent', 'http://www.w3.org/TR/xhtml1/DTD/xhtml-lat1.ent')
     for request in ('https://unapproved.example/SMIL10.dtd', '../SMIL10.dtd',
                     'file:///unselected/private.dtd', 'http://127.0.0.1/SMIL10.dtd'):
         with pytest.raises(ValueError, match='unapproved'):
             resolve(request, None, None)
+
+
+def test_windows_schema_filenames_do_not_become_nested_entity_system_ids(monkeypatch):
+    from hashlib import sha256
+    from lxml import etree
+    checker = load_script('daisy_schema_acceptance.py')
+    paths = {name: PureWindowsPath('D:/Selected schemas/Unicode каталог') / name
+             for name in ('xhtml1-transitional.dtd', 'xhtml-lat1.ent')}
+    data = {
+        'xhtml1-transitional.dtd': b'<!ENTITY % child SYSTEM "xhtml-lat1.ent">%child;<!ELEMENT root EMPTY>',
+        'xhtml-lat1.ent': b'<!ATTLIST root answer CDATA #IMPLIED>',
+    }
+    seen = []
+    def local_bytes(path):
+        seen.append(path)
+        return data[path.name]
+    monkeypatch.setattr(checker, '_schema_bytes', local_bytes)
+    identities = {name: sha256(raw).hexdigest() for name, raw in data.items()}
+    resolver = checker.local_resolver(etree, paths, identities)
+    document = b'<!DOCTYPE root SYSTEM "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><root answer="bounded"/>'
+    assert etree.fromstring(document, checker.parser_for_html(resolver, etree)).get('answer') == 'bounded'
+    assert set(seen) == set(paths.values())
+    with pytest.raises(ValueError, match='unapproved'):
+        resolver().resolve('file:///D:/unselected/xhtml-lat1.ent', None, None)
+
+
+def test_local_schema_change_between_pin_validation_and_resolver_is_refused(tmp_path):
+    from hashlib import sha256
+    from lxml import etree
+    checker = load_script('daisy_schema_acceptance.py')
+    path = tmp_path / 'SMIL10.dtd'
+    path.write_bytes(b'changed after validation')
+    with pytest.raises(ValueError, match='changed before parsing'):
+        checker.local_resolver(etree, {'SMIL10.dtd': path}, {'SMIL10.dtd': sha256(b'approved').hexdigest()})
 
 
 @pytest.mark.parametrize('version,exit_code,errors,warnings', [

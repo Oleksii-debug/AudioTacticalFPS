@@ -78,6 +78,9 @@ def _kernel():
                            ctypes.c_wchar_p, ctypes.c_void_p, ctypes.POINTER(_ProcessInfo)], BOOL),
         'WaitForSingleObject': ([HANDLE, DWORD], DWORD),
         'GetExitCodeProcess': ([HANDLE, ctypes.POINTER(DWORD)], BOOL),
+        'OpenProcess': ([DWORD, BOOL, DWORD], HANDLE),
+        'IsProcessInJob': ([HANDLE, HANDLE, ctypes.POINTER(BOOL)], BOOL),
+        'TerminateProcess': ([HANDLE, DWORD], BOOL),
         'TerminateJobObject': ([HANDLE, DWORD], BOOL),
         'CloseHandle': ([HANDLE], BOOL),
     }
@@ -133,6 +136,8 @@ class JobProcess:
         import msvcrt
         self.args, self.returncode = args, None
         self._api, self._process, self._job = _kernel(), _ProcessInfo(), None
+        self._members = {}
+        self._verified_members = set()
         self.stdin = self.stdout = self.stderr = None
         self._cleanup_lock = threading.Lock()
         attributes, initialized, descriptors = None, False, []
@@ -274,8 +279,9 @@ class JobProcess:
         return self.poll()
 
     def terminate(self):
-        if self._job and not self._api.TerminateJobObject(self._job, 1):
-            raise ctypes.WinError(ctypes.get_last_error())
+        # TerminateJobObject can remove members from accounting before their
+        # process objects become signaled. Retain and wait on exact handles.
+        return self.close()
 
     kill = terminate
 
@@ -286,19 +292,108 @@ class JobProcess:
             raise ctypes.WinError(ctypes.get_last_error())
         return accounting.ActiveProcesses
 
+    def _process_ids(self):
+        """Read only this private job, including its nested jobs, with a cap."""
+        capacity = 16
+        while capacity <= 65536:
+            raw = ctypes.create_string_buffer(8 + capacity * ctypes.sizeof(SIZE_T))
+            ok = self._api.QueryInformationJobObject(self._job, 3, raw,
+                                                     ctypes.sizeof(raw), None)
+            error = 0 if ok else ctypes.get_last_error()
+            header = ctypes.cast(raw, ctypes.POINTER(DWORD))
+            assigned, count = int(header[0]), int(header[1])
+            if count > capacity or assigned < count:
+                raise RuntimeError('Windows returned an invalid owned process inventory.')
+            if not ok and error != 234:  # ERROR_MORE_DATA
+                raise ctypes.WinError(error)
+            if not ok or count < assigned:
+                capacity = max(capacity * 2, assigned)
+                continue
+            values = (SIZE_T * count).from_buffer(raw, 8)
+            result = tuple(int(value) for value in values)
+            if any(not 0 < value <= 0xffffffff for value in result) or len(set(result)) != count:
+                raise RuntimeError('Windows returned an invalid owned process identity.')
+            return result
+        raise RuntimeError('The owned process inventory exceeds its cleanup bound.')
+
+    def _capture_members(self, deadline):
+        """Bind a listed PID before acting; a recycled foreign PID is untouched."""
+        for pid in self._process_ids():
+            if time.monotonic() >= deadline:
+                raise subprocess.TimeoutExpired(self.args, 5)
+            if pid in self._members:
+                continue
+            # SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_TERMINATE.
+            handle = self._api.OpenProcess(0x00101001, False, pid)
+            if not handle:
+                error = ctypes.get_last_error()
+                if error == 87 and pid not in self._process_ids():
+                    # The process object no longer exists. Access denied or a
+                    # still-listed identity is not evidence of termination.
+                    continue
+                raise ctypes.WinError(error)
+            # Keep the handle even if the membership query or close fails.
+            self._members[pid] = handle
+
+    def _drain_members(self, deadline):
+        for pid, handle in tuple(self._members.items()):
+            if time.monotonic() >= deadline:
+                raise subprocess.TimeoutExpired(self.args, 5)
+            if pid not in self._verified_members:
+                belongs = BOOL()
+                if not self._api.IsProcessInJob(handle, self._job, ctypes.byref(belongs)):
+                    raise ctypes.WinError(ctypes.get_last_error())
+                if not belongs.value:
+                    if not self._api.CloseHandle(handle):
+                        raise ctypes.WinError(ctypes.get_last_error())
+                    del self._members[pid]
+                    continue
+                # The retained handle prevents PID reuse. Keep that established
+                # identity across retries even after Windows accounting removes
+                # the member while its final I/O is still being cancelled.
+                self._verified_members.add(pid)
+            outcome = self._api.WaitForSingleObject(handle, 0)
+            if outcome == 0x102:
+                if not self._api.TerminateProcess(handle, 1):
+                    error = ctypes.get_last_error()
+                    # A genuine exit racing this exact retained handle is safe;
+                    # an unrelated access failure must retain ownership.
+                    if error != 5 or self._api.WaitForSingleObject(handle, 0) != 0:
+                        raise ctypes.WinError(error)
+            elif outcome != 0:
+                raise ctypes.WinError(ctypes.get_last_error())
+        # Wait before releasing any still-live process identity. A timeout keeps
+        # all remaining handles on this owner for the synchronous retry policy.
+        for pid, handle in tuple(self._members.items()):
+            timeout = max(0, min(5000, int((deadline - time.monotonic()) * 1000)))
+            outcome = self._api.WaitForSingleObject(handle, timeout)
+            if outcome == 0x102:
+                raise subprocess.TimeoutExpired(self.args, 5)
+            if outcome != 0:
+                raise ctypes.WinError(ctypes.get_last_error())
+            if not self._api.CloseHandle(handle):
+                raise ctypes.WinError(ctypes.get_last_error())
+            del self._members[pid]
+            self._verified_members.discard(pid)
+
     def close(self):
         """Confirm the whole owned job is empty before dropping its last handle.
 
-        A failed native call keeps every unconfirmed handle for a later retry.
-        The runner exposes that retained owner instead of declaring silence.
+        Termination requests are not completion witnesses. Enumerate the private
+        job, validate each opened handle's membership, terminate those identities
+        individually and wait for them to become signaled. Repeat for children
+        admitted while their ancestors were stopping. Never bulk-terminate an
+        uncaptured descendant then infer termination from ActiveProcesses == 0.
+        Each attempt is bounded; a failed native call or timeout retains the job
+        and unconfirmed process handles for the existing synchronous retry policy.
         """
         if not self._cleanup_lock.acquire(blocking=False):
             raise RuntimeError('Audio process cleanup is already in progress.')
         deadline = time.monotonic() + 5
         try:
-            if self._job and self._active_processes():
-                if not self._api.TerminateJobObject(self._job, 1):
-                    raise ctypes.WinError(ctypes.get_last_error())
+            if self._job:
+                self._capture_members(deadline)
+                self._drain_members(deadline)
             if self._process.hProcess:
                 timeout = max(0, min(5000, int((deadline - time.monotonic()) * 1000)))
                 outcome = self._api.WaitForSingleObject(self._process.hProcess, timeout)
@@ -318,9 +413,11 @@ class JobProcess:
                     raise ctypes.WinError(ctypes.get_last_error())
                 self._process.hThread = None
             if self._job:
-                while self._active_processes():
+                while self._process_ids() or self._active_processes():
                     if time.monotonic() >= deadline:
                         raise subprocess.TimeoutExpired(self.args, 5)
+                    self._capture_members(deadline)
+                    self._drain_members(deadline)
                     time.sleep(min(.02, max(0, deadline - time.monotonic())))
                 if not self._api.CloseHandle(self._job):
                     raise ctypes.WinError(ctypes.get_last_error())

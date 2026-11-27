@@ -66,17 +66,17 @@ def normalize_shortcut(value):
     raw_key = parts[-1]
     if len(raw_key) == 1 and raw_key.isascii() and raw_key.isalnum():
         key = raw_key.upper()
-    elif re.fullmatch(r'[fF](?:[1-9]|1[0-2])', raw_key):
+    elif re.fullmatch(r'[fF](?:[1-9]|1[0-9]|2[0-4])', raw_key):
         key = raw_key.upper()
     else:
         key = _KEY_NAMES.get(raw_key.lower())
         if key is None:
-            raise ShortcutError('Unsupported key. Use a letter, digit, F1–F12 or a named navigation key.')
+            raise ShortcutError('Unsupported key. Use a letter, digit, F1–F24 or a named navigation key.')
 
     protected = False
     if key in {'Insert', 'CapsLock', 'Tab', 'Escape', 'Enter'}:
         protected = True
-    elif not modifiers and not re.fullmatch(r'F(?:[1-9]|1[0-2])', key):
+    elif not modifiers and not re.fullmatch(r'F(?:[1-9]|1[0-9]|2[0-4])', key):
         protected = True
     elif modifiers == {'Shift'} and len(key) == 1:
         protected = True

@@ -82,3 +82,62 @@ def test_ui_does_not_write_unregistered_files_inside_library(tmp_path, monkeypat
     assert len(destroyed) == 2
     assert any(isinstance(message, str) and 'outside the research library' in message for message in messages)
     assert list(library.iterdir()) == []
+
+
+def test_image_selection_uses_existing_model_dialog_and_cancel_starts_no_job(tmp_path, monkeypatch):
+    from carr_library.ui import ocr_options
+    source, destination = tmp_path / 'selected.tiff', tmp_path / 'output'
+    source.write_bytes(b'not yet parsed')
+    destination.mkdir()
+    frame = SimpleNamespace(_closing=False, working=False, library=None, cancel_event=Event())
+    fake_ui(monkeypatch, (source,), destination, frame)
+    choices = []
+    monkeypatch.setattr(ocr_options, 'choose_model_config',
+                        lambda *a, **k: choices.append(k) or None)
+    frame.run_job = lambda *a, **k: (_ for _ in ()).throw(AssertionError('Cancelled model choice started a worker.'))
+    ui.convert_documents(frame)
+    assert choices == [{'preset_root': None}]
+    assert list(destination.iterdir()) == []
+
+
+def test_rtf_converter_picker_cancel_does_not_activate_a_path_tool(tmp_path, monkeypatch):
+    source, destination = tmp_path / 'selected.rtf', tmp_path / 'output'
+    source.write_bytes(b'{\\rtf1\\ansi Original}')
+    destination.mkdir()
+    frame = SimpleNamespace(_closing=False, working=False, library=None, cancel_event=Event())
+    fake_ui(monkeypatch, (source,), destination, frame)
+    monkeypatch.setattr(ui, 'choose_pandoc', lambda frame: None)
+    frame.run_job = lambda *a, **k: (_ for _ in ()).throw(AssertionError('Cancelled converter choice started a worker.'))
+    ui.convert_documents(frame)
+    assert list(destination.iterdir()) == []
+
+
+def test_native_flow_passes_both_explicit_selections_to_the_current_service(tmp_path, monkeypatch):
+    from carr_library.ui import ocr_options
+    from carr_library.extract.page_ocr import Config
+    sources = (tmp_path / 'selected.rtf', tmp_path / 'selected.png')
+    for source in sources:
+        source.write_bytes(b'selected document')
+    destination = tmp_path / 'output'
+    destination.mkdir()
+    executable = tmp_path / 'chosen-pandoc'
+    executable.write_bytes(b'selected executable')
+    frame = SimpleNamespace(_closing=False, working=False, library=None, cancel_event=Event())
+    fake_ui(monkeypatch, sources, destination, frame)
+    chosen_config = Config(languages='eng', dpi=240)
+    monkeypatch.setattr(ocr_options, 'choose_model_config', lambda *a, **k: chosen_config)
+    monkeypatch.setattr(ui, 'choose_pandoc', lambda frame: executable)
+    captured = {}
+    class Service:
+        def __init__(self, root, **options):
+            captured.update(root=root, **options)
+        def extract_many(self, selected, **options):
+            captured['executed_sources'] = selected
+            assert options['cancelled']() is False
+            return ()
+    monkeypatch.setattr(ui, 'ConversionService', Service)
+    frame.run_job = lambda title, operation, **callbacks: operation()
+    ui.convert_documents(frame)
+    assert captured['root'] == destination and captured['input_roots'] == sources
+    assert captured['image_ocr'] is True and captured['ocr_config'] is chosen_config
+    assert captured['pandoc'] == executable and captured['executed_sources'] == sources

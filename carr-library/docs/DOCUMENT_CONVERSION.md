@@ -20,9 +20,22 @@ its existing reader. Missing/failed OCR, unreadable nonblank pages and mixed
 native/image pages fail explicitly instead of publishing an apparently complete
 partial transcript. Use the reviewed import workflow for those cases.
 
-Legacy AZW/AZW3, CHM, DjVu, DOC/PPT/XLS, LIT, MOBI, PDB/PRC, RTF, TCR and WPD,
-and standalone image/TIFF formats remain unavailable in this adapter. No Pandoc,
-Calibre, remote service, model download, decryption or DRM bypass is supplied.
+RTF is enabled only after the user explicitly selects an installed Pandoc
+executable. The worker binds its byte hash and invokes fixed `--sandbox`, RTF
+input and plain-text output options. No custom filters, templates, external
+resource embedding, shell command or alternate reader is accepted.
+
+PNG, JPEG, BMP, TIFF and WebP use the current local Tesseract runtime and its
+existing Unicode path bridge. OCR requires an explicit language/configuration
+selection; installed, managed Fast/Best and verified offline-pack authorities
+remain the same as PDF OCR. Every frame is checked before runtime admission,
+then decoded and recognized sequentially. Image-frame ordinals remain distinct
+from physical PDF pages and printed pagination. Optional orientation evidence
+is retained for review and never silently replaces the baseline text.
+
+Legacy AZW/AZW3, CHM, DjVu, DOC/PPT/XLS, LIT, MOBI, PDB/PRC, TCR and WPD remain
+unavailable. No converter, model, remote service, decryption or DRM bypass is
+downloaded or supplied by this action.
 
 Reading separators join ordered extracted records. The report preserves each
 record's exact output character interval and text hash, its logical locator,
@@ -48,6 +61,12 @@ result = service.extract(source, "reading.txt", cancelled=lambda: False)
 print(result.path, result.report_path)
 ```
 
+For RTF pass `pandoc=Path('/explicit/installed/pandoc')` to the service. For
+raster input pass `image_ocr=True` together with an explicitly chosen existing
+`carr_library.extract.page_ocr.Config`; the default service never silently OCRs
+an image or discovers and activates Pandoc from PATH. API callers retain the
+same explicit input and destination selection rules.
+
 `extract_many(sources, cancelled=..., progress=...)` processes a finite selection
 sequentially. The progress callback receives `(completed_count, ConversionResult)`.
 Generated batch names have a bounded ordinal and source stem. Completed pairs
@@ -58,11 +77,20 @@ checkpoint recovery is required.
 ## Resource and filesystem boundaries
 
 Defaults and maxima are 64 MiB per source, 32 MiB reading text, 16 MiB provenance,
-10,000 records, 1,000 PDF pages, 1,000 selected files and a 120-second per-worker
+10,000 records, 1,000 PDF pages/image frames, 1,000 selected files and a 120-second per-worker
 deadline (configurable from 0.1 to 600 seconds). The supervisor polls cancellation
 and terminates the process subtree. Its existing POSIX address/CPU limits remain
 in force; Windows has process/time isolation, not a new address-space quota.
 This is not an operating-system sandbox.
+
+Raster defaults are 20 million pixels per frame and 80 million cumulatively
+per input (the latter can be lowered or raised to at most 200 million).
+Pandoc's explicit RTS heap allowance defaults to 512 MiB and is bounded from
+64 MiB to 1 GiB. Its child inherits the existing worker's native process family;
+there is no nested POSIX session that can escape cancellation. Diagnostics and
+output files are checked during execution, and the existing outer supervisor
+settles all descendants before private files are removed. Source-byte,
+text-byte and total-time limits continue to apply to both adapters.
 
 The facade copies a bounded selected source into a private local stage, hashes
 that copy, and checks the original identity/hash again before publication.
@@ -94,17 +122,28 @@ after installing the native menu bar. It registers stable commands
 settings and command launcher can discover them. It uses the current
 `DesktopFrame.run_job`, Cancel event, and close-safe completion callbacks; it
 does not own a second executor. Source and output selection use native dialogs.
-PDF model choices use the existing OCR selection UI.
+PDF/image model choices use the existing OCR selection UI. RTF additionally
+opens an explicit local-executable picker; cancelling either choice starts no
+worker and creates no derivative.
 
 ## Verification status for this source candidate
 
-**NOT RUN.** The executor was unavailable when this patch was prepared.
-Earlier tests and platform evidence do not qualify this new adapter.
+On Linux/Python 3.12, the current source ran 60 cases with zero skips: 30 existing
+conversion cases, five portable UI cases, 19 selected-adapter boundary cases
+and six real optional-tool cases. The latter exercised installed Pandoc
+3.1.11.1 and local Tesseract: RTF, an external-field control, a small output
+limit, Unicode PNG, two-frame TIFF and cancellation after raster staging.
+This is source/host evidence. It does not establish native Windows dialogs,
+every OCR language, installed Windows runtime identity or screen-reader use.
 
 Required strict gates:
 
 - `tests/conversion/test_conversion.py`
 - `tests/conversion/test_conversion_ui.py`
+- `tests/conversion/test_selected_adapters.py`
+- `tests/conversion/test_selected_adapters_native.py` only in a gate explicitly
+  provisioning compatible Pandoc and English Tesseract. Missing tools fail;
+  the suite has no skip or simulated-success fallback.
 - Existing import worker, source-snapshot and cancellation selections.
 - Existing current document-format, DOCX, EPUB and PDF native-text selections.
 - Installed-product `-I` / `--import-mode=importlib` collection with the same

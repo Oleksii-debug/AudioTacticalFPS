@@ -5,9 +5,11 @@ is a locator, never quotation authority. Opening a selected old revision creates
 an explicit derivative in the existing NarrationStore; it does not retarget old
 source positions or replace the original file.
 """
+from contextlib import contextmanager, ExitStack
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -21,12 +23,16 @@ DIRECTORY = 'narration-imports'
 MAX_ARCHIVES = 1000
 MAX_ARCHIVE_BYTES = 32 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 64 * 1024 * 1024
+SESSION_DIRECTORY = 'state/speech'
+MAX_SESSIONS = 1000
+MAX_SESSION_SNAPSHOT_BYTES = 64 * 1024 * 1024
 MAX_CHARACTERS = 2_000_000
 MAX_EDITS = 500
 MAX_POSITIONS = 10000
 _MAX_RUNS = MAX_POSITIONS * 2 + MAX_EDITS * 2
 _DIGEST = re.compile(r'[0-9a-f]{64}')
 _FILE = re.compile(r'([0-9a-f]{64})\.json')
+_SESSION_FILE = re.compile(r'([0-9a-f]{64})\.reader\.json')
 ORIGIN_KIND = 'canonical-reading-copy-origin'
 _POSITION_FIELDS = {'ordinal', 'kind', 'index', 'start', 'end', 'text_sha256',
                     'text_verified_at_capture'}
@@ -251,6 +257,16 @@ def _replay(source, anchor, edits, selected, cancelled):
 
 
 @dataclass(frozen=True)
+class RecoveredSession:
+    """Inert historical presentation data; never a live voice/runtime selection."""
+    voice_id: str
+    rate: int
+    volume: int
+    cursor: int
+    audio_seconds: float
+
+
+@dataclass(frozen=True)
 class LegacySnapshot:
     raw: bytes
     archive_sha256: str
@@ -262,6 +278,7 @@ class LegacySnapshot:
     saved_revision: int
     selected_revision: int
     runs: tuple[MappedRun, ...]
+    session: RecoveredSession | None = None
 
     @property
     def text(self):
@@ -289,6 +306,22 @@ def decode_snapshot(raw, *, revision=None, cancelled=lambda: False):
         raise ValueError('Invalid JSON number in a reading copy.')
     try:
         value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique, parse_constant=constant)
+        session = None
+        if type(value) is dict and value.get('schema') == 'carr.reader-session.v1':
+            session_fields = {'schema', 'document', 'voice_id', 'rate', 'volume', 'cursor', 'audio_seconds'}
+            if set(value) != session_fields or type(value['document']) is not dict:
+                raise ValueError('Invalid canonical reader-session envelope.')
+            voice = _text(value['voice_id'], 'historical session voice', maximum=2048)
+            if (type(value['rate']) is not int or not -10 <= value['rate'] <= 10
+                    or type(value['volume']) is not int or not 0 <= value['volume'] <= 100
+                    or type(value['cursor']) is not int or value['cursor'] < 0
+                    or type(value['audio_seconds']) not in (int, float)
+                    or not math.isfinite(value['audio_seconds'])
+                    or not 0 <= value['audio_seconds'] <= 31_536_000):
+                raise ValueError('Invalid canonical reader-session presentation state.')
+            session = RecoveredSession(voice, value['rate'], value['volume'],
+                                       value['cursor'], value['audio_seconds'])
+            value = value['document']
         fields = {'schema', 'title', 'source_text', 'source_sha256', 'edits', 'revision'}
         if type(value) is not dict or value.get('schema') not in ('carr.reading-copy.v1', 'carr.reading-copy.v2'):
             raise ValueError('Choose a canonical reading-copy v1 or v2 JSON file.')
@@ -329,8 +362,12 @@ def decode_snapshot(raw, *, revision=None, cancelled=lambda: False):
             raise ValueError('Choose an existing historical reading revision.')
         edits = tuple(edits)
         runs = _replay(source, anchor, edits, selected, cancelled)
+        if session is not None:
+            saved_runs = runs if selected == saved else _replay(source, anchor, edits, saved, cancelled)
+            if session.cursor > sum(len(run.text) for run in saved_runs):
+                raise ValueError('The historical reader-session cursor is outside its saved revision.')
         return LegacySnapshot(raw, sha256(raw).hexdigest(), title, source,
-                              value['source_sha256'], anchor, edits, saved, selected, runs)
+                              value['source_sha256'], anchor, edits, saved, selected, runs, session)
     except (UnicodeError, RecursionError, KeyError, TypeError) as exc:
         raise ValueError('Invalid canonical reading-copy data; the original file was kept.') from exc
 
@@ -391,6 +428,81 @@ def snapshot_import_files(root, *, cancelled=lambda: False):
         total += len(raw)
         if total > MAX_SNAPSHOT_BYTES:
             raise ValueError('Retained reading histories exceed their backup byte budget.')
+        result[name] = raw
+    return result
+
+
+def is_session_path(name):
+    return (type(name) is str and name.startswith(SESSION_DIRECTORY + '/')
+            and _SESSION_FILE.fullmatch(name[len(SESSION_DIRECTORY) + 1:]) is not None)
+
+
+def validate_session_payload(name, raw, *, cancelled=lambda: False):
+    if not is_session_path(name):
+        raise ValueError('Invalid canonical reader-session filename.')
+    snapshot = decode_snapshot(raw, cancelled=cancelled)
+    if snapshot.session is None:
+        raise ValueError('A reader-session file must contain its exact typed envelope.')
+    return snapshot
+
+
+def session_paths(root, *, cancelled=lambda: False):
+    """Bounded original recovery inventory; runtime profiles are never collected."""
+    root = local_path(root, exists=True)
+    directory = local_path(root / SESSION_DIRECTORY, root=root)
+    if not os.path.lexists(directory):
+        return ()
+    regular(directory, directory=True)
+    result = []
+    with os.scandir(directory) as entries:
+        for index, entry in enumerate(entries):
+            _cancel(cancelled)
+            if index >= MAX_SESSIONS * 3:
+                raise ValueError('Too many canonical reader-session namespace entries.')
+            path = Path(entry.path)
+            regular(path)
+            if (re.fullmatch(r'\.[0-9a-f]{64}\.lock', path.name)
+                    or re.fullmatch(r'\.pending-[a-z0-9_]{8}', path.name)):
+                continue
+            if not _SESSION_FILE.fullmatch(path.name) or len(result) >= MAX_SESSIONS:
+                raise ValueError('Unexpected or excessive canonical reader-session files.')
+            result.append(path)
+    return tuple(sorted(result))
+
+
+@contextmanager
+def session_snapshot_guard(root, *, cancelled=lambda: False):
+    """Hold each released ReaderDraftStore native lock under the root writer."""
+    from filelock import FileLock, Timeout
+    before = session_paths(root, cancelled=cancelled)
+    with ExitStack() as stack:
+        for path in before:
+            _cancel(cancelled)
+            key = _SESSION_FILE.fullmatch(path.name).group(1)
+            lock = path.parent / ('.' + key + '.lock')
+            if os.path.lexists(lock):
+                regular(lock)
+            try:
+                stack.enter_context(FileLock(lock, timeout=0, mode=0o600))
+            except Timeout as exc:
+                raise RuntimeError('A canonical reading draft is being saved. Retry backup when idle.') from exc
+        if session_paths(root, cancelled=cancelled) != before:
+            raise ValueError('Canonical reading drafts changed before snapshot.')
+        yield
+
+
+def snapshot_session_files(root, *, cancelled=lambda: False):
+    from .narration import _read_bytes
+    root = local_path(root, exists=True)
+    result, total = {}, 0
+    for path in session_paths(root, cancelled=cancelled):
+        _cancel(cancelled)
+        raw = _read_bytes(path)
+        name = path.relative_to(root).as_posix()
+        validate_session_payload(name, raw, cancelled=cancelled)
+        total += len(raw)
+        if total > MAX_SESSION_SNAPSHOT_BYTES:
+            raise ValueError('Canonical reader sessions exceed their snapshot byte budget.')
         result[name] = raw
     return result
 
@@ -529,6 +641,12 @@ def history_description(snapshot):
              'Complete history: ' + str(len(snapshot.edits)) + ' edits',
              'Original file SHA256: ' + snapshot.archive_sha256,
              'Quotation authority: none. Captured verification flags remain historical data.']
+    if snapshot.session is not None:
+        session = snapshot.session
+        lines.extend(('Retained reader-session envelope: exact original bytes are kept.',
+            'Historical text cursor: ' + str(session.cursor),
+            'Historical audio position in seconds: ' + str(session.audio_seconds),
+            'Saved voice/rate/volume are inert. Select current playback settings explicitly.'))
     if anchor is not None:
         lines.extend(('Library: ' + anchor.workspace, 'Edition: ' + anchor.edition,
                       'Source revision: ' + anchor.revision,

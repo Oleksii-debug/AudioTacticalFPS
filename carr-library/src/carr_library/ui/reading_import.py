@@ -1,10 +1,12 @@
 """Explicit native import of retained canonical reading histories."""
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 
 from ..reader.legacy_reading import (
     LegacyReadingStore, authorize_snapshot, decode_snapshot, history_description,
     project_from_snapshot, read_snapshot, snapshot_import_files,
+    snapshot_session_files, session_snapshot_guard,
 )
 from ..reader.narration import NarrationStore
 from ..ingest.writer_guard import exclusive_writer
@@ -16,8 +18,8 @@ from .research_actions import NativeDialogs
 class ReadingImportDialogs(NativeDialogs):
     def path(self, parent):
         import wx
-        picker = wx.FileDialog(parent, 'Import an earlier reading-copy history',
-            wildcard='Reading-copy JSON (*.json)|*.json|All files (*.*)|*.*',
+        picker = wx.FileDialog(parent, 'Import an earlier reading history or recovery session',
+            wildcard='Reading history or recovery JSON (*.json)|*.json|All files (*.*)|*.*',
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         try:
             return Path(picker.GetPath()) if picker.ShowModal() == wx.ID_OK else None
@@ -134,16 +136,25 @@ class ReadingImportActions:
     def open_retained(self, event=None):
         try:
             scope = self._scope()
+            originals = {}
             def load():
                 with exclusive_writer(scope.library.root):
                     files = snapshot_import_files(scope.library.root,
                                                    cancelled=self.frame.cancel_event.is_set)
+                    with session_snapshot_guard(scope.library.root, cancelled=self.frame.cancel_event.is_set):
+                        sessions = snapshot_session_files(scope.library.root, cancelled=self.frame.cancel_event.is_set)
+                    for name, raw in sessions.items():
+                        originals[sha256(raw).hexdigest()] = str(scope.library.root / name)
+                        files[name] = raw
                 rows = []
+                seen = set()
                 for raw in files.values():
                     self._guard(scope)
                     snapshot = decode_snapshot(raw, cancelled=self.frame.cancel_event.is_set)
-                    if snapshot.source_anchor is None or snapshot.source_anchor.workspace == scope.workspace:
+                    if (snapshot.archive_sha256 not in seen
+                            and (snapshot.source_anchor is None or snapshot.source_anchor.workspace == scope.workspace)):
                         rows.append(snapshot)
+                        seen.add(snapshot.archive_sha256)
                 return tuple(sorted(rows, key=lambda row: (row.title.casefold(), row.archive_sha256)))
             def choose(rows):
                 if not rows:
@@ -157,7 +168,7 @@ class ReadingImportActions:
                 if type(selected) is not int or not 0 <= selected < len(rows):
                     raise ValueError('Choose one retained reading history.')
                 self._guard(scope)
-                self._choose_revision(scope, rows[selected], None)
+                self._choose_revision(scope, rows[selected], originals.get(rows[selected].archive_sha256))
             self._job(scope, 'Loading retained reading histories', load, choose)
         except Exception as exc:
             self.frame.report(str(exc))

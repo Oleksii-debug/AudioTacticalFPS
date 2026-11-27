@@ -321,6 +321,56 @@ def test_failed_publication_releases_native_lock(broker, monkeypatch):
     assert not broker.snapshot()['leases']
 
 
+@pytest.mark.parametrize('boundary', ('construction', 'acquisition'))
+def test_released_lock_leaf_may_disappear_before_native_acquisition(tmp_path, monkeypatch, boundary):
+    from carr_library.operations import _locks
+    path = tmp_path / '.released.lock'
+    path.write_bytes(b'')
+    existing = _locks.NativeLock(path) if boundary == 'acquisition' else None
+    original, removed = _locks.regular, []
+
+    def release_cleanup(selected):
+        if Path(selected) == path and not removed:
+            # WindowsFileLock removes its unowned leaf after releasing the
+            # native lock. Interleave that real filesystem change precisely
+            # between the next owner's presence and metadata observations.
+            path.unlink()
+            removed.append(True)
+        return original(selected)
+
+    monkeypatch.setattr(_locks, 'regular', release_cleanup)
+    lock = existing or _locks.NativeLock(path)
+    try:
+        assert lock.acquire() is True and lock.held
+        assert removed == [True]
+        info, held = path.stat(), os.fstat(lock.lock._context.lock_file_fd)
+        assert (info.st_dev, info.st_ino) == (held.st_dev, held.st_ino)
+    finally:
+        lock.release()
+
+
+def test_unowned_lock_replacement_still_rejects_a_hardlink_alias(tmp_path, monkeypatch):
+    from carr_library.operations import _locks
+    path, outside = tmp_path / '.replaced.lock', tmp_path / 'other-state'
+    path.write_bytes(b'')
+    outside.write_bytes(b'Preserve this unrelated state.')
+    lock = _locks.NativeLock(path)
+    original, replaced = _locks.regular, []
+
+    def changed(selected):
+        if Path(selected) == path and not replaced:
+            path.unlink()
+            os.link(outside, path)
+            replaced.append(True)
+        return original(selected)
+
+    monkeypatch.setattr(_locks, 'regular', changed)
+    with pytest.raises(ValueError, match='hard-link'):
+        lock.acquire()
+    assert not lock.held
+    assert outside.read_bytes() == b'Preserve this unrelated state.'
+
+
 def test_runtime_leases_outside_backup_state_and_truthful_capabilities(tmp_path):
     broker = ResourceBroker.for_app(tmp_path)
     assert broker.root == tmp_path / 'runtime' / 'resources'

@@ -15,7 +15,7 @@ import pytest
 from carr_library.audio.cleanup import CleanupOwner, retained_state_lock
 from carr_library.audio.capture_types import AudioBudget, AudioCleanupPending, AudioError
 from carr_library.audio import capture_process as process
-from carr_library.audio.windows_job import JobProcess, _Accounting, _ProcessInfo, DWORD
+from carr_library.audio.windows_job import JobProcess, _Accounting, _ProcessInfo, DWORD, SIZE_T, BOOL
 
 
 def execute(code, **options):
@@ -111,21 +111,39 @@ def test_retained_state_lock_releases_only_after_cross_thread_quiescence(tmp_pat
 class Kernel:
     def __init__(self, failure):
         self.failure, self.active, self.closed = failure, 1, []
+        self.terminated = False
 
     def QueryInformationJobObject(self, job, kind, pointer, size, returned):
         if self.failure == 'query':
             return 0
+        if kind == 3:
+            header = ctypes.cast(pointer, ctypes.POINTER(DWORD))
+            header[0] = header[1] = 0 if self.terminated else 1
+            if not self.terminated:
+                ctypes.cast(ctypes.addressof(pointer) + 8, ctypes.POINTER(SIZE_T))[0] = 11
+            return 1
         ctypes.cast(pointer, ctypes.POINTER(_Accounting)).contents.ActiveProcesses = self.active
         return 1
 
-    def TerminateJobObject(self, job, code):
+    def OpenProcess(self, access, inherit, pid):
+        assert (access, inherit, pid) == (0x00101001, False, 11)
+        return 303
+
+    def IsProcessInJob(self, handle, job, result):
+        assert (handle, job) == (303, 202)
+        ctypes.cast(result, ctypes.POINTER(BOOL)).contents.value = 1
+        return 1
+
+    def TerminateProcess(self, handle, code):
+        assert (handle, code) == (303, 1)
         if self.failure == 'terminate':
             return 0
         self.active = 0
+        self.terminated = True
         return 1
 
     def WaitForSingleObject(self, handle, timeout):
-        return 0x102 if self.failure == 'wait' else 0
+        return 0x102 if self.failure == 'wait' or not self.terminated else 0
 
     def GetExitCodeProcess(self, handle, pointer):
         if self.failure == 'exit-code':
@@ -134,19 +152,21 @@ class Kernel:
         return 1
 
     def CloseHandle(self, handle):
-        if self.failure == ('close-root' if handle == 101 else 'close-job'):
+        if self.failure == {101: 'close-root', 202: 'close-job', 303: 'close-member'}[handle]:
             return 0
         self.closed.append(handle)
         return 1
 
 
-@pytest.mark.parametrize('failure', ['query', 'terminate', 'wait', 'exit-code', 'close-root', 'close-job'])
+@pytest.mark.parametrize('failure', ['query', 'terminate', 'wait', 'exit-code', 'close-root', 'close-job', 'close-member'])
 def test_failed_native_cleanup_keeps_unconfirmed_job_handle(monkeypatch, failure):
     monkeypatch.setattr(ctypes, 'WinError', lambda code: OSError('injected Win32 failure'), raising=False)
     monkeypatch.setattr(ctypes, 'get_last_error', lambda: 5, raising=False)
     child = JobProcess.__new__(JobProcess)
     child.args, child.returncode = ['fixture-not-executed'], None
     child._api, child._process, child._job = Kernel(failure), _ProcessInfo(), 202
+    child._members = {}
+    child._verified_members = set()
     child._process.hProcess = 101
     child._cleanup_lock = threading.Lock()
     with pytest.raises((OSError, subprocess.TimeoutExpired)):
@@ -159,6 +179,122 @@ def test_failed_native_cleanup_keeps_unconfirmed_job_handle(monkeypatch, failure
     assert child._job is None and child._process.hProcess is None
     assert child._api.closed.count(101) == 1 and child._api.closed.count(202) == 1
     assert child.close() is True
+
+
+class DrainKernel:
+    """Model accounting removal before signaling and a last-moment child."""
+    def __init__(self, *, foreign=False):
+        self.listed, self.requested, self.signaled = [11], set(), set()
+        self.foreign, self.events = foreign, []
+
+    def QueryInformationJobObject(self, job, kind, pointer, size, returned):
+        assert job == 202
+        if kind == 3:
+            header = ctypes.cast(pointer, ctypes.POINTER(DWORD))
+            header[0] = header[1] = len(self.listed)
+            values = ctypes.cast(ctypes.addressof(pointer) + 8, ctypes.POINTER(SIZE_T))
+            for index, pid in enumerate(self.listed):
+                values[index] = pid
+        else:
+            # A zero accounting count is intentionally not a wait witness.
+            ctypes.cast(pointer, ctypes.POINTER(_Accounting)).contents.ActiveProcesses = 0
+        return 1
+
+    def OpenProcess(self, access, inherit, pid):
+        assert access == 0x00101001 and inherit is False
+        self.events.append(('open', pid))
+        return {11: 303, 22: 404}[pid]
+
+    def IsProcessInJob(self, handle, job, result):
+        assert job == 202
+        self.events.append(('membership', handle))
+        ctypes.cast(result, ctypes.POINTER(BOOL)).contents.value = not self.foreign
+        return 1
+
+    def TerminateProcess(self, handle, code):
+        assert not self.foreign, 'A recycled unrelated process must never be terminated.'
+        assert ('membership', handle) in self.events
+        self.events.append(('terminate', handle))
+        self.requested.add(handle)
+        self.listed.remove({303: 11, 404: 22}[handle])
+        if handle == 303:
+            # Spawned after the first inventory but before that ancestor stops.
+            self.listed.append(22)
+        return 1
+
+    def WaitForSingleObject(self, handle, timeout):
+        if handle == 101:
+            return 0
+        if handle in self.signaled:
+            return 0
+        if timeout and handle in self.requested:
+            self.signaled.add(handle)
+            self.events.append(('signaled', handle))
+            return 0
+        return 0x102
+
+    def GetExitCodeProcess(self, handle, pointer):
+        ctypes.cast(pointer, ctypes.POINTER(DWORD)).contents.value = 0
+        return 1
+
+    def CloseHandle(self, handle):
+        if handle in (303, 404):
+            if self.foreign:
+                self.listed.clear()
+            else:
+                assert handle in self.signaled, 'Accounting cannot authorize releasing a live identity.'
+        if handle == 202:
+            assert not self.listed
+            if not self.foreign:
+                assert self.signaled == {303, 404}
+        self.events.append(('close', handle))
+        return 1
+
+
+def _drain_subject(kernel):
+    child = JobProcess.__new__(JobProcess)
+    child.args, child.returncode = ['synthetic native API model'], None
+    child._api, child._process, child._job = kernel, _ProcessInfo(), 202
+    child._process.hProcess = 101
+    child._members, child._cleanup_lock = {}, threading.Lock()
+    child._verified_members = set()
+    return child
+
+
+def test_job_cleanup_waits_for_signaled_handles_and_recaptures_a_late_child():
+    kernel = DrainKernel()
+    child = _drain_subject(kernel)
+    assert child.close() is True
+    assert kernel.events.index(('signaled', 303)) < kernel.events.index(('close', 303))
+    assert kernel.events.index(('signaled', 404)) < kernel.events.index(('close', 202))
+    assert child._members == {} and child._job is None
+
+
+def test_job_cleanup_never_terminates_a_recycled_pid_outside_its_private_job():
+    kernel = DrainKernel(foreign=True)
+    child = _drain_subject(kernel)
+    assert child.close() is True
+    assert ('membership', 303) in kernel.events
+    assert ('close', 303) in kernel.events
+    assert not any(event[0] == 'terminate' for event in kernel.events)
+
+
+def test_owned_handle_survives_accounting_removal_and_a_timed_out_wait(monkeypatch):
+    monkeypatch.setattr(ctypes, 'WinError', lambda code: OSError('injected native failure'), raising=False)
+    monkeypatch.setattr(ctypes, 'get_last_error', lambda: 5, raising=False)
+    kernel = Kernel('wait')
+    child = _drain_subject(kernel)
+    with pytest.raises(subprocess.TimeoutExpired):
+        child.close()
+    assert kernel.active == 0 and child._members == {11: 303}
+    assert child._verified_members == {11} and 303 not in kernel.closed
+    # The native membership/accounting entry is gone; it must not invalidate
+    # the already-verified retained process identity or bypass its final wait.
+    kernel.IsProcessInJob = lambda *args: pytest.fail('Owned identity must remain bound to its retained handle.')
+    kernel.failure = None
+    assert child.close() is True
+    assert child._members == {} and child._verified_members == set()
+    assert kernel.closed.count(303) == 1
 
 
 def test_cleanup_callbacks_do_not_erase_quiescence_or_skip_other_callbacks():

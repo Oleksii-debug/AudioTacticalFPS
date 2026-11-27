@@ -68,7 +68,7 @@ def main():
 
     app = wx.App(False)
     with TemporaryDirectory(prefix='carr-native-translation-') as folder:
-        root, exports = Path(folder) / 'library', Path(folder) / 'exports'
+        root, exports = Path(folder).resolve() / 'library', Path(folder).resolve() / 'exports'
         root.mkdir()
         exports.mkdir()
         vault = WindowsCredentialVault()

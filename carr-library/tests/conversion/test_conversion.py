@@ -341,7 +341,8 @@ def test_worker_rejects_wrong_action_and_extra_request_keys(tmp_path):
 
 def test_capability_inventory_matches_current_registry_and_never_enables_legacy(tmp_path):
     rows = {row['extension']: row for row in capabilities()}
-    assert {suffix for suffix, row in rows.items() if row['qualification'] != 'not_integrated'} == set(SUPPORTED_SUFFIXES)
+    assert {suffix for suffix, row in rows.items()
+            if row['qualification'] not in ('not_integrated', 'explicit_selection_required')} == set(SUPPORTED_SUFFIXES)
     for suffix in ('.doc', '.rtf', '.djvu', '.azw3', '.mobi', '.png', '.tiff'):
         assert rows[suffix]['available'] is False
     source, output, converter = selected(tmp_path, b'legacy', '.doc')

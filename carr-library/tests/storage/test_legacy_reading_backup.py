@@ -3,6 +3,9 @@ from copy import deepcopy
 from dataclasses import replace
 from hashlib import sha256
 import json
+import os
+
+from filelock import FileLock
 
 import pytest
 
@@ -80,6 +83,93 @@ def test_historical_positions_survive_actual_backup_restore_and_rebackup(importe
     second = LibraryApp(restore_backup(again, tmp_path / 'second-restore', digest2))
     assert snapshot_import_files(second.root) == imported
     assert len(list((second.root / DIRECTORY).glob('*.json'))) == 1
+
+
+def canonical_session(app, snapshot, *, slot='manual'):
+    value = dict(schema='carr.reader-session.v1', document=json.loads(snapshot.raw),
+        voice_id='historical-local-voice', rate=2, volume=71, cursor=4, audio_seconds=3.5)
+    raw = (json.dumps(value, ensure_ascii=False, indent=2) + '\r\n').encode('utf-8')
+    key = sha256(slot.encode('utf-8')).hexdigest()
+    path = app.root / 'state' / 'speech' / (key + '.reader.json')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(raw)
+    return path, raw, key
+
+
+def test_unimported_canonical_reader_session_is_preserved_through_backup_restore_and_import(imported_history, tmp_path):
+    from carr_library.reader.legacy_reading import snapshot_session_files, project_from_snapshot
+    app, workspace, _, snapshot, _, _ = imported_history
+    path, raw, _ = canonical_session(app, snapshot)
+    app.update_metadata(workspace, snapshot.source_anchor.edition, title='New current metadata')
+    folder = tmp_path / 'session-backup'
+    digest = app.backup(folder)
+    verify_backup(folder, digest)
+    restored = LibraryApp(restore_backup(folder, tmp_path / 'session-restored', digest))
+    relative = path.relative_to(app.root).as_posix()
+    assert snapshot_session_files(restored.root) == {relative: raw}
+    assert path.read_bytes() == raw
+    recovered = decode_snapshot(raw)
+    authorize_snapshot(restored, workspace, recovered)
+    LegacyReadingStore(restored.root).retain(raw)
+    project = project_from_snapshot(recovered, title='Explicit session recovery')
+    NarrationStore(restored.root).save(project)
+    assert project.legacy_origin.archive_sha256 == sha256(raw).hexdigest()
+    second_folder = tmp_path / 'second-session-backup'
+    second_digest = restored.backup(second_folder)
+    second = LibraryApp(restore_backup(second_folder, tmp_path / 'second-session-restored', second_digest))
+    assert snapshot_session_files(second.root) == {relative: raw}
+    assert LegacyReadingStore(second.root).load(sha256(raw).hexdigest()).session == recovered.session
+    assert NarrationStore(second.root).load(project.id)[0] == project
+    assert not (second.root / 'state' / 'audio' / 'engines.json').exists()
+
+
+def test_active_canonical_reader_writer_prevents_complete_backup(imported_history, tmp_path):
+    app, _, _, snapshot, _, _ = imported_history
+    path, raw, key = canonical_session(app, snapshot)
+    with FileLock(path.parent / ('.' + key + '.lock'), timeout=0):
+        with pytest.raises(RuntimeError, match='draft is being saved'):
+            app.backup(tmp_path / 'reader-busy')
+    assert not (tmp_path / 'reader-busy').exists() and path.read_bytes() == raw
+
+
+@pytest.mark.parametrize('damage', ['source-anchor', 'envelope', 'hardlink', 'unknown-file'])
+def test_invalid_or_foreign_canonical_session_cannot_enter_complete_backup(imported_history, tmp_path, damage):
+    app, _, _, snapshot, _, _ = imported_history
+    path, raw, _ = canonical_session(app, snapshot)
+    if damage in ('source-anchor', 'envelope'):
+        value = json.loads(raw)
+        if damage == 'source-anchor':
+            value['document']['source_anchor']['asset_sha256'] = '0' * 64
+        else:
+            value['runtime'] = 'not-authority'
+        path.write_text(json.dumps(value), encoding='utf-8')
+    elif damage == 'hardlink':
+        os.link(path, tmp_path / 'external-session.json')
+    else:
+        (path.parent / 'unregistered-runtime.json').write_bytes(b'{}')
+    with pytest.raises(ValueError):
+        app.backup(tmp_path / 'bad-session')
+    assert not (tmp_path / 'bad-session').exists()
+
+
+def test_new_canonical_session_during_copy_prevents_partial_complete_snapshot(imported_history, tmp_path, monkeypatch):
+    from carr_library import library_backup
+    app, _, _, snapshot, _, _ = imported_history
+    path, raw, _ = canonical_session(app, snapshot)
+    copy = library_backup._copy_sidecar
+    changed = False
+    def interleave(root, relative, target, identity, cancelled):
+        nonlocal changed
+        result = copy(root, relative, target, identity, cancelled)
+        if root == app.root and target is not None and relative.endswith('.reader.json') and not changed:
+            changed = True
+            canonical_session(app, snapshot, slot='second-slot')
+        return result
+    monkeypatch.setattr(library_backup, '_copy_sidecar', interleave)
+    with pytest.raises(ValueError, match='changed'):
+        app.backup(tmp_path / 'incomplete-session-set')
+    assert changed and not (tmp_path / 'incomplete-session-set').exists()
+    assert path.read_bytes() == raw
 
 
 def test_old_project_format_survives_beside_imported_provenance(imported_history, tmp_path):

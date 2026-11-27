@@ -153,7 +153,9 @@ class OperationProgress:
 
     def _load(self):
         try:
-            return load_preferences(self.library.root), ''
+            from ..legacy_ui_preferences import migrate_progress
+            notice = migrate_progress(self.library.root)
+            return load_preferences(self.library.root), notice
         except (OSError, ValueError, RuntimeError) as exc:
             return ProgressPreferences(), 'Progress audio is Off: saved settings need review. ' + display_message(exc)
 
@@ -460,7 +462,7 @@ def show_progress_settings(presenter):
     modes = ('off', 'beep', 'speech', 'beep_speech')
     mode.SetSelection(modes.index(initial.mode))
     layout.Add(mode, 0, wx.EXPAND | wx.ALL, 5)
-    interval = text('Notification interval in seconds, 0.5 to 60', initial.interval_seconds)
+    interval = text('Notification interval in seconds, 0.5 to 120', initial.interval_seconds)
     volume = text('Notification volume, 0 to 1', initial.volume)
     for key, label in (('muted', 'Mute all progress audio'), ('quiet', 'Quiet mode'),
                        ('background', 'Allow progress audio while this application is in the background'),

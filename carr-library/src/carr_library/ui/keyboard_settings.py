@@ -7,6 +7,7 @@ contains stable IDs and shortcut text, never Python callbacks or wx IDs.
 from dataclasses import dataclass
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 import weakref
 
@@ -206,7 +207,7 @@ class KeyboardManager:
                                 'Safe defaults are active; conflicting defaults are unassigned. '
                                 'The saved file was kept. Review Options, Keyboard shortcuts. ' + str(exc))
 
-    def apply_overrides(self, overrides):
+    def apply_overrides(self, overrides, *, source_guard=None):
         normalized = self.validate(overrides)
         # Validate native key conversion before writing or changing any window.
         for shortcut in self.registry.effective(normalized).values():
@@ -217,7 +218,10 @@ class KeyboardManager:
         try:
             self.refresh()
             if self.store is not None:
-                self.store.save(normalized, self.registry)
+                if source_guard is None:
+                    self.store.save(normalized, self.registry)
+                else:
+                    self.store.save(normalized, self.registry, source_guard=source_guard)
         except Exception:
             self.overrides = previous
             self._render()
@@ -593,6 +597,14 @@ def migrate_legacy_keymap(manager, legacy_ids):
     from ..keybindings import FILENAME, KeybindingStore
     if manager.store is None or manager.store.path.exists():
         return False
+    from ..legacy_ui_preferences import SHORTCUTS, migrate_shortcuts
+    if os.path.lexists(manager.store.path.parent / SHORTCUTS):
+        try:
+            return migrate_shortcuts(manager)
+        except (ValueError, OSError, RuntimeError) as exc:
+            manager.load_notice = ('The canonical keyboard preferences were kept unchanged. '
+                'Review Options, Keyboard shortcuts before using them. ' + str(exc))
+            return False
     if not (manager.store.path.parent / FILENAME).exists():
         return False
     try:

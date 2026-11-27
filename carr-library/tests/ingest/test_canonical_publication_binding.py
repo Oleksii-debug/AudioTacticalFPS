@@ -53,7 +53,8 @@ def test_actual_publication_uses_frozen_attempt_instead_of_mutable_sidecar(tmp_p
     source = source_file(tmp_path, 'docx')
     original = source.read_bytes()
     marker = tmp_path / 'before-receipt'
-    popen, children = worker.subprocess.Popen, []
+    from carr_library.audio import capture_process
+    popen, children = capture_process.start_owned_process, []
 
     def launch(command, *args, **kwargs):
         if isinstance(command, list) and '-c' in command:
@@ -80,7 +81,7 @@ def test_actual_publication_uses_frozen_attempt_instead_of_mutable_sidecar(tmp_p
                 return process
         return popen(command, *args, **kwargs)
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', launch)
+    monkeypatch.setattr(capture_process, 'start_owned_process', launch)
     result = app.import_file(workspace, source)
     assert marker.exists() and len(children) == 1 and children[0].poll() is not None
     assert result['state'] == 'failed' and not result.get('publication_recovered')

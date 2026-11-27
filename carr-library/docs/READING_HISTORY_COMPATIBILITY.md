@@ -80,3 +80,32 @@ The probe uses only synthetic Unicode text and real named wx controls. Its
 result covers revision selection, read-only preview, explicit title and Cancel;
 it reports NVDA as NOT_RUN. Source/API preparation alone is not execution
 evidence.
+
+## Canonical recovery sessions
+
+Released `state/speech/<sha256(slot)>.reader.json` files use the typed
+`carr.reader-session.v1` envelope. The same history adapter now reads the nested
+reading-copy v1/v2 document, retains the complete original envelope bytes by
+their SHA256, and exposes all saved undo/redo revisions through the existing
+history chooser. The chooser also lists valid original recovery files already
+present in the selected library, deduplicating copies with identical bytes.
+The original path remains protected when a new current project is created.
+
+Saved voice identity, rate, volume, text cursor and audio position remain inert
+historical metadata. They are validated and shown as recovery information;
+they neither select a current engine nor seek or resume audio. The saved text
+cursor is validated against its saved revision even when a different historical
+revision is selected. Current playback still requires an explicit current voice.
+
+Complete backup includes these original typed session files before any import,
+under their original paths and exact bytes. It acquires each released session's
+native `.<slot-sha256>.lock` after the application writer, rejects active writers,
+rechecks the file inventory before completion, and verifies every historical
+source anchor against the snapshot database. Lock and known private staging
+files are excluded; unknown files or foreign source bindings prevent a complete
+backup. Session limits are 1,000 files, 32 MiB per file and 64 MiB in total.
+
+The three focused source suites passed 85 cases after this extension, including
+actual file-lock exclusion, a new concurrent session during copying, byte-exact
+restore/rebackup and explicit recovery into the current project store. Native
+Windows dispatch and voice playback are separate acceptance gates.

@@ -6,7 +6,7 @@ verification/commit has returned. Unknown totals stay indeterminate. The hub
 keeps a bounded latest snapshot rather than a queue of every worker update.
 It has no wx, audio renderer, network, or speech-engine dependency.
 """
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, replace
 import json
@@ -67,7 +67,7 @@ class ProgressPreferences:
     def __post_init__(self):
         if self.mode not in MODES:
             raise ValueError('Choose Off, Beep, Speech, or Beep and Speech.')
-        _number(self.interval_seconds, 0.5, 60, 'Notification interval')
+        _number(self.interval_seconds, 0.5, 120, 'Notification interval')
         _number(self.volume, 0, 1, 'Notification volume')
         for key in ('muted', 'quiet', 'background', 'suppress_during_media'):
             if type(getattr(self, key)) is not bool:
@@ -164,10 +164,10 @@ def load_preferences(root):
     return decode_preferences(raw)
 
 
-def save_preferences(root, preferences):
+def save_preferences(root, preferences, *, require_absent=False, source_guard=None):
     raw = encode_preferences(preferences)
     path = _checked_path(Path(root) / FILENAME)
-    with exclusive_writer(path.parent):
+    with exclusive_writer(path.parent), (source_guard if source_guard is not None else nullcontext()):
         _checked_path(path)
         temporary = None
         try:
@@ -177,7 +177,11 @@ def save_preferences(root, preferences):
                 stream.flush()
                 os.fsync(stream.fileno())  # Writable descriptor, including Windows.
             _checked_path(path)
-            os.replace(temporary, path)
+            if require_absent:
+                from .audio.jobs import publish_noreplace
+                publish_noreplace(temporary, path)
+            else:
+                os.replace(temporary, path)
             if hasattr(os, 'O_DIRECTORY'):
                 descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
                 try:

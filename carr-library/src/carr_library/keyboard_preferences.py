@@ -1,4 +1,5 @@
 """Bounded atomic local keymap storage, separate from directory preferences."""
+from contextlib import nullcontext
 import hashlib
 import json
 import os
@@ -148,7 +149,7 @@ class KeymapStore:
         except OSError as exc:
             raise KeymapError(f'Keyboard settings could not be read: {exc}') from exc
 
-    def save(self, overrides, registry):
+    def save(self, overrides, registry, *, source_guard=None):
         """Validate the complete map before replacing the previous file.
 
         A failed validation, interrupted write or failed replacement preserves
@@ -166,7 +167,7 @@ class KeymapStore:
             _check_path(self.path, regular=True)
             self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             _check_path(lock_path, regular=True)
-            with exclusive_writer(self.path.parent), FileLock(lock_path, timeout=5, mode=0o600):
+            with exclusive_writer(self.path.parent), (source_guard if source_guard is not None else nullcontext()), FileLock(lock_path, timeout=5, mode=0o600):
                 _check_path(self.path, regular=True)
                 current = _read(self.path)
                 if self._observed is not _UNOBSERVED and _digest(current) != self._observed:

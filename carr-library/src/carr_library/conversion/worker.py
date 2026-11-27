@@ -11,9 +11,10 @@ import time
 
 from ..audio.jobs import checked_directory, regular_file, verified_reader
 from ..catalog.intake import classify
-from ..extract.document_formats import FORMAT_BY_SUFFIX, SUPPORTED_SUFFIXES, extract_document
+from ..extract.document_formats import FORMAT_BY_SUFFIX, extract_document
 from ..extract.page_ocr import Config
 from .models import ConversionBudget, ConversionError, MAX_REPORT_BYTES
+from .capabilities import CONVERSION_SUFFIXES, IMAGES
 
 
 def _extract_records(source, data, suffix, config, budget, deadline):
@@ -80,7 +81,7 @@ def convert_request(message):
     output, report = Path(message['output']), Path(message['report'])
     suffix = source.suffix.casefold()
     if (not source.is_absolute() or source.parent != stage or source.name != 'source' + suffix
-            or suffix not in SUPPORTED_SUFFIXES
+            or suffix not in CONVERSION_SUFFIXES
             or output != stage / 'reading.txt' or report != stage / 'details.json'
             or os.path.lexists(output) or os.path.lexists(report)
             or not isinstance(message['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', message['sha256'])
@@ -94,9 +95,17 @@ def convert_request(message):
         data = stream.read(budget.max_source_bytes + 1)
     if len(data) != message['source_size'] or sha256(data).hexdigest() != message['sha256']:
         raise ConversionError('The private conversion source checksum changed.')
-    classify(data, suffix)
     deadline = time.monotonic() + budget.timeout
-    engine, separator, records, warnings = _extract_records(source, data, suffix, config, budget, deadline)
+    adapter = message.get('adapter')
+    if suffix == '.rtf' or suffix in IMAGES:
+        from .adapters import selected_records
+        engine, separator, records, warnings = selected_records(
+            source, data, suffix, config, budget, deadline, adapter)
+    else:
+        if adapter is not None:
+            raise ConversionError('The selected adapter cannot replace an existing document reader.')
+        classify(data, suffix)
+        engine, separator, records, warnings = _extract_records(source, data, suffix, config, budget, deadline)
     segments, encoded_size, characters, visible = [], 0, 0, False
     warnings = list(warnings)
     with output.open('xb') as stream:

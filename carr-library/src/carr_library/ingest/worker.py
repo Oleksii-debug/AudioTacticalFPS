@@ -750,7 +750,8 @@ def main():
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
         conversion_keys = {'action', 'source', 'output', 'report', 'sha256', 'source_size',
                            'budget', 'ocr_config', 'timeout'}
-        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys, conversion_keys):
+        conversion_adapter_keys = conversion_keys | {'adapter'}
+        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys, conversion_keys, conversion_adapter_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
@@ -761,7 +762,7 @@ def main():
             raise PermissionError('Network access is disabled in the import worker.')
         socket.create_connection = socket.getaddrinfo = denied
         socket.socket.connect = socket.socket.connect_ex = denied
-        if set(message) == conversion_keys:
+        if set(message) in (conversion_keys, conversion_adapter_keys):
             if message['action'] != 'convert':
                 raise ValueError('Invalid document conversion action.')
             from ..conversion.worker import convert_request

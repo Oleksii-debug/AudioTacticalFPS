@@ -4,6 +4,7 @@ Actual OS key dispatch is covered by the separate native keyboard probe. These
 tests exercise persistence failure, rejected imports and late module wiring.
 """
 from pathlib import Path
+import json
 import sys
 from types import SimpleNamespace
 
@@ -548,3 +549,112 @@ def test_incompatible_legacy_map_preserves_bytes_and_current_defaults(manager, o
     assert not manager.store.path.exists()
     assert old.path.read_bytes() == before
     assert 'kept unchanged' in manager.load_notice
+
+
+def canonical_shortcuts(manager, overrides=None, originals=None):
+    path = manager.store.path.parent / 'state' / 'ui' / 'shortcuts.json'
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = (json.dumps({'schema': 1,
+        'overrides': overrides if overrides is not None else {'library/import books': 'F24'},
+        'originals': originals if originals is not None else {'library/import books': 'Ctrl+I'}},
+        ensure_ascii=False, indent=2) + '\r\n').encode('utf-8')
+    path.write_bytes(raw)
+    return path, raw
+
+
+def test_canonical_menu_preferences_migrate_by_current_path_and_original_default(manager):
+    from carr_library.ui.keyboard_settings import migrate_legacy_keymap
+    path, raw = canonical_shortcuts(manager)
+    assert migrate_legacy_keymap(manager, {})
+    assert manager.overrides == {'library.import': 'F24'}
+    assert manager.frame.items[1].GetItemLabel() == 'Import books\tF24'
+    assert KeymapStore(manager.store.path).load() == {'library.import': 'F24'}
+    assert path.read_bytes() == raw and 'original file was kept' in manager.load_notice
+    manager.apply_overrides({'library.import': 'Ctrl+J'})
+    assert not migrate_legacy_keymap(manager, {})
+    assert KeymapStore(manager.store.path).load() == {'library.import': 'Ctrl+J'}
+    assert path.read_bytes() == raw
+
+
+@pytest.mark.parametrize('overrides,originals', [
+    ({'library/import books': 'Ctrl+J'}, {'library/import books': 'Ctrl+Shift+I'}),
+    ({'removed/import books': 'Ctrl+J'}, {'removed/import books': 'Ctrl+I'}),
+    ({'library/import books': 'Ctrl+N'}, {'library/import books': 'Ctrl+I'}),
+    ({'library/import books': 'Ctrl+C'}, {'library/import books': 'Ctrl+I'}),
+])
+def test_incompatible_canonical_shortcuts_preserve_defaults_and_source(manager, overrides, originals):
+    from carr_library.ui.keyboard_settings import migrate_legacy_keymap
+    path, raw = canonical_shortcuts(manager, overrides, originals)
+    before = snapshot(manager)
+    assert not migrate_legacy_keymap(manager, {})
+    assert snapshot(manager) == before
+    assert path.read_bytes() == raw and 'kept unchanged' in manager.load_notice
+
+
+def test_migration_rechecks_canonical_source_under_its_native_lock(manager, monkeypatch):
+    from carr_library.ui.keyboard_settings import migrate_legacy_keymap
+    path, _ = canonical_shortcuts(manager)
+    before = snapshot(manager)
+    actual = manager.store.save
+    changed = None
+    def interleaved(*args, **kwargs):
+        nonlocal changed
+        _, changed = canonical_shortcuts(manager, {'library/import books': 'Ctrl+J'})
+        return actual(*args, **kwargs)
+    monkeypatch.setattr(manager.store, 'save', interleaved)
+    assert not migrate_legacy_keymap(manager, {})
+    assert changed and path.read_bytes() == changed
+    assert snapshot(manager) == before
+    assert 'changed after migration' in manager.load_notice
+
+
+def test_canonical_migration_does_not_overwrite_late_current_settings(manager, monkeypatch):
+    from carr_library.ui.keyboard_settings import migrate_legacy_keymap
+    path, raw = canonical_shortcuts(manager)
+    actual = manager.store.save
+    def interleaved(*args, **kwargs):
+        KeymapStore(manager.store.path).save({'library.import': 'Ctrl+J'}, manager.registry)
+        return actual(*args, **kwargs)
+    monkeypatch.setattr(manager.store, 'save', interleaved)
+    assert not migrate_legacy_keymap(manager, {})
+    assert manager.overrides == {} and 'changed in another window' in manager.load_notice
+    assert KeymapStore(manager.store.path).load() == {'library.import': 'Ctrl+J'}
+    assert path.read_bytes() == raw
+
+
+def test_two_older_formats_require_review_instead_of_guessing_which_to_keep(manager):
+    from carr_library.keybindings import Command, KeybindingStore
+    from carr_library.ui.keyboard_settings import migrate_legacy_keymap
+    path, raw = canonical_shortcuts(manager)
+    old = KeybindingStore(manager.store.path.parent)
+    old.save((Command('Library/Import books', 'Import books', 'Ctrl+I'),),
+             {'Library/Import books': 'Ctrl+J'})
+    previous = old.path.read_bytes()
+    assert not migrate_legacy_keymap(manager, {'Library/Import books': 'library.import'})
+    assert not manager.store.path.exists() and manager.overrides == {}
+    assert 'Two older shortcut formats' in manager.load_notice
+    assert path.read_bytes() == raw and old.path.read_bytes() == previous
+
+
+def test_canonical_menu_paths_keep_escaped_ampersands_and_nested_menu_identity(manager):
+    from carr_library.legacy_ui_preferences import current_menu_map, menu_part
+    assert menu_part('&R&&D…\tCtrl+J') == 'r&d'
+    item = MenuItem(81, '&First && second...\tCtrl+J')
+    parent = MenuItem(82, '&Nested…')
+    parent.GetSubMenu = lambda: Menu([item])
+    manager.frame.menu = DynamicMenuBar([('&R&&D', Menu([parent]), True)])
+    manager.register_menu_command(CommandSpec('extension.nested', 'Nested', default_shortcut='Ctrl+J'), item)
+    assert current_menu_map(manager) == {'r&d/nested/first & second': ('extension.nested', 'Ctrl+J')}
+
+
+def test_change_library_migrates_canonical_map_and_keeps_original(manager, tmp_path, monkeypatch):
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(CallAfter=lambda callback, *args: callback(*args)))
+    another = tmp_path / 'another'
+    another.mkdir()
+    old_store = manager.store
+    manager.store = KeymapStore(another / 'keyboard-shortcuts.json')
+    path, raw = canonical_shortcuts(manager)
+    manager.store = old_store
+    manager.change_root(another)
+    assert manager.overrides == {'library.import': 'F24'}
+    assert path.read_bytes() == raw

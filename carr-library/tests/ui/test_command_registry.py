@@ -25,6 +25,7 @@ def commands():
     ('Ctrl+PgDn', 'Ctrl+PageDown'), ('ctrl+PGDOWN', 'Ctrl+PageDown'),
     ('alt+left', 'Alt+Left'), ('Alt+Right', 'Alt+Right'),
     ('f1', 'F1'), ('F5', 'F5'), ('F12', 'F12'), ('Shift+F6', 'Shift+F6'),
+    ('F13', 'F13'), ('F24', 'F24'), ('ctrl+f23', 'Ctrl+F23'),
     ('Ctrl+S', 'Ctrl+S'), ('Ctrl+Shift+S', 'Ctrl+Shift+S'),
 ])
 def test_normalization(raw, expected):
@@ -53,7 +54,7 @@ def test_native_editing_navigation_screenreader_and_os_combinations_are_reserved
 @pytest.mark.parametrize('raw', [
     None, True, 7, [], {}, 'Ctrl++K', '+K', 'Ctrl+', 'Control+Ctrl+K',
     'Ctrl+Alt+Shift+Shift+K', 'Win+K', 'NVDA+K', 'Meta+K',
-    'Ctrl+;', 'Ctrl+Ж', 'F13', 'Ctrl+F99', 'Ctrl+K\n', 'Ctrl+\tK',
+    'Ctrl+;', 'Ctrl+Ж', 'F25', 'Ctrl+F99', 'Ctrl+K\n', 'Ctrl+\tK',
     'Ctrl+K' + ' ' * 64,
 ])
 def test_malformed_unsupported_or_oversized_shortcuts_are_rejected(raw):

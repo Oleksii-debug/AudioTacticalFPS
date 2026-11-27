@@ -1,6 +1,7 @@
 """Independent offline DTD validation for current DAISY 2.02 publications.
 
-lxml is a separately selected CI validator, not an application dependency.
+lxml is already in the reviewed wheel runtime; here it is an independent
+CI validator without adding any production dependency.
 No download, arbitrary entity lookup, reader or NVDA qualification is claimed.
 """
 import argparse
@@ -48,21 +49,41 @@ def schema_paths(schemas):
     return paths, identities
 
 
-def local_resolver(etree, paths):
+def _schema_bytes(path):
+    from carr_library.audio.jobs import regular_file, verified_reader
+    if regular_file(path).st_size > 128 * 1024:
+        raise ValueError('A local validation schema exceeded its bounded size.')
+    with verified_reader(path) as stream:
+        data = stream.read(128 * 1024 + 1)
+    if len(data) > 128 * 1024:
+        raise ValueError('A local validation schema exceeded its bounded size.')
+    return data
+
+
+def local_resolver(etree, paths, identities=None):
     """Allow only the five explicitly pinned files and their exact DTD aliases."""
-    allowed = {}
+    allowed, contents = {}, {}
     for name, path in paths.items():
-        for alias in (str(path), path.as_posix(), path.as_uri(), name):
-            allowed[alias] = path
+        data = _schema_bytes(path)
+        if identities is not None and sha256(data).hexdigest() != identities[name]:
+            raise ValueError('The explicitly selected schema changed before parsing.')
         url = ('http://www.w3.org/TR/REC-SMIL/SMIL10.dtd' if name == 'SMIL10.dtd'
                else 'http://www.w3.org/TR/xhtml1/DTD/' + name)
-        allowed[url] = path
+        contents[name] = data, url
+        for alias in (str(path), path.as_posix(), path.as_uri(), name):
+            allowed[alias] = name
+        allowed[url] = name
 
     class Resolver(etree.Resolver):
         def resolve(self, url, public_id, context):
             if url not in allowed:
                 raise ValueError('The schema validator refused an unapproved external resource.')
-            return self.resolve_filename(str(allowed[url]), context)
+            data, base = contents[allowed[url]]
+            # Never turn a Windows filename into libxml's next system ID.
+            # Relative entity references keep their exact reviewed DTD URL;
+            # the same resolver supplies only pinned in-memory bytes. It does
+            # not perform a network request or widen the accepted URL set.
+            return self.resolve_string(data, context, base_url=base)
     return Resolver
 
 
@@ -78,7 +99,7 @@ def validate(publication, schemas):
     from carr_library.audio import daisy, publishing
     from carr_library.audio.jobs import regular_file, sha256_file
     paths, identities = schema_paths(schemas)
-    Resolver = local_resolver(etree, paths)
+    Resolver = local_resolver(etree, paths, identities)
     regular_file(publication)
     provenance = daisy.inspect_daisy(publication)
     before = sha256_file(publication)
