@@ -553,3 +553,51 @@ the cause of E_ACCESSDENIED on a different runner. The next ordinary evaluation
 retains that guard unchanged and runs the read-only observations on the already
 authorized `carr/ci-endpoint-evaluation-20261127` branch. No environment spoofing,
 consent/policy mutation or device fallback is introduced.
+
+## Protected voice-profile transfer composition (2026-11-27)
+
+The independently reviewed six-path checkpoint
+`94886918b6b2da20cf38a7de6faa08241198ad86` extends the current lifecycle and
+Reference voice packages window. It reuses the same pinned Sync envelope and
+exact package publisher; there is no second crypto format, engine registry,
+executor, provider or backup family. Existing plaintext routes remain explicit.
+
+The new `.carr-voice.enc` route is data-only and requires separate export rights,
+a confirmed operation-only password and a new destination outside runtime/library.
+The original owner export is fully inspected and its exact plaintext identity
+rechecked before/after encryption. The existing create-only publisher binds the
+actual ciphertext receipt; committed outcomes remain reported after late cleanup.
+
+Import authenticates the entire envelope under one measured broker lease before
+the current owner inspector receives plaintext. The temporary plaintext is removed
+before a passive review is returned. Applying that review asks for the password
+again, reauthenticates/reinspects the same source, plaintext, document, library
+inode and runtime/settings identities, then invokes the existing manager.apply
+with fresh rights and language decisions. No lease or plaintext stage crosses
+a modal review; passwords never enter owner requests, state or backups. Queued
+secret holders are cleared on settlement even when their Future never starts or
+the actual window is destroyed. Memory erasure is not promised.
+
+Two actual-envelope/owner and UI-lifetime suites join the source and installed
+inventories. The native `5fe82576` probe runs from exact source, installed wheel
+and full bundle. It uses native masked input/keys, the existing worker and an
+isolated synthetic owner API, real authenticated crypto, exact module/RECORD proof
+and a 180-second independent cleanup watchdog. OS file-picker interaction, real
+reference rights, neural inference, voice quality and manual NVDA are explicitly
+not established. PROTECTED_VOICE_PACKAGES.md is included in delivered guides.
+
+This addition is **INTEGRATED / NOT_RUN** until its exact candidate gates finish.
+
+### Actual partial Windows evidence for an earlier composition
+
+The still-running preflight
+[46048596823](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46048596823)
+uses exactly `142de6b6028cc86f9a5bf70c42e60adc40f96b77` (not this later source).
+Its required source+installed native reference-package step completed successfully
+at 18:26:54 UTC and its required source+installed encrypted portable-snapshot
+review/restore step at 18:27:02 UTC. Dependency installation and these actual
+native paths therefore have execution evidence at that earlier identity.
+The DAISY-schema/publication, reading-preparation and combined Word/assistant
+native steps failed and require their actual retained diagnostics. This does not
+make the overall preflight or any later composition PASS. No eligible wheel has
+been retained and no manual/model/language qualification is inferred.

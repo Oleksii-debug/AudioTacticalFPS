@@ -444,7 +444,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                      "WORD_NATIVE_INTEGRATION.md",
                      "ASSISTANT_DOMAINS.md",
                      "PORTABLE_SNAPSHOTS.md",
-                     "LARGE_SOURCE_PROFILES.md", "SYNC_DEPENDENCIES.md"):
+                     "LARGE_SOURCE_PROFILES.md", "PROTECTED_VOICE_PACKAGES.md", "SYNC_DEPENDENCIES.md"):
             shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
