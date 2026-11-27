@@ -271,8 +271,11 @@ def main(argv=None):
         complete(AssertionError('Native application event loop exceeded its total 45-second budget.'))
 
     watchdog = wx.CallLater(45000, expired)
-    wx.CallAfter(advance)
-    app.MainLoop()
+    # Establish the shown owner before entering wx's event loop. Windows
+    # can otherwise exit MainLoop before the queued first-frame callback.
+    advance()
+    if not state['finished']:
+        app.MainLoop()
     watchdog.Stop()
     if not state['finished']:
         raise AssertionError('Native application event loop exited before the scenario finished.')

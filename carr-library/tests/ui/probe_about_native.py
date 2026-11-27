@@ -130,6 +130,7 @@ def main(argv=None):
             # progress, cancellation, result and cleanup semantics.
             frame.run_job = observed_job
             frame.Show()
+            app.SetTopWindow(frame)
             frame.Raise()
             yield None
             bar = frame.GetMenuBar()
@@ -265,9 +266,13 @@ def main(argv=None):
         wx.CallAfter(poll)
 
     watchdog = wx.CallLater(120000, lambda: finish(TimeoutError('Native About deadline.')))
-    wx.CallAfter(advance)
+    # wx on Windows may return immediately when MainLoop starts without
+    # any top-level window. Prime only the initial shown owner; every product
+    # action remains scheduled on its native event loop after the first yield.
+    advance()
     try:
-        app.MainLoop()
+        if not state['finished']:
+            app.MainLoop()
     finally:
         watchdog.Stop()
         frame = windows['frame']
@@ -278,6 +283,8 @@ def main(argv=None):
                 frame.Destroy()
             except RuntimeError:
                 pass
+    if not state['finished'] and state['error'] is None:
+        state['error'] = 'Native event loop exited before the scenario finished.'
     if state['error'] is not None or Counter(checks) != Counter(EXPECTED_CHECKS):
         print(json.dumps({'status': 'FAIL', 'checks': checks, 'error': state['error'],
                           'traceback': state['traceback'], 'nvda': 'NOT_RUN'}), flush=True)
