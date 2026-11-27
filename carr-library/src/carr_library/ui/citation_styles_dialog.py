@@ -340,7 +340,7 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 self.report('Preparing the bibliography file locally. Close cancels an unfinished export.', focus=False)
                 future = self.executor.submit(self.workbench.export, self.preview, destination,
                     format=format, cancelled=self.cancelled.is_set,
-                    require_absent=approval.require_absent, approval=approval)
+                    require_absent=approval.require_absent, approval=approval, return_receipt=True)
                 self.pending = future
                 future.add_done_callback(lambda completed: wx.CallAfter(self.on_export_ready, completed, destination))
             except Exception as exc:
@@ -353,8 +353,11 @@ def create_citation_styles_dialog(parent, controller, *, selected_identity=None,
                 return
             self.pending = None
             try:
-                future.result()
-                self.report(f'Bibliography saved to {destination}.')
+                receipt = future.result()
+                notice = f'Bibliography saved to {destination}.'
+                if receipt.cleanup_warning:
+                    notice += ' ' + receipt.cleanup_warning
+                self.report(notice)
             except Exception as exc:
                 self.report(f'Bibliography not exported: {exc}')
             self.controls(pending=False)
