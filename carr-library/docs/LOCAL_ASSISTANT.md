@@ -45,3 +45,28 @@
 ## Межі цієї можливості
 
 Ці локальні інструменти не схвалюють OCR-цитати й не змінюють статус перевірки джерел. Перевірка OCR та імпорту, керування зовнішніми API, приватний транскриптор і повний LLM-асистент мають власні правила та окремі перевірки готовності.
+
+
+## Optional local model proposals
+
+The **Propose with local model** button reuses an explicitly configured loopback
+OpenAI-compatible profile from AI and API connections. The selected local service
+receives only the entered goal and fixed planning instructions. It does not receive
+library contents, credentials, or permission to invoke tools.
+
+The service must already be installed and running. Select its profile and authorize
+the exact one-call request. A returned proposal is bounded, decoded with duplicate
+and non-finite JSON fields rejected, and checked by the existing assistant scope
+and argument validators. Unknown tools and out-of-scope inputs are rejected.
+
+A successful response fills an editable plan. **Run remains disabled until a
+separate Preview succeeds**; receiving a proposal never creates or executes a job.
+Pause or closing the busy dialog requests cancellation, and an uncertain request
+is not automatically sent again. No remote fallback or model download occurs.
+
+The required test_local_llm suite uses a synthetic local response with the actual
+provider gateway and durable budget ledger. The installed Windows assistant probe
+also checks the native proposal/Preview boundary, with explicitly synthetic model
+transport and approval decisions. These checks do not qualify an actual local
+model, language coverage, or model quality. Real engine inference remains a
+separate acceptance requirement.

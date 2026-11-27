@@ -1,11 +1,13 @@
 """Exercise actual installed native assistant controls with synthetic documents."""
 from argparse import ArgumentParser
+from contextlib import ExitStack
 from hashlib import sha256
 import json
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 from time import monotonic
+from unittest.mock import patch
 
 
 def main():
@@ -34,7 +36,7 @@ def main():
     installed_root = Path(carr_library.__file__).resolve().parent.parent
     names = ('assistant/__init__.py', 'assistant/models.py', 'assistant/planner.py',
              'assistant/service.py', 'assistant/state.py', 'assistant/backup_receipt.py',
-             'assistant/backup_state.py', 'assistant/audio_bridge.py', 'ui/assistant_dialog.py')
+             'assistant/backup_state.py', 'assistant/audio_bridge.py', 'assistant/llm.py', 'ui/assistant_dialog.py')
     hashes = {}
     for name in names:
         relative = Path('carr_library') / name
@@ -45,7 +47,7 @@ def main():
 
     application = wx.App(False)
     checks, failures = [], []
-    with TemporaryDirectory(prefix='carr-native-assistant-') as temporary:
+    with TemporaryDirectory(prefix='carr-native-assistant-') as temporary, ExitStack() as native_mocks:
         root = Path(temporary)
         inputs, outputs = root / 'inputs', root / 'outputs'
         inputs.mkdir()
@@ -58,6 +60,41 @@ def main():
         frame.active = None
         refreshed = []
         frame.refresh_scopes = lambda: refreshed.append(tuple(row.id for row in frame.library.workspaces()))
+        # Only model transport and explicit choice/approval decisions are synthetic.
+        # The real native controls, gateway, durable ledger and plan validator run.
+        from carr_library.providers import ProviderProfile, ProfileStore
+        profile = ProviderProfile('local-native-fixture', 'Synthetic local model',
+            'openai-compatible', 'http://127.0.0.1:8080/v1', 'fixture-model', ('llm',), local=True)
+        ProfileStore(frame.library.root / 'api-connections.json').save(profile)
+        model_calls = []
+
+        class LocalTransport:
+            def post(self, chosen, route, body, headers, **kwargs):
+                assert chosen == profile and route == '/chat/completions'
+                assert not headers
+                model_calls.append(json.loads(body))
+                plan = {'schema': 'carr-assistant-plan/1', 'summary': 'Proposed only',
+                        'steps': [{'tool': 'library.list', 'arguments': {}}]}
+                return json.dumps({'choices': [{'message': {
+                    'content': json.dumps(plan)}}]}).encode('utf-8')
+
+        class ChooseLocal:
+            def __init__(self, *args, **kwargs):
+                pass
+            def ShowModal(self):
+                return wx.ID_OK
+            def GetSelection(self):
+                return 0
+            def Destroy(self):
+                pass
+
+        class ApproveLocal(ChooseLocal):
+            def ShowModal(self):
+                return wx.ID_YES
+
+        native_mocks.enter_context(patch('carr_library.providers.DirectTransport', LocalTransport))
+        native_mocks.enter_context(patch.object(wx, 'SingleChoiceDialog', ChooseLocal))
+        native_mocks.enter_context(patch.object(wx, 'MessageDialog', ApproveLocal))
         frame.Show()
         started = monotonic()
         state = {'phase': 'open', 'dialog': None}
@@ -107,6 +144,7 @@ def main():
                     assert not frame.library.workspaces()
                     checks.append('native preview is non-executing and shows exact operations')
                     click(button(dialog, 'Run / resume'))
+                    assert not button(dialog, 'Propose with local model').IsEnabled()
                     state['phase'] = 'running'
                 elif state['phase'] == 'running' and review.GetValue().startswith('complete:'):
                     assert '3 of 3 verified operations' in review.GetValue()
@@ -134,6 +172,22 @@ def main():
                     checks.append('unsupported instructions execute nothing')
                     assert source.read_bytes() == raw
                     checks.append('original Unicode document bytes remain unchanged')
+                    controls['Goal — guided English/Ukrainian commands or typed JSON plan'].SetValue('List my libraries')
+                    assert not button(dialog, 'Run / resume').IsEnabled()
+                    click(button(dialog, 'Propose with local model'))
+                    assert not button(dialog, 'Run / resume').IsEnabled()
+                    state['phase'] = 'model'
+                elif state['phase'] == 'model' and review.GetValue().startswith('Local model proposal received'):
+                    assert len(model_calls) == 1
+                    assert model_calls[0]['model'] == 'fixture-model'
+                    assert 'List my libraries' in model_calls[0]['messages'][0]['content']
+                    assert len(AssistantService(frame.library).jobs()) == 1
+                    assert not button(dialog, 'Run / resume').IsEnabled()
+                    checks.append('local proposal uses only the explicitly approved loopback goal')
+                    click(button(dialog, 'Preview plan'))
+                    assert button(dialog, 'Run / resume').IsEnabled()
+                    assert len(AssistantService(frame.library).jobs()) == 1
+                    checks.append('native model proposal requires separate Preview and creates no job')
                     close()
                     return
                 wx.CallLater(50, poll)
@@ -146,7 +200,7 @@ def main():
         assert refreshed == [tuple(row.id for row in frame.library.workspaces())]
         checks.append('created libraries refresh in the dialog and desktop without reopening')
         frame.Destroy()
-        if failures or len(checks) != 7:
+        if failures or len(checks) != 9:
             raise RuntimeError('; '.join(failures) or 'Native controls did not complete all checks.')
     for name, expected in hashes.items():
         if sha256((source_root / 'carr_library' / name).read_bytes()).hexdigest() != expected:
@@ -154,7 +208,8 @@ def main():
     print(json.dumps({'status': 'PASS', 'windows_execution': 'PASS', 'checks': checks,
                       'source_commit': manifest['source_commit'],
                       'installed_modules': 'PASS', 'source_hashes': hashes,
-                      'manual_nvda': 'NOT_RUN', 'paid_api': 'NOT_RUN'}, ensure_ascii=False))
+                      'manual_nvda': 'NOT_RUN', 'paid_api': 'NOT_RUN',
+                      'local_model_transport': 'synthetic', 'model_inference': 'NOT_RUN'}, ensure_ascii=False))
     return 0
 
 

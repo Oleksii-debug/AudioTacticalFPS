@@ -63,7 +63,8 @@ def show_assistant(frame):
     layout.Add(progress_gauge, 0, wx.ALL | wx.EXPAND, 5)
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
-    for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
+    for identity, label in [('preview', '&Preview plan'), ('model', 'Propose with local &model'),
+                             ('run', '&Run / resume'), ('pause', '&Pause'),
                              ('cancel', 'Cancel &job'), ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         buttons[identity] = button
@@ -96,16 +97,19 @@ def show_assistant(frame):
         if event is not None:
             event.Skip()
 
+    def selected_scope():
+        index = scope_choice.GetSelection()
+        return Scope(workspaces[index - 1].id if index > 0 else None,
+                     (Path(input_folder.GetValue()),) if input_folder.GetValue().strip() else (),
+                     Path(output_folder.GetValue()) if output_folder.GetValue().strip() else None,
+                     allow_create=index == 0, allow_full_backup=full_backup.GetValue(),
+                     max_bytes=byte_budget.GetValue() * 1024 * 1024,
+                     max_files=file_budget.GetValue(), max_seconds=time_budget.GetValue() * 60)
+
     def preview(event=None):
         nonlocal plan, job_id
         try:
-            index = scope_choice.GetSelection()
-            scope = Scope(workspaces[index - 1].id if index > 0 else None,
-                          (Path(input_folder.GetValue()),) if input_folder.GetValue().strip() else (),
-                          Path(output_folder.GetValue()) if output_folder.GetValue().strip() else None,
-                          allow_create=index == 0, allow_full_backup=full_backup.GetValue(),
-                          max_bytes=byte_budget.GetValue() * 1024 * 1024, max_files=file_budget.GetValue(),
-                          max_seconds=time_budget.GetValue() * 60)
+            scope = selected_scope()
             candidate = plan_preview(instruction.GetValue(), scope)
             voices = None
             steps = []
@@ -176,6 +180,98 @@ def show_assistant(frame):
             progress_gauge.SetValue(min(100, int(100 * completed / total)) if total else 0)
             report(f'{completed}/{total}: {message}')
 
+    def propose(event=None):
+        nonlocal busy, plan, job_id
+        if busy:
+            return
+        from uuid import uuid4
+        from ..assistant.llm import local_plan_request, propose_local_plan
+        from ..providers import BudgetLedger, JobApproval, ProfileStore, ProviderGateway
+        try:
+            scope = selected_scope()
+            goal = instruction.GetValue()
+            request = local_plan_request(goal)
+            store = ProfileStore(frame.library.root / 'api-connections.json')
+            profiles = tuple(profile for profile in store.profiles()
+                             if profile.local and profile.provider == 'openai-compatible'
+                             and profile.capabilities == ('llm',))
+            if not profiles:
+                raise ValueError('Add an explicit loopback language-model profile in AI and API connections first. '
+                                 'No model or service is started automatically.')
+            picker = wx.SingleChoiceDialog(dialog,
+                'Choose the local service that may receive this goal. Only a proposal is requested.',
+                'Local model proposal', [profile.name + '; ' + profile.endpoint + '; ' + profile.model
+                                         for profile in profiles])
+            try:
+                if picker.ShowModal() != wx.ID_OK:
+                    return
+                index = picker.GetSelection()
+            finally:
+                picker.Destroy()
+            if not 0 <= index < len(profiles):
+                raise ValueError('Choose an available local model profile.')
+            profile = profiles[index]
+            confirmation = wx.MessageDialog(dialog,
+                'Send this goal to ' + profile.endpoint + ' using ' + profile.model + '?\n\n'
+                'Only the goal and fixed planning instructions are sent. No library or source document is attached. '
+                'Returned steps remain unapproved until you preview and run them.',
+                'Request a local proposal', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION)
+            try:
+                if confirmation.ShowModal() != wx.ID_YES:
+                    return
+            finally:
+                confirmation.Destroy()
+            approval = JobApproval(uuid4().hex, profile.fingerprint,
+                (request.fingerprint(profile),), allow_loopback=True)
+            gateway = ProviderGateway(BudgetLedger(frame.library.root / 'api-operations.sqlite'))
+            invalidate()
+            busy = True
+            cancel.clear()
+            for key in ('preview', 'model', 'run', 'jobs'):
+                buttons[key].Disable()
+            buttons['pause'].Enable()
+            for control in (scope_choice, instruction, input_folder, output_folder, full_backup, byte_budget, file_budget, time_budget, *choose_buttons):
+                control.Disable()
+            report('Waiting for the selected local model. No assistant operation has been approved.')
+            future = executor.submit(propose_local_plan, service, gateway, profile, goal, scope,
+                approval=approval, operation_id=uuid4().hex, cancelled=cancel.is_set)
+        except Exception as exc:
+            busy = False
+            for key in ('preview', 'model', 'jobs'):
+                buttons[key].Enable()
+            buttons['pause'].Disable()
+            for control in (scope_choice, instruction, input_folder, output_folder, full_backup, byte_budget, file_budget, time_budget, *choose_buttons):
+                control.Enable()
+            invalidate()
+            report(str(exc))
+            return
+
+        def finish(done):
+            def apply():
+                nonlocal busy
+                if not alive:
+                    return
+                busy = False
+                for key in ('preview', 'model', 'jobs'):
+                    buttons[key].Enable()
+                buttons['pause'].Disable()
+                for control in (scope_choice, instruction, input_folder, output_folder, full_backup, byte_budget, file_budget, time_budget, *choose_buttons):
+                    control.Enable()
+                invalidate()
+                try:
+                    candidate = done.result()
+                    draft = {key: value for key, value in candidate.to_dict().items() if key != 'scope'}
+                    instruction.ChangeValue(json.dumps(draft, ensure_ascii=False, indent=2))
+                    report('Local model proposal received and structurally checked. Nothing has run.\n\n'
+                           + json.dumps(draft, ensure_ascii=False, indent=2)
+                           + '\n\nReview or edit the goal, then choose Preview plan to bind your current permissions. '
+                             'Run remains disabled until that separate preview succeeds.')
+                except Exception as exc:
+                    report(str(exc))
+                review.SetFocus()
+            wx.CallAfter(apply)
+        future.add_done_callback(finish)
+
     def run(event=None):
         nonlocal busy, job_id
         if busy or (plan is None and job_id is None):
@@ -186,7 +282,7 @@ def show_assistant(frame):
             identity = job_id
             busy = True
             cancel.clear()
-            for key in ('preview', 'run', 'jobs'):
+            for key in ('preview', 'model', 'run', 'jobs'):
                 buttons[key].Disable()
             buttons['pause'].Enable()
             buttons['cancel'].Enable()
@@ -204,7 +300,7 @@ def show_assistant(frame):
                 if not alive:
                     return
                 busy = False
-                for key in ('preview', 'run', 'jobs'):
+                for key in ('preview', 'model', 'run', 'jobs'):
                     buttons[key].Enable()
                 buttons['pause'].Disable()
                 buttons['cancel'].Disable()
@@ -281,7 +377,7 @@ def show_assistant(frame):
             service.cancel(job_id)
             cancel.set()
 
-    for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
+    for identity, callback in {'preview': preview, 'model': propose, 'run': run, 'pause': lambda e: cancel.set(),
                                'cancel': cancel_job, 'jobs': jobs, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction):
