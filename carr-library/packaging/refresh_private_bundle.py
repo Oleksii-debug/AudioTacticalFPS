@@ -12,7 +12,7 @@ import re
 import shutil
 from tempfile import TemporaryDirectory
 
-from build_windows_bundle import (BUNDLE_GUIDES, read_lock, wheel_metadata, verify_application_source,
+from build_windows_bundle import (BUNDLE_GUIDES, copy_bundle_guides, read_lock, wheel_metadata, verify_application_source,
                                   verify_dependency_closure, sha256)
 from install_windows import verify
 from prepare_windows_audio import load_lock, regular, local, _pe64
@@ -126,17 +126,11 @@ def refresh(source, wheel, output, source_commit, *, parent_manifest_sha256,
         (stage / 'install.lock').write_text('\n'.join(requirements) + '\n', encoding='utf-8')
         for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
             shutil.copyfile(HERE / name, stage / name)
-        shutil.copyfile(HERE.parent / 'docs' / 'RUNNING.md', stage / 'README.txt')
         for name in ('START_UK.txt', 'START_V3_UK.txt'):
             origin = HERE.parent / 'docs' / name
             regular(origin)
             shutil.copyfile(origin, stage / name)
-        guides = stage / 'docs'
-        guides.mkdir(exist_ok=True)
-        for name in BUNDLE_GUIDES:
-            origin = HERE.parent / 'docs' / name
-            regular(origin)
-            shutil.copyfile(origin, guides / name)
+        copy_bundle_guides(HERE.parent / 'docs', stage)
         (stage / 'runtime-sbom.cdx.json').write_bytes(sbom_bytes)
         for origin in (HERE / 'wheel-notices').iterdir():
             regular(origin)

@@ -70,6 +70,11 @@ def bundle(tmp_path, monkeypatch):
     (project / 'docs').mkdir()
     for name in ('RUNNING.md', 'START_UK.txt', 'START_V3_UK.txt', *refresh.BUNDLE_GUIDES):
         (project / 'docs' / name).write_text('Synthetic current guidance: ' + name + '\n')
+    (project / 'docs' / 'RUNNING.md').write_bytes(
+        b'[Search](ACADEMIC_SEARCH.md)\n[Insights](ACADEMIC_CATALOG_INSIGHTS.md)\n'
+        b'[NVDA](ACADEMIC_SEARCH_NVDA.md)\n[Source](../src/example.py)\n'
+        b'[Existing](docs/ACADEMIC_SEARCH.md)\n'
+        b'[External](https://example.invalid/ACADEMIC_SEARCH.md)\n')
     for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
         (packaging / name).write_text('raise AssertionError("PACKAGING MUST NOT EXECUTE PAYLOAD")\n')
     package = project / 'src/carr_library'
@@ -155,6 +160,7 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     (bundle.source / 'unlisted-private.txt').write_text('This private file must not be copied.')
     before = (bundle.source / 'bundle-manifest.json').read_bytes()
     assert not (bundle.source / 'docs').exists()
+    source_readme = (bundle.packaging.parent / 'docs' / 'RUNNING.md').read_bytes()
     report = _refresh(bundle)
     manifest = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
     identity = json.loads((bundle.output / 'application-source.json').read_bytes())
@@ -167,6 +173,14 @@ def test_refresh_exact_source_parent_hash_notices_and_sources_without_execution(
     for name, raw in bundle.protected.items():
         assert (bundle.output / name).read_bytes() == raw
     assert {path.name for path in (bundle.output / 'docs').iterdir()} == set(bundle.module.BUNDLE_GUIDES)
+    readme = (bundle.output / 'README.txt').read_bytes()
+    assert readme == (
+        b'[Search](docs/ACADEMIC_SEARCH.md)\n[Insights](docs/ACADEMIC_CATALOG_INSIGHTS.md)\n'
+        b'[NVDA](docs/ACADEMIC_SEARCH_NVDA.md)\n[Source](../src/example.py)\n'
+        b'[Existing](docs/ACADEMIC_SEARCH.md)\n'
+        b'[External](https://example.invalid/ACADEMIC_SEARCH.md)\n')
+    assert manifest['files']['README.txt'] == sha256(readme).hexdigest()
+    assert (bundle.packaging.parent / 'docs' / 'RUNNING.md').read_bytes() == source_readme
     for name in bundle.module.BUNDLE_GUIDES:
         raw = (bundle.packaging.parent / 'docs' / name).read_bytes()
         assert (bundle.output / 'docs' / name).read_bytes() == raw
