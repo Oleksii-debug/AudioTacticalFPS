@@ -1,0 +1,103 @@
+{
+  "schema": "carr-r7-export-regressions/1",
+  "suites": [
+    "tests/reader/test_export_change_time.py",
+    "tests/reader/test_export_no_clobber.py",
+    "tests/reader/test_export_publication_boundary.py",
+    "tests/citations/test_bibliography_workbench.py",
+    "tests/ui/test_citation_styles_jobs.py"
+  ],
+  "functions": {
+    "tests.reader.test_export_change_time": {
+      "test_actual_same_length_edit_with_restored_mtime_is_not_overwritten": 2,
+      "test_actual_edit_with_colliding_native_metadata_is_not_overwritten": 2,
+      "test_large_existing_file_requires_new_filename_without_reading_it": 1,
+      "test_unverifiable_content_closes_handle_and_keeps_existing_file": 2,
+      "test_size_bound_never_prevents_creation_at_a_new_filename": 2,
+      "test_file_growing_during_content_check_is_preserved": 1,
+      "test_native_query_uses_metadata_access_and_pointer_width_handles": 1,
+      "test_failed_native_open_does_not_query_or_close_an_invalid_handle": 1,
+      "test_failed_native_query_closes_its_handle_without_falling_back": 1,
+      "test_native_reparse_point_or_directory_is_rejected_and_closed": 2,
+      "test_missing_native_change_time_is_rejected_and_closed": 2,
+      "test_native_close_failure_does_not_return_an_approval": 1,
+      "test_destination_stat_identity_is_rechecked_around_native_query": 2,
+      "test_native_query_error_preserves_existing_file_without_staging": 2,
+      "test_windows_creation_time_model_requires_native_change_time": 2
+    },
+    "tests.reader.test_export_no_clobber": {
+      "test_create_only_export_publishes_exact_bytes_without_staging_residue": 2,
+      "test_create_only_export_recovers_transient_staging_cleanup": 2,
+      "test_create_only_cleanup_cannot_reverse_completed_export": 4,
+      "test_cli_reports_completed_export_when_staging_cleanup_is_denied": 1,
+      "test_create_only_export_rejects_existing_file_without_touching_it": 2,
+      "test_file_created_after_final_destination_check_is_never_replaced": 2,
+      "test_cancel_after_staging_leaves_no_destination_or_temporary": 2,
+      "test_explicit_existing_replacement_still_uses_supported_export_path": 2,
+      "test_cli_without_overwrite_preserves_file_created_during_formatting": 1,
+      "test_staged_bibliography_reauthorizes_metadata_and_scope_before_publication": 4,
+      "test_captured_destination_can_publish_only_its_unchanged_state": 4,
+      "test_captured_destination_rejects_changes_before_writer_starts": 8,
+      "test_captured_absence_forces_atomic_no_clobber_even_without_policy_flag": 2,
+      "test_destination_approval_cannot_be_reused_for_another_path": 2
+    },
+    "tests.reader.test_export_publication_boundary": {
+      "test_create_only_cleanup_after_publication_is_truthful": 2,
+      "test_process_exit_immediately_after_create_only_publication": 2,
+      "test_competing_file_at_actual_publication_is_preserved": 2
+    },
+    "tests.citations.test_bibliography_workbench": {
+      "test_real_apa_keeps_name_mode_explicit_and_never_infers_quotation_page": 1,
+      "test_corporate_name_marker_remains_literal": 2,
+      "test_explicit_name_mode_does_not_guess_unseparated_names": 1,
+      "test_changed_reference_revoked_workspace_and_cross_scope_prevent_stale_exports": 1,
+      "test_all_active_formatting_excludes_archived_foreign_and_personal_notes": 1,
+      "test_real_word_and_html_output_keep_italics_but_never_active_metadata": 1,
+      "test_private_destination_and_cancelled_export_preserve_files": 1,
+      "test_actual_processor_remains_offline": 1,
+      "test_cli_preview_commit_duplicates_and_nonoverwriting_format": 1,
+      "test_cli_requires_existing_library_and_exposes_offline_styles": 1,
+      "test_bibtex_import_uses_existing_atomic_scope_and_preserves_source": 1,
+      "test_invalid_name_convention_fails_without_changing_data": 3,
+      "test_destination_approval_preserves_other_work_created_during_real_render": 4,
+      "test_native_citation_document_reuses_scoped_export_and_excludes_private_notes": 1,
+      "test_regeneration_cli_preserves_original_and_requires_new_destination": 1,
+      "test_regeneration_rechecks_library_access_after_real_render": 1,
+      "test_direct_workbench_export_captures_before_render_without_supplied_approval": 4,
+      "test_cli_overwrite_captures_before_real_preview": 2,
+      "test_cli_explicit_overwrite_still_publishes_unchanged_approved_target": 1,
+      "test_receipt_is_additive_and_late_stop_cannot_reverse_saved_bibliography": 4,
+      "test_invalid_receipt_option_never_touches_output": 4
+    },
+    "tests.ui.test_citation_styles_jobs": {
+      "test_options_change_invalidates_running_preview_before_new_completion": 1,
+      "test_export_is_queued_and_does_not_render_in_native_event_handler": 1,
+      "test_new_job_does_not_clear_old_export_cancellation_or_publish_its_file": 1,
+      "test_closed_or_destroyed_dialog_ignores_late_preview_delivery": 2,
+      "test_completed_preview_is_reauthorized_before_controls_enable_copy": 1,
+      "test_copy_authorization_failure_never_opens_clipboard": 1,
+      "test_native_new_destination_preserves_file_created_while_export_is_queued": 1,
+      "test_native_existing_destination_requires_confirmation_and_can_be_replaced": 1,
+      "test_native_declined_overwrite_does_not_submit_or_change_file": 1,
+      "test_native_existing_approval_is_bound_before_confirmation_and_async_work": 2,
+      "test_custom_load_replaces_one_slot_and_invalidates_the_previous_preview": 1,
+      "test_cancelled_or_invalid_custom_load_preserves_the_valid_style_and_preview": 2,
+      "test_pending_job_disables_custom_load_and_ignores_queued_load_events": 2,
+      "test_custom_jobs_capture_their_own_style_and_replaced_completion_stays_hidden": 1,
+      "test_installed_selection_after_custom_load_submits_the_installed_style_id": 1,
+      "test_unavailable_custom_selection_does_not_submit_a_formatting_job": 2,
+      "test_regeneration_is_an_explicit_background_job_with_new_output": 1,
+      "test_regeneration_decline_does_not_open_a_file_or_queue_work": 1,
+      "test_regeneration_refuses_existing_file_and_keeps_its_bytes": 1,
+      "test_closed_regeneration_keeps_worker_cancellation_and_ignores_delivery": 1,
+      "test_saved_export_with_cleanup_warning_remains_successful_and_accessible": 1
+    }
+  },
+  "origins": [
+    "carr_library.research.export_file",
+    "carr_library.native_file_metadata",
+    "carr_library.citations.bibliography_workbench",
+    "carr_library.bibliography_cli",
+    "carr_library.ui.citation_styles_dialog"
+  ]
+}
