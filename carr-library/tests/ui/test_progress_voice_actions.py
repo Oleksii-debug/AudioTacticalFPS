@@ -457,7 +457,8 @@ def test_reader_failed_close_retains_its_pcm_and_still_destroys_dialog(reader):
     assert any(entry[0] is player and entry[1] is temporary
                for entry in reader.parent._reader_playback_retained)
     assert any('Native stop and close failed' in message for message in reader.reports)
-    reader.values['executor'].finish().result()
+    with pytest.raises(RuntimeError, match='Native stop and close failed'):
+        reader.values['executor'].finish().result()
     temporary.cleanup.assert_not_called()
 
 
@@ -496,7 +497,8 @@ def test_reader_detached_parent_reporter_cannot_prevent_dialog_destruction(reade
     temporary.cleanup.assert_not_called()
     assert any(entry[0] is player and entry[1] is temporary
                for entry in reader.parent._reader_playback_retained)
-    reader.values['executor'].finish().result()
+    with pytest.raises(RuntimeError, match='Native close failed'):
+        reader.values['executor'].finish().result()
     temporary.cleanup.assert_not_called()
 
 

@@ -813,6 +813,17 @@ class DesktopFrame(WorkspaceFrame):
                         self.status.SetValue(warning)
                     except Exception:
                         pass
+                # Keep the same warning in the keyboard-accessible frame
+                # status even if the panel accepted its own notice. Preserve
+                # a result callback's output location and never touch a newer
+                # operation that it may have started.
+                if not self.working and getattr(progress, 'active_task', None) is task:
+                    try:
+                        current = self.status.GetValue()
+                        if 'Progress reporting is unavailable' not in current:
+                            self.status.SetValue(current + '\n' + warning)
+                    except Exception:
+                        pass
 
         def report_progress(completed=None, total=None, phase=None):
             if task is not None and progress_error is None:
