@@ -1,0 +1,87 @@
+name: Reading-copy playback and local voice profiles
+
+on:
+  push:
+    branches: [carr/reading-playback-20261127]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: reading-profile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-and-actual-ffmpeg:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Install source-test dependencies and actual FFmpeg
+        run: |
+          python -m pip install --only-binary=:all: pytest==9.0.2 filelock==3.29.0 platformdirs==4.10.0 packaging==26.4 defusedxml==0.7.1 pypdf==7.1.1
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Require source contracts and actual PCM pipeline without skips
+        run: |
+          python scripts/ci_check.py tests/audio/test_voice_settings.py tests/audio/test_reading.py tests/ui/test_reading_playback.py tests/audio/test_reading_ffmpeg.py tests/audio/test_narration_plan.py tests/ui/test_narration_editor.py tests/ui/test_audio_studio.py tests/ui/test_reading_audio_bridge.py
+
+  native-windows-controls:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: carr-library
+    env:
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install the pinned desktop dependencies and actual package
+        run: |
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: pytest==9.0.2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --no-deps .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require native filesystem and existing editor contracts
+        run: |
+          python scripts/ci_check.py tests/audio/test_voice_settings.py tests/audio/test_reading.py tests/ui/test_reading_playback.py tests/ui/test_narration_editor.py tests/ui/test_audio_studio.py tests/ui/test_reading_audio_bridge.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Exercise installed native controls with declared synthetic audio contracts
+        run: |
+          Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
+          python -I -B scripts/windows_reading_playback_smoke.py | Tee-Object ci-results/reading-native-controls.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Preserve bounded public qualification evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: reading-profile-native-${{ github.sha }}
+          path: carr-library/ci-results/
+          retention-days: 7
+          if-no-files-found: warn

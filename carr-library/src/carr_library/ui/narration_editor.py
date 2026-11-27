@@ -1,8 +1,8 @@
 """Native keyboard editor for explicitly separate reading/narration copies.
 
-No speech synthesis or automatic linguistic correction is implied. The testable
-controller owns pending text and confirmed saves; wx is imported only to open
-the dialog. Background autosave never steals keyboard or screen-reader focus.
+The controller owns pending text and confirmed saves. Optional local reading
+uses the existing voice registry, production service and player; automatic
+linguistic correction is not performed. Background autosave does not steal focus.
 """
 from dataclasses import asdict, replace
 from hashlib import sha256
@@ -136,7 +136,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     controller = NarrationController(store, project, expected_digest=expected_digest,
                                      draft_digest=draft_digest, guard=guard)
     dialogs = dialogs or NativeDialogs()
-    dialog = wx.Dialog(parent, title='Reading copy — ' + project.title, size=(960, 820),
+    dialog = wx.Dialog(parent, title='Reading copy — ' + project.title, size=(1000, 900),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
     layout = wx.BoxSizer(wx.VERTICAL)
 
@@ -160,6 +160,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
     status = text_control('Reading-copy save and operation status',
                           'Edit the reading copy. Ctrl+S saves; Ctrl+Shift+S creates a new copy.',
                           readonly=True, height=70)
+    reading = None
     buttons = wx.WrapSizer(wx.HORIZONTAL)
     layout.Add(buttons, 0, wx.EXPAND | wx.ALL, 5)
     state = {'closed': False, 'refreshing': False, 'last_autosaved': None}
@@ -172,6 +173,8 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             status.SetFocus()
 
     def refresh():
+        if reading is not None:
+            reading.invalidate()
         state['refreshing'] = True
         try:
             editor.ChangeValue(controller.pending_text)
@@ -309,6 +312,10 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         if state['closed']:
             return
         try:
+            if reading is not None and not reading.request_close(close):
+                if event is not None and hasattr(event, 'Veto'):
+                    event.Veto()
+                return
             capture()
             if controller.dirty:
                 choice = dialogs.choose(dialog, 'Unsaved reading copy',
@@ -323,12 +330,14 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             timer.Stop()
             dialog.EndModal(wx.ID_OK)
         except Exception as exc:
-            say('Reading copy remains open because saving did not complete. ' + str(exc))
+            say('Reading copy remains open until saving and audio cleanup complete. ' + str(exc))
             if event is not None and hasattr(event, 'Veto'):
                 event.Veto()
 
     def edited(event):
         if not state['refreshing'] and not state['closed']:
+            if reading is not None:
+                reading.invalidate()
             timer.StartOnce(1200)
         event.Skip()
 
@@ -347,6 +356,11 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
                 say(message, focus=False)
         except Exception as exc:
             say('Recovery draft could not be saved. Your editor remains open: ' + str(exc), focus=False)
+
+    from .reading_playback import ReadingPlaybackPane
+    reading = ReadingPlaybackPane(dialog, editor, root=store.root,
+        project_id=lambda: controller.project.id, guard=guard, say=say)
+    layout.Insert(layout.GetItemCount() - 1, reading.sizer, 0, wx.EXPAND | wx.ALL, 5)
 
     actions = (
         ('&Save project (Ctrl+S)', save), ('Save &as (Ctrl+Shift+S)', save_new),
@@ -369,7 +383,7 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
         (wx.ACCEL_CTRL, ord('S'), ids[0]), (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), ids[1]),
         (wx.ACCEL_CTRL, ord('Z'), ids[2]), (wx.ACCEL_CTRL, ord('Y'), ids[3]),
         (wx.ACCEL_CTRL, ord('H'), ids[8]),
-    ]))
+    ] + reading.accelerators))
     dialog.Bind(wx.EVT_TIMER, auto, timer)
     dialog.Bind(wx.EVT_CLOSE, close)
     editor.Bind(wx.EVT_TEXT, edited)
@@ -383,13 +397,17 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
             controls = dict(editor=editor, original=original, origin=origin, status=status,
                             save=native_buttons[0], save_as=native_buttons[1],
                             normalize=native_buttons[4], pronunciation=native_buttons[7],
-                            compare=native_buttons[9], close=native_buttons[-1])
+                            compare=native_buttons[9], close=native_buttons[-1], reading=reading)
             wx.CallAfter(on_ready, dialog, controller, controls)
         dialog.ShowModal()
     finally:
         state['closed'] = True
         timer.Stop()
-        dialog.Destroy()
+        try:
+            if reading is not None:
+                reading.dispose()
+        finally:
+            dialog.Destroy()
     return controller.project
 
 

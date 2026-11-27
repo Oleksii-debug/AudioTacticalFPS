@@ -131,6 +131,11 @@ def render_reading(private_root, text, *, registry, voice, language, rate=0, vol
     plan = reading_plan(text, voice=voice, language=language, rate=rate, volume=volume)
     if cancelled():
         raise RenderCancelled('Reading cancelled before synthesis.')
+    if renderer is None:
+        from .runtime import find_ffmpeg
+        ffmpeg = find_ffmpeg(ffmpeg)
+        if ffmpeg is None:
+            raise ValueError('A reviewed local FFmpeg runtime is required to prepare reading audio.')
     root = checked_directory(guard_data_directory(private_root), create=True)
     directory = Path(tempfile.mkdtemp(prefix='.reading-preview-', dir=root))
     try:
