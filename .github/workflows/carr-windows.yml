@@ -43,6 +43,12 @@ jobs:
       DO_NOT_TRACK: '1'
       CARR_EXPECTED_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
+      - name: Enable complete reviewed Git history on the Windows runner
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config --global core.longpaths true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Check out the exact event commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

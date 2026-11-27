@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "status": "SOURCE_REVIEWED_RUNTIME_NOT_RUN",
+  "failed_source": "1ea95e02acf514078142501040836b57f780a4da",
+  "failed_run": 46060520057,
+  "failed_job": 140713389632,
+  "phase": "Check out the unchanged original generation O",
+  "observed": {
+    "git": "2.56.1.windows.1",
+    "error": "cannot lock ref / Filename too long",
+    "full_path_characters": 260,
+    "longest_component_characters": 161,
+    "retries": 3,
+    "python_or_native_steps_started": false,
+    "artifact_qualification": "NONE"
+  },
+  "repair": {
+    "scope": "Disposable Windows runner Git configuration before every required checkout",
+    "command": "git config --global core.longpaths true",
+    "working_directory": "${{ github.workspace }}",
+    "candidate_and_previous_fetch_depth": 0,
+    "original_and_maintenance_source_unchanged": true,
+    "ancestry_verifier_unchanged": true,
+    "product_and_oracles_unchanged": true
+  },
+  "primary_source": [
+    {
+      "repository": "git-for-windows/git",
+      "ref": "v2.56.1.windows.1",
+      "path": "compat/mingw.c",
+      "blob": "9c5a51407901618b021656d8de7744dd1b2ce5ac",
+      "finding": "are_long_paths_enabled reads core.longpaths and handle_long_path admits extended Windows absolute paths."
+    },
+    {
+      "repository": "actions/checkout",
+      "ref": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "path": "src/git-auth-helper.ts",
+      "blob": "dd7e6fbdb5387908190676a6ec9c4a828a044dea",
+      "finding": "The temporary checkout HOME receives an exact copy of the existing global Git configuration before the fetch."
+    }
+  ],
+  "independent_review": "durable_native_composition: SOURCE_GO",
+  "prior_exact_syntax": {
+    "run": 46060531052,
+    "job": 140713427146,
+    "status": "PASS",
+    "artifact": 15227923739,
+    "artifact_sha256": "f887bb36db1c160d98a68b605ad920ef99243fcd446e2be3a6f7e2c61513e288"
+  },
+  "limits": [
+    "The old failed checkout did not execute any standard installer or managed-update acceptance.",
+    "Syntax receipt covers1ea95 only and is not native execution.",
+    "No original installed generation, pending/prior metadata, signed update guard or dependency closure was changed."
+  ]
+}
