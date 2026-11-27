@@ -80,6 +80,8 @@ def main():
             raise ValueError("Native receipt has no check inventory.")
         if actual != expected:
             raise ValueError("Native check inventory differs: " + repr((actual, expected)))
+        if "probe_modules" in config and "module_origins" not in report:
+            raise ValueError("Native probe omitted its required internal source binding.")
         if "module_origins" in report:
             if set(report["module_origins"]) != set(config["probe_modules"]):
                 raise ValueError("Native probe's internal module set differs.")

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "status": "FAIL",
+  "source_commit": "523aa40f9215569a276f0625d09fcc0fa84bb520",
+  "run_id": 45993629443,
+  "job_id": 140487430832,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45993629443",
+  "failed_phase": "Native approved export receipt assertion",
+  "observed_error": "AttributeError: ExportReceipt object has no attribute encode",
+  "strict_source_after_native": "NOT_RUN",
+  "successor_fix": "Check the published receipt path/cleanup state and compare exact bytes to the already independently rendered text/HTML fixtures. Preserve all108 native assertions."
+}

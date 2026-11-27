@@ -656,7 +656,9 @@ def main():
                     yield from answer_yes(handle)
                     job = yield from export_finished(count)
                     check('real Yes replaces only the unchanged approved destination',
-                          approved.read_bytes() == job['future'].result().encode('utf-8')
+                          job['future'].result().path == approved
+                          and job['future'].result().cleanup_warning is None
+                          and approved.read_bytes() == text.encode('utf-8')
                           and approved.read_text(encoding='utf-8') == formatted.bibliography
                           and dialog.status.GetValue() == f'Bibliography saved to {approved}.'
                           and focused(dialog.status))
@@ -667,9 +669,11 @@ def main():
                     job = yield from export_finished(count)
                     check('real format selection and native export publish a fresh HTML file through the worker',
                           overwrite_prompt() is None
-                          and fresh.read_bytes() == job['future'].result().encode('utf-8')
-                          and 'Content-Security-Policy' in job['future'].result()
-                          and 'Український текст' in job['future'].result()
+                          and job['future'].result().path == fresh
+                          and job['future'].result().cleanup_warning is None
+                          and fresh.read_bytes() == html.encode('utf-8')
+                          and 'Content-Security-Policy' in html
+                          and 'Український текст' in html
                           and dialog.status.GetValue() == f'Bibliography saved to {fresh}.'
                           and focused(dialog.status))
                     check('native export scenarios dispose controlled pickers without replacing real dialogs',

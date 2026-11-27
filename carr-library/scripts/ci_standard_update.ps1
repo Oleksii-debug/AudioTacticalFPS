@@ -98,6 +98,7 @@ assert proof['actual_installed_app_self_test'] is True
 assert proof['manifest_sha256'] == record['manifest_sha256']
 assert proof['installer_sha256'] == record['setup_sha256']
 assert digest(pathlib.Path(record['compiler'])) == record['compiler_sha256']
+assert digest(pathlib.Path(record['compiler']).with_name('ISCmplr.dll')) == record['compiler_engine_sha256']
 full = pathlib.Path(record['full_manifest'])
 assert digest(full) == record['full_manifest_sha256']
 delivery = module(project / 'packaging/create_delivery.py', 'update_ci_delivery')
@@ -116,6 +117,7 @@ value = {'schema': 1, 'status': 'verified-inputs', 'previous_source': source,
     'previous_tree': git(previous, 'rev-parse', 'HEAD^{tree}'),
     'candidate_source': candidate, 'candidate_tree': record['source_tree'],
     'compiler_sha256': record['compiler_sha256'],
+    'compiler_engine_sha256': record['compiler_engine_sha256'],
     'candidate_setup_sha256': record['setup_sha256'],
     'candidate_manifest_sha256': record['manifest_sha256'],
     'existing_full_manifest_sha256': record['full_manifest_sha256'],
@@ -299,6 +301,7 @@ restart = json.loads((evidence / 'native-restart-recover.json').read_text(encodi
 assert restart['status'] == 'rolled-back' and restart['candidate_source'] == record['source_commit']
 assert all(restart[name] is True for name in ('actual_fresh_process', 'actual_windows_vault', 'fresh_tuf_verification'))
 assert digest(pathlib.Path(record['compiler'])) == inputs['compiler_sha256'] == record['compiler_sha256']
+assert digest(pathlib.Path(record['compiler']).with_name('ISCmplr.dll')) == inputs['compiler_engine_sha256'] == record['compiler_engine_sha256']
 delivery = module(project / 'packaging/create_delivery.py', 'final_update_delivery')
 probe = module(project / 'packaging/probe_standard_update_windows.py', 'final_update_probe')
 probe.build_inputs(previous_build, inputs['previous_source'], previous_setup_hash,

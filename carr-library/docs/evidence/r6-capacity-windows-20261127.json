@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "status": "PASS",
+  "benchmark_step_outcome": "success",
+  "required_sizes": [
+    1000,
+    10000,
+    50000
+  ],
+  "claims": {
+    "scope": "Installed synthetic catalogue/search/context/copy/cancel/restart services on Windows",
+    "real_book_corpus": "NOT_RUN",
+    "large_book_import_throughput": "NOT_MEASURED",
+    "native_gui_or_nvda": "NOT_RUN",
+    "neural_models_or_vram": "NOT_RUN"
+  },
+  "source_commit": "d9db9f676bd7b0d282a2c6e2512b20f02b603b65",
+  "source_tree": "16c96abd94291f5d4e335d4de31985bdab7b38b3",
+  "source_manifest_sha256": "c063758e7cd7201216d9bc69c0e89eb724c603e385e22886964e654d39b9a60e",
+  "wheel_sha256": "7ba58618ff0855ef9290e205e3c241d5f1842b071f06d81593c293feb4c16290",
+  "installed_mode": true,
+  "isolated": true,
+  "cases": [
+    {
+      "synthetic_editions": 1000,
+      "pages": 10,
+      "elapsed_seconds": 53.17518369999999,
+      "search_page_p50_seconds": 1.2349990999999818,
+      "search_page_p95_seconds": 1.260750900000005,
+      "process_peak_rss_bytes": 117731328,
+      "fixture_sampled_peak_bytes": 3105528
+    },
+    {
+      "synthetic_editions": 10000,
+      "pages": 100,
+      "elapsed_seconds": 226.63306010000002,
+      "search_page_p50_seconds": 1.5183150999999953,
+      "search_page_p95_seconds": 1.5805624000000194,
+      "process_peak_rss_bytes": 119836672,
+      "fixture_sampled_peak_bytes": 28340422
+    },
+    {
+      "synthetic_editions": 50000,
+      "pages": 500,
+      "elapsed_seconds": 2306.3026228,
+      "search_page_p50_seconds": 2.961381099999926,
+      "search_page_p95_seconds": 3.152512299999671,
+      "process_peak_rss_bytes": 116559872,
+      "fixture_sampled_peak_bytes": 137081526
+    }
+  ],
+  "run_id": 45986888737,
+  "job_id": 140464704384,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45986888737",
+  "artifact": {
+    "id": 15194167810,
+    "size_bytes": 87406,
+    "sha256": "b9f1bd62cc9ea8359445448381f215cc68697efc7c8370deff50bd188e49d9d4"
+  }
+}

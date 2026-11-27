@@ -107,11 +107,62 @@ if (-not [IO.Path]::IsPathFullyQualified($CompilerPath) -or
 Assert-Path $CompilerPath 'Leaf'
 $CompilerPath = (Resolve-Path -LiteralPath $CompilerPath).Path
 $compilerSha = Get-Sha256 $CompilerPath
-$versionInfo = (Get-Item -LiteralPath $CompilerPath).VersionInfo
-$compilerVersion = [version]::new($versionInfo.FileMajorPart, $versionInfo.FileMinorPart,
-                                 $versionInfo.FileBuildPart, $versionInfo.FilePrivatePart)
-if ($compilerVersion -lt [version]'6.4.0.0' -or (Get-Sha256 $CompilerPath) -ne $compilerSha) {
-    throw 'The explicit compiler must be unchanged Inno Setup 6.4+.'
+# ISCC.exe is a loader; its PE file version is not the compiler engine version.
+# Compile only this fixed, output-disabled script and require the actual
+# preprocessor/engine version. Never download or select another compiler.
+$compilerEngine = Join-Path (Split-Path -Parent $CompilerPath) 'ISCmplr.dll'
+Assert-Path $compilerEngine 'Leaf'
+$compilerEngineSha = Get-Sha256 $compilerEngine
+$compilerFileVersion = (Get-Item -LiteralPath $CompilerPath).VersionInfo.FileVersion
+$compilerProbe = @'
+#if Ver < 0x06040000
+  #error This acceptance requires Inno Setup 6.4 or later.
+#endif
+[Setup]
+AppName=CARR compiler identity probe
+AppVersion=1
+CreateAppDir=no
+Uninstallable=no
+Output=no
+PrivilegesRequired=lowest
+'@
+$compilerStart = [System.Diagnostics.ProcessStartInfo]::new()
+$compilerStart.FileName = $CompilerPath
+$compilerStart.WorkingDirectory = Split-Path -Parent $CompilerPath
+$compilerStart.UseShellExecute = $false
+$compilerStart.CreateNoWindow = $true
+$compilerStart.RedirectStandardInput = $true
+$compilerStart.RedirectStandardOutput = $true
+$compilerStart.RedirectStandardError = $true
+$compilerStart.ArgumentList.Add('/O-')
+$compilerStart.ArgumentList.Add('-')
+$compilerProcess = [System.Diagnostics.Process]::new()
+$compilerProcess.StartInfo = $compilerStart
+try {
+    if (-not $compilerProcess.Start()) { throw 'Could not start the selected compiler identity probe.' }
+    $compilerOutput = $compilerProcess.StandardOutput.ReadToEndAsync()
+    $compilerErrors = $compilerProcess.StandardError.ReadToEndAsync()
+    $compilerProcess.StandardInput.WriteLine($compilerProbe)
+    $compilerProcess.StandardInput.Close()
+    if (-not $compilerProcess.WaitForExit(30000)) {
+        $compilerProcess.Kill($true)
+        $compilerProcess.WaitForExit()
+        throw 'The fixed compiler identity probe exceeded 30 seconds.'
+    }
+    $compilerTranscript = $compilerOutput.GetAwaiter().GetResult() + "`n" + $compilerErrors.GetAwaiter().GetResult()
+    if ($compilerProcess.ExitCode -ne 0) {
+        throw ('The fixed output-disabled compiler version probe failed: ' + $compilerTranscript)
+    }
+}
+finally {
+    $compilerProcess.Dispose()
+}
+$compilerMatches = [regex]::Matches($compilerTranscript, '(?m)^Compiler engine version: Inno Setup ([0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?)(?: \([^\r\n]*\))?\s*$')
+if ($compilerMatches.Count -ne 1) { throw 'The actual compiler did not identify exactly one engine version.' }
+$compilerVersion = [version]$compilerMatches[0].Groups[1].Value
+if ($compilerVersion -lt [version]'6.4.0.0' -or (Get-Sha256 $CompilerPath) -ne $compilerSha -or
+    (Get-Sha256 $compilerEngine) -ne $compilerEngineSha) {
+    throw 'The explicit compiler and its engine must remain unchanged Inno Setup 6.4+.'
 }
 
 $wheels = @(Get-ChildItem -LiteralPath $applicationWheels -Filter '*.whl' -File)
@@ -144,6 +195,7 @@ if (Test-Path -LiteralPath $evidence) {
 }
 New-Item -ItemType Directory -Path $evidence | Out-Null
 New-Item -ItemType Directory -Path $private | Out-Null
+$compilerTranscript | Set-Content -LiteralPath (Join-Path $evidence 'compiler-probe.txt') -Encoding utf8
 
 Push-Location $project
 try {
@@ -159,6 +211,7 @@ try {
     Write-PublicJson @{
         schema = 1; status = 'recorded'; compiler_path = $CompilerPath
         compiler_version = $compilerVersion.ToString(); compiler_sha256 = $compilerSha
+        compiler_file_version = $compilerFileVersion; compiler_engine_sha256 = $compilerEngineSha
         source_commit = $sourceCommit; source_tree = $sourceTree
         application_wheel_sha256 = Get-Sha256 $applicationWheel
         python_archive_sha256 = Get-Sha256 $pythonArchive
@@ -336,8 +389,10 @@ assert digest(full_manifest) == full_hash
 inputs = json.loads((evidence / 'inputs.json').read_text(encoding='utf-8-sig'))
 assert inputs['source_commit'] == source and inputs['source_tree'] == tree
 assert inputs['compiler_sha256'] == compiler_hash and inputs['existing_full_manifest_sha256'] == full_hash
+assert inputs['compiler_engine_sha256'] == digest(compiler.with_name('ISCmplr.dll'))
 report.update(source_tree=tree, check_count=6, compiler_sha256=compiler_hash,
-              compiler_version=inputs['compiler_version'], existing_full_sealed_payload_unchanged=True,
+              compiler_version=inputs['compiler_version'], compiler_engine_sha256=inputs['compiler_engine_sha256'],
+              existing_full_sealed_payload_unchanged=True,
               probe_interpreter='existing-installed-application', audio_transfer_guard='ENFORCED',
               source_files_sha256={name: digest(project / name) for name in (
                   'scripts/ci_standard_installer.ps1', 'packaging/build_standard_installer.py',
@@ -361,7 +416,8 @@ print(json.dumps(report, sort_keys=True))
         source_commit = $sourceCommit; source_tree = $sourceTree
         build = $goodBuild; bundle = $bundle; setup_sha256 = $setupSha
         manifest_sha256 = $manifestSha; compiler = $CompilerPath
-        compiler_sha256 = $compilerSha; installed_python = $installedPython
+        compiler_sha256 = $compilerSha; compiler_engine_sha256 = $compilerEngineSha
+        installed_python = $installedPython
         full_manifest = $fullManifest; full_manifest_sha256 = $fullBefore
         native_proof = (Join-Path $evidence 'proof.json')
         native_proof_sha256 = (Get-Sha256 (Join-Path $evidence 'proof.json'))

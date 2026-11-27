@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "status": "PASS_WITH_EXPLICIT_OPTIONAL_SKIPS",
+  "source_commit": "d9db9f676bd7b0d282a2c6e2512b20f02b603b65",
+  "run_id": 45986888726,
+  "job_id": 140464708140,
+  "run_url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45986888726",
+  "source": {
+    "passed": 913,
+    "failed": 0,
+    "skipped": 7,
+    "passed_subtests": 22,
+    "seconds": 360.94,
+    "optional_skip_lines": [
+      "SKIPPED [1] tests\\audio\\test_cli_signals.py:37: POSIX SIGINT delivery; native Windows cancellation is separately probed.\r",
+      "SKIPPED [1] tests\\audio\\test_engine_boundaries.py:207: POSIX owned process-group cleanup; Windows uses an owned Job Object.\r",
+      "SKIPPED [1] tests\\audio\\test_music_adapters.py:60: Actual installed FluidSynth 2.4.4 / reviewed TimGM6mb fixture is unavailable.\r",
+      "SKIPPED [1] tests\\audio\\test_music_adapters.py:89: Actual installed FluidSynth 2.4.4 / reviewed TimGM6mb fixture is unavailable.\r",
+      "SKIPPED [1] tests\\audio\\test_playback_platform.py:6: Windows uses its native device gate\r",
+      "SKIPPED [1] tests\\audio\\test_playback_platform.py:18: Windows reports no audio output device.\r",
+      "SKIPPED [1] tests\\audio\\test_playback_platform.py:32: Actual ffplay dummy-device probe requires an installed POSIX ffplay.\r"
+    ]
+  },
+  "native": {
+    "status": "PASS",
+    "checks": [
+      "actual SAPI synthesis",
+      "actual FFmpeg music and stereo render",
+      "measured duration and clipping",
+      "chapter, subtitle and stem output",
+      "immutable source",
+      "verified complete output reused without resynthesis",
+      "actual Windows Credential Manager round-trip and destination isolation",
+      "actual local assistant to SAPI/FFmpeg production and verified resume",
+      "native Studio named controls",
+      "real editable script focus",
+      "native voice list",
+      "native plan preview",
+      "project save and readback",
+      "native playback device, position and status controls",
+      "native playlist, A�B, segment and sleep controls; setup without device playback",
+      "native assistant plan preview, actual scoped execution and budget controls"
+    ],
+    "sapi_voices_available": 2,
+    "distinct_voices_used": 2,
+    "duration_seconds": 11.133,
+    "measurements": {
+      "peak": 0.730438232421875,
+      "clipped": false,
+      "frames": 534384,
+      "sample_rate": 48000,
+      "channels": 2,
+      "duration_seconds": 11.133,
+      "integrated_lufs": -20.63,
+      "true_peak_dbfs": -2.73,
+      "loudness_range_lu": 2,
+      "measurement": "FFmpeg loudnorm input measurements"
+    },
+    "manual_nvda": "NOT_RUN",
+    "physical_playback_device": "NOT_RUN",
+    "neural_music": "NOT_RUN",
+    "native_ukrainian_slovak_quality": "NOT_RUN"
+  },
+  "effects": {
+    "cancellation": "PASS",
+    "checks": 109,
+    "native_controls": "PASS",
+    "nvda": "NOT_RUN",
+    "signal_rendering": "NOT_RUN",
+    "status": "PASS",
+    "typed_parameters": "PASS",
+    "wx": "4.2.4 msw (phoenix) wxWidgets 3.2.8"
+  },
+  "artifact": {
+    "id": 15194446921,
+    "size_bytes": 23029,
+    "sha256": "6a2daf2c117b878f9d42551997f7025cab10fc221e7c2e7f60936282e48a67d2"
+  },
+  "limits": {
+    "physical_playback": "NOT_RUN",
+    "manual_nvda": "NOT_RUN",
+    "neural_music": "NOT_RUN",
+    "r7_audio_features": "NOT_RUN_ON_THIS_COMMIT"
+  }
+}
