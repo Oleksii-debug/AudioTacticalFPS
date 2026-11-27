@@ -201,7 +201,9 @@ def run_native_operations(frame, directory):
         assert controller.closed and controller._token is None
         # This probe runs before App.MainLoop. Service a real wx idle pass
         # after the queued late callback, including native pending deletion.
-        wx.CallAfter(wx.GetApp().ProcessIdle)
+        # ProcessIdle belongs to EventLoopBase in the pinned wxPython API.
+        # https://docs.wxpython.org/wx.EventLoopBase.html#wx.EventLoopBase.ProcessIdle
+        wx.CallAfter(deletion_loop.ProcessIdle)
         deletion_loop.Run()
     finally:
         watchdog.Stop()

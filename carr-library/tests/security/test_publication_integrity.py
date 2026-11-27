@@ -250,6 +250,8 @@ def test_update_cannot_return_to_rollback_while_native_cleanup_is_unconfirmed(tm
     entered, quiescent = threading.Event(), threading.Event()
     class Owner:
         quiescent_event = quiescent
+        def close(self):
+            return quiescent.is_set()
     def run(*args, **kwargs):
         entered.set()
         raise AudioCleanupPending('Private native details must not escape', cleanup_owner=Owner())
@@ -272,3 +274,67 @@ def test_update_cannot_return_to_rollback_while_native_cleanup_is_unconfirmed(tm
     assert not thread.is_alive() and len(outcomes) == 1
     assert isinstance(outcomes[0], TrustError)
     assert 'Private native' not in str(outcomes[0])
+
+
+@pytest.mark.parametrize('interruption_type', [KeyboardInterrupt, SystemExit])
+def test_native_cleanup_defers_interrupt_and_retries_without_background_thread(tmp_path, monkeypatch, interruption_type):
+    from filelock import FileLock, Timeout
+    from carr_library.audio import capture_process
+    from carr_library.audio.cleanup import pending_cleanup
+    attempted, release = threading.Event(), threading.Event()
+    lock_path = tmp_path / 'maintenance.lock'
+    native_file = tmp_path / 'program-still-owned'
+    native_file.write_bytes(b'Owned native program')
+    real_start = threading.Thread.start
+    def start(thread):
+        if thread.name == 'audio-cleanup':
+            raise RuntimeError('Synthetic background cleanup admission failure')
+        return real_start(thread)
+    monkeypatch.setattr(threading.Thread, 'start', start)
+    owners, outcomes, released = [], [], []
+    def run(*args, **kwargs):
+        pending = pending_cleanup(lambda: release.is_set(), message='Synthetic pending family')
+        owner = pending.cleanup_owner
+        owners.append(owner)
+        native_event = owner.quiescent_event
+        class InterruptedEvent:
+            interrupted = False
+            def is_set(self):
+                return native_event.is_set()
+            def set(self):
+                native_event.set()
+            def wait(self, timeout=None):
+                if not self.interrupted:
+                    self.interrupted = True
+                    attempted.set()
+                    raise interruption_type('Synthetic stop while family remains owned')
+                return native_event.wait(min(timeout or .01, .01))
+        owner.quiescent_event = InterruptedEvent()
+        raise pending
+    monkeypatch.setattr(capture_process, 'run_process', run)
+    adapter = installation.WindowsBundleAdapter(lambda root: None)
+    def work():
+        with FileLock(lock_path, timeout=0):
+            try:
+                adapter._run_owned([tmp_path / 'python.exe'], root=tmp_path, timeout=1)
+            except BaseException as error:
+                outcomes.append(error)
+            finally:
+                released.append(owners[0].quiescent_event.is_set())
+    thread = threading.Thread(target=work, name='maintenance-fixture')
+    thread.start()
+    try:
+        assert attempted.wait(2)
+        assert thread.is_alive() and outcomes == [] and released == []
+        assert owners[0].last_error is not None
+        with pytest.raises(Timeout):
+            with FileLock(lock_path, timeout=0):
+                pytest.fail('Maintenance lease released before native cleanup.')
+        assert native_file.read_bytes() == b'Owned native program'
+    finally:
+        release.set()
+        thread.join(3)
+    assert not thread.is_alive() and released == [True]
+    assert len(outcomes) == 1 and isinstance(outcomes[0], interruption_type)
+    with FileLock(lock_path, timeout=0):
+        assert owners[0].quiescent_event.is_set()

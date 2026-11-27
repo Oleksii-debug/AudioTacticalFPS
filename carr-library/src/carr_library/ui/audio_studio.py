@@ -458,6 +458,66 @@ class StudioController:
         self._recovery_hash = hashlib.sha256(raw).hexdigest()
         self.result = None
 
+    def _resource_broker(self, *, cancelled=lambda: False):
+        from ..operations import ResourceBroker
+        if cancelled():
+            raise InterruptedError('Studio operation cancelled before resource admission.')
+        root = checked_directory(self.private_root, create=True)
+        return ResourceBroker.for_app(root, cancelled=cancelled)
+
+    def clip_snapshot(self):
+        if self.input_kind != 'script':
+            raise ValueError('Choose Structured production script explicitly before editing audio clips.')
+        if self.output_dir is None:
+            raise ValueError('Choose the project audio folder before retaining clips.')
+        self.draft.assert_source()
+        return {'script': self.script, 'title': self.title, 'voice': self.voice,
+                'language': self.language, 'input_kind': self.input_kind,
+                'project_dir': self._output_folder(self.output_dir)}
+
+    def clip_editor(self, snapshot):
+        from ..audio.clips import ClipEditor
+        return ClipEditor(**snapshot)
+
+    def _assert_clip_snapshot(self, fingerprint):
+        from ..audio.clips import script_fingerprint
+        self.draft.assert_source()
+        current = script_fingerprint(self.script, title=self.title, voice=self.voice,
+                                     language=self.language, input_kind=self.input_kind,
+                                     project_dir=self.output_dir or self.private_root)
+        if self.output_dir is None or current != fingerprint:
+            raise ValueError('The Studio draft changed during clip editing. Review the current chapter and retry.')
+
+    def prepare_clip_edit(self, editor, request, *, cancelled=lambda: False):
+        if not self._render_lock.acquire(blocking=False):
+            raise ValueError('Wait for the active Studio operation before editing a clip.')
+        try:
+            self._assert_clip_snapshot(editor.fingerprint)
+            if self.output_dir is None or self._output_folder(self.output_dir) != editor.root:
+                raise ValueError('The clip destination changed. Open the current project again.')
+            if request.get('action') == 'preview':
+                ffmpeg = resolve_ffmpeg(self.ffmpeg)
+                if ffmpeg is None:
+                    raise ValueError('Configure the reviewed local FFmpeg runtime before previewing a clip.')
+                path = editor.preview(request['clip_id'], ffmpeg=ffmpeg, cancelled=cancelled,
+                    broker=self._resource_broker(cancelled=cancelled),
+                    operation_id='studio:' + self.project_id)
+                result = {'preview': str(path), 'fingerprint': editor.fingerprint,
+                          'clip_id': request['clip_id']}
+            else:
+                result = editor.apply(request, cancelled=cancelled)
+            self._assert_clip_snapshot(editor.fingerprint)
+            return result
+        finally:
+            self._render_lock.release()
+
+    def accept_clip_edit(self, result):
+        self._assert_clip_snapshot(result['fingerprint'])
+        if 'script' in result:
+            # Use the existing source-preserving draft undo/recovery mechanism.
+            self.edit_script(result['script'])
+        return result
+
     def render(self, *, cancelled=lambda: False, on_status=lambda status: None):
         if not self._render_lock.acquire(blocking=False):
             raise ValueError('A render is already running in this studio.')
@@ -482,8 +542,7 @@ class StudioController:
                     return EngineProfileStore(self.private_root).music_manifest(
                         reference, engine, cancelled=cancelled)
                 options['music_manifest_resolver'] = music_profile
-                from ..operations import ResourceBroker
-                options['broker'] = ResourceBroker.for_app(self.private_root, cancelled=cancelled)
+                options['broker'] = self._resource_broker(cancelled=cancelled)
                 options['operation_id'] = 'studio:' + self.project_id
             result = renderer(plan, folder, engine=self._registry(), ffmpeg=ffmpeg,
                               cancelled=cancelled, on_status=on_status, **options)
@@ -496,6 +555,54 @@ class StudioController:
             return result
         finally:
             self._render_lock.release()
+
+    def _publication_service(self, *, bind_plan=False, resources=False, cancelled=lambda: False):
+        from ..audio.publishing import PublicationService
+        from ..audio.models import digest
+        if self.output_dir is None:
+            raise ValueError('Choose the existing audio output folder first.')
+        folder = self._output_folder(self.output_dir)
+        plan = self.plan() if bind_plan else None
+        broker = None
+        if resources:
+            broker = self._resource_broker(cancelled=cancelled)
+        return PublicationService(folder, private_root=self.private_root, ffmpeg=self.ffmpeg,
+            max_bytes=plan.disk_budget_bytes if plan is not None else 32 * 1024**3,
+            broker=broker, operation_id='studio:' + self.project_id,
+            expected_plan_sha256=digest(plan.to_dict()) if plan is not None else None)
+
+    def publish_book(self, path, *, book_format, language, creator='', publisher='',
+                     approval=None, cancelled=lambda: False, on_status=lambda message: None):
+        """Export this exact reviewed plan through the existing render receipt."""
+        if not self._render_lock.acquire(blocking=False):
+            raise RuntimeError('Wait for the current Studio operation before publishing.')
+        try:
+            from ..audio.jobs import read_json
+            service = self._publication_service(bind_plan=True, resources=True, cancelled=cancelled)
+            result = self.result
+            if result is None:
+                result = read_json(service.root / 'render-journal.json', limit=1024 * 1024)
+            run_key = result.get('run_key') if isinstance(result, dict) else None
+            kwargs = {'language': language, 'creator': creator, 'approval': approval,
+                      'cancelled': cancelled, 'progress': on_status}
+            if book_format == 'epub':
+                return service.export_epub(run_key, path, **kwargs)
+            if book_format == 'daisy-2.02':
+                return service.export_daisy(run_key, path, publisher=publisher, **kwargs)
+            raise ValueError('Choose EPUB or DAISY publication.')
+        finally:
+            self._render_lock.release()
+
+    def publication_receipts(self, *, cancelled=lambda: False):
+        if cancelled():
+            raise InterruptedError('Publication receipt discovery cancelled.')
+        result = self._publication_service(cancelled=cancelled).publications()
+        if cancelled():
+            raise InterruptedError('Publication receipt discovery cancelled.')
+        return result
+
+    def verify_publication(self, identity, path, *, cancelled=lambda: False):
+        return self._publication_service(cancelled=cancelled).verify(identity, output=path, cancelled=cancelled)
 
     def export_reading_copy(self, path, *, overwrite=False, approval=None):
         selected = _local_path(path, 'reading-copy filename')
@@ -635,9 +742,15 @@ class AudioStudioDialog:
         prod_layout.Add(self.plan_text, 1, wx.EXPAND | wx.ALL, 5)
         production_buttons = wx.WrapSizer(wx.HORIZONTAL)
         self._button(production_page, production_buttons, 'Preview plan', self.preview)
+        self._button(production_page, production_buttons, 'Edit chapter clips', self.edit_clips)
         self.render_button = self._button(production_page, production_buttons, 'Render / resume', self.render)
         self.cancel_button = self._button(production_page, production_buttons, 'Cancel studio operation', self.cancel, busy_safe=True)
         self.cancel_button.Disable()
+        self._button(production_page, production_buttons, 'Export synchronized EPUB',
+                     lambda event: self.export_book('epub'))
+        self._button(production_page, production_buttons, 'Export DAISY 2.02',
+                     lambda event: self.export_book('daisy-2.02'))
+        self._button(production_page, production_buttons, 'Verify saved audiobook', self.verify_book)
         self._button(production_page, production_buttons, 'Play rendered master', self.play)
         self.windows_playback_controls.append(self._button(production_page, production_buttons,
             'Pause / resume playback', self.pause_resume))
@@ -1251,6 +1364,58 @@ class AudioStudioDialog:
         from .audio_effects import effect_reference
         self._show_text('Audio Studio script and keyboard guide', SCRIPT_HELP + '\n\n' + effect_reference())
 
+    def edit_clips(self, event=None):
+        try:
+            self._capture()
+            snapshot = self.controller.clip_snapshot()
+        except Exception as exc:
+            self._error(exc)
+            return
+
+        def selected(editor):
+            if self.closed or self.close_pending or self.cancelled.is_set():
+                return
+            from .audio_clips import show_clip_editor
+            request = show_clip_editor(self.dialog, editor.plan,
+                selected_id=getattr(self, '_selected_clip_id', None))
+            if request is None:
+                return
+            self._selected_clip_id = request.get('clip_id')
+
+            def accepted(value):
+                if self.closed or self.close_pending:
+                    return
+                self.controller.accept_clip_edit(value)
+                self._selected_clip_id = value.get('clip_id')
+                if 'preview' in value:
+                    path = Path(value['preview'])
+                    def play():
+                        if self.closed or self.close_pending:
+                            return
+                        try:
+                            self.controller._assert_clip_snapshot(value['fingerprint'])
+                            index = self.playback_device.GetSelection()
+                            device = self.playback_device_ids[index] if 0 <= index < len(self.playback_device_ids) else None
+                            self.playback.play(path, device_id=device)
+                            self.playback.set_segments([])
+                            self._refresh_playback_choices()
+                            self._last_playback_error = None
+                            self.refresh_playback()
+                            self._message('Playing the selected saved clip. Stop playback is available in Production.', focus=True)
+                        except Exception as exc:
+                            self._error(exc)
+                    self._with_quiet_output(play)
+                else:
+                    self._refresh_text()
+                    self.script.SetFocus()
+                    self._message('Clip settings changed in the current draft. Save the project and render to update its master.', focus=True)
+            label = 'Preparing selected clip preview' if request['action'] == 'preview' else 'Retaining and checking the clip edit'
+            self._run(label, lambda: self.controller.prepare_clip_edit(
+                editor, request, cancelled=self.cancelled.is_set), accepted)
+
+        self._run('Reading chapter clip settings',
+                  lambda: self.controller.clip_editor(snapshot), selected)
+
     def add_effect(self, event=None):
         try:
             self._capture()
@@ -1281,6 +1446,90 @@ class AudioStudioDialog:
                     return
                 self.controller.export_reading_copy(path, overwrite=True, approval=approval)
                 self._message('Reading copy exported. Original sources and quotations are unchanged.', focus=True)
+        except Exception as exc:
+            self._error(exc)
+
+    def export_book(self, book_format):
+        try:
+            self._capture()
+            from .audio_publication import show_publication_options
+            from ..research.export_file import capture_export_destination
+            options = show_publication_options(self.dialog, book_format, language=self.controller.language)
+            if options is None:
+                return
+            wx = self.wx
+            picker = wx.FileDialog(self.dialog, 'Choose a new synchronized audiobook filename',
+                wildcard='EPUB (*.epub)|*.epub' if book_format == 'epub' else 'DAISY ZIP (*.zip)|*.zip',
+                defaultFile='audiobook.epub' if book_format == 'epub' else 'audiobook-daisy.zip',
+                style=wx.FD_SAVE)
+            try:
+                path = Path(picker.GetPath()) if picker.ShowModal() == wx.ID_OK else None
+            finally:
+                picker.Destroy()
+            if path is None:
+                return
+            approval = capture_export_destination(path, private_root=self.controller.private_root)
+            if not approval.require_absent:
+                raise FileExistsError('Choose a new audiobook filename. Existing books are not overwritten.')
+
+            def progress(message):
+                from ..progress import report_progress
+                report_progress(phase=str(message))
+                token = getattr(self, '_job_token', None)
+                def apply():
+                    if not self.closed and getattr(self, '_job_token', None) is token:
+                        self._message(str(message))
+                wx.CallAfter(apply)
+
+            def finished(record):
+                self._message('Synchronized audiobook saved and verified.\n' + record['output']
+                    + '\nRecovery receipt: ' + record['id']
+                    + '\nMeasured line boundaries; word alignment and reader qualification are not claimed.',
+                    focus=True)
+
+            self._run('Verifying and publishing the completed audiobook',
+                lambda: self.controller.publish_book(path, book_format=book_format, **options,
+                    approval=approval, cancelled=self.cancelled.is_set, on_status=progress), finished)
+        except Exception as exc:
+            self._error(exc)
+
+    def verify_book(self, event=None):
+        try:
+            self._capture()
+
+            def choose(rows):
+                wx = self.wx
+                if not rows:
+                    self._message('No saved audiobook publication receipt is available.', focus=True)
+                    return
+                picker = wx.SingleChoiceDialog(self.dialog,
+                    'Choose the saved content receipt, then its existing audiobook file.',
+                    'Verify saved audiobook', [row['id'] + '; ' + row['format'] + '; ' + row['status'] for row in rows])
+                try:
+                    if picker.ShowModal() != wx.ID_OK:
+                        return
+                    index = picker.GetSelection()
+                finally:
+                    picker.Destroy()
+                if not 0 <= index < len(rows):
+                    return
+                book = wx.FileDialog(self.dialog, 'Select the existing audiobook to verify',
+                    wildcard='Audiobooks (*.epub;*.zip)|*.epub;*.zip|All files (*.*)|*.*',
+                    style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+                try:
+                    path = Path(book.GetPath()) if book.ShowModal() == wx.ID_OK else None
+                finally:
+                    book.Destroy()
+                if path is None:
+                    return
+                identity = rows[index]['id']
+                self._run('Verifying saved audiobook bytes and provenance',
+                    lambda: self.controller.verify_publication(identity, path, cancelled=self.cancelled.is_set),
+                    lambda record: self._message('Saved audiobook content verified.\n' + record['output']
+                        + '\nReceipt: ' + record['id'] + '\nNo speech or model was run.', focus=True))
+
+            self._run('Loading saved audiobook receipts',
+                lambda: self.controller.publication_receipts(cancelled=self.cancelled.is_set), choose)
         except Exception as exc:
             self._error(exc)
 

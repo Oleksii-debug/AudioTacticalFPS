@@ -101,6 +101,16 @@ jobs:
             'tests/packaging/test_native_launcher_bundle.py',
             'tests/packaging/test_standard_installer.py',
             'tests/audio/test_capture_ownership.py',
+            'tests/audio/test_owned_audio_processes.py',
+            'tests/ingest/test_worker_process_ownership.py',
+            'tests/ui/test_recording_dialog.py',
+            'tests/ui/test_operation_progress.py',
+            'tests/ui/test_audio_publication.py',
+            'tests/audio/test_clips.py',
+            'tests/ui/test_audio_clips.py',
+            'tests/audio/test_model_inventory.py',
+            'tests/audio/test_model_snapshot.py',
+            'tests/storage/test_legacy_state_portability.py',
             'tests/operations/test_state.py',
             'tests/operations/test_transcription_admission.py',
             'tests/operations/test_heavy_admission.py',
@@ -227,6 +237,22 @@ jobs:
           "CARR_FFMPEG=$(Join-Path $audioBin 'ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Require actual capture, clip rendering and synchronized publication recovery
+        timeout-minutes: 10
+        run: |
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 tests/audio/test_recording.py tests/storage/test_recording_backup.py tests/audio/test_publication.py tests/audio/test_clip_render.py 2>&1 | Tee-Object 'ci-results/actual-capture-publication.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed native capture, clip and audiobook controls
+        timeout-minutes: 5
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_recording_smoke.py --ffmpeg $env:CARR_FFMPEG 2>&1 | Tee-Object 'ci-results/native-recording.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object 'ci-results/native-clip-editor.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $env:CARR_PYTHON -I -B scripts/windows_publication_smoke.py 2>&1 | Tee-Object 'ci-results/native-audiobook-metadata.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
         timeout-minutes: 30
         run: |
@@ -254,6 +280,8 @@ jobs:
             'tests/audio/test_music.py',
             'tests/audio/test_model_manifest.py',
             'tests/audio/test_production.py',
+            'tests/audio/test_input_asset_backup.py',
+            'tests/audio/test_production_integrity.py',
             'tests/audio/test_project_backup.py',
             'tests/reader/test_narration_text.py',
             'tests/ui/test_audio_studio.py',
@@ -1072,6 +1100,20 @@ jobs:
             tests/packaging/test_native_launcher_bundle.py \
             tests/packaging/test_standard_installer.py \
             tests/audio/test_capture_ownership.py \
+            tests/audio/test_owned_audio_processes.py \
+            tests/ingest/test_worker_process_ownership.py \
+            tests/audio/test_recording.py \
+            tests/storage/test_recording_backup.py \
+            tests/ui/test_recording_dialog.py \
+            tests/ui/test_operation_progress.py \
+            tests/audio/test_publication.py \
+            tests/ui/test_audio_publication.py \
+            tests/audio/test_clips.py \
+            tests/audio/test_clip_render.py \
+            tests/ui/test_audio_clips.py \
+            tests/audio/test_model_inventory.py \
+            tests/audio/test_model_snapshot.py \
+            tests/storage/test_legacy_state_portability.py \
             tests/operations/test_state.py \
             tests/operations/test_transcription_admission.py \
             tests/operations/test_heavy_admission.py \

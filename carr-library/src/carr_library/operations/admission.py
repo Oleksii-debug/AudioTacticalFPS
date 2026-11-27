@@ -53,26 +53,40 @@ def production_request(plan, root, limits, *, music_devices=(), sound_seconds=No
         raise ResourceUnavailable('The selected music CUDA device needs an explicit shared resource allowance.')
     if gpu and any(os.environ.get(name) for name in GPU_REMAPPING):
         raise ResourceUnavailable('Clear inherited GPU device remapping before reserving the selected music device.')
-    seconds, used_roles = 0.0, set()
+    seconds, clip_seconds, used_roles, clip_tracks = 0.0, 0.0, set(), set()
     sounds = sound_seconds or {}
     for scene in plan.scenes:
+        scene_seconds = 0.0
         for event in scene.events:
             if isinstance(event, Line):
-                seconds += len(event.text) * .5
+                scene_seconds += len(event.text) * .5
                 used_roles.add(event.role)
             elif isinstance(event, Pause):
-                seconds += event.seconds
+                scene_seconds += event.seconds
             elif isinstance(event, Sound):
                 duration = sounds.get(event.asset)
                 if type(duration) not in (int, float) or not math.isfinite(duration) or duration < 0:
                     raise ResourceUnavailable('Measure each selected local sound before reserving production resources.')
-                seconds += duration
+                scene_seconds += duration
+        clip_end = 0.0
+        for clip in scene.clips:
+            available = sounds.get(clip.asset)
+            if type(available) not in (int, float) or not math.isfinite(available) or available <= 0:
+                raise ResourceUnavailable('Measure each retained clip before reserving production resources.')
+            duration = available - clip.trim_start if clip.duration is None else clip.duration
+            if duration <= 0 or clip.trim_start + duration > available + 1 / plan.sample_rate:
+                raise ResourceUnavailable('A clip selection exceeds its measured retained source.')
+            clip_seconds += duration
+            clip_end = max(clip_end, clip.start + duration)
+            clip_tracks.add(clip.track)
+        seconds += max(scene_seconds, scene.minimum_duration, clip_end)
     pcm = math.ceil(max(1.0, seconds) * plan.sample_rate * 4)
-    stems = len(used_roles) + 1 if plan.export_stems else 0
+    stems = len(used_roles) + 1 + len(clip_tracks) if plan.export_stems else 0
     music = int(any(scene.music is not None for scene in plan.scenes))
     # Cache, staged mix, independent publication, stems, generated music,
     # optional encoding and metadata may coexist on the selected output disk.
-    disk = pcm * (8 + 3 * stems + 3 * music + int(plan.output_format != 'wav')) + 32 * MIB
+    disk = (pcm * (8 + 3 * stems + 3 * music + int(plan.output_format != 'wav'))
+            + math.ceil(clip_seconds * plan.sample_rate * 4) * 3 + 32 * MIB)
     return ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=limits.memory_bytes,
         gpu_device=gpu, gpu_memory_bytes=capacity, disk_bytes=disk, disk_path=root)
 

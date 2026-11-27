@@ -218,6 +218,44 @@ class Sound:
         number(self.pan, -1, 1, 'Sound pan')
 
 
+CLIP_TRACKS = ('sfx', 'ambience', 'music', 'microphone')
+MAX_SCENE_CLIPS = 32
+MAX_CLIP_SECONDS = 31536000
+
+
+@dataclass(frozen=True)
+class Clip:
+    """A retained local PCM asset positioned independently of spoken events."""
+    id: str
+    asset: str
+    start: float = 0.0
+    gain_db: float = 0.0
+    pan: float = 0.0
+    track: str = 'sfx'
+    trim_start: float = 0.0
+    duration: float | None = None
+    fade_in: float = 0.0
+    fade_out: float = 0.0
+    title: str = ''
+
+    def __post_init__(self):
+        # Share the existing portable filename boundary; no external path.
+        Sound(self.id, self.asset)
+        number(self.start, 0, MAX_CLIP_SECONDS, 'Clip start')
+        number(self.trim_start, 0, MAX_CLIP_SECONDS, 'Clip trim start')
+        if self.duration is not None:
+            number(self.duration, 0.000001, MAX_CLIP_SECONDS, 'Clip duration')
+        number(self.gain_db, -60, 12, 'Clip gain in dB')
+        number(self.pan, -1, 1, 'Clip pan')
+        number(self.fade_in, 0, MAX_CLIP_SECONDS, 'Clip fade in')
+        number(self.fade_out, 0, MAX_CLIP_SECONDS, 'Clip fade out')
+        if self.duration is not None and self.fade_in + self.fade_out > self.duration:
+            raise ValueError('Clip fades cannot overlap or exceed the selected duration.')
+        if self.track not in CLIP_TRACKS:
+            raise ValueError('Choose a sound-effects, ambience, music or microphone track.')
+        text(self.title, 'Clip title', 500, empty=True)
+
+
 @dataclass(frozen=True)
 class MusicCue:
     mood: str = 'calm'
@@ -255,16 +293,24 @@ class Scene:
     title: str
     events: tuple[Line | Pause | Sound, ...]
     music: MusicCue | None = None
+    clips: tuple[Clip, ...] = ()
+    minimum_duration: float = 0.0
 
     def __post_init__(self):
         identity(self.id)
         text(self.title, 'Scene title', 500)
-        if not isinstance(self.events, tuple) or not self.events or len(self.events) > 100000:
-            raise ValueError('A scene needs events; split very large scenes into chapters.')
+        if not isinstance(self.events, tuple) or len(self.events) > 100000:
+            raise ValueError('Split very large scenes into chapters.')
+        number(self.minimum_duration, 0, MAX_CLIP_SECONDS, 'Scene minimum duration')
+        if (not isinstance(self.clips, tuple) or len(self.clips) > MAX_SCENE_CLIPS
+                or not all(isinstance(clip, Clip) for clip in self.clips)):
+            raise ValueError('A scene supports at most thirty-two typed clips.')
+        if not self.events and not self.clips and self.minimum_duration <= 0:
+            raise ValueError('A scene needs spoken events, clips or an explicit duration.')
         if not all(isinstance(e, (Line, Pause, Sound)) for e in self.events):
             raise ValueError('Unknown scene event.')
-        if len({e.id for e in self.events}) != len(self.events):
-            raise ValueError('Duplicate scene event identity.')
+        if len({e.id for e in (*self.events, *self.clips)}) != len(self.events) + len(self.clips):
+            raise ValueError('Duplicate scene event or clip identity.')
         if self.music is not None and not isinstance(self.music, MusicCue):
             raise ValueError('Invalid music cue.')
 
@@ -288,7 +334,7 @@ class ProductionPlan:
             raise ValueError('Choose explicit script or literal narration input.')
         text(self.original_script, 'Original script', 16 * 1024 * 1024, empty=True,
              allow_formfeed=self.input_kind == 'narration')
-        if type(self.schema_version) is not int or self.schema_version != SCHEMA:
+        if type(self.schema_version) is not int or self.schema_version not in (1, 2):
             raise ValueError('Unsupported production project version.')
         if not isinstance(self.roles, tuple) or not 1 <= len(self.roles) <= 64 or not all(isinstance(r, Role) for r in self.roles):
             raise ValueError('Choose one to sixty-four named roles.')
@@ -298,14 +344,18 @@ class ProductionPlan:
             raise ValueError('A production needs scenes.')
         if len({s.id for s in self.scenes}) != len(self.scenes):
             raise ValueError('Scene identities must be unique.')
+        if self.schema_version == 1 and any(scene.clips or scene.minimum_duration for scene in self.scenes):
+            raise ValueError('Clip editing requires production project version two.')
+        if len({clip.id for scene in self.scenes for clip in scene.clips}) != sum(len(scene.clips) for scene in self.scenes):
+            raise ValueError('Clip identities must be unique across the project.')
         roles = {r.name for r in self.roles}
         if any(e.role not in roles for s in self.scenes for e in s.events if isinstance(e, Line)):
             raise ValueError('Every spoken line needs a declared role.')
         if self.input_kind == 'narration':
             cursor = 0
             for scene in self.scenes:
-                if scene.music is not None:
-                    raise ValueError('Literal narration cannot contain a parsed music directive.')
+                if scene.music is not None or scene.clips or scene.minimum_duration:
+                    raise ValueError('Literal narration cannot contain parsed music, duration or clip directives.')
                 for event in scene.events:
                     if not isinstance(event, Line) or not event.literal:
                         raise ValueError('Literal narration contains only source-bound text lines.')
@@ -331,6 +381,10 @@ class ProductionPlan:
     def to_dict(self):
         data = asdict(self)
         for scene, original in zip(data['scenes'], self.scenes):
+            if self.schema_version == 1:
+                # Preserve all existing saved-plan/cache fingerprints verbatim.
+                scene.pop('clips')
+                scene.pop('minimum_duration')
             for event, obj in zip(scene['events'], original.events):
                 event['kind'] = {Line: 'line', Pause: 'pause', Sound: 'sound'}[type(obj)]
         return data
@@ -347,7 +401,8 @@ class ProductionPlan:
         value = _strict(value, ('schema_version', 'title', 'original_script', 'roles', 'scenes', 'output_format', 'sample_rate', 'export_stems', 'disk_budget_bytes', 'input_kind'), 'project')
         scenes = []
         for item in value['scenes']:
-            item = _strict(item, ('id', 'title', 'events', 'music'), 'scene')
+            fields = ('id', 'title', 'events', 'music') + (('clips', 'minimum_duration') if value.get('schema_version', 1) == 2 else ())
+            item = _strict(item, fields, 'scene')
             events = []
             for event in item['events']:
                 if not isinstance(event, dict) or event.get('kind') not in ('line', 'pause', 'sound'):
@@ -359,5 +414,8 @@ class ProductionPlan:
             music = item.get('music')
             if music is not None:
                 music = MusicCue(**_strict(music, ('mood', 'tempo', 'gain', 'seed', 'engine', 'model_manifest'), 'music cue'))
-            scenes.append(Scene(item['id'], item['title'], tuple(events), music))
+            clips = tuple(Clip(**_strict(clip, ('id', 'asset', 'start', 'gain_db', 'pan', 'track',
+                'trim_start', 'duration', 'fade_in', 'fade_out', 'title'), 'clip')) for clip in item.get('clips', ()))
+            scenes.append(Scene(item['id'], item['title'], tuple(events), music, clips,
+                                item.get('minimum_duration', 0.0)))
         return cls(**{**value, 'roles': tuple(Role.from_dict(r) for r in value['roles']), 'scenes': tuple(scenes)})

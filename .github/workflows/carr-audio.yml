@@ -84,6 +84,22 @@ jobs:
           python -I -B scripts/windows_audio_effects_smoke.py --native 2>&1 | Tee-Object audio-ci-results/native-effect-controls.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Exercise installed native capture, clip and audiobook controls
+        timeout-minutes: 5
+        run: |
+          python -I -B scripts/windows_recording_smoke.py --ffmpeg $env:CARR_FFMPEG 2>&1 | Tee-Object audio-ci-results/native-recording.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B scripts/windows_clip_editor_smoke.py 2>&1 | Tee-Object audio-ci-results/native-clip-editor.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -I -B scripts/windows_publication_smoke.py 2>&1 | Tee-Object audio-ci-results/native-audiobook-metadata.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require recording state and native-control contracts without skips
+        timeout-minutes: 5
+        run: |
+          python scripts/ci_check.py --jobs 3 tests/audio/test_capture_ownership.py tests/audio/test_owned_audio_processes.py tests/audio/test_recording.py tests/storage/test_recording_backup.py tests/ui/test_recording_dialog.py tests/ui/test_operation_progress.py tests/ui/test_audio_clips.py tests/ui/test_audio_publication.py 2>&1 | Tee-Object audio-ci-results/strict-recording-controls.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run provider safety, source integrity and audio recovery regressions
         run: |
           python scripts/ci_audio_check.py -vv -rs --durations=20 --tb=short -o faulthandler_timeout=90 --junitxml=audio-ci-results/audio-source.xml tests/assistant tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_audio_playback_controls.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_provider_transport_boundaries.py tests/e2e/test_provider_transport_contract.py tests/e2e/test_provider_ledger_lifetime.py tests/e2e/test_audio_cli.py --import-mode=importlib

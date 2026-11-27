@@ -10,6 +10,7 @@ from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
+import unicodedata
 
 from .backup_files import local_path, regular, sync_directory
 
@@ -18,16 +19,19 @@ MAX_STATE_BYTES = 32 * 1024**3
 
 
 def relative_name(value):
-    if (not isinstance(value, str) or not value or '\\' in value or ':' in value
-            or any(ord(c) < 32 for c in value)):
+    if (not isinstance(value, str) or not value
+            or any(c in '<>:"\\|?*' or ord(c) < 32 for c in value)):
         raise ValueError('Invalid legacy state manifest path.')
     path = PurePosixPath(value)
-    if (path.is_absolute() or str(path) != value
-            or any(part in ('.', '..') or part.endswith((' ', '.')) for part in path.parts)):
+    if (not path.parts or path.is_absolute() or str(path) != value
+            or any(x in ('.', '..') or x.endswith((' ', '.')) for x in path.parts)):
         raise ValueError('Invalid legacy state manifest path.')
-    reserved = {'con', 'prn', 'aux', 'nul', *(f'com{i}' for i in range(1, 10)),
-                *(f'lpt{i}' for i in range(1, 10))}
-    if any(part.split('.')[0].casefold() in reserved for part in path.parts):
+    # Win32 also reserves superscript 1, 2 and 3 for COM/LPT devices.
+    # A name valid on a POSIX source must not create an unrestorable backup.
+    digits = '123456789\u00b9\u00b2\u00b3'
+    reserved = {'con', 'prn', 'aux', 'nul', 'conin$', 'conout$',
+                *(f'{prefix}{i}' for prefix in ('com', 'lpt') for i in digits)}
+    if any(x.split('.')[0].rstrip(' ').casefold() in reserved for x in path.parts):
         raise ValueError('Invalid portable legacy state filename.')
     return path
 
@@ -35,20 +39,32 @@ def relative_name(value):
 def validate_state(entries, *, max_files=MAX_STATE_FILES, max_bytes=MAX_STATE_BYTES):
     if not isinstance(entries, list) or len(entries) > min(max_files, MAX_STATE_FILES):
         raise ValueError('Invalid legacy application state manifest.')
-    names, directories, total = set(), set(), 0
+    names, directories, portable_paths, total = set(), set(), {}, 0
     for item in entries:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
                 or type(item['size_bytes']) is not int or item['size_bytes'] < 0
                 or not isinstance(item['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', item['sha256'])):
             raise ValueError('Invalid legacy application state manifest.')
         name = relative_name(item['filename'])
-        folded = name.as_posix().casefold()
-        parents = {parent.as_posix().casefold() for parent in name.parents if str(parent) != '.'}
-        if folded in names or folded in directories or parents & names:
+        folded = unicodedata.normalize('NFC', name.as_posix()).casefold()
+        if folded in names:
             raise ValueError('Conflicting legacy application state filename.')
         names.add(folded)
-        directories.update(parents)
+        # Preserve each actual spelling, including ancestors: A/one and a/two
+        # are different source directories on POSIX and aliases on Windows.
+        for component in (name, *name.parents):
+            current = component.as_posix()
+            if current == '.':
+                continue
+            portable = unicodedata.normalize('NFC', current).casefold()
+            previous = portable_paths.setdefault(portable, current)
+            if previous != current:
+                raise ValueError('Conflicting portable legacy application state paths.')
+            if component != name:
+                directories.add(portable)
         total += item['size_bytes']
+    if names & directories:
+        raise ValueError('Conflicting legacy application state file and directory paths.')
     if total > min(max_bytes, MAX_STATE_BYTES):
         raise ValueError('Legacy application state exceeds its byte budget.')
 
@@ -77,7 +93,7 @@ def _inventory(source, entries, cancelled):
                     raise ValueError('Legacy state directory budget exceeded.')
                 path = Path(entry.path)
                 relative = relative_name(path.relative_to(source).as_posix()).as_posix()
-                folded = relative.casefold()
+                folded = unicodedata.normalize('NFC', relative).casefold()
                 if folded in aliases:
                     raise ValueError('Conflicting legacy state path aliases.')
                 aliases[folded] = relative

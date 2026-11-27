@@ -213,9 +213,7 @@ def test_discovery_counts_non_job_entries_and_honours_cancel_and_byte_budget(tmp
         (base / ('irrelevant-' + str(index))).write_bytes(b'x')
     monkeypatch.setattr(module, '_MAX_DISCOVERY', 2)
     with pytest.raises(ResourceStateError, match='discovery'):
-        # Keep the requested page within the artificial cap; discovery must
-        # still count all non-job entries instead of stopping after one result.
-        OperationFacade(app).list(limit=1)
+        OperationFacade(app).list()
     monkeypatch.setattr(module, '_MAX_DISCOVERY', 10000)
     with pytest.raises(InterruptedError):
         OperationFacade(app).list(cancelled=lambda: True)
@@ -255,3 +253,38 @@ def test_scope_rebinding_and_unknown_ids_are_rejected_without_new_stores(tmp_pat
     with pytest.raises(ResourceStateError, match='changed'):
         facade.list()
     assert not (second.root / 'runtime').exists()
+
+
+
+def test_recording_dashboard_reads_only_typed_receipt_and_redacts_capture_metadata(tmp_path, monkeypatch):
+    from carr_library.audio.recording import RecordingOptions, RecordingService
+    identity = 'e' * 32
+    app = LibraryApp(tmp_path / 'library')
+    value = {
+        'schema': 'carr-recording/1', 'id': identity, 'filename': identity + '.wav',
+        'title': 'PRIVATE recording title', 'created': STAMP,
+        'source': {'kind': 'microphone', 'backend': 'dshow', 'device_id': 'd' * 64,
+                   'name': 'PRIVATE device name'},
+        'ffmpeg_sha256': 'c' * 64, 'completion': 'device-ended',
+        'limits': asdict(RecordingOptions(max_seconds=1, sample_rate=24000)),
+        'audio': {'sha256': 'a' * 64, 'size_bytes': 46, 'sample_rate': 24000,
+                  'channels': 1, 'frames': 1, 'sample_width': 2, 'duration_seconds': 1 / 24000},
+    }
+    saved = app.root / 'state' / 'studio' / 'recordings' / (identity + '.json')
+    save(saved, value)
+    monkeypatch.setattr(RecordingService, '_audio', lambda *a: pytest.fail('Dashboard read PCM'))
+    monkeypatch.setattr(RecordingService, '_runtime', lambda *a: pytest.fail('Dashboard selected an executable'))
+    broker = ResourceBroker.for_app(app.root, limits=ResourceLimits(min_free_disk_bytes=0))
+    facade = OperationFacade(app, broker=broker)
+    with broker.reserve(ResourceRequest(devices=('dshow:' + 'd' * 64,)),
+                        operation_id='recording:' + identity, timeout=0):
+        row = facade.get('recording', identity)
+        assert row.status == 'complete' and row.completed == row.total == 1
+        assert row.live is True and row.verification == 'not_performed' and row.controls == ()
+        assert row.unit == 'PCM frames'
+        assert 'PRIVATE' not in repr(row)
+        view = facade.resources()
+        assert view['leases'][0]['operation_id'] == 'recording:' + identity
+        assert 'PRIVATE' not in repr(view) and str(app.root) not in repr(view)
+    assert not saved.with_suffix('.wav').exists()
+    assert next(row for row in facade.list() if row.id == identity).kind == 'recording'

@@ -17,7 +17,6 @@ from pathlib import Path
 import queue
 import re
 import shutil
-import signal
 import stat
 import subprocess
 import tempfile
@@ -28,6 +27,7 @@ import wave
 from .model_manifest import (LocalModelManifest, ModelManifestError, digest_file,
                              local_path, offline_environment, read_json)
 from .dordiai_discovery import DISCOVERY_PROTOCOL, REQUIRED_HELPERS, parse_discovery
+from .capture_process import start_owned_process, stop_owned_process
 
 
 ADAPTER_VERSION = 'local-speech-2'
@@ -175,39 +175,8 @@ def _publish(source, target, *, cancelled=lambda: False):
 
 
 def _stop(process):
-    if os.name == 'nt':
-        if process.poll() is not None:
-            return
-        taskkill = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/taskkill.exe'
-        try:
-            subprocess.run([str(taskkill), '/PID', str(process.pid), '/T', '/F'],
-                           stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL, timeout=5, check=False,
-                           creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-        except (OSError, subprocess.TimeoutExpired):
-            pass
-    else:
-        # Every worker is started in its own session. The group can still own
-        # live descendants after its leader has exited; poll() alone is not a
-        # cleanup boundary for that group.
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except (OSError, ProcessLookupError):
-            pass
-        try:
-            process.wait(timeout=.1)
-        except subprocess.TimeoutExpired:
-            pass
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except (OSError, ProcessLookupError):
-            pass
-    if process.poll() is None:
-        process.kill()
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        pass
+    """Shared synchronous owner; an exited leader can still own descendants."""
+    return stop_owned_process(process)
 
 
 def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, cwd=None,
@@ -222,44 +191,43 @@ def _run(command, *, data=b'', cancelled=lambda: False, timeout=300, env=None, c
         if time.monotonic() - started >= timeout:
             raise TimeoutError('The local engine exceeded its selected per-segment time budget.')
 
-    options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
-    # Local workers must not create report or TLS-key files through inherited
-    # diagnostic settings. Copy explicit mappings as well; never change callers.
-    environment = {key: value for key, value in (os.environ if env is None else env).items()
-                   if key.upper() not in {'FFREPORT', 'SSLKEYLOGFILE'}}
-    with tempfile.TemporaryFile() as incoming, tempfile.TemporaryFile() as outgoing, tempfile.TemporaryFile() as errors:
-        incoming.write(data)
-        incoming.seek(0)
-        process = subprocess.Popen([str(item) for item in command], stdin=incoming, stdout=outgoing,
-                                   stderr=errors, shell=False, env=environment, cwd=cwd, **options)
-        try:
-            while True:
+    # The native job accepts an explicitly read-only stdin handle. Keep its
+    # private source file and both output streams until family cleanup settles.
+    with tempfile.TemporaryDirectory(prefix='carr-engine-input-') as temporary:
+        input_path = Path(temporary) / 'stdin.bin'
+        with input_path.open('xb') as captured:
+            captured.write(data)
+        with input_path.open('rb') as incoming, tempfile.TemporaryFile() as outgoing, tempfile.TemporaryFile() as errors:
+            process = start_owned_process([str(item) for item in command], stdin_file=incoming,
+                                          stdout=outgoing, stderr=errors, env=env, cwd=cwd)
+            try:
+                while True:
+                    check()
+                    status = process.poll()
+                    if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_LOG_BYTES:
+                        raise RuntimeError('The local engine exceeded its diagnostic byte budget.')
+                    if output is not None:
+                        try:
+                            info = Path(output).lstat()
+                        except FileNotFoundError:
+                            info = None
+                        if info is not None and (not stat.S_ISREG(info.st_mode)
+                                or info.st_size > MAX_PCM_BYTES + 4096):
+                            raise ValueError('A speech segment exceeds the configured PCM budget or is not a regular file.')
+                    if status is not None:
+                        break
+                    time.sleep(.03)
+                if process.returncode:
+                    # Engine diagnostics can contain book text, local paths or keys.
+                    # The normal application error carries only a bounded exit status.
+                    raise EngineUnavailable(f'Local engine failed with exit code {process.returncode}.')
+                stream = errors if return_stderr else outgoing
+                stream.seek(0)
+                result = stream.read(MAX_LOG_BYTES + 1)
                 check()
-                status = process.poll()
-                if max(os.fstat(outgoing.fileno()).st_size, os.fstat(errors.fileno()).st_size) > MAX_LOG_BYTES:
-                    raise RuntimeError('The local engine exceeded its diagnostic byte budget.')
-                if output is not None:
-                    try:
-                        info = Path(output).lstat()
-                    except FileNotFoundError:
-                        info = None
-                    if info is not None and (not stat.S_ISREG(info.st_mode)
-                            or info.st_size > MAX_PCM_BYTES + 4096):
-                        raise ValueError('A speech segment exceeds the configured PCM budget or is not a regular file.')
-                if status is not None:
-                    break
-                time.sleep(.03)
-            if process.returncode:
-                # Engine diagnostics can contain book text, local paths or keys.
-                # The normal application error carries only a bounded exit status.
-                raise EngineUnavailable(f'Local engine failed with exit code {process.returncode}.')
-            stream = errors if return_stderr else outgoing
-            stream.seek(0)
-            result = stream.read(MAX_LOG_BYTES + 1)
-            check()
-            return result
-        finally:
-            _stop(process)
+                return result
+            finally:
+                _stop(process)
 
 
 _SAPI_SCRIPT = r'''
@@ -707,68 +675,70 @@ class DordiaiVoicesEngine:
         outgoing = queue.Queue(maxsize=2)
         write_errors = queue.Queue(maxsize=1)
         finished = threading.Event()
-        options = {'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)} if os.name == 'nt' else {'start_new_session': True}
         with tempfile.TemporaryFile() as errors:
-            process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors,
-                                       cwd=getattr(self, 'runtime_root', self.manifest.root),
-                                       env=offline_environment(), shell=False, **options)
-            def read_replies():
-                try:
-                    while not finished.is_set():
-                        line = process.stdout.readline(4 * 1024 * 1024 + 1)
-                        if not line:
-                            item = EngineUnavailable('dordiai-voices closed its response stream.')
-                        elif len(line) > 4 * 1024 * 1024:
-                            item = ValueError('dordiai-voices response exceeded its byte budget.')
-                        else:
-                            try:
-                                item = json.loads(line, object_pairs_hook=_unique_object)
-                            except (ValueError, UnicodeError):
-                                item = ValueError('dordiai-voices returned invalid JSON.')
-                        while not finished.is_set():
-                            try:
-                                replies.put(item, timeout=.1)
-                                break
-                            except queue.Full:
-                                continue
-                        if isinstance(item, Exception):
-                            break
-                except (OSError, ValueError):
-                    if not finished.is_set():
-                        try:
-                            replies.put_nowait(EngineUnavailable('dordiai-voices response stream failed.'))
-                        except queue.Full:
-                            pass
-            reader = threading.Thread(target=read_replies, daemon=True, name='dordiai-voices PCM reader')
-            reader.start()
-            def write_requests():
-                while not finished.is_set():
-                    try:
-                        data = outgoing.get(timeout=.05)
-                    except queue.Empty:
-                        continue
-                    try:
-                        process.stdin.write(data)
-                        process.stdin.flush()
-                    except (OSError, ValueError):
-                        try:
-                            write_errors.put_nowait(EngineUnavailable('dordiai-voices request stream failed.'))
-                        except queue.Full:
-                            pass
-                        return
-            writer = threading.Thread(target=write_requests, daemon=True, name='dordiai-voices request writer')
-            writer.start()
-            def send(value):
-                data = (json.dumps(value, ensure_ascii=True) + '\n').encode('ascii')
-                if len(data) > 128 * 1024:
-                    raise ValueError('dordiai-voices request exceeds its byte budget.')
-                try:
-                    outgoing.put_nowait(data)
-                except queue.Full as exc:
-                    raise EngineUnavailable('dordiai-voices is not consuming bounded requests.') from exc
-            started = time.monotonic()
-            total = 0
+            process = start_owned_process([str(item) for item in command], stdin_pipe=True,
+                stdout=subprocess.PIPE, stderr=errors,
+                cwd=getattr(self, 'runtime_root', self.manifest.root), env=offline_environment())
+            reader = writer = None
             try:
+                def read_replies():
+                    try:
+                        while not finished.is_set():
+                            line = process.stdout.readline(4 * 1024 * 1024 + 1)
+                            if not line:
+                                item = EngineUnavailable('dordiai-voices closed its response stream.')
+                            elif len(line) > 4 * 1024 * 1024:
+                                item = ValueError('dordiai-voices response exceeded its byte budget.')
+                            else:
+                                try:
+                                    item = json.loads(line, object_pairs_hook=_unique_object)
+                                except (ValueError, UnicodeError):
+                                    item = ValueError('dordiai-voices returned invalid JSON.')
+                            while not finished.is_set():
+                                try:
+                                    replies.put(item, timeout=.1)
+                                    break
+                                except queue.Full:
+                                    continue
+                            if isinstance(item, Exception):
+                                break
+                    except (OSError, ValueError):
+                        if not finished.is_set():
+                            try:
+                                replies.put_nowait(EngineUnavailable('dordiai-voices response stream failed.'))
+                            except queue.Full:
+                                pass
+                reader = None
+                def write_requests():
+                    while not finished.is_set():
+                        try:
+                            data = outgoing.get(timeout=.05)
+                        except queue.Empty:
+                            continue
+                        try:
+                            process.stdin.write(data)
+                            process.stdin.flush()
+                        except (OSError, ValueError):
+                            try:
+                                write_errors.put_nowait(EngineUnavailable('dordiai-voices request stream failed.'))
+                            except queue.Full:
+                                pass
+                            return
+                writer = None
+                def send(value):
+                    data = (json.dumps(value, ensure_ascii=True) + '\n').encode('ascii')
+                    if len(data) > 128 * 1024:
+                        raise ValueError('dordiai-voices request exceeds its byte budget.')
+                    try:
+                        outgoing.put_nowait(data)
+                    except queue.Full as exc:
+                        raise EngineUnavailable('dordiai-voices is not consuming bounded requests.') from exc
+                started = time.monotonic()
+                total = 0
+                reader = threading.Thread(target=read_replies, daemon=True, name='dordiai-voices PCM reader')
+                reader.start()
+                writer = threading.Thread(target=write_requests, daemon=True, name='dordiai-voices request writer')
+                writer.start()
                 send(request)
                 with wave.open(str(target), 'wb') as audio:
                     audio.setnchannels(1)
@@ -832,13 +802,16 @@ class DordiaiVoicesEngine:
                     raise ValueError('dordiai-voices produced no audio.')
             finally:
                 finished.set()
-                _stop(process)
-                writer.join(timeout=1)
-                if process.stdin and not writer.is_alive():
-                    process.stdin.close()
-                reader.join(timeout=1)
-                if process.stdout and not reader.is_alive():
-                    process.stdout.close()
+                try:
+                    _stop(process)
+                finally:
+                    # Thread construction/start can fail after native admission.
+                    # Stop the actual family before touching either pipe.
+                    for thread, pipe in ((writer, process.stdin), (reader, process.stdout)):
+                        if thread is not None and thread.ident is not None:
+                            thread.join(timeout=1)
+                        if pipe is not None and (thread is None or not thread.is_alive()):
+                            pipe.close()
 
 
 class VoiceRegistry:

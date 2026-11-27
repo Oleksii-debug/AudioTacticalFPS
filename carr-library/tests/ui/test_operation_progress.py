@@ -249,6 +249,79 @@ class PresenterTests(unittest.TestCase):
         self.assertFalse(self.audio.environment_values['media_active'])
 
 
+    def test_recording_hold_requires_known_stopped_content_and_quiet_notifications(self):
+        class Player:
+            state = 'playing'
+        player = Player()
+        remove = self.presenter.register_player(player)
+        hold = self.presenter.hold_audio(recording=True)
+        self.assertFalse(hold.ready)
+        player.state = 'paused'
+        self.assertFalse(hold.ready)
+        player.state = 'stopped'
+        self.audio.quiescent = False
+        self.assertFalse(hold.ready)
+        self.audio.quiescent = True
+        self.assertTrue(hold.ready)
+        self.assertTrue(self.audio.preferences.quiet)
+        hold.close()
+        remove()
+        self.assertFalse(self.presenter._recording_holds)
+
+    def test_unknown_content_status_never_grants_microphone_admission(self):
+        class Player:
+            @property
+            def state(self):
+                raise OSError('Native output status is unknown')
+        player = Player()
+        self.presenter.register_player(player)
+        hold = self.presenter.hold_audio(recording=True)
+        try:
+            self.assertFalse(hold.ready)
+        finally:
+            hold.close()
+
+    def test_recording_hold_blocks_new_playback_and_other_recording_holds(self):
+        hold = self.presenter.hold_audio(recording=True)
+        starts, errors = [], []
+        self.assertIsNone(self.presenter.media_action(lambda: starts.append(True), failed=errors.append))
+        self.assertEqual(starts, [])
+        self.assertEqual(len(errors), 1)
+        with self.assertRaisesRegex(RuntimeError, 'Another recording'):
+            self.presenter.hold_audio(recording=True)
+        hold.close()
+        self.presenter.media_action(lambda: starts.append(True), failed=errors.append)
+        self.assertEqual(starts, [True])
+
+    def test_capture_cannot_overtake_an_existing_queued_content_handoff(self):
+        self.audio.quiescent = False
+        request = self.presenter.media_action(lambda: None)
+        with self.assertRaisesRegex(RuntimeError, 'playback handoff'):
+            self.presenter.hold_audio(recording=True)
+        self.assertFalse(self.presenter._recording_holds)
+        request.close()
+
+    def test_native_cleanup_thread_keeps_quiet_until_main_loop_observes_release(self):
+        hold = self.presenter.hold_audio(recording=True)
+        thread = threading.Thread(target=hold.close)
+        thread.start()
+        thread.join(2)
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(self.presenter._recording_holds)
+        self.assertTrue(self.audio.preferences.quiet)
+        self.assertEqual(len(self.wx.posted), 1)
+        self.wx.posted.pop(0)()
+        self.assertFalse(self.presenter._recording_holds)
+        self.assertFalse(self.presenter._holds)
+
+    def test_failed_quiet_admission_does_not_leave_an_unreachable_recording_token(self):
+        with patch.object(self.audio, 'configure', side_effect=RuntimeError('Rejected notification change')):
+            with self.assertRaisesRegex(RuntimeError, 'Rejected notification'):
+                self.presenter.hold_audio(recording=True)
+        self.assertFalse(self.presenter._recording_holds)
+        self.assertFalse(self.presenter._holds)
+
+
 class VoiceBindingTests(unittest.TestCase):
     def registry(self, identity='model-a'):
         voice = SimpleNamespace(id='local:chosen', name='Chosen', available=True,

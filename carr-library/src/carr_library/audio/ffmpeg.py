@@ -22,6 +22,7 @@ from .jobs import (checked_directory, check_cancelled, file_identity, publish_no
                    regular_file, sha256_file, verified_reader)
 from .models import Effect, EFFECT_CONTROLS, FORMATS, SAMPLE_RATES, number
 from .paths import filename_component
+from .capture_process import native_audio_environment, start_owned_process, stop_owned_process
 
 
 # Part of the scene-mix and completed-production cache identity. Increment when
@@ -124,57 +125,73 @@ def trusted_ffmpeg(path):
 
 
 def _ffmpeg_environment():
-    environment = os.environ.copy()
-    # FFREPORT can otherwise write an arbitrary inherited report filename even
-    # when all explicit argv use only the selected local inputs and outputs.
-    environment.pop('FFREPORT', None)
-    return environment
+    return native_audio_environment()
 
 
 def run_ffmpeg(ffmpeg, arguments, *, cancelled=lambda: False, loglevel='error'):
-    """No shell, no network input protocols, bounded diagnostic output."""
+    """No shell/network inputs; existing callbacks own duration and disk limits."""
     binary = trusted_ffmpeg(ffmpeg)
     check_cancelled(cancelled)
     with tempfile.TemporaryFile() as log:
-        process = subprocess.Popen([binary, '-hide_banner', '-nostdin', '-loglevel', loglevel, *arguments],
-                                   stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=log,
-                                   env=_ffmpeg_environment(),
-                                   creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        process = start_owned_process(
+            [binary, '-hide_banner', '-nostdin', '-loglevel', loglevel, *arguments],
+            stdout=subprocess.DEVNULL, stderr=log, env=_ffmpeg_environment())
         try:
-            while process.poll() is None:
+            while True:
                 check_cancelled(cancelled)
                 if os.fstat(log.fileno()).st_size > 1024 * 1024:
                     raise RuntimeError('FFmpeg returned excessive diagnostic output.')
+                if process.poll() is not None:
+                    break
                 time.sleep(0.03)
+            # Include a fast child that crossed its log budget between polls.
             check_cancelled(cancelled)
+            if os.fstat(log.fileno()).st_size > 1024 * 1024:
+                raise RuntimeError('FFmpeg returned excessive diagnostic output.')
             log.seek(0)
             message = log.read(1024 * 1024).decode('utf-8', errors='replace')
             if process.returncode:
                 raise RuntimeError('FFmpeg could not complete the audio operation: ' + message[-4000:])
             return message
         finally:
-            if process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait(timeout=5)
+            # Do this while the explicit diagnostic stream and outer render
+            # stage/resource lease still exist, including an exited leader.
+            stop_owned_process(process)
 
 
 def ffmpeg_identity(path, *, cancelled=lambda: False):
     check_cancelled(cancelled)
     binary = trusted_ffmpeg(path)
-    process = subprocess.run([binary, '-version'], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT, timeout=10, check=True,
-                             env=_ffmpeg_environment(),
-                             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-    lines = process.stdout[:16384].decode('utf-8', 'replace').splitlines()
+    command = [binary, '-version']
+    started = time.monotonic()
+    with tempfile.TemporaryFile() as log:
+        process = start_owned_process(command, stdout=log, stderr=log,
+                                      env=_ffmpeg_environment())
+        try:
+            while True:
+                check_cancelled(cancelled)
+                if time.monotonic() - started > 10:
+                    raise subprocess.TimeoutExpired(command, 10)
+                if os.fstat(log.fileno()).st_size > 1024 * 1024:
+                    raise RuntimeError('FFmpeg returned excessive version information.')
+                if process.poll() is not None:
+                    break
+                time.sleep(.03)
+            check_cancelled(cancelled)
+            if os.fstat(log.fileno()).st_size > 1024 * 1024:
+                raise RuntimeError('FFmpeg returned excessive version information.')
+            log.seek(0)
+            raw = log.read(1024 * 1024 + 1)
+            if process.returncode:
+                raise subprocess.CalledProcessError(process.returncode, command, output=raw)
+        finally:
+            stop_owned_process(process)
+    lines = raw[:16384].decode('utf-8', 'replace').splitlines()
     if not lines:
         raise RuntimeError('The selected FFmpeg executable returned no version information.')
     import hashlib
     return {'binary_sha256': sha256_file(path, cancelled=cancelled), 'version': lines[0],
-            'version_sha256': hashlib.sha256(process.stdout).hexdigest()}
+            'version_sha256': hashlib.sha256(raw).hexdigest()}
 
 
 def _tempo_filters(value):

@@ -159,6 +159,48 @@ def _relative(value):
     return path
 
 
+def _complete_inventory(root, manifest_path, *, cancelled):
+    """Enumerate every directory or refuse the complete-runtime claim.
+
+    pathlib.rglob can suppress an unreadable subtree. The current manifest
+    authority instead uses bounded scandir iteration, retaining the canonical
+    fail-closed traversal behavior without adding another model framework.
+    """
+    found, pending, count = set(), [root], 0
+
+    def check_cancelled():
+        if cancelled():
+            raise InterruptedError('Local asset verification cancelled.')
+
+    try:
+        while pending:
+            check_cancelled()
+            directory = local_path(pending.pop())
+            if not stat.S_ISDIR(directory.stat().st_mode):
+                raise ModelManifestError('The model inventory requires regular local directories.')
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    check_cancelled()
+                    count += 1
+                    if count > MAX_MODEL_DIRECTORY_ENTRIES:
+                        raise ModelManifestError('The model installation exceeds the directory entry budget.')
+                    path = local_path(directory / entry.name)
+                    info = path.stat()
+                    if stat.S_ISDIR(info.st_mode):
+                        pending.append(path)
+                    elif stat.S_ISREG(info.st_mode):
+                        if path != manifest_path:
+                            found.add(path.relative_to(root).as_posix())
+                    else:
+                        raise ModelManifestError('Model inventories contain only regular files and directories.')
+        check_cancelled()
+    except InterruptedError:
+        raise
+    except OSError as error:
+        raise ModelManifestError('The local runtime inventory is unreadable or incomplete.') from error
+    return found
+
+
 @dataclass(frozen=True)
 class LocalModelManifest:
     path: Path
@@ -259,14 +301,11 @@ class LocalModelManifest:
             raise ModelManifestError('The model manifest changed after it was loaded.')
         listed = dict(self.files)
         if require_complete:
-            for count, entry in enumerate(self.root.rglob('*'), 1):
-                if cancelled():
-                    raise InterruptedError('Local asset verification cancelled.')
-                if count > MAX_MODEL_DIRECTORY_ENTRIES:
-                    raise ModelManifestError('The model installation exceeds the directory entry budget.')
-                entry = local_path(entry)
-                if entry.is_file() and entry != self.path and entry.relative_to(self.root).as_posix() not in listed:
-                    raise ModelManifestError('The local runtime contains a file missing from its reviewed manifest.')
+            actual = _complete_inventory(self.root, self.path, cancelled=cancelled)
+            if actual - set(listed):
+                raise ModelManifestError('The local runtime contains a file missing from its reviewed manifest.')
+            if actual != set(listed):
+                raise ModelManifestError('The reviewed runtime file inventory differs from its complete installation.')
         total = 0
         for name, expected in self.files:
             path = self._asset(name, listed)

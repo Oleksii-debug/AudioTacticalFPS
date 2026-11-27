@@ -24,11 +24,14 @@ def main():
         (target / 'pytest.ini').write_text('[pytest]\n', encoding='utf-8')
         report = target / 'results.xml'
         environment = {key: value for key, value in os.environ.items()
-                       if key not in ('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS')}
+                       if key.upper() not in ('PYTHONPATH', 'PYTEST_ADDOPTS', 'PYTEST_PLUGINS', 'CARR_CI_ALLOW_LOOPBACK')}
         environment['PYTEST_DISABLE_PLUGIN_AUTOLOAD'] = '1'
-        result = subprocess.run([sys.executable, '-I', '-B', '-c', runner,
+        result = subprocess.run([sys.executable, '-I', '-B', '-c', runner, 'offline',
             '-c', str(target / 'pytest.ini'), '-o', 'xfail_strict=true', '--junitxml', str(report),
             str(target / 'tests')], cwd=target, env=environment, timeout=480, check=False)
+        if not report.is_file():
+            raise RuntimeError('Installed transfer verification did not produce its required JUnit report '
+                               f'(exit {result.returncode}). See the preceding child diagnostics.')
         cases = list(ET.parse(report).iter('testcase'))
         failed = sum(any(case.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for case in cases)
         passed = len(cases) - failed

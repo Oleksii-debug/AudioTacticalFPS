@@ -1,6 +1,7 @@
 """Real file replacement at the local model approval and budget boundaries."""
 from hashlib import sha256
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -24,8 +25,11 @@ def test_approval_hash_cannot_authenticate_a_different_parsed_snapshot(tmp_path,
     approved['license_accepted'] = False
     replacement = json.dumps(approved).encode('utf-8')
     expected = sha256(replacement).hexdigest()
-    original_open = Path.open
-    replaced = False
+    original_open = module._open_json_file
+    original_bytes = path.read_bytes()
+    staged = path.with_name('replacement.pending')
+    staged.write_bytes(replacement)
+    replaced, observed = False, []
 
     class ReplaceAfterRead:
         def __init__(self, stream):
@@ -45,19 +49,22 @@ def test_approval_hash_cannot_authenticate_a_different_parsed_snapshot(tmp_path,
             nonlocal replaced
             data = self.stream.read(size)
             if not replaced:
+                observed.append(data)
+                os.replace(staged, path)
                 replaced = True
-                with original_open(path, 'wb') as changed:
-                    changed.write(replacement)
             return data
 
-    def racing_open(self, mode='r', *args, **kwargs):
-        stream = original_open(self, mode, *args, **kwargs)
-        return ReplaceAfterRead(stream) if self == path and mode == 'rb' and not replaced else stream
+    def racing_open(selected):
+        stream = original_open(selected)
+        return ReplaceAfterRead(stream) if selected == path and not replaced else stream
 
-    monkeypatch.setattr(Path, 'open', racing_open)
+    # Use the real descriptor-backed reader on both platforms. In Windows its
+    # FILE_SHARE_DELETE handle allows this actual atomic name replacement.
+    monkeypatch.setattr(module, '_open_json_file', racing_open)
     with pytest.raises(module.ModelManifestError, match='changed|snapshot'):
         module.LocalModelManifest.load(path, expected_sha256=expected)
-    assert replaced
+    assert replaced and observed == [original_bytes]
+    assert path.read_bytes() == replacement and not staged.exists()
 
 
 def test_asset_growth_after_budget_stat_cannot_pass_with_pinned_larger_hash(tmp_path, monkeypatch):

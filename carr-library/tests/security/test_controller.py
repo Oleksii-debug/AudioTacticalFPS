@@ -88,7 +88,12 @@ def test_desktop_installs_help_hook():
     menus = next(node for node in frame.body if isinstance(node, ast.FunctionDef) and node.name == '_menus')
     calls = [node.func.id for node in ast.walk(menus) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)]
     assert calls.count('install_trust_actions') == 1
-    assert calls.index('install_trust_actions') < calls.index('install_keyboard_settings')
+    initialize = next(node for node in frame.body if isinstance(node, ast.FunctionDef) and node.name == '__init__')
+    menu_call = next(node for node in ast.walk(initialize) if isinstance(node, ast.Call)
+                     and isinstance(node.func, ast.Attribute) and node.func.attr == '_menus')
+    keyboard_call = next(node for node in ast.walk(initialize) if isinstance(node, ast.Call)
+                         and isinstance(node.func, ast.Name) and node.func.id == 'install_productivity_actions')
+    assert menu_call.lineno < keyboard_call.lineno
 
 
 def test_cancelled_explicit_import_does_not_advance_protected_state(

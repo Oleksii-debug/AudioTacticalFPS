@@ -73,7 +73,8 @@ def _identity(info):
 def _allowed(name):
     if name in ('studio/project.json', 'studio/project.json.recovery.json'):
         return True
-    if name == 'audio/render-journal.json' or re.fullmatch('audio/plan-' + _HEX + r'\.json', name):
+    if (name == 'audio/render-journal.json' or re.fullmatch('audio/plan-' + _HEX + r'\.json', name)
+            or re.fullmatch(r'audio/publication-[0-9a-f]{32}\.json', name)):
         return True
     # Input type and saved/recovery references are checked by input_assets().
     # Sound accepts portable filenames independently of their case or suffix.
@@ -112,9 +113,14 @@ def _studio(payload):
     reference = payload['source_reference']
     if reference is not None:
         from ..reader.narration import READING_REFERENCE_KIND, validate_reading_project_reference
+        from .recording import REFERENCE_KIND as RECORDING_REFERENCE_KIND, validate_recording_reference
         if type(reference) is not dict or reference.get('kind') not in (
-                'local-text', 'library-source-reading-copy', READING_REFERENCE_KIND):
+                'local-text', 'library-source-reading-copy', READING_REFERENCE_KIND, RECORDING_REFERENCE_KIND):
             raise ValueError('Unknown source-reference settings are not exported.')
+        if reference['kind'] == RECORDING_REFERENCE_KIND:
+            validate_recording_reference(reference, original_text=draft.source_text,
+                                         source_id=draft.source_id)
+            return payload
         if reference['kind'] == READING_REFERENCE_KIND:
             validate_reading_project_reference(reference, original_text=draft.source_text,
                                                source_id=draft.source_id)
@@ -141,20 +147,20 @@ def _asset_references(project, *, file_budget, cancelled):
     legacy_kind = 'narration' if project['source_reference'] is not None else 'script'
     if project.get('input_kind', legacy_kind) != 'script':
         return set()
-    from .models import Sound
+    from .models import Sound, Clip
     from .production import parse_script
     names = set()
     draft = NarrationDraft.from_dict(project['draft'])
     for line in draft.text.splitlines():
         check_cancelled(cancelled)
         line = line.strip()
-        if not re.match(r'\[sound(?:\s|\])', line):
+        if not re.match(r'\[(?:sound|clip)(?:\s|\])', line):
             continue
         # The production parser and Sound model own quoting, names and controls.
         # An incomplete sound directive cannot silently discard an input file.
         plan = parse_script(line, voice=project['voice'], language=project['language'])
-        names.update(event.asset for scene in plan.scenes for event in scene.events
-                     if isinstance(event, Sound))
+        names.update(event.asset for scene in plan.scenes for event in (*scene.events, *scene.clips)
+                     if isinstance(event, (Sound, Clip)))
         if len(names) > file_budget:
             raise ValueError('Sound inputs exceed the snapshot file budget.')
     return names
@@ -185,6 +191,11 @@ def input_assets(project_file, project_dir, *, strict=False,
         projects.append(recovered)
     required = set()
     for payload in projects:
+        reference = payload['source_reference']
+        if reference is not None and reference.get('kind') == 'microphone-recording':
+            # The original captured WAV remains portable even if a later
+            # derivative removes its sound directive or changes input mode.
+            required.add(reference['asset'])
         required.update(_asset_references(payload, file_budget=file_budget, cancelled=cancelled))
     if len(required) > file_budget:
         raise ValueError('Sound inputs exceed the snapshot file budget.')
@@ -223,6 +234,15 @@ def input_assets(project_file, project_dir, *, strict=False,
         _safe(path)
         wav_info(path)  # Same bounded PCM16 RIFF/RF64 validation as the renderer.
         files[member] = path
+    from .recording import RecordingService, RecordingOptions
+    for payload in projects:
+        reference = payload['source_reference']
+        if reference is not None and reference.get('kind') == 'microphone-recording':
+            receipt = reference['receipt']
+            actual = RecordingService._audio(directory / reference['asset'],
+                RecordingOptions(**receipt['limits']), cancelled)
+            if actual != receipt['audio']:
+                raise ValueError('The retained microphone input differs from its original receipt.')
     return files
 
 

@@ -17,7 +17,7 @@ from . import ffmpeg as audio
 from .jobs import (ChunkCache, RenderCancelled, atomic_json, checked_directory,
                    check_cancelled, file_identity, project_lock, publish_new,
                    publish_noreplace, read_json, regular_file, sha256_file)
-from .models import (Effect, Line, MusicCue, Pause, ProductionPlan, Role, Scene,
+from .models import (Clip, Effect, Line, MusicCue, Pause, ProductionPlan, Role, Scene,
                      Sound, canonical, digest, text)
 
 
@@ -36,6 +36,13 @@ Alice: Hello.
 [pause 2]
 Bob: Hello again.
 [sound door.wav gain=0.5 pan=right]
+[clip rain.wav id=rain-bed start=0 trim_start=1 duration=20 gain_db=-18 track=ambience fade_in=1 fade_out=2]
+[duration 25]
+
+Clips overlay the chapter timeline without moving spoken lines. Supported clip
+tracks: sfx, ambience, music, microphone. Clip start and trim are seconds;
+duration is optional (remaining source). Pan is -1 to 1; gain is -60 to +12 dB.
+Up to 32 local PCM WAV/RF64 clips per chapter. Ambience/music duck under foreground.
 
 Plain lines use Narrator. Put local PCM WAV effects in the project's assets
 folder. Use [music off] for a dry scene. Supported role settings: voice,
@@ -77,11 +84,12 @@ def _pan(value):
     return {'left': -1.0, 'center': 0.0, 'right': 1.0}.get(value, None) if value in ('left', 'center', 'right') else float(value)
 
 
-def parse_script(script, *, title='Audio project', voice='sapi5:default', language='en'):
+def parse_script(script, *, title='Audio project', voice='sapi5:default', language='en', _ranges=None):
     """Parse explicit, bounded instructions; preserve the original script verbatim."""
     text(script, 'Script', 16 * 1024 * 1024)
     roles = {'Narrator': Role('Narrator', voice=voice, language=language)}
     scenes, events, scene_title, music = [], [], title, None
+    clips, minimum_duration, scene_start, version = [], 0.0, 0, 1
     serial = 0
     settings = {}
     used_roles = set()
@@ -91,19 +99,24 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
         serial += 1
         return f'event-{serial:08d}'
 
-    def finish():
-        nonlocal events
-        if events:
-            scenes.append(Scene(f'scene-{len(scenes)+1:06d}', scene_title, tuple(events), music))
-            events = []
+    def finish(end):
+        nonlocal events, clips, minimum_duration
+        if events or clips or minimum_duration:
+            scenes.append(Scene(f'scene-{len(scenes)+1:06d}', scene_title, tuple(events), music,
+                                tuple(clips), minimum_duration))
+            if _ranges is not None:
+                _ranges.append((scene_start, end))
+            events, clips, minimum_duration = [], [], 0.0
 
-    for lineno, original in enumerate(script.splitlines(), 1):
+    script_lines = script.splitlines()
+    for lineno, original in enumerate(script_lines, 1):
         line = original.strip()
         if not line:
             continue
         try:
             if line.startswith('# '):
-                finish()
+                finish(lineno - 1)
+                scene_start = lineno
                 scene_title, music = line[2:].strip(), None
                 text(scene_title, 'Chapter title', 500)
                 continue
@@ -150,6 +163,24 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
                     if 'pan' in p:
                         p['pan'] = _pan(p['pan'])
                     events.append(Sound(event_id(), parts[1], **p))
+                elif kind == 'clip' and len(parts) >= 2:
+                    p = _options(parts[2:], ('id', 'start', 'gain_db', 'pan', 'track', 'trim_start',
+                                            'duration', 'fade_in', 'fade_out', 'title'))
+                    for key in ('start', 'gain_db', 'trim_start', 'duration', 'fade_in', 'fade_out'):
+                        if key in p:
+                            p[key] = float(p[key])
+                    if 'pan' in p:
+                        p['pan'] = _pan(p['pan'])
+                    clip_id = p.pop('id', None) or ('clip-' + event_id())
+                    clips.append(Clip(clip_id, parts[1], **p))
+                    version = 2
+                elif kind == 'duration' and len(parts) == 2:
+                    if minimum_duration:
+                        raise ValueError('Set the chapter minimum duration once.')
+                    minimum_duration = float(parts[1])
+                    from .models import number, MAX_CLIP_SECONDS
+                    number(minimum_duration, 0.000001, MAX_CLIP_SECONDS, 'Chapter minimum duration')
+                    version = 2
                 elif kind == 'effect' and len(parts) >= 3:
                     from .models import EFFECT_PARAMETERS
                     role_name, effect_name = parts[1:3]
@@ -186,8 +217,8 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
             used_roles.add('Narrator')
         except (ValueError, TypeError, KeyError) as exc:
             raise ValueError(f'Script line {lineno}: {exc}') from exc
-    finish()
-    return ProductionPlan(title, script, tuple(roles.values()), tuple(scenes), **settings)
+    finish(len(script_lines))
+    return ProductionPlan(title, script, tuple(roles.values()), tuple(scenes), schema_version=version, **settings)
 
 
 def add_role_effect(script, role_name, effect, *, voice='sapi5:default', language='en'):
@@ -392,8 +423,8 @@ def render_project(plan, project_dir, *, engine, ffmpeg, cancelled=lambda: False
                     models[key] = model.manifest_sha256
                     if cue.engine in ('musicgen', 'ace-step'):
                         devices.append(model.settings.get('device', 'cpu'))
-            for event in scene.events:
-                if isinstance(event, Sound) and event.asset not in sounds:
+            for event in (*scene.events, *scene.clips):
+                if isinstance(event, (Sound, Clip)) and event.asset not in sounds:
                     asset = checked_directory(root / 'assets') / event.asset
                     regular_file(asset)
                     sounds[event.asset] = audio.wav_info(asset).seconds
@@ -476,8 +507,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                 model = selected_music_model(scene.music.model_manifest, scene.music.engine)
                 music_models[scene.music.model_manifest] = model
                 music_identities[scene.music.model_manifest] = model.cache_identity()
-        for event in scene.events:
-            if isinstance(event, Sound) and event.asset not in assets:
+        for event in (*scene.events, *scene.clips):
+            if isinstance(event, (Sound, Clip)) and event.asset not in assets:
                 asset = checked_directory(root / 'assets') / event.asset
                 asset_identities[event.asset] = file_identity(regular_file(asset))
                 audio.wav_info(asset)
@@ -495,6 +526,15 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
             raise ValueError('The output destination is not a directory.')
         previous = _verified_output(output_dir, run_key, cancelled)
         if previous:
+            # The run key above was recomputed from this exact typed plan,
+            # current input identities and engines before accepting old audio.
+            # Only that successful resume may bind a legacy completion marker.
+            plan_hash = digest(plan.to_dict())
+            if 'plan_sha256' in previous and previous['plan_sha256'] != plan_hash:
+                raise ValueError('The completed production has a different typed-plan receipt.')
+            if 'plan_sha256' not in previous:
+                previous = {**previous, 'plan_sha256': plan_hash}
+                atomic_json(output_dir / 'complete.json', previous)
             # Repair a journal left running/failed by death after directory move.
             atomic_json(root / 'render-journal.json', {'schema_version': 1, 'run_key': run_key,
                 'state': 'complete', 'output': str(output_dir / previous['output_name']),
@@ -638,7 +678,44 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                                 silent = silent or quiet(info['frames'])
                                 stem_parts[name].append(silent)
                     local_position += info['frames']
-                scene_frames = local_position
+                positioned, clip_timeline = [], []
+                scene_frames = max(local_position, round(scene.minimum_duration * plan.sample_rate))
+                if scene.clips:
+                    from .clip_audio import clip_window, process_clip, CLIP_MIX_REVISION
+                    for clip in scene.clips:
+                        check_cancelled(cancelled)
+                        asset = checked_directory(root / 'assets') / clip.asset
+                        raw_info = audio.wav_info(asset)
+                        window = clip_window(clip, raw_info, plan.sample_rate)
+                        stamp = asset_identities[clip.asset]
+                        source_hash = sha256_file(asset, cancelled=cancelled, expected_identity=stamp)
+                        if source_hash != assets[clip.asset]:
+                            raise RuntimeError('A retained clip changed during production.')
+                        chunk, info = cached({'kind': 'clip_processing', 'source_sha256': source_hash,
+                            'clip': asdict(clip), 'sample_rate': plan.sample_rate, 'processor': processor,
+                            'clip_revision': CLIP_MIX_REVISION},
+                            lambda path, a=asset, c=clip, identity=stamp: process_clip(
+                                a, path, c, ffmpeg=ffmpeg, sample_rate=plan.sample_rate,
+                                cancelled=cancelled, expected_identity=identity),
+                            estimate=window.frames * 4 + 80,
+                            dependencies=((asset, {'sha256': source_hash}),))
+                        if info['frames'] != window.frames:
+                            raise ValueError('A clip checkpoint has different selected sample bounds.')
+                        positioned.append((clip, chunk, info, window))
+                        scene_frames = max(scene_frames, window.start_frame + info['frames'])
+                        clip_timeline.append({'clip_id': clip.id, 'asset': clip.asset, 'track': clip.track,
+                            'start_frame': window.start_frame, 'frames': info['frames'],
+                            'sha256': info['sha256'], 'source_sha256': source_hash,
+                            'source_rate': raw_info.rate, 'source_frames': raw_info.frames,
+                            'source_start': window.source_start, 'source_end': window.source_end,
+                            'fade_in': window.fade_in, 'fade_out': window.fade_out})
+                scene_frames = max(1, scene_frames)
+                if scene_frames > local_position:
+                    tail = quiet(scene_frames - local_position)
+                    segments.append(tail)
+                    if plan.export_stems:
+                        for parts in stem_parts.values():
+                            parts.append(tail)
                 core, core_info = cached({'kind': 'scene_narration', 'parts': [i['sha256'] for _, i in segments]},
                     lambda path: audio.concatenate([p for p, _ in segments], path, cancelled=cancelled),
                     estimate=scene_frames * 4 + 80, dependencies=segments)
@@ -695,13 +772,30 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                                     'model': music_identities.get(cue.model_manifest)},
                         estimate=scene_frames * 6 + 80, companions=companions)
                     music_companions.append((scene_index + 1, music_info))
-                mixed, mixed_info = cached({'kind': 'scene_mix', 'voice_sha256': core_info['sha256'],
-                    'music_sha256': music_info['sha256'] if music_info else None,
-                    'gain': scene.music.gain if scene.music else None, 'processor': processor,
-                    'mix_revision': audio.MIX_REVISION},
-                    lambda path: audio.mix_scene(core, music_file, path, ffmpeg=ffmpeg,
-                        music_gain=scene.music.gain if scene.music else 0, cancelled=cancelled), estimate=scene_frames * 4 + 80,
-                    dependencies=((core, core_info),) + (((music_file, music_info),) if music_file else ()))
+                if positioned:
+                    from .clip_audio import mix_tracks, CLIP_MIX_REVISION
+                    mix_settings = {'kind': 'clip_scene_mix', 'voice_sha256': core_info['sha256'],
+                        'clips': [{'sha256': info['sha256'], 'start_frame': window.start_frame,
+                                   'track': clip.track} for clip, _, info, window in positioned],
+                        'music_sha256': music_info['sha256'] if music_info else None,
+                        'gain': scene.music.gain if scene.music else None, 'processor': processor,
+                        'clip_revision': CLIP_MIX_REVISION, 'frames': scene_frames}
+                    mixed, mixed_info = cached(mix_settings,
+                        lambda path: mix_tracks(core,
+                            [(chunk, window.start_frame, clip.track) for clip, chunk, _, window in positioned],
+                            path, ffmpeg=ffmpeg, music=music_file,
+                            music_gain=scene.music.gain if scene.music else 0, cancelled=cancelled),
+                        estimate=scene_frames * 4 + 80,
+                        dependencies=((core, core_info),) + tuple((chunk, info) for _, chunk, info, _ in positioned)
+                                     + (((music_file, music_info),) if music_file else ()))
+                else:
+                    mixed, mixed_info = cached({'kind': 'scene_mix', 'voice_sha256': core_info['sha256'],
+                        'music_sha256': music_info['sha256'] if music_info else None,
+                        'gain': scene.music.gain if scene.music else None, 'processor': processor,
+                        'mix_revision': audio.MIX_REVISION},
+                        lambda path: audio.mix_scene(core, music_file, path, ffmpeg=ffmpeg,
+                            music_gain=scene.music.gain if scene.music else 0, cancelled=cancelled), estimate=scene_frames * 4 + 80,
+                        dependencies=((core, core_info),) + (((music_file, music_info),) if music_file else ()))
                 scene_audio.append((mixed, mixed_info))
                 stems = {}
                 if plan.export_stems:
@@ -720,15 +814,40 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                                 gain=scene.music.gain, cancelled=cancelled), estimate=scene_frames * 4 + 80,
                             dependencies=((music_file, music_info),))
                         stems['Music (dry)'] = (stem, metadata)
+                    if positioned:
+                        from .clip_audio import mix_tracks, CLIP_MIX_REVISION
+                        empty, empty_info = quiet(scene_frames)
+                        for track in ('sfx', 'ambience', 'music', 'microphone'):
+                            chosen = [(clip, chunk, info, window) for clip, chunk, info, window in positioned if clip.track == track]
+                            if not chosen:
+                                continue
+                            stem, metadata = cached({'kind': 'clip_track_stem', 'track': track,
+                                'clips': [{'sha256': info['sha256'], 'start_frame': window.start_frame}
+                                          for _, _, info, window in chosen],
+                                'frames': scene_frames, 'rate': plan.sample_rate, 'processor': processor,
+                                'clip_revision': CLIP_MIX_REVISION},
+                                lambda path, selected=chosen: mix_tracks(empty,
+                                    [(chunk, window.start_frame, clip.track) for clip, chunk, _, window in selected],
+                                    path, ffmpeg=ffmpeg, duck=False, cancelled=cancelled),
+                                estimate=scene_frames * 4 + 80,
+                                dependencies=((empty, empty_info),) + tuple((chunk, info) for _, chunk, info, _ in chosen))
+                            label = 'Clip track: ' + track
+                            while label in stems:
+                                label = 'Clips / ' + label
+                            stems[label] = (stem, metadata)
                 scene_stems.append(stems)
                 chapters.append({'id': scene.id, 'title': scene.title, 'start_frame': position,
                                  'end_frame': position + mixed_info['frames'], 'sample_rate': plan.sample_rate})
-                timeline.append({'scene_id': scene.id, 'events': timed})
+                row = {'scene_id': scene.id, 'events': timed}
+                if plan.schema_version == 2:
+                    row['clips'] = clip_timeline
+                    row['minimum_duration'] = scene.minimum_duration
+                timeline.append(row)
                 position += mixed_info['frames']
                 checkpoint(f'Chapter {scene_index+1} is complete and saved.')
 
             cache.reserve(position * 4 * (2 + (plan.output_format != 'wav')
-                + (len(role_names) + 2 if plan.export_stems else 0)) + 1024 ** 2)
+                + (len(role_names) + 2 + (4 if any(s.clips for s in plan.scenes) else 0) if plan.export_stems else 0)) + 1024 ** 2)
             scene_identities = verify_dependencies(scene_audio)
             staged_output = checked_directory(temp / 'finished', create=True)
             master = staged_output / 'master.wav'
@@ -760,7 +879,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                 srt.extend([str(index), f"{_timestamp(item['start_frame'], plan.sample_rate, srt=True)} --> {_timestamp(item['end_frame'], plan.sample_rate, srt=True)}",
                             item['role'] + ': ' + item['text'], ''])
             _write_text_new(staged_output / 'subtitles.srt', '\n'.join(srt))
-            atomic_json(staged_output / 'timeline.json', {'schema_version': 1, 'sample_rate': plan.sample_rate,
+            atomic_json(staged_output / 'timeline.json', {'schema_version': plan.schema_version, 'sample_rate': plan.sample_rate,
                 'source_sha256': plan.source_sha256, 'chapters': chapters, 'lines': subtitles, 'scenes': timeline})
             metadata = [';FFMETADATA1', 'title=' + _metadata_escape(plan.title)]
             for chapter in chapters:
@@ -776,7 +895,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                       'sha256': sha256_file(path, cancelled=cancelled)} for path in sorted(staged_output.iterdir())]
             result = {'schema_version': 1, 'status': 'complete', 'run_key': run_key,
                       'input_kind': plan.input_kind,
-                      'source_sha256': plan.source_sha256, 'output_name': output_name,
+                      'source_sha256': plan.source_sha256, 'plan_sha256': digest(plan.to_dict()),
+                      'output_name': output_name,
                       'duration_seconds': position / plan.sample_rate, 'sample_rate': plan.sample_rate,
                       'frames': position, 'chapters': chapters, 'stem_names': stem_names, 'stem_labels': stem_labels,
                       'measurements': measurements, 'files': files, 'engines': identities, 'processor': processor,

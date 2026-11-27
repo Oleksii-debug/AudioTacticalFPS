@@ -56,6 +56,162 @@ def _terminate(process):
         process.wait(timeout=5)
 
 
+def wait_for_cleanup(error):
+    """Settle a retained owner before a synchronous caller unwinds its scopes.
+
+    Call this on an operation worker, never the GUI thread. Files, explicit
+    streams and admission leases stay owned until the whole native family is
+    quiescent. Interrupts are delivered after that boundary, not discarded.
+    """
+    from .capture_types import AudioCleanupPending
+    if not isinstance(error, AudioCleanupPending):
+        raise TypeError('An owned pending-cleanup error is required.')
+    owner = error.cleanup_owner
+    interrupted = None
+    while True:
+        try:
+            if owner.quiescent_event.is_set():
+                break
+            owner.close()
+            if not owner.quiescent_event.is_set():
+                owner.quiescent_event.wait(.25)
+        except (KeyboardInterrupt, SystemExit) as exc:
+            if interrupted is None:
+                interrupted = exc
+    if interrupted is not None:
+        raise interrupted
+
+
+def start_owned_process(args, *, cwd=None, env=None, stdin_pipe=False,
+                        stdin_file=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE):
+    """Start one native-owned family with only explicit standard streams.
+
+    This is the synchronous-call boundary used by legacy speech, rendering,
+    ingestion and transcription adapters. It introduces no execution deadline;
+    their existing operation/segment budgets and cancellation remain in force.
+    """
+    from .capture_types import AudioCleanupPending
+    from .windows_job import JobProcess, _stream
+    if (not isinstance(args, (tuple, list)) or not args
+            or any(type(item) is not str or '\x00' in item for item in args)
+            or not Path(args[0]).is_absolute()):
+        raise ValueError('Use an argument vector with an absolute local executable.')
+    if type(stdin_pipe) is not bool or (stdin_pipe and stdin_file is not None):
+        raise ValueError('Owned processes require one explicit stdin mode.')
+    if stdin_file is not None:
+        _stream(stdin_file, input_stream=True)
+    for selected in (stdout, stderr):
+        if type(selected) is int and selected in (subprocess.PIPE, subprocess.DEVNULL):
+            continue
+        _stream(selected)
+    environment = native_audio_environment(env)
+    try:
+        if os.name == 'nt':
+            return JobProcess(args, cwd=cwd, env=environment, stdin_pipe=stdin_pipe,
+                              stdin_file=stdin_file, stdout=stdout, stderr=stderr)
+        return subprocess.Popen(args, cwd=cwd, env=environment, shell=False,
+            start_new_session=True,
+            stdin=subprocess.PIPE if stdin_pipe else (
+                subprocess.DEVNULL if stdin_file is None else stdin_file),
+            stdout=stdout, stderr=stderr)
+    except AudioCleanupPending as exc:
+        wait_for_cleanup(exc)
+        if isinstance(exc.__cause__, (KeyboardInterrupt, SystemExit)):
+            raise exc.__cause__
+        raise
+
+
+def _posix_group_quiescent(group):
+    """Confirm no live member remains; Linux zombies cannot retain writers.
+
+    A container's PID 1 may leave an orphan zombie unreaped indefinitely. It
+    owns no descriptors and cannot execute. Only an actual bounded /proc scan
+    of this exact killed group can distinguish that from a live descendant.
+    Other POSIX platforms keep the stronger group-disappearance check.
+    """
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return True
+    import sys
+    if not sys.platform.startswith('linux'):
+        return False
+    seen = False
+    try:
+        with os.scandir('/proc') as entries:
+            for count, entry in enumerate(entries, 1):
+                if count > 100000:
+                    return False
+                if not entry.name.isdecimal():
+                    continue
+                try:
+                    if os.getpgid(int(entry.name)) != group:
+                        continue
+                    with open('/proc/' + entry.name + '/stat', 'rb') as stream:
+                        raw = stream.read(4097)
+                    if len(raw) > 4096:
+                        return False
+                    fields = raw.rsplit(b')', 1)[1].split()
+                    if len(fields) < 3 or int(fields[2]) != group:
+                        return False
+                    seen = True
+                    if fields[0] not in (b'Z', b'X'):
+                        return False
+                except ProcessLookupError:
+                    continue
+                except FileNotFoundError:
+                    continue
+    except (OSError, IndexError, ValueError):
+        return False
+    if seen:
+        return True
+    # No visible member is not proof under hidepid or a changing process table.
+    try:
+        os.killpg(group, 0)
+    except ProcessLookupError:
+        return True
+    return False
+
+
+def _close_owned_family(process):
+    if getattr(process, '_carr_family_quiescent', False):
+        return True
+    if os.name == 'nt':
+        if process.close() is False:
+            raise AudioError('The owned native family has not confirmed shutdown.')
+        process._carr_family_quiescent = True
+        return True
+    _terminate(process)
+    # The session leader can exit before an inference or codec descendant.
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    deadline = time.monotonic() + 2
+    while not _posix_group_quiescent(process.pid):
+        if time.monotonic() >= deadline:
+            raise AudioError('The owned audio process family has not confirmed shutdown.')
+        time.sleep(.02)
+    process._carr_family_quiescent = True
+    return True
+
+
+def stop_owned_process(process):
+    """Do not release a caller's stage/lease until its exact family is stopped."""
+    try:
+        return _close_owned_family(process)
+    except (Exception, KeyboardInterrupt, SystemExit) as exc:
+        from .cleanup import pending_cleanup
+        error = pending_cleanup(lambda: _close_owned_family(process),
+            message='Owned process cleanup is pending; operation resources remain reserved.')
+        wait_for_cleanup(error)
+        if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+            raise
+        # A transient native cleanup failure has now recovered. The caller's
+        # original cancellation/error, if any, resumes through its own finally.
+        return True
+
+
 def run_process(args, *, budget=None, cancelled=lambda: False,
                 watch=(), progress=None, env=None, cwd=None, owned_tree=False,
                 stop_requested=None, allow_failure=False):
@@ -208,25 +364,9 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
                              stopped_at is not None)
     finally:
         def cleanup_process():
-            if owned_tree and os.name == 'nt':
-                return process.close()
+            if owned_tree:
+                return _close_owned_family(process)
             _terminate(process)
-            if owned_tree and os.name == 'posix':
-                # Kill only the session created by this call, even when its
-                # root exited before its own inference child.
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                deadline = time.monotonic() + 2
-                while True:
-                    try:
-                        os.killpg(process.pid, 0)
-                    except ProcessLookupError:
-                        break
-                    if time.monotonic() >= deadline:
-                        raise AudioError('The owned capture process family has not confirmed shutdown.')
-                    time.sleep(.02)
             return True
 
         def release_streams():
@@ -245,7 +385,7 @@ def run_process(args, *, budget=None, cancelled=lambda: False,
         try:
             if cleanup_process() is False:
                 raise AudioError('The native capture family has not confirmed shutdown.')
-        except Exception as exc:
+        except (Exception, KeyboardInterrupt, SystemExit) as exc:
             from .cleanup import pending_cleanup
             raise pending_cleanup(cleanup_process,
                 message='Audio process cleanup is still pending; its admission remains reserved.',

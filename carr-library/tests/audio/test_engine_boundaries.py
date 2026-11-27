@@ -34,7 +34,7 @@ def engine_with_voice():
 @pytest.mark.parametrize('timeout', [True, 0, -1, float('nan'), float('inf'), '1', 10 ** 1000],
                          ids=['bool', 'zero', 'negative', 'nan', 'infinity', 'string', 'overflow'])
 def test_invalid_worker_deadline_never_launches(timeout, monkeypatch):
-    monkeypatch.setattr(engines.subprocess, 'Popen', lambda *args, **kwargs: pytest.fail('Invalid timeout launched a worker.'))
+    monkeypatch.setattr(engines, 'start_owned_process', lambda *args, **kwargs: pytest.fail('Invalid timeout launched a worker.'))
     with pytest.raises(ValueError):
         engines._run([sys.executable, '-c', 'pass'], timeout=timeout)
 
@@ -42,7 +42,7 @@ def test_invalid_worker_deadline_never_launches(timeout, monkeypatch):
 def test_finished_worker_still_obeys_absolute_deadline(monkeypatch):
     # Deterministic completion between polls, after the deadline has elapsed.
     process = type('Exited', (), {'returncode': 0, 'poll': lambda self: 0})()
-    monkeypatch.setattr(engines.subprocess, 'Popen', lambda *args, **kwargs: process)
+    monkeypatch.setattr(engines, 'start_owned_process', lambda *args, **kwargs: process)
     monkeypatch.setattr(engines, '_stop', lambda process: None)
     ticks = iter((0.0, 2.0, 2.0, 2.0))
     monkeypatch.setattr(engines.time, 'monotonic', lambda: next(ticks))
@@ -204,61 +204,86 @@ def test_engine_publication_moves_private_stage_without_hardlink_alias(tmp_path)
     assert not stage.exists()
 
 
-@pytest.mark.skipif(os.name == 'nt', reason='POSIX owned process-group cleanup; Windows uses taskkill.')
-def test_cancellation_stops_descendant_after_its_process_group_leader_exits(tmp_path):
+def test_cancellation_stops_descendant_after_its_process_group_leader_exits(tmp_path, monkeypatch):
     record = tmp_path / 'child.json'
     code = '''
 import json, os, subprocess, sys
 from pathlib import Path
 child = subprocess.Popen([sys.executable, '-I', '-c', 'import time;time.sleep(30)'])
-Path(sys.argv[1]).write_text(json.dumps([child.pid, os.getpgrp()]), encoding='utf-8')
+Path(sys.argv[1]).write_text(json.dumps([child.pid]), encoding='utf-8')
 '''
+    original = engines.start_owned_process
+    owned = []
+
+    def launch(*args, **kwargs):
+        child = original(*args, **kwargs)
+        owned.append(child)
+        return child
+
+    monkeypatch.setattr(engines, 'start_owned_process', launch)
+
     def cancelled():
         if record.exists():
             time.sleep(.05)  # The leader exits before cancellation is observed.
             return True
         return False
+
     def running(pid):
+        if os.name == 'nt':
+            import ctypes
+            kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel.OpenProcess.argtypes = [ctypes.c_uint32, ctypes.c_int, ctypes.c_uint32]
+            kernel.OpenProcess.restype = ctypes.c_void_p
+            kernel.WaitForSingleObject.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
+            kernel.WaitForSingleObject.restype = ctypes.c_uint32
+            kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+            kernel.CloseHandle.restype = ctypes.c_int
+            handle = kernel.OpenProcess(0x00100000, False, pid)
+            if not handle:
+                assert ctypes.get_last_error() == 87, 'Child state is not verifiable.'
+                return False
+            try:
+                outcome = kernel.WaitForSingleObject(handle, 0)
+                assert outcome in (0, 0x102)
+                return outcome == 0x102
+            finally:
+                assert kernel.CloseHandle(handle)
         try:
             os.kill(pid, 0)
         except ProcessLookupError:
             return False
         status = Path('/proc') / str(pid) / 'stat'
         if status.exists():
-            return status.read_text().split(')', 1)[1].split()[0] != 'Z'
+            return status.read_text().rsplit(')', 1)[1].split()[0] not in ('Z', 'X')
         return True
+
     try:
         with pytest.raises(InterruptedError):
             engines._run([Path(sys.executable).resolve(), '-I', '-c', code, record],
                          cancelled=cancelled, timeout=5)
-        pid, _ = json.loads(record.read_text())
+        pid, = json.loads(record.read_text())
         deadline = time.monotonic() + 2
         while running(pid) and time.monotonic() < deadline:
             time.sleep(.025)
         assert not running(pid), 'The exited helper left a live owned descendant.'
     finally:
-        if record.exists():
-            _, group = json.loads(record.read_text())
-            try:
-                os.killpg(group, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
+        for child in owned:
+            if os.name == 'nt':
+                child.close()
+            else:
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
 
 
-def test_windows_cleanup_does_not_open_a_console(tmp_path, monkeypatch):
-    monkeypatch.setattr(engines, 'os', SimpleNamespace(name='nt', environ={'SystemRoot': str(tmp_path)}))
-    monkeypatch.setattr(engines.subprocess, 'CREATE_NO_WINDOW', 0x08000000, raising=False)
-    calls = []
-    monkeypatch.setattr(engines.subprocess, 'run', lambda command, **options: calls.append((command, options)))
-    class Process:
-        pid = 123
-        returncode = None
-        def poll(self): return self.returncode
-        def kill(self): self.returncode = 1
-        def wait(self, *, timeout): return self.returncode
-    engines._stop(Process())
-    assert calls[0][1]['creationflags'] == 0x08000000
-    assert calls[0][1]['timeout'] == 5
+def test_native_worker_does_not_start_a_console_or_a_taskkill_helper(monkeypatch):
+    monkeypatch.setattr(engines.subprocess, 'run',
+        lambda *args, **kwargs: pytest.fail('A speech owner launched an unowned cleanup helper.'))
+    code = ("import os; "
+            "print(__import__('ctypes').windll.kernel32.GetConsoleWindow() if os.name=='nt' else 'posix')")
+    result = engines._run([str(Path(sys.executable).resolve()), '-I', '-c', code], timeout=5)
+    assert result.strip() == (b'0' if os.name == 'nt' else b'posix')
 
 
 def test_dordiai_rejects_duplicate_completion_fields_from_actual_worker(tmp_path):

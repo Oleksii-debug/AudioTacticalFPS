@@ -18,7 +18,8 @@ import pytest
 from carr_library.application import LibraryApp
 from carr_library.assistant import AssistantService, Scope
 from carr_library.assistant.llm import local_plan_request, propose_local_plan
-from carr_library.providers import BudgetLedger, JobApproval, ProfileStore, ProviderGateway, ProviderProfile
+from carr_library.providers import (BudgetLedger, JobApproval, ProfileStore, ProviderError,
+                                    ProviderGateway, ProviderProfile)
 
 
 def cli(root, *arguments):
@@ -143,15 +144,44 @@ def test_saved_profile_change_during_real_response_discards_proposal(configured,
 
 @pytest.mark.parametrize('when', ['before', 'during'])
 def test_real_cancellation_does_not_create_an_approved_job(configured, planner_server, when):
-    app, _, _ = configured
+    app, store, profile = configured
+    instruction = 'Create a library.'
+    request = local_plan_request(instruction)
+    approval = JobApproval(uuid4().hex, profile.fingerprint,
+        (request.fingerprint(profile),), allow_loopback=True)
+    operation_id = uuid4().hex
+    ledger = BudgetLedger(app.root / 'api-operations.sqlite')
+    gateway = ProviderGateway(ledger)
     cancelled = Event()
     if when == 'before':
         cancelled.set()
     else:
         planner_server['on_request'] = cancelled.set
-    with pytest.raises((InterruptedError, RuntimeError)):
-        propose(configured, 'Create a library.', Scope(allow_create=True), cancelled=cancelled.is_set)
+
+    # The shared gateway preserves its safe error and durable transmission
+    # outcome; a later assistant cancellation must not erase uncertain state.
+    message = 'cancelled before transmission' if when == 'before' else 'uncertain charge status'
+    with pytest.raises(ProviderError, match=message):
+        propose_local_plan(AssistantService(app), gateway, profile, instruction,
+            Scope(allow_create=True), approval=approval, operation_id=operation_id,
+            cancelled=cancelled.is_set, profile_store=store)
     assert len(planner_server['requests']) == int(when == 'during')
+    recorded = ledger.report(approval.job_id)
+    if when == 'before':
+        assert recorded == []
+    else:
+        assert recorded == [{
+            'id': operation_id, 'job': approval.job_id,
+            'request_hash': request.fingerprint(profile), 'estimate_micros': 0,
+            'state': 'uncertain', 'output_sha256': None,
+        }]
+        cancelled.clear()
+        with pytest.raises(ProviderError, match='already recorded'):
+            propose_local_plan(AssistantService(app), gateway, profile, instruction,
+                Scope(allow_create=True), approval=approval, operation_id=operation_id,
+                cancelled=cancelled.is_set, profile_store=store)
+        assert len(planner_server['requests']) == 1
+        assert ledger.report(approval.job_id) == recorded
     assert AssistantService(app).jobs() == () and app.workspaces() == ()
 
 

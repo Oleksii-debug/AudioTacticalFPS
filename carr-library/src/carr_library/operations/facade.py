@@ -25,6 +25,7 @@ _LOCATIONS = {
     'import': ('import-batches', False, 16 * 1024 * 1024),
     'studio': ('audio-projects', True, 1024 * 1024),
     'translation': ('state/translation', False, 64 * 1024 * 1024),
+    'recording': ('state/studio/recordings', False, 65536),
 }
 _TERMINAL = {'complete', 'cancelled', 'failed', 'attention', 'superseded',
              'quarantined', 'conflict', 'timed_out'}
@@ -119,7 +120,7 @@ def resource_view(snapshot):
         request = ResourceRequest.from_dict(row['request'])
         operation = row.get('operation_id')
         if (type(operation) is not str or re.fullmatch(
-                r'(?:asr|studio|document|assistant|translation|import):[0-9a-f]{32}', operation) is None):
+                r'(?:asr|studio|document|assistant|translation|import|recording):[0-9a-f]{32}', operation) is None):
             operation = 'other'
         leases.append({
             'id': row['id'], 'operation_id': operation,
@@ -220,6 +221,12 @@ class OperationFacade:
             updated, unit = _stamp(data['updated']), 'chunks'
             phase = ('Stored translation checkpoint; accepted chunks.' if bound else
                      'Archived translation binding; reopen Translation to review access.')
+        elif kind == 'recording':
+            from ..audio.recording import validate_recording_receipt
+            validate_recording_receipt(data, recording_id=identity)
+            status, completed, total = 'complete', data['audio']['frames'], data['audio']['frames']
+            updated, unit = _stamp(data['created']), 'PCM frames'
+            phase = 'Stored capture receipt; opening the saved recording verifies its PCM bytes.'
         elif kind == 'import':
             from ..ingest.batches import ImportBatchStore
             # _validate is the current store's pure validator; do not call its

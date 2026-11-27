@@ -231,7 +231,7 @@ class JobProcess:
                             pass
             try:
                 self.close()
-            except Exception:
+            except (Exception, KeyboardInterrupt, SystemExit):
                 cleanup_deferred = True
                 from .cleanup import pending_cleanup
                 raise pending_cleanup(self.close,

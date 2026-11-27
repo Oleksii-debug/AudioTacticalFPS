@@ -36,22 +36,45 @@ def operation_progress_for(window):
 
 
 class _AudioHold:
-    def __init__(self, presenter):
-        self.presenter, self.closed = presenter, False
+    def __init__(self, presenter, *, recording=False):
+        self.presenter, self.closed, self.recording = presenter, False, recording
         self.token = object()
         presenter._holds.add(self.token)
-        presenter._environment()
+        if recording:
+            presenter._recording_holds.add(self.token)
+        try:
+            presenter._environment()
+        except BaseException:
+            presenter._holds.discard(self.token)
+            presenter._recording_holds.discard(self.token)
+            raise
 
     @property
     def ready(self):
         return (not self.closed and not self.presenter.closed
-                and self.presenter.notifications.quiescent)
+                and self.presenter.notifications.quiescent
+                and (not self.recording or self.presenter._players_quiescent()))
 
     def close(self):
         if not self.closed:
             self.closed = True
-            self.presenter._holds.discard(self.token)
-            self.presenter._environment()
+            def release():
+                self.presenter._holds.discard(self.token)
+                self.presenter._recording_holds.discard(self.token)
+                self.presenter._environment()
+            wx = self.presenter.wx
+            is_main = getattr(wx, 'IsMainThread',
+                              lambda: threading.current_thread() is threading.main_thread())
+            if is_main():
+                release()
+            else:
+                # Native cleanup callbacks run off the wx thread. Retain the
+                # quiet token until the existing event loop observes quiescence.
+                try:
+                    wx.CallAfter(release)
+                except RuntimeError:
+                    pass  # A destroyed host cannot safely resume notifications.
+
 
 
 class _MediaRequest:
@@ -71,6 +94,10 @@ class _MediaRequest:
         if (self.presenter.closed or not self.presenter.scope_current
                 or self.presenter.library is not self.scope or not self.alive()):
             self.close()
+            return
+        if self.presenter._recording_holds:
+            self.close()
+            self.failed(RuntimeError('Stop the microphone recording and confirm cleanup before starting playback.'))
             return
         if not self.hold.ready:
             if self.presenter.clock() >= self.deadline:
@@ -106,6 +133,7 @@ class OperationProgress:
         self.closed, self.session_quiet = False, False
         self._started, self._last_sequence, self._notice_error = None, None, ''
         self._players, self._holds, self._requests = {}, set(), set()
+        self._recording_holds = set()
         self._voice_cancel = threading.Event()
         self._voice_executor = None
         self.preferences, self.load_notice = self._load()
@@ -277,12 +305,36 @@ class OperationProgress:
             self.notifications.environment(foreground=self._foreground(),
                                            media_active=self._media_active())
 
-    def hold_audio(self):
-        return _AudioHold(self)
+    def _players_quiescent(self):
+        """Recording needs known stopped output, not an inferred idle timer."""
+        for key, reference in tuple(self._players.items()):
+            player = reference()
+            if player is None:
+                self._players.pop(key, None)
+                continue
+            try:
+                if player.state not in ('idle', 'stopped', 'completed', 'closed'):
+                    return False
+            except Exception:
+                return False
+        return True
+
+    def hold_audio(self, *, recording=False):
+        if type(recording) is not bool:
+            raise ValueError('The recording quiet reservation must be explicit.')
+        if self.closed:
+            raise RuntimeError('The progress host has closed.')
+        if recording and (self._recording_holds or self._requests):
+            raise RuntimeError('Another recording or playback handoff is active. Stop it before recording.')
+        return _AudioHold(self, recording=recording)
 
     def media_action(self, action, *, alive=lambda: True, failed=None, timeout=5):
         """Wait asynchronously for our cue to stop before starting content."""
         if self.closed:
+            return None
+        if self._recording_holds:
+            (failed or (lambda exc: self.frame.report(str(exc))))(
+                RuntimeError('Stop the microphone recording and confirm cleanup before starting playback.'))
             return None
         if type(timeout) not in (int, float) or not 0 < timeout <= 30:
             raise ValueError('Content-start waiting must be bounded.')

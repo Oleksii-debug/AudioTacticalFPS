@@ -304,19 +304,19 @@ class TranscriptionService:
                 environment = offline_environment()
                 for name in ('PYTHONPATH', 'PYTHONHOME', 'PYTHONSTARTUP', 'PYTHONINSPECT'):
                     environment.pop(name, None)
-                options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)}
-                           if os.name == 'nt' else {'start_new_session': True})
+                from .audio.capture_process import start_owned_process, stop_owned_process
                 process, started, last_status = None, time.monotonic(), None
                 self._state(job, 'running', run_id)
-                try:
-                    with tempfile.TemporaryFile() as output:
+                with ExitStack() as execution:
+                    output = execution.enter_context(tempfile.TemporaryFile())
+                    try:
                         # Preparation and the supplied worker share its exact native lock.
                         # Release only at the launch boundary; the child owns execution.
                         preparation.close()
-                        process = subprocess.Popen([str(runtime.interpreter), '-B', '-I', str(runtime.worker),
-                                                    '--job-dir', str(job)], stdin=subprocess.DEVNULL,
-                                                   stdout=output, stderr=output, cwd=job, env=environment,
-                                                   shell=False, **options)
+                        process = start_owned_process([str(runtime.interpreter), '-B', '-I', str(runtime.worker),
+                                                       '--job-dir', str(job)], stdout=output, stderr=output,
+                                                      cwd=job, env=environment)
+                        execution.callback(stop_owned_process, process)
                         while True:
                             check_cancelled(cancelled)
                             if time.monotonic() - started >= timeout:
@@ -349,6 +349,8 @@ class TranscriptionService:
                             if exit_code is not None:
                                 break
                             time.sleep(.05)
+                        # Finish the entire owned family before accepting a receipt.
+                        stop_owned_process(process)
                         if exit_code == 130 and (job / 'stop.flag').exists():
                             if regular(job / 'stop.flag').st_size == 0:
                                 raise InterruptedError('The supplied transcription worker acknowledged the requested stop.')
@@ -362,17 +364,13 @@ class TranscriptionService:
                             raise ValueError('The transcription job changed during execution.')
                         self._state(job, 'complete', run_id)
                         return verified
-                except BaseException as error:
-                    try:
-                        if process is not None and process.poll() is None:
-                            self.control(identity, 'stop')
-                    finally:
-                        self._state(job, 'cancelled' if isinstance(error, InterruptedError) else 'failed', run_id)
-                    raise
-                finally:
-                    if process is not None:
-                        from .audio.engines import _stop
-                        _stop(process)
+                    except BaseException as error:
+                        try:
+                            if process is not None and process.poll() is None:
+                                self.control(identity, 'stop')
+                        finally:
+                            self._state(job, 'cancelled' if isinstance(error, InterruptedError) else 'failed', run_id)
+                        raise
 
     def completed(self, identity, *, cancelled=lambda: False):
         """Read a saved accepted execution without activating its external runtime.

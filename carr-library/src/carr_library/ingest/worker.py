@@ -3,7 +3,7 @@
 This is process isolation with time/resource limits, not an OS security sandbox.
 The existing ingest journal remains the only extraction/checkpoint pipeline.
 """
-from contextlib import closing, contextmanager, redirect_stdout
+from contextlib import ExitStack, closing, contextmanager, redirect_stdout
 from dataclasses import asdict
 from hashlib import sha256
 import json
@@ -462,32 +462,9 @@ def confirm_review(root, workspace, request_id, reviewer, *, confirmed, expected
 
 
 def _stop(process):
-    if process.poll() is not None:
-        return
-    if os.name == 'nt':
-        try:
-            subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                           timeout=5, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-        except (OSError, subprocess.SubprocessError):
-            process.kill()
-    else:
-        try:
-            os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-    try:
-        process.wait(timeout=1)
-    except subprocess.TimeoutExpired:
-        if os.name == 'nt':
-            process.kill()
-        else:
-            try:
-                os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-        process.wait(timeout=2)
-
+    """Keep parser streams and resource admission until its owned family stops."""
+    from ..audio.capture_process import stop_owned_process
+    stop_owned_process(process)
 
 def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
     metadata = dict(metadata)
@@ -655,76 +632,75 @@ def _execute_request(root, workspace, record, request_id, *, cancelled, timeout,
 
 def _invoke(message, *, timeout, cancelled=lambda: False, on_started=None):
     """One process supervisor for import and render operations."""
+    from ..audio.capture_process import start_owned_process
     payload = canonical(message).encode('utf-8')
     if len(payload) > MAX_REQUEST:
         raise ValueError('Import request is too large.')
+    if cancelled():
+        return {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
     result = None
-    process = None
-    try:
-        if cancelled():
-            result = {'state': 'cancelled', 'message': 'Import cancelled before native parsing.'}
-        else:
-            with TemporaryFile() as input_stream, TemporaryFile() as output, TemporaryFile() as errors:
-                input_stream.write(payload)
-                input_stream.seek(0)
-                options = ({'creationflags': getattr(subprocess, 'CREATE_NO_WINDOW', 0)
-                            | getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0)}
-                           if os.name == 'nt' else {'start_new_session': True})
-                # Isolated Python ignores CWD, user-site and inherited PYTHONPATH.
-                # Only paths derived from this trusted application file are added.
-                package_root = Path(__file__).resolve().parents[2]
-                roots = [str(package_root)]
-                if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
-                    roots.append(str(package_root.parent))
-                bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
-                             "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-                process = subprocess.Popen([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
-                                           stdin=input_stream, stdout=output, stderr=errors,
-                                           env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'),
-                                           **options)
-                if on_started is not None:
-                    on_started()
-                deadline = time.monotonic() + timeout
-                while process.poll() is None:
-                    if cancelled():
-                        result = {'state': 'cancelled', 'message':
-                                  'Import worker stopped. Resume checks saved checkpoints and publication.'}
-                        break
-                    if time.monotonic() >= deadline:
-                        result = {'state': 'timed_out', 'message':
-                                  'Import time limit reached. Saved checkpoints can be resumed.'}
-                        break
-                    if os.fstat(output.fileno()).st_size > MAX_REPLY or os.fstat(errors.fileno()).st_size > MAX_LOG:
-                        result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
-                        break
-                    time.sleep(0.05)
-                if result is None and (
-                        os.fstat(output.fileno()).st_size > MAX_REPLY
-                        or os.fstat(errors.fileno()).st_size > MAX_LOG):
-                    result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
-                if result is not None:
-                    _stop(process)
-                else:
-                    output.seek(0)
-                    raw = output.read(MAX_REPLY + 1)
-                    if len(raw) > MAX_REPLY:
-                        raise ValueError('Import worker reply exceeded its limit.')
-                    try:
-                        reply = json.loads(raw)
-                    except (UnicodeError, ValueError):
-                        reply = None
-                    if (process.returncode != 0 or not isinstance(reply, dict)
-                            or not isinstance(reply.get('result'), dict)):
-                        message = reply.get('error') if isinstance(reply, dict) else None
-                        result = {'state': 'failed', 'message': message or
-                                  f'Import worker exited unexpectedly ({process.returncode}).'}
-                    else:
-                        result = reply['result']
-    finally:
-        if process is not None and process.poll() is None:
-            _stop(process)
-    return result
-
+    with ExitStack() as owned:
+        # Reopen the bounded request with actual read-only native rights.
+        # Every stream outlives the owned family, including constructor failure.
+        temporary = owned.enter_context(TemporaryDirectory(prefix='carr-worker-request-'))
+        request_path = Path(temporary) / 'request.json'
+        with request_path.open('xb') as destination:
+            destination.write(payload)
+        input_stream = owned.enter_context(request_path.open('rb'))
+        output = owned.enter_context(TemporaryFile())
+        errors = owned.enter_context(TemporaryFile())
+        # Isolated Python ignores CWD, user-site and inherited PYTHONPATH.
+        # Only paths derived from this trusted application file are added.
+        package_root = Path(__file__).resolve().parents[2]
+        roots = [str(package_root)]
+        if (package_root.parent / 'bootstrap/vendor/cairn_extractors/hasher.py').is_file():
+            roots.append(str(package_root.parent))
+        bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
+                     "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+        process = start_owned_process(
+            [sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap, *roots],
+            stdin_file=input_stream, stdout=output, stderr=errors,
+            env=dict(os.environ, PYTHONUTF8='1', PYTHONIOENCODING='utf-8'))
+        owned.callback(_stop, process)
+        if on_started is not None:
+            on_started()
+        deadline = time.monotonic() + timeout
+        while process.poll() is None:
+            if cancelled():
+                result = {'state': 'cancelled', 'message':
+                          'Import worker stopped. Resume checks saved checkpoints and publication.'}
+                break
+            if time.monotonic() >= deadline:
+                result = {'state': 'timed_out', 'message':
+                          'Import time limit reached. Saved checkpoints can be resumed.'}
+                break
+            if os.fstat(output.fileno()).st_size > MAX_REPLY or os.fstat(errors.fileno()).st_size > MAX_LOG:
+                result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
+                break
+            time.sleep(0.05)
+        # A completed leader is not proof that its descendants stopped. Settle
+        # the complete native owner before accepting bytes or releasing streams.
+        _stop(process)
+        if result is None and (os.fstat(output.fileno()).st_size > MAX_REPLY
+                               or os.fstat(errors.fileno()).st_size > MAX_LOG):
+            result = {'state': 'failed', 'message': 'Import worker output exceeded its limit.'}
+        if result is None:
+            output.seek(0)
+            raw = output.read(MAX_REPLY + 1)
+            if len(raw) > MAX_REPLY:
+                raise ValueError('Import worker reply exceeded its limit.')
+            try:
+                reply = json.loads(raw)
+            except (UnicodeError, ValueError):
+                reply = None
+            if (process.returncode != 0 or not isinstance(reply, dict)
+                    or not isinstance(reply.get('result'), dict)):
+                failure = reply.get('error') if isinstance(reply, dict) else None
+                result = {'state': 'failed', 'message': failure or
+                          f'Import worker exited unexpectedly ({process.returncode}).'}
+            else:
+                result = reply['result']
+        return result
 
 def _resource_limits(timeout):
     try:

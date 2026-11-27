@@ -46,6 +46,13 @@ from .operations.policy_backup import (
     is_state_path as _resource_policy_path, state_paths as _resource_policy_files,
     validate_state_tree as _validate_resource_policy, snapshot_guard as _resource_policy_guard,
 )
+from .audio.recording_backup import (
+    DIRECTORY as RECORDING_DIRECTORY, MAX_FILES as MAX_RECORDING_FILES,
+    MAX_RECORDINGS, MAX_SNAPSHOT_BYTES as MAX_RECORDING_BYTES,
+    is_state_path as _recording_path, state_limit as _recording_limit,
+    allows_empty as _recording_empty, state_paths as _recording_files,
+    validate_state_tree as _validate_recordings, snapshot_guard as _recording_guard,
+)
 from .storage.revisions import Storage, CURRENT_SCHEMA_VERSION
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
 from .reader.reading_state import (
@@ -287,7 +294,8 @@ def _validate_transcriptions(db, root, *, cancelled=lambda: False):
 def _sidecar_allowed(value):
     parts = _portable_relative(value)
     if (_reader_path(value) or _assistant_path(value) or _historical_path(value)
-            or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)):
+            or _translation_path(value) or _transcription_path(value) or _resource_policy_path(value)
+            or _recording_path(value)):
         return True
     if (len(parts) < 3 or parts[0] != 'audio-projects'
             or not _PROJECT_ID.fullmatch(parts[1])):
@@ -368,10 +376,12 @@ def _sidecar_info(root, relative):
              _assistant_limit(relative) if _assistant_path(relative) else
              _translation_adapter().state_limit(relative) if _translation_path(relative) else
              _transcription_adapter().state_limit(relative) if _transcription_path(relative) else
+             _recording_limit(relative) if _recording_path(relative) else
              MAX_RESOURCE_POLICY if _resource_policy_path(relative) else
              MAX_SIDECAR_JSON_BYTES if relative.lower().endswith('.json') else MAX_SIDECAR_FILE_BYTES)
     minimum = 0 if (_historical_path(relative) or relative.lower().endswith(('.srt', '.vtt', '.ffmeta'))
-        or _transcription_path(relative) and _transcription_adapter().allows_empty(relative)) else 1
+        or _transcription_path(relative) and _transcription_adapter().allows_empty(relative)
+        or _recording_empty(relative)) else 1
     if not minimum <= info.st_size <= limit:
         raise RestoreError('sidecar file exceeds its size limit')
     return info
@@ -431,6 +441,7 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
     translation = _translation_files(root)
     transcription = ()
     resource_policy = _resource_policy_files(root, cancelled=cancelled)
+    recordings = _recording_files(root, cancelled=cancelled)
     with ExitStack() as stack:
         directory = root / 'state' / 'assistant'
         if os.path.lexists(directory):
@@ -458,6 +469,9 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
             except RuntimeError as exc:
                 raise RestoreError('A supplied transcription worker is active; retry the backup when it is idle.') from exc
             transcription = _transcription_files(root)
+        stack.enter_context(_recording_guard(root, cancelled=cancelled))
+        if _recording_files(root, cancelled=cancelled) != recordings:
+            raise RestoreError('Recording originals changed before backup; retry when capture is idle.')
         stack.enter_context(_resource_policy_guard(root, cancelled=cancelled))
         if _resource_policy_files(root, cancelled=cancelled) != resource_policy:
             raise RestoreError('Resource allowances changed before backup; retry after the update.')
@@ -485,7 +499,8 @@ def _locked_sidecars(root, max_files=MAX_SIDECAR_FILES, *, cancelled=lambda: Fal
             if (_projects(root) != projects or _assistant_documents(root, max_files) != assistant
                     or _translation_files(root) != translation
                     or _transcription_files(root) != transcription
-                    or _resource_policy_files(root, cancelled=cancelled) != resource_policy):
+                    or _resource_policy_files(root, cancelled=cancelled) != resource_policy
+                    or _recording_files(root, cancelled=cancelled) != recordings):
                 raise RestoreError('Saved projects or assistant checkpoints changed during backup. Retry when they are idle.')
         yield verify
 
@@ -632,6 +647,8 @@ def _sidecar_inventory(root, max_files, max_bytes, cancelled):
         add(path)
     for path in _resource_policy_files(root, cancelled=cancelled):
         add(path)
+    for path in _recording_files(root, cancelled=cancelled):
+        add(path)
     for project in _projects(root):
         for path in _studio_files(project, max_files):
             add(path)
@@ -653,7 +670,8 @@ def _copy_sidecar(root, relative, target, identity, cancelled):
     with os.fdopen(os.open(root / relative, flags), 'rb') as incoming, (target.open('xb') if target is not None else nullcontext()) as output:
         if _identity(os.fstat(incoming.fileno())) != identity:
             raise RestoreError('sidecar changed before copying')
-        if relative.lower().endswith('.wav') and not _transcription_path(relative):
+        if (relative.lower().endswith('.wav') and not _transcription_path(relative)
+                and not _recording_path(relative)):
             header = incoming.read(12)
             if len(header) != 12 or header[:4] not in (b'RIFF', b'RF64') or header[8:] != b'WAVE':
                 raise RestoreError('project audio artifact is not a WAV or RF64 file')
@@ -807,6 +825,7 @@ def create_backup(app, destination, *, max_sidecar_files=MAX_SIDECAR_FILES,
                 _validate_translations(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_resource_policy(snapshot_storage.db, app.root, cancelled=cancelled)
                 _validate_transcriptions(snapshot_storage.db, app.root, cancelled=cancelled)
+                _validate_recordings(snapshot_storage.db, app.root, cancelled=cancelled)
             sidecars = [_copy_sidecar(app.root, name, stage / SIDECARS / name, identity, cancelled)
                         for name, identity in inventory.items()]
             # Refuse a newly introduced project before interpreting its files.
@@ -1014,6 +1033,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
         assistant_total, assistant_jobs, assistant_controls = 0, 0, 0
         translation_total, translation_jobs, translation_caches = 0, 0, 0
         transcription_total, transcription_files, transcription_jobs = 0, 0, set()
+        recording_total, recording_files, recording_ids = 0, 0, set()
         for entry in entries:
             if (type(entry) is not dict or set(entry) != {field, 'size_bytes', 'sha256'}
                     or not _backup_sidecar_allowed(entry[field])
@@ -1022,13 +1042,23 @@ def _read_manifest(directory, expected_manifest_sha256, *, max_sidecar_files=MAX
                     or (entry['size_bytes'] == 0 and not _historical_path(entry[field])
                         and not entry[field].lower().endswith(('.srt', '.vtt', '.ffmeta'))
                         and not (_transcription_path(entry[field])
-                                 and _transcription_adapter().allows_empty(entry[field])))
+                                 and _transcription_adapter().allows_empty(entry[field]))
+                        and not _recording_empty(entry[field]))
                     or not isinstance(entry['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', entry['sha256'])):
                 raise RestoreError('invalid backup sidecar manifest entry')
             _claim_path(entry[field], names)
             total += entry['size_bytes']
             if total > max_sidecar_bytes:
                 raise RestoreError('sidecar manifest byte limit')
+            if _recording_path(entry[field]):
+                recording_total += entry['size_bytes']
+                recording_files += 1
+                parts = PurePosixPath(entry[field]).parts
+                recording_ids.add(parts[3].rsplit('.', 1)[0] if len(parts) == 4 else parts[3])
+                if (entry['size_bytes'] > _recording_limit(entry[field])
+                        or recording_total > MAX_RECORDING_BYTES
+                        or recording_files > MAX_RECORDING_FILES or len(recording_ids) > MAX_RECORDINGS):
+                    raise RestoreError('Recording sidecar count or byte limit')
             if _resource_policy_path(entry[field]) and entry['size_bytes'] > MAX_RESOURCE_POLICY:
                 raise RestoreError('resource policy sidecar byte limit')
             if _reader_path(entry[field]):
@@ -1143,6 +1173,7 @@ def _verify_contents(source, stage, manifest, *, copy_files=False,
             _validate_translations(storage.db, checked_root, cancelled=cancelled)
             _validate_resource_policy(storage.db, checked_root, cancelled=cancelled)
             _validate_transcriptions(storage.db, checked_root, cancelled=cancelled)
+            _validate_recordings(storage.db, checked_root, cancelled=cancelled)
         original_store = RetainedAssets(source / ORIGINALS)
         entries = verify_catalog_assets(storage.db, original_store,
             include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES)

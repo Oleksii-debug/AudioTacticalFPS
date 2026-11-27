@@ -247,7 +247,7 @@ class WindowsBundleAdapter:
         return env
 
     def _run_owned(self, command, *, root, timeout):
-        from ..audio.capture_process import run_process
+        from ..audio.capture_process import run_process, wait_for_cleanup
         from ..audio.capture_types import AudioBudget, AudioCleanupPending, AudioError
         try:
             return run_process([str(value) for value in command], cwd=root,
@@ -259,7 +259,7 @@ class WindowsBundleAdapter:
             # back before the owned child stops could retarget a live installer.
             # This wait occurs off the desktop thread, with the owner still
             # retrying its bounded native cleanup. There is no success fallback.
-            error.cleanup_owner.quiescent_event.wait()
+            wait_for_cleanup(error)
             raise TrustError('The installer needed deferred native cleanup. The update was not accepted.') from None
         except (AudioError, OSError, subprocess.SubprocessError):
             raise TrustError('The owned installer could not complete within its selected limits.') from None

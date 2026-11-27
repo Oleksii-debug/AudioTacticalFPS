@@ -574,7 +574,7 @@ def test_standalone_worker_lock_preserves_live_controls_and_execution_before_adm
             observed.append(holder.stdout.readline())
             ready.set()
         threading.Thread(target=announce, daemon=True).start()
-        assert ready.wait(5) and observed == [b'READY\n']
+        assert ready.wait(5) and len(observed) == 1 and observed[0] in (b'READY\n', b'READY\r\n')
         monkeypatch.setattr(service.subprocess, 'Popen',
                             lambda *a, **k: pytest.fail('The live worker lock allowed a second launch.'))
         with pytest.raises(RuntimeError, match='already using'):
