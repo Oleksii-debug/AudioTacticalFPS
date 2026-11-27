@@ -237,10 +237,14 @@ def test_signature_duplicate_and_missing_reports_fail_closed():
             endpoint.validate_signature_reports(value, pins)
 
 
-def test_python_writes_exact_three_target_json_request_for_fresh_powershell(tmp_path, monkeypatch):
+@pytest.mark.parametrize("module_key", ["PSModulePath", "PSMODULEPATH", "psmodulepath"])
+def test_python_writes_exact_three_target_json_request_for_fresh_powershell(tmp_path, monkeypatch, module_key):
     pins, reports = signatures()
     paths = {name: tmp_path / name for name in endpoint.STAGED}
     observed = []
+    inherited_path = r"C:\Program Files\PowerShell\7\Modules"
+    monkeypatch.setenv(module_key, inherited_path)
+    monkeypatch.setenv("CARR_SIGNATURE_ENV_SENTINEL", "preserved")
     def run(command, **kwargs):
         payload = json.loads(Path(command[-1]).read_text(encoding="utf-8"))
         observed.extend(payload)
@@ -249,12 +253,15 @@ def test_python_writes_exact_three_target_json_request_for_fresh_powershell(tmp_
         assert command[-2] == "-InputPath"
         assert "Bypass" not in command
         assert kwargs["stdin"] == endpoint.subprocess.DEVNULL
+        assert not any(key.upper() == "PSMODULEPATH" for key in kwargs["env"])
+        assert kwargs["env"]["CARR_SIGNATURE_ENV_SENTINEL"] == "preserved"
         return SimpleNamespace(returncode=0, stdout=json.dumps(reports).encode(), stderr=b"")
     monkeypatch.setattr(endpoint.subprocess, "run", run)
     native = SimpleNamespace(system_directory=tmp_path / "System32")
     endpoint.verify_signatures(paths, pins, native, tmp_path)
     assert observed == [{"file": name, "path": str(paths[name])} for name in endpoint.SIGNED]
     assert len(observed) == 3 and len({item["file"] for item in observed}) == 3
+    assert endpoint.os.environ[module_key] == inherited_path
 
 
 @pytest.mark.parametrize("name", [endpoint.SYS_NAME, endpoint.ARM_SYS_NAME, endpoint.CAT_NAME])

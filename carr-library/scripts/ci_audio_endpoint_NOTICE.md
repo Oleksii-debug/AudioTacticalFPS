@@ -134,3 +134,11 @@ rejection, restart flags, NONINTERACTIVE/no-FORCE dispatch and the exact WinMM
 wire format. Controlled native-call fixtures never install a Windows driver
 and do not substitute for the one-off Windows qualification.
 
+The signature subprocess removes only its inherited PSModulePath variable.
+This is Microsoft's documented correction for a PowerShell7 -> Python ->
+Windows PowerShell5.1 process chain: Windows PowerShell reconstructs its own
+normal module search path instead of loading incompatible PowerShell7 modules.
+No execution policy, trust store, machine environment or signing rule changes.
+The parent environment is retained unchanged. Reference:
+https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_psmodulepath?view=powershell-7.6#starting-windows-powershell-from-powershell-7
+

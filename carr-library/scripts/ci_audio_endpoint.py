@@ -302,11 +302,16 @@ def verify_signatures(paths, pins, native, work):
     ), encoding="utf-8")
     script = Path(__file__).with_name("ci_audio_endpoint_authenticode.ps1")
     powershell = native.system_directory / "WindowsPowerShell" / "v1.0" / "powershell.exe"
+    # A pwsh -> Python -> Windows PowerShell launch otherwise inherits PS7
+    # modules that Windows PowerShell cannot load. Reconstruct its own normal
+    # module path, as documented by Microsoft; change no machine policy.
+    environment = {key: value for key, value in os.environ.items()
+                   if key.upper() != "PSMODULEPATH"}
     result = subprocess.run(
         [str(powershell), "-NoLogo", "-NoProfile", "-NonInteractive",
          "-File", str(script), "-InputPath", str(request)],
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        timeout=45, check=False,
+        timeout=45, check=False, env=environment,
     )
     if len(result.stdout) > 65536 or len(result.stderr) > 65536:
         raise EvaluationError("Windows signature verifier exceeded output bound")
