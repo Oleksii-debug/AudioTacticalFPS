@@ -12,6 +12,9 @@ from filelock import FileLock, Timeout
 from .models import canonical, local_path
 
 
+MAX_CHECKPOINT_BYTES = 64 * 1024 * 1024
+
+
 def now():
     return datetime.now(timezone.utc).isoformat()
 
@@ -33,7 +36,7 @@ def atomic_json(path, value):
     local_path(path.parent)
     regular(path, missing=True)
     payload = (canonical(value) + '\n').encode('utf-8')
-    if len(payload) > 64 * 1024 * 1024:
+    if len(payload) > MAX_CHECKPOINT_BYTES:
         raise ValueError('Assistant checkpoint exceeds the storage budget.')
     temporary = path.with_name('.' + path.name + '.' + uuid4().hex + '.tmp')
     try:
@@ -54,7 +57,7 @@ def atomic_json(path, value):
         temporary.unlink(missing_ok=True)
 
 
-def read_json(path, *, maximum=64 * 1024 * 1024):
+def read_json(path, *, maximum=MAX_CHECKPOINT_BYTES):
     path = Path(path)
     local_path(path.parent)
     info = regular(path)
