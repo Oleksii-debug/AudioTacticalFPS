@@ -948,7 +948,11 @@ class RecordingService:
                             writer.writeframesraw(data)
                             remaining -= count
                         after = os.fstat(source.fileno())
-                    if stamp(before) != stamp(after) or stamp(before) != stamp(regular(path)):
+                    # Windows timestamps alone can remain unchanged across a short
+                    # same-size write. Recheck exact verified source bytes after
+                    # copying, before a new PCM-range receipt can be admitted.
+                    if (_digest(path, cancelled) != audio['sha256']
+                            or stamp(before) != stamp(after) or stamp(before) != stamp(regular(path))):
                         raise ValueError('A recording segment changed during assembly.')
                     ranges.append({'start_frame': position, 'frames': audio['frames'],
                                    'pcm_sha256': digest.hexdigest(), 'ended_by': ended_by})

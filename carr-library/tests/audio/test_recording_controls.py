@@ -145,6 +145,7 @@ def test_stop_while_paused_publishes_retained_frames_without_reopening_input(cap
 def test_cancel_while_paused_discards_only_unfinished_take(capture):
     original = capture.service.capture(capture.device.id, options=replace(capture.options, max_seconds=1))
     original_bytes = Path(original['path']).read_bytes()
+    original_inventory = capture.service.list()
     capture.runs.clear()
     with Session(capture) as session:
         session.cancel.set()
@@ -152,7 +153,8 @@ def test_cancel_while_paused_discards_only_unfinished_take(capture):
     assert isinstance(session.error, AudioCancelled) and session.result is None
     assert len(capture.runs) == 1 and not capture.runs[0]['active']
     assert Path(original['path']).read_bytes() == original_bytes
-    assert capture.service.list() == (original,)
+    assert capture.service.list() == original_inventory
+    assert capture.service.get(original['id']) == original
     assert not list(capture.service.root.glob('.pending-*'))
 
 
@@ -287,7 +289,7 @@ def test_segment_changed_immediately_after_genuine_hash_cannot_mint_new_frame_re
         return digest
     monkeypatch.setattr(capture.service, '_join_segments', join)
     monkeypatch.setattr(recording, '_digest', verified_then_changed)
-    with pytest.raises(ValueError, match='segment changed during assembly'):
+    with pytest.raises(ValueError, match='segment changed (?:before|during) assembly'):
         capture.service.capture(capture.device.id, options=replace(capture.options, max_seconds=1),
                                 pause_requested=lambda: False)
     assert boundary['changed'] and len(capture.runs) == 1 and not capture.runs[0]['active']

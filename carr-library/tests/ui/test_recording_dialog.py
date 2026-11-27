@@ -388,6 +388,7 @@ def test_destroy_while_waiting_for_silence_prevents_capture_and_controls(view):
 
 def test_pause_and_resume_require_acknowledged_microphone_close_and_keep_quiet_holds(view):
     discovered(view)
+    view.progress.events.clear()  # Device discovery already completed separately.
     view.progress.ready = view.parent.ready = True
     def capture(device_id, **options):
         options['state_changed'](RecordingState('recording', 2400, 24000, 0))
@@ -416,6 +417,7 @@ def test_pause_and_resume_require_acknowledged_microphone_close_and_keep_quiet_h
 
 def test_stop_while_paused_finishes_without_accepting_resume(view):
     discovered(view)
+    view.progress.events.clear()  # Device discovery already completed separately.
     view.progress.ready = view.parent.ready = True
     def capture(device_id, **options):
         options['state_changed'](RecordingState('recording', 2400, 24000, 0))
