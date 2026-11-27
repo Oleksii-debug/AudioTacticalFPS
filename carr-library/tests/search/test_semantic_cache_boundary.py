@@ -40,7 +40,7 @@ def populated(tmp_path, *, budget=None):
     'CREATE INDEX unexpected ON embedding(checksum)',
     'ALTER TABLE embedding ADD COLUMN unexpected TEXT',
     'PRAGMA application_id=1',
-    'PRAGMA user_version=2',
+    'PRAGMA user_version=3',
 ])
 def test_changed_schema_is_rejected_before_any_cache_hit_or_trigger(tmp_path, mutation):
     cache = populated(tmp_path)
@@ -113,6 +113,110 @@ def test_oversized_row_is_rejected_before_python_materializes_it(tmp_path, field
     assert result == {key(1): OTHER_UNIT}
     assert cache.available
     assert peak < 1024 * 1024
+
+
+@pytest.mark.parametrize('field', ['vector', 'checksum'])
+def test_corrupt_record_native_memory_is_bounded_in_fresh_readers(tmp_path, field):
+    # Python tracemalloc cannot observe SQLite allocations. Separate creator
+    # processes prevent their large payloads from contaminating reader RSS.
+    creator = r'''
+import sqlite3, sys
+from carr_library.semantic_cache import EmbeddingCache
+root, model, first, second, field, size = sys.argv[1:]
+cache = EmbeddingCache(root, model)
+assert cache.put_many({first: (1.0,) + (0.0,) * 383,
+                      second: (0.0, 1.0) + (0.0,) * 382})
+with sqlite3.connect(cache.path) as db:
+    if field == 'vector':
+        db.execute('UPDATE embedding SET vector=zeroblob(?) WHERE identity=?',
+                   (int(size), first))
+    else:
+        db.execute('UPDATE embedding SET checksum=? WHERE identity=?',
+                   ('x' * int(size), first))
+'''
+    reader = r'''
+import json, sys
+from carr_library.semantic_cache import EmbeddingCache
+if sys.platform == 'win32':
+    import ctypes
+    from ctypes import wintypes
+    class Counters(ctypes.Structure):
+        _fields_ = [('cb', wintypes.DWORD), ('PageFaultCount', wintypes.DWORD),
+                    ('PeakWorkingSetSize', ctypes.c_size_t),
+                    ('WorkingSetSize', ctypes.c_size_t),
+                    ('QuotaPeakPagedPoolUsage', ctypes.c_size_t),
+                    ('QuotaPagedPoolUsage', ctypes.c_size_t),
+                    ('QuotaPeakNonPagedPoolUsage', ctypes.c_size_t),
+                    ('QuotaNonPagedPoolUsage', ctypes.c_size_t),
+                    ('PagefileUsage', ctypes.c_size_t),
+                    ('PeakPagefileUsage', ctypes.c_size_t)]
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    psapi = ctypes.WinDLL('psapi', use_last_error=True)
+    kernel.GetCurrentProcess.argtypes = []
+    kernel.GetCurrentProcess.restype = wintypes.HANDLE
+    psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE,
+                                          ctypes.POINTER(Counters), wintypes.DWORD]
+    psapi.GetProcessMemoryInfo.restype = wintypes.BOOL
+    def peak_bytes():
+        counters = Counters()
+        counters.cb = ctypes.sizeof(counters)
+        if not psapi.GetProcessMemoryInfo(kernel.GetCurrentProcess(),
+                                          ctypes.byref(counters), counters.cb):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return counters.PeakWorkingSetSize
+else:
+    import resource
+    def peak_bytes():
+        value = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        return value if sys.platform == 'darwin' else value * 1024
+root, model, first, second = sys.argv[1:]
+cache = EmbeddingCache(root, model)
+before = peak_bytes()
+assert cache.get_many([first, second]) == {second: (0.0, 1.0) + (0.0,) * 382}
+assert cache.available
+print(json.dumps({'before': before, 'after': peak_bytes()}))
+'''
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE='1')
+    env['PYTHONPATH'] = str(Path(module.__file__).resolve().parent.parent)
+    measurements = []
+    for size in (4 * 1024 * 1024, 64 * 1024 * 1024):
+        directory = tmp_path / str(size)
+        subprocess.run([sys.executable, '-B', '-c', creator, str(directory),
+                        MODEL, key(0), key(1), field, str(size)],
+                       env=env, check=True, capture_output=True, timeout=30)
+        process = subprocess.run(
+            [sys.executable, '-B', '-c', reader, str(directory),
+             MODEL, key(0), key(1)],
+            env=env, check=True, capture_output=True, text=True, timeout=30)
+        measurements.append(json.loads(process.stdout))
+    assert all(item['after'] - item['before'] < 8 * 1024 * 1024
+               for item in measurements), measurements
+    assert measurements[1]['after'] - measurements[0]['after'] < 8 * 1024 * 1024, measurements
+
+
+def test_v1_cache_is_untouched_and_v2_rebuilds_derived_vectors(tmp_path):
+    directory = tmp_path / 'cache'
+    directory.mkdir()
+    legacy = directory / ('embeddings-' + MODEL + '.sqlite')
+    with sqlite3.connect(legacy) as db:
+        db.execute(module._SCHEMA[0].replace(' PRIMARY KEY NOT NULL,', ' PRIMARY KEY,')
+                   + ' WITHOUT ROWID')
+        db.execute(module._SCHEMA[1])
+        db.execute('PRAGMA application_id=' + str(module._APPLICATION_ID))
+        db.execute('PRAGMA user_version=1')
+        packed = struct.pack('<384d', *UNIT)
+        checksum = sha256((MODEL + key(0)).encode('ascii') + packed).hexdigest()
+        db.execute('INSERT INTO embedding VALUES(?,?,?,?)', (key(0), packed, checksum, 1))
+    before = legacy.read_bytes()
+    cache = EmbeddingCache(directory, MODEL)
+    assert cache.path.name == 'embeddings-v2-' + MODEL + '.sqlite'
+    assert cache.get_many([key(0)]) == {}
+    assert cache.available
+    assert cache.put_many({key(0): UNIT})
+    assert cache.get_many([key(0)]) == {key(0): UNIT}
+    assert legacy.read_bytes() == before
+    with sqlite3.connect(cache.path) as db:
+        assert db.execute('PRAGMA user_version').fetchone()[0] == 2
 
 
 def test_exact_workspace_edition_revision_window_and_text_keys_remain_separate(tmp_path):
