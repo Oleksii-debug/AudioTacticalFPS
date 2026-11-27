@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import subprocess
 import sys
 from time import monotonic
+from types import SimpleNamespace
 
 import pytest
 
@@ -102,12 +103,14 @@ def test_cancel_stops_running_isolated_renderer(pdf_result, monkeypatch):
     children = []
 
     def delayed_renderer(command, *args, **kwargs):
-        child = original([sys.executable, '-I', '-c', 'import time; time.sleep(30)'],
+        child = original([sys.executable, '-I', '-B', '-c', 'import time; time.sleep(30)'],
                          *args, **kwargs)
         children.append(child)
         return child
 
-    monkeypatch.setattr(worker.subprocess, 'Popen', delayed_renderer)
+    subprocess_api = SimpleNamespace(**vars(subprocess))
+    subprocess_api.Popen = delayed_renderer
+    monkeypatch.setattr(worker, 'subprocess', subprocess_api)
     started = monotonic()
     with pytest.raises(InterruptedError, match='cancelled'):
         app.review_pdf_page(workspace, hit.ref, hit.revision, 'Synthetic reviewer',

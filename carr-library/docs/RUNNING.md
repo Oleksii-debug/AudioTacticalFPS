@@ -187,6 +187,14 @@ first. Open the existing data folder in the new program. Do not use an earlier
 program version on the upgraded data folder. Previous valid backups can still
 be restored into a new folder and upgraded on opening.
 
+Full library backups also include personal page bookmarks and reading resume
+positions for every library. Restore preserves their exact source revision,
+names and timestamps in the new data folder. The backup checksums cover this
+reading state as well as the database and retained originals. Older backups
+without reading state still restore; use a separate reading-state export to
+transfer those older bookmarks. Interrupted import queues are not part of the
+backup. See [reading desk](READING_DESK.md) for historical-position handling.
+
 ## Review the source catalog
 
 Open a library, then use the **Research** menu:
@@ -270,6 +278,14 @@ Use **Cancel operation** to stop a long operation before publication. Export des
 use the same checked Save workflow as topic exports.
 
 ### Search and source actions
+
+**Ctrl+Alt+Q** opens the advanced query builder. Its All, Any, Exclude and
+Nearby fields accept one literal word or phrase per line. Build the expression,
+choose Use query, then press Enter in Search. The explicit Advanced search mode
+supports uppercase AND/OR/NOT, parentheses, exact quoted phrases and NEAR/0
+through NEAR/100 within one page or text segment. Existing search modes keep
+their original meanings. See `docs/ADVANCED_SEARCH.md` in the source repository
+for syntax, examples, scope and limits.
 
 Choose a library or research topic, then **Open selected scope**. In Search,
 **Search mode** chooses how matches are found. **Result mode** independently

@@ -99,6 +99,49 @@ def complete(center, job, value):
     job.done(value)
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_import_report_capture_precedes_render_and_protects_competing_file(center, tmp_path, monkeypatch, existing):
+    from carr_library.ui import import_center as ui, export_destination
+    from carr_library.research.export_file import capture_export_destination
+    target = tmp_path / 'report.txt'
+    center.library.root = tmp_path / 'private'
+    center.library.root.mkdir()
+    if existing: target.write_bytes(b'Previously approved report')
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+    chooser = SimpleNamespace(ShowModal=lambda: wx.ID_OK, GetPath=lambda: str(target), Destroy=Mock())
+    wx.FileDialog = Mock(return_value=chooser)
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', lambda parent, path, **options:
+        capture_export_destination(path, private_root=options['private_root']))
+    original = ui.batch_report
+    def compete(value):
+        result = original(value)
+        target.write_bytes(b'Newer independent import report')
+        return result
+    monkeypatch.setattr(ui, 'batch_report', compete)
+    center.save_report()
+    assert target.read_bytes() == b'Newer independent import report'
+    assert 'destination changed' in center.status.value and center.status.focused
+    assert wx.FileDialog.call_args.kwargs['style'] == wx.FD_SAVE
+    chooser.Destroy.assert_called_once()
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
+def test_import_report_decline_does_not_render_or_write(center, tmp_path, monkeypatch):
+    from carr_library.ui import import_center as ui, export_destination
+    target = tmp_path / 'report.txt'
+    target.write_bytes(b'Keep original report')
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE = 1, 2
+    wx.FileDialog = Mock(return_value=SimpleNamespace(ShowModal=lambda: wx.ID_OK,
+        GetPath=lambda: str(target), Destroy=Mock()))
+    monkeypatch.setattr(export_destination, 'confirm_export_destination', lambda *args, **kwargs: None)
+    monkeypatch.setattr(ui, 'batch_report', lambda *args: pytest.fail('Declined report rendered content'))
+    center.save_report()
+    assert target.read_bytes() == b'Keep original report'
+    assert 'saved' not in center.status.value.lower()
+
+
 def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(center):
     center.plan(('/selected/folder',))
     center.library.plan_import_batch.assert_not_called()

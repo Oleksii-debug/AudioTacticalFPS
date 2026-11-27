@@ -9,6 +9,7 @@ from hashlib import sha256
 import os
 from pathlib import Path, PurePosixPath
 import re
+import unicodedata
 
 from .durable_state import local_path, regular, sync_directory
 
@@ -113,9 +114,12 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
         with source.open('rb') as read:
             if _stamp(os.fstat(read.fileno())) != expected_stamp:
                 raise ValueError('Application state changed during backup; retry after saving.')
-            while block := read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count)):
+            while True:
                 if cancelled():
                     raise InterruptedError('Backup cancelled.')
+                block = read.read(min(1024 * 1024, entry['size_bytes'] + 1 - count))
+                if not block:
+                    break
                 count += len(block)
                 if count > entry['size_bytes']:
                     raise ValueError('Application state grew during backup; retry after saving.')
@@ -127,23 +131,40 @@ def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE
             raise ValueError('Application state changed during backup; retry after saving.')
     if inventory() != before_inventory:
         raise ValueError('Application state changed during backup; retry after saving.')
+    # A producer must enforce the same portable manifest rules as its reader.
+    validate_state(entries)
     return sorted(entries, key=lambda entry: entry['filename'])
 
 
 def validate_state(entries):
     if not isinstance(entries, list) or len(entries) > MAX_STATE_FILES:
         raise ValueError('Invalid application state manifest.')
-    names, total = set(), 0
+    names, directories, portable_paths, total = set(), set(), {}, 0
     for item in entries:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
                 or type(item['size_bytes']) is not int or item['size_bytes'] < 0
                 or not isinstance(item['sha256'], str) or not re.fullmatch('[0-9a-f]{64}', item['sha256'])):
             raise ValueError('Invalid application state manifest.')
         name = relative_name(item['filename']).as_posix()
-        if name.casefold() in names:
+        key = unicodedata.normalize('NFC', name).casefold()
+        if key in names:
             raise ValueError('Duplicate application state filename.')
-        names.add(name.casefold())
+        names.add(key)
+        # Distinct POSIX ancestor spellings can alias on a portable filesystem.
+        path = PurePosixPath(name)
+        for component in (path, *path.parents):
+            current = str(component)
+            if current == '.':
+                continue
+            portable = unicodedata.normalize('NFC', current).casefold()
+            previous = portable_paths.setdefault(portable, current)
+            if previous != current:
+                raise ValueError('Application state paths collide on a portable filesystem.')
+            if component != path:
+                directories.add(portable)
         total += item['size_bytes']
+    if names & directories:
+        raise ValueError('Application state file and directory paths collide.')
     if total > MAX_STATE_BYTES:
         raise ValueError('Application state manifest exceeds its byte budget.')
 

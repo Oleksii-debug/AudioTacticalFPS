@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "source_commit": "0853d138ba2b1f342be0452bd7dd3ea6788ca945",
+  "source_tree": "edea710ebcd6472aa4048c1273fe0b345fc8ab49",
+  "workflow_run": 45920723589,
+  "scope": "Actual synthetic child protocol and native application integration; no supplied-worker acoustic inference",
+  "jobs": [
+    {
+      "platform": "Windows Server 2022 / CPython 3.11",
+      "job": 140250568235,
+      "strict_suites": 2,
+      "passed": 61,
+      "failed": 0,
+      "skipped": 0,
+      "native_controls": "PASS"
+    },
+    {
+      "platform": "Ubuntu 24.04 / CPython 3.11",
+      "job": 140250568518,
+      "strict_suites": 2,
+      "passed": 61,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "native_checks": [
+    "named wx controls",
+    "shared background operation",
+    "actual isolated synthetic child",
+    "six verified formats",
+    "separate edit revision",
+    "original unchanged"
+  ],
+  "supplied_private_worker_inference": "NOT_RUN",
+  "manual_nvda": "NOT_RUN",
+  "note": "The cancellation-finalization successor has an additional regression and requires its own exact-head result; this receipt remains attributed to 0853d1."
+}

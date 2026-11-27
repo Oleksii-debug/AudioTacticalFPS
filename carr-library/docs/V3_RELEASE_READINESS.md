@@ -14,8 +14,9 @@ unchanged until a verified migration; visible application titles use Resonance.
 | Library and OCR | Scoped originals, exact quotations, academic references, managed Fast/Best OCR profiles and installed model selection | Actual SQLite and OCR tests; native installed OCR manager runs on Windows |
 | Reading and voices | Source-preserving reading derivatives, pronunciation edits, local voice discovery, playback and SAPI5 native COM worker | Real Windows SAPI PCM with outbound network blocked; local Flite rendering; other engine assets require separate qualification |
 | Audio studio | Roles, scenes, explicit voice/position, pauses, procedural score, DSP, chapters, stems, subtitles, verified resume/cache and formats | Real FFmpeg production and Windows restart; 1/3/10-hour streaming fixtures are not equivalent to full-length neural inference |
+| Supplied transcription integration | Shared UI/CLI jobs, recursive folder intake, explicit receipts/V5 profiles, retained originals, current-run results, word timestamps, cancellation/resume and separate edits | Actual synthetic subprocess/native controls; one real supplied-worker Linux service-to-model execution is recorded separately from V5 protocol and Windows acoustic acceptance |
 | Documents and citations | Isolated bounded conversion, local citeproc-js styles/locales, editable DOCX with citation provenance, opt-in DOI previews | Actual local processor, generated documents and integrity tests; no live Word add-in |
-| Recovery | Manifest-bound backup v4 includes pending import bytes, identities, settings and project state | Real backup/restore and resumed import tests; externally exported audio and OS credential secrets are separate |
+| Recovery | Manifest-bound backup v4, or v5 when reading state is included, retains pending import bytes, identities, settings, project state, positions and bookmarks | Real restore/resume tests, stable-content rereads and portable path checks; externally exported audio and OS credential secrets are separate |
 | Keyboard and progress | Configurable menu keys, named native controls, measured or indeterminate progress, optional tones and explicitly selected local-voice notices in English/Ukrainian/Slovak; playback/recording quieting and settings backup | Actual Windows key injection and progress/result regressions; human NVDA and listening review remain required; the recording quiet contract does not implement microphone capture |
 | Language inventory | Exact canonical 135 entries, source audit and searchable capability matrix | Resource inventory is separate from acoustic qualification; no claim of 135 working voices |
 | Assistant and providers | Typed scoped tools, durable jobs, local-only default, protected credential references and per-request consent/budget | Local and synthetic provider tests; no paid provider call was made during implementation |
@@ -39,7 +40,7 @@ The following cannot be labelled DONE by passing the current core tests:
   interruption/recovery and key-rotation acceptance.
 - Actual owner-supplied cloning runtime, authorized reference recordings,
   protected voice profiles and independent multilingual inference/listening.
-- Actual installed dordiai/SAPI4 compatibility, MusicGen/ACE-Step model inference,
+- Actual installed dordiai/SAPI4 compatibility, ACE-Step model inference,
   the remaining approved Balabolka-equivalent workflow checklist and synchronized
   publishing/Braille workflows.
 - Independent qualification of every required capability for the canonical 135
@@ -47,12 +48,24 @@ The following cannot be labelled DONE by passing the current core tests:
 - Human Windows 11/NVDA and listening review. Automated Windows Server native
   execution is useful evidence, but does not substitute for that review.
 
-The supplied Whisper Transcribe V4.3 implementation has been received and
-statically reviewed; transcription is part of the approved platform scope.
-The current library/audio preview leaves its integration, real execution and
-qualification pending. The existing worker must be corrected and adapted through
-shared jobs and an isolated reviewed engine pack; no competing ASR stack or
-unverified runtime is bundled. See [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+The supplied Whisper implementation is integrated through the existing library,
+job and process services, with explicit legacy receipts and supplied V5 manifest
+profiles. The repaired private V4.3 worker completed real Linux CPU inference
+through the normal application service and isolated child bootstrap on the exact
+source recorded in [the actual qualification](TRANSCRIPTION_ACTUAL_QUALIFICATION_20261127.md).
+One short English sample does not establish Windows acoustic operation, V5
+acoustic quality, Ukrainian or broad multilingual qualification. The public V5
+acceptance uses controlled backends and remains protocol evidence. No competing
+recognizer or automatic model download is bundled. See [the workflow](TRANSCRIPTION.md)
+and [the source review](TRANSCRIPTION_INTEGRATION_REVIEW.md).
+
+The canonical MusicGen worker passed actual two-second CPU generation on both
+Linux and Windows. The complete runtime/model inventories remained unchanged;
+Windows executable egress was blocked independently before and after inference.
+[Exact source and runtime evidence](MUSICGEN_CANONICAL_ACCEPTANCE_20261127.md)
+remains bound to its recorded revisions. Listening quality, unconfigured cold
+desktop startup, hours of neural generation and broader redistribution remain
+separate requirements. Model weights are not part of the core delivery.
 
 The private build retains local operation and access to user-owned data. Private delivery does not waive dependency rights, notices or source obligations.
 This work does not authorize external distribution, pricing, billing, a public site,

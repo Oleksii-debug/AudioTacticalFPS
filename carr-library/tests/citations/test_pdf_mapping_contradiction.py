@@ -70,10 +70,13 @@ def test_real_ocr_detects_contradiction(tmp_path):
     with pdfium.PdfDocument(fixture(True)) as doc:
         with closing(doc[0]) as page, closing(page.render(scale=4)) as bitmap:
             bitmap.to_pil().save(path)
-    runtime = (verify_ocr_bundle(os.environ['CARR_CI_OCR_DIR']) if os.environ.get('CARR_CI_OCR_DIR')
-               else discover_ocr_runtime('eng'))
+    # Installed acceptance selects the sealed bundle rather than the earlier
+    # source-test runtime retained in CARR_CI_OCR_DIR.
+    runtime_root = os.environ.get('CARR_OCR_DIR') or os.environ.get('CARR_CI_OCR_DIR')
+    runtime = verify_ocr_bundle(runtime_root) if runtime_root else discover_ocr_runtime('eng')
     assert runtime is not None, 'Install the verified local OCR runtime before required source tests.'
     result = subprocess.run(runtime.command([runtime.executable, str(path), 'stdout', '-l', 'eng', '--psm', '7']),
                             capture_output=True, check=True, timeout=20, cwd=runtime.root)
+    runtime.assert_unchanged()
     assert result.stdout.decode('utf-8').strip() == 'AAAA'
     assert inspect(fixture(True))[0].strip() != result.stdout.decode('utf-8').strip()
