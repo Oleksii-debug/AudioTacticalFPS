@@ -151,9 +151,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
                 from ..runtime_settings import voice_registry
-                found = voice_registry(Path(library_root) / 'state')
+                found = voice_registry(Path(library_root) / 'state', cancelled=cancel.is_set)
             else:
-                found = VoiceRegistry.discover()
+                found = VoiceRegistry.discover(cancelled=cancel.is_set)
             owned_registries.add(found)
             return found
 
