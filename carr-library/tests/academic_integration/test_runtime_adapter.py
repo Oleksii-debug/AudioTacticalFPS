@@ -133,7 +133,7 @@ def test_actual_macro_cache_matches_original_multikey_sort_and_disambiguation(
     citations = [
         CitationRequest('beta'), CitationRequest('alpha'),
         CitationCluster(tuple(CitationRequest(row['id']) for row in reversed(REFERENCES)),
-                        'all', 0),
+                        'all', 3),
     ]
     import quickjs
     actual_context, limits = quickjs.Context, []
