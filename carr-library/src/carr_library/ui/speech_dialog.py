@@ -152,6 +152,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     if reader_tabs is None:
         editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
                           value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
+    # Retain a requested voice even while its engine is temporarily unavailable.
+    # This is passive reader state, never permission to activate a substitute.
+    remembered_voice_id = recovered.voice_id if recovered is not None else ''
     from .reading_presentation import load_reading_presentation
     presentation_library = reader_library
     presentation, presentation_store, presentation_notice = load_reading_presentation(
@@ -441,7 +444,8 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def reload(event=None):
         previous_index = voice_choice.GetSelection()
-        previous_voice_id = voices[previous_index].id if 0 <= previous_index < len(voices) else ''
+        previous_voice_id = (voices[previous_index].id
+                             if 0 <= previous_index < len(voices) else remembered_voice_id)
         def discover_configured():
             library_root = getattr(getattr(parent, 'library', None), 'root', None)
             if library_root is not None:
@@ -454,6 +458,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
         def loaded(value):
             nonlocal registry, voices, document, source_loaded, draft_store, recovered, recovery_notice
+            nonlocal remembered_voice_id
             previous = registry
             registry, source = value
             if previous is not None and previous is not registry:
@@ -482,13 +487,15 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                     + ' This is a separate narration copy; it does not approve quotations. '
                     + recovery_notice)
             voice_choice.Set([f'{voice.name}; {voice.language}; {voice.engine}' for voice in voices])
+            remembered_voice_id = previous_voice_id or (recovered.voice_id if recovered is not None else '')
+            if recovered is not None:
+                editor.SetInsertionPoint(native_cursor_position(editor, document.text,
+                                                                min(recovered.cursor, len(document.text))))
             if voices:
-                requested_voice = previous_voice_id or (recovered.voice_id if recovered is not None else '')
+                requested_voice = remembered_voice_id
                 selected = next((i for i, voice in enumerate(voices)
                                  if voice.id == requested_voice), -1 if requested_voice else 0)
                 voice_choice.SetSelection(selected)
-                if recovered is not None:
-                    editor.SetInsertionPoint(native_cursor_position(editor, document.text, min(recovered.cursor, len(document.text))))
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine. '
                        + ('The saved or selected voice is unavailable; choose a voice explicitly. No substitute was selected.'
@@ -548,12 +555,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             + 'The reading copy is not quotation evidence. ' + recovery_notice)
 
     def save_recovery(event=None, *, force=False):
-        nonlocal last_recovery_signature
+        nonlocal last_recovery_signature, recovered, remembered_voice_id
         if not alive or draft_store is None or not source_loaded:
             return False
         sync_document()
         selected = voice_choice.GetSelection()
-        voice_id = voices[selected].id if 0 <= selected < len(voices) else ''
+        voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
         position = (player.position_seconds if last_audio is not None else
                     reader_tabs.saved_audio_position(document) if reader_tabs is not None else 0)
         cursor_offset = native_insertion_offset(editor, document.text)
@@ -566,6 +573,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             reader_tabs.save_resume(resume, save_path=save_path)
         else:
             draft_store.save(resume)
+        recovered, remembered_voice_id = resume, voice_id
         last_recovery_signature = signature
         return True
 
@@ -1003,7 +1011,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         source_guard()
         sync_document()
         selected = voice_choice.GetSelection()
-        voice_id = voices[selected].id if 0 <= selected < len(voices) else ''
+        voice_id = voices[selected].id if 0 <= selected < len(voices) else remembered_voice_id
         resume = ReaderResume(document, voice_id, rate.GetValue(), volume.GetValue(),
             native_insertion_offset(editor, document.text),
             player.position_seconds if last_audio is not None else
@@ -1022,7 +1030,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     def activate_reading_tab(state):
         nonlocal document, editor, recovered, draft_store, save_path, last_recovery_signature
+        nonlocal remembered_voice_id
         document, editor, recovered = state.resume.document, state.editor, state.resume
+        remembered_voice_id = recovered.voice_id
         draft_store, save_path, last_recovery_signature = state.store, state.save_path, None
         rate.SetValue(recovered.rate); volume.SetValue(recovered.volume)
         voice_choice.SetSelection(next((i for i, voice in enumerate(voices)

@@ -327,9 +327,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed Studio, proposal and translation controls
-        timeout-minutes: 8
+        timeout-minutes: 12
         run: |
-          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py', 'windows_operations_smoke.py', 'windows_reader_player_smoke.py', 'windows_effect_chain_smoke.py', 'windows_reading_presentation_smoke.py')) {
+          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py', 'windows_operations_smoke.py', 'windows_reader_player_smoke.py', 'windows_effect_chain_smoke.py', 'windows_reading_presentation_smoke.py', 'windows_reading_tabs_smoke.py')) {
             & $env:CARR_PYTHON -I -B (Join-Path scripts $probe) 2>&1 | Tee-Object (Join-Path ci-results ('native-' + $probe + '.txt'))
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
@@ -338,6 +338,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_voice_preferences_smoke.py --installed 2>&1 | Tee-Object 'ci-results/native-voice-preferences.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed opt-in desktop clipboard tray and global commands
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_PYTHON -I -B scripts/windows_desktop_integration_smoke.py --installed 2>&1 | Tee-Object 'ci-results/native-desktop-integration.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native semantic command settings, search and restored edit focus
@@ -624,11 +630,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path tests/ui/native_trust_status_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-trusted-client-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py', 'windows_operations_smoke.py', 'windows_reader_player_smoke.py', 'windows_effect_chain_smoke.py', 'windows_reading_presentation_smoke.py')) {
+          foreach ($probe in @('windows_clip_editor_smoke.py', 'windows_recording_smoke.py', 'windows_publishing_smoke.py', 'windows_local_planning_smoke.py', 'windows_translation_v3_smoke.py', 'windows_epub_reading_smoke.py', 'windows_pronunciation_smoke.py', 'windows_studio_pronunciation_smoke.py', 'windows_operations_smoke.py', 'windows_reader_player_smoke.py', 'windows_effect_chain_smoke.py', 'windows_reading_presentation_smoke.py', 'windows_reading_tabs_smoke.py')) {
             & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path (Join-Path scripts $probe)).Path 2>&1 | Tee-Object (Join-Path ci-results ('full-bundle-' + $probe + '.txt'))
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path scripts/windows_voice_preferences_smoke.py).Path --installed 2>&1 | Tee-Object 'ci-results/full-bundle-voice-preferences.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; script=sys.argv.pop(1); runpy.run_path(script,run_name='__main__')" (Resolve-Path scripts/windows_desktop_integration_smoke.py).Path --installed 2>&1 | Tee-Object 'ci-results/full-bundle-desktop-integration.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/epubcheck_acceptance.py --archive (Join-Path $env:CARR_PUBLICATION_TOOLS 'epubcheck-5.3.0.zip') --java $env:CARR_PUBLICATION_JAVA --report 'ci-results/installed-epubcheck.json' --require-installed
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -818,6 +826,20 @@ jobs:
               'tests/speech/test_reading_presentation_handlers.py',
               'tests/speech/test_reading_presentation_reader_hook.py',
               'tests/storage/test_reader_preferences_backup.py',
+              'tests/speech/test_reading_tabs.py',
+              'tests/ui/test_reader_tabs.py',
+              'tests/ui/test_reader_voice_recovery.py',
+              'tests/audio/test_recording_controls.py',
+              'tests/audio/test_recording_monitor.py',
+              'tests/studio/test_book_batch.py',
+              'tests/studio/test_book_cli.py',
+              'tests/studio/test_book_landmarks.py',
+              'tests/ui/test_book_batch_dialog.py',
+              'tests/storage/test_backup_publications.py',
+              'tests/speech/test_clipboard_reader.py',
+              'tests/ui/test_desktop_integration.py',
+              'tests/ui/test_desktop_settings.py',
+              'tests/storage/test_desktop_preferences.py',
               'tests/speech/test_playback_devices.py',
               'tests/speech/test_spelling.py',
               'tests/speech/test_spelling_handlers.py',
@@ -1063,6 +1085,20 @@ jobs:
             'tests/speech/test_reading_presentation_handlers.py',
             'tests/speech/test_reading_presentation_reader_hook.py',
             'tests/storage/test_reader_preferences_backup.py',
+            'tests/speech/test_reading_tabs.py',
+            'tests/ui/test_reader_tabs.py',
+            'tests/ui/test_reader_voice_recovery.py',
+            'tests/audio/test_recording_controls.py',
+            'tests/audio/test_recording_monitor.py',
+            'tests/studio/test_book_batch.py',
+            'tests/studio/test_book_cli.py',
+            'tests/studio/test_book_landmarks.py',
+            'tests/ui/test_book_batch_dialog.py',
+            'tests/storage/test_backup_publications.py',
+            'tests/speech/test_clipboard_reader.py',
+            'tests/ui/test_desktop_integration.py',
+            'tests/ui/test_desktop_settings.py',
+            'tests/storage/test_desktop_preferences.py',
             'tests/speech/test_playback_devices.py',
             'tests/speech/test_spelling.py',
             'tests/packaging/test_hunspell_build.py',
