@@ -36,6 +36,7 @@ _ORIGINAL_EXTENSIONS = '|'.join(sorted(re.escape(value[1:]) for value in set(MIM
 _PATHS = (
     r'reading-state\.json', r'connections\.json', r'imports\.sqlite',
     r'keybindings\.json', r'ocr-language-presets\.json',
+    r'evidence-drafts\.json', r'keyboard-shortcuts\.json', r'progress-preferences\.json',
     rf'import-batches/{_REQUEST}\.json',
     rf'import-requests/(?:reviews/)?{_REQUEST}\.json',
     rf'pending-originals/{_HASH}\.(?:{_ORIGINAL_EXTENSIONS})',
@@ -50,6 +51,20 @@ _PATHS = (
     rf'assistant/(?:plans|jobs)/{_ID}\.json',
     rf'provider-jobs/{_ID}\.json',
 )
+
+# These retained canonical settings are not applied by this host. Recovery
+# drafts additionally bind an existing scoped evidence row before publication.
+_TYPED_ROOT_LIMITS = {'evidence-drafts.json': 8 * 1024**2,
+                      'keyboard-shortcuts.json': 64 * 1024,
+                      'progress-preferences.json': 8192}
+
+
+def _present(path):
+    try:
+        Path(path).lstat()
+    except FileNotFoundError:
+        return False
+    return True
 
 
 def pending_path(value):
@@ -252,7 +267,7 @@ def validate_manifest(value):
             raise RestoreError('invalid sidecar file manifest')
         _path(row['path'])
         if (row['path'] in paths or type(row['size_bytes']) is not int
-                or not 0 < row['size_bytes'] <= MAX_FILE_BYTES
+                or not 0 < row['size_bytes'] <= _TYPED_ROOT_LIMITS.get(row['path'], MAX_FILE_BYTES)
                 or not isinstance(row['sha256'], str) or not re.fullmatch(_HASH, row['sha256'])):
             raise RestoreError('invalid or duplicate sidecar file manifest')
         paths.add(row['path'])
@@ -399,7 +414,10 @@ def _verify_tree(stage, manifest, *, db, cancelled=lambda: False):
         path = actual[row['path']]
         if _file_record(path, row['path'], cancelled=cancelled) != row:
             raise RestoreError('sidecar digest mismatch')
-        if path.suffix == '.json':
+        if row['path'] in _TYPED_ROOT_LIMITS:
+            from .backup_compat import read_regular, validate_sidecar
+            validate_sidecar(db, row['path'], read_regular(path, _TYPED_ROOT_LIMITS[row['path']]))
+        elif path.suffix == '.json':
             value = _read_json(path)
             _validate_json(row['path'], value, manifest['source_root'])
             _verify_sources(db, row['path'], value)
@@ -435,16 +453,17 @@ def snapshot(app, stage, registered_assets, *, db, include_pending=True,
     _check(cancelled)
     root, target = app.root, stage / DIRECTORY
     selected = []
-    for name in ('reading-state.json', 'connections.json', 'keybindings.json', 'ocr-language-presets.json'):
+    for name in ('reading-state.json', 'connections.json', 'keybindings.json', 'ocr-language-presets.json',
+                 *_TYPED_ROOT_LIMITS):
         path = root / name
-        if os.path.lexists(path):
+        if _present(path):
             selected.append((name, path))
     directories = ['studio', 'assistant', 'provider-jobs']
     if include_pending:
         directories.extend(('import-requests', 'import-batches'))
     for name in directories:
         path = root / name
-        if os.path.lexists(path):
+        if _present(path):
             selected.extend((name + '/' + relative, item)
                             for relative, item in _walk(path, exclude_temporary=True, cancelled=cancelled))
     for relative, path in selected:
@@ -462,6 +481,8 @@ def snapshot(app, stage, registered_assets, *, db, include_pending=True,
     for relative, source in sorted(selected):
         _check(cancelled)
         size = _plain(source).st_size
+        if not 0 < size <= _TYPED_ROOT_LIMITS.get(relative, MAX_FILE_BYTES):
+            raise RestoreError('sidecar exceeds its data-format size limit')
         total += size
         if total > MAX_BYTES or len(records) >= MAX_FILES:
             raise RestoreError('sidecar snapshot resource limit')

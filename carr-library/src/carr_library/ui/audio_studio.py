@@ -176,6 +176,9 @@ class StudioDialog:
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='audio-studio')
         self.cancelled = threading.Event()
         self.closed = self.busy = self.dirty = False
+        self._save_library = getattr(parent, 'library', None)
+        self._save_root = getattr(self._save_library, 'root', None)
+        self._save_unregister = lambda: None
         self.result, self.player = None, None
         project = controller.project
         recovery=controller.recovery_metadata if controller.recovery_selected else {}
@@ -231,6 +234,7 @@ class StudioDialog:
         commands = wx.WrapSizer(wx.HORIZONTAL)
         self.buttons = []
         for label, handler in [('&Save project',self.save),('Save project &as JSON',self.export),
+                ('Save all open drafts',self.save_all),('Cancel Save All',self.cancel_save_all),
                 ('Pronunciation and reading copy',self.edit_narration),
                 ('&Generate audio',self.generate),('&Resume a saved job',self.resume),
                 ('&Preview completed audio',self.preview),('Pause playback',self.pause_playback),
@@ -272,7 +276,41 @@ class StudioDialog:
             self.say('An autosaved draft was recovered. Ctrl+S validates it and saves a new revision.')
         elif controller.recovery_candidates:
             wx.CallAfter(self.offer_recovery)
+        self._saved_signature = ((project.title, project.script, project.roles[0].language, project.settings.format)
+                                 if project is not None else None)
+        from .save_all import coordinator_for
+        coordinator = coordinator_for(parent)
+        if coordinator is not None:
+            self._save_unregister = coordinator.register('audio-studio.' + str(id(self)), 'Audio Studio project',
+                dirty=self.unsaved, save=self.save_registered, focus=self.script.SetFocus)
         self.script.SetFocus()
+
+    def editor_signature(self):
+        return (self.title.GetValue(), self.script_text(), self.language.GetValue(),
+                self.format.GetStringSelection())
+
+    def unsaved(self):
+        if self.closed:
+            return False
+        signature = self.editor_signature()
+        return (self.dirty or bool(signature[1]) or self._saved_signature is not None) and signature != self._saved_signature
+
+    def save_registered(self, completed):
+        from .save_all import SaveResult
+        if (self.closed or self.busy or getattr(self.parent, 'library', None) is not self._save_library
+                or getattr(self._save_library, 'root', None) != self._save_root):
+            completed(SaveResult(False, 'Pause production and keep this project in its original library before saving.'))
+            return
+        saved = self.save()
+        completed(SaveResult(saved, '' if saved else 'Project validation or saving did not complete.'))
+
+    def save_all(self, event=None):
+        from .save_actions import save_all_open
+        return save_all_open(self.parent, event, report=lambda message: self.say(message, True))
+
+    def cancel_save_all(self, event=None):
+        from .save_actions import cancel_save_all
+        return cancel_save_all(self.parent, event, report=lambda message: self.say(message, True))
 
     def offer_recovery(self):
         if self.closed:
@@ -328,13 +366,16 @@ class StudioDialog:
             self.say('Pause production before changing its saved project.',True)
             return False
         try:
+            signature = self.editor_signature()
             settings = replace(self.controller.project.settings if self.controller.project else Settings(),
-                               format=self.format.GetStringSelection())
-            project = self.controller.save(self.title.GetValue(),self.script_text(),self.language.GetValue(),settings=settings)
-            self.dirty = False
+                               format=signature[3])
+            project = self.controller.save(signature[0], signature[1], signature[2], settings=settings)
+            self._saved_signature = signature
+            self.dirty = self.editor_signature() != signature
             self.refresh()
             warning='\n'+self.controller.cleanup_warning if self.controller.cleanup_warning else ''
-            self.say(f'Project saved. Revision {project.revision}; {len(project.scenes)} chapters.{warning}',True)
+            newer = ' Newer unsaved edits are retained.' if self.dirty else ''
+            self.say(f'Project saved. Revision {project.revision}; {len(project.scenes)} chapters.{newer}{warning}',True)
             return True
         except Exception as exc:
             try:
@@ -543,6 +584,7 @@ class StudioDialog:
                     if event and hasattr(event,'Veto'):
                         event.Veto()
                     return
+        self._save_unregister()
         self.closed=True
         self.timer.Stop()
         if self.player:
@@ -554,6 +596,7 @@ class StudioDialog:
         try:
             return self.dialog.ShowModal()
         finally:
+            self._save_unregister()
             self.closed=True
             self.timer.Stop()
             self.cancelled.set()

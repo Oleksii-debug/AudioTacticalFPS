@@ -15,6 +15,37 @@ def settings_path(state_root):
     return Path(state_root) / 'audio' / 'engines.json'
 
 
+def validate_dordiai_configuration(value):
+    """Validate saved declarations without probing a private installation."""
+    if value is None:
+        return None
+    allowed = {'enabled', 'runtime_directory', 'python_executable', 'expected_worker_sha256'}
+    if (not isinstance(value, dict) or not set(value) <= allowed
+            or type(value.get('enabled')) is not bool):
+        raise ValueError('A dordiai-voices configuration needs an explicit enabled boolean.')
+    for name in ('runtime_directory', 'python_executable'):
+        selected = value.get(name)
+        if selected is None and (name == 'python_executable' or not value['enabled']):
+            continue
+        if (not isinstance(selected, str) or not 1 <= len(selected) <= 4096
+                or '\x00' in selected or selected.startswith(('//', '\\\\'))):
+            raise ValueError('Choose a local installed dordiai-voices runtime and interpreter.')
+    expected = value.get('expected_worker_sha256')
+    if 'expected_worker_sha256' in value and (not isinstance(expected, str) or not re.fullmatch('[0-9a-f]{64}', expected)):
+        raise ValueError('The reviewed dordiai-voices worker fingerprint must be a lowercase SHA-256.')
+    return dict(value)
+
+
+
+def _require_supported_voice_declarations(value):
+    # Retain canonical declarations for inspection/backup, but never silently
+    # ignore an enabled old engine when another settings edit clears a restore
+    # marker. Its assets must be migrated into the existing reviewed registry.
+    if value.get('dordiai') is not None and value['dordiai']['enabled']:
+        raise ValueError('This retained dordiai-voices declaration requires explicit migration '
+                         'into Local voice settings before activation or revalidation.')
+
+
 def _declared_path(value):
     """Read a saved declaration, including foreign-OS paths, without accessing it."""
     if (not isinstance(value, str) or not value or len(value) > 32768
@@ -50,11 +81,13 @@ def validate_audio_runtime_binding(value):
 
 
 def _settings_document(value):
-    if (type(value) is not dict or set(value) - _FIELDS - {_RESTORE, _RUNTIME_SEAL}
+    if (type(value) is not dict or set(value) - _FIELDS - {_RESTORE, _RUNTIME_SEAL, 'dordiai'}
             or not _FIELDS <= set(value) or type(value['schema']) is not int
             or value['schema'] != 1
             or (_RESTORE in value and type(value[_RESTORE]) is not bool)):
         raise ValueError('Unsupported local engine configuration.')
+    if 'dordiai' in value:
+        validate_dordiai_configuration(value['dordiai'])
     for key in ('ffmpeg', 'ffprobe'):
         if value[key] is not None:
             _declared_path(value[key])
@@ -106,6 +139,7 @@ def _enabled_settings(state_root, *, cancelled=None):
     if value.get(_RESTORE, False):
         raise ValueError('Restored local engine settings require explicit revalidation in '
                          'Local engine settings before any voice or music activation.')
+    _require_supported_voice_declarations(value)
     verify_configured_audio_runtime(value, cancelled=cancelled)
     from .audio.musicgen_worker import plain_local
     for key in ('ffmpeg', 'ffprobe'):
@@ -224,6 +258,7 @@ def save_settings(state_root, value, *, cancelled=None, expected_settings=None):
     _check_review(cancelled)
     value = _settings_document(value)
     previous = load_settings(state_root) if expected_settings is None else _settings_document(expected_settings)
+    _require_supported_voice_declarations(value)
     from .audio.models import LocalModelConfig
     from .audio.music import validate_model
     from .audio.musicgen_worker import plain_local

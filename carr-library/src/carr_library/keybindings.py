@@ -2,8 +2,8 @@
 
 Menu paths identify commands, not transient wx IDs. Preferences contain no
 executable expressions or machine paths and live with the private library.
-Only main-window shortcuts are remapped; modal editor/navigation keys retain
-their documented contextual behavior.
+Main-window and Reading Desk commands share this inventory and preference file;
+conflicts are checked within each native context. Other editors keep their keys.
 """
 from dataclasses import dataclass
 import json
@@ -59,21 +59,42 @@ def normalize_shortcut(value):
     return result
 
 
+def normalize_context_shortcut(value, context='main'):
+    """Keep existing main assignments, while protecting native Reader editing."""
+    result = normalize_shortcut(value)
+    if context not in ('main', 'reader'):
+        raise ValueError('Unknown keyboard command context.')
+    if result and context == 'reader':
+        *parts, key = result.split('+')
+        modifiers = set(parts)
+        if (key == 'Enter'
+                or ('Alt' in modifiers and key in ('Space', 'Backspace'))
+                or (modifiers == {'Alt'} and key in ('Up', 'Down'))
+                or (modifiers <= {'Ctrl', 'Shift'} and 'Ctrl' in modifiers
+                    and key in ('A', 'C', 'X', 'V', 'Z', 'Y', 'Backspace', 'Delete',
+                                'Left', 'Right', 'Up', 'Down', 'Home', 'End'))):
+            raise ValueError('This Reader key is reserved for native text editing or navigation.')
+    return result
+
+
 @dataclass(frozen=True)
 class Command:
     identity: str
     label: str
     shortcut: str = ''
     configurable: bool = True
+    context: str = 'main'
 
     def __post_init__(self):
         if (not isinstance(self.identity, str) or not 0 < len(self.identity) <= 500
                 or any(ord(ch) < 32 for ch in self.identity)
                 or not isinstance(self.label, str) or not self.label.strip()):
             raise ValueError('Invalid keyboard command.')
+        if self.context not in ('main', 'reader'):
+            raise ValueError('Unknown keyboard command context.')
         # An existing fixed platform command, e.g. Alt+F4, remains intact.
         if self.configurable:
-            normalize_shortcut(self.shortcut)
+            normalize_context_shortcut(self.shortcut, self.context)
 
 
 def validate_bindings(commands, overrides):
@@ -92,12 +113,12 @@ def validate_bindings(commands, overrides):
             if value != command.shortcut:
                 raise ValueError(f'{command.label} uses a fixed system shortcut.')
         else:
-            value = normalize_shortcut(value)
+            value = normalize_context_shortcut(value, command.context)
         if value:
-            collision = used.get(value.casefold())
+            collision = used.get((command.context, value.casefold()))
             if collision:
                 raise ValueError(f'{value} is already assigned to {collision}. Clear that assignment first.')
-            used[value.casefold()] = command.label
+            used[(command.context, value.casefold())] = command.label
         bindings[command.identity] = value
     return bindings
 

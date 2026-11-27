@@ -383,9 +383,11 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     # The extracted finally block closes the controls created before the modal
     # try. Preserve that closure binding and its real keyword-only signature.
     env['transport'] = create_autospec(ReaderPlaybackControls, instance=True, spec_set=True)
+    env['unregister_save'] = Mock()
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
+    env['unregister_save'].assert_called_once_with()
     env['transport'].close.assert_called_once_with(stop=False)
     env['autosave_timer'].Stop.assert_called_once_with()
     env['cancel'].set.assert_called_once_with()

@@ -178,6 +178,7 @@ class ReadingDialog:
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='reading-desk')
         self.closed = self.busy = False
         self.buttons = []
+        self.command_buttons = {}
         self.accelerators = []
         self._accelerator_ids = []
         layout = wx.BoxSizer(wx.VERTICAL)
@@ -190,30 +191,36 @@ class ReadingDialog:
         layout.Add(self.text, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
         navigation = wx.WrapSizer(wx.HORIZONTAL)
         self._button(navigation, 'Previous source location', lambda _: self.navigate(-1),
-                     wx.ACCEL_CTRL, wx.WXK_PAGEUP)
+                     command_id='reader.previous')
         self._button(navigation, 'Next source location', lambda _: self.navigate(1),
-                     wx.ACCEL_CTRL, wx.WXK_PAGEDOWN)
-        self._button(navigation, 'Go to reading position...', self.go_to, wx.ACCEL_CTRL, ord('G'))
-        self._button(navigation, 'Start at first source location', lambda _: self.go_first())
+                     command_id='reader.next')
+        self._button(navigation, 'Go to reading position...', self.go_to, command_id='reader.goto')
+        self._button(navigation, 'Start at first source location', lambda _: self.go_first(),
+                     command_id='reader.first')
         layout.Add(navigation, 0, wx.EXPAND | wx.ALL, 4)
         history = wx.BoxSizer(wx.HORIZONTAL)
         self._button(history, 'Back in reading session', lambda _: self.history(-1),
-                     wx.ACCEL_ALT, wx.WXK_LEFT)
+                     command_id='reader.back')
         self._button(history, 'Forward in reading session', lambda _: self.history(1),
-                     wx.ACCEL_ALT, wx.WXK_RIGHT)
-        self._button(history, 'Where am I?', self.where,
-                     wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('L'))
+                     command_id='reader.forward')
+        self._button(history, 'Where am I?', self.where, command_id='reader.where')
         layout.Add(history, 0, wx.EXPAND | wx.ALL, 4)
-        bookmarks = wx.BoxSizer(wx.HORIZONTAL)
+        bookmarks = wx.WrapSizer(wx.HORIZONTAL)
         self._button(bookmarks, 'Add named page bookmark...', self.add_bookmark,
-                     wx.ACCEL_CTRL, ord('B'))
+                     command_id='reader.bookmark_add')
         self._button(bookmarks, 'Manage page bookmarks...', self.manage_bookmarks,
-                     wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('B'))
-        self._button(bookmarks, 'Reader keyboard guide', self.help, wx.ACCEL_NORMAL, wx.WXK_F1)
+                     command_id='reader.bookmarks')
+        self._button(bookmarks, 'Reader keyboard guide', self.help, command_id='reader.help')
+        self._button(bookmarks, 'Find a reader command...', lambda _: self.keyboard.commands(),
+                     command_id='reader.commands')
+        self._button(bookmarks, 'Reader keyboard shortcuts...', lambda _: self.keyboard.settings(),
+                     command_id='reader.settings')
         layout.Add(bookmarks, 0, wx.EXPAND | wx.ALL, 4)
         audio = wx.WrapSizer(wx.HORIZONTAL)
+        # Ctrl+Alt+N remains reserved for the screen reader. Narration stays
+        # available as an explicit button and configurable Reader command.
         self._button(audio, 'Prepare narration of this source location...', self.prepare_narration,
-                     wx.ACCEL_CTRL | wx.ACCEL_ALT, ord('N'))
+                     command_id='reader.narration')
         layout.Add(audio, 0, wx.EXPAND | wx.ALL, 4)
         self.status = wx.TextCtrl(self.dialog, style=wx.TE_READONLY | wx.TE_MULTILINE)
         self.status.SetName('Reading operation status')
@@ -230,16 +237,21 @@ class ReadingDialog:
         layout.Add(footer, 0, wx.ALIGN_RIGHT)
         self.dialog.SetSizer(layout)
         self.dialog.SetEscapeId(wx.ID_CANCEL)
-        self.dialog.SetAcceleratorTable(wx.AcceleratorTable(self.accelerators))
+        from .keyboard_settings import ReaderKeyboardAdapter
+        self.keyboard = ReaderKeyboardAdapter(self)
         self.dialog.Bind(wx.EVT_CLOSE, self.close)
 
-    def _button(self, sizer, label, handler, modifier=None, key=None):
+    def _button(self, sizer, label, handler, modifier=None, key=None, *, command_id=None):
         wx = self.wx
         button = wx.Button(self.dialog, label=label)
         button.SetName(label)
         button.Bind(wx.EVT_BUTTON, handler)
         sizer.Add(button, 0, wx.ALL, 3)
         self.buttons.append(button)
+        if command_id is not None:
+            if command_id in self.command_buttons:
+                raise ValueError('Duplicate Reader command identity.')
+            self.command_buttons[command_id] = (button, handler)
         if modifier is not None:
             identifier = wx.NewIdRef()
             self._accelerator_ids.append(identifier)
@@ -413,24 +425,19 @@ class ReadingDialog:
         self._run('Loading page bookmarks', self.controller.bookmarks, choose)
 
     def help(self, event=None):
-        if self.busy:
+        if self.busy or self.closed:
             return
         self.dialogs.show(self.dialog, 'Reader keyboard guide',
             'Tab and Shift+Tab move among named native controls.\n'
             'The full source text is read-only; use your usual screen-reader text navigation.\n'
-            'Ctrl+PageDown: next source page or text segment.\n'
-            'Ctrl+PageUp: previous source page or text segment.\n'
-            'Ctrl+G: go to a reading position in source order.\n'
-            'Alt+Left and Alt+Right: back and forward in this reading session.\n'
-            'Ctrl+B: add a named page bookmark.\n'
-            'Ctrl+Shift+B: open, rename or delete page bookmarks.\n'
-            'Ctrl+Shift+L: focus the current source location and verification status.\n'
+            + self.keyboard.guide() + '\n'
             'Escape: close this reader and return to the library.\n\n'
+            'Reader shortcuts can be changed from Reader keyboard shortcuts. '
+            'Their original keys can be restored there without changing main-window choices.\n\n'
             'Resume and bookmarks save the current source page or text segment, not the NVDA cursor. '
             'Unknown printed pagination remains unknown. Unverified extracted text remains unverified. '
             'Reading and bookmarks do not approve quotations.\n\n'
-            'Reading, Export reading positions and bookmarks saves a separate JSON backup. '
-            'The existing library backup does not yet include this reader state.')
+            'Reading, Export reading positions and bookmarks also saves a separate JSON backup.')
         self.text.SetFocus()
 
     def close(self, event=None):
@@ -438,6 +445,9 @@ class ReadingDialog:
             return
         self.closed = True
         self.cancelled.set()
+        keyboard = getattr(self, 'keyboard', None)
+        if keyboard is not None:
+            keyboard.close()
         self.executor.shutdown(wait=False, cancel_futures=True)
         if self.dialog.IsModal():
             self.dialog.EndModal(self.wx.ID_CANCEL)

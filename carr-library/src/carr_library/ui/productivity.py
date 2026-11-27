@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import json
 import os
+import weakref
 
 from ..keybindings import (Command, KeybindingStore, normalize_shortcut,
                            validate_bindings, read_preferences, encode_preferences)
@@ -92,7 +93,7 @@ def _preserve_added_defaults(commands, overrides):
                     if command.identity == 'Help/Find a command'), None)
     notice = ''
     if palette is not None and candidate.get(palette.identity, '') == '':
-        known = {command.identity for command in commands}
+        known = {command.identity for command in commands if command.context == palette.context}
         claimed = any(identity in known and identity != palette.identity
                       and normalize_shortcut(shortcut) == palette.shortcut
                       for identity, shortcut in candidate.items())
@@ -144,7 +145,9 @@ def compatible_shortcuts(root, commands):
 class KeyboardActions:
     def __init__(self, frame, bindings, dialogs=None):
         self.frame, self.bindings = frame, tuple(bindings)
-        self.commands = tuple(binding.command for binding in self.bindings)
+        from .keyboard_settings import reader_commands
+        self.commands = (*tuple(binding.command for binding in self.bindings), *reader_commands())
+        self._reader_adapters = weakref.WeakSet()
         self.dialogs = dialogs or NativeDialogs()
         self.overrides = {}
         self.notice = ''
@@ -152,13 +155,18 @@ class KeyboardActions:
     def _apply(self, overrides):
         values = validate_bindings(self.commands, overrides)
         old = [binding.item.GetItemLabel() for binding in self.bindings]
+        previous_keys = validate_bindings(self.commands, self.overrides)
         try:
             for binding in self.bindings:
                 shortcut = values[binding.command.identity]
                 binding.item.SetItemLabel(binding.label + ('\t' + shortcut if shortcut else ''))
+            for adapter in tuple(self._reader_adapters):
+                adapter.refresh(values)
         except Exception:
             for binding, label in zip(self.bindings, old):
                 binding.item.SetItemLabel(label)
+            for adapter in tuple(self._reader_adapters):
+                adapter.refresh(previous_keys)
             raise
         self.overrides = dict(overrides)
         return values
@@ -184,7 +192,14 @@ class KeyboardActions:
         except (OSError, ValueError) as exc:
             self._apply({})
             self.notice = f'Default keyboard shortcuts are active because saved preferences could not be used: {exc}'
+        if os.path.lexists(Path(self.frame.library.root) / 'keyboard-shortcuts.json'):
+            self.notice = (self.notice + ' Earlier canonical keyboard preferences are available for review. '
+                'Use Options, Import keyboard shortcuts and select keyboard-shortcuts.json; '
+                'the original file and current assignments are preserved until an approved import.').strip()
         return self.notice
+
+    def shortcut(self, identity):
+        return validate_bindings(self.commands, self.overrides)[identity]
 
     def save(self, overrides):
         validate_bindings(self.commands, overrides)
@@ -199,31 +214,58 @@ class KeyboardActions:
     def show_list(self, event=None):
         values = validate_bindings(self.commands, self.overrides)
         self.dialogs.show(self.frame, 'Current keyboard shortcuts', '\n'.join(
-            f'{command.label}: {values[command.identity] or "No shortcut"}' for command in self.commands) +
-            '\n\nThese are main-window commands. Modal readers and editors keep their contextual shortcuts. '
+            f'[{command.context}] {command.label}: {values[command.identity] or "No shortcut"}' for command in self.commands) +
+            '\n\nMain and Reading Desk contexts share these saved preferences. '
             'Ordinary text editing keys and Alt-menu letters remain reserved.')
 
-    def change(self, event=None):
+    def change(self, event=None, *, context='main', parent=None, report=None):
+        parent = self.frame if parent is None else parent
+        report = self.frame.report if report is None else report
+        library, root = self.frame.library, Path(self.frame.library.root)
+        def current():
+            if self.frame.library is not library or Path(self.frame.library.root) != root:
+                raise ValueError('The library changed. Reopen keyboard shortcuts.')
         try:
-            commands = tuple(command for command in self.commands if command.configurable)
+            if context not in ('main', 'reader'):
+                raise ValueError('Unknown keyboard command context.')
+            commands = tuple(command for command in self.commands
+                             if command.configurable and command.context == context)
             values = validate_bindings(self.commands, self.overrides)
             labels = [f'{command.label}; {values[command.identity] or "No shortcut"}' for command in commands]
-            index = self.dialogs.choose(self.frame, 'Keyboard shortcuts', 'Choose a command to change.', labels)
+            if context == 'reader':
+                labels.insert(0, 'Restore all Reader shortcuts to their original keys')
+            index = self.dialogs.choose(parent, 'Keyboard shortcuts', 'Choose a command to change.', labels)
+            current()
             if index is None:
                 return
-            if type(index) is not int or not 0 <= index < len(commands):
+            if type(index) is not int or not 0 <= index < len(labels):
                 raise ValueError('Choose one command.')
+            if context == 'reader':
+                if index == 0:
+                    import wx
+                    if wx.MessageBox('Restore every Reader shortcut to its original key? Main-window assignments are preserved.',
+                        'Reset Reader keyboard shortcuts', wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, parent) != wx.YES:
+                        return
+                    current()
+                    reader_ids = {command.identity for command in commands}
+                    self.save({key: value for key, value in self.overrides.items() if key not in reader_ids})
+                    report('Original Reader shortcuts restored and saved.')
+                    return
+                index -= 1
             command = commands[index]
-            value = self.dialogs.text(self.frame, 'Change keyboard shortcut',
+            value = self.dialogs.text(parent, 'Change keyboard shortcut',
                 command.label + '\nUse Ctrl+Shift+S, Alt+F8 or F6. Leave empty to remove the shortcut. '
-                'Defaults can be restored from Options.', values[command.identity])
+                + ('Reader defaults can be restored from the first choice in this dialog.'
+                   if context == 'reader' else 'Main-window defaults can be restored from Options.'),
+                values[command.identity])
+            current()
             if value is None:
                 return
             candidate = {**self.overrides, command.identity: normalize_shortcut(value)}
             self.save(candidate)
-            self.frame.report(f'Keyboard shortcut saved for {command.label}: {candidate[command.identity] or "none"}.')
+            report(f'Keyboard shortcut saved for {command.label}: {candidate[command.identity] or "none"}.')
         except Exception as exc:
-            self.frame.report(f'Keyboard shortcut was not changed: {exc}')
+            report(f'Keyboard shortcut was not changed: {exc}')
 
     def reset(self, event=None):
         import wx
@@ -231,7 +273,8 @@ class KeyboardActions:
                          wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self.frame) != wx.YES:
             return
         try:
-            self.save({})
+            main_ids = {command.identity for command in self.commands if command.context == 'main'}
+            self.save({key: value for key, value in self.overrides.items() if key not in main_ids})
             self.frame.report('Default main-window keyboard shortcuts restored and saved.')
         except Exception as exc:
             self.frame.report(f'Keyboard defaults could not be saved: {exc}')
@@ -311,7 +354,8 @@ class KeyboardActions:
             if save:
                 self._export_preferences(path, context)
             else:
-                candidate = read_preferences(path)
+                from .keyboard_settings import read_shortcut_import
+                candidate = read_shortcut_import(path, self.commands, self.overrides)
                 candidate, _ = _migrate_command_aliases(self.commands, candidate)
                 candidate, _ = _preserve_added_defaults(self.commands, candidate)
                 values = validate_bindings(self.commands, candidate)
@@ -340,7 +384,8 @@ def install_productivity_actions(frame):
 
     file_menu = wx.Menu()
     append(file_menu, '&Save current changes\tCtrl+S', lambda event: save_current(frame, event))
-    append(file_menu, 'Save &all changes\tCtrl+Shift+S', lambda event: save_current(frame, event))
+    from .save_actions import save_all_open
+    append(file_menu, 'Save &all changes\tCtrl+Shift+S', lambda event: save_all_open(frame, event))
     frame.menu_bar.Insert(0, file_menu, '&File')
     from .save_actions import install_research_recovery
     install_research_recovery(frame, file_menu)

@@ -18,7 +18,7 @@ jobs:
   compatibility:
     name: Windows x64 / exact installed canonical compatibility
     runs-on: windows-2022
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         shell: pwsh
@@ -62,11 +62,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $python -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Require source evidence recovery and owned voice lifecycle
+      - name: Require integrated canonical source contracts
         if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
         timeout-minutes: 5
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/storage/test_evidence_drafts.py tests/ui/test_save_all.py tests/ui/test_evidence_draft_recovery.py tests/speech/test_progress_speech.py 2>&1 | Tee-Object 'ci-reconciliation-results/source-contracts.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py --jobs 2 tests/storage/test_evidence_drafts.py tests/ui/test_save_all.py tests/ui/test_evidence_draft_recovery.py tests/speech/test_progress_speech.py tests/storage/test_canonical_backup_compat.py tests/storage/test_composite_backup.py tests/storage/test_v3_state_backup.py tests/ui/test_save_all_access.py tests/ui/test_progress_job_review.py tests/ui/test_save_actions.py tests/ui/test_reader_keymap_context.py tests/ui/test_command_palette.py tests/ui/test_keyboard_export.py tests/ui/test_keyboard_rename.py tests/ui/test_keyboard_settings.py tests/speech/test_reading.py tests/packaging/test_source_wheel.py tests/ui/test_scope_labels.py tests/language_qualification/test_inventory_cleanup.py 2>&1 | Tee-Object 'ci-reconciliation-results/source-contracts.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Require the same contracts from the installed application
         if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
@@ -77,9 +77,7 @@ jobs:
           import pytest
           checkout = pathlib.Path.cwd().resolve()
           purelib = pathlib.Path(sysconfig.get_path('purelib')).resolve()
-          modules = ('carr_library.evidence_drafts', 'carr_library.ui.save_all',
-                     'carr_library.runtime_settings', 'carr_library.speech.runtime',
-                     'carr_library.speech.progress_speech')
+          modules = ["carr_library.evidence_drafts","carr_library.ui.save_all","carr_library.runtime_settings","carr_library.speech.runtime","carr_library.speech.progress_speech","carr_library.backup_compat","carr_library.backup_sidecars","carr_library.library_backup","carr_library.state_recovery","carr_library.keybindings","carr_library.ui.keyboard_settings","carr_library.ui.productivity","carr_library.ui.reading_desk","carr_library.ui.save_actions","carr_library.ui.speech_dialog","carr_library.ui.studio_dialog","carr_library.ui.audio_studio","carr_library.speech.reading","carr_library.ui.scope_bindings","carr_library.ui.language_matrix"]
           for name in modules:
               source = pathlib.Path(importlib.import_module(name).__file__).resolve()
               expected = checkout / 'src' / pathlib.Path(*name.split('.')).with_suffix('.py')
@@ -92,8 +90,7 @@ jobs:
                       self.seen.append(report.nodeid)
           policy = NoExpectedFailures()
           report = checkout / 'ci-reconciliation-results' / 'installed-contracts.xml'
-          suites = ['tests/storage/test_evidence_drafts.py', 'tests/ui/test_save_all.py',
-                    'tests/ui/test_evidence_draft_recovery.py', 'tests/speech/test_progress_speech.py']
+          suites = ["tests/storage/test_evidence_drafts.py","tests/ui/test_save_all.py","tests/ui/test_evidence_draft_recovery.py","tests/speech/test_progress_speech.py","tests/storage/test_canonical_backup_compat.py","tests/storage/test_composite_backup.py","tests/storage/test_v3_state_backup.py","tests/ui/test_save_all_access.py","tests/ui/test_progress_job_review.py","tests/ui/test_save_actions.py","tests/ui/test_reader_keymap_context.py","tests/ui/test_command_palette.py","tests/ui/test_keyboard_export.py","tests/ui/test_keyboard_rename.py","tests/ui/test_keyboard_settings.py","tests/speech/test_reading.py","tests/packaging/test_source_wheel.py","tests/ui/test_scope_labels.py","tests/language_qualification/test_inventory_cleanup.py"]
           status = pytest.main(['-q', '-o', 'addopts=', '-o', 'pythonpath=',
               '-o', 'xfail_strict=true', '--import-mode=importlib',
               '--junitxml=' + str(report), *suites], plugins=[policy])
@@ -107,6 +104,30 @@ jobs:
           raise SystemExit(0 if ok else 1)
           '@
           $installedGate | & $env:CARR_PYTHON -I -B - 2>&1 | Tee-Object 'ci-reconciliation-results/installed-contracts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require native source Save All and recovery
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_save_all_recovery_smoke.py --native --report ci-reconciliation-results/source-save-all-recovery.json --source (Get-Location).Path 2>&1 | Tee-Object 'ci-reconciliation-results/source-save-all-recovery.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require native source Reader keyboard dispatch
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_keymap_smoke.py --output ci-reconciliation-results/source-reader-keymap.json --source (Get-Location).Path 2>&1 | Tee-Object 'ci-reconciliation-results/source-reader-keymap.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require native installed Save All and recovery
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_save_all_recovery_smoke.py --native --report ci-reconciliation-results/installed-save-all-recovery.json 2>&1 | Tee-Object 'ci-reconciliation-results/installed-save-all-recovery.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require native installed Reader keyboard dispatch
+        if: ${{ !cancelled() && steps.installed.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 scripts/windows_reader_keymap_smoke.py --output ci-reconciliation-results/installed-reader-keymap.json 2>&1 | Tee-Object 'ci-reconciliation-results/installed-reader-keymap.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Retain source identity and contract receipts
         if: always()

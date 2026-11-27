@@ -103,8 +103,12 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     save_as = wx.Button(dialog, label='Save &as')
     undo = wx.Button(dialog, label='&Undo reading edit')
     redo = wx.Button(dialog, label='R&edo reading edit')
+    save_all_button = wx.Button(dialog, label='Save all open drafts')
+    save_all_button.SetName('Save all open drafts through the shared Save All coordinator')
+    cancel_all_button = wx.Button(dialog, label='Cancel Save All')
+    cancel_all_button.SetName('Cancel Save All and retain unsaved drafts')
     original = wx.Button(dialog, label='Original and &diff')
-    for control in (open_button, save_button, save_as, undo, redo, original):
+    for control in (open_button, save_button, save_as, save_all_button, cancel_all_button, undo, redo, original):
         row.Add(control, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.EXPAND)
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -504,9 +508,17 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         except Exception as exc:
             report(f'The reading copy is still open. {exc}', focus=True)
 
+    def save_all_drafts(event=None):
+        from .save_actions import save_all_open
+        return save_all_open(parent, event, report=lambda message: report(message, focus=True))
+
+    def cancel_all_drafts(event=None):
+        from .save_actions import cancel_save_all
+        return cancel_save_all(parent, event, report=lambda message: report(message, focus=True))
+
     for control, handler in ((reload_button, reload), (progress_voice, select_progress_voice), (read, speak),
         (cursor, lambda event: speak(from_cursor=True)), (pause, pause_audio), (stop, stop_audio),
-        (export_audio, save_audio), (save_button, save_project),
+        (export_audio, save_audio), (save_button, save_project), (save_all_button, save_all_drafts), (cancel_all_button, cancel_all_drafts),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
         (original, compare), (seek, seek_audio), (cleanup, clean), (close, closing)):
@@ -523,6 +535,32 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     dialog.SetAcceleratorTable(wx.AcceleratorTable(accelerators))
     autosave_timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, autosave_timer)
+    from .save_all import SaveResult, coordinator_for
+    coordinator = coordinator_for(parent)
+
+    def unsaved():
+        if not alive:
+            return False
+        sync_document()
+        # Deleting all text is still an edit to an existing reading copy.
+        return document.dirty
+
+    def save_registered(completed):
+        try:
+            if not alive:
+                raise ValueError('The reading window closed before saving.')
+            playback_guard()
+            if busy:
+                raise ValueError('Speech is running; stop it before saving the reading copy.')
+            saved = bool(save_project())
+        except Exception as exc:
+            completed(SaveResult(False, str(exc)))
+            return
+        completed(SaveResult(saved, '' if saved else 'The reading copy was not saved.'))
+
+    unregister_save = (coordinator.register('reading.' + str(id(dialog)), 'Voice reading copy',
+                        dirty=unsaved, save=save_registered, focus=editor.SetFocus)
+                       if coordinator is not None else lambda: None)
     try:
         capabilities()
         reload()
@@ -536,6 +574,10 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         worker_finished = False
         notices = []
         try:
+            try:
+                unregister_save()
+            except Exception as exc:
+                notices.append(f'Save coordinator could not be detached: {exc}')
             try:
                 transport.close(stop=False)
             except (OSError, RuntimeError) as exc:

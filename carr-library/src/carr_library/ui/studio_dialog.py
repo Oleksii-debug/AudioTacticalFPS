@@ -77,6 +77,8 @@ def show_studio(frame):
     cancel = threading.Event()
     voices, current_job, alive, busy = (), None, True, False
     draft_dirty = False
+    saved_signature = None
+    save_library, save_root = frame.library, frame.library.root
 
     def field(label, factory=wx.TextCtrl, proportion=0, **kwargs):
         layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 6)
@@ -106,7 +108,7 @@ def show_studio(frame):
                  ('roles', 'Edit &roles and voices'), ('help', '&Help')),
                 (('render', '&Render / resume (F6)'), ('pause', '&Pause (F8)'), ('jobs', 'Saved &jobs'),
                  ('preview', 'Listen to &output'), ('close', '&Close')),
-                (('progress_voice', 'Use voice for progress...'),)):
+                (('progress_voice', 'Use voice for progress...'), ('save_all', 'Save all open drafts'), ('cancel_save_all', 'Cancel Save All'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for identity, label in row:
             button = wx.Button(dialog, label=label)
@@ -300,12 +302,22 @@ def show_studio(frame):
 
         run(lambda: activate_progress_voice(root, voice_id), activated, phase='Selecting a local progress voice')
 
+    def editor_signature():
+        return editor.GetValue(), title.GetValue(), selected_voices()
+
     def save(event=None):
-        nonlocal draft_dirty
+        nonlocal draft_dirty, saved_signature
         try:
-            result = controller.save(editor.GetValue(), title.GetValue(), selected_voices())
-            draft_dirty = False
-            report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.', True)
+            if not alive or busy:
+                raise ValueError('Pause the current production before saving the project.')
+            if frame.library is not save_library or frame.library.root != save_root:
+                raise ValueError('The library folder changed. Reopen this project before saving.')
+            signature = editor_signature()
+            result = controller.save(*signature)
+            saved_signature = signature
+            draft_dirty = editor_signature() != signature
+            newer = ' Newer unsaved edits are retained.' if draft_dirty else ''
+            report(f'Saved project revision {result.revision}. {len(result.scenes)} scenes, {len(result.roles)} roles.{newer}', True)
             return result
         except Exception as exc:
             report(f'Project validation failed: {exc} The editable draft was retained if its save succeeded.', True)
@@ -530,7 +542,15 @@ def show_studio(frame):
         executor.shutdown(wait=False, cancel_futures=True)
         dialog.EndModal(wx.ID_CLOSE)
 
-    for name, callback in {'save': save, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
+    def save_all_drafts(event=None):
+        from .save_actions import save_all_open
+        return save_all_open(frame, event, report=lambda message: report(message, True))
+
+    def cancel_all_drafts(event=None):
+        from .save_actions import cancel_save_all
+        return cancel_save_all(frame, event, report=lambda message: report(message, True))
+
+    for name, callback in {'save': save, 'save_all': save_all_drafts, 'cancel_save_all': cancel_all_drafts, 'open': open_project, 'saveas': save_as, 'roles': edit_roles,
                            'render': render, 'pause': lambda event: cancel.set(), 'jobs': jobs,
                            'preview': preview, 'help': help_text, 'close': close,
                            'progress_voice': select_progress_voice}.items():
@@ -545,14 +565,17 @@ def show_studio(frame):
     dialog.SetAcceleratorTable(wx.AcceleratorTable(bindings))
     editor.Bind(wx.EVT_TEXT, changed)
     title.Bind(wx.EVT_TEXT, changed)
-    voice_choice.Bind(wx.EVT_CHOICE, lambda event: controls())
+    def voice_changed(event):
+        changed(event)
+        controls()
+    voice_choice.Bind(wx.EVT_CHOICE, voice_changed)
     dialog.Bind(wx.EVT_CLOSE, close)
     timer = wx.Timer(dialog)
     dialog.Bind(wx.EVT_TIMER, autosave, timer)
     timer.Start(4000)
 
     def loaded(result):
-        nonlocal voices, draft_dirty
+        nonlocal voices, draft_dirty, saved_signature
         voices = result
         voice_choice.SetItems([v.name + '; ' + v.language for v in voices])
         if voices:
@@ -574,14 +597,38 @@ def show_studio(frame):
                 return
         draft_dirty = False
         controls()
+        if controller.project is not None and (editor.GetValue(), title.GetValue()) == (
+                controller.project.original_script, controller.project.title):
+            saved_signature = editor_signature()
         report(f'{len(voices)} installed voices available. Enter a script and choose roles, then Render.'
                if voices else 'No local voice is installed. Configure a local SAPI/Piper voice before narration.', True)
         editor.SetFocus()
 
+    from .save_all import SaveResult, coordinator_for
+    coordinator = coordinator_for(frame)
+
+    def unsaved():
+        if not alive:
+            return False
+        current = editor_signature()
+        return (bool(current[0]) or saved_signature is not None or draft_dirty) and current != saved_signature
+
+    def save_registered(completed):
+        if not alive or busy:
+            completed(SaveResult(False, 'Audio production is running or this window closed; project edits are retained.'))
+            return
+        result = save()
+        completed(SaveResult(result is not None, '' if result is not None else
+                             'Project validation or saving did not complete.'))
+
+    unregister_save = (coordinator.register('scene-studio.' + str(id(controller)), 'Scene Audio Studio project',
+                        dirty=unsaved, save=save_registered, focus=editor.SetFocus)
+                       if coordinator is not None else lambda: None)
     run(lambda: service.voices.voices(), loaded, phase='Checking installed local voices')
     try:
         dialog.ShowModal()
     finally:
+        unregister_save()
         if alive:
             close()
         dialog.Destroy()

@@ -127,13 +127,15 @@ def _prepared(relative, value):
         fields = {'schema', 'ffmpeg', 'ffprobe', 'piper', 'voice_helpers', 'music_models', 'fluidsynth'}
         if (type(schema) is not int or schema != 1
                 or not fields <= set(value)
-                or set(value) - fields - {'restore_requires_revalidation', 'audio_runtime_manifest_sha256'}
+                or set(value) - fields - {'restore_requires_revalidation', 'audio_runtime_manifest_sha256', 'dordiai'}
                 or type(value.get('restore_requires_revalidation', False)) is not bool
                 or any(not isinstance(value[key], list) or len(value[key]) > 100
                        for key in ('piper', 'voice_helpers', 'music_models'))):
             raise ValueError('Invalid restored local-engine configuration.')
-        from .runtime_settings import validate_audio_runtime_binding
+        from .runtime_settings import validate_audio_runtime_binding, validate_dordiai_configuration
         validate_audio_runtime_binding(value)
+        if 'dordiai' in value:
+            validate_dordiai_configuration(value['dordiai'])
         # Keep original paths/hashes as evidence; do not resolve an executable
         # or model on the previous machine during backup or restoration.
         return {**value, 'restore_requires_revalidation': True}
