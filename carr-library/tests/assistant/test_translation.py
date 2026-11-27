@@ -1500,3 +1500,51 @@ def test_language_discovery_rechecks_account_at_gateway_before_connection(
     window.state['scenario'] = scenario
     window.ui.show_translation(frame)
     assert not window.errors
+
+
+@pytest.mark.parametrize('claimed,actual', [(False, True), (True, False)])
+@pytest.mark.parametrize('first,last,position', [(3, 3, 0), (1, 3, 1)])
+def test_fresh_source_translation_rejects_unattested_capture_snapshot(
+        tmp_path, connection, monkeypatch, claimed, actual, first, last, position):
+    from dataclasses import replace
+    from carr_library.reader.reading_desk import ReadingDesk
+
+    case = bound_ready(tmp_path, connection, first=first, last=last)
+    anchor = case.document.source_anchor
+    assert anchor['positions'][position]['text_verified_at_capture'] is True
+    anchor['positions'][position]['text_verified_at_capture'] = claimed
+    case.document = ReadingDocument(case.source.text, title=case.source.title,
+                                    source_anchor=anchor)
+    if not actual:
+        # Exercise the unreviewed-reader boundary while keeping real library
+        # identity, source bytes and text validation. No claim of PDF OCR here.
+        original_page = ReadingDesk.page
+        def unreviewed(desk, ordinal):
+            page = original_page(desk, ordinal)
+            return replace(page, verified=False) if ordinal == anchor['positions'][position]['ordinal'] else page
+        monkeypatch.setattr(ReadingDesk, 'page', unreviewed)
+    calls = len(connection['calls'])
+    with pytest.raises(ValueError, match='verification snapshot'):
+        submit_bound(case)
+    assert not case.service.jobs.identities()
+    assert len(connection['calls']) == calls
+
+
+def test_saved_source_translation_keeps_historical_capture_snapshot(
+        tmp_path, connection, monkeypatch):
+    from dataclasses import replace
+    from carr_library.reader.reading_desk import ReadingDesk
+
+    case = bound_ready(tmp_path, connection, first=3, last=3)
+    identity, _ = submit_bound(case)
+    original_page = ReadingDesk.page
+    def unreviewed(desk, ordinal):
+        return replace(original_page(desk, ordinal), verified=False)
+    monkeypatch.setattr(ReadingDesk, 'page', unreviewed)
+    assert case.service.resume(identity)['status'] == 'complete'
+    target = tmp_path / 'historical-capture'
+    case.service.export(identity, target)
+    report = read_json(target / 'translation-provenance.json')
+    assert report['quotation_authority'] is False
+    assert report['source_anchor'] == case.document.source_anchor
+    assert report['source_anchor']['positions'][0]['text_verified_at_capture'] is True
