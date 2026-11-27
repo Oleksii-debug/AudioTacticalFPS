@@ -1,0 +1,445 @@
+{
+  "schema": 1,
+  "source": {
+    "repository": "Oleksii-debug/AudioTacticalFPS",
+    "commit": "ea8eff0f415d4352f6b66956ed9a118239e419c5",
+    "run_id": 46020971597,
+    "job_id": 140580221461,
+    "url": "https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46020971597"
+  },
+  "selection": {
+    "schema": 1,
+    "official_url": "https://www.cross-plus-a.com/blb2txt.zip",
+    "downloaded_at": "2026-11-27T15:30:45.480366+00:00",
+    "archive_sha256": "1e4954fb8a934a53d8228219fd457336e18fed1fb463b4f04c12e71346359e04",
+    "archive_bytes": 6145731,
+    "archive_member": "blb2txt.exe",
+    "executable_machine": "0x14c",
+    "executable_sha256": "e9985d73f18d6d6a3c3a4a47dc833aa5149e274e6cab3437db0c2490dceac0e1",
+    "executable_bytes": 6798336,
+    "use": "authored format research only; no binary distribution"
+  },
+  "scope": "Authored synthetic text and dictionary observations only. No borrowed dictionaries, help or executable is redistributed.",
+  "cases": [
+    {
+      "case": "baseline",
+      "kind": null,
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": null,
+      "exit_code": 0,
+      "output": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-default",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-2-0",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00030\u00030\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-2-1",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-2-2",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00032\u00030\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-3-0",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-3-1",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00031\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN Cat CAT scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-3-2",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00032\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-5-0",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-5-1",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00031\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat TOKENs TOKEN1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat TOKENé αcat TOKENα 猫cat TOKEN猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-5-2",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00032\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN sTOKEN cats cat1 1TOKEN TOKEN_TOKEN _TOKEN TOKEN_ éTOKEN caté αTOKEN catα 猫TOKEN cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-5-3",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00033\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN sTOKEN TOKENs TOKEN1 1TOKEN TOKEN_TOKEN _TOKEN TOKEN_ éTOKEN TOKENé αTOKEN TOKENα 猫TOKEN TOKEN猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-6-0",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-6-1",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00031\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/> scat cats cat1 1cat <pron sym=\"TOKEN\"/>_<pron sym=\"TOKEN\"/> _<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/>_ écat caté αcat catα 猫cat cat猫 😀<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/>😀 (<pron sym=\"TOKEN\"/>) <pron sym=\"TOKEN\"/>.\r\n<pron sym=\"TOKEN\"/>\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-6-2",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00032\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "<phoneme alphabet=\"ipa\" ph=\"TOKEN\"/> <phoneme alphabet=\"ipa\" ph=\"TOKEN\"/> <phoneme alphabet=\"ipa\" ph=\"TOKEN\"/> scat cats cat1 1cat <phoneme alphabet=\"ipa\" ph=\"TOKEN\"/>_<phoneme alphabet=\"ipa\" ph=\"TOKEN\"/> _<phoneme alphabet=\"ipa\" ph=\"TOKEN\"/> <phoneme alphabet=\"ipa\" ph=\"TOKEN\"/>_ écat caté αcat catα 猫cat cat猫 😀<phoneme alphabet=\"ipa\" ph=\"TOKEN\"/> <phoneme alphabet=\"ipa\" ph=\"TOKEN\"/>😀 (<phoneme alphabet=\"ipa\" ph=\"TOKEN\"/>) <phoneme alphabet=\"ipa\" ph=\"TOKEN\"/>.\r\n<phoneme alphabet=\"ipa\" ph=\"TOKEN\"/>\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-field-6-3",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00033\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-boundaries-0-0",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat cats cat1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat caté αcat catα 猫cat cat猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-boundaries-0-1",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00031\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/> scat cats cat1 1cat <pron sym=\"TOKEN\"/>_<pron sym=\"TOKEN\"/> _<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/>_ écat caté αcat catα 猫cat cat猫 😀<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/>😀 (<pron sym=\"TOKEN\"/>) <pron sym=\"TOKEN\"/>.\r\n<pron sym=\"TOKEN\"/>\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-boundaries-1-0",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00031\u00030\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN scat TOKENs TOKEN1 1cat TOKEN_TOKEN _TOKEN TOKEN_ écat TOKENé αcat TOKENα 猫cat TOKEN猫 😀TOKEN TOKEN😀 (TOKEN) TOKEN.\r\nTOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-boundaries-1-1",
+      "kind": "bxd",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00031\u00031\u0003cat\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/> scat <pron sym=\"TOKEN\"/>s <pron sym=\"TOKEN\"/>1 1cat <pron sym=\"TOKEN\"/>_<pron sym=\"TOKEN\"/> _<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/>_ écat <pron sym=\"TOKEN\"/>é αcat <pron sym=\"TOKEN\"/>α 猫cat <pron sym=\"TOKEN\"/>猫 😀<pron sym=\"TOKEN\"/> <pron sym=\"TOKEN\"/>😀 (<pron sym=\"TOKEN\"/>) <pron sym=\"TOKEN\"/>.\r\n<pron sym=\"TOKEN\"/>\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-type-0",
+      "kind": "bxd",
+      "input": "cat c.t cot CAT",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00030\u00030\u00030\u0003c.t\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "cat TOKEN cot CAT\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-type-1",
+      "kind": "bxd",
+      "input": "cat c.t cot CAT",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00031\u00030\u00030\u0003c.t\u0003TOKEN\u0003\r\n",
+      "exit_code": 0,
+      "output": "TOKEN TOKEN TOKEN TOKEN\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-captures",
+      "kind": "bxd",
+      "input": "cat cats CAT CATS",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00031\u00031\u00030\u00031\u00030\u00030\u0003(cat)(s?)\u0003$2-$1-$0\u0003\r\n",
+      "exit_code": 0,
+      "output": "-cat-cat s-cat-cats -CAT-CAT S-CAT-CATS\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "bxd-ordinal-versus-physical",
+      "kind": "bxd",
+      "input": "A",
+      "dictionary": "﻿Version=1\r\nDelimiter=\u0003\r\nAuthored probe\u0003Resonance\u0003Synthetic rules only\r\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u00039\u00031\u00030\u00030\u00030\u00030\u0003A\u0003B\u0003\r\nBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\u00031\u00031\u00030\u00030\u00030\u00030\u0003B\u0003C\u0003\r\n",
+      "exit_code": 0,
+      "output": "C\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-24",
+      "kind": "dic",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿cat=X\r\n",
+      "exit_code": 0,
+      "output": "X X X scat cats cat1 1cat X_X _X X_ écat caté αcat catα 猫cat cat猫 😀X X😀 (X) X.\r\nX\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-25",
+      "kind": "dic",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿$cat=X\r\n",
+      "exit_code": 0,
+      "output": "X Cat CAT scat cats cat1 1cat X_X _X X_ écat caté αcat catα 猫cat cat猫 😀X X😀 (X) X.\r\nX\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-26",
+      "kind": "dic",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿*cat=X\r\n",
+      "exit_code": 0,
+      "output": "X X X sX cats cat1 1X X_X _X X_ éX caté αX catα 猫X cat猫 😀X X😀 (X) X.\r\nX\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-27",
+      "kind": "dic",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿cat*=X\r\n",
+      "exit_code": 0,
+      "output": "X X X scat Xs X1 1cat X_X _X X_ écat Xé αcat Xα 猫cat X猫 😀X X😀 (X) X.\r\nX\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-28",
+      "kind": "dic",
+      "input": "cat Cat CAT scat cats cat1 1cat cat_cat _cat cat_ écat caté αcat catα 猫cat cat猫 😀cat cat😀 (cat) cat.\r\ncat",
+      "dictionary": "﻿*cat*=X\r\n",
+      "exit_code": 0,
+      "output": "X X X sX Xs X1 1X X_X _X X_ éX Xé αX Xα 猫X X猫 😀X X😀 (X) X.\r\nX\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-literal-29",
+      "kind": "dic",
+      "input": "a*b * $ a$b = a=b # a#b",
+      "dictionary": "﻿**=STAR\r\n",
+      "exit_code": 0,
+      "output": "a*b STAR $ a$b = a=b # a#b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-literal-30",
+      "kind": "dic",
+      "input": "a*b * $ a$b = a=b # a#b",
+      "dictionary": "﻿$$=DOLLAR\r\n",
+      "exit_code": 0,
+      "output": "a*b * DOLLAR a$b = a=b # a#b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-literal-31",
+      "kind": "dic",
+      "input": "a*b * $ a$b = a=b # a#b",
+      "dictionary": "﻿===EQUAL\r\n",
+      "exit_code": 0,
+      "output": "a*b * $ a$b EQUAL a=b # a#b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-literal-32",
+      "kind": "dic",
+      "input": "a*b * $ a$b = a=b # a#b",
+      "dictionary": "﻿##=HASH\r\n",
+      "exit_code": 0,
+      "output": "a*b * $ a$b = a=b HASH a#b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-longest-order",
+      "kind": "dic",
+      "input": "catalog cat",
+      "dictionary": "﻿cat=X\r\ncatalog=Y\r\n",
+      "exit_code": 0,
+      "output": "Y X\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "dic-case-order",
+      "kind": "dic",
+      "input": "catalog cat Catalog CAT",
+      "dictionary": "﻿$cat=X\r\ncatalog=Y\r\n",
+      "exit_code": 0,
+      "output": "Y X Y CAT\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "rex-35",
+      "kind": "rex",
+      "input": "cat cats CAT a=b",
+      "dictionary": "﻿cat=X\r\n",
+      "exit_code": 0,
+      "output": "X Xs X a=b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "rex-36",
+      "kind": "rex",
+      "input": "cat cats CAT a=b",
+      "dictionary": "﻿@cat=X\r\n",
+      "exit_code": 0,
+      "output": "X Xs CAT a=b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "rex-37",
+      "kind": "rex",
+      "input": "cat cats CAT a=b",
+      "dictionary": "﻿(cat)(s?)=$2-$1-$0\r\n",
+      "exit_code": 0,
+      "output": "-cat-cat s-cat-cats -CAT-CAT a=b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "rex-38",
+      "kind": "rex",
+      "input": "cat cats CAT a=b",
+      "dictionary": "﻿a\\=b=EQUAL\r\n",
+      "exit_code": 0,
+      "output": "cat cats CAT EQUAL\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "rex-39",
+      "kind": "rex",
+      "input": "cat cats CAT a=b",
+      "dictionary": "﻿cat=\\U$0\r\n",
+      "exit_code": 0,
+      "output": "CAT CATs CAT a=b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "rex-40",
+      "kind": "rex",
+      "input": "cat cats CAT a=b",
+      "dictionary": "﻿cat=$$\r\n",
+      "exit_code": 0,
+      "output": "$ $s $ a=b\r\n",
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "case": "rex-order",
+      "kind": "rex",
+      "input": "A",
+      "dictionary": "﻿A=B\r\nB=C\r\n",
+      "exit_code": 0,
+      "output": "C\r\n",
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

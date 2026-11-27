@@ -84,7 +84,9 @@ def test_bxd_ordinal_is_not_pattern_type_and_file_order_stays_authoritative():
     ])
     parsed, document, _snapshot, preview = rendered(raw, 'bxd', 'A never')
     assert len(parsed.rules) == 2 and parsed.disabled == 1
-    assert parsed.rules[0].regex is False and parsed.rules[1].regex is True
+    assert parsed.rules[0].regex is True and parsed.rules[1].regex is True
+    assert parsed.rules[0].pattern == r'(?<![^\W_])A(?![^\W_])'
+    assert parsed.rules[1].pattern == '(B)'
     assert preview.after == 'BC never'
     assert document.text == 'A never'
     assert 'disabled BXD rules omitted' in parsed.notice and 'file order retained' in parsed.notice
@@ -136,7 +138,7 @@ def test_bxd_unknown_fields_are_never_silently_reinterpreted(mutation):
     elif mutation == 'delimiter':
         raw = raw.replace(b'Delimiter=\x03', b'Delimiter=|')
     elif mutation == 'boundary':
-        raw = bxd([{'pattern': 'cat', 'replacement': 'X', 'fields': {5: '3'}}])
+        raw = bxd([{'pattern': 'cat', 'replacement': 'X', 'fields': {5: '4'}}])
     elif mutation == 'flag':
         raw = bxd([{'pattern': 'cat', 'replacement': 'X', 'fields': {4: '3'}}])
     elif mutation == 'duplicate':
@@ -206,7 +208,7 @@ def test_unsupported_foreign_import_preserves_current_saved_rules_and_original(t
     store.save(old, expected=None)
     previous = store.path.read_bytes()
     source = tmp_path / 'bad.bxd'
-    raw = bxd([{'pattern': 'cat', 'replacement': 'X', 'fields': {6: '3'}}])
+    raw = bxd([{'pattern': 'cat', 'replacement': 'X', 'fields': {5: '4'}}])
     source.write_bytes(raw)
     with pytest.raises(ValueError, match='boundary'):
         read_dictionary(source)
@@ -234,3 +236,58 @@ def test_existing_canonical_json_import_keeps_its_caller_selected_filename(tmp_p
     imported, token = read_dictionary(selected)
     assert imported == rules and token == sha256(before).hexdigest()
     assert selected.read_bytes() == before
+
+
+# Independent author-tool observations from our own synthetic inputs. The
+# executable/help is not redistributed and is never launched by these tests.
+_AUTHOR = json.loads((Path(__file__).with_name('fixtures')
+    / 'pronunciation_author_observations.json').read_text(encoding='utf-8'))
+_AUTHOR_REFUSALS = {
+    'bxd-field-2-2': 'unrecognized enable, case or pattern flags',
+    'bxd-field-3-2': 'unrecognized enable, case or pattern flags',
+    'bxd-field-6-1': 'phoneme output',
+    'bxd-field-6-2': 'phoneme output',
+    'bxd-field-6-3': 'unrecognized BXD output mode',
+    'bxd-boundaries-0-1': 'phoneme output',
+    'bxd-boundaries-1-1': 'phoneme output',
+    'rex-39': 'manual review',
+}
+
+
+def test_author_observation_identity_and_file_ending_are_explicit():
+    assert _AUTHOR['source']['commit'] == 'ea8eff0f415d4352f6b66956ed9a118239e419c5'
+    assert _AUTHOR['source']['run_id'] == 46020971597
+    assert _AUTHOR['selection']['archive_sha256'] == (
+        '1e4954fb8a934a53d8228219fd457336e18fed1fb463b4f04c12e71346359e04')
+    assert _AUTHOR['selection']['executable_sha256'] == (
+        'e9985d73f18d6d6a3c3a4a47dc833aa5149e274e6cab3437db0c2490dceac0e1')
+    assert _AUTHOR['selection']['archive_member'] == 'blb2txt.exe'
+    assert len(_AUTHOR['cases']) == 42
+    baseline = _AUTHOR['cases'][0]
+    assert baseline['case'] == 'baseline' and baseline['kind'] is None
+    assert baseline['output'] == baseline['input'] + '\r\n'
+    assert all(row['exit_code'] == 0 and row['stderr'] == '' for row in _AUTHOR['cases'])
+    assert len({row['case'] for row in _AUTHOR['cases']}) == len(_AUTHOR['cases'])
+
+
+@pytest.mark.parametrize('row', [row for row in _AUTHOR['cases'] if row['kind'] is not None],
+                         ids=lambda row: 'author-' + row['case'])
+def test_observed_author_dictionary_cases_match_or_are_explicitly_refused(row):
+    raw = row['dictionary'].encode('utf-8')
+    if row['case'] in _AUTHOR_REFUSALS:
+        with pytest.raises(ValueError, match=_AUTHOR_REFUSALS[row['case']]):
+            parse_dictionary(raw, format=row['kind'])
+        return
+    if row['case'] == 'bxd-field-2-0':
+        parsed = parse_dictionary(raw, format='bxd')
+        assert parsed.rules == () and parsed.disabled == 1
+        assert row['output'] == row['input'] + '\r\n'
+        return
+    parsed, document, snapshot, preview = rendered(raw, row['kind'], row['input'])
+    # The text utility adds one final file CRLF, proven by the baseline above.
+    # Preserve every authored in-document CRLF and all other exact characters.
+    assert row['output'].endswith('\r\n')
+    assert preview.after == row['output'][:-2]
+    assert document.text == document.source_text == row['input']
+    assert document.revision == 0 and document._signature() == snapshot.signature
+    assert parsed.rules and parsed.format == row['kind']

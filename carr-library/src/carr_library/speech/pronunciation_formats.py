@@ -104,7 +104,11 @@ def _split(line, kind, number):
 
 def _literal_rule(pattern, replacement, *, sensitive, left=False, right=False):
     if left or right:
-        expression = ('(?<!\\w)' if left else '') + re.escape(pattern) + ('(?!\\w)' if right else '')
+        # The author's text-template boundary includes letters/digits, but an
+        # underscore is a separator. This is observed on the authored native
+        # corpus, including Latin, Greek, CJK, decimal digits and emoji.
+        word = r'[^\W_]'
+        expression = ('(?<!' + word + ')' if left else '') + re.escape(pattern) + ('(?!' + word + ')' if right else '')
         return PronunciationRule(expression, replacement.replace('\\', '\\\\'),
                                  regex=True, ignore_case=not sensitive)
     return PronunciationRule(pattern, replacement, ignore_case=not sensitive)
@@ -260,7 +264,7 @@ def _bxd(rows, cancelled):
         fields = line.split('\x03')
         if len(fields) != 10:
             _error('bxd', number, 'each rule must contain exactly ten fields.')
-        identity, ordinal, enabled, sensitive, regex, before, after, pattern, replacement, _note = fields
+        identity, ordinal, enabled, sensitive, regex, boundary, output, pattern, replacement, _note = fields
         if (not re.fullmatch('[A-Za-z0-9]{32}', identity) or identity in seen_ids
                 or not re.fullmatch('[1-9][0-9]{0,8}', ordinal) or ordinal in seen_order):
             _error('bxd', number, 'rule identities and positive indices must be distinct.')
@@ -268,8 +272,14 @@ def _bxd(rows, cancelled):
         seen_order.add(ordinal)
         if enabled not in ('0', '1') or sensitive not in ('0', '1') or regex not in ('0', '1'):
             _error('bxd', number, 'unrecognized enable, case or pattern flags; export a reviewed text dialect.')
-        if (before, after) != ('0', '0'):
-            _error('bxd', number, 'unestablished BXD boundary flags; explicitly export reviewed rules with supported boundaries.')
+        if boundary not in ('0', '1', '2', '3'):
+            _error('bxd', number, 'unrecognized BXD boundary mode; use whole, prefix, suffix or substring text rules.')
+        if output in ('1', '2'):
+            _error('bxd', number, 'phoneme output is not a plain-text pronunciation rule; explicitly export reviewed text replacements.')
+        if output != '0':
+            _error('bxd', number, 'unrecognized BXD output mode; explicitly export plain-text replacements.')
+        if regex == '1' and boundary != '0':
+            _error('bxd', number, 'a nondefault regular-expression boundary mode requires explicit manual review.')
         if not pattern or len(pattern) > 1024 or len(replacement) > 4096:
             _error('bxd', number, 'a pattern or replacement exceeds the existing rule limit.')
         if enabled == '0':
@@ -277,7 +287,8 @@ def _bxd(rows, cancelled):
             continue
         try:
             rule = (_regex_rule(pattern, replacement, sensitive=sensitive == '1', kind='bxd', number=number)
-                    if regex == '1' else _literal_rule(pattern, replacement, sensitive=sensitive == '1'))
+                    if regex == '1' else _literal_rule(pattern, replacement, sensitive=sensitive == '1',
+                        left=boundary in ('0', '1'), right=boundary in ('0', '2')))
         except (ValueError, TypeError) as exc:
             if str(exc).startswith('BXD dictionary line '):
                 raise
