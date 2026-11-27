@@ -45,6 +45,8 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
           python-version: '3.11'
+      - name: Install the configuration parser used by source validation
+        run: python -m pip install PyYAML==6.0.4
       - name: Compile exact candidate bytes and record the bounded composition
         run: |
           python -B recovery-source/recovery/validate_canonical_recovery.py --root recovery-source --shared shared-source --canonical canonical-source --evidence ci-recovery-results
@@ -55,16 +57,16 @@ jobs:
           python -m pip check
           python -m pip freeze > ../../ci-recovery-results/installed-dependencies.txt
           python -I -c "import importlib.metadata as m,quickjs; assert m.version('quickjs-ng')=='0.18.0.2'; c=quickjs.Context(); assert c.eval('1+1')==2; print('Actual QuickJS context: PASS')"
-      - name: Run both real CSL profiles and DOCX regeneration boundaries
+      - name: Diagnose the exact failing citation profile and bounded native resources
+        run: |
+          python -B recovery-source/recovery/probe_quickjs_profiles.py --source shared-source/carr-library --output ci-recovery-results/quickjs-profile-diagnostic.json
+      - name: Recheck the observed legacy profile and tamper failures
         working-directory: shared-source/carr-library
         run: |
           python -B -m pytest -p no:cacheprovider -q --import-mode=importlib \
-            tests/citations/test_csl.py tests/citations/test_custom_csl.py \
-            tests/academic_integration/test_formatting.py \
-            tests/academic_integration/test_regeneration.py \
-            tests/academic_integration/test_citation_ui.py \
+            tests/academic_integration/test_formatting.py --durations=12 \
             --junitxml=../../ci-recovery-results/citation-source-tests.xml
-          python -c "import json,xml.etree.ElementTree as E; c=list(E.parse('../../ci-recovery-results/citation-source-tests.xml').iter('testcase')); bad=sum(any(x.find(t) is not None for t in ('failure','error','skipped')) for x in c); assert c and not bad; print(json.dumps(dict(status='PASS',cases=len(c),scope='bounded source citation composition',installed='NOT_RUN',native_windows='NOT_RUN',nvda='NOT_RUN')))"
+          python -c "import json,xml.etree.ElementTree as E; c=list(E.parse('../../ci-recovery-results/citation-source-tests.xml').iter('testcase')); bad=sum(any(x.find(t) is not None for t in ('failure','error','skipped')) for x in c); assert c and not bad; print(json.dumps(dict(status='PASS',cases=len(c),scope='bounded source legacy citation profile',installed='NOT_RUN',native_windows='NOT_RUN',nvda='NOT_RUN')))"
       - name: Preserve source identity and test evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

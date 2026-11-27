@@ -1,0 +1,208 @@
+{
+  "schema": "carr-canonical-recovery-callsite-proposal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED_NOT_COMPILED",
+  "baseline_current": "8e6d410019f90f54ea694a5ff69402bc52567d57",
+  "canonical": "966e5ccf892243ead6942c635af5fbab47e72551",
+  "scope": "Bounded canonical Assistant, translation and language commands; retained one Dordiai core and stronger process ownership. Public source and authored synthetic fixtures only.",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/ui/assistant_dialog.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "c7351b6ced2c50e1d07f536dfda7ec6154d7c7d3",
+      "component_ref": null,
+      "component_blob": null,
+      "new_blob": "e7a5472aa9aa8898ee7f40fcb7df10aa66065add",
+      "sha256": "a20f52aafe740b561d92c053c2d133732b572ff45a787687b547193e0c232785",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/language_matrix.py",
+      "base_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "base_blob": "31c9ce4c1cae5b7eddb478515cddb45f6fdc149c",
+      "component_ref": null,
+      "component_blob": null,
+      "new_blob": "b0630fc87e8f631b2054538d4bff51ba0f2f7ed3",
+      "sha256": "322245d2582cd51e4269ab95bcd709f3566fe8cb5c4e2c4b2c80c0d80d2f260c",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": null
+    },
+    {
+      "path": "carr-library/src/carr_library/ui/translation_dialog.py",
+      "base_ref": "8e6d410019f90f54ea694a5ff69402bc52567d57",
+      "base_blob": "92bde1b568e3358e65a05a83937d7213f50790fe",
+      "component_ref": null,
+      "component_blob": null,
+      "new_blob": "7bb9ec4d12cb574806aaa728328da50c754bbd02",
+      "sha256": "efe5e6b5ee70fe880b050aed250b096f87af0657a98289c1011549767560b6ac",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": null
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation.py",
+      "base_ref": "8e6d410019f90f54ea694a5ff69402bc52567d57",
+      "base_blob": "4c1f8602fde94a3ab57048bb48b01d66b9ccea01",
+      "component_ref": "e02cd3a6f9af623dc41b8b5b807179629ec67edd",
+      "component_blob": "34b9abf31ac591c67ffcd8fdc152bfd506086868",
+      "new_blob": "6cf8e812a26494c33b5e8b2cc18371a8607d8316",
+      "sha256": "888b152302f2bcf4a97a2ccd9b0ecaff5ad1755291a5b0f7e832ab985d716763",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": null
+    },
+    {
+      "path": "carr-library/tests/assistant/test_translation_v3.py",
+      "base_ref": "8e6d410019f90f54ea694a5ff69402bc52567d57",
+      "base_blob": "c8cec635dca8b728c58387cca10c1322ab6ddfc4",
+      "component_ref": "e02cd3a6f9af623dc41b8b5b807179629ec67edd",
+      "component_blob": "965f42070f92404e40785842c38b05ef5da2b6de",
+      "new_blob": "6d91146ba66d4d84756cfb2f0f83d6170af4e741",
+      "sha256": "214857c2257431b9d992d403018c889ee9fb1cbaad91ed94e7767fd62cbaeb57",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": null
+    },
+    {
+      "path": "carr-library/tests/ui/test_translation_selection.py",
+      "base_ref": "8e6d410019f90f54ea694a5ff69402bc52567d57",
+      "base_blob": "394b7c9120b14fc72a812bf1b89ac6b86c95b5ff",
+      "component_ref": null,
+      "component_blob": null,
+      "new_blob": "da46b20cad7665d6b04f94060370dd8c07ffc4e9",
+      "sha256": "355a5550a46a6df813d9c82eaf86e9693db9689cf0cbe5e8e55f73c4c7d069b7",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": null
+    },
+    {
+      "path": "carr-library/docs/translation_workstation.md",
+      "base_ref": "8e6d410019f90f54ea694a5ff69402bc52567d57",
+      "base_blob": "d00c2a40b8da8fd4f9f440d8177ee69da83a92a1",
+      "component_ref": null,
+      "component_blob": null,
+      "new_blob": "8aff642db0539c3c8c4d2bd5904be3b645dbfe79",
+      "sha256": "1310c956697e291d7847f87ec8a37ecc720548da8f81c0e1939e37316cf3de2b",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": null
+    },
+    {
+      "path": "carr-library/scripts/windows_translation_v3_smoke.py",
+      "base_ref": "8e6d410019f90f54ea694a5ff69402bc52567d57",
+      "base_blob": "8c03ad29b98ba215415ea9b51a97d9f343481b6a",
+      "component_ref": "e02cd3a6f9af623dc41b8b5b807179629ec67edd",
+      "component_blob": "bd766fcae95dc4f31a8e18e45512e04591bb206d",
+      "new_blob": "bd766fcae95dc4f31a8e18e45512e04591bb206d",
+      "sha256": "464fa4129f3cf607a198ccfe7a2e398077250330dbc07c26697e25a666746290",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": null
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/__init__.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "801ffd0a93cf095715c004843bd4dcb07715c2ed",
+      "component_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "component_blob": "6fc522f991059acb2dc4c73c253c58f59d5eb393",
+      "new_blob": "6fc522f991059acb2dc4c73c253c58f59d5eb393",
+      "sha256": "9f20d7d6c4e7aced7b7367ab89b456b14111a8397922fb7e857e2f68f95602ab",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": "Retain exact current stronger owned-process protocol and all current/canonical regression names."
+    },
+    {
+      "path": "carr-library/src/carr_library/integrations/dordiai_voices.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "13787af35f5fb1363665f7b0986f24771780dd0b",
+      "component_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "component_blob": "f68b6f9a8abe90640a05235c68b53dff3a158eae",
+      "new_blob": "f68b6f9a8abe90640a05235c68b53dff3a158eae",
+      "sha256": "982a70c74b4ae48032fcb79d569c6cf1b9ecf03094b5405762e9ec203c5ef1c0",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": "Retain exact current stronger owned-process protocol and all current/canonical regression names."
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_voices.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "e46257220ef1af5c129669aa9037dafa788077af",
+      "component_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "component_blob": "f58db339a72a4e57a63e9a9950098c41083680c2",
+      "new_blob": "f58db339a72a4e57a63e9a9950098c41083680c2",
+      "sha256": "90b95a7ca808ddaf660785b13500460cec9751f105f295cdd31b3c480c44b3f6",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": "Retain exact current stronger owned-process protocol and all current/canonical regression names."
+    },
+    {
+      "path": "carr-library/tests/integrations/test_dordiai_probe_cancellation.py",
+      "base_ref": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "96ec861256678a75010ca3ec9b1620d13876d866",
+      "component_ref": "c227a54761a58985e3bd0c6c6a3b4dbafd03a873",
+      "component_blob": "52db2c928f9f51f19f90e9de8859fd5bdf9b0c7e",
+      "new_blob": "52db2c928f9f51f19f90e9de8859fd5bdf9b0c7e",
+      "sha256": "ec36e0e1259e4f1ab30ad49e21c272cd61afaa06cd965b63ed4bc41f790ecf06",
+      "status": "DRAFT_SOURCE_ONLY_NOT_EXECUTED",
+      "readback": "EXACT",
+      "choice": "Retain exact current stronger owned-process protocol and all current/canonical regression names."
+    }
+  ],
+  "patches": [
+    {
+      "path": "carr-library/src/carr_library/assistant/service.py",
+      "base": "canonical966 automerge with c04",
+      "patch": "*** Begin Patch\n*** Update File: carr-library/src/carr_library/assistant/service.py\n@@\n                 intent=intent, persist=persist, state_dir=self.store.directory,\n                 max_bytes=scope.max_bytes, max_seconds=scope.max_seconds,\n-                cancelled=cancelled, progress=transcription_progress)\n+                cancelled=cancelled, progress=transcription_progress,\n+                application_root=self.app.root, control=lambda: self.store.control(record['id']))\n*** End Patch\n",
+      "sha256": "30813bf25110b049081ad40199d107f16e62adc2804efcb8e2a158d95d21e5e7",
+      "executed": false,
+      "status": "PATCH_ONLY_LOCAL_CANONICAL_MERGE_BODY_UNAVAILABLE",
+      "requirement": "Replay only onto the actual c04 plus canonical966 AssistantService union; preserve current local planner, resource admission, producer backup receipt and all both-side tests. This is not a complete service file."
+    }
+  ],
+  "command_ids": [
+    "assistant.local",
+    "assistant.providers",
+    "voice.languages",
+    "tools.translation",
+    "tools.translation_book"
+  ],
+  "dependencies": [
+    "Canonical966 command_registry and locator's reviewed keyboard_settings / one canonical registry. These menu payloads are not an independent patch for the old current registry.",
+    "Canonical ProgressTask/current_progress with locator's captured-task desktop executor and media owner. No alternate progress store.",
+    "Retain e02cd3a6f9af623dc41b8b5b807179629ec67edd providers.py and translation.py caller-thread guard/deadline behavior in the actual reconciled merge. Synthetic connection fixtures and installed smoke use its explicit _Connection seam; the real loopback TLS/DNS suites remain required.",
+    "The already preserved ASR manifest94c4c06 and settings manifest42f97c12 supply the one ASR core and current/canonical Dordiai adapters. No private worker/model bytes are included."
+  ],
+  "behavior": [
+    "Current 8e6 translation blob92bde1b is the exact source base, not a commit. Its post-Gateway current-account check is retained; account/source checks also flow through owner-thread discovery_guard and source-bound submit guard.",
+    "Transport watchdog gets only stopped(), never database/profile guard callbacks. Existing v2/v3 account, glossary, visible-scope and offline completed-export assertions remain.",
+    "Captured native self-ID and pure dispose invalidate translation callbacks on external native destruction. Main and picker finalizers check live wrappers; child destroy does not cancel the owner; only the per-window Event is set.",
+    "Translation reports to its captured canonical ProgressTask; a terminal observer cannot replace an already committed operation result.",
+    "Exact current Dordiai worker includes verified selected interpreter, bounded offline child environment, process ownership through reader startup/cancel/timeout and no duplicate backend."
+  ],
+  "verification": {
+    "execution": "NOT_RUN: executor unavailable. No Python syntax/compile, portable test, native Windows, real model or NVDA PASS is claimed for these payloads.",
+    "baseline_test_names_preserved": {
+      "test_translation_py": 56,
+      "test_translation_v3_py": 27,
+      "test_translation_selection_py": 6
+    },
+    "added_named_functions": {
+      "test_translation_py": 3,
+      "test_translation_v3_py": 2,
+      "test_translation_selection_py": 1
+    },
+    "meaningful_new_cases": [
+      "Real retained-source validation followed by current-account revocation before durable job admission; no job/credential/network/output",
+      "Native protocol parent destroy before deferred source work; no dead control or shared cancel-event mutation",
+      "Child destroy negative control followed by actual completed retained-source translation",
+      "Self destroy before queued v3 request preserves paused approval without credential use",
+      "Late success/failure callbacks after self destruction preserve exact durable job bytes",
+      "Saved-job and export-folder modal owner loss preserves job/output and does not touch dead controls"
+    ],
+    "installed_probe": "scripts/windows_translation_v3_smoke.py exact e02 blobbd766fcae95dc4f31a8e18e45512e04591bb206d retained; requires fresh exact installed execution. Existing helper does not by itself prove the new external-destruction edge.",
+    "reviews": "Palette and keyboard were independently reviewed separately. This new callsite delta still requires independent source review and fresh composed execution."
+  }
+}

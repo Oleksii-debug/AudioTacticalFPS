@@ -82,6 +82,7 @@ READER_COMMANDS = (
     CommandSpec('reader.speech_resume', 'Resume saved source chunk', 'reader', 'Ctrl+Shift+F8'),
     CommandSpec('reader.speech_status', 'Query voice reading status', 'reader', 'Ctrl+Alt+F8'),
     CommandSpec('reader.recorded_audio', 'EPUB synchronized recorded audio', 'reader'),
+    CommandSpec('reader.appearance', 'Reader appearance', 'reader'),
 )
 
 

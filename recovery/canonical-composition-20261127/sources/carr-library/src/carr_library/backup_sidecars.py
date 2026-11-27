@@ -75,6 +75,8 @@ def sidecar_limit(name):
         return _model('extract.ocr_languages').MAX_PRESET_BYTES
     if name == 'progress-preferences.json':
         return _model('progress_preferences').MAX_BYTES
+    if name == 'state/ui/reader-appearance.json':
+        return _model('reader.appearance').MAX_APPEARANCE_BYTES
     if name == 'state/audio/engines.json':
         return ENGINE_SETTINGS_BYTES
     if maximum := backup_generated.limit(name):
@@ -290,6 +292,10 @@ def validate_sidecar(db, name, raw):
             _model('extract.ocr_languages').validate_presets_bytes(raw)
         elif name == 'progress-preferences.json':
             _model('progress_preferences').validate_progress_preferences(raw)
+        elif name == 'state/ui/reader-appearance.json':
+            # Decode only the finite presentation declaration. Never select a
+            # live widget, resolve a font, or read another settings file here.
+            _model('reader.appearance')._preferences(raw)
         elif name == 'state/audio/engines.json':
             _validate_engine_settings(_json(raw))
         elif name.startswith(backup_generated.PREFIX):

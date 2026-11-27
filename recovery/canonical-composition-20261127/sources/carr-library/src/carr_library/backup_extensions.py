@@ -106,7 +106,7 @@ def _source_text(db, location):
         (location.workspace, location.edition, location.revision, location.asset_sha256,
          location.text_sha256, location.kind, location.index, location.kind, location.index)).fetchone()
     if row is None or sha256(row[0].encode('utf-8')).hexdigest() != location.text_sha256:
-        raise RestoreError('Reading recovery does not match its exact authenticated source.')
+        raise RestoreError('Reading recovery does not match its exact authenticated source; it must match the exact saved source.')
     return row[0]
 
 
@@ -221,7 +221,7 @@ def _has_media(media):
 
 
 def validate_primary_state(root, entries, database, *, legacy_opaque=False,
-                           cancelled=lambda: False):
+                           include_generated=False, cancelled=lambda: False):
     """Check current primary producers without activating historical opaque data.
 
     Typed V3/V4 and earlier extension versions also admitted opaque private
@@ -239,6 +239,8 @@ def validate_primary_state(root, entries, database, *, legacy_opaque=False,
         for entry in entries:
             _check(cancelled)
             relative = entry['filename']
+            if not include_generated and 'cache' in relative.split('/'):
+                raise RestoreError('Generated cache requires explicit backup inclusion.')
             name = 'state/' + relative
             maximum = backup_producers.limit(name)
             generated_limit = backup_generated.limit(name)
@@ -258,7 +260,8 @@ def validate_primary_state(root, entries, database, *, legacy_opaque=False,
                     raw = backup_sidecars.read_regular(root / relative, generated_limit)
                     backup_sidecars.validate_sidecar(db, name, raw)
                     receipts[name] = _json(raw)
-            elif maximum is not None or name == 'state/audio/engines.json':
+            elif maximum is not None or name in ('state/audio/engines.json',
+                                                 'state/ui/reader-appearance.json'):
                 if legacy_opaque and backup_producers.SUBTITLE.fullmatch(name):
                     continue
                 maximum = maximum or backup_sidecars.sidecar_limit(name)
@@ -380,7 +383,7 @@ def scoped_state_selection(root, database, allowed):
 
 
 def snapshot(root, target, database, state_entries, *, independent=True,
-             max_bytes=MAX_BYTES, cancelled=lambda: False):
+             max_bytes=MAX_BYTES, include_generated=False, cancelled=lambda: False):
     if type(max_bytes) is not int or max_bytes < 0:
         raise RestoreError('Typed backup byte budget must be a nonnegative integer.')
     max_bytes = min(max_bytes, MAX_BYTES)
@@ -407,7 +410,8 @@ def snapshot(root, target, database, state_entries, *, independent=True,
             db.execute('PRAGMA trusted_schema=OFF')
             canonical_entries = backup_sidecars.snapshot(db, root, target, max_bytes=available,
                 root_names=canonical_roots, cancelled=cancelled)
-    primary = validate_primary_state(target.parent / 'state', state_entries, database, cancelled=cancelled)
+    primary = validate_primary_state(target.parent / 'state', state_entries, database,
+        include_generated=include_generated, cancelled=cancelled)
     media, media_inputs, retained = inspect_media_state(target.parent / 'state', state_entries,
         independent=independent, cancelled=cancelled)
     sessions, projects, transcriptions, required = inspect_state(target.parent / 'state', state_entries,

@@ -277,3 +277,51 @@ def test_current_reader_discovery_links_are_bounded_passive_state(current, tmp_p
     with pytest.raises(ValueError, match='discovery inventory'):
         create_backup(app, tmp_path / 'rejected')
     assert not (tmp_path / 'rejected').exists()
+
+@pytest.mark.parametrize('keep_pending', [False, True])
+def test_exact_alternate_v5_reading_state_envelope_preserves_saved_edits(
+        tmp_path, keep_pending):
+    """A historical V5 reading_state field is never mistaken for extensions."""
+    from carr_library.reader.reading_desk import ReadingDesk
+    from carr_library.reader.reading_state import ReadingState
+
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Historical exact reading state')
+    book = app.add_text(workspace, 'Source', 'Original exact words.')
+    page = ReadingDesk(app, workspace, book['edition']).page(1)
+    reading = ReadingState(app.root)
+    reading.remember(page.location)
+    bookmark = reading.add_bookmark(page.location, 'Historical bookmark')
+    document = ReadingDocument(page.text)
+    document.replace(0, 8, 'Edited')
+    drafts = ReaderDraftStore(app.root, slot='alternate-v5')
+    drafts.save(ReaderResume(document, 'test:synthetic', cursor=2))
+    saved_reading, saved_draft = reading.path.read_bytes(), drafts.path.read_bytes()
+
+    folder = tmp_path / 'exact-v5'
+    create_backup(app, folder)
+    value = json.loads((folder / 'manifest.json').read_bytes())
+    extension = value.pop('extensions')
+    assert len(extension['files']) == 1
+    row, = extension['files']
+    assert row['filename'] == 'reading-state.json'
+    (folder / 'extensions' / row['filename']).rename(folder / row['filename'])
+    (folder / 'extensions').rmdir()
+    value.update(version=5, reading_state=dict(row))
+    if not keep_pending:
+        value['pending'] = None
+        shutil.rmtree(folder / 'pending')
+    digest = resign(folder, value)
+    before = files(folder)
+
+    assert verify_backup(folder, digest) == value
+    destination = restore_backup(folder, tmp_path / 'restored', digest)
+    recovered = ReaderDraftStore(destination, slot='alternate-v5').load()
+    assert recovered.document.to_dict() == document.to_dict()
+    assert recovered.cursor == 2 and recovered.voice_id == 'test:synthetic'
+    assert (destination / drafts.path.relative_to(app.root)).read_bytes() == saved_draft
+    assert (destination / 'reading-state.json').read_bytes() == saved_reading
+    state = ReadingState(destination)
+    assert state.resume(workspace, book['edition']) == page.location
+    assert state.bookmarks(workspace, book['edition']) == (bookmark,)
+    assert files(folder) == before

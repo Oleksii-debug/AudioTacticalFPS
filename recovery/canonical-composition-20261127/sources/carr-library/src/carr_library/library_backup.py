@@ -173,7 +173,7 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None,
                 state = snapshot_state(state_root, stage / 'state',
                                        include_generated=include_generated, cancelled=cancelled,
                                        include_paths=selected, missing_ok=False,
-                                       max_bytes=MAX_STATE_BYTES if max_bytes is None else max_bytes - total)
+                                       max_bytes=MAX_STATE_BYTES if max_bytes is None else min(MAX_STATE_BYTES, max_bytes - total))
                 if selected is not None and selected != scoped_state_selection(state_root, snapshot, included):
                     raise RestoreError('Source-bound reading drafts changed during backup; retry after saving.')
                 total += sum(entry['size_bytes'] for entry in state)
@@ -193,7 +193,8 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None,
             from .backup_extensions import MAX_BYTES as MAX_EXTENSION_BYTES, snapshot as snapshot_extensions
             extensions = snapshot_extensions(app.root, stage / 'extensions', snapshot,
                 manifest.get('state', []), independent=authorized_workspaces is None, cancelled=cancelled,
-                max_bytes=MAX_EXTENSION_BYTES if max_bytes is None else max_bytes - total)
+                max_bytes=MAX_EXTENSION_BYTES if max_bytes is None else max_bytes - total,
+                include_generated=include_generated)
             if extensions is not None:
                 manifest.update(version=5, extensions=extensions)
                 total += sum(entry['size_bytes'] for entry in extensions['files'])
@@ -315,7 +316,7 @@ def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: Fal
             for child in children:
                 _check_cancelled(cancelled)
                 if child.name not in expected_files:
-                    raise RestoreError('incomplete backup or unexpected files')
+                    raise RestoreError('incomplete backup or unexpected files: ' + child.name)
                 actual_files.add(child.name)
         if actual_files != expected_files:
             raise RestoreError('incomplete backup or unexpected files')
@@ -500,7 +501,8 @@ def _prepare_restore(source, stage, new_root, manifest, *, copy_originals=True, 
             restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)
             from .backup_extensions import validate_primary_state
             validate_primary_state(stage / 'state', manifest['state'], snapshot,
-                legacy_opaque=manifest.get('extensions', {}).get('version', 0) < 4, cancelled=cancelled)
+                legacy_opaque=manifest.get('extensions', {}).get('version', 0) < 4,
+                include_generated=manifest['generated_audio_included'], cancelled=cancelled)
             paths.add('state')
     pending = {'assets': [], 'paths': []}
     if pending_manifest is not None:
@@ -511,9 +513,16 @@ def _prepare_restore(source, stage, new_root, manifest, *, copy_originals=True, 
         from .backup_extensions import restore as restore_extensions
         paths.update(restore_extensions(source / 'extensions', stage, manifest['extensions'],
                                        manifest['state'], cancelled=cancelled))
-    if not compatible and manifest['version'] >= 3:
+    if compatible:
+        state_entries = [{**entry, 'filename': entry['filename'].removeprefix('state/')}
+                         for entry in inventory.entries if entry['filename'].startswith('state/')]
+    else:
+        state_entries = manifest.get('state', [])
+    if state_entries:
         from .studio.backup_inputs import restore_inputs
-        restore_inputs(stage / 'state', new_root / 'state', manifest['state'], cancelled=cancelled)
+        # A portable old job declares its source-machine paths; restoration
+        # never carries that output/input approval onto the new machine.
+        restore_inputs(stage / 'state', new_root / 'state', state_entries, cancelled=cancelled)
     _check_cancelled(cancelled)
     return entries, pending['assets'], sorted(paths)
 

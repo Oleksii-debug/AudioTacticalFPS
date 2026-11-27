@@ -7,13 +7,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
+import textwrap
+import tomllib
+import yaml
 from pathlib import Path
 import shutil
 import subprocess
 
 CANONICAL = "966e5ccf892243ead6942c635af5fbab47e72551"
 SHARED = "8e6d410019f90f54ea694a5ff69402bc52567d57"
-CHECKPOINT = "2b16f4a6b37de990be97edb27dc2a82b4253fb31"
+CHECKPOINT = "56a502124e41baf90ee87bdca43ff53b38dd3dc7"
 PREFIX = Path("recovery/canonical-composition-20261127")
 CITATION_PATHS = (
     "carr-library/src/carr_library/citations/csl.py",
@@ -42,6 +46,50 @@ def inside(root, relative):
     return path
 
 
+
+def validate_configs(root, manifest):
+    selected = {item["path"]: item for item in manifest["files"]}
+    workflows, embedded = [], []
+    for item in manifest["files"]:
+        path = inside(root, item["saved_path"])
+        if path.suffix == ".toml":
+            value = tomllib.loads(path.read_text(encoding="utf-8"))
+            packages = value["tool"]["setuptools"]["packages"]
+            assert len(packages) == len(set(packages)), "Duplicate application package"
+        if path.suffix not in (".yml", ".yaml"):
+            continue
+        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+        assert isinstance(value, dict) and isinstance(value.get("jobs"), dict)
+        workflows.append(item["path"])
+        for job in value["jobs"].values():
+            for step in job.get("steps", ()):
+                run = step.get("run", "")
+                for match in re.finditer(r"(?m)^\s*(\$\w+)\s*=\s*@'\s*\n([\s\S]*?)^\s*'@\s*$", run):
+                    body = textwrap.dedent(match.group(2))
+                    significant = [line.strip() for line in body.splitlines()
+                                   if line.strip() and not line.lstrip().startswith("#")]
+                    if significant and significant[0].startswith(("import ", "from ")):
+                        compile(body, item["path"] + ":" + match.group(1), "exec", dont_inherit=True)
+                        embedded.append({"workflow": item["path"], "variable": match.group(1)})
+    dependency_counts = {}
+    for stem in ("windows", "windows-semantic"):
+        lock_path = "carr-library/packaging/" + stem + "-cp311.lock"
+        sbom_path = "carr-library/packaging/" + stem + "-sbom.cdx.json"
+        if lock_path not in selected or sbom_path not in selected:
+            continue
+        lock = inside(root, selected[lock_path]["saved_path"]).read_text(encoding="utf-8")
+        pins = dict(re.findall(r"(?m)^([A-Za-z0-9_.-]+)==([^\s\\]+)", lock))
+        normalize = lambda name: re.sub(r"[-_.]+", "-", name).lower()
+        pins = {normalize(name): version for name, version in pins.items()}
+        sbom = json.loads(inside(root, selected[sbom_path]["saved_path"]).read_text(encoding="utf-8"))
+        components = {normalize(item["name"]): item["version"] for item in sbom["components"]}
+        assert pins == components, (stem, sorted(pins.items()), sorted(components.items()))
+        assert pins["quickjs-ng"] == "0.18.0.2"
+        dependency_counts[stem] = len(pins)
+    return {"yaml_workflows": workflows, "embedded_python": embedded,
+            "dependency_lock_sbom_components": dependency_counts}
+
+
 def validate(root, report):
     manifest = json.loads((root / PREFIX / "manifest.json").read_text(encoding="utf-8"))
     if manifest["canonical_commit"] != CANONICAL:
@@ -64,6 +112,7 @@ def validate(root, report):
         "validation_commit": git(root, "rev-parse", "HEAD"),
         "recovery_checkpoint": CHECKPOINT, "canonical_commit": CANONICAL,
         "candidates": checked, "compiled_python": compiled,
+        "configuration_validation": validate_configs(root, manifest),
         "runtime_tests": "NOT_RUN_BY_THIS_STEP", "installed": "NOT_RUN",
         "native_windows": "NOT_RUN", "nvda": "NOT_RUN",
     }

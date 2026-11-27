@@ -1,0 +1,743 @@
+{
+  "schema": "carr-source-recovery-proposal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": "Remaining owned canonical merge tests, exact app API hunks, and new96294 reader appearance backup adapter",
+  "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+  "previous_checkpoint": "02c2078f4eeb5e085035780b6fb08f028670f359",
+  "notes": [
+    "No refs, PRs, index or active application files changed. All12 new blobs have exact GitHub readback.",
+    "Every existing-file proposal reproduces from its declared exact base with ordered hunks; every existing test function name is retained and no duplicate test name was introduced.",
+    "Application payload is PATCH_ONLY for stronger inaccessible local composition; retain all local/current frozen attempt, search pagination, metadata, ISBN and writer behavior.",
+    "Source extraction guard is the previously reported local canonical padding hunk before the stronger existing zero-pad-bit check; do not duplicate it if already resolved.",
+    "Appearance state already existed in generic state inventory; its explicit passive adapter now enforces the original MAX_APPEARANCE_BYTES and _preferences(raw), without live settings/font/widget/file access.",
+    "Appearance producer dependency is the exact new shared96294 reader/appearance.py blob76beb91c815e06d13203798ee23c7ce37157f309. No spelling dictionaries or dictionary-path settings enter the backup.",
+    "Worker PDF binding regression first demonstrates recovery using the genuine frozen launch attempt, then changes saved job/configuration; it does not use an invalid sentinel that could make the negative vacuous.",
+    "No compile/runtime/platform PASS is claimed. Root isolated candidate compilation/test workflow is distinct from these static replay checks.",
+    "Unchanged resolutions are reviewed choices against known exact public bases; check stronger local state before applying, never overwrite unobserved local improvements."
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "af17bc1c169de119d0eb6226694e4b0bdbe55907",
+      "new_blob": "7e7d2f73555d51577c01a88233c98ed68f8c98ba",
+      "characters": 35285,
+      "store_key": "replay_backup_sidecars_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+      "new_blob": "5bc7bef3f5e7a2ef6ca3dc76b9311809f8163d3b",
+      "characters": 43414,
+      "warning": "Finite primary validation plus old opaque reader, v4 extension producer marker and root sidecars. Static only; actual regression execution pending.",
+      "store_key": "replay_extensions_primary_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_reader_appearance.py",
+      "base_commit": null,
+      "base_blob": null,
+      "new_blob": "721933989d18fe2f26d5a4ebff5e0a2415111f45",
+      "characters": 5116,
+      "warning": "New actual 96294 appearance producer fixture. Requires exact reader/appearance.py from96294; finite raw decoder and 4KiB limit only, no live appearance/file/font/device activation. Source-only, not executed.",
+      "store_key": "replay_backup_appearance_tests",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "d4ae7deeb3b713215a53172310c47f100a1ccccb",
+      "new_blob": "00741c27d663a797a8f463c862200f854732f4fe",
+      "characters": 72620,
+      "warning": "PATCH_ONLY for inaccessible stronger local application.py. Four exact canonical hunks on publicbca retain current schema alias, lookup_isbn, frozen PublicationAttempt, request configuration and search pagination. Equivalent local edits were reported before outage; do not overwrite stronger local whole file or duplicate hunks. Not executed.",
+      "store_key": "replay_application_canonical_union",
+      "application_mode": "PATCH_ONLY"
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_text.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "c760e7d1aabf5acbf71c2e76acc2eba9a714783d",
+      "new_blob": "88af84ca701d747ac50c0395a57cd08ab9028d9e",
+      "characters": 28167,
+      "warning": "Exact canonical padding guard added before the stronger existing zero-pad-bit/re-encode check. This hunk was already applied in the inaccessible local worktree; replay conditionally, never duplicate. Source-only.",
+      "store_key": "replay_extract_text_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_txt_replay_registration.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "150619f875f32967c2ad2e719712141475316b2b",
+      "new_blob": "ee542dc44f8b7674710796bd33c4fb787ccf7553",
+      "characters": 8086,
+      "warning": "Adds exact canonical completed/superseded/cancelled replay and unverified PDF registration regressions; retains every current assertion. Not executed.",
+      "store_key": "replay_txt_registration_test_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/tests/ingest/test_worker_publication_boundary.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "d5e5059b4772e650a67b16623d890d5dc0c41e13",
+      "new_blob": "1212ae2e4a8f92993d64a77da40fbcf8f900ad9d",
+      "characters": 16593,
+      "warning": "Retains actual immutable-attempt receipt checks, Unicode/EPUB source fixture and concurrent import case; adds canonical md, membership/metadata competitors and actual-positive-then-negative PDF job/config binding. Not executed.",
+      "store_key": "replay_worker_boundary_test_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_no_clobber.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "7dbb6dfc522caf528fbf4b8edde58e1d38e45a51",
+      "new_blob": "b896a81bd51abd1414be422674782d3bba56dccb",
+      "characters": 40004,
+      "warning": "Retains every current content/approval/no-clobber/sealed-cache test; appends exact canonical cleanup receipt, CLI and after-staging metadata/scope regressions. Requires composed canonical bibliography API. Not executed.",
+      "store_key": "replay_export_no_clobber_test_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_search_operation_budget.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "4a5220db7ee2ea869d181ddf031fa21e3058cd28",
+      "new_blob": "bc50ef478ecb805ce882382f6af0ee21588e183c",
+      "characters": 16037,
+      "warning": "Retains initial/busy/deadline/cancel tests; canonical snapshot setup adds actual DELETE/WAL modes and verifies the captured connection is closed. Not executed.",
+      "store_key": "replay_search_budget_test_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_text.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "b546f2b974c831bb26256272f46d0bc1f59371b5",
+      "new_blob": "058a61051a0f7684148a52f0b8f0d0909d2eb98a",
+      "characters": 17264,
+      "warning": "Retains stricter canonical-padding/zero-pad-bit and provenance assertions, adds canonical accepted MIME-folding quartets and missing/misplaced padding cases. Not executed.",
+      "store_key": "replay_extract_text_test_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/tests/e2e/test_extended_document_workflows.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "bbb90d51911d9ff33eb9299a5d5cc413ef42edf2",
+      "new_blob": "3d1750bda0731f93b2e2dbcac93b4177b30aefaf",
+      "characters": 26078,
+      "warning": "Adds exact canonical format-listing ambiguity and no-runtime-before-listing assertions; all current EML/DOCX/PDF/multiformat source checks retained. Requires root CLI canonical union. Not executed.",
+      "store_key": "replay_extended_documents_test_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    },
+    {
+      "path": "carr-library/tests/research/test_academic_library.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "fe1aeda4eef5a247827ead9f72afc8c625269ec1",
+      "new_blob": "d2dd57fc804dfd64761f186afdafbab6ba9e4800",
+      "characters": 38946,
+      "warning": "Retains every current reference-size/count/fanout preflight case and appends all canonical unique UTF8/scoped/selected-import/three-format/max-batch cases. No common test block changed. Not executed.",
+      "store_key": "replay_academic_library_test_union",
+      "application_mode": "EXACT_BASE_REPLAY"
+    }
+  ],
+  "unchanged_resolutions": [
+    {
+      "path": "carr-library/src/carr_library/semantic.py",
+      "selected_blob": "0df23b007dac6200c448166efae435edc930f4fd",
+      "canonical_blob": "7e582dbfbbdc1bd6e670503785fcc798989fb70f",
+      "reason": "Keep current explicit _DEFAULT_CACHE sentinel and explicit None disablement; invalid disposable cache fails soft without using another library cache. Canonical has no additional behavior to port."
+    },
+    {
+      "path": "carr-library/src/carr_library/semantic_cache.py",
+      "selected_blob": "3ba6e9498797d02d952b75afe33eb7911fe66696",
+      "canonical_blob": "7fb913f53ae378d6b6527193e5d5fddba0a3a7a1",
+      "reason": "Only trailing whitespace differs; keep current exact file."
+    },
+    {
+      "path": "carr-library/tests/search/test_semantic_cache.py",
+      "selected_blob": "caa8a19a54073353868b22779d3b1777c861d286",
+      "canonical_blob": "b06a86e2cf62dfd4c30f121811be5530a3e07aaf",
+      "reason": "Current has every canonical assertion plus unavailable-library-cache isolation regression."
+    },
+    {
+      "path": "carr-library/tests/storage/test_complete_pending_backup.py",
+      "selected_blob": "1fa4bf33b17eed0e31ec80bb2abac410f8a49ee2",
+      "canonical_blob": "dc7d6a9d955e4a5116a3916966bd1ab5bae45359",
+      "reason": "Current has every canonical assertion plus missing/permission-denied pending-root regressions."
+    },
+    {
+      "path": "carr-library/tests/ingest/test_import_replay_identity.py",
+      "selected_blob": "ce3cf47a5cb562c71a67d4833e52ef9a97ab6649",
+      "canonical_blob": "fe84d8a406aa85e5fdb12452df8ac8ed2815be3c",
+      "reason": "Current intentionally pins schema_version=5 and otherwise matches canonical tests."
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_publication_boundary.py",
+      "selected_blob": "8b0d55c9f8ca6618560331ea15a1545e0263f326",
+      "canonical_blob": "864d84430106b6de460e3eab14b83fe28ea33063",
+      "reason": "Current includes all canonical child-publication assertions and additionally proves sealed existing bytecode cache is unchanged."
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_cancellation_outcomes.py",
+      "selected_blob": "a81b79dc6160657891367d4db1a2aa5eeafc6f7a",
+      "canonical_blob": "8e6f88780903bb7c042ba76dc0908dd14e21ea56",
+      "reason": "Keep current durable _save completion fault injection plus post-final-hash stop/resume regression; canonical verifier-injection would hit the earlier reusable-output verification after the stronger pipeline union."
+    }
+  ],
+  "replay_evidence": [
+    {
+      "key": "replay_backup_sidecars_union",
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "oldtests": 0,
+      "newtests": 0,
+      "patches": 15,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_extensions_primary_union",
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "oldtests": 0,
+      "newtests": 0,
+      "patches": 40,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_backup_appearance_tests",
+      "path": "carr-library/tests/storage/test_backup_reader_appearance.py",
+      "oldtests": 0,
+      "newtests": 3,
+      "patches": 0,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_application_canonical_union",
+      "path": "carr-library/src/carr_library/application.py",
+      "oldtests": 0,
+      "newtests": 0,
+      "patches": 4,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_extract_text_union",
+      "path": "carr-library/src/carr_library/extract/document_formats_text.py",
+      "oldtests": 0,
+      "newtests": 0,
+      "patches": 1,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_txt_registration_test_union",
+      "path": "carr-library/tests/ingest/test_txt_replay_registration.py",
+      "oldtests": 4,
+      "newtests": 7,
+      "patches": 3,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_worker_boundary_test_union",
+      "path": "carr-library/tests/ingest/test_worker_publication_boundary.py",
+      "oldtests": 7,
+      "newtests": 9,
+      "patches": 4,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_export_no_clobber_test_union",
+      "path": "carr-library/tests/reader/test_export_no_clobber.py",
+      "oldtests": 27,
+      "newtests": 32,
+      "patches": 5,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_search_budget_test_union",
+      "path": "carr-library/tests/e2e/test_search_operation_budget.py",
+      "oldtests": 17,
+      "newtests": 17,
+      "patches": 1,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_extract_text_test_union",
+      "path": "carr-library/tests/extract/test_document_formats_text.py",
+      "oldtests": 41,
+      "newtests": 42,
+      "patches": 2,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_extended_documents_test_union",
+      "path": "carr-library/tests/e2e/test_extended_document_workflows.py",
+      "oldtests": 12,
+      "newtests": 14,
+      "patches": 2,
+      "static_replay": "EXACT"
+    },
+    {
+      "key": "replay_academic_library_test_union",
+      "path": "carr-library/tests/research/test_academic_library.py",
+      "oldtests": 41,
+      "newtests": 52,
+      "patches": 11,
+      "static_replay": "EXACT"
+    }
+  ],
+  "patches": [
+    {
+      "path": "carr-library/src/carr_library/backup_sidecars.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "af17bc1c169de119d0eb6226694e4b0bdbe55907",
+      "new_blob": "7e7d2f73555d51577c01a88233c98ed68f8c98ba",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "def _capture(root, *, include_generated=False, cancelled=lambda: False):\n    files, directories = {}, {}\n    for name in _SIMPLE:\n",
+          "after": "def _capture(root, *, include_generated=False, cancelled=lambda: False, root_names=None):\n    allowed = set(_SIMPLE) | set(_DIRECTORIES)\n    if root_names is None:\n        selected = allowed\n    else:\n        if (not isinstance(root_names, (tuple, list, set, frozenset))\n                or any(type(name) is not str or name not in allowed for name in root_names)):\n            raise RestoreError('Invalid explicit sidecar root selection.')\n        selected = set(root_names)\n    files, directories = {}, {}\n    def present(path):\n        try:\n            path.lstat()\n        except FileNotFoundError:\n            return False\n        return True\n    for name in _SIMPLE:\n        if name not in selected:\n            continue\n"
+        },
+        {
+          "before": "        if os.path.lexists(root / name):\n            files[name] = _identity(_regular(root / name))\n    pending = [name for name in _DIRECTORIES if os.path.lexists(root / name)]\n",
+          "after": "        if present(root / name):\n            files[name] = _identity(_regular(root / name))\n    pending = [name for name in _DIRECTORIES if name in selected and present(root / name)]\n"
+        },
+        {
+          "before": "def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False, cancelled=lambda: False):\n    _check_cancelled(cancelled)\n    before = _capture(root, include_generated=include_generated, cancelled=cancelled)\n",
+          "after": "def snapshot(db, root, stage, *, max_bytes=MAX_BYTES, include_generated=False,\n             cancelled=lambda: False, root_names=None):\n    _check_cancelled(cancelled)\n    if type(max_bytes) is not int or max_bytes < 0:\n        raise RestoreError('Sidecar byte budget must be a nonnegative integer.')\n    def capture():\n        options = {} if root_names is None else {'root_names': root_names}\n        return _capture(root, include_generated=include_generated, cancelled=cancelled, **options)\n    before = capture()\n"
+        },
+        {
+          "before": "    if _capture(root, include_generated=include_generated, cancelled=cancelled) != before:\n",
+          "after": "    if capture() != before:\n",
+          "count": 2
+        },
+        {
+          "before": "def check_namespace(directory, inventory):\n    names = {entry['filename'] for entry in inventory.entries}\n    expected_dirs = set(inventory.empty_roots)\n    if inventory.pending is not None:\n        names.update('pending/' + entry['filename'] for entry in inventory.pending['files'])\n        expected_dirs.add('pending')\n    for name in names:\n        expected_dirs.update(str(p) for p in PurePosixPath(name).parents if str(p) != '.')\n    roots = {name.split('/')[0] for name in names} | set(inventory.empty_roots)\n    if inventory.pending is not None:\n        roots.add('pending')\n    actual_roots = {path.name for path in directory.iterdir()}\n    expected_roots = {'library.sqlite', 'originals', 'manifest.json'} | roots\n    if actual_roots != expected_roots:\n        changed = ', '.join(sorted(actual_roots ^ expected_roots)[:10])\n        raise RestoreError('incomplete backup or unexpected files: ' + changed)\n    for name in expected_dirs:\n        _plain(directory / name, directory=True)\n        actual = {path.relative_to(directory).as_posix() for path in (directory / name).iterdir()}\n        expected = {path for path in names | expected_dirs if str(PurePosixPath(path).parent) == name}\n        if actual != expected:\n            changed = ', '.join(sorted(actual ^ expected)[:10])\n            raise RestoreError('incomplete sidecar backup or unexpected files: ' + changed)\n    for name in names:\n        _regular(directory / name)\n\n",
+          "after": "def check_namespace(directory, inventory, *, cancelled=lambda: False):\n    names = {entry['filename'] for entry in inventory.entries}\n    expected_dirs = set(inventory.empty_roots)\n    if inventory.pending is not None:\n        names.update('pending/' + entry['filename'] for entry in inventory.pending['files'])\n        expected_dirs.add('pending')\n    for name in names | set(inventory.empty_roots):\n        expected_dirs.update(str(p) for p in PurePosixPath(name).parents if str(p) != '.')\n    roots = {name.split('/')[0] for name in names | set(inventory.empty_roots)}\n    if inventory.pending is not None:\n        roots.add('pending')\n    expected_roots = {'library.sqlite', 'originals', 'manifest.json'} | roots\n\n    def exact_children(path, expected, prefix):\n        missing = set(expected)\n        with os.scandir(path) as children:\n            for child in children:\n                _check_cancelled(cancelled)\n                relative = (prefix + '/' if prefix else '') + child.name\n                if relative not in missing:\n                    raise RestoreError('incomplete backup or unexpected files: ' + relative)\n                missing.remove(relative)\n        if missing:\n            raise RestoreError('incomplete backup or missing files: ' + ', '.join(sorted(missing)[:10]))\n\n    exact_children(directory, expected_roots, '')\n    for name in sorted(expected_dirs):\n        _check_cancelled(cancelled)\n        _plain(directory / name, directory=True)\n        expected = {path for path in names | expected_dirs if str(PurePosixPath(path).parent) == name}\n        exact_children(directory / name, expected, name)\n    for name in names:\n        _check_cancelled(cancelled)\n        _regular(directory / name)\n\n"
+        },
+        {
+          "before": "def _stream_file(source, *, destination=None, expected=None, maximum, cancelled):\n    \"\"\"Copy or recheck actual bytes without allocating a complete media file.\"\"\"\n    _check_cancelled(cancelled)\n    before = _regular(source)\n    if not 0 < before.st_size <= maximum:\n",
+          "after": "def _stream_file(source, *, destination=None, expected=None, maximum, cancelled,\n                 allow_empty=False):\n    \"\"\"Copy or recheck actual bytes without allocating a complete media file.\"\"\"\n    _check_cancelled(cancelled)\n    before = _regular(source)\n    if not (0 if allow_empty else 1) <= before.st_size <= maximum:\n"
+        },
+        {
+          "before": "    exact_children(directory, expected_roots, '')\n    for name in sorted(expected_dirs):\n        _check_cancelled(cancelled)\n        _plain(directory / name, directory=True)\n        expected = {path for path in names | expected_dirs if str(PurePosixPath(path).parent) == name}\n        exact_children(directory / name, expected, name)\n",
+          "after": "    children_by_parent = {}\n    for name in names | expected_dirs:\n        parent = str(PurePosixPath(name).parent)\n        children_by_parent.setdefault(parent, set()).add(name)\n    exact_children(directory, expected_roots, '')\n    for name in sorted(expected_dirs):\n        _check_cancelled(cancelled)\n        _plain(directory / name, directory=True)\n        exact_children(directory / name, children_by_parent.get(name, ()), name)\n"
+        },
+        {
+          "before": "def read_regular(path, maximum):\n    before = _regular(path)\n    if not 0 < before.st_size <= maximum:\n",
+          "after": "def read_regular(path, maximum, *, allow_empty=False):\n    before = _regular(path)\n    if not (0 if allow_empty else 1) <= before.st_size <= maximum:\n"
+        },
+        {
+          "before": "def validate_sidecar(db, name, raw):\n    maximum = sidecar_limit(name)\n    if type(raw) is not bytes or not 0 < len(raw) <= maximum:\n",
+          "after": "def _empty_subtitle(name):\n    # A clip-only project has no inferred transcript. Its empty SRT/LRC files\n    # are valid inert exports; VTT still requires its explicit header.\n    return backup_producers.SUBTITLE.fullmatch(name) is not None and not name.endswith('.vtt')\n\n\ndef validate_sidecar(db, name, raw):\n    maximum = sidecar_limit(name)\n    if type(raw) is not bytes or not (0 if _empty_subtitle(name) else 1) <= len(raw) <= maximum:\n"
+        },
+        {
+          "before": "        if not 0 < entry['size_bytes'] <= maximum or entry['filename'].casefold() in names:\n",
+          "after": "        if (not (0 if _empty_subtitle(entry['filename']) else 1) <= entry['size_bytes'] <= maximum\n                or entry['filename'].casefold() in names):\n"
+        },
+        {
+          "before": "            raw = read_regular(root / name, sidecar_limit(name))\n",
+          "after": "            raw = read_regular(root / name, sidecar_limit(name), allow_empty=_empty_subtitle(name))\n"
+        },
+        {
+          "before": "        _stream_file(root / name, expected=entry, maximum=sidecar_limit(name), cancelled=cancelled)\n",
+          "after": "        _stream_file(root / name, expected=entry, maximum=sidecar_limit(name), cancelled=cancelled,\n                     allow_empty=_empty_subtitle(name))\n"
+        },
+        {
+          "before": "            raw = read_regular(source / name, sidecar_limit(name))\n",
+          "after": "            raw = read_regular(source / name, sidecar_limit(name), allow_empty=_empty_subtitle(name))\n"
+        },
+        {
+          "before": "    if name == 'state/audio/engines.json':\n        return ENGINE_SETTINGS_BYTES\n",
+          "after": "    if name == 'state/ui/reader-appearance.json':\n        return _model('reader.appearance').MAX_APPEARANCE_BYTES\n    if name == 'state/audio/engines.json':\n        return ENGINE_SETTINGS_BYTES\n"
+        },
+        {
+          "before": "        elif name == 'state/audio/engines.json':\n            _validate_engine_settings(_json(raw))\n",
+          "after": "        elif name == 'state/ui/reader-appearance.json':\n            # Decode only the finite presentation declaration. Never select a\n            # live widget, resolve a font, or read another settings file here.\n            _model('reader.appearance')._preferences(raw)\n        elif name == 'state/audio/engines.json':\n            _validate_engine_settings(_json(raw))\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+      "new_blob": "5bc7bef3f5e7a2ef6ca3dc76b9311809f8163d3b",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "def inventory(root, *, cancelled=lambda: False):\n    before, directories = _tree(root, cancelled=cancelled)\n",
+          "after": "def inventory(root, *, max_bytes=MAX_BYTES, cancelled=lambda: False):\n    if type(max_bytes) is not int or max_bytes < 0:\n        raise RestoreError('Typed backup byte budget must be a nonnegative integer.')\n    max_bytes = min(max_bytes, MAX_BYTES)\n    before, directories = _tree(root, cancelled=cancelled)\n"
+        },
+        {
+          "before": "        if info.st_size < 1 or total > MAX_BYTES:\n",
+          "after": "        if info.st_size < 1 or total > max_bytes:\n"
+        },
+        {
+          "before": "def snapshot(root, target, database, state_entries, *, independent=True, cancelled=lambda: False):\n    root, target = Path(root), Path(target)\n",
+          "after": "def snapshot(root, target, database, state_entries, *, independent=True,\n             max_bytes=MAX_BYTES, cancelled=lambda: False):\n    if type(max_bytes) is not int or max_bytes < 0:\n        raise RestoreError('Typed backup byte budget must be a nonnegative integer.')\n    max_bytes = min(max_bytes, MAX_BYTES)\n    root, target = Path(root), Path(target)\n"
+        },
+        {
+          "before": "    archives = []\n    if independent and os.path.lexists(root / LEGACY):\n",
+          "after": "    archives = []\n    # Account for every already bounded component before copying a potentially\n    # large inert archive. The final staged inventory checks actual bytes too.\n    planned_bytes = sum(len(raw) for raw in sidecars.values())\n    if planned_bytes > max_bytes:\n        raise RestoreError('Typed backup exceeds its complete byte budget.')\n    if independent and os.path.lexists(root / LEGACY):\n        legacy_files, _ = _tree(root / LEGACY, cancelled=cancelled)\n        planned_bytes += sum(info.st_size for info in legacy_files.values())\n        if planned_bytes > max_bytes:\n            raise RestoreError('Typed backup exceeds its complete byte budget.')\n"
+        },
+        {
+          "before": "    files = inventory(target, cancelled=cancelled)\n",
+          "after": "    files = inventory(target, max_bytes=max_bytes, cancelled=cancelled)\n"
+        },
+        {
+          "before": "    for directory, dirs, names in os.walk(root, followlinks=False):\n",
+          "after": "    def walk_error(error):\n        raise error\n    for directory, dirs, names in os.walk(root, followlinks=False, onerror=walk_error):\n"
+        },
+        {
+          "before": "def validate_manifest(value):\n",
+          "after": "def _canonical_root_names():\n    from .backup_sidecars import _SIMPLE, _DIRECTORIES\n    # The established typed producers own reading state and the complete state\n    # tree. Reuse canonical adapters only for the remaining explicit root data.\n    return tuple(name for name in (*_SIMPLE, *_DIRECTORIES) if name not in (READING, 'state'))\n\n\ndef _canonical_names(value):\n    names = value.get('canonical_sidecars', [])\n    if (type(names) is not list or len(names) > MAX_FILES\n            or any(type(name) is not str for name in names)\n            or names != sorted(set(names))):\n        raise RestoreError('Invalid canonical sidecar inventory.')\n    from .backup_sidecars import sidecar_limit\n    roots = set(_canonical_root_names())\n    for name in names:\n        if name.split('/')[0] not in roots:\n            raise RestoreError('A canonical sidecar overlaps another backup component.')\n        sidecar_limit(name)\n    return set(names)\n\n\ndef validate_manifest(value):\n"
+        },
+        {
+          "before": "    if type(value) is dict and value.get('version') in (2, 3):\n",
+          "after": "    if type(value) is dict and value.get('version') in (2, 3, 4):\n"
+        },
+        {
+          "before": "    if type(value) is dict and value.get('version') == 3:\n",
+          "after": "    if type(value) is dict and value.get('version') in (3, 4):\n"
+        },
+        {
+          "before": "                       'studio_unverified_recordings'))\n",
+          "after": "                       'studio_unverified_recordings'))\n    if type(value) is dict and value.get('version') == 4:\n        fields.add('canonical_sidecars')\n"
+        },
+        {
+          "before": "or value['version'] not in (1, 2, 3) or type(value['independent_state']) is not bool\n",
+          "after": "or value['version'] not in (1, 2, 3, 4) or type(value['independent_state']) is not bool\n"
+        },
+        {
+          "before": "    files = value['files']\n",
+          "after": "    canonical_names = _canonical_names(value)\n    files = value['files']\n"
+        },
+        {
+          "before": "        if (name not in SIDECARS and not re.fullmatch(r'legacy-backups/[0-9a-f]{64}(?:\\.json|/.+)', name)):\n",
+          "after": "        if (name not in SIDECARS and name not in canonical_names\n                and not re.fullmatch(r'legacy-backups/[0-9a-f]{64}(?:\\.json|/.+)', name)):\n"
+        },
+        {
+          "before": "        if total > MAX_BYTES or (name in SIDECARS and item['size_bytes'] > SIDECARS[name]):\n",
+          "after": "        if name in canonical_names:\n            from .backup_sidecars import sidecar_limit\n            if item['size_bytes'] > sidecar_limit(name):\n                raise RestoreError('Canonical sidecar exceeds its producer byte budget.')\n        if total > MAX_BYTES or (name in SIDECARS and item['size_bytes'] > SIDECARS[name]):\n"
+        },
+        {
+          "before": "    validate_portable_paths(item['filename'] for item in files)\n",
+          "after": "    validate_portable_paths(item['filename'] for item in files)\n    if not canonical_names <= {item['filename'] for item in files}:\n        raise RestoreError('A canonical sidecar is missing from the exact file inventory.')\n"
+        },
+        {
+          "before": "    if value['version'] == 3 and type(value['studio_input_receipt']) is not bool:\n",
+          "after": "    if value['version'] in (3, 4) and type(value['studio_input_receipt']) is not bool:\n"
+        },
+        {
+          "before": "    if ASR_SETTINGS in names and value['version'] not in (2, 3):\n",
+          "after": "    if ASR_SETTINGS in names and value['version'] not in (2, 3, 4):\n"
+        },
+        {
+          "before": "    if not value['independent_state'] and (archives or DORDIAI in names or ASR_SETTINGS in names\n",
+          "after": "    if not value['independent_state'] and (archives or canonical_names or DORDIAI in names or ASR_SETTINGS in names\n"
+        },
+        {
+          "before": "    validate_sidecars(database, sidecars, allowed)\n    media, media_inputs, retained = inspect_media_state",
+          "after": "    validate_sidecars(database, sidecars, allowed)\n    canonical_entries, canonical_before = [], None\n    if independent:\n        from . import backup_sidecars\n        canonical_roots = _canonical_root_names()\n        canonical_before = backup_sidecars._capture(root, root_names=canonical_roots, cancelled=cancelled)\n        available = max_bytes - sum(len(raw) for raw in sidecars.values())\n        if available < 0:\n            raise RestoreError('Typed backup exceeds its complete byte budget.')\n        with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:\n            db.execute('PRAGMA trusted_schema=OFF')\n            canonical_entries = backup_sidecars.snapshot(db, root, target, max_bytes=available,\n                root_names=canonical_roots, cancelled=cancelled)\n    media, media_inputs, retained = inspect_media_state"
+        },
+        {
+          "before": "    planned_bytes = sum(len(raw) for raw in sidecars.values())\n",
+          "after": "    planned_bytes = (sum(len(raw) for raw in sidecars.values())\n                     + sum(entry['size_bytes'] for entry in canonical_entries))\n"
+        },
+        {
+          "before": "    if (not sidecars and not archives and not sessions and not projects and not transcriptions\n",
+          "after": "    if (not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions\n"
+        },
+        {
+          "before": "    files = inventory(target, max_bytes=max_bytes, cancelled=cancelled)\n",
+          "after": "    files = inventory(target, max_bytes=max_bytes, cancelled=cancelled)\n    for name, maximum in SIDECARS.items():\n        _check(cancelled)\n        if name in (DORDIAI, ASR_SETTINGS) and not independent:\n            continue\n        if read_bytes(root / name, maximum, optional=True) != sidecars.get(name):\n            raise RestoreError('Typed backup sidecar changed during snapshot.')\n    if canonical_before is not None:\n        for entry in canonical_entries:\n            _check(cancelled)\n            backup_sidecars._stream_file(root / entry['filename'], expected=entry,\n                maximum=backup_sidecars.sidecar_limit(entry['filename']), cancelled=cancelled)\n        if backup_sidecars._capture(root, root_names=canonical_roots, cancelled=cancelled) != canonical_before:\n            raise RestoreError('Canonical application state changed during snapshot.')\n"
+        },
+        {
+          "before": "    if _has_media(media):\n        manifest.update(version=3, transcription_jobs=transcriptions, **media)\n",
+          "after": "    if _has_media(media):\n        manifest.update(version=3, transcription_jobs=transcriptions, **media)\n    if canonical_entries:\n        manifest.update(version=4, transcription_jobs=transcriptions, **media,\n            canonical_sidecars=sorted(entry['filename'] for entry in canonical_entries))\n"
+        },
+        {
+          "before": "    paths = []\n    if value['legacy_archives']:\n",
+          "after": "    canonical_names = _canonical_names(value)\n    paths = sorted({name.split('/')[0] for name in canonical_names})\n    if canonical_names:\n        from . import backup_sidecars\n        canonical_entries = tuple(entry for entry in value['files'] if entry['filename'] in canonical_names)\n        with closing(sqlite3.connect((Path(stage) / 'library.sqlite').as_uri() + '?mode=ro&immutable=1', uri=True)) as db:\n            db.execute('PRAGMA trusted_schema=OFF')\n            backup_sidecars.restore(db, temporary, Path(stage),\n                backup_sidecars.Inventory(canonical_entries), cancelled=cancelled)\n    if value['legacy_archives']:\n"
+        },
+        {
+          "before": "    after, later_directories = _tree(root, cancelled=cancelled)\n",
+          "after": "    # Metadata alone can miss a same-sized rewrite on Windows. Reuse the\n    # bounded canonical file verifier after the first complete byte pass.\n    from .backup_sidecars import _stream_file\n    for entry in result:\n        _stream_file(Path(root) / entry['filename'], expected=entry,\n                     maximum=max_bytes, cancelled=cancelled)\n    after, later_directories = _tree(root, cancelled=cancelled)\n"
+        },
+        {
+          "before": "    if independent and os.path.lexists(root / LEGACY):\n        legacy_files, _ = _tree(root / LEGACY, cancelled=cancelled)\n",
+          "after": "    legacy_present = False\n    if independent:\n        try:\n            (root / LEGACY).lstat()\n        except FileNotFoundError:\n            pass\n        else:\n            legacy_present = True\n    if legacy_present:\n        legacy_files, _ = _tree(root / LEGACY, cancelled=cancelled)\n"
+        },
+        {
+          "before": "def inspect_state(root, entries, database, allowed, *, independent, cancelled=lambda: False,\n",
+          "after": "def validate_primary_state(root, entries, database, *, legacy_opaque=False,\n                           cancelled=lambda: False):\n    \"\"\"Check current primary producers without activating historical opaque data.\n\n    Typed V3/V4 and earlier extension versions also admitted opaque private\n    state. Their original bytes remain recoverable; absent old producer schemas\n    grant no authority to run a job, provider or media operation. New snapshots\n    use only the current finite adapters within these producer namespaces.\n    \"\"\"\n    from . import backup_generated, backup_producers, backup_sidecars\n\n    root = Path(root)\n    generated, receipts, handled = [], {}, False\n    protected = ('speech/', 'studio/', 'providers/', 'assistant/', 'translation/')\n    with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:\n        db.execute('PRAGMA trusted_schema=OFF')\n        for entry in entries:\n            _check(cancelled)\n            relative = entry['filename']\n            name = 'state/' + relative\n            maximum = backup_producers.limit(name)\n            generated_limit = backup_generated.limit(name)\n            if generated_limit is not None:\n                handled = True\n                generated.append({**entry, 'filename': name})\n                if backup_generated.is_media(name):\n                    size, _checksum, header = backup_sidecars._stream_file(\n                        root / relative, expected=entry, maximum=generated_limit, cancelled=cancelled)\n                    backup_generated.validate_container(name, header, size)\n                else:\n                    raw = backup_sidecars.read_regular(root / relative, generated_limit)\n                    backup_sidecars.validate_sidecar(db, name, raw)\n                    receipts[name] = _json(raw)\n            elif maximum is not None or name == 'state/audio/engines.json':\n                maximum = maximum or backup_sidecars.sidecar_limit(name)\n                raw = backup_sidecars.read_regular(root / relative, maximum,\n                    allow_empty=backup_sidecars._empty_subtitle(name))\n                # The previous complete-state format did not interpret opaque\n                # JSON at these paths. Preserve it only on that reader path.\n                if legacy_opaque and not backup_producers.SUBTITLE.fullmatch(name):\n                    value = _json(raw)\n                    match = backup_producers.STUDIO.fullmatch(name)\n                    control = (match is not None and match[2] == 'control'\n                        or backup_producers.ASSISTANT.fullmatch(name) is not None and name.endswith('.control.json')\n                        or backup_producers.TRANSLATION.fullmatch(name) is not None and name.endswith('.control.json'))\n                    if type(value) is dict and 'schema' not in value and not control:\n                        continue\n                backup_sidecars.validate_sidecar(db, name, raw)\n                handled = True\n            elif (_PROJECT.fullmatch(relative) or _PUBLICATION.fullmatch(relative)\n                    or _RECORDING.fullmatch(relative) or _RECORDING_WAV.fullmatch(relative)\n                    or relative in ('studio/backup-inputs.json', 'studio/legacy-input-review.json')\n                    or re.fullmatch(r'studio/inputs/[0-9a-f]{64}\\.audio', relative)):\n                # The existing typed media/input/session inspectors below own\n                # these formats and bind their complete component inventory.\n                handled = True\n            elif relative.startswith(protected) and not legacy_opaque:\n                raise RestoreError('No validated backup adapter is installed for ' + name + '.')\n    backup_generated.validate_collection(generated, receipts)\n    return handled\n\n\ndef inspect_state(root, entries, database, allowed, *, independent, cancelled=lambda: False,\n"
+        },
+        {
+          "before": "    media, media_inputs, retained = inspect_media_state(target.parent / 'state', state_entries,\n",
+          "after": "    primary = validate_primary_state(target.parent / 'state', state_entries, database, cancelled=cancelled)\n    media, media_inputs, retained = inspect_media_state(target.parent / 'state', state_entries,\n"
+        },
+        {
+          "before": "    if (not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions\n",
+          "after": "    if (not primary and not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions\n"
+        },
+        {
+          "before": "    if canonical_entries:\n        manifest.update(version=4, transcription_jobs=transcriptions, **media,\n",
+          "after": "    if primary or canonical_entries:\n        manifest.update(version=4, transcription_jobs=transcriptions, **media,\n"
+        },
+        {
+          "before": "            if generated_limit is not None:\n                handled = True\n",
+          "after": "            if generated_limit is not None:\n                if legacy_opaque:\n                    # Older generated state was an opaque optional byte copy.\n                    # Its consumer still inspects the media and exact receipt\n                    # before reuse; restore does not grant completion authority.\n                    continue\n                handled = True\n"
+        },
+        {
+          "before": "                raw = backup_sidecars.read_regular(root / relative, maximum,\n                    allow_empty=backup_sidecars._empty_subtitle(name))\n                # The previous complete-state format did not interpret opaque\n                # JSON at these paths. Preserve it only on that reader path.\n                if legacy_opaque and not backup_producers.SUBTITLE.fullmatch(name):\n                    value = _json(raw)\n",
+          "after": "                if legacy_opaque and entry['size_bytes'] > maximum:\n                    continue\n                raw = backup_sidecars.read_regular(root / relative, maximum,\n                    allow_empty=legacy_opaque or backup_sidecars._empty_subtitle(name))\n                # The previous complete-state format did not interpret opaque\n                # JSON at these paths. Preserve it only on that reader path.\n                if legacy_opaque and not backup_producers.SUBTITLE.fullmatch(name):\n                    try:\n                        value = _json(raw)\n                    except RestoreError:\n                        continue\n"
+        },
+        {
+          "before": "                    if type(value) is dict and 'schema' not in value and not control:\n                        continue\n",
+          "after": "                    if type(value) is not dict or 'schema' not in value and not control:\n                        continue\n"
+        },
+        {
+          "before": "            elif maximum is not None or name == 'state/audio/engines.json':\n                maximum = maximum or backup_sidecars.sidecar_limit(name)\n",
+          "after": "            elif maximum is not None or name == 'state/audio/engines.json':\n                if legacy_opaque and backup_producers.SUBTITLE.fullmatch(name):\n                    continue\n                maximum = maximum or backup_sidecars.sidecar_limit(name)\n"
+        },
+        {
+          "before": "raise RestoreError('Reading recovery does not match its exact authenticated source.')",
+          "after": "raise RestoreError('Reading recovery does not match its exact authenticated source; it must match the exact saved source.')"
+        },
+        {
+          "before": "def validate_primary_state(root, entries, database, *, legacy_opaque=False,\n                           cancelled=lambda: False):\n",
+          "after": "def validate_primary_state(root, entries, database, *, legacy_opaque=False,\n                           include_generated=False, cancelled=lambda: False):\n"
+        },
+        {
+          "before": "            relative = entry['filename']\n            name = 'state/' + relative\n",
+          "after": "            relative = entry['filename']\n            if not include_generated and 'cache' in relative.split('/'):\n                raise RestoreError('Generated cache requires explicit backup inclusion.')\n            name = 'state/' + relative\n"
+        },
+        {
+          "before": "def snapshot(root, target, database, state_entries, *, independent=True,\n             max_bytes=MAX_BYTES, cancelled=lambda: False):\n",
+          "after": "def snapshot(root, target, database, state_entries, *, independent=True,\n             max_bytes=MAX_BYTES, include_generated=False, cancelled=lambda: False):\n"
+        },
+        {
+          "before": "    primary = validate_primary_state(target.parent / 'state', state_entries, database, cancelled=cancelled)\n",
+          "after": "    primary = validate_primary_state(target.parent / 'state', state_entries, database,\n        include_generated=include_generated, cancelled=cancelled)\n"
+        },
+        {
+          "before": "            elif maximum is not None or name == 'state/audio/engines.json':\n",
+          "after": "            elif maximum is not None or name in ('state/audio/engines.json',\n                                                 'state/ui/reader-appearance.json'):\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_reader_appearance.py",
+      "base_commit": null,
+      "base_blob": null,
+      "new_blob": "721933989d18fe2f26d5a4ebff5e0a2415111f45",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": []
+    },
+    {
+      "path": "carr-library/src/carr_library/application.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "d4ae7deeb3b713215a53172310c47f100a1ccccb",
+      "new_blob": "00741c27d663a797a8f463c862200f854732f4fe",
+      "application_mode": "PATCH_ONLY",
+      "changes": [
+        {
+          "before": "historical quotations and mutable research notes remain separate. No network is\nused by this module; model installation is an explicit build-time operation.",
+          "after": "historical quotations and mutable research notes remain separate. Optional\nmetadata acquisition uses separate, explicit per-operation consent; all other\ncore services remain local. Model installation is an explicit build-time operation."
+        },
+        {
+          "before": "        \"\"\"Preview exact DOI metadata without transmitting sources or private notes.\"\"\"",
+          "after": "        \"\"\"Preview exact DOI metadata; never transmit source text or research notes.\"\"\""
+        },
+        {
+          "before": "        cancelled = metadata.get('cancelled', lambda: False)\n        report(0)\n",
+          "after": "        cancelled = metadata.get('cancelled', lambda: False)\n        if not callable(cancelled):\n            raise ValueError('An import cancellation callback is required.')\n        report(0)\n"
+        },
+        {
+          "before": "    def backup(self, destination, *, include_generated=False, cancelled=lambda: False):\n        from .library_backup import create_backup\n        return create_backup(self, destination, include_generated=include_generated, cancelled=cancelled)\n",
+          "after": "    def backup(self, destination, *, max_bytes=None, include_generated=False, cancelled=lambda: False):\n        from .library_backup import create_backup\n        return create_backup(self, destination, max_bytes=max_bytes,\n                             include_generated=include_generated, cancelled=cancelled)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/extract/document_formats_text.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "c760e7d1aabf5acbf71c2e76acc2eba9a714783d",
+      "new_blob": "88af84ca701d747ac50c0395a57cd08ab9028d9e",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "        encoded = raw.translate(None, b' \\t\\r\\n')\n        raw = base64.b64decode(encoded, validate=True)\n",
+          "after": "        encoded = raw.translate(None, b' \\t\\r\\n')\n        # Keep MIME padding independent of the supported CPython decoder's\n        # tolerance; the existing roundtrip below also rejects nonzero pad bits.\n        if len(encoded) % 4 or encoded.endswith(b'==='):\n            raise ValueError('Email base64 payload has invalid padding.')\n        raw = base64.b64decode(encoded, validate=True)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/ingest/test_txt_replay_registration.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "150619f875f32967c2ad2e719712141475316b2b",
+      "new_blob": "ee542dc44f8b7674710796bd33c4fb787ccf7553",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "s(InterruptedError, match='cancelled before commit'):\n        app.import_file(ws, src, collections=(first, requested), cancelled=lambda: stopped, **meta)\n    assert app.browse(ws, collection=requested) == ()\n    assert app.search(ws, 'railway history', collection=first)[0].revision == initial['id']\n",
+          "after": "s(InterruptedError, match='cancelled before commit'):\n        app.import_file(ws, src, collections=(first, requested), cancelled=lambda: stopped, **meta)\n    assert app.browse(ws, collection=requested) == ()\n    assert app.search(ws, 'railway history', collection=first)[0].revision == initial['id']\n\n\ndef test_superseded_replay_requires_current_metadata_without_reactivation(imported):\n    app, ws, _, first, requested, src, raw, meta, initial = imported\n    app.update_metadata(ws, meta['edition_id'], title='Reviewed description',\n                        authors=meta['authors'], language=meta['language'])\n    current, = app.search(ws, 'railway history', collection=first)\n    assert current.revision != initial['id']\n    with pytest.raises(ValueError, match='work identity conflict'):\n        app.import_file(ws, src, collections=(requested,), **meta)\n    assert app.browse(ws, collection=requested) == ()\n    replay = app.import_file(ws, src, collections=(requested,),\n                             **dict(meta, title='Reviewed description'))\n    assert replay['state'] == 'superseded' and replay['id'] == initial['id']\n    assert not replay['verified']\n    after, = app.search(ws, 'railway history', collection=requested)\n    assert after.revision == current.revision and after.title == 'Reviewed description'\n    assert app.browse(ws, collection=first) == app.browse(ws, collection=requested)\n    assert src.read_bytes() == raw\n"
+        },
+        {
+          "before": " not replay['verified']\n    after, = app.search(ws, 'railway history', collection=requested)\n    assert after.revision == current.revision and after.title == 'Reviewed description'\n    assert app.browse(ws, collection=first) == app.browse(ws, collection=requested)\n    assert src.read_bytes() == raw\n",
+          "after": " not replay['verified']\n    after, = app.search(ws, 'railway history', collection=requested)\n    assert after.revision == current.revision and after.title == 'Reviewed description'\n    assert app.browse(ws, collection=first) == app.browse(ws, collection=requested)\n    assert src.read_bytes() == raw\n\n\ndef test_cancelled_completed_replay_preserves_membership(imported):\n    app, ws, _, first, requested, src, _, meta, initial = imported\n    with pytest.raises(InterruptedError, match='cancelled'):\n        app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)\n    assert app.browse(ws, collection=requested) == ()\n    assert app.browse(ws, collection=first)\n"
+        },
+        {
+          "before": "rst, requested, src, _, meta, initial = imported\n    with pytest.raises(InterruptedError, match='cancelled'):\n        app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)\n    assert app.browse(ws, collection=requested) == ()\n    assert app.browse(ws, collection=first)\n",
+          "after": "rst, requested, src, _, meta, initial = imported\n    with pytest.raises(InterruptedError, match='cancelled'):\n        app._import_file(ws, src, collections=(requested,), cancelled=lambda: True, **meta)\n    assert app.browse(ws, collection=requested) == ()\n    assert app.browse(ws, collection=first)\n\n\ndef test_pdf_completed_replay_registers_exact_source_without_approving_it(tmp_path):\n    from reportlab.pdfgen.canvas import Canvas\n    app = LibraryApp(tmp_path / 'library')\n    ws = app.create_workspace('PDF study')\n    collection = app.create_collection(ws, 'Reviewed selection')\n    src = tmp_path / 'synthetic.pdf'\n    canvas = Canvas(str(src))\n    canvas.drawString(72, 720, 'Synthetic railway research evidence.')\n    canvas.save()\n    original = src.read_bytes()\n    meta = dict(title='Synthetic PDF', authors=('Fixture Author',),\n                work_id='pdf-work', edition_id='pdf-edition')\n    initial = app._import_file(ws, src, **meta)\n    assert initial['state'] == 'complete' and not initial['verified']\n    replay = app._import_file(ws, src, collections=(collection,), **meta)\n    assert replay['state'] == 'complete' and replay['id'] == initial['id']\n    result, = app.search(ws, 'railway', collection=collection)\n    assert not result.verified\n    with pytest.raises(ValueError):\n        app.copy(ws, result.ref, result.revision, 'quote')\n    assert src.read_bytes() == original\n    with app.read(ws) as db:\n        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1\n        assert db.execute('SELECT count(*) FROM source_page_review').fetchone()[0] == 0\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/ingest/test_worker_publication_boundary.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "d5e5059b4772e650a67b16623d890d5dc0c41e13",
+      "new_blob": "1212ae2e4a8f92993d64a77da40fbcf8f900ad9d",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "@pytest.mark.parametrize('kind', ('docx', 'epub', 'pdf', 'txt'))",
+          "after": "@pytest.mark.parametrize('kind', ('docx', 'md', 'epub', 'pdf', 'txt'))"
+        },
+        {
+          "before": "def test_preexisting_replay_is_not_new_completion_after_cancel(tmp_path, monkeypatch):\n    app = LibraryApp(tmp_path / 'library')\n    workspace = app.create_workspace('Replay boundary')\n    source = source_file(tmp_path, 'docx')\n    work_id, edition_id = uuid4().hex, uuid4().hex\n    first = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id)\n    assert first['state'] == 'complete'\n    marker = tmp_path / 'replay-before-commit'\n    publication_barrier(monkeypatch, marker, before=True)\n    cancelled = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,\n                               cancelled=marker.exists, timeout=30)\n    assert marker.is_file(), cancelled\n    assert cancelled['state'] == 'cancelled'\n    assert 'recovered_publication' not in cancelled\n    with app.read(workspace) as db:\n        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1\n\n\n",
+          "after": "def test_preexisting_replay_is_not_new_completion_after_cancel(tmp_path, monkeypatch):\n    app = LibraryApp(tmp_path / 'library')\n    workspace = app.create_workspace('Replay boundary')\n    source = source_file(tmp_path, 'docx')\n    existing = app.create_collection(workspace, 'Existing membership')\n    requested = app.create_collection(workspace, 'Requested membership')\n    work_id, edition_id = uuid4().hex, uuid4().hex\n    first = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,\n                            collections=(existing,))\n    assert first['state'] == 'complete'\n    marker = tmp_path / 'replay-before-commit'\n    publication_barrier(monkeypatch, marker, before=True)\n    cancelled = app.import_file(workspace, source, work_id=work_id, edition_id=edition_id,\n                               collections=(requested,), cancelled=marker.exists, timeout=30)\n    assert marker.is_file(), cancelled\n    assert cancelled['state'] == 'cancelled'\n    assert 'recovered_publication' not in cancelled\n    assert app.browse(workspace, collection=requested) == ()\n    assert len(app.browse(workspace, collection=existing)) == 1\n    with app.read(workspace) as db:\n        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1\n\n\n"
+        },
+        {
+          "before": "'\n    assert marker.is_file() and len(processes) == 1\n    assert result['state'] == 'cancelled', result\n    assert 'recovered_publication' not in result\n    assert app.browse(workspace)\n    with app.read(workspace) as db:\n        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1\n",
+          "after": "'\n    assert marker.is_file() and len(processes) == 1\n    assert result['state'] == 'cancelled', result\n    assert 'recovered_publication' not in result\n    assert app.browse(workspace)\n    with app.read(workspace) as db:\n        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1\n\n\n@pytest.mark.parametrize('conflict', ('language', 'authors', 'title', 'edition', 'volume', 'work', 'collections'))\ndef test_another_requests_fresh_publication_cannot_hide_metadata_or_membership_failure(\n        tmp_path, monkeypatch, conflict):\n    app = LibraryApp(tmp_path / 'library')\n    workspace = app.create_workspace('Concurrent request identities')\n    collection = app.create_collection(workspace, 'Required membership')\n    source = source_file(tmp_path, 'docx')\n    wanted = dict(title='Requested title', authors=('Research; Team',), language='uk',\n                  edition='Second', volume='II', collections=(collection,),\n                  work_id='shared-work', edition_id='shared-edition')\n    other = dict(wanted)\n    changes = dict(language='en', authors=('Research', 'Team'), title='Different title',\n                   edition='First', volume='I', work_id='other-work', collections=())\n    field = 'work_id' if conflict == 'work' else conflict\n    other[field] = changes[field]\n    marker = tmp_path / 'before-request-publication'\n    processes = publication_barrier(monkeypatch, marker, before=True)\n    original_popen = worker.subprocess.Popen\n    competing = []\n\n    def launch(command, *args, **kwargs):\n        if (isinstance(command, list) and '-c' in command\n                and \"runpy.run_module('carr_library.ingest.worker'\" in command[command.index('-c') + 1]):\n            assert not competing\n            # A genuine independent publication after the supervisor's watermark,\n            # before its actual child. No row/result is fabricated or retargeted.\n            competing.append(app._import_file(workspace, source, **other))\n            assert competing[0]['state'] == 'complete'\n        return original_popen(command, *args, **kwargs)\n\n    monkeypatch.setattr(worker.subprocess, 'Popen', launch)\n    result = app.import_file(workspace, source, **wanted, cancelled=marker.exists, timeout=30)\n    assert result['state'] == ('cancelled' if conflict == 'collections' else 'failed'), result\n    assert 'recovered_publication' not in result\n    assert len(processes) == 1 and processes[0].poll() is not None\n    with app.read(workspace) as db:\n        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 1\n        assert tuple(db.execute('SELECT language,edition,volume FROM catalog_edition').fetchone()) == (\n            other['language'], other['edition'], other['volume'])\n        assert tuple(row[0] for row in db.execute('SELECT name FROM catalog_author ORDER BY position')) == other['authors']\n    if conflict == 'collections':\n        assert app.browse(workspace, collection=collection) == ()\n"
+        },
+        {
+          "before": "e()) == (\n            other['language'], other['edition'], other['volume'])\n        assert tuple(row[0] for row in db.execute('SELECT name FROM catalog_author ORDER BY position')) == other['authors']\n    if conflict == 'collections':\n        assert app.browse(workspace, collection=collection) == ()\n",
+          "after": "e()) == (\n            other['language'], other['edition'], other['volume'])\n        assert tuple(row[0] for row in db.execute('SELECT name FROM catalog_author ORDER BY position')) == other['authors']\n    if conflict == 'collections':\n        assert app.browse(workspace, collection=collection) == ()\n\n\n@pytest.mark.parametrize('binding', ('job', 'configuration'))\ndef test_pdf_reconciliation_requires_its_exact_saved_job_and_config(tmp_path, monkeypatch, binding):\n    app = LibraryApp(tmp_path / 'library')\n    workspace = app.create_workspace('PDF request binding')\n    source = source_file(tmp_path, 'pdf')\n    launches = capture_attempt(monkeypatch)\n    result = app.import_file(workspace, source)\n    assert result['state'] == 'complete'\n    initial, attempt = launches[0]\n    # Prove the actual frozen parent launch can recover this exact publication\n    # before changing the saved record. An invalid sentinel attempt cannot make\n    # this negative pass without exercising the job/configuration binding.\n    assert worker._published_after_stop(app, initial, attempt)['state'] == 'complete'\n    request = worker.load_request(app.root, result['request_id'])\n    if binding == 'job':\n        request['job'] = 'f' * 64\n    else:\n        request['config']['dpi'] += 1\n    worker._store(app.root, result['request_id'], request)\n    assert worker._published_after_stop(app, initial, attempt) is None\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/reader/test_export_no_clobber.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "7dbb6dfc522caf528fbf4b8edde58e1d38e45a51",
+      "new_blob": "b896a81bd51abd1414be422674782d3bba56dccb",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "n Read(source, session)\n\n    monkeypatch.setattr(os, 'fdopen', observe)\n    return sessions\n\n\n\ndef _assert_fingerprint_descriptors_closed(sessions):\n    for session in sessions:\n        assert session['source'].closed\n        with pytest.raises(OSError):\n            os.fstat(session['descriptor'])\n\n",
+          "after": "n Read(source, session)\n\n    monkeypatch.setattr(os, 'fdopen', observe)\n    return sessions\n\n\n\ndef _assert_fingerprint_descriptors_closed(sessions):\n    for session in sessions:\n        assert session['source'].closed\n        with pytest.raises(OSError):\n            os.fstat(session['descriptor'])\n\n\ndef test_create_only_export_recovers_transient_staging_cleanup(export, monkeypatch):\n    target, expected, publish = export\n    unlink = os.unlink\n    failed = False\n\n    def fail_once(path, *args, **kwargs):\n        nonlocal failed\n        if Path(path).name.startswith('.research-export-') and not failed:\n            # Inject only after actual publication. Windows no-replace rename\n            # avoids this separate cleanup operation entirely.\n            assert target.read_bytes() == expected\n            failed = True\n            raise PermissionError('Synthetic transient cleanup failure')\n        return unlink(path, *args, **kwargs)\n\n    monkeypatch.setattr(os, 'unlink', fail_once)\n    receipt = publish(require_absent=True)\n    assert failed is (os.name != 'nt')\n    assert receipt.path == target and receipt.cleanup_warning is None\n    assert target.read_bytes() == expected\n    assert target.stat().st_nlink == 1\n    assert not list(target.parent.glob('.research-export-*'))\n"
+        },
+        {
+          "before": "ce)\n    receipt = publish(require_absent=True)\n    assert failed is (os.name != 'nt')\n    assert receipt.path == target and receipt.cleanup_warning is None\n    assert target.read_bytes() == expected\n    assert target.stat().st_nlink == 1\n    assert not list(target.parent.glob('.research-export-*'))\n",
+          "after": "ce)\n    receipt = publish(require_absent=True)\n    assert failed is (os.name != 'nt')\n    assert receipt.path == target and receipt.cleanup_warning is None\n    assert target.read_bytes() == expected\n    assert target.stat().st_nlink == 1\n    assert not list(target.parent.glob('.research-export-*'))\n\n\n@pytest.mark.parametrize('broken_logger', [False, True])\ndef test_create_only_cleanup_cannot_reverse_completed_export(\n        export, monkeypatch, caplog, broken_logger):\n    target, expected, publish = export\n    unlink = os.unlink\n\n    def locked_stage(path, *args, **kwargs):\n        if Path(path).name.startswith('.research-export-'):\n            assert target.read_bytes() == expected\n            raise PermissionError('Synthetic persistent cleanup failure')\n        return unlink(path, *args, **kwargs)\n\n    monkeypatch.setattr(os, 'unlink', locked_stage)\n    if broken_logger:\n        def unavailable_log(*args):\n            raise OSError('Synthetic unavailable log sink')\n        monkeypatch.setattr(export_file._logger, 'warning', unavailable_log)\n    try:\n        receipt = publish(require_absent=True)\n        assert receipt.path == target\n        assert target.read_bytes() == expected\n        if os.name == 'nt':\n            # No staging link needs cleanup after Windows no-replace rename.\n            assert receipt.cleanup_warning is None\n            assert not list(target.parent.glob('.research-export-*'))\n        else:\n            assert 'file is saved' in receipt.cleanup_warning\n            assert 'does not need to be repeated' in receipt.cleanup_warning\n            if not broken_logger:\n                assert receipt.cleanup_warning in caplog.text\n            stage, = target.parent.glob('.research-export-*')\n            assert os.path.samefile(stage, target)\n    finally:\n        # Remove only this test's own staging link with the real OS operation.\n        for stage in target.parent.glob('.research-export-*'):\n            unlink(stage)\n    assert target.stat().st_nlink == 1\n    assert target.read_bytes() == expected\n"
+        },
+        {
+          "before": "sert os.path.samefile(stage, target)\n    finally:\n        # Remove only this test's own staging link with the real OS operation.\n        for stage in target.parent.glob('.research-export-*'):\n            unlink(stage)\n    assert target.stat().st_nlink == 1\n    assert target.read_bytes() == expected\n",
+          "after": "sert os.path.samefile(stage, target)\n    finally:\n        # Remove only this test's own staging link with the real OS operation.\n        for stage in target.parent.glob('.research-export-*'):\n            unlink(stage)\n    assert target.stat().st_nlink == 1\n    assert target.read_bytes() == expected\n\n\ndef test_cli_reports_completed_export_when_staging_cleanup_is_denied(\n        tmp_path, monkeypatch, capsys):\n    import json\n\n    from carr_library.application import LibraryApp\n    from carr_library.bibliography_cli import main\n    from carr_library.ui.academic_library_dialog import AcademicController\n\n    app = LibraryApp(tmp_path / 'private')\n    workspace = app.create_workspace('Publication receipt')\n    controller = AcademicController(app, workspace)\n    reference = controller.create(dict(title='Synthetic source', authors=('Doe, Jane',), year='2020'))\n    destination = tmp_path / 'bibliography.txt'\n    unlink = os.unlink\n\n    def locked_stage(path, *args, **kwargs):\n        if Path(path).name.startswith('.research-export-'):\n            raise PermissionError('Synthetic persistent cleanup failure')\n        return unlink(path, *args, **kwargs)\n\n    monkeypatch.setattr(os, 'unlink', locked_stage)\n    try:\n        result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,\n                       '--reference', reference.id, '--output', str(destination)])\n        report = json.loads(capsys.readouterr().out)\n        assert result == 0 and report['result'] == 'SAVED'\n        assert 'Synthetic source' in destination.read_text(encoding='utf-8')\n        if os.name == 'nt':\n            assert not any('cleanup' in warning for warning in report['warnings'])\n            assert not list(tmp_path.glob('.research-export-*'))\n        else:\n            assert any('file is saved' in warning for warning in report['warnings'])\n            stage, = tmp_path.glob('.research-export-*')\n            assert os.path.samefile(stage, destination)\n    finally:\n        for stage in tmp_path.glob('.research-export-*'):\n            unlink(stage)\n"
+        },
+        {
+          "before": "lse:\n            assert any('file is saved' in warning for warning in report['warnings'])\n            stage, = tmp_path.glob('.research-export-*')\n            assert os.path.samefile(stage, destination)\n    finally:\n        for stage in tmp_path.glob('.research-export-*'):\n            unlink(stage)\n",
+          "after": "lse:\n            assert any('file is saved' in warning for warning in report['warnings'])\n            stage, = tmp_path.glob('.research-export-*')\n            assert os.path.samefile(stage, destination)\n    finally:\n        for stage in tmp_path.glob('.research-export-*'):\n            unlink(stage)\n\n\ndef test_cli_without_overwrite_preserves_file_created_during_formatting(tmp_path, monkeypatch, capsys):\n    from carr_library.application import LibraryApp\n    from carr_library.bibliography_cli import main\n    from carr_library.citations.bibliography_workbench import BibliographyWorkbench\n    from carr_library.ui.academic_library_dialog import AcademicController\n\n    app = LibraryApp(tmp_path / 'private')\n    workspace = app.create_workspace('Export audit')\n    controller = AcademicController(app, workspace)\n    reference = controller.create(dict(title='Synthetic source', authors=('Doe, Jane',), year='2020'))\n    destination = tmp_path / 'bibliography.txt'\n    render = BibliographyWorkbench.preview\n\n    def format_then_competing_write(workbench, **options):\n        preview = render(workbench, **options)\n        destination.write_bytes(b'Created by another program during rendering')\n        return preview\n\n    monkeypatch.setattr(BibliographyWorkbench, 'preview', format_then_competing_write)\n    result = main(['format', '--data-dir', str(app.root), '--workspace', workspace,\n                   '--reference', reference.id, '--output', str(destination)])\n    assert result == 1\n    assert 'destination changed' in capsys.readouterr().err\n    assert destination.read_bytes() == b'Created by another program during rendering'\n    assert controller.get(reference.id) == reference\n    assert not list(tmp_path.glob('.research-export-*'))\n"
+        },
+        {
+          "before": ", str(destination)])\n    assert result == 1\n    assert 'destination changed' in capsys.readouterr().err\n    assert destination.read_bytes() == b'Created by another program during rendering'\n    assert controller.get(reference.id) == reference\n    assert not list(tmp_path.glob('.research-export-*'))\n",
+          "after": ", str(destination)])\n    assert result == 1\n    assert 'destination changed' in capsys.readouterr().err\n    assert destination.read_bytes() == b'Created by another program during rendering'\n    assert controller.get(reference.id) == reference\n    assert not list(tmp_path.glob('.research-export-*'))\n\n\n@pytest.mark.parametrize('change', ('metadata', 'workspace-archive'))\n@pytest.mark.parametrize('existing', (False, True))\ndef test_staged_bibliography_reauthorizes_metadata_and_scope_before_publication(\n        tmp_path, change, existing):\n    from carr_library.application import LibraryApp\n    from carr_library.citations.bibliography_workbench import BibliographyWorkbench\n    from carr_library.ui.academic_library_dialog import AcademicController\n\n    app = LibraryApp(tmp_path / 'private')\n    workspace = app.create_workspace('Export freshness audit')\n    controller = AcademicController(app, workspace)\n    reference = controller.create(dict(title='Original metadata title', authors=('Doe, Jane',), year='2020'))\n    workbench = BibliographyWorkbench(controller)\n    preview = workbench.preview(identity=reference.id, style='ieee')\n    destination = tmp_path / 'bibliography.txt'\n    original_bytes = b'Previously exported work must survive'\n    if existing:\n        destination.write_bytes(original_bytes)\n    changed = False\n\n    def change_after_real_staging():\n        nonlocal changed\n        if not changed and list(tmp_path.glob('.research-export-*')):\n            # The pre-render and pre-writer checks already passed. Change the\n            # database only once the real payload has reached a staging file.\n            changed = True\n            if change == 'metadata':\n                controller.update(reference, {'title': 'New current metadata title'})\n            else:\n                app.archive_workspace(workspace)\n        return False\n\n    with pytest.raises(ValueError):\n        workbench.export(preview, destination, cancelled=change_after_real_staging,\n                         require_absent=not existing)\n\n    assert changed, 'The metadata/scope change must happen after the payload is staged.'\n    if existing:\n        assert destination.read_bytes() == original_bytes\n    else:\n        assert not destination.exists()\n    assert not list(tmp_path.glob('.research-export-*'))\n    if change == 'metadata':\n        assert controller.get(reference.id).title == 'New current metadata title'\n    else:\n        with pytest.raises(ValueError):\n            controller.get(reference.id)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/e2e/test_search_operation_budget.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "4a5220db7ee2ea869d181ddf031fa21e3058cd28",
+      "new_blob": "bc50ef478ecb805ce882382f6af0ee21588e183c",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "@pytest.mark.parametrize('stage', ['schema', 'authorization'])\n@pytest.mark.parametrize('stop', ['cancel', 'deadline'])\ndef test_snapshot_setup_is_interruptible_before_result_publication(research, monkeypatch, stage, stop):\n    app, workspace = research\n    previous, = app.search(workspace, 'history')\n    selections = dict(app._selections)\n    state = {'inside': False, 'completed': False, 'now': 100.0}\n\n    def exercise_sql(db):\n        state['inside'] = True\n        if stop == 'deadline':\n            state['now'] = 102.0\n        try:\n            db.execute('WITH RECURSIVE n(v) AS '\n                '(SELECT 1 UNION ALL SELECT v+1 FROM n WHERE v<20000) '\n                'SELECT sum(v) FROM n').fetchone()\n            state['completed'] = True\n        finally:\n            # A transient cancellation during SQL must remain latched after\n            # the schema/authorization callback unwinds.\n            state['inside'] = False\n\n    original_signature = application._schema_signature\n    original_authorize = LibraryApp._authorize\n\n    def signature(db):\n        exercise_sql(db)\n        return original_signature(db)\n\n    def authorize(db, requested):\n        exercise_sql(db)\n        return original_authorize(db, requested)\n\n    with monkeypatch.context() as patch:\n        patch.setattr(application, 'monotonic', lambda: state['now'])\n        if stage == 'schema':\n            patch.setattr(application, '_schema_signature', signature)\n        else:\n            patch.setattr(LibraryApp, '_authorize', staticmethod(authorize))\n        with pytest.raises(TimeoutError, match='cancelled or timed out'):\n            app.search(workspace, 'railway', timeout=1.0,\n                       cancelled=lambda: stop == 'cancel' and state['inside'])\n    assert not state['completed']\n    assert app._selections == selections\n    assert app.copy(workspace, previous.ref, previous.revision, 'quote') == 'history'\n    assert app.search(workspace, 'archives')\n\n\n",
+          "after": "@pytest.mark.parametrize('journal', ['DELETE', 'WAL'])\n@pytest.mark.parametrize('stage', ['schema', 'authorization'])\n@pytest.mark.parametrize('stop', ['cancel', 'deadline'])\ndef test_snapshot_setup_is_interruptible_before_result_publication(research, monkeypatch, journal, stage, stop):\n    app, workspace = research\n    previous, = app.search(workspace, 'history')\n    selections = dict(app._selections)\n    with closing(sqlite3.connect(app.database, isolation_level=None)) as db:\n        assert db.execute(f'PRAGMA journal_mode={journal}').fetchone()[0] == journal.lower()\n    state = {'inside': False, 'completed': False, 'now': 100.0}\n    captured = []\n\n    def exercise_sql(db):\n        captured.append(db)\n        state['inside'] = True\n        if stop == 'deadline':\n            state['now'] = 102.0\n        try:\n            db.execute('WITH RECURSIVE n(v) AS '\n                '(SELECT 1 UNION ALL SELECT v+1 FROM n WHERE v<20000) '\n                'SELECT sum(v) FROM n').fetchone()\n            state['completed'] = True\n        finally:\n            # A transient cancellation during SQL must remain latched after\n            # the schema/authorization callback unwinds.\n            state['inside'] = False\n\n    original_signature = application._schema_signature\n    original_authorize = LibraryApp._authorize\n\n    def signature(db):\n        exercise_sql(db)\n        return original_signature(db)\n\n    def authorize(db, requested):\n        exercise_sql(db)\n        return original_authorize(db, requested)\n\n    with monkeypatch.context() as patch:\n        patch.setattr(application, 'monotonic', lambda: state['now'])\n        if stage == 'schema':\n            patch.setattr(application, '_schema_signature', signature)\n        else:\n            patch.setattr(LibraryApp, '_authorize', staticmethod(authorize))\n        with pytest.raises(TimeoutError, match='cancelled or timed out'):\n            app.search(workspace, 'railway', timeout=1.0,\n                       cancelled=lambda: stop == 'cancel' and state['inside'])\n    assert not state['completed']\n    assert app._selections == selections\n    with pytest.raises(sqlite3.ProgrammingError, match='closed'):\n        captured[0].execute('SELECT 1')\n    assert app.copy(workspace, previous.ref, previous.revision, 'quote') == 'history'\n    assert app.search(workspace, 'archives')\n\n\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/extract/test_document_formats_text.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "b546f2b974c831bb26256272f46d0bc1f59371b5",
+      "new_blob": "058a61051a0f7684148a52f0b8f0d0909d2eb98a",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "(ValueError, match='unsupported'):\n        extract(b'{\\\\rtf1 body}', '.rtf')\n\n\ndef test_error_messages_never_include_private_source_values():\n    with pytest.raises(ValueError) as caught:\n        extract(b'<meta charset=\"PRIVATE-SECRET\"><p>private</p>')\n    assert 'PRIVATE' not in str(caught.value)\n",
+          "after": "(ValueError, match='unsupported'):\n        extract(b'{\\\\rtf1 body}', '.rtf')\n\n\ndef test_error_messages_never_include_private_source_values():\n    with pytest.raises(ValueError) as caught:\n        extract(b'<meta charset=\"PRIVATE-SECRET\"><p>private</p>')\n    assert 'PRIVATE' not in str(caught.value)\n\n\n@pytest.mark.parametrize(('encoded', 'expected'), [\n    (b'YQ==', 'a'),\n    (b'YWI=', 'ab'),\n    (b'YWJj', 'abc'),\n    (b' \\tYQ\\r\\n==\\t \\r\\n', 'a'),\n    (b'\\tYW\\r\\nI=\\t\\r\\n', 'ab'),\n    (b'\\tYW\\r\\nJj \\r\\n', 'abc'),\n])\ndef test_eml_valid_base64_quartets_preserve_body_with_mime_whitespace(encoded, expected):\n    source = b'Content-Transfer-Encoding: base64\\r\\n\\r\\n' + encoded\n    result = extract(source, '.eml')\n    assert texts(result) == [expected]\n    assert result['status'] == 'review_required'\n"
+        },
+        {
+          "before": "    b'YR==', b'YWJ=', b'YWJj\\x0b',",
+          "after": "    b'YR==', b'YWJ=', b'YWJj\\x0b',\n    b'YQ', b'Y=Q=',"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/e2e/test_extended_document_workflows.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "bbb90d51911d9ff33eb9299a5d5cc413ef42edf2",
+      "new_blob": "3d1750bda0731f93b2e2dbcac93b4177b30aefaf",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": " assert app.browse(workspace) == ()\n    assert app.search(workspace, 'Visible') == ()\n    assert app.search(workspace, 'Librarymarker') == ()\n    with app.read(workspace) as db:\n        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0\n    assert source.read_bytes() == malformed\n",
+          "after": " assert app.browse(workspace) == ()\n    assert app.search(workspace, 'Visible') == ()\n    assert app.search(workspace, 'Librarymarker') == ()\n    with app.read(workspace) as db:\n        assert db.execute('SELECT count(*) FROM revision').fetchone()[0] == 0\n    assert source.read_bytes() == malformed\n\n\n@pytest.mark.parametrize('arguments', (\n    ('--self-test',), ('--backup', 'unused-backup'), ('studio', 'voices'),\n    ('--lookup-doi', '10.5555/example', '--allow-online-doi', '--workspace', 'selected'),\n))\ndef test_format_listing_rejects_another_operation_before_opening_any_runtime(arguments, monkeypatch):\n    from carr_library.__main__ import main\n    def forbidden(*args, **kwargs):\n        raise AssertionError('Ambiguous command must not initialize an application or native runtime.')\n    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)\n    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)\n    with pytest.raises(SystemExit) as error:\n        main(['--document-formats', *arguments])\n    assert error.value.code == 2\n"
+        },
+        {
+          "before": "time.')\n    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)\n    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)\n    with pytest.raises(SystemExit) as error:\n        main(['--document-formats', *arguments])\n    assert error.value.code == 2\n",
+          "after": "time.')\n    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)\n    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)\n    with pytest.raises(SystemExit) as error:\n        main(['--document-formats', *arguments])\n    assert error.value.code == 2\n\n\ndef test_format_listing_does_not_open_a_library_or_native_runtime(monkeypatch, capsys):\n    from carr_library.__main__ import main\n    def forbidden(*args, **kwargs):\n        raise AssertionError('Format listing must not open a library or native runtime.')\n    monkeypatch.setattr('carr_library.application.LibraryApp', forbidden)\n    monkeypatch.setattr('carr_library.native_runtime.activate_bundled_runtime', forbidden)\n    assert main(['--document-formats']) == 0\n    text = capsys.readouterr().out\n    assert 'HTML' in text and '.xlsx' in text\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/research/test_academic_library.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "fe1aeda4eef5a247827ead9f72afc8c625269ec1",
+      "new_blob": "d2dd57fc804dfd64761f186afdafbab6ba9e4800",
+      "application_mode": "EXACT_BASE_REPLAY",
+      "changes": [
+        {
+          "before": "xisting', doi='10.1234/paper')\n    db.execute(f'UPDATE academic_reference SET {column}=? WHERE id=?', (value, row.id))\n    before = db.total_changes\n    with pytest.raises(ValueError):\n        library.import_preview(b'[{\"title\":\"Incoming\"}]', format='csl-json')\n    assert db.total_changes == before\n",
+          "after": "xisting', doi='10.1234/paper')\n    db.execute(f'UPDATE academic_reference SET {column}=? WHERE id=?', (value, row.id))\n    before = db.total_changes\n    with pytest.raises(ValueError):\n        library.import_preview(b'[{\"title\":\"Incoming\"}]', format='csl-json')\n    assert db.total_changes == before\n\n\n@pytest.mark.parametrize('operation', ['preview', 'duplicates', 'export', 'selected_import'])\ndef test_reference_scan_byte_budget_rejects_before_decoding(db, library, monkeypatch, operation):\n    preview = library.import_preview(b'[{\"title\":\"Incoming\"}]', format='csl-json')\n    for number in range(2):\n        library.create(title=f'Reference {number}', notes='Ж' * 10000)\n    before = db.total_changes\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 30000, raising=False)\n    original = academic._row_reference\n    decoded = []\n\n    def decode(row):\n        decoded.append(row)\n        return original(row)\n\n    monkeypatch.setattr(academic, '_row_reference', decode)\n    with pytest.raises(ValueError, match='metadata exceeds'):\n        if operation == 'preview':\n            library.import_preview(b'TY  - BOOK\\nTI  - Incoming\\nER  -\\n')\n        elif operation == 'duplicates':\n            library.duplicates()\n        elif operation == 'export':\n            library.export()\n        else:\n            library.import_selected(preview, (0,))\n    assert decoded == []\n    assert db.total_changes == before\n    assert db.in_transaction\n    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 2\n"
+        },
+        {
+          "before": "  elif operation == 'export':\n            library.export()\n        else:\n            library.import_selected(preview, (0,))\n    assert decoded == []\n    assert db.total_changes == before\n    assert db.in_transaction\n    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 2\n",
+          "after": "  elif operation == 'export':\n            library.export()\n        else:\n            library.import_selected(preview, (0,))\n    assert decoded == []\n    assert db.total_changes == before\n    assert db.in_transaction\n    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 2\n\n\ndef test_reference_scan_count_budget_rejects_before_decoding(db, library, monkeypatch):\n    for number in range(3):\n        library.create(title=f'Reference {number}')\n    monkeypatch.setattr(academic, 'MAX_REFERENCES', 2)\n    original = academic._row_reference\n    decoded = []\n\n    def decode(row):\n        decoded.append(row)\n        return original(row)\n\n    monkeypatch.setattr(academic, '_row_reference', decode)\n    with pytest.raises(ValueError, match='references per library'):\n        library.duplicates()\n    assert decoded == []\n    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 3\n"
+        },
+        {
+          "before": "ow)\n        return original(row)\n\n    monkeypatch.setattr(academic, '_row_reference', decode)\n    with pytest.raises(ValueError, match='references per library'):\n        library.duplicates()\n    assert decoded == []\n    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 3\n",
+          "after": "ow)\n        return original(row)\n\n    monkeypatch.setattr(academic, '_row_reference', decode)\n    with pytest.raises(ValueError, match='references per library'):\n        library.duplicates()\n    assert decoded == []\n    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 3\n\n\ndef test_reference_scan_budget_excludes_foreign_and_archived_data(db, library, monkeypatch):\n    active = library.create(title='Selected', doi='10.1234/selected')\n    library.create(title='Archived', archived=True, notes='Ж' * 10000, doi='10.1234/selected')\n    AcademicLibrary(db, 'second').create(title='Foreign', notes='Ж' * 10000, doi='10.1234/selected')\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096, raising=False)\n    assert library._all() == (active,)\n    preview = library.import_preview(b'[{\"title\":\"Incoming\",\"DOI\":\"10.1234/selected\"}]',\n                                     format='csl-json')\n    assert preview.entries[0].duplicate_ids == (active.id,)\n    assert library.duplicates() == ()\n    assert [row['id'] for row in json.loads(library.export(format='csl-json'))] == [active.id]\n    with pytest.raises(ValueError, match='metadata exceeds'):\n        library._all(include_archived=True)\n"
+        },
+        {
+          "before": "\n    assert preview.entries[0].duplicate_ids == (active.id,)\n    assert library.duplicates() == ()\n    assert [row['id'] for row in json.loads(library.export(format='csl-json'))] == [active.id]\n    with pytest.raises(ValueError, match='metadata exceeds'):\n        library._all(include_archived=True)\n",
+          "after": "\n    assert preview.entries[0].duplicate_ids == (active.id,)\n    assert library.duplicates() == ()\n    assert [row['id'] for row in json.loads(library.export(format='csl-json'))] == [active.id]\n    with pytest.raises(ValueError, match='metadata exceeds'):\n        library._all(include_archived=True)\n\n\ndef test_reference_scan_counts_stored_utf8_bytes_with_an_inclusive_boundary(db, library, monkeypatch):\n    row = library.create(title='Дослідження 📚', notes='Ж' * 200, authors=('Šimko, Ján',))\n    stored = db.execute(f'SELECT {academic._SELECT} FROM academic_reference').fetchone()\n    payload_size = sum(len(str(value).encode('utf-8')) for value in stored if value is not None)\n    character_count = sum(len(str(value)) for value in stored if value is not None)\n    assert character_count < payload_size\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', payload_size, raising=False)\n    assert library._all() == (row,)\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', payload_size - 1)\n    with pytest.raises(ValueError, match='metadata exceeds'):\n        library._all()\n    assert library.get(row.id) == row\n"
+        },
+        {
+          "before": "ic, 'MAX_REFERENCE_SCAN_BYTES', payload_size, raising=False)\n    assert library._all() == (row,)\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', payload_size - 1)\n    with pytest.raises(ValueError, match='metadata exceeds'):\n        library._all()\n    assert library.get(row.id) == row\n",
+          "after": "ic, 'MAX_REFERENCE_SCAN_BYTES', payload_size, raising=False)\n    assert library._all() == (row,)\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', payload_size - 1)\n    with pytest.raises(ValueError, match='metadata exceeds'):\n        library._all()\n    assert library.get(row.id) == row\n\n\ndef test_reference_scan_count_boundary_and_empty_library(library, monkeypatch):\n    monkeypatch.setattr(academic, 'MAX_REFERENCES', 2)\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 0, raising=False)\n    assert library._all() == ()\n    assert library.duplicates() == ()\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096)\n    one = library.create(title='One')\n    two = library.create(title='Two')\n    assert library._all() == tuple(sorted((one, two), key=lambda row: row.id))\n"
+        },
+        {
+          "before": "False)\n    assert library._all() == ()\n    assert library.duplicates() == ()\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096)\n    one = library.create(title='One')\n    two = library.create(title='Two')\n    assert library._all() == tuple(sorted((one, two), key=lambda row: row.id))\n",
+          "after": "False)\n    assert library._all() == ()\n    assert library.duplicates() == ()\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096)\n    one = library.create(title='One')\n    two = library.create(title='Two')\n    assert library._all() == tuple(sorted((one, two), key=lambda row: row.id))\n\n\ndef test_reference_scan_keeps_full_stored_metadata_validation(db, library, monkeypatch):\n    row = library.create(title='Authentic')\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096, raising=False)\n    db.execute('UPDATE academic_reference SET search_text=? WHERE id=?', ('changed', row.id))\n    with pytest.raises(ValueError, match='metadata or search index has changed'):\n        library.duplicates()\n"
+        },
+        {
+          "before": "Authentic')\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096, raising=False)\n    db.execute('UPDATE academic_reference SET search_text=? WHERE id=?', ('changed', row.id))\n    with pytest.raises(ValueError, match='metadata or search index has changed'):\n        library.duplicates()\n",
+          "after": "Authentic')\n    monkeypatch.setattr(academic, 'MAX_REFERENCE_SCAN_BYTES', 4096, raising=False)\n    db.execute('UPDATE academic_reference SET search_text=? WHERE id=?', ('changed', row.id))\n    with pytest.raises(ValueError, match='metadata or search index has changed'):\n        library.duplicates()\n\n\ndef test_duplicate_preview_budget_rejects_fanout_without_mutating_references(db, library, monkeypatch):\n    for number in range(3):\n        library.create(title=f'Existing {number}', doi='10.1234/shared')\n    data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/shared'}\n                       for number in range(3)]).encode()\n    before = db.total_changes\n    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 10, raising=False)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format='csl-json')\n    assert db.total_changes == before\n    assert db.in_transaction\n    assert len(library.list()) == 3\n"
+        },
+        {
+          "before": ".setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 10, raising=False)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format='csl-json')\n    assert db.total_changes == before\n    assert db.in_transaction\n    assert len(library.list()) == 3\n",
+          "after": ".setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 10, raising=False)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format='csl-json')\n    assert db.total_changes == before\n    assert db.in_transaction\n    assert len(library.list()) == 3\n\n\ndef test_duplicate_preview_budget_preserves_sorted_deduplicated_matches(db, library, monkeypatch):\n    shared = dict(title='Common title', authors=('Author',), year='2020',\n                  doi='10.1234/shared', isbn='0306406152')\n    first = library.create(**shared)\n    second = library.create(**shared)\n    AcademicLibrary(db, 'second').create(**shared)\n    library.create(**shared, archived=True)\n    data = json.dumps([{'type': 'book', 'title': 'Common title', 'author': [{'literal': 'Author'}],\n                       'issued': {'date-parts': [[2020]]}, 'DOI': '10.1234/shared',\n                       'ISBN': '9780306406157'}] * 2).encode()\n    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 24, raising=False)\n    preview = library.import_preview(data, format='csl-json')\n    for index, entry in enumerate(preview.entries):\n        assert entry.duplicate_ids == tuple(sorted((first.id, second.id)))\n        assert entry.duplicate_indices == (1 - index,)\n    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 23)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format='csl-json')\n"
+        },
+        {
+          "before": "ate_ids == tuple(sorted((first.id, second.id)))\n        assert entry.duplicate_indices == (1 - index,)\n    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 23)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format='csl-json')\n",
+          "after": "ate_ids == tuple(sorted((first.id, second.id)))\n        assert entry.duplicate_indices == (1 - index,)\n    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', 23)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format='csl-json')\n\n\n@pytest.mark.parametrize('format', ['ris', 'csl-json', 'bibtex'])\n@pytest.mark.parametrize('slots', [4, 5])\ndef test_duplicate_preview_budget_rejects_before_constructing_the_first_entry(library, monkeypatch,\n                                                                           format, slots):\n    for number in range(3):\n        library.create(title=f'Existing {number}', doi='10.1234/shared')\n    if format == 'ris':\n        data = ''.join(f'TY  - BOOK\\nTI  - Incoming {number}\\nDO  - 10.1234/shared\\nER  -\\n'\n                       for number in range(2)).encode()\n    elif format == 'bibtex':\n        data = ''.join(f'@book{{incoming{number},title={{Incoming {number}}},doi={{10.1234/shared}}}}'\n                       for number in range(2)).encode()\n    else:\n        data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/shared'}\n                           for number in range(2)]).encode()\n    # Each row costs five slots. Even when the first row fits exactly, the\n    # complete preflight must reject the later excess before creating any row.\n    monkeypatch.setattr(academic, 'MAX_DUPLICATE_PREVIEW_SLOTS', slots, raising=False)\n\n    def unexpected_entry(*args, **kwargs):\n        pytest.fail('An oversized duplicate result was materialized before the guard.')\n\n    monkeypatch.setattr(academic, 'ImportEntry', unexpected_entry)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format=format)\n"
+        },
+        {
+          "before": "y(*args, **kwargs):\n        pytest.fail('An oversized duplicate result was materialized before the guard.')\n\n    monkeypatch.setattr(academic, 'ImportEntry', unexpected_entry)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format=format)\n",
+          "after": "y(*args, **kwargs):\n        pytest.fail('An oversized duplicate result was materialized before the guard.')\n\n    monkeypatch.setattr(academic, 'ImportEntry', unexpected_entry)\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format=format)\n\n\ndef test_duplicate_preview_accepts_maximum_nonduplicate_batch(library):\n    data = json.dumps([{'title': f'Incoming {number}', 'DOI': f'10.1234/{number}'}\n                       for number in range(academic.MAX_IMPORT_RECORDS)]).encode()\n    preview = library.import_preview(data, format='csl-json')\n    assert len(preview.entries) == academic.MAX_IMPORT_RECORDS\n    assert all(entry.duplicate_ids == entry.duplicate_indices == () for entry in preview.entries)\n    assert library.list() == ()\n"
+        },
+        {
+          "before": "ange(academic.MAX_IMPORT_RECORDS)]).encode()\n    preview = library.import_preview(data, format='csl-json')\n    assert len(preview.entries) == academic.MAX_IMPORT_RECORDS\n    assert all(entry.duplicate_ids == entry.duplicate_indices == () for entry in preview.entries)\n    assert library.list() == ()\n",
+          "after": "ange(academic.MAX_IMPORT_RECORDS)]).encode()\n    preview = library.import_preview(data, format='csl-json')\n    assert len(preview.entries) == academic.MAX_IMPORT_RECORDS\n    assert all(entry.duplicate_ids == entry.duplicate_indices == () for entry in preview.entries)\n    assert library.list() == ()\n\n\ndef test_duplicate_preview_default_budget_handles_many_matching_references(db, library):\n    for number in range(2000):\n        library.create(title=f'Existing {number}', doi='10.1234/shared')\n    data = json.dumps([{'title': f'Incoming {number}', 'DOI': '10.1234/shared'}\n                       for number in range(2000)]).encode()\n    before = db.total_changes\n    with pytest.raises(ValueError, match='Too many duplicate matches'):\n        library.import_preview(data, format='csl-json')\n    assert db.total_changes == before\n    assert db.execute('SELECT COUNT(*) FROM academic_reference').fetchone()[0] == 2000\n"
+        }
+      ]
+    }
+  ]
+}

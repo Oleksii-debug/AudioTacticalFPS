@@ -1,0 +1,710 @@
+{
+  "schema": "carr-source-recovery-proposal/1",
+  "repository": "Oleksii-debug/AudioTacticalFPS",
+  "scope": "Canonical966 typed backup producer restore and exact historical fixture union; checkpoint3 supersession",
+  "status": "SOURCE_ONLY_NOT_COMPILED_OR_TESTED",
+  "supersedes": "003c1f900807d9c04acff1d72d0ec2ca3dc6d158",
+  "notes": [
+    "No ref, PR, shared file, index or active canonical application tree was changed.",
+    "All eight existing-file payloads reproduce from their exact base blobs using the enclosed ordered before/after hunks; all nine new Git blobs were read back exactly.",
+    "All existing test function names in the six adapted suites remain, with canonical historical/schema cases added; these are source checks only, not executable test results.",
+    "Canonical sidecar Studio jobs now use the same restore_inputs path as typed state, rebasing retained inputs to actual final root and withholding source-machine output authority.",
+    "The new writer explicitly forwards generated-cache inclusion to passive primary validation and caps state copying at its existing state budget even when a larger overall budget is supplied.",
+    "Compatibility fixture helpers explicitly assemble exact older V3/V4 or alternate V5 envelopes from synthetic producer bytes; production still has one typed writer.",
+    "Generic state-byte copier fixtures use an opaque-fixture namespace while an independent historical test preserves opaque bytes at their original old paths without execution authority.",
+    "The new alternate V5 regression retains actual ReadingState bookmarks and edited ReaderDraftStore bytes with both exact allowed pending forms.",
+    "Dependency proposals backup_sidecars fda860f3bb6b5427d00076103bef762ef0bb5f6f and backup_producers cb4c0a14038a46be3639939ccd2463d28a9433de from 003c are unchanged.",
+    "Earlier pending/state/worker/export proposals and local application max_bytes forwarding remain required; the whole inaccessible local composition has not been reproduced.",
+    "No Python compilation, portable test, native Windows or complete integration PASS is claimed."
+  ],
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "6ed518d0d4ced9ed6261fa5b2ac0b5a18094c618",
+      "new_blob": "1a6d938e2cdc01e332b9cb33f7ec108698a160c1",
+      "characters": 33186,
+      "warning": "Attestation/budget/typed writer and compatibility readers now assembled. Tests, syntax and full graph validation are pending.",
+      "store_key": "replay_library_primary_union",
+      "proof": {
+        "base_blob": "6ed518d0d4ced9ed6261fa5b2ac0b5a18094c618",
+        "replayed": true,
+        "no_removed_test_names": true,
+        "old_test_functions": 0,
+        "new_test_functions": 0
+      }
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+      "new_blob": "f5e7eef31abfc3cb822a5eeef63f9d58c03c6d6f",
+      "characters": 43328,
+      "warning": "Finite primary validation plus old opaque reader, v4 extension producer marker and root sidecars. Static only; actual regression execution pending.",
+      "store_key": "replay_extensions_primary_union",
+      "proof": {
+        "base_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+        "replayed": true,
+        "no_removed_test_names": true,
+        "old_test_functions": 0,
+        "new_test_functions": 0
+      }
+    },
+    {
+      "path": "carr-library/tests/storage/test_v3_state_backup.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "900e9b9a656adca0133516a1a48b0793c34d3abf",
+      "new_blob": "c9b5f4e28ba204f46fa90d66b6dc6282d3551eb1",
+      "characters": 16305,
+      "warning": "Preserves generic opaque-byte/cancellation/link/lookup/full-state assertions under an explicit synthetic opaque namespace. Modern producer tests remain separate; exact historical original-path restore is covered in new test_backup_canonical_union. Not executed.",
+      "store_key": "replay_v3_state_fixture_union",
+      "proof": {
+        "base_blob": "900e9b9a656adca0133516a1a48b0793c34d3abf",
+        "replayed": true,
+        "no_removed_test_names": true,
+        "old_test_functions": 16,
+        "new_test_functions": 16
+      }
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_primary_producers.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "8e98fce992da579cedf4cdef5b89376b0adb0032",
+      "new_blob": "8f911b4c3d68d64b3c1af58adc99c024daff154d",
+      "characters": 13191,
+      "warning": "Actual primary producer fixture adapted to typed writer and exact V3/V4 readers. Source bytes/identities retained; restored Studio job requires explicit new output instead of reusing old authority. Not executed.",
+      "store_key": "replay_primary_producer_fixture_union",
+      "proof": {
+        "base_blob": "8e98fce992da579cedf4cdef5b89376b0adb0032",
+        "replayed": true,
+        "no_removed_test_names": true,
+        "old_test_functions": 6,
+        "new_test_functions": 6
+      }
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_v4_sidecars.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "2f669e3c61f2b3c271033688416918a897e69b09",
+      "new_blob": "e3f997cbbdfb505dfa8bcb00fe4ea7c44e2d41fc",
+      "characters": 15123,
+      "warning": "Exact canonical V3/V4 reader fixtures now explicit; all prior corruption/no-clobber/budget/native-child outcomes retained with actual current write hooks. Source-only, not executed.",
+      "store_key": "replay_v4_sidecar_fixture_union",
+      "proof": {
+        "base_blob": "2f669e3c61f2b3c271033688416918a897e69b09",
+        "replayed": true,
+        "no_removed_test_names": true,
+        "old_test_functions": 14,
+        "new_test_functions": 14
+      }
+    },
+    {
+      "path": "carr-library/tests/storage/test_library_backup_reading_state.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "b225c9f1fc96cf112d93bc728a50699ee64c3585",
+      "new_blob": "84d931f05b9021a7b24a5c4ce9ecdf64deb43d15",
+      "characters": 25943,
+      "warning": "Exact canonical sidecar envelope fixture retained, actual writer hooks adapted; all original assertions and location/corruption/read-only/cancellation tests remain. Not executed.",
+      "store_key": "replay_reading_state_fixture_union",
+      "proof": {
+        "base_blob": "b225c9f1fc96cf112d93bc728a50699ee64c3585",
+        "replayed": true,
+        "no_removed_test_names": true,
+        "old_test_functions": 19,
+        "new_test_functions": 19
+      }
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_generated_audio.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "faed937a5258204d285472c1e667bbca6e4cc443",
+      "new_blob": "86a42dbdf529c3fc9406a9a233f6d3d12b1c4616",
+      "characters": 6996,
+      "warning": "Real PCM/receipt/tamper/byte-bound assertions retained, metadata fault covers actual typed state copier. Not executed.",
+      "store_key": "replay_generated_audio_fixture_union",
+      "proof": {
+        "base_blob": "faed937a5258204d285472c1e667bbca6e4cc443",
+        "replayed": true,
+        "no_removed_test_names": true,
+        "old_test_functions": 6,
+        "new_test_functions": 6
+      }
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_schema_identity.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "e4551aa3f17c99a1cc2e0a4f111e5eb1f6646c13",
+      "new_blob": "42e94edb3d2a42ab2c4f6524b79bebb338b3369f",
+      "characters": 10380,
+      "warning": "Preserves actual typed writer schema assertions and old v1 regression, adds canonical exact v1/v2/v3 historical reader cases and expands reject-before-writable tests through exact canonical v4. Only test fixture envelopes change; not executed.",
+      "store_key": "replay_schema_identity_fixture_union",
+      "proof": {
+        "base_blob": "e4551aa3f17c99a1cc2e0a4f111e5eb1f6646c13",
+        "replayed": true,
+        "no_removed_test_names": true,
+        "old_test_functions": 6,
+        "new_test_functions": 7
+      }
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_canonical_union.py",
+      "base_commit": null,
+      "base_blob": null,
+      "new_blob": "65a657c329c7e20cdc25ed58f1be40daaa287f6b",
+      "characters": 15557,
+      "warning": "Synthetic actual SQLite and durable producer fixtures for typed writer, exact historical V3/V4 and alternate V5 envelopes, full attestation, budget and inert historical restoration. No compile or runtime execution yet.",
+      "store_key": "replay_backup_canonical_union_tests",
+      "proof": {
+        "new_file": true,
+        "runtime": "NOT_RUN"
+      }
+    }
+  ],
+  "patches": [
+    {
+      "path": "carr-library/src/carr_library/library_backup.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "6ed518d0d4ced9ed6261fa5b2ac0b5a18094c618",
+      "new_blob": "1a6d938e2cdc01e332b9cb33f7ec108698a160c1",
+      "changes": [
+        {
+          "before": "from .ingest.catalog_asset_copy import copy_catalog_assets, verify_catalog_assets\n",
+          "after": "from .ingest.catalog_asset_copy import (catalog_inventory, _checked_path,\n    copy_catalog_assets, verify_catalog_assets)\n"
+        },
+        {
+          "before": "def create_backup(app, destination, *, include_generated=False, cancelled=lambda: False,\n                  authorized_workspaces=None):\n",
+          "after": "def _check_budget(total, maximum):\n    if maximum is not None and total > maximum:\n        raise RestoreError('complete backup exceeds the requested byte budget')\n\n\ndef _copy_originals(db, source, destination, *, max_bytes=MAX_ASSET_BYTES, cancelled=lambda: False):\n    \"\"\"Use the canonical catalog validator, with bounded cancellable file copying.\"\"\"\n    limits = dict(include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=max(1, max_bytes))\n    entries = catalog_inventory(db, **limits)\n    _check_budget(sum(entry.size for entry in entries), max_bytes)\n    destination.mkdir(mode=0o700)\n    for entry in entries:\n        _check_cancelled(cancelled)\n        path = _checked_path(source, entry)\n        count, digest = 0, sha256()\n        with path.open('rb') as incoming, (destination / entry.filename).open('xb') as output:\n            while block := incoming.read(min(1024 * 1024, entry.size + 1 - count)):\n                _check_cancelled(cancelled)\n                count += len(block)\n                if count > entry.size:\n                    raise RestoreError('original file grew during backup')\n                output.write(block)\n                digest.update(block)\n            output.flush()\n            os.fsync(output.fileno())\n        if count != entry.size or digest.hexdigest() != entry.digest:\n            raise RestoreError('original file changed during backup')\n    _check_cancelled(cancelled)\n    return verify_catalog_assets(db, RetainedAssets(destination), cancelled=cancelled, **limits)\n\n\ndef create_backup(app, destination, *, include_generated=False, max_bytes=None,\n                  cancelled=lambda: False, authorized_workspaces=None):\n"
+        },
+        {
+          "before": "        raise ValueError('Invalid backup options.')\n",
+          "after": "        raise ValueError('Invalid backup options.')\n    if max_bytes is not None and (type(max_bytes) is not int or max_bytes < 1):\n        raise RestoreError('backup byte budget must be a positive integer')\n"
+        },
+        {
+          "before": "                raise RestoreError('database exceeds backup size limit')\n",
+          "after": "                raise RestoreError('database exceeds backup size limit')\n            _check_budget(size, max_bytes)\n"
+        },
+        {
+          "before": "                entries = copy_catalog_assets(snapshot_storage.db, app.assets, stage / ORIGINALS,\n                    include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES, cancelled=cancelled)\n",
+          "after": "                asset_budget = MAX_ASSET_BYTES if max_bytes is None else min(MAX_ASSET_BYTES, max_bytes - size)\n                entries = _copy_originals(snapshot_storage.db, app.assets, stage / ORIGINALS,\n                    max_bytes=asset_budget, cancelled=cancelled)\n"
+        },
+        {
+          "before": "                fingerprint = schema_fingerprint(snapshot_storage.db)\n",
+          "after": "                fingerprint = schema_fingerprint(snapshot_storage.db)\n            total = size + sum(entry.size for entry in entries)\n"
+        },
+        {
+          "before": "                from .state_backup import snapshot_state\n",
+          "after": "                from .state_backup import MAX_STATE_BYTES, snapshot_state\n"
+        },
+        {
+          "before": "                                       include_paths=selected, missing_ok=False)\n",
+          "after": "                                       include_paths=selected, missing_ok=False,\n                                       max_bytes=MAX_STATE_BYTES if max_bytes is None else max_bytes - total)\n"
+        },
+        {
+          "before": "                manifest.update(version=3, state=state, generated_audio_included=include_generated)\n",
+          "after": "                total += sum(entry['size_bytes'] for entry in state)\n                _check_budget(total, max_bytes)\n                manifest.update(version=3, state=state, generated_audio_included=include_generated)\n"
+        },
+        {
+          "before": "            from .pending_backup import pending_roots, snapshot_pending\n",
+          "after": "            from .pending_backup import MAX_TOTAL, pending_roots, snapshot_pending\n"
+        },
+        {
+          "before": "                    cancelled=cancelled, expected_roots=roots))\n",
+          "after": "                    cancelled=cancelled, expected_roots=roots,\n                    max_bytes=MAX_TOTAL if max_bytes is None else max_bytes - total))\n                total += sum(entry['size_bytes'] for entry in manifest['pending']['files'])\n                _check_budget(total, max_bytes)\n"
+        },
+        {
+          "before": "            from .backup_extensions import snapshot as snapshot_extensions\n",
+          "after": "            from .backup_extensions import MAX_BYTES as MAX_EXTENSION_BYTES, snapshot as snapshot_extensions\n"
+        },
+        {
+          "before": "                manifest.get('state', []), independent=authorized_workspaces is None, cancelled=cancelled)\n",
+          "after": "                manifest.get('state', []), independent=authorized_workspaces is None, cancelled=cancelled,\n                max_bytes=MAX_EXTENSION_BYTES if max_bytes is None else max_bytes - total)\n"
+        },
+        {
+          "before": "                manifest.update(version=5, extensions=extensions)\n",
+          "after": "                manifest.update(version=5, extensions=extensions)\n                total += sum(entry['size_bytes'] for entry in extensions['files'])\n                _check_budget(total, max_bytes)\n"
+        },
+        {
+          "before": "            _sync_file(stage / MANIFEST, raw)\n",
+          "after": "            _check_budget(total + len(raw), max_bytes)\n            _sync_file(stage / MANIFEST, raw)\n"
+        },
+        {
+          "before": "def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: False):\n",
+          "after": "def _uses_legacy_archive(manifest):\n    # These exact historical envelopes used an earlier producer family. Keep\n    # their bytes under the existing inert archive adapter, never relabel them.\n    return (manifest['version'] in (3, 4)\n            and manifest.get('schema_version') in (3, 4)\n            and 'generated_audio_included' not in manifest\n            and ('sidecars' in manifest or 'recovery' in manifest))\n\n\ndef _uses_canonical_sidecars(manifest):\n    return ('reading_state' in manifest or 'sidecars' in manifest) and not _uses_legacy_archive(manifest)\n\n\ndef _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: False):\n"
+        },
+        {
+          "before": "    if manifest['version'] in (3, 4) and ('sidecars' in manifest or 'recovery' in manifest):\n",
+          "after": "    if _uses_legacy_archive(manifest):\n"
+        },
+        {
+          "before": "    actual_files = set(p.name for p in directory.iterdir())\n    expected_files = {DATABASE, ORIGINALS, MANIFEST}\n    if manifest['version'] >= 3:\n        expected_files.add('state')\n    if manifest['version'] == 4 or (manifest['version'] == 5 and 'pending' in manifest):\n        expected_files.add('pending')\n    if manifest['version'] == 5:\n        expected_files.add('extensions')\n    if actual_files != expected_files:\n        raise RestoreError('incomplete backup or unexpected files')\n    fields = {'version','kind','schema_version','database','assets'}\n    if manifest['version'] >= 2:\n        fields.add('schema_fingerprint')\n    if manifest['version'] >= 3:\n        from .state_backup import validate_state\n        fields.update(('state', 'generated_audio_included'))\n        if type(manifest.get('generated_audio_included')) is not bool or 'state' not in actual_files:\n            raise RestoreError('incomplete application state backup')\n        validate_state(manifest.get('state'))\n    elif 'state' in actual_files:\n        raise RestoreError('unexpected state in legacy backup')\n    if manifest['version'] == 4 or (manifest['version'] == 5 and 'pending' in manifest):\n        from .pending_backup import validate_pending\n        fields.add('pending')\n        if 'pending' not in actual_files:\n            raise RestoreError('missing pending import backup')\n        validate_pending(manifest.get('pending'))\n    elif 'pending' in actual_files:\n        raise RestoreError('unexpected pending imports in legacy backup')\n    if manifest['version'] == 5:\n        from .backup_extensions import validate_manifest as validate_extensions\n        fields.add('extensions')\n        validate_extensions(manifest.get('extensions'))\n",
+          "after": "    if _uses_canonical_sidecars(manifest):\n        from . import backup_sidecars\n        if size > MAX_MANIFEST:\n            raise RestoreError('manifest size limit')\n        inventory = backup_sidecars.normalize_manifest(manifest)\n        backup_sidecars.check_namespace(directory, inventory)\n        fields = set(manifest)  # normalize_manifest already enforced exact fields.\n    else:\n        actual_files = set(p.name for p in directory.iterdir())\n        expected_files = {DATABASE, ORIGINALS, MANIFEST}\n        if manifest['version'] >= 3:\n            expected_files.add('state')\n        if manifest['version'] == 4 or (manifest['version'] == 5 and 'pending' in manifest):\n            expected_files.add('pending')\n        if manifest['version'] == 5:\n            expected_files.add('extensions')\n        if actual_files != expected_files:\n            raise RestoreError('incomplete backup or unexpected files')\n        fields = {'version','kind','schema_version','database','assets'}\n        if manifest['version'] >= 2:\n            fields.add('schema_fingerprint')\n        if manifest['version'] >= 3:\n            from .state_backup import validate_state\n            fields.update(('state', 'generated_audio_included'))\n            if type(manifest.get('generated_audio_included')) is not bool or 'state' not in actual_files:\n                raise RestoreError('incomplete application state backup')\n            validate_state(manifest.get('state'))\n        elif 'state' in actual_files:\n            raise RestoreError('unexpected state in legacy backup')\n        if manifest['version'] == 4 or (manifest['version'] == 5 and 'pending' in manifest):\n            from .pending_backup import validate_pending\n            fields.add('pending')\n            if 'pending' not in actual_files:\n                raise RestoreError('missing pending import backup')\n            validate_pending(manifest.get('pending'))\n        elif 'pending' in actual_files:\n            raise RestoreError('unexpected pending imports in legacy backup')\n        if manifest['version'] == 5:\n            from .backup_extensions import validate_manifest as validate_extensions\n            fields.add('extensions')\n            validate_extensions(manifest.get('extensions'))\n"
+        },
+        {
+          "before": "def _restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):\n    \"\"\"Restore a trusted backup into a new data root; return that root's Path.\n\n    Keep the expected digest independently of the backup. The source is never\n    opened writable. A failed/terminated publication retains .restore-incomplete;\n    the application must reject such a root instead of opening partial data.\n    \"\"\"\n    if not callable(cancelled):\n        raise ValueError('A restore cancellation callback is required.')\n    _check_cancelled(cancelled)\n    # Validate the original lexical path before resolving it, otherwise an\n    # ancestor symlink/junction would be hidden from the component verifiers.\n    source = local_path(source, exists=True)\n    _plain(source, directory=True)\n    source = source.resolve(strict=True)\n    destination = _destination(destination, source)\n    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)\n    if 'sidecars' in manifest:\n        from .backup_compat.archive import restore_archive\n        return restore_archive(source, destination, expected_manifest_sha256, cancelled=cancelled)\n    _plain(source / ORIGINALS, directory=True)\n    with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:\n        stage = Path(tmp)\n        snapshot = stage / DATABASE\n        _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)\n        with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:\n            storage.db.set_progress_handler(lambda: int(cancelled()), 10_000)\n            try:\n                storage.check()\n            except sqlite3.OperationalError:\n                _check_cancelled(cancelled)\n                raise\n            original_store = RetainedAssets(source / ORIGINALS)\n            entries = verify_catalog_assets(storage.db, original_store,\n                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES, cancelled=cancelled)\n            if _asset_manifest(entries) != manifest['assets']:\n                raise RestoreError('asset manifest disagrees with the database')\n            copy_catalog_assets(storage.db, original_store, stage / ORIGINALS,\n                include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES, cancelled=cancelled)\n        pending = {'assets': [], 'paths': []}\n        if manifest['version'] >= 3:\n            from .state_backup import restore_state\n            restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)\n        if 'pending' in manifest:\n            from .pending_backup import restore_pending\n            pending = restore_pending(source / 'pending', stage, destination, manifest['pending'], cancelled=cancelled)\n        extension_paths = []\n        if manifest['version'] == 5:\n            from .backup_extensions import restore as restore_extensions\n            extension_paths = restore_extensions(source / 'extensions', stage, manifest['extensions'], manifest['state'], cancelled=cancelled)\n        if manifest['version'] >= 3:\n            from .studio.backup_inputs import restore_inputs\n            restore_inputs(stage / 'state', destination / 'state', manifest['state'], cancelled=cancelled)\n        _check_cancelled(cancelled)\n        destination.mkdir(mode=0o700)\n        _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\\n')\n        _sync_directory(destination)\n        (destination / ORIGINALS).mkdir(mode=0o700)\n        os.link(snapshot, destination / DATABASE)\n        for entry in entries:\n            _check_cancelled(cancelled)\n            os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)\n        for entry in pending['assets']:\n            _check_cancelled(cancelled)\n            os.link(stage / ORIGINALS / entry['filename'], destination / ORIGINALS / entry['filename'])\n        if manifest['version'] >= 3:\n            from .state_backup import publish_state\n            publish_state(stage / 'state', destination / 'state', cancelled=cancelled)\n            for name in pending['paths']:\n                if (stage / name).is_dir():\n                    publish_state(stage / name, destination / name, cancelled=cancelled)\n                else:\n                    os.link(stage / name, destination / name)\n            for name in extension_paths:\n                if (stage / name).is_dir():\n                    publish_state(stage / name, destination / name, cancelled=cancelled)\n                else:\n                    os.link(stage / name, destination / name)\n        _sync_directory(destination / ORIGINALS)\n        _sync_directory(destination)\n    # Temporary hard links are now gone; retained originals have one link.\n    _check_cancelled(cancelled)\n    (destination / INCOMPLETE).unlink()\n    _sync_directory(destination)\n    _sync_directory(destination.parent)\n    return destination\n\n\n",
+          "after": "def _prepare_restore(source, stage, new_root, manifest, *, copy_originals=True, cancelled=lambda: False):\n    \"\"\"Run the same checked component readers for restore and verification.\"\"\"\n    _plain(source / ORIGINALS, directory=True)\n    snapshot = stage / DATABASE\n    _copy_database(source / DATABASE, snapshot, manifest, cancelled=cancelled)\n    compatible = _uses_canonical_sidecars(manifest)\n    inventory = None\n    with closing(Storage(snapshot, schema_version=manifest['schema_version'])) as storage:\n        storage.db.set_progress_handler(lambda: int(cancelled()), 10_000)\n        try:\n            storage.check()\n        except sqlite3.OperationalError:\n            _check_cancelled(cancelled)\n            raise\n        original_store = RetainedAssets(source / ORIGINALS)\n        entries = verify_catalog_assets(storage.db, original_store,\n            include_all_workspaces=True, max_assets=MAX_ASSETS, max_bytes=MAX_ASSET_BYTES, cancelled=cancelled)\n        if _asset_manifest(entries) != manifest['assets']:\n            raise RestoreError('asset manifest disagrees with the database')\n        if copy_originals:\n            _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)\n        if compatible:\n            from . import backup_sidecars\n            inventory = backup_sidecars.normalize_manifest(manifest)\n            backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)\n            for name in inventory.empty_roots:\n                (stage / name).mkdir(mode=0o700, exist_ok=True)\n    paths = set()\n    if compatible:\n        paths.update(entry['filename'].split('/')[0] for entry in inventory.entries)\n        paths.update(inventory.empty_roots)\n        pending_manifest = inventory.pending\n    else:\n        pending_manifest = manifest.get('pending')\n        if manifest['version'] >= 3:\n            from .state_backup import restore_state\n            restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)\n            paths.add('state')\n    pending = {'assets': [], 'paths': []}\n    if pending_manifest is not None:\n        from .pending_backup import restore_pending\n        pending = restore_pending(source / 'pending', stage, new_root, pending_manifest, cancelled=cancelled)\n        paths.update(pending['paths'])\n    if not compatible and manifest['version'] == 5:\n        from .backup_extensions import restore as restore_extensions\n        paths.update(restore_extensions(source / 'extensions', stage, manifest['extensions'],\n                                       manifest['state'], cancelled=cancelled))\n    if not compatible and manifest['version'] >= 3:\n        from .studio.backup_inputs import restore_inputs\n        restore_inputs(stage / 'state', new_root / 'state', manifest['state'], cancelled=cancelled)\n    _check_cancelled(cancelled)\n    return entries, pending['assets'], sorted(paths)\n\n\ndef verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):\n    \"\"\"Authenticate each supported exact envelope without changing source bytes.\"\"\"\n    if not callable(cancelled):\n        raise ValueError('A backup verification cancellation callback is required.')\n    _check_cancelled(cancelled)\n    source = local_path(source, exists=True)\n    _plain(source, directory=True)\n    source = source.resolve(strict=True)\n    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)\n    if _uses_legacy_archive(manifest):\n        from .backup_compat.archive import verify_archive\n        verify_archive(source, expected_manifest_sha256, cancelled=cancelled)\n    else:\n        try:\n            with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:\n                stage = Path(tmp)\n                _prepare_restore(source, stage, stage, manifest,\n                                 copy_originals=False, cancelled=cancelled)\n        except sqlite3.Error:\n            _check_cancelled(cancelled)\n            raise\n    _check_cancelled(cancelled)\n    return manifest\n\n\ndef _restore_backup(source, destination, expected_manifest_sha256, *, cancelled=lambda: False):\n    \"\"\"Restore a trusted backup into a new data root; return that root's Path.\n\n    Keep the expected digest independently of the backup. The source is never\n    opened writable. A failed/terminated publication retains .restore-incomplete;\n    the application must reject such a root instead of opening partial data.\n    \"\"\"\n    if not callable(cancelled):\n        raise ValueError('A restore cancellation callback is required.')\n    _check_cancelled(cancelled)\n    # Validate the original lexical path before resolving it, otherwise an\n    # ancestor symlink/junction would be hidden from the component verifiers.\n    source = local_path(source, exists=True)\n    _plain(source, directory=True)\n    source = source.resolve(strict=True)\n    destination = _destination(destination, source)\n    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)\n    if _uses_legacy_archive(manifest):\n        from .backup_compat.archive import restore_archive\n        return restore_archive(source, destination, expected_manifest_sha256, cancelled=cancelled)\n    with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:\n        stage = Path(tmp)\n        entries, pending_assets, paths = _prepare_restore(\n            source, stage, destination, manifest, cancelled=cancelled)\n        _check_cancelled(cancelled)\n        destination.mkdir(mode=0o700)\n        _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\\n')\n        _sync_directory(destination)\n        (destination / ORIGINALS).mkdir(mode=0o700)\n        os.link(stage / DATABASE, destination / DATABASE)\n        for entry in entries:\n            _check_cancelled(cancelled)\n            os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)\n        for entry in pending_assets:\n            _check_cancelled(cancelled)\n            os.link(stage / ORIGINALS / entry['filename'], destination / ORIGINALS / entry['filename'])\n        from .state_backup import publish_state\n        for name in paths:\n            _check_cancelled(cancelled)\n            if (stage / name).is_dir():\n                publish_state(stage / name, destination / name, cancelled=cancelled)\n            else:\n                os.link(stage / name, destination / name)\n        _sync_directory(destination / ORIGINALS)\n        _sync_directory(destination)\n    # Temporary hard links are now gone; retained originals have one link.\n    _check_cancelled(cancelled)\n    (destination / INCOMPLETE).unlink()\n    _sync_directory(destination)\n    _sync_directory(destination.parent)\n    return destination\n\n\n"
+        },
+        {
+          "before": "    return (manifest['version'] in (3, 4)\n            and manifest.get('schema_version') in (3, 4)\n            and 'generated_audio_included' not in manifest\n            and ('sidecars' in manifest or 'recovery' in manifest))\n",
+          "after": "    legacy = (manifest['version'] in (3, 4)\n              and manifest.get('schema_version') in (3, 4)\n              and 'generated_audio_included' not in manifest\n              and ('sidecars' in manifest or 'recovery' in manifest))\n    if not legacy or manifest['version'] != 3:\n        return legacy\n    # V3 also named the later explicit sidecar inventory. A filename outside\n    # the old finite adapter selects that reader; its own allowlist still must\n    # validate every entry. Common old shapes keep their inert archive path.\n    rows = manifest.get('sidecars')\n    if type(rows) is list:\n        from .backup_compat.library import _sidecar_limit\n        for row in rows:\n            if type(row) is dict and type(row.get('filename')) is str:\n                try:\n                    _sidecar_limit(row['filename'])\n                except RestoreError:\n                    return False\n    return True\n"
+        },
+        {
+          "before": "        backup_sidecars.check_namespace(directory, inventory)\n",
+          "after": "        backup_sidecars.check_namespace(directory, inventory, cancelled=cancelled)\n"
+        },
+        {
+          "before": "        actual_files = set(p.name for p in directory.iterdir())\n        expected_files = {DATABASE, ORIGINALS, MANIFEST}\n",
+          "after": "        expected_files = {DATABASE, ORIGINALS, MANIFEST}\n"
+        },
+        {
+          "before": "        if actual_files != expected_files:\n            raise RestoreError('incomplete backup or unexpected files')\n",
+          "after": "        actual_files = set()\n        with os.scandir(directory) as children:\n            for child in children:\n                _check_cancelled(cancelled)\n                if child.name not in expected_files:\n                    raise RestoreError('incomplete backup or unexpected files')\n                actual_files.add(child.name)\n        if actual_files != expected_files:\n            raise RestoreError('incomplete backup or unexpected files')\n"
+        },
+        {
+          "before": "def _prepare_restore(source, stage, new_root, manifest, *, copy_originals=True, cancelled=lambda: False):\n",
+          "after": "def _complete_inventory(directory, manifest, digest):\n    \"\"\"Reuse the finite sidecar walker for all authenticated backup components.\"\"\"\n    from .backup_sidecars import Inventory, normalize_manifest\n    files = [dict(manifest['database']),\n             dict(filename=MANIFEST, size_bytes=_plain(directory / MANIFEST).st_size,\n                  sha256=digest)]\n    roots = {ORIGINALS}\n    files.extend(dict(filename=ORIGINALS + '/' + row['filename'],\n                      size_bytes=row['size_bytes'], sha256=row['sha256'])\n                 for row in manifest['assets'])\n    if _uses_legacy_archive(manifest):\n        files.extend(manifest['sidecars'])\n        files.extend(dict(filename='recovery/' + row['path'],\n                          size_bytes=row['size_bytes'], sha256=row['sha256'])\n                     for row in manifest.get('recovery', {}).get('files', []))\n    elif _uses_canonical_sidecars(manifest):\n        compatible = normalize_manifest(manifest)\n        files.extend(compatible.entries)\n        roots.update(compatible.empty_roots)\n        if compatible.pending is not None:\n            roots.add('pending')\n            files.extend({**row, 'filename': 'pending/' + row['filename']}\n                         for row in compatible.pending['files'])\n    else:\n        for component, rows in (\n                ('state', manifest.get('state')),\n                ('pending', manifest.get('pending', {}).get('files')),\n                ('extensions', manifest.get('extensions', {}).get('files'))):\n            if rows is not None:\n                roots.add(component)\n                files.extend({**row, 'filename': component + '/' + row['filename']}\n                             for row in rows)\n        if 'extensions' in manifest:\n            from .backup_extensions import _legacy_original_directories\n            roots.update('extensions/' + name for name in _legacy_original_directories(\n                row['filename'] for row in manifest['extensions']['files']))\n    return Inventory(tuple(sorted(files, key=lambda row: row['filename'])), frozenset(roots))\n\n\ndef _attest_backup(directory, manifest, digest, *, cancelled=lambda: False):\n    \"\"\"Check every listed byte twice and reject unlisted or missing children.\"\"\"\n    from .backup_sidecars import check_namespace, _stream_file\n    inventory = _complete_inventory(directory, manifest, digest)\n    check_namespace(directory, inventory, cancelled=cancelled)\n    for _ in range(2):\n        for entry in inventory.entries:\n            _check_cancelled(cancelled)\n            _stream_file(directory / entry['filename'], expected=entry,\n                         maximum=entry['size_bytes'], cancelled=cancelled)\n        check_namespace(directory, inventory, cancelled=cancelled)\n\n\ndef _prepare_restore(source, stage, new_root, manifest, *, copy_originals=True, cancelled=lambda: False):\n"
+        },
+        {
+          "before": "            _sync_file(stage / MANIFEST, raw)\n            if cancelled():\n",
+          "after": "            _sync_file(stage / MANIFEST, raw)\n            _attest_backup(stage, manifest, sha256(raw).hexdigest(), cancelled=cancelled)\n            if cancelled():\n"
+        },
+        {
+          "before": "    _check_cancelled(cancelled)\n    return manifest\n\n\ndef _restore_backup",
+          "after": "    _attest_backup(source, manifest, expected_manifest_sha256, cancelled=cancelled)\n    _check_cancelled(cancelled)\n    return manifest\n\n\ndef _restore_backup"
+        },
+        {
+          "before": "        from .backup_compat.archive import restore_archive\n        return restore_archive(source, destination, expected_manifest_sha256, cancelled=cancelled)\n",
+          "after": "        from .backup_compat.archive import restore_archive\n        _attest_backup(source, manifest, expected_manifest_sha256, cancelled=cancelled)\n        return restore_archive(source, destination, expected_manifest_sha256, cancelled=cancelled)\n"
+        },
+        {
+          "before": "        entries, pending_assets, paths = _prepare_restore(\n            source, stage, destination, manifest, cancelled=cancelled)\n        _check_cancelled(cancelled)\n",
+          "after": "        entries, pending_assets, paths = _prepare_restore(\n            source, stage, destination, manifest, cancelled=cancelled)\n        _attest_backup(source, manifest, expected_manifest_sha256, cancelled=cancelled)\n        _check_cancelled(cancelled)\n"
+        },
+        {
+          "before": "            _stream_file(directory / entry['filename'], expected=entry,\n                         maximum=entry['size_bytes'], cancelled=cancelled)\n",
+          "after": "            _stream_file(directory / entry['filename'], expected=entry,\n                         maximum=entry['size_bytes'], cancelled=cancelled,\n                         allow_empty=entry['size_bytes'] == 0)\n"
+        },
+        {
+          "before": "            restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)\n            paths.add('state')\n",
+          "after": "            restore_state(source / 'state', stage / 'state', manifest['state'], cancelled=cancelled)\n            from .backup_extensions import validate_primary_state\n            validate_primary_state(stage / 'state', manifest['state'], snapshot,\n                legacy_opaque=manifest.get('extensions', {}).get('version', 0) < 4, cancelled=cancelled)\n            paths.add('state')\n"
+        },
+        {
+          "before": "    if not compatible and manifest['version'] >= 3:\n        from .studio.backup_inputs import restore_inputs\n        restore_inputs(stage / 'state', new_root / 'state', manifest['state'], cancelled=cancelled)\n",
+          "after": "    if compatible:\n        state_entries = [{**entry, 'filename': entry['filename'].removeprefix('state/')}\n                         for entry in inventory.entries if entry['filename'].startswith('state/')]\n    else:\n        state_entries = manifest.get('state', [])\n    if state_entries:\n        from .studio.backup_inputs import restore_inputs\n        # A portable old job declares its source-machine paths; restoration\n        # never carries that output/input approval onto the new machine.\n        restore_inputs(stage / 'state', new_root / 'state', state_entries, cancelled=cancelled)\n"
+        },
+        {
+          "before": "                if child.name not in expected_files:\n                    raise RestoreError('incomplete backup or unexpected files')\n",
+          "after": "                if child.name not in expected_files:\n                    raise RestoreError('incomplete backup or unexpected files: ' + child.name)\n"
+        },
+        {
+          "before": "                manifest.get('state', []), independent=authorized_workspaces is None, cancelled=cancelled,\n                max_bytes=MAX_EXTENSION_BYTES if max_bytes is None else max_bytes - total)\n",
+          "after": "                manifest.get('state', []), independent=authorized_workspaces is None, cancelled=cancelled,\n                max_bytes=MAX_EXTENSION_BYTES if max_bytes is None else max_bytes - total,\n                include_generated=include_generated)\n"
+        },
+        {
+          "before": "            validate_primary_state(stage / 'state', manifest['state'], snapshot,\n                legacy_opaque=manifest.get('extensions', {}).get('version', 0) < 4, cancelled=cancelled)\n",
+          "after": "            validate_primary_state(stage / 'state', manifest['state'], snapshot,\n                legacy_opaque=manifest.get('extensions', {}).get('version', 0) < 4,\n                include_generated=manifest['generated_audio_included'], cancelled=cancelled)\n"
+        },
+        {
+          "before": "                                       max_bytes=MAX_STATE_BYTES if max_bytes is None else max_bytes - total)\n",
+          "after": "                                       max_bytes=MAX_STATE_BYTES if max_bytes is None else min(MAX_STATE_BYTES, max_bytes - total))\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/src/carr_library/backup_extensions.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "2130f4117abd06b22a767de9ed1bea08899b6dfb",
+      "new_blob": "f5e7eef31abfc3cb822a5eeef63f9d58c03c6d6f",
+      "changes": [
+        {
+          "before": "def inventory(root, *, cancelled=lambda: False):\n    before, directories = _tree(root, cancelled=cancelled)\n",
+          "after": "def inventory(root, *, max_bytes=MAX_BYTES, cancelled=lambda: False):\n    if type(max_bytes) is not int or max_bytes < 0:\n        raise RestoreError('Typed backup byte budget must be a nonnegative integer.')\n    max_bytes = min(max_bytes, MAX_BYTES)\n    before, directories = _tree(root, cancelled=cancelled)\n"
+        },
+        {
+          "before": "        if info.st_size < 1 or total > MAX_BYTES:\n",
+          "after": "        if info.st_size < 1 or total > max_bytes:\n"
+        },
+        {
+          "before": "def snapshot(root, target, database, state_entries, *, independent=True, cancelled=lambda: False):\n    root, target = Path(root), Path(target)\n",
+          "after": "def snapshot(root, target, database, state_entries, *, independent=True,\n             max_bytes=MAX_BYTES, cancelled=lambda: False):\n    if type(max_bytes) is not int or max_bytes < 0:\n        raise RestoreError('Typed backup byte budget must be a nonnegative integer.')\n    max_bytes = min(max_bytes, MAX_BYTES)\n    root, target = Path(root), Path(target)\n"
+        },
+        {
+          "before": "    archives = []\n    if independent and os.path.lexists(root / LEGACY):\n",
+          "after": "    archives = []\n    # Account for every already bounded component before copying a potentially\n    # large inert archive. The final staged inventory checks actual bytes too.\n    planned_bytes = sum(len(raw) for raw in sidecars.values())\n    if planned_bytes > max_bytes:\n        raise RestoreError('Typed backup exceeds its complete byte budget.')\n    if independent and os.path.lexists(root / LEGACY):\n        legacy_files, _ = _tree(root / LEGACY, cancelled=cancelled)\n        planned_bytes += sum(info.st_size for info in legacy_files.values())\n        if planned_bytes > max_bytes:\n            raise RestoreError('Typed backup exceeds its complete byte budget.')\n"
+        },
+        {
+          "before": "    files = inventory(target, cancelled=cancelled)\n",
+          "after": "    files = inventory(target, max_bytes=max_bytes, cancelled=cancelled)\n"
+        },
+        {
+          "before": "    for directory, dirs, names in os.walk(root, followlinks=False):\n",
+          "after": "    def walk_error(error):\n        raise error\n    for directory, dirs, names in os.walk(root, followlinks=False, onerror=walk_error):\n"
+        },
+        {
+          "before": "def validate_manifest(value):\n",
+          "after": "def _canonical_root_names():\n    from .backup_sidecars import _SIMPLE, _DIRECTORIES\n    # The established typed producers own reading state and the complete state\n    # tree. Reuse canonical adapters only for the remaining explicit root data.\n    return tuple(name for name in (*_SIMPLE, *_DIRECTORIES) if name not in (READING, 'state'))\n\n\ndef _canonical_names(value):\n    names = value.get('canonical_sidecars', [])\n    if (type(names) is not list or len(names) > MAX_FILES\n            or any(type(name) is not str for name in names)\n            or names != sorted(set(names))):\n        raise RestoreError('Invalid canonical sidecar inventory.')\n    from .backup_sidecars import sidecar_limit\n    roots = set(_canonical_root_names())\n    for name in names:\n        if name.split('/')[0] not in roots:\n            raise RestoreError('A canonical sidecar overlaps another backup component.')\n        sidecar_limit(name)\n    return set(names)\n\n\ndef validate_manifest(value):\n"
+        },
+        {
+          "before": "    if type(value) is dict and value.get('version') in (2, 3):\n",
+          "after": "    if type(value) is dict and value.get('version') in (2, 3, 4):\n"
+        },
+        {
+          "before": "    if type(value) is dict and value.get('version') == 3:\n",
+          "after": "    if type(value) is dict and value.get('version') in (3, 4):\n"
+        },
+        {
+          "before": "                       'studio_unverified_recordings'))\n",
+          "after": "                       'studio_unverified_recordings'))\n    if type(value) is dict and value.get('version') == 4:\n        fields.add('canonical_sidecars')\n"
+        },
+        {
+          "before": "or value['version'] not in (1, 2, 3) or type(value['independent_state']) is not bool\n",
+          "after": "or value['version'] not in (1, 2, 3, 4) or type(value['independent_state']) is not bool\n"
+        },
+        {
+          "before": "    files = value['files']\n",
+          "after": "    canonical_names = _canonical_names(value)\n    files = value['files']\n"
+        },
+        {
+          "before": "        if (name not in SIDECARS and not re.fullmatch(r'legacy-backups/[0-9a-f]{64}(?:\\.json|/.+)', name)):\n",
+          "after": "        if (name not in SIDECARS and name not in canonical_names\n                and not re.fullmatch(r'legacy-backups/[0-9a-f]{64}(?:\\.json|/.+)', name)):\n"
+        },
+        {
+          "before": "        if total > MAX_BYTES or (name in SIDECARS and item['size_bytes'] > SIDECARS[name]):\n",
+          "after": "        if name in canonical_names:\n            from .backup_sidecars import sidecar_limit\n            if item['size_bytes'] > sidecar_limit(name):\n                raise RestoreError('Canonical sidecar exceeds its producer byte budget.')\n        if total > MAX_BYTES or (name in SIDECARS and item['size_bytes'] > SIDECARS[name]):\n"
+        },
+        {
+          "before": "    validate_portable_paths(item['filename'] for item in files)\n",
+          "after": "    validate_portable_paths(item['filename'] for item in files)\n    if not canonical_names <= {item['filename'] for item in files}:\n        raise RestoreError('A canonical sidecar is missing from the exact file inventory.')\n"
+        },
+        {
+          "before": "    if value['version'] == 3 and type(value['studio_input_receipt']) is not bool:\n",
+          "after": "    if value['version'] in (3, 4) and type(value['studio_input_receipt']) is not bool:\n"
+        },
+        {
+          "before": "    if ASR_SETTINGS in names and value['version'] not in (2, 3):\n",
+          "after": "    if ASR_SETTINGS in names and value['version'] not in (2, 3, 4):\n"
+        },
+        {
+          "before": "    if not value['independent_state'] and (archives or DORDIAI in names or ASR_SETTINGS in names\n",
+          "after": "    if not value['independent_state'] and (archives or canonical_names or DORDIAI in names or ASR_SETTINGS in names\n"
+        },
+        {
+          "before": "    validate_sidecars(database, sidecars, allowed)\n    media, media_inputs, retained = inspect_media_state",
+          "after": "    validate_sidecars(database, sidecars, allowed)\n    canonical_entries, canonical_before = [], None\n    if independent:\n        from . import backup_sidecars\n        canonical_roots = _canonical_root_names()\n        canonical_before = backup_sidecars._capture(root, root_names=canonical_roots, cancelled=cancelled)\n        available = max_bytes - sum(len(raw) for raw in sidecars.values())\n        if available < 0:\n            raise RestoreError('Typed backup exceeds its complete byte budget.')\n        with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:\n            db.execute('PRAGMA trusted_schema=OFF')\n            canonical_entries = backup_sidecars.snapshot(db, root, target, max_bytes=available,\n                root_names=canonical_roots, cancelled=cancelled)\n    media, media_inputs, retained = inspect_media_state"
+        },
+        {
+          "before": "    planned_bytes = sum(len(raw) for raw in sidecars.values())\n",
+          "after": "    planned_bytes = (sum(len(raw) for raw in sidecars.values())\n                     + sum(entry['size_bytes'] for entry in canonical_entries))\n"
+        },
+        {
+          "before": "    if (not sidecars and not archives and not sessions and not projects and not transcriptions\n",
+          "after": "    if (not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions\n"
+        },
+        {
+          "before": "    files = inventory(target, max_bytes=max_bytes, cancelled=cancelled)\n",
+          "after": "    files = inventory(target, max_bytes=max_bytes, cancelled=cancelled)\n    for name, maximum in SIDECARS.items():\n        _check(cancelled)\n        if name in (DORDIAI, ASR_SETTINGS) and not independent:\n            continue\n        if read_bytes(root / name, maximum, optional=True) != sidecars.get(name):\n            raise RestoreError('Typed backup sidecar changed during snapshot.')\n    if canonical_before is not None:\n        for entry in canonical_entries:\n            _check(cancelled)\n            backup_sidecars._stream_file(root / entry['filename'], expected=entry,\n                maximum=backup_sidecars.sidecar_limit(entry['filename']), cancelled=cancelled)\n        if backup_sidecars._capture(root, root_names=canonical_roots, cancelled=cancelled) != canonical_before:\n            raise RestoreError('Canonical application state changed during snapshot.')\n"
+        },
+        {
+          "before": "    if _has_media(media):\n        manifest.update(version=3, transcription_jobs=transcriptions, **media)\n",
+          "after": "    if _has_media(media):\n        manifest.update(version=3, transcription_jobs=transcriptions, **media)\n    if canonical_entries:\n        manifest.update(version=4, transcription_jobs=transcriptions, **media,\n            canonical_sidecars=sorted(entry['filename'] for entry in canonical_entries))\n"
+        },
+        {
+          "before": "    paths = []\n    if value['legacy_archives']:\n",
+          "after": "    canonical_names = _canonical_names(value)\n    paths = sorted({name.split('/')[0] for name in canonical_names})\n    if canonical_names:\n        from . import backup_sidecars\n        canonical_entries = tuple(entry for entry in value['files'] if entry['filename'] in canonical_names)\n        with closing(sqlite3.connect((Path(stage) / 'library.sqlite').as_uri() + '?mode=ro&immutable=1', uri=True)) as db:\n            db.execute('PRAGMA trusted_schema=OFF')\n            backup_sidecars.restore(db, temporary, Path(stage),\n                backup_sidecars.Inventory(canonical_entries), cancelled=cancelled)\n    if value['legacy_archives']:\n"
+        },
+        {
+          "before": "    after, later_directories = _tree(root, cancelled=cancelled)\n",
+          "after": "    # Metadata alone can miss a same-sized rewrite on Windows. Reuse the\n    # bounded canonical file verifier after the first complete byte pass.\n    from .backup_sidecars import _stream_file\n    for entry in result:\n        _stream_file(Path(root) / entry['filename'], expected=entry,\n                     maximum=max_bytes, cancelled=cancelled)\n    after, later_directories = _tree(root, cancelled=cancelled)\n"
+        },
+        {
+          "before": "    if independent and os.path.lexists(root / LEGACY):\n        legacy_files, _ = _tree(root / LEGACY, cancelled=cancelled)\n",
+          "after": "    legacy_present = False\n    if independent:\n        try:\n            (root / LEGACY).lstat()\n        except FileNotFoundError:\n            pass\n        else:\n            legacy_present = True\n    if legacy_present:\n        legacy_files, _ = _tree(root / LEGACY, cancelled=cancelled)\n"
+        },
+        {
+          "before": "def inspect_state(root, entries, database, allowed, *, independent, cancelled=lambda: False,\n",
+          "after": "def validate_primary_state(root, entries, database, *, legacy_opaque=False,\n                           cancelled=lambda: False):\n    \"\"\"Check current primary producers without activating historical opaque data.\n\n    Typed V3/V4 and earlier extension versions also admitted opaque private\n    state. Their original bytes remain recoverable; absent old producer schemas\n    grant no authority to run a job, provider or media operation. New snapshots\n    use only the current finite adapters within these producer namespaces.\n    \"\"\"\n    from . import backup_generated, backup_producers, backup_sidecars\n\n    root = Path(root)\n    generated, receipts, handled = [], {}, False\n    protected = ('speech/', 'studio/', 'providers/', 'assistant/', 'translation/')\n    with closing(sqlite3.connect(Path(database).as_uri() + '?mode=ro&immutable=1', uri=True)) as db:\n        db.execute('PRAGMA trusted_schema=OFF')\n        for entry in entries:\n            _check(cancelled)\n            relative = entry['filename']\n            name = 'state/' + relative\n            maximum = backup_producers.limit(name)\n            generated_limit = backup_generated.limit(name)\n            if generated_limit is not None:\n                handled = True\n                generated.append({**entry, 'filename': name})\n                if backup_generated.is_media(name):\n                    size, _checksum, header = backup_sidecars._stream_file(\n                        root / relative, expected=entry, maximum=generated_limit, cancelled=cancelled)\n                    backup_generated.validate_container(name, header, size)\n                else:\n                    raw = backup_sidecars.read_regular(root / relative, generated_limit)\n                    backup_sidecars.validate_sidecar(db, name, raw)\n                    receipts[name] = _json(raw)\n            elif maximum is not None or name == 'state/audio/engines.json':\n                maximum = maximum or backup_sidecars.sidecar_limit(name)\n                raw = backup_sidecars.read_regular(root / relative, maximum,\n                    allow_empty=backup_sidecars._empty_subtitle(name))\n                # The previous complete-state format did not interpret opaque\n                # JSON at these paths. Preserve it only on that reader path.\n                if legacy_opaque and not backup_producers.SUBTITLE.fullmatch(name):\n                    value = _json(raw)\n                    match = backup_producers.STUDIO.fullmatch(name)\n                    control = (match is not None and match[2] == 'control'\n                        or backup_producers.ASSISTANT.fullmatch(name) is not None and name.endswith('.control.json')\n                        or backup_producers.TRANSLATION.fullmatch(name) is not None and name.endswith('.control.json'))\n                    if type(value) is dict and 'schema' not in value and not control:\n                        continue\n                backup_sidecars.validate_sidecar(db, name, raw)\n                handled = True\n            elif (_PROJECT.fullmatch(relative) or _PUBLICATION.fullmatch(relative)\n                    or _RECORDING.fullmatch(relative) or _RECORDING_WAV.fullmatch(relative)\n                    or relative in ('studio/backup-inputs.json', 'studio/legacy-input-review.json')\n                    or re.fullmatch(r'studio/inputs/[0-9a-f]{64}\\.audio', relative)):\n                # The existing typed media/input/session inspectors below own\n                # these formats and bind their complete component inventory.\n                handled = True\n            elif relative.startswith(protected) and not legacy_opaque:\n                raise RestoreError('No validated backup adapter is installed for ' + name + '.')\n    backup_generated.validate_collection(generated, receipts)\n    return handled\n\n\ndef inspect_state(root, entries, database, allowed, *, independent, cancelled=lambda: False,\n"
+        },
+        {
+          "before": "    media, media_inputs, retained = inspect_media_state(target.parent / 'state', state_entries,\n",
+          "after": "    primary = validate_primary_state(target.parent / 'state', state_entries, database, cancelled=cancelled)\n    media, media_inputs, retained = inspect_media_state(target.parent / 'state', state_entries,\n"
+        },
+        {
+          "before": "    if (not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions\n",
+          "after": "    if (not primary and not sidecars and not canonical_entries and not archives and not sessions and not projects and not transcriptions\n"
+        },
+        {
+          "before": "    if canonical_entries:\n        manifest.update(version=4, transcription_jobs=transcriptions, **media,\n",
+          "after": "    if primary or canonical_entries:\n        manifest.update(version=4, transcription_jobs=transcriptions, **media,\n"
+        },
+        {
+          "before": "            if generated_limit is not None:\n                handled = True\n",
+          "after": "            if generated_limit is not None:\n                if legacy_opaque:\n                    # Older generated state was an opaque optional byte copy.\n                    # Its consumer still inspects the media and exact receipt\n                    # before reuse; restore does not grant completion authority.\n                    continue\n                handled = True\n"
+        },
+        {
+          "before": "                raw = backup_sidecars.read_regular(root / relative, maximum,\n                    allow_empty=backup_sidecars._empty_subtitle(name))\n                # The previous complete-state format did not interpret opaque\n                # JSON at these paths. Preserve it only on that reader path.\n                if legacy_opaque and not backup_producers.SUBTITLE.fullmatch(name):\n                    value = _json(raw)\n",
+          "after": "                if legacy_opaque and entry['size_bytes'] > maximum:\n                    continue\n                raw = backup_sidecars.read_regular(root / relative, maximum,\n                    allow_empty=legacy_opaque or backup_sidecars._empty_subtitle(name))\n                # The previous complete-state format did not interpret opaque\n                # JSON at these paths. Preserve it only on that reader path.\n                if legacy_opaque and not backup_producers.SUBTITLE.fullmatch(name):\n                    try:\n                        value = _json(raw)\n                    except RestoreError:\n                        continue\n"
+        },
+        {
+          "before": "                    if type(value) is dict and 'schema' not in value and not control:\n                        continue\n",
+          "after": "                    if type(value) is not dict or 'schema' not in value and not control:\n                        continue\n"
+        },
+        {
+          "before": "            elif maximum is not None or name == 'state/audio/engines.json':\n                maximum = maximum or backup_sidecars.sidecar_limit(name)\n",
+          "after": "            elif maximum is not None or name == 'state/audio/engines.json':\n                if legacy_opaque and backup_producers.SUBTITLE.fullmatch(name):\n                    continue\n                maximum = maximum or backup_sidecars.sidecar_limit(name)\n"
+        },
+        {
+          "before": "raise RestoreError('Reading recovery does not match its exact authenticated source.')",
+          "after": "raise RestoreError('Reading recovery does not match its exact authenticated source; it must match the exact saved source.')"
+        },
+        {
+          "before": "def validate_primary_state(root, entries, database, *, legacy_opaque=False,\n                           cancelled=lambda: False):\n",
+          "after": "def validate_primary_state(root, entries, database, *, legacy_opaque=False,\n                           include_generated=False, cancelled=lambda: False):\n"
+        },
+        {
+          "before": "            relative = entry['filename']\n            name = 'state/' + relative\n",
+          "after": "            relative = entry['filename']\n            if not include_generated and 'cache' in relative.split('/'):\n                raise RestoreError('Generated cache requires explicit backup inclusion.')\n            name = 'state/' + relative\n"
+        },
+        {
+          "before": "def snapshot(root, target, database, state_entries, *, independent=True,\n             max_bytes=MAX_BYTES, cancelled=lambda: False):\n",
+          "after": "def snapshot(root, target, database, state_entries, *, independent=True,\n             max_bytes=MAX_BYTES, include_generated=False, cancelled=lambda: False):\n"
+        },
+        {
+          "before": "    primary = validate_primary_state(target.parent / 'state', state_entries, database, cancelled=cancelled)\n",
+          "after": "    primary = validate_primary_state(target.parent / 'state', state_entries, database,\n        include_generated=include_generated, cancelled=cancelled)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_v3_state_backup.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "900e9b9a656adca0133516a1a48b0793c34d3abf",
+      "new_blob": "c9b5f4e28ba204f46fa90d66b6dc6282d3551eb1",
+      "changes": [
+        {
+          "before": "\"\"\"Independent V3 full-backup checks with real SQLite and private sidecars.\"\"\"",
+          "after": "\"\"\"Independent V3 full-backup checks with real SQLite and opaque private bytes.\n\nThe synthetic historical values live outside current producer namespaces.\nCurrent reader/Studio/provider schemas and PCM receipts have their own actual\nproducer suites; these cases retain the generic complete-state copy contract.\nThe original historical namespace is also exercised by test_backup_canonical_union.\n\"\"\""
+        },
+        {
+          "before": "'speech/settings.json'",
+          "after": "'opaque-fixture/speech/settings.json'"
+        },
+        {
+          "before": "'speech/documents/читання.json'",
+          "after": "'opaque-fixture/speech/documents/читання.json'"
+        },
+        {
+          "before": "'studio/projects/project.json'",
+          "after": "'opaque-fixture/studio/projects/project.json'"
+        },
+        {
+          "before": "'studio/jobs/job-1/job.json'",
+          "after": "'opaque-fixture/studio/jobs/job-1/job.json'"
+        },
+        {
+          "before": "'assistant/job.json'",
+          "after": "'opaque-fixture/assistant/job.json'"
+        },
+        {
+          "before": "'providers/account.profile.json'",
+          "after": "'opaque-fixture/providers/account.profile.json'"
+        },
+        {
+          "before": "'studio/cache/chunk.wav'",
+          "after": "'opaque-fixture/studio/cache/chunk.wav'"
+        },
+        {
+          "before": "'studio/.render.lock'",
+          "after": "'opaque-fixture/studio/.render.lock'"
+        },
+        {
+          "before": "'studio/.pending-edit'",
+          "after": "'opaque-fixture/studio/.pending-edit'"
+        },
+        {
+          "before": "'speech/recovery.tmp'",
+          "after": "'opaque-fixture/speech/recovery.tmp'"
+        },
+        {
+          "before": "'state/speech/settings.json'",
+          "after": "'state/opaque-fixture/speech/settings.json'",
+          "count": 3
+        },
+        {
+          "before": "'state/studio/projects/project.json'",
+          "after": "'state/opaque-fixture/studio/projects/project.json'"
+        },
+        {
+          "before": "'state/studio/cache/chunk.wav'",
+          "after": "'state/opaque-fixture/studio/cache/chunk.wav'"
+        },
+        {
+          "before": "'state/studio/cache'",
+          "after": "'state/opaque-fixture/studio/cache'"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_primary_producers.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "8e98fce992da579cedf4cdef5b89376b0adb0032",
+      "new_blob": "8f911b4c3d68d64b3c1af58adc99c024daff154d",
+      "changes": [
+        {
+          "before": "def resign(folder, manifest):\n",
+          "after": "def manifest_rows(manifest):\n    \"\"\"Return original rows under logical producer names, preserving tamper tests.\"\"\"\n    if 'sidecars' in manifest:\n        return {row['filename']: row for row in manifest['sidecars']}\n    rows = {'state/' + row['filename']: row for row in manifest.get('state', [])}\n    rows.update({row['filename']: row for row in manifest.get('extensions', {}).get('files', [])})\n    return rows\n\n\ndef resign(folder, manifest):\n"
+        },
+        {
+          "before": "    names = {entry['filename'] for entry in manifest['sidecars']}\n    assert len(names) == 8\n",
+          "after": "    names = set(manifest_rows(manifest))\n    assert len(names) == 9\n    assert 'state/studio/backup-inputs.json' in names\n    assert manifest['extensions']['version'] == 4\n"
+        },
+        {
+          "before": "    if version == 3:\n        # The historical state-only format predates the pending producer.\n        # This fixture has only a finished add_text journal. Its source remains\n        # in the completed library's originals when the newer journal namespace\n        # is removed to construct the exact historical format.\n        pending = manifest.pop('pending', None)\n        if pending is not None:\n            assert pending['sources'] == []\n            assert all(asset in manifest['assets'] for asset in pending['assets'])\n            shutil.rmtree(folder / 'pending')\n        manifest['version'] = 3\n        manifest['state'] = [{**entry, 'filename': entry['filename'].removeprefix('state/')}\n                             for entry in manifest.pop('sidecars')]\n        checksum = resign(folder, manifest)\n",
+          "after": "    # Exercise the exact two older reader envelopes with the same actual\n    # producer bytes. The current writer itself remains typed V5.\n    extension = manifest.pop('extensions')\n    assert extension['files'] == []\n    shutil.rmtree(folder / 'extensions')\n    if version == 3:\n        # V3 state predates the pending producer. Completed original bytes are\n        # still in the registered catalog, so this removes no unpublished input.\n        pending = manifest.pop('pending', None)\n        if pending is not None:\n            assert pending['sources'] == []\n            assert all(asset in manifest['assets'] for asset in pending['assets'])\n            shutil.rmtree(folder / 'pending')\n        manifest['version'] = 3\n    else:\n        # Canonical V4 predates the typed selected-input receipt. It preserves\n        # declarations and requires fresh output/input review on restore.\n        receipt = 'state/studio/backup-inputs.json'\n        (folder / receipt).unlink()\n        names.remove(receipt)\n        manifest['sidecars'] = [{**row, 'filename': 'state/' + row['filename']}\n            for row in manifest.pop('state') if row['filename'] != 'studio/backup-inputs.json']\n        manifest['version'] = 4\n    checksum = resign(folder, manifest)\n"
+        },
+        {
+          "before": "    for name in names:\n        assert (target / name).read_bytes() == (app.root / name).read_bytes()\n",
+          "after": "    for name in names:\n        if name == 'state/studio/backup-inputs.json':\n            assert not (target / name).exists()\n            continue\n        if name == f'state/studio/jobs/{job}/job.json':\n            original = json.loads((app.root / name).read_bytes())\n            recovered = json.loads((target / name).read_bytes())\n            assert recovered['status'] == 'waiting-input' and recovered['destination'] == ''\n            assert recovered['project'] == original['project']\n            assert recovered['recovery'] == {\n                'requires_output_directory': True, 'inputs_retained': version == 3,\n                'previous': {'project_fingerprint': original['fingerprint'],\n                    'status': original['status'], 'destination': original['destination'],\n                    'artifacts': original['artifacts']}}\n        else:\n            assert (target / name).read_bytes() == (app.root / name).read_bytes()\n"
+        },
+        {
+          "before": "    entry = next(row for row in manifest['sidecars'] if row['filename'] == name)\n",
+          "after": "    entry = manifest_rows(manifest)[name]\n"
+        },
+        {
+          "before": "    assert (target / path.relative_to(app.root)).read_bytes() == path.read_bytes()\n",
+          "after": "    assert (target / path.relative_to(app.root)).read_bytes() == path.read_bytes()\n    recovered_job = json.loads((target / job_path.relative_to(app.root)).read_bytes())\n    assert recovered_job['status'] == 'waiting-input' and recovered_job['destination'] == ''\n    assert recovered_job['recovery']['previous']['destination'] == r'C:\\Missing installation\\outputs'\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_v4_sidecars.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "2f669e3c61f2b3c271033688416918a897e69b09",
+      "new_blob": "e3f997cbbdfb505dfa8bcb00fe4ea7c44e2d41fc",
+      "changes": [
+        {
+          "before": "\"\"\"Real SQLite, producer data, corruption and child-exit backup regressions.\"\"\"",
+          "after": "\"\"\"Exact canonical V3/V4 compatibility, real producer data and publication faults.\n\nThe current producer writes typed V5. The explicit fixture below constructs\nolder sidecar envelopes from those checked synthetic bytes; no production\nformat is relabelled or selected by these test helpers.\n\"\"\""
+        },
+        {
+          "before": "from carr_library import backup_sidecars, library_backup\nfrom carr_library.library_backup import create_backup, restore_backup, INCOMPLETE\n",
+          "after": "from carr_library import backup_extensions, backup_sidecars, library_backup\nfrom carr_library.library_backup import create_backup as create_typed_backup, restore_backup, INCOMPLETE\n"
+        },
+        {
+          "before": "@pytest.fixture\ndef reading(tmp_path):\n",
+          "after": "def create_backup(app, folder, **options):\n    \"\"\"Construct one exact old V4 sidecar fixture after the real typed writer.\"\"\"\n    create_typed_backup(app, folder, **options)\n    value = manifest(folder)\n    rows = [{**row, 'filename': 'state/' + row['filename']} for row in value.get('state', [])]\n    extension = value.get('extensions')\n    if extension is not None:\n        for row in extension['files']:\n            backup_sidecars.sidecar_limit(row['filename'])\n            source = folder / 'extensions' / row['filename']\n            target = folder / row['filename']\n            target.parent.mkdir(parents=True, exist_ok=True)\n            source.rename(target)\n            rows.append(dict(row))\n        shutil.rmtree(folder / 'extensions')\n    if not value.get('state') and (folder / 'state').exists():\n        (folder / 'state').rmdir()\n    older = {key: value[key] for key in\n             ('kind', 'schema_version', 'schema_fingerprint', 'database', 'assets')}\n    older.update(version=4, sidecars=sorted(rows, key=lambda row: row['filename']),\n                 generated_audio_included=value.get('generated_audio_included', False))\n    if 'pending' in value:\n        older['pending'] = value['pending']\n    return resign(folder, older)\n\n\n@pytest.fixture\ndef reading(tmp_path):\n"
+        },
+        {
+          "before": "    original = backup_sidecars._write\n    def full(stage, name, raw):\n        original(stage, name, raw)\n        raise OSError(errno.ENOSPC, 'synthetic disk-full failure after staged sidecar write')\n    monkeypatch.setattr(backup_sidecars, '_write', full)\n",
+          "after": "    module, name = (backup_extensions, 'write_bytes') if operation == 'backup' else (backup_sidecars, '_write')\n    original = getattr(module, name)\n    def full(*args, **kwargs):\n        original(*args, **kwargs)\n        raise OSError(errno.ENOSPC, 'synthetic disk-full failure after staged sidecar write')\n    monkeypatch.setattr(module, name, full)\n"
+        },
+        {
+          "before": "    original = backup_sidecars._write\n    def changed(stage, name, raw):\n        original(stage, name, raw)\n        if name == 'reading-state.json':\n            (app.root / name).write_bytes(raw.replace(b'Anchor-A', b'Anchor-B'))\n    monkeypatch.setattr(backup_sidecars, '_write', changed)\n    with pytest.raises(ValueError, match='changed during backup'):\n",
+          "after": "    original = backup_extensions.write_bytes\n    def changed(path, raw):\n        original(path, raw)\n        if Path(path).name == 'reading-state.json':\n            (app.root / 'reading-state.json').write_bytes(raw.replace(b'Anchor-A', b'Anchor-B'))\n    monkeypatch.setattr(backup_extensions, 'write_bytes', changed)\n    with pytest.raises(ValueError, match='changed during (backup|snapshot)'):\n"
+        },
+        {
+          "before": "def interrupt(src,dst,*args,**kwargs):\n    if Path(dst)==Path(target)/'reading-state.json':os._exit(73)\n",
+          "after": "def interrupt(src,dst,*args,**kwargs):\n    name='extensions/reading-state.json' if operation=='backup' else 'reading-state.json'\n    if Path(dst)==Path(target)/name:os._exit(73)\n"
+        },
+        {
+          "before": "    result = subprocess.run([sys.executable, '-c', code,",
+          "after": "    result = subprocess.run([sys.executable, '-B', '-c', code,"
+        },
+        {
+          "before": "    folder = tmp_path / 'reference'\n    create_backup(app, folder)\n    total = sum(len(raw) for raw in files(folder).values())\n",
+          "after": "    folder = tmp_path / 'reference'\n    create_typed_backup(app, folder)\n    total = sum(len(raw) for raw in files(folder).values())\n"
+        },
+        {
+          "before": "    checksum = app.backup(backup)\n",
+          "after": "    checksum = create_backup(app, backup)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_library_backup_reading_state.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "b225c9f1fc96cf112d93bc728a50699ee64c3585",
+      "new_blob": "84d931f05b9021a7b24a5c4ce9ecdf64deb43d15",
+      "changes": [
+        {
+          "before": "\"\"\"Full-backup reading recovery against actual LibraryApp and immutable sources.\"\"\"",
+          "after": "\"\"\"Full-backup reading recovery against actual LibraryApp and immutable sources.\n\nThe current writer is typed V5; the explicit fixture below retains the exact\ncanonical sidecar envelopes for all their historical reader assertions.\n\"\"\""
+        },
+        {
+          "before": "from carr_library import backup_sidecars, library_backup\n",
+          "after": "from carr_library import backup_extensions, backup_sidecars, library_backup\n"
+        },
+        {
+          "before": "from carr_library.library_backup import create_backup, restore_backup, verify_backup, INCOMPLETE\n",
+          "after": "from carr_library.library_backup import create_backup as create_typed_backup, restore_backup, verify_backup, INCOMPLETE\n"
+        },
+        {
+          "before": "def reading_entry(manifest):\n",
+          "after": "def create_backup(app, folder, **options):\n    \"\"\"Construct one exact old V4 sidecar fixture after the real typed writer.\"\"\"\n    create_typed_backup(app, folder, **options)\n    value = read_manifest(folder)\n    rows = [{**row, 'filename': 'state/' + row['filename']} for row in value.get('state', [])]\n    extension = value.get('extensions')\n    if extension is not None:\n        for row in extension['files']:\n            backup_sidecars.sidecar_limit(row['filename'])\n            source = folder / 'extensions' / row['filename']\n            target = folder / row['filename']\n            target.parent.mkdir(parents=True, exist_ok=True)\n            source.rename(target)\n            rows.append(dict(row))\n        shutil.rmtree(folder / 'extensions')\n    if not value.get('state') and (folder / 'state').exists():\n        (folder / 'state').rmdir()\n    older = {key: value[key] for key in\n             ('kind', 'schema_version', 'schema_fingerprint', 'database', 'assets')}\n    older.update(version=4, sidecars=sorted(rows, key=lambda row: row['filename']),\n                 generated_audio_included=value.get('generated_audio_included', False))\n    if 'pending' in value:\n        older['pending'] = value['pending']\n    return write_manifest(folder, older)\n\n\ndef reading_entry(manifest):\n"
+        },
+        {
+          "before": "    digest = app.backup(folder)\n",
+          "after": "    digest = create_backup(app, folder)\n",
+          "count": 2
+        },
+        {
+          "before": "    original = backup_sidecars._write\n\n    def full_disk(stage, name, data):\n        if name == FILENAME:\n            raise OSError(ENOSPC, 'synthetic disk full')\n        return original(stage, name, data)\n\n    monkeypatch.setattr(backup_sidecars, '_write', full_disk)\n",
+          "after": "    if phase == 'backup':\n        original = backup_extensions.write_bytes\n        def full_disk(path, data):\n            if Path(path).name == FILENAME:\n                raise OSError(ENOSPC, 'synthetic disk full')\n            return original(path, data)\n        monkeypatch.setattr(backup_extensions, 'write_bytes', full_disk)\n    else:\n        original = backup_sidecars._write\n        def full_disk(stage, name, data):\n            if name == FILENAME:\n                raise OSError(ENOSPC, 'synthetic disk full')\n            return original(stage, name, data)\n        monkeypatch.setattr(backup_sidecars, '_write', full_disk)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_generated_audio.py",
+      "base_commit": "966e5ccf892243ead6942c635af5fbab47e72551",
+      "base_blob": "faed937a5258204d285472c1e667bbca6e4cc443",
+      "new_blob": "86a42dbdf529c3fc9406a9a233f6d3d12b1c4616",
+      "changes": [
+        {
+          "before": "from carr_library import backup_sidecars\n",
+          "after": "from carr_library import backup_sidecars, state_backup\n"
+        },
+        {
+          "before": "        entry = next(x for x in manifest['sidecars'] if x['filename'] == receipt.relative_to(app.root).as_posix())\n",
+          "after": "        entry = next(x for x in manifest['state']\n                     if x['filename'] == receipt.relative_to(app.root / 'state').as_posix())\n"
+        },
+        {
+          "before": "    original_identity = backup_sidecars._identity\n    monkeypatch.setattr(backup_sidecars, '_identity', lambda info: original_identity(info)[:-2] + (0, 0))\n",
+          "after": "    original_identity = backup_sidecars._identity\n    monkeypatch.setattr(backup_sidecars, '_identity', lambda info: original_identity(info)[:-2] + (0, 0))\n    monkeypatch.setattr(state_backup, '_stamp',\n                        lambda info: (info.st_dev, info.st_ino, info.st_size))\n"
+        },
+        {
+          "before": "    with pytest.raises(ValueError, match='digest changed'):\n",
+          "after": "    with pytest.raises(ValueError, match='digest changed|changed during backup'):\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_schema_identity.py",
+      "base_commit": "bca90bd10b8b9e43406e404dc5be8e6fe9c6bac2",
+      "base_blob": "e4551aa3f17c99a1cc2e0a4f111e5eb1f6646c13",
+      "new_blob": "42e94edb3d2a42ab2c4f6524b79bebb338b3369f",
+      "changes": [
+        {
+          "before": "def test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):\n",
+          "after": "def select_historical_manifest(directory, manifest, version):\n    \"\"\"Construct each exact canonical legacy envelope from empty typed state.\"\"\"\n    assert manifest['version'] == 4\n    assert manifest.pop('state') == []\n    assert manifest.pop('generated_audio_included') is False\n    (directory / 'state').rmdir()\n    manifest['version'] = version\n    if version == 4:\n        manifest.update(sidecars=[], generated_audio_included=False)\n        return\n    # A finished import is already retained in the completed originals.\n    # Do not carry its newer journal namespace into an older envelope.\n    if 'pending' in manifest:\n        del manifest['pending']\n        pending = directory / 'pending'\n        if pending.exists():\n            shutil.rmtree(pending)\n    if version == 3:\n        manifest['reading_state'] = None\n    if version == 1:\n        del manifest['schema_fingerprint']\n\n\ndef test_new_backup_names_exact_schema_and_restores_research(backup, tmp_path):\n"
+        },
+        {
+          "before": "                             'generated_audio_included', 'pending'}\n",
+          "after": "                             'generated_audio_included', 'pending'}\n    assert manifest['state'] == []\n    assert manifest['generated_audio_included'] is False\n"
+        },
+        {
+          "before": "@pytest.mark.parametrize('version', [1, 2])\n",
+          "after": "@pytest.mark.parametrize('version', [1, 2, 3])\ndef test_legacy_backup_restores_exact_current_schema(backup, tmp_path, version):\n    app, workspace, topic, directory, manifest = backup\n    select_historical_manifest(directory, manifest, version)\n    digest = write_manifest(directory, manifest)\n    original = bundle_bytes(directory)\n    before = app.evidence(workspace, topic)[0]\n    restored = LibraryApp(restore_backup(directory, tmp_path / 'legacy-restored', digest))\n    assert restored.evidence(workspace, topic)[0] == before\n    assert restored.search(workspace, 'Архів')[0].title == 'Original title'\n    assert bundle_bytes(directory) == original\n\n\n@pytest.mark.parametrize('version', [1, 2, 3, 4])\n"
+        },
+        {
+          "before": "    manifest['version'] = version\n    if version == 1:\n        del manifest['schema_fingerprint']\n",
+          "after": "    select_historical_manifest(directory, manifest, version)\n"
+        }
+      ]
+    },
+    {
+      "path": "carr-library/tests/storage/test_backup_canonical_union.py",
+      "base_commit": null,
+      "base_blob": null,
+      "new_blob": "65a657c329c7e20cdc25ed58f1be40daaa287f6b",
+      "changes": []
+    }
+  ]
+}
