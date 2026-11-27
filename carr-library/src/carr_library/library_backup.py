@@ -190,12 +190,14 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
     return sha256(raw).hexdigest()
 
 
-def _read_manifest(directory, expected_manifest_sha256):
+def _read_manifest(directory, expected_manifest_sha256, *, cancelled=lambda: False):
     if not isinstance(expected_manifest_sha256, str) or not re.fullmatch(
             r'[0-9a-f]{64}', expected_manifest_sha256):
         raise RestoreError('independently saved manifest SHA256 required')
-    if not {DATABASE, ORIGINALS, MANIFEST} <= {path.name for path in directory.iterdir()}:
-        raise RestoreError('incomplete backup or unexpected files')
+    for name in (DATABASE, ORIGINALS, MANIFEST):
+        backup_sidecars._check_cancelled(cancelled)
+        if not backup_sidecars._optional_present(directory / name):
+            raise RestoreError('incomplete backup or unexpected files')
     size = _plain(directory / MANIFEST).st_size
     if not 0 < size <= MAX_MANIFEST:
         raise RestoreError('manifest size limit')
@@ -211,7 +213,7 @@ def _read_manifest(directory, expected_manifest_sha256):
             or manifest['version'] not in (1, 2, 3, 4, 5)):
         raise RestoreError('unsupported library manifest')
     inventory = backup_sidecars.normalize_manifest(manifest)
-    backup_sidecars.check_namespace(directory, inventory)
+    backup_sidecars.check_namespace(directory, inventory, cancelled=cancelled)
     if (manifest['kind'] != 'carr-library'
             or type(manifest['schema_version']) is not int or manifest['schema_version'] not in (3, 4, 5)
             or type(manifest['assets']) is not list or len(manifest['assets']) > MAX_ASSETS):
@@ -314,7 +316,7 @@ def verify_backup(source, expected_manifest_sha256, *, cancelled=lambda: False):
     source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
     with TemporaryDirectory(prefix='carr-backup-verify-') as tmp:
         _verify_contents(source, Path(tmp), manifest, cancelled=cancelled)
     return manifest
@@ -332,7 +334,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
-    manifest = _read_manifest(source, expected_manifest_sha256)
+    manifest = _read_manifest(source, expected_manifest_sha256, cancelled=cancelled)
     with TemporaryDirectory(prefix='.carr-library-restore-', dir=destination.parent) as tmp:
         stage = Path(tmp)
         snapshot = stage / DATABASE

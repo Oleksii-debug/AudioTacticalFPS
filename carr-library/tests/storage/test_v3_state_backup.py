@@ -403,3 +403,68 @@ def test_typed_capture_distinguishes_optional_absence_from_disappearance(tmp_pat
     with pytest.raises(FileNotFoundError, match='disappeared'):
         backup_sidecars._capture(root)
     assert probes == 2
+
+@pytest.mark.parametrize('nested', (False, True))
+def test_namespace_rejects_first_unlisted_entry_without_materializing(tmp_path, monkeypatch, nested):
+    from contextlib import contextmanager
+    from types import SimpleNamespace
+    from carr_library import backup_sidecars
+    from carr_library.ingest.restore import RestoreError
+
+    root = tmp_path / 'backup'
+    root.mkdir()
+    (root / 'originals').mkdir()
+    (root / 'library.sqlite').touch()
+    (root / 'manifest.json').touch()
+    (root / 'state').mkdir()
+    inventory = SimpleNamespace(entries=(), empty_roots={'state'}, pending=None)
+    target = root / 'state' if nested else root
+    scandir = os.scandir
+
+    @contextmanager
+    def observed(path):
+        if Path(path) != target:
+            with scandir(path) as entries:
+                yield entries
+            return
+
+        def entries():
+            yield SimpleNamespace(name='unlisted')
+            raise AssertionError('namespace must reject before consuming another entry')
+
+        yield entries()
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(RestoreError, match='unexpected files.*unlisted'):
+        backup_sidecars.check_namespace(root, inventory)
+
+
+@pytest.mark.parametrize('restore', (False, True))
+def test_namespace_cancellation_prevents_verification_or_restore(tmp_path, monkeypatch, restore):
+    from contextlib import contextmanager
+    from carr_library.library_backup import verify_backup
+
+    app = LibraryApp(tmp_path / 'source')
+    backup = tmp_path / 'backup'
+    digest = create_backup(app, backup)
+    # create_backup returns the independently retained manifest SHA256.
+    destination = tmp_path / 'restored'
+    scandir = os.scandir
+    scanning = False
+
+    @contextmanager
+    def observed(path):
+        nonlocal scanning
+        with scandir(path) as entries:
+            if Path(path) == backup:
+                scanning = True
+            yield entries
+
+    monkeypatch.setattr(os, 'scandir', observed)
+    with pytest.raises(InterruptedError, match='cancelled'):
+        if restore:
+            restore_backup(backup, destination, digest, cancelled=lambda: scanning)
+        else:
+            verify_backup(backup, digest, cancelled=lambda: scanning)
+    assert scanning
+    assert not destination.exists()
