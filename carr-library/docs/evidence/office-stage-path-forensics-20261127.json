@@ -1,0 +1,34 @@
+{
+  "schema": "carr.office-stage-path-forensics.v1",
+  "status": "DIAGNOSTIC_NOT_RUN",
+  "source_commit": "d7295d13a096c0148559657f7b9d64b865051875",
+  "observed": {
+    "run_id": 46060211492,
+    "job_id": 140712362205,
+    "state": "FAIL",
+    "source": {
+      "passed": 6,
+      "failed": 1
+    },
+    "installed": "NOT_RUN",
+    "failed_case": "tests/conversion/test_office_native.py::test_real_selected_legacy_filter_retains_original_and_exact_provenance[xls]",
+    "message": "LibreOffice last observed phase: native-conversion-start. ValueError: The project directory does not exist.",
+    "artifact": {
+      "id": 15229151573,
+      "bytes": 4584550,
+      "sha256": "da544989064e156981ced212e675ac1d6e27f89692032ad092b9aad5ef67b235"
+    }
+  },
+  "purpose": "Disambiguate the actual rejected path/root and disappearance classification before changing any product predicate.",
+  "instrumentation": [
+    "Only the XLS native fixture replaces the exact current isolated bootstrap string; executable, isolation flags, trusted package roots, request, environment, streams and current process owner remain unchanged.",
+    "A one-shot trace installs the observer only when the ordinary convert_request starts, after the worker's resource and network limits; tracing immediately stops.",
+    "Wrappers invoke the exact existing Office directory/file admission functions, retain exception types and rethrow failures. They append bounded relative path, unfollowed lstat metadata, initial private-root identity, current Office caller locations and missing-classifier result.",
+    "No file is opened for contents; runtime/source/root admission, byte/entry/depth budgets, no-clobber publication, full runtime inventory and seven-case population remain unchanged.",
+    "The candidate is a diagnostic, even if its run passes. No retry, skipped case, ignored policy error or qualification promotion is added."
+  ],
+  "product_changes": [],
+  "native_case_count": 7,
+  "source_and_installed_counts_changed": false,
+  "output_limit": "Diagnostic JSON1750 characters maximum, original error prefix160; at most24 unfollowed stat reads and5 current Office caller records on an actual exception."
+}

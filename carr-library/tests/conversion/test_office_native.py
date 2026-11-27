@@ -79,6 +79,123 @@ def wordperfect(text):
     return b'\xffWPC' + struct.pack('<I', 32) + bytes((1, 10, 0, 0)) + b'\0' * 20 + text.encode('ascii')
 
 
+
+_OFFICE_STAGE_OBSERVER = r"""
+import json, stat, sys
+from pathlib import Path
+
+def _carr_arm_office_stage(frame, event, argument):
+    if (event != 'call' or frame.f_code.co_name != 'convert_request'
+            or frame.f_globals.get('__name__') != 'carr_library.conversion.worker'):
+        return None
+    # The ordinary worker has already applied resource and network limits.
+    sys.settrace(None)
+    from carr_library.conversion import office as selected_office
+    root = Path(frame.f_locals['message']['source']).parent
+    def label(path):
+        try:
+            return path.relative_to(root).as_posix()[:384]
+        except ValueError:
+            return '<outside-private-stage>/' + path.name[:96]
+    def state(path):
+        try:
+            value = path.lstat()
+            return [label(path), value.st_mode, value.st_nlink,
+                    getattr(value, 'st_file_attributes', 0), value.st_dev, value.st_ino]
+        except OSError as error:
+            return [label(path), type(error).__name__, error.errno,
+                    getattr(error, 'winerror', None)]
+    initial_root = state(root)
+    last = [None]
+    def message(error, report):
+        encoded = json.dumps(report, ensure_ascii=True, separators=(',', ':'))
+        if len(encoded) > 1500:
+            report['paths'] = report['paths'][:1] + report['paths'][-2:]
+            encoded = json.dumps(report, ensure_ascii=True, separators=(',', ':'))
+        if len(encoded) > 1750:
+            encoded = json.dumps({'diagnostic_error': 'bounded-output',
+                                  'operation': report['operation'],
+                                  'checked': report['checked'][:384]})
+        error.args = (report['error'] + ' OFFICE_STAGE_FACTS ' + encoded,)
+    def observe(actual, operation):
+        def checked(path, *args, **options):
+            try:
+                return actual(path, *args, **options)
+            except (ValueError, OSError) as error:
+                try:
+                    inspected = Path(path)
+                    traceback = error.__traceback__
+                    while traceback is not None:
+                        current = traceback.tb_frame
+                        if (current.f_code.co_name == 'checked_directory'
+                                and current.f_globals.get('__name__') == 'carr_library.audio.jobs'):
+                            inspected = Path(current.f_locals['path'])
+                        traceback = traceback.tb_next
+                    chain = [root]
+                    try:
+                        current = root
+                        for part in inspected.relative_to(root).parts:
+                            current = current / part
+                            chain.append(current)
+                    except ValueError:
+                        chain.append(inspected)
+                    rows = [state(value) for value in chain[:24]]
+                    retained = rows[:1] + [row for row in rows[1:-2] if isinstance(row[1], str)][:3] + rows[-2:]
+                    calls, caller = [], sys._getframe(1)
+                    while caller is not None and len(calls) < 5:
+                        if caller.f_globals.get('__name__') == 'carr_library.conversion.office':
+                            row = {'function': caller.f_code.co_name, 'line': caller.f_lineno}
+                            for key in ('depth', 'count', 'size'):
+                                if type(caller.f_locals.get(key)) is int:
+                                    row[key] = caller.f_locals[key]
+                            calls.append(row)
+                        caller = caller.f_back
+                    report = {'operation': operation, 'checked': label(inspected),
+                              'argument': label(Path(path)), 'error': str(error)[:160],
+                              'initial_root': initial_root, 'paths': retained,
+                              'calls': calls, 'missing_classifier': 'not-called'}
+                    last[0] = (error, report)
+                    message(error, report)
+                except Exception as diagnostic_error:
+                    error.args = (str(error)[:160] + ' OFFICE_STAGE_FACTS_ERROR '
+                                  + type(diagnostic_error).__name__,)
+                raise
+        return checked
+    selected_office.checked_directory = observe(selected_office.checked_directory, 'checked_directory')
+    selected_office.regular_file = observe(selected_office.regular_file, 'regular_file')
+    actual_missing = selected_office._missing_transient_entry
+    def missing(path):
+        result = actual_missing(path)
+        if last[0] is not None:
+            error, report = last[0]
+            report['missing_classifier'] = result
+            report['classifier_path'] = label(Path(path))
+            message(error, report)
+        return result
+    selected_office._missing_transient_entry = missing
+    return None
+
+sys.settrace(_carr_arm_office_stage)
+"""
+
+
+def _observe_office_stage_admission(monkeypatch):
+    """Diagnostic-only hook; retain the same isolated roots and process owner."""
+    import sys
+    from carr_library.audio import engines
+    actual = engines._start_process
+    bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
+                 "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+    observed = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; exec("
+                + repr(_OFFICE_STAGE_OBSERVER) + "); "
+                "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
+    def start(args, **options):
+        assert list(args[:6]) == [sys.executable, '-I', '-B', '-X', 'utf8', '-c']
+        assert args[6] == bootstrap, 'Diagnostic must not replace a different worker command.'
+        return actual([*args[:6], observed, *args[7:]], **options)
+    monkeypatch.setattr(engines, '_start_process', start)
+
+
 def _xls_visibility_diagnostic(message, result):
     """Inert census of this public synthetic fixture after child settlement."""
     if result.get('state') == 'complete':
@@ -182,6 +299,7 @@ def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_p
         source.write_bytes((wordperfect if kind == 'wpd' else palmdoc)(text))
     original = source.read_bytes()
     if kind == 'xls':
+        _observe_office_stage_admission(monkeypatch)
         from carr_library.conversion import service as service_module
         actual_invoke = service_module._invoke
         def observed(message, **options):
