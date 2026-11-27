@@ -151,8 +151,12 @@ def native_protocol_double(monkeypatch, tmp_path, saved, profiles):
         DEFAULT_DIALOG_STYLE=64, RESIZE_BORDER=128, EVT_BUTTON='button', EVT_CLOSE='close')
     monkeypatch.setitem(sys.modules, 'wx', wx)
     monkeypatch.setattr(workspace, 'TranslationService', lambda root, **kwargs: saved.service)
-    monkeypatch.setattr(workspace, 'ProfileStore',
-                        lambda root: SimpleNamespace(list=lambda: tuple(profiles)))
+    # Use the real current-account catalog: visible snapshots cannot stand in
+    # for the profile reread performed by the queued remote operation.
+    from carr_library.assistant.profiles import ProfileStore
+    store = ProfileStore(tmp_path / 'library' / 'state' / 'providers')
+    for profile in profiles:
+        store.save(profile)
 
     def gateway(root, *, mode):
         ui.gateways.append((root, mode))

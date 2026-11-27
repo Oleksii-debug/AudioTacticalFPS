@@ -58,6 +58,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
     dialog.SetName('Translation workspace')
     layout = wx.BoxSizer(wx.VERTICAL)
     alive, busy, current_job, reviewed = True, False, None, None
+    visible_job = None
     source_ready = source_loader is None
     original_document = document = None
     cancel = threading.Event()
@@ -141,6 +142,16 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             raise ValueError('The selected account is unavailable, disabled or changed. '
                              'Reopen translation after reviewing AI/API connections. '
                              'Completed saved work can still be exported offline.')
+
+    def check_visible_scope(values, *, offline=False):
+        # The previously selected/approved snapshot is enough to reject changed
+        # controls before queuing or opening a picker. It grants no authority:
+        # the worker independently reloads and validates the durable job.
+        if visible_job is None or not _matches_saved_scope(
+                visible_job, *values[:5], offline=offline, glossary=values[5]):
+            raise ValueError('Visible settings differ from saved job ' + current_job +
+                             '. Select Saved jobs to restore its exact scope, or Preview for a new approval. '
+                             'No operation on the saved job was started.')
 
     def check_saved_scope(identity, values, *, offline=False):
         job = service.get(identity)
@@ -242,7 +253,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             report(str(exc), True)
 
     def preview(event=None):
-        nonlocal reviewed, current_job
+        nonlocal reviewed, current_job, visible_job
         if busy:
             return
         try:
@@ -257,7 +268,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                 raise ValueError('The entered price estimate exceeds the chosen total budget.')
             reviewed = (p.to_dict(), selected.GetValue(), source.GetValue().strip(), target.GetValue().strip(), str(total),
                         glossary.GetValue().strip() or None, rate.GetValue().strip() or None)
-            current_job = None
+            current_job = visible_job = None
             controls()
             report(json.dumps(result, ensure_ascii=False, indent=2) +
                    '\n\nNo request sent. Translate asks permission for this exact selected text and total budget. '
@@ -267,7 +278,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             report(str(exc), True)
 
     def run(event):
-        nonlocal current_job
+        nonlocal current_job, visible_job
         if busy:
             return
         try:
@@ -289,6 +300,9 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                 guard()
                 authorization, bound = translation_approval(p, values[1], values[2], values[3], values[4],
                                                             source_bound=document is not None, glossary=values[5])
+                visible_job = {'profile': values[0], 'source_text': values[1],
+                    'source_language': values[2], 'target_language': values[3],
+                    'authorization': {'budget': values[4]}, 'glossary': values[5]}
                 if document is None:
                     # Keep the existing immediate durable pasted-text capture.
                     # Retained-source hashing/loading stays on the job executor.
@@ -297,6 +311,8 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                         authorization=authorization, per_call_cost=bound, glossary=values[5])
                 else:
                     submission = (p, values, authorization, bound, document)
+            else:
+                check_visible_scope(saved_values)
             def translate():
                 nonlocal current_job
                 if submission is not None:
@@ -330,7 +346,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             report(str(exc), True)
 
     def choose_job(rows):
-        nonlocal current_job, document, source_ready, reviewed
+        nonlocal current_job, document, source_ready, reviewed, visible_job
         try:
             guard()
             chooser = wx.SingleChoiceDialog(dialog, 'Choose a saved approved translation. Its original scope and budget remain binding.',
@@ -342,6 +358,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
                 if chooser.ShowModal() == wx.ID_OK and 0 <= chooser.GetSelection() < len(rows):
                     guard()
                     job = rows[chooser.GetSelection()]
+                    visible_job = job
                     binding = job.get('source_binding')
                     document = (ReadingDocument(job['source_text'], title=job['title'], source_anchor=binding['anchor'])
                                 if binding else None)
@@ -376,10 +393,10 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
             report(str(exc), True)
 
     def new(event):
-        nonlocal current_job, reviewed, document
+        nonlocal current_job, reviewed, document, visible_job
         try:
             guard()
-            current_job = reviewed = None
+            current_job = reviewed = visible_job = None
             document = original_document
             selected.ChangeValue(document.source_text if document is not None else '')
             origin.ChangeValue(_origin(document))
@@ -400,6 +417,7 @@ def show_translation(frame, *, source_loader=None, source_guard=lambda: None, so
         try:
             guard()
             identity, values = current_job, visible_scope()
+            check_visible_scope(values, offline=True)
         except Exception as exc:
             report(str(exc), True)
             return

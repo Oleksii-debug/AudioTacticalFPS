@@ -162,9 +162,10 @@ with an explicit legacy integrity label rather than invented proof.
 
 Saved jobs restore the exact visible account, source, languages, glossary and
 budget. Reading that list runs in the existing worker. Changing the visible
-scope blocks resume before a provider request and export before any output is
-published. The selected scope is captured on the UI thread and the saved record
-is validated in the existing worker; Preview or New translation starts a new review. Missing/changed accounts block
+scope is rejected against the selected snapshot before queuing work or opening
+an export picker. That fast comparison grants no authority: the saved record and
+current account are checked again in the existing worker. Preview or New
+translation starts a new review. Missing/changed accounts block
 remote resume while preserving completed offline exports. The worker rereads the
 current profile before constructing a gateway and at existing remote-operation
 checks. Language discovery also checks the current account after queuing. Status
