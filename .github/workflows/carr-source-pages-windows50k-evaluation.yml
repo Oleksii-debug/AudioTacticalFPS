@@ -1,0 +1,180 @@
+name: CARR Windows 50000 retained source page follow-up
+on:
+  push:
+    branches: [carr/source-pages-windows50k-evaluation-20261127]
+    paths:
+      - carr-library/scripts/benchmark_semantic_cache.py
+      - carr-library/tests/search/test_source_page_benchmark.py
+      - .github/workflows/carr-source-pages-windows50k-evaluation.yml
+permissions:
+  contents: read
+concurrency:
+  group: carr-source-pages-windows50k-${{ github.sha }}
+  cancel-in-progress: false
+jobs:
+  measure:
+    name: Windows 50000 source pages / ${{ matrix.mode }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/carr/source-pages-windows50k-evaluation-20261127' }}
+    runs-on: windows-2022
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [source, installed]
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+      CARR_MEASUREMENT_MODE: ${{ matrix.mode }}
+      CARR_EXPECTED_HEAD: ${{ github.sha }}
+    steps:
+      - name: Preserve exact committed source bytes
+        working-directory: ${{ github.workspace }}
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+      - name: Install exact P4 application and record the separate prior trial
+        id: install
+        run: |
+          New-Item -ItemType Directory -Path measurement-evidence | Out-Null
+          $head = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $head -ne $env:CARR_EXPECTED_HEAD) { throw 'Checkout is not the tested head.' }
+          $sourceTree = (git rev-parse HEAD:carr-library/src).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sourceTree -ne '9e29c116a1db0644ff6a1a2ca4ed36a02e1f2e16') {
+            throw 'The follow-up must retain the exact reviewed P4 application source.'
+          }
+          $project = (git rev-parse HEAD:carr-library/pyproject.toml).Trim()
+          if ($LASTEXITCODE -ne 0 -or $project -ne '5e73dcc7fb68ea22fd7bbd2c65c4eb783badde6a') {
+            throw 'The follow-up must retain the exact reviewed package dependencies.'
+          }
+          $head | Set-Content measurement-evidence/tested-commit.txt
+          python -m pip install ".[test]"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip list --format=json | Set-Content measurement-evidence/installed-packages.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $prior = @{
+            prior_run=46059259121
+            prior_commit='8cb61be3dfd9be2447737dafacb428d850be774d'
+            prior_windows_source_job=140709243181
+            prior_windows_installed_job=140709243113
+            prior_50000_setup='incomplete at the original 600-second child resource bound'
+            prior_50000_windows_queries='NOT_RUN'
+            followup='new create-only corpus and output; original trial is not resumed or reclassified'
+            application_baseline='ae25ef5e585b2926a0ed3fcf7e45debd7d2b2acb'
+            build_seconds=1200
+            query_child_seconds=600
+            public_search_seconds=60
+            performance_acceptance='NOT_ASSESSED'
+          }
+          $prior | ConvertTo-Json | Set-Content -Encoding utf8 measurement-evidence/prior-trial.json
+      - name: Require exact installed Python inventory before either measurement mode
+        id: inventory
+        run: |
+          $proof = @'
+          import hashlib, json, platform, sys, sysconfig
+          from pathlib import Path
+          import carr_library
+          source = Path('src/carr_library').resolve(strict=True)
+          installed = Path(carr_library.__file__).resolve(strict=True).parent
+          purelib = Path(sysconfig.get_path('purelib')).resolve(strict=True)
+          assert installed.is_relative_to(purelib) and not installed.is_relative_to(source), installed
+          def inventory(root):
+              return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                      for path in root.rglob('*.py') if '__pycache__' not in path.parts}
+          expected, actual = inventory(source), inventory(installed)
+          assert expected and expected == actual, ('Installed application inventory mismatch',
+              sorted(set(expected) ^ set(actual)), [key for key in expected.keys() & actual.keys()
+              if expected[key] != actual[key]])
+          digest = hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+          print(json.dumps(dict(status='PASS', module_origin=str(installed),
+              python=sys.version, platform=platform.platform(), executable=sys.executable,
+              python_modules=len(expected), source_inventory_sha256=digest)))
+          '@
+          $proof | python -I -B -X utf8 - | Tee-Object measurement-evidence/application-source.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Require actual owned-child benchmark and admission regressions
+        id: contract
+        timeout-minutes: 10
+        run: |
+          $arguments = @('-B', '-m', 'pytest', '-q', '-o', 'addopts=', '-o', 'xfail_strict=true',
+            '--junitxml=measurement-evidence/benchmark-contract.xml', 'tests/search/test_source_page_benchmark.py')
+          if ($env:CARR_MEASUREMENT_MODE -eq 'installed') {
+            $arguments = @('-I') + $arguments + @('-o', 'pythonpath=', '--import-mode=importlib')
+          } else {
+            $arguments += @('-o', 'pythonpath=src')
+          }
+          & python @arguments 2>&1 | Tee-Object measurement-evidence/benchmark-contract.txt
+          $testExit = $LASTEXITCODE
+          python -I -B -c "import xml.etree.ElementTree as E; cases=list(E.parse('measurement-evidence/benchmark-contract.xml').getroot().iter('testcase')); assert cases and all(c.find('failure') is None and c.find('error') is None and c.find('skipped') is None for c in cases); print('BENCHMARK_CONTRACT_CASES_PASS',len(cases))"
+          if ($testExit -ne 0 -or $LASTEXITCODE -ne 0) { exit 1 }
+      - name: Measure new 50000-page corpus with setup-only 1200-second allowance
+        if: ${{ !cancelled() && steps.contract.outcome == 'success' }}
+        timeout-minutes: 45
+        run: |
+          $arguments = @('-I', '-B', '-X', 'utf8', 'scripts/benchmark_semantic_cache.py', '--source-pages',
+            '--output-dir', 'measurement-evidence/experiment-windows50000', '--sizes', '50000',
+            '--build-timeout', '1200', '--case-timeout', '600', '--search-timeout', '60',
+            '--hardware-label', ('windows-2022-' + $env:CARR_MEASUREMENT_MODE + '-setup-followup'))
+          if ($env:CARR_MEASUREMENT_MODE -eq 'installed') { $arguments += '--installed' }
+          & python @arguments 2>&1 | Tee-Object measurement-evidence/measurement.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Report bounded summaries without assigning performance acceptance
+        if: ${{ always() }}
+        run: |
+          $report = 'measurement-evidence/experiment-windows50000/source-pages.json'
+          if (Test-Path $report) {
+            $data = Get-Content -Raw -Encoding utf8 $report | ConvertFrom-Json
+            if ($data.execution_timeouts.build_seconds -ne 1200 -or
+                $data.execution_timeouts.query_child_seconds -ne 600 -or
+                $data.execution_timeouts.public_search_seconds -ne 60 -or
+                $data.claims.performance_acceptance -ne 'NOT_ASSESSED' -or
+                @($data.cases).Count -ne 1 -or $data.cases[0].source_pages -ne 50000) {
+              throw 'The follow-up did not preserve its exact measurement scope and allowances.'
+            }
+            $data | Select-Object outcome, environment, hardware_label, production_python_inventory_sha256, execution_timeouts, claims | ConvertTo-Json -Depth 8
+            foreach ($case in $data.cases) {
+              foreach ($measurement in $case.measurements) {
+                [pscustomobject]@{ pages=$case.source_pages; mode=$measurement.mode;
+                  corpus=$case.corpus.content_sha256; setup_seconds=$case.corpus.setup_seconds;
+                  first=$measurement.first_page; continuation=$measurement.continuation_pages;
+                  rss=$measurement.process_peak_rss_bytes; timeouts=$measurement.search_timeouts;
+                  complete_trials=$measurement.sampling_complete_trials } | ConvertTo-Json -Depth 8
+              }
+            }
+          } elseif (Test-Path 'measurement-evidence/experiment-windows50000/source-pages-incomplete.json') {
+            Get-Content -Raw -Encoding utf8 'measurement-evidence/experiment-windows50000/source-pages-incomplete.json'
+          }
+      - name: Preserve only public synthetic measurement receipts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-source-pages-windows50000-${{ matrix.mode }}-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/measurement-evidence/*.txt
+            carr-library/measurement-evidence/*.json
+            carr-library/measurement-evidence/*.xml
+            carr-library/measurement-evidence/experiment-windows50000/*.json
+            carr-library/measurement-evidence/experiment-windows50000/benchmark-harness.py
+            carr-library/measurement-evidence/experiment-windows50000/*/corpus.json
+            carr-library/measurement-evidence/experiment-windows50000/*/build.json
+            carr-library/measurement-evidence/experiment-windows50000/*/phrase.json
+            carr-library/measurement-evidence/experiment-windows50000/*/thematic.json
+          if-no-files-found: error
+          retention-days: 7
