@@ -497,3 +497,151 @@ def test_visible_control_during_writer_cleanup_keeps_exact_requested_outcome(
             worker.join(3)
     assert not writer_errors and not worker.is_alive() and not writer.is_alive()
     assert not broker.snapshot()['leases']
+
+
+def _actual_production_disk_controls(tmp_path, scan_seconds):
+    """Run the real nested controls over actual retained files and JSON signals."""
+    import ast
+    import inspect
+    from carr_library.audio import AudioError
+    from carr_library.studio import render
+
+    tree = ast.parse(inspect.getsource(render))
+    service = next(node for node in tree.body
+                   if isinstance(node, ast.ClassDef) and node.name == 'ProductionService')
+    run = next(node for node in service.body
+               if isinstance(node, ast.FunctionDef) and node.name == 'run')
+    declarations = {}
+    initial = []
+    for node in ast.walk(run):
+        if isinstance(node, ast.FunctionDef) and node.name in ('capacity', 'stopping', 'check'):
+            assert node.name not in declarations
+            declarations[node.name] = node
+        if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                and isinstance(node.targets[0], ast.Tuple)
+                and [getattr(item, 'id', None) for item in node.targets[0].elts]
+                    == ['last_disk_check', 'retained']):
+            initial.append(node)
+    assert set(declarations) == {'capacity', 'stopping', 'check'} and len(initial) == 1
+    factory = ast.parse(
+        'def bind(self, state, requested_stop):\n'
+        '    return capacity, stopping, check\n').body[0]
+    factory.body = [initial[0], *(declarations[name] for name in ('capacity', 'stopping', 'check')),
+                    factory.body[0]]
+    module = ast.fix_missing_locations(ast.Module(body=[factory], type_ignores=[]))
+
+    private, output = tmp_path / 'studio', tmp_path / 'output'
+    private.mkdir()
+    output.mkdir()
+    (private / 'cache.bin').write_bytes(b'abc')
+    (output / 'accepted.bin').write_bytes(b'defgh')
+    e = SimpleNamespace(root=private, destination=output, control=tmp_path / 'control.json',
+        total_disk_bytes=16, now=100.0, scans=[], polls=0, on_poll=None)
+    actual_scan = render._retained_bytes
+
+    def scanned(roots, cancelled):
+        e.scans.append(tuple(roots))
+        try:
+            return actual_scan(roots, cancelled)
+        finally:
+            # Model only traversal time; all paths, byte counts and cancellation
+            # reads are real. The rest of the process clock is untouched.
+            e.now += scan_seconds
+
+    def stopped():
+        from carr_library.durable_state import read_json
+        e.polls += 1
+        if e.on_poll is not None:
+            e.on_poll(e.polls)
+        return e.control.exists() and read_json(e.control)['action'] in ('pause', 'cancel')
+
+    namespace = dict(render.__dict__)
+    namespace.update(AudioError=AudioError, _retained_bytes=scanned,
+                     time=SimpleNamespace(monotonic=lambda: e.now))
+    exec(compile(module, inspect.getfile(render), 'exec'), namespace)
+    e.capacity, e.stopping, e.check = namespace['bind'](
+        e, {'destination': str(output)}, stopped)
+    return e
+
+
+@pytest.mark.parametrize('scan_seconds', [.25, 1.0])
+def test_slow_actual_disk_scan_interval_begins_after_completion(tmp_path, scan_seconds):
+    e = _actual_production_disk_controls(tmp_path, scan_seconds)
+    assert e.capacity(force=True) == 8
+    assert e.scans == [(e.root, e.destination)]
+    completed_at = e.now
+    for _ in range(8):
+        e.check()
+        assert not e.stopping()
+    assert e.now == completed_at and len(e.scans) == 1
+    e.now += .199
+    e.check()
+    assert len(e.scans) == 1
+    (e.root / 'later.bin').write_bytes(b'1234')
+    e.now += .002
+    e.check()
+    assert len(e.scans) == 2 and e.capacity() == 4
+    assert (e.root / 'cache.bin').read_bytes() == b'abc'
+    assert (e.destination / 'accepted.bin').read_bytes() == b'defgh'
+
+
+def test_forced_actual_disk_scan_sees_growth_without_waiting_for_interval(tmp_path):
+    from carr_library.audio import AudioError
+    e = _actual_production_disk_controls(tmp_path, 1.0)
+    assert e.capacity(force=True) == 8
+    (e.destination / 'new.bin').write_bytes(b'12')
+    assert e.capacity(force=True) == 6
+    assert len(e.scans) == 2
+    (e.root / 'external.bin').write_bytes(b'12345678')
+    with pytest.raises(AudioError, match='total production disk budget'):
+        e.capacity(force=True)
+    assert len(e.scans) == 3
+    assert (e.root / 'external.bin').read_bytes() == b'12345678'
+    e.total_disk_bytes = 24
+    assert e.capacity(force=True) == 6 and len(e.scans) == 4
+    # Even between scans, a proposed copy must fit the last measured allowance.
+    with pytest.raises(AudioError, match='total production disk budget'):
+        e.capacity(7)
+    assert len(e.scans) == 4
+
+
+@pytest.mark.parametrize('action', ['pause', 'cancel'])
+def test_fresh_durable_stop_is_observed_between_disk_scans(tmp_path, action):
+    e = _actual_production_disk_controls(tmp_path, 1.0)
+    assert e.capacity(force=True) == 8
+    before = e.polls
+    atomic_json(e.control, {'action': action})
+    assert e.stopping()
+    with pytest.raises(InterruptedError, match='paused or cancelled'):
+        e.check()
+    assert e.polls > before and len(e.scans) == 1
+    assert (e.root / 'cache.bin').read_bytes() == b'abc'
+    assert (e.destination / 'accepted.bin').read_bytes() == b'defgh'
+
+
+def test_actual_disk_scan_still_checks_stop_between_entries_and_retries(tmp_path):
+    e = _actual_production_disk_controls(tmp_path, .5)
+    assert e.capacity(force=True) == 8
+    trigger = e.polls + 2
+    def stop_during_scan(count):
+        if count == trigger:
+            atomic_json(e.control, {'action': 'pause'})
+    e.on_poll = stop_during_scan
+    with pytest.raises(InterruptedError, match='disk accounting cancelled'):
+        e.capacity(force=True)
+    assert e.polls == trigger and len(e.scans) == 2
+    e.on_poll = None
+    e.control.unlink()
+    assert e.capacity(force=True) == 8 and len(e.scans) == 3
+    assert (e.root / 'cache.bin').read_bytes() == b'abc'
+    assert (e.destination / 'accepted.bin').read_bytes() == b'defgh'
+
+
+def test_post_generation_actual_accounting_keeps_explicit_ignore_stop_scope(tmp_path):
+    e = _actual_production_disk_controls(tmp_path, 1.0)
+    atomic_json(e.control, {'action': 'pause'})
+    assert e.capacity(force=True, honor_cancel=False) == 8
+    assert not e.polls and len(e.scans) == 1
+    with pytest.raises(InterruptedError, match='paused or cancelled'):
+        e.check()
+    assert e.polls == 1 and len(e.scans) == 1

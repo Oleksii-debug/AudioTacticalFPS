@@ -619,7 +619,9 @@ class ProductionService:
                 if force or now - last_disk_check >= .2:
                     retained = _retained_bytes((self.root, Path(state['destination'])),
                                                requested_stop if honor_cancel else lambda: False)
-                    last_disk_check = now
+                    # Space sampling is periodic between mandatory forced scans.
+                    # A slow traversal must not consume its own quiet interval.
+                    last_disk_check = time.monotonic()
                 if retained + additional > self.total_disk_bytes:
                     raise AudioError('The total production disk budget would be exceeded. '
                                      'Increase total_disk_bytes to resume; completed files are retained.')
