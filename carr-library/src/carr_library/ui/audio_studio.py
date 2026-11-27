@@ -18,7 +18,7 @@ from uuid import uuid4
 from ..reader.narration_text import NarrationDraft, decode_json, read_document, text_digest
 from ..research.export_file import write_export, capture_export_destination, _destination, _filename
 from .export_destination import approve_export_destination
-from ..audio.jobs import checked_directory, publish_noreplace
+from ..audio.jobs import RenderCancelled, checked_directory, publish_noreplace
 from ..audio.runtime import resolve_ffmpeg
 from ..audio.managed import ManagedProjects
 
@@ -1022,10 +1022,14 @@ class AudioStudioDialog:
         self.cancel_button.Enable()
         self._message(label)
         progress = getattr(self, 'operation_progress', None)
-        token = None
+        token, reporter = None, None
         try:
             if progress is not None:
                 token = progress.start(label, unit='steps').token
+                from ..progress import ProgressReporter
+                candidate = getattr(progress, 'reporter', None)
+                if isinstance(candidate, ProgressReporter) and candidate.operation_id == token:
+                    reporter = candidate
         except Exception:
             # Progress observes the operation; a detached observer cannot reject it.
             progress = None
@@ -1033,7 +1037,7 @@ class AudioStudioDialog:
         def report_failure(error):
             if progress is not None:
                 try:
-                    if isinstance(error, InterruptedError):
+                    if isinstance(error, (InterruptedError, RenderCancelled)):
                         progress.cancel(str(error), token=token)
                     else:
                         progress.fail(error, token=token)
@@ -1057,8 +1061,26 @@ class AudioStudioDialog:
             return
 
         def complete(completed):
+            # This future still belongs to its captured task, even if the
+            # dialog or presenter disappears before wx delivers the callback.
+            stopped = self.cancelled.is_set()
             def apply():
                 if self.closed or getattr(self, '_job_token', None) is not job_token:
+                    if reporter is not None:
+                        try:
+                            if not reporter.event.terminal:
+                                try:
+                                    result = completed.result()
+                                except Exception as exc:
+                                    if isinstance(exc, (InterruptedError, RenderCancelled)):
+                                        reporter.cancel(str(exc))
+                                    else:
+                                        reporter.fail(exc)
+                                else:
+                                    from ..progress import finish_result
+                                    finish_result(reporter, result, cancelled=stopped)
+                        except Exception:
+                            pass  # A detached observer cannot replace a real result.
                     return
                 self.busy = False
                 for control in self.controls:

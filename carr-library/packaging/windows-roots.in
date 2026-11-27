@@ -10,3 +10,4 @@ pylatexenc==2.11
 quickjs-ng==0.18.0.2
 wxPython==4.2.4
 cryptography==50.0.2
+pywin32==312

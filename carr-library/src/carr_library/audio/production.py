@@ -47,7 +47,10 @@ duration is optional (remaining source). Pan is -1 to 1; gain is -60 to +12 dB.
 Up to 32 local PCM WAV/RF64 clips per chapter. Ambience/music duck under foreground.
 
 Plain lines use Narrator. Put local PCM WAV effects in the project's assets
-folder. Use [music off] for a dry scene. Supported role settings: voice,
+folder. Use [music off] for a dry scene. Music accepts optional key=F# (the
+finite C, C#, D, D#, E, F, F#, G, G#, A, A#, B tonics); without it the existing
+mood-selected C major/A minor remains. Hopeful is a supported major mood.
+Supported role settings: voice,
 language, pan (-1 to 1, left/center/right), rate (-10 to 10), pitch (-10 to
 10), volume (0 to 1). Unsupported voice controls fail explicitly.
 [effect Narrator highpass frequency=80]
@@ -173,7 +176,7 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
                     if parts[1:] == ['off']:
                         music = None
                     else:
-                        p = _options(parts[1:], ('mood', 'tempo', 'gain', 'seed', 'engine', 'model_manifest'))
+                        p = _options(parts[1:], ('mood', 'tempo', 'gain', 'seed', 'engine', 'model_manifest', 'key'))
                         for key in ('tempo', 'seed'):
                             if key in p:
                                 p[key] = int(p[key])
@@ -829,7 +832,7 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                 if scene.music is not None:
                     from .music import generate_music
                     cue = scene.music
-                    settings = {'kind': 'music', 'cue': asdict(cue), 'rate': plan.sample_rate,
+                    settings = {'kind': 'music', 'cue': cue.to_dict(), 'rate': plan.sample_rate,
                         'frames': scene_frames, 'processor': processor, 'composer': composer_identity,
                         'model': music_identities.get(cue.model_manifest)}
                     music_key = digest({'pipeline_version': PIPELINE_VERSION, **settings})
@@ -867,13 +870,14 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                                 mood=cue.mood, tempo=cue.tempo, seed=cue.seed, engine=cue.engine,
                                 gain=0.35, sample_rate=plan.sample_rate, cancelled=cancelled,
                                 manifest=selected_model, on_status=on_status,
-                                max_output_bytes=max(1, plan.disk_budget_bytes - cache.used))
+                                max_output_bytes=max(1, plan.disk_budget_bytes - cache.used),
+                                **({'key': cue.key} if cue.key is not None else {}))
                         publish_new(generated, path, cancelled=cancelled)
                         for suffix in companions:
                             publish_new(generated.with_suffix(suffix), path.with_suffix(suffix), cancelled=cancelled)
 
                     music_file, music_info = cached(settings, create_music,
-                        provenance={'kind': 'generated_music', 'method': cue.engine, 'cue': asdict(cue),
+                        provenance={'kind': 'generated_music', 'method': cue.engine, 'cue': cue.to_dict(),
                                     'model': music_identities.get(cue.model_manifest)},
                         estimate=scene_frames * 6 + 80, companions=companions)
                     music_companions.append((scene_index + 1, music_info))

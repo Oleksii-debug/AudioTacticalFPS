@@ -1,0 +1,89 @@
+{
+  "schema": 1,
+  "scope": "Canonical serviced PowerShell compatibility-host admission through the existing SAPI5Engine",
+  "base_commit": "ac186ce5188f63b06f46886ce39b6225382c39b6",
+  "base_tree": "168071ffd8185c2d540b6f4b5d50ebdf7e7d381a",
+  "canonical_commit": "a44fac04072389caa40e0d6e799b13797712f797",
+  "canonical_sources": [
+    {
+      "path": "carr-library/src/carr_library/speech/_io.py",
+      "blob": "4024e11d9823a3af0da4fce7dfbe89420ff97782",
+      "contract": "Actual Windows directory; exact architecture-specific System32/SysWOW64 host; only the admitted system host receives the servicing hardlink exception."
+    },
+    {
+      "path": "carr-library/src/carr_library/speech/runtime.py",
+      "blob": "e913c96b3646b17db3d64864e97a3a779307d041",
+      "contract": "SAPI provider obtains its process host through that narrow admission."
+    },
+    {
+      "path": "carr-library/tests/studio/test_production_hardening.py",
+      "blob": "79fda93171f594bb0554a6a48096201c1c734d4d",
+      "contract": "Exact serviced host permitted, foreign/wrong-architecture/hardlink alias refused. Other production contracts remain independently mapped."
+    }
+  ],
+  "changes": [
+    "Only compatibility SAPI host selection moves from an environment-derived arbitrary local executable to the exact actual Windows-directory host.",
+    "GetSystemWindowsDirectoryW selects the shared OS directory even where GetWindowsDirectoryW could return a per-user Terminal Services directory. No environment fallback.",
+    "Explicit architecture is typed before OS lookup. sapi5 maps to System32; sapi5-32 maps to SysWOW64. Existing saved voice identifiers and cache serialization remain unchanged.",
+    "Every compatibility request rechecks the exact host path and current local path/link/reparse rules after cooperative cancellation and before the existing owned process runner.",
+    "Default native discovery stays passive for unselected 32-bit voices. Explicit saved selection constructs the same current compatibility adapter without a second process owner.",
+    "NativeSAPI5Engine, its fixed COM worker/PCM rate/cache fields, the existing process owner, and general local model/FFmpeg asset admission are unchanged.",
+    "Three existing synthetic protocol fixture modules now explicitly patch only the compatibility host seam. The existing actual installed Windows SAPI test remains unpatched."
+  ],
+  "policy_distinctions": [
+    "The canonical general speech._io.local_file blanket hardlink prohibition is not copied into current general model_manifest.local_path, audio.engines._binary or audio.jobs.regular_file. Their existing verified-input and asset policies remain separate and unchanged.",
+    "The three added native checks inspect actual system host paths and admission without executing PowerShell, enumerating a 32-bit voice registry, or qualifying 32-bit synthesis.",
+    "The supported Windows qualification is the existing 64-bit installed application/runner. No 32-bit application bundle, alternative Windows layout, voice quality, model or physical playback claim."
+  ],
+  "primary_api_sources": [
+    "https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getsystemwindowsdirectoryw",
+    "https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getwindowsdirectoryw"
+  ],
+  "tests": {
+    "tests/audio/test_sapi_host_admission.py": {
+      "test_serviced_hardlink_is_allowed_only_at_selected_system_host": 2,
+      "test_foreign_or_wrong_architecture_path_is_never_a_system_host": 8,
+      "test_linked_system_host_is_rejected_before_execution": 3,
+      "test_unavailable_system_host_is_refused": 2,
+      "test_architecture_is_typed_before_windows_lookup": 5,
+      "test_default_and_lazy_selection_ignore_spoofed_systemroot": 1,
+      "test_host_path_is_checked_again_before_each_request": 1,
+      "test_cancelled_request_never_resolves_a_host_or_launches": 1,
+      "test_windows_directory_uses_fixed_native_api": 1,
+      "test_invalid_native_windows_directory_is_refused": 6,
+      "test_nonwindows_never_resolves_environment_host": 1,
+      "test_unknown_sapi_identity_is_rejected_before_host_lookup": 3
+    }
+  },
+  "new_cases": 34,
+  "previous_focused_cases": 75,
+  "focused_source_cases": 109,
+  "focused_installed_cases": 109,
+  "existing_test_population_unchanged": [
+    "tests/audio/test_native_sapi.py",
+    "tests/audio/test_engines.py",
+    "tests/audio/test_engine_boundaries.py"
+  ],
+  "new_native_labels": [
+    "actual compatibility hosts use the shared Windows directory and distinct architectures",
+    "spoofed SystemRoot cannot redirect selected saved compatibility voice",
+    "wrong-architecture compatibility host is refused before any process"
+  ],
+  "native_checks": 38,
+  "previous_native_checks": 35,
+  "workflow": ".github/workflows/carr-native-sapi.yml",
+  "workflow_timeout_minutes": 75,
+  "native_watchdog_seconds": 240,
+  "status": "SOURCE_AUTHORED_NOT_EXECUTED",
+  "validation": {
+    "executor": "UNAVAILABLE",
+    "source": "NOT_RUN",
+    "installed": "NOT_RUN",
+    "actual_native": "NOT_RUN",
+    "review": "PENDING_INDEPENDENT_REVIEW",
+    "frozen_prior_run": 46039343585,
+    "prior_run_source": "fcc57dd0ef016e7743b7005a4273c5d6612951ac",
+    "prior_run_population": "75/75/35; never relabel as this successor"
+  },
+  "main_workflow_owner": "Root composes only the new 34-case selector/Counter and the three native labels; no frozen workflow refs are changed by this component."
+}

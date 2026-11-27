@@ -32,6 +32,10 @@
       {
         "name": "carr:sync-additions",
         "value": "cryptography 50.0.2, cffi 2.1.1, pycparser 3.12; Windows CPython 3.11 graph exported offline by uv 0.13.9; SHA256 and license expressions verified from the admitted wheels; prior inventory retained"
+      },
+      {
+        "name": "carr:desktop-com-composition",
+        "value": "Adds only the already reviewed Windows CPython 3.11 x64 pywin32 312 wheel and its exact SHA256, source reference and upstream license record from the integrated profile. Required by the current desktop feature. All prior component records and graph edges are retained; no new uv resolver run or new license clearance is claimed."
       }
     ]
   },
@@ -813,6 +817,36 @@
           }
         }
       ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pywin32@312",
+      "name": "pywin32",
+      "version": "312",
+      "purl": "pkg:pypi/pywin32@312",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "name": "Mixed upstream licences; retain all wheel License-File metadata and licence files"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://pypi.org/project/pywin32/312/"
+        },
+        {
+          "type": "vcs",
+          "url": "https://github.com/mhammond/pywin32/tree/2a277cb5552756c2b4d42b524dc36d25e0bb6354"
+        }
+      ]
     }
   ],
   "dependencies": [
@@ -1090,7 +1124,8 @@
         "carr-academic-bibtexparser@2.1.0",
         "carr-academic-pylatexenc@2.11",
         "carr-academic-quickjs-ng@0.18.0.2",
-        "cryptography-3@50.0.2"
+        "cryptography-3@50.0.2",
+        "pywin32@312"
       ]
     },
     {
@@ -1131,6 +1166,9 @@
     },
     {
       "ref": "pycparser-4@3.12"
+    },
+    {
+      "ref": "pywin32@312"
     }
   ]
 }

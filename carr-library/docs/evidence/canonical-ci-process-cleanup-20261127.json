@@ -1,0 +1,158 @@
+{
+  "schema": 1,
+  "scope": "Restore required-suite descendant ownership and cleanup verdict ordering using the current Windows job launcher",
+  "base_commit": "e0ff956cafe5105d4b930aad53fe354b73e9fd4a",
+  "base_tree": "5ad74d1d1ae625feb4580021586825e3a853f65a",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+  "canonical_sources": [
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "blob": "075f493052b367b243bb48279a7523d16bf744ab"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "blob": "ea6f6605a7805011097d8b97c93fd22f3528d2ce"
+    }
+  ],
+  "prior_current": [
+    {
+      "path": "carr-library/scripts/ci_check.py",
+      "blob": "430f96b37b7e4e7af993ec8a7c0314306cc7d689"
+    },
+    {
+      "path": "carr-library/tests/packaging/test_ci_check.py",
+      "blob": "8e68a86ea74507d5a85a4cfd32543023129dd460"
+    }
+  ],
+  "reused_owner": {
+    "path": "carr-library/src/carr_library/audio/windows_process.py",
+    "blob": "2dd7caa0300fe9a9c28583cdc0cdd25867c45c92",
+    "unchanged": true,
+    "loading": "Exact checkout-relative file through importlib; no application import fallback or PATH authority."
+  },
+  "changes": [
+    "The current richer child network policy, watchdog, anti-XFAIL/XPASS policy, strict reporting, allowlisted numeric loopback fixtures, and per-suite time limits remain unchanged.",
+    "Each Windows pytest suite uses the existing WindowsJobProcess, assigned to its job before the initial thread resumes. The CI wrapper terminates and observes the complete owned job empty before releasing its handles and report files.",
+    "POSIX suites retain a private process group; after SIGKILL and leader reaping, the same bounded group-quiescence algorithm as current ingest.worker confirms no live member before report cleanup. Linux zombie-only groups are quiescent; ambiguous, hidden or oversized process inventories are not accepted.",
+    "Five cleanup attempts retry PermissionError only, with four 50 ms delays. Persistent errors produce failed named suites and preserve an original timeout as well.",
+    "PASS is printed only after process settlement and private-report cleanup. Unconfirmed process ownership retains its exact process and temporary directory instead of deleting potentially live files or reporting success.",
+    "Existing copied-runner fixtures now include the same unchanged Windows owner source. Relocated PYTEST_CHILD/watchdog isolation fixtures remain unchanged."
+  ],
+  "new_test_counter": {
+    "test_transient_report_cleanup_permission_error_is_retried_before_pass": 1,
+    "test_persistent_report_cleanup_permission_error_is_named_and_never_passes": 1,
+    "test_report_cleanup_permission_error_preserves_original_timeout": 1,
+    "test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed": 1,
+    "test_posix_settlement_waits_for_owned_descendant_confirmation": 1
+  },
+  "previous_test_cases": 43,
+  "test_cases": 48,
+  "fixture_parameter_multipliers": 1,
+  "test_scope": {
+    "actual_descendant": "The fourth restored case starts a real pytest child and grandchild holding a file, acknowledges startup, imposes a short wait deadline, requires full family termination, verifies temporary directories are removed, and continues a second independent passing suite while retaining the overall FAIL.",
+    "cleanup_errors": "Three controlled TemporaryDirectory cleanup failures verify transient retry, persistent failure, and simultaneous timeout plus cleanup error without a PASS line.",
+    "platforms": "Authored for actual Windows Job Objects and POSIX process groups; neither has been run in this session."
+  },
+  "status": "SOURCE_AUTHORED_NOT_EXECUTED",
+  "validation": {
+    "executor": "UNAVAILABLE",
+    "source_tests": "NOT_RUN",
+    "windows_job_descendants": "NOT_RUN",
+    "posix_descendants": "NOT_RUN",
+    "independent_review": "SOURCE_GO_4ae728; no runtime execution claim"
+  },
+  "remaining_shared_test_audit": "Separate native-launcher/historical-source/audio-bundle/forked-resource test disposition remains in progress; this component makes no equivalence claim for those paths.",
+  "previous_checkpoint": "cf9abf0fba17b1a914ca49ad4e5b94a989e9636d",
+  "posix_quiescence_provenance": {
+    "path": "carr-library/src/carr_library/ingest/worker.py",
+    "blob": "22ea65b3ed5b6c218cd660d15b78e90aa05de338",
+    "function": "_posix_group_quiescent",
+    "algorithm": "Identical bounded 100000-entry /proc observation and 4096-byte same-PGID stat validation; only redundant local sys import omitted.",
+    "deadline_seconds": 2
+  },
+  "review_correction": "Independent review found the predecessor's leader-only POSIX wait insufficient; this successor confirms the full owned group and adds one delayed-descendant regression. Predecessor is not final qualification.",
+  "test_counter": {
+    "tests/packaging/test_ci_check.py": {
+      "test_pass": 1,
+      "test_normal_fatal_handler_stays_enabled_without_scheduled_tracebacks": 1,
+      "test_offline_gate_blocks_connections_and_name_resolution": 1,
+      "test_failure_not_green": 1,
+      "test_empty_not_green": 1,
+      "test_skipped_not_green": 1,
+      "test_missing_suite_not_hidden_by_passing_suite": 1,
+      "test_inherited_pytest_addopts_cannot_turn_failure_green": 1,
+      "test_outside_tree_rejected": 1,
+      "test_explicit_nonstrict_xpass_not_green": 1,
+      "test_xfail_not_green": 1,
+      "test_mixed_pass_xpass_not_green": 1,
+      "test_inactive_xfail_marker_allows_pass": 1,
+      "test_parallel_workers_are_real_independent_processes": 1,
+      "test_parallel_missing_suite_cannot_hide_passing_suite": 1,
+      "test_parallel_skips_remain_failed_required_suites": 1,
+      "test_parallel_failures_remain_failed_required_suites": 1,
+      "test_worker_limit_is_explicit_and_bounded": 1,
+      "test_numeric_loopback_requires_the_explicit_fixture_path": 1,
+      "test_numeric_loopback_rejects_directory_and_lexical_aliases": 1,
+      "test_inherited_loopback_environment_does_not_change_default_offline_policy": 1,
+      "test_explicit_numeric_loopback_uses_real_tcp_but_refuses_external_names_and_bindings": 1,
+      "test_transient_report_cleanup_permission_error_is_retried_before_pass": 1,
+      "test_persistent_report_cleanup_permission_error_is_named_and_never_passes": 1,
+      "test_report_cleanup_permission_error_preserves_original_timeout": 1,
+      "test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed": 1,
+      "test_isolated_replay_loads_exact_sibling_helper_without_checkout_imports": 1,
+      "test_missing_exact_helper_cannot_fall_back_to_working_directory": 1,
+      "test_normal_fatal_handler_stays_enabled_and_old_dump_option_cannot_win": 1,
+      "test_progress_and_deliberate_optional_skip_are_preserved": 1,
+      "test_inherited_addopts_cannot_turn_failure_into_collection_success": 1,
+      "test_configured_addopts_cannot_replace_execution": 1,
+      "test_inherited_plugin_selection_is_not_loaded": 1,
+      "test_xfail_and_explicit_nonstrict_xpass_cannot_be_green": 1,
+      "test_inactive_xfail_marker_allows_a_real_pass": 1,
+      "test_collection_only_cannot_claim_execution": 1,
+      "test_all_enabled_requested_long_cases_must_pass": 1,
+      "test_missing_enabled_long_case_is_not_hidden_by_other_passes": 1,
+      "test_skipped_enabled_long_case_is_not_hidden_by_other_passes": 1,
+      "test_explicit_deselection_cannot_hide_requested_long_case": 1,
+      "test_required_selection_binds_native_paths_and_exact_parameter_cases": 1,
+      "test_real_short_timer_observes_an_active_child_without_private_data": 1,
+      "test_completed_case_cancels_its_real_timer": 1,
+      "test_stale_snapshot_and_old_finish_cannot_affect_the_new_case": 1,
+      "test_session_close_suppresses_an_inflight_snapshot": 1,
+      "test_diagnostic_capture_and_write_errors_do_not_raise_or_print_data": 1,
+      "test_disabling_scheduled_dump_keeps_arguments_and_end_of_options": 1,
+      "test_posix_settlement_waits_for_owned_descendant_confirmation": 1
+    }
+  },
+  "observed_followups": {
+    "main_source_commit": "7959f6a9fb37b315dec18b4d310b8480d9bb94e5",
+    "job_id": 140624345878,
+    "loopback": {
+      "affected_functions": [
+        "test_numeric_loopback_requires_the_explicit_fixture_path",
+        "test_numeric_loopback_rejects_directory_and_lexical_aliases"
+      ],
+      "failure": "Two retained assertions expected the old local-planning-only diagnostic while the reviewed policy names both exact planning and translation HTTP fixtures.",
+      "repair": "Match the exact authorized diagnostic; selectors, negative paths, process exit and network policy are unchanged.",
+      "cases": 48
+    },
+    "duration": {
+      "selector": "tests/audio/test_book_duration.py",
+      "required_cases": 51,
+      "observed_case_starts": 34,
+      "previous_suite_seconds": 600,
+      "reviewed_suite_seconds": 1200,
+      "all_ten_real_codec_cases_completed": true,
+      "first_case_start_utc": "2026-11-27T18:03:39.5477559Z",
+      "last_case_start_utc": "2026-11-27T18:13:22.7026813Z",
+      "timeout_utc": "2026-11-27T18:13:38.8717087Z",
+      "per_case_watchdog": "UNCHANGED",
+      "post_repair_runtime": "NOT_RUN"
+    }
+  },
+  "installed_copy_contract": {
+    "source_staging": false,
+    "override": "Before first run_suite call, the trusted installed qualification caller may assign WINDOWS_OWNER to the imported installed carr_library.audio.windows_process.__file__ after checking installed root and exact SHA256 against the source-bound wheel/checkout. Record and recheck this identity afterward.",
+    "default": "Exact current checkout helper; no discovery or PATH fallback."
+  }
+}

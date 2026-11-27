@@ -107,3 +107,17 @@ def test_installer_rejects_extra_and_unannounced_audio_payloads(bundle):
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match='unannounced audio'):
         bundle[1].verify(output)
+
+
+@pytest.mark.parametrize('source', ['audio', 'wheelhouse'])
+def test_audio_bundle_output_never_mutates_an_admitted_input_tree(bundle, source):
+    builder, _, app, wheels, lock, audio, _ = bundle
+    selected = audio if source == 'audio' else wheels
+    output = selected / 'nested-output'
+    before = {p.relative_to(selected).as_posix(): p.read_bytes()
+              for p in selected.rglob('*') if p.is_file()}
+    with pytest.raises(ValueError, match='outside all input directories'):
+        builder.build_bundle(app, wheels, lock, output, audio_dir=audio)
+    assert not output.exists()
+    assert before == {p.relative_to(selected).as_posix(): p.read_bytes()
+                      for p in selected.rglob('*') if p.is_file()}

@@ -930,7 +930,9 @@
       "carr_library.reader.live_playback",
       "carr_library.ui.live_reading",
       "carr_library.library_backup",
-      "carr_library.__main__"
+      "carr_library.__main__",
+      "carr_library.audio.recording_process",
+      "carr_library.audio.cleanup"
     ],
     "probe_modules": [
       "carr_library.audio.engines",
@@ -943,7 +945,9 @@
       "carr_library.reader.live_playback",
       "carr_library.ui.live_reading",
       "carr_library.library_backup",
-      "carr_library.__main__"
+      "carr_library.__main__",
+      "carr_library.audio.recording_process",
+      "carr_library.audio.cleanup"
     ],
     "checks": {
       "actual Windows native reader controls": 1,
@@ -980,7 +984,10 @@
       "native prepare event handled": 1,
       "native stop event handled": 1,
       "native restore cursor event handled": 1,
-      "native close event handled": 1
+      "native close event handled": 1,
+      "actual compatibility hosts use the shared Windows directory and distinct architectures": 1,
+      "spoofed SystemRoot cannot redirect selected saved compatibility voice": 1,
+      "wrong-architecture compatibility host is refused before any process": 1
     },
     "fields": {
       "status": "PASS",
@@ -992,7 +999,9 @@
       "com_client": "pywin32",
       "com_client_version": "312",
       "private_entrypoint": "EXECUTED",
-      "native_cancellation": "OBSERVED"
+      "native_cancellation": "OBSERVED",
+      "compatibility_host_admission": "PASSIVE_ACTUAL_PATH_CHECKS",
+      "owned_descendant_shutdown": "ACTUAL_FILE_RELEASE_OBSERVED"
     },
     "exact_metrics": {
       "saved_cursor": 0,

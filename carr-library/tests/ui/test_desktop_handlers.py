@@ -10,6 +10,7 @@ from unittest.mock import Mock
 
 import pytest
 
+import carr_library
 from carr_library.citations.anchors import Identity, Locator, Metadata, make_anchor, format_citation
 from carr_library.application import LibraryApp
 from carr_library.catalog.read_views import active_collections
@@ -33,7 +34,7 @@ class BaseFrame:
 
 @pytest.fixture
 def classes():
-    source = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/desktop_app.py'
+    source = Path(carr_library.__file__).resolve().parent / 'ui' / 'desktop_app.py'
     parsed = ast.parse(source.read_text(encoding='utf-8'))
     nodes = [node for node in parsed.body if isinstance(node,(ast.ClassDef,ast.FunctionDef)) and
              node.name in {'DesktopFrame','DesktopSearchPanel','format_topic_results'}]
@@ -157,6 +158,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     from carr_library.ui.engine_settings import install_engine_settings_actions
     from carr_library.ui.operations_dialog import install_operations_actions
     from carr_library.ui.reading_import import install_reading_import_actions
+    from carr_library.ui.media_overlay_dialog import install_media_overlay_actions
+    from carr_library.ui.playback_queue import install_playback_queue_actions
+    from carr_library.ui.translation_scope_dialog import install_translation_scope_actions
     real_installers = {
         'install_trust_actions': Mock(wraps=install_trust_actions),
         'install_audio_studio_actions': Mock(wraps=install_audio_studio_actions),
@@ -168,6 +172,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_engine_settings_actions': Mock(wraps=install_engine_settings_actions),
         'install_operations_actions': Mock(wraps=install_operations_actions),
         'install_reading_import_actions': Mock(wraps=install_reading_import_actions),
+        'install_media_overlay_actions': Mock(wraps=install_media_overlay_actions),
+        'install_playback_queue_actions': Mock(wraps=install_playback_queue_actions),
+        'install_translation_scope_actions': Mock(wraps=install_translation_scope_actions),
     }
     env.update(real_installers)
     monkeypatch.setitem(sys.modules, 'wx', env['wx'])
@@ -187,6 +194,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'AI and API &connections...' in labels
     assert labels.count('Local assistant...\tCtrl+Alt+J') == 1
     assert labels.count('Translate selected te&xt...') == 1
+    assert labels.count('Read synchronized EPUB or DAISY...') == 1
+    assert labels.count('Saved playback queue...') == 1
+    assert labels.count('Translate documents, &chapters or batch...') == 1
     assert labels.count('Convert documents to reading text...') == 1
     assert labels.count('Reading conversion formats and limits...') == 1
     assert labels.count('Local engine &profiles...') == 1
@@ -196,10 +206,12 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert {spec.command_id for spec, _ in value._pending_keyboard_commands} >= {
         'audio.recording', 'translation.text', 'conversion.documents', 'conversion.formats',
         'engines.local', 'operations.tasks',
-        'reading.import_legacy_copy', 'reading.open_legacy_history', 'delivery.trust_status'}
+        'reading.import_legacy_copy', 'reading.open_legacy_history', 'delivery.trust_status',
+        'reading.publication', 'audio.saved_queue', 'translation.scope'}
     assert 'Documents' not in menus
     tools_labels = {item.title for item in menus['&Tools'].items if item.title is not None}
     assert tools_labels == {'Local assistant...\tCtrl+Alt+J', 'Translate selected te&xt...',
+                            'Translate documents, &chapters or batch...',
                             'Convert documents to reading text...',
                             'Reading conversion formats and limits...',
                             'Local engine &profiles...', 'Tasks and &resources...',
@@ -334,6 +346,9 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('engine_settings', 'install_engine_settings_actions'),
                 ('operations_dialog', 'install_operations_actions'),
                 ('reading_import', 'install_reading_import_actions'),
+                ('media_overlay_dialog', 'install_media_overlay_actions'),
+                ('playback_queue', 'install_playback_queue_actions'),
+                ('translation_scope_dialog', 'install_translation_scope_actions'),
                 ('trust_status', 'install_trust_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
@@ -377,7 +392,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 for binding in collect_commands(value.menu_bar)] == before_trust_items
         for command in ('translation.text', 'conversion.documents', 'conversion.formats',
                         'engines.local', 'operations.tasks',
-                        'reading.import_legacy_copy', 'reading.open_legacy_history'):
+                        'reading.import_legacy_copy', 'reading.open_legacy_history',
+                        'reading.publication', 'audio.saved_queue', 'translation.scope'):
             assert command in keyboard.bindings
         assert bindings.get('Tools/Local assistant') == 'Ctrl+Alt+J'
         assert 'Options/Keyboard shortcuts' in bindings
@@ -398,7 +414,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         tool_items = {item.GetId() for item in tools.GetMenuItems() if not item.IsSeparator()}
         for command in ('translation.text', 'conversion.documents', 'conversion.formats',
                         'engines.local', 'operations.tasks',
-                        'reading.import_legacy_copy', 'reading.open_legacy_history'):
+                        'reading.import_legacy_copy', 'reading.open_legacy_history', 'translation.scope'):
             assert keyboard.bindings[command].item.GetId() in tool_items
         assert not hasattr(value, 'keyboard_actions')
     finally:
@@ -1137,3 +1153,38 @@ def test_old_library_job_callback_cannot_touch_new_window_state(classes, tmp_pat
     assert received == []
     value.report.assert_not_called()
     value.cancel_button.Disable.assert_not_called()
+
+
+def test_folder_switch_during_work_never_rebinds_current_job(classes,tmp_path):
+    f = frame(classes)
+    f.working = True
+    original = f.library = Mock()
+    f._confirm, f._drop, f.remember_data_dir = Mock(), Mock(), Mock()
+    with pytest.raises(RuntimeError, match='current operation'):
+        f._open_data_root(tmp_path)
+    assert f.library is original
+    f._confirm.assert_not_called()
+    f._drop.assert_not_called()
+    f.remember_data_dir.assert_not_called()
+
+
+def test_cancelled_import_summary_keeps_all_selected_files_in_the_total(classes, monkeypatch):
+    f = frame(classes)
+    f.library, f.run_job = Mock(), Mock()
+    f._workspace = lambda: 'library'
+    monkeypatch.setitem(sys.modules, 'carr_library.ui.ocr_options',
+                        SimpleNamespace(choose_ocr_config=lambda *args: object()))
+    wx = classes[0]['wx']
+    wx.FD_OPEN, wx.FD_FILE_MUST_EXIST, wx.FD_MULTIPLE = 1, 2, 4
+    chooser = Mock()
+    chooser.ShowModal.return_value = wx.ID_OK
+    chooser.GetPaths.return_value = ['first.txt', 'second.txt', 'third.txt']
+    wx.FileDialog = Mock(return_value=chooser)
+    f.import_books(None)
+    done = f.run_job.call_args.args[2]
+    done(({'file': 'first.txt', 'state': 'complete'},
+          {'file': 'second.txt', 'state': 'cancelled', 'message': 'Cancelled before processing.'}))
+    text = f.report.call_args.args[0]
+    assert '1 of 3 selected books imported' in text
+    assert '1 remaining selected files were not attempted' in text
+    assert 'second.txt: cancelled' in text

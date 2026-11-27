@@ -106,7 +106,7 @@ jobs:
               Tee-Object local-translation-results/acceptance.txt
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $report = Get-Content local-translation-results/local-translation-gate.json -Raw | ConvertFrom-Json
-          if ($report.status -ne 'PASS' -or $report.source_cases -ne 306 -or $report.installed_cases -ne 306 -or
+          if ($report.status -ne 'PASS' -or $report.source_cases -ne 324 -or $report.installed_cases -ne 324 -or
               $report.native_flows -ne 8 -or -not $report.installed_identity.isolated -or
               $report.source_commit -ne $env:CARR_TRANSLATION_COMMIT -or
               $report.source_tree -ne $env:CARR_TRANSLATION_TREE -or $report.actual_google_api -ne 'NOT_RUN') {

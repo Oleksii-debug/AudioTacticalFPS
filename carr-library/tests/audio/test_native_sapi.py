@@ -171,6 +171,8 @@ def test_native_cache_identity_distinguishes_host_without_relabeling_voice(monke
     assert record['com_client_version'] == '312'
     helper = Path(worker.__file__).resolve()
     assert record['native_worker_sha256'] == sha256(helper.read_bytes()).hexdigest()
+    # A synthetic host only for comparing the historical cache schema.
+    monkeypatch.setattr(api, '_system_powershell', lambda path=None, **options: Path(sys.executable).resolve())
     legacy = api.SAPI5Engine(Path(sys.executable).resolve())
     legacy._records, legacy._default = value._records, voice.id
     assert legacy.cache_identity(voice.id) != record
@@ -260,6 +262,7 @@ def test_default_windows_discovery_never_constructs_powershell(monkeypatch):
     monkeypatch.setattr(api, 'os', SimpleNamespace(name='nt', environ={}))
     monkeypatch.setattr(api, 'NativeSAPI5Engine', lambda: SimpleNamespace(id='sapi5'))
     monkeypatch.setattr(api, 'SAPI5Engine', lambda *args, **kwargs: pytest.fail('Implicit PowerShell host.'))
+    monkeypatch.setattr(api, '_windows_directory', lambda: pytest.fail('Eager compatibility-host discovery.'))
     monkeypatch.setattr(api.shutil, 'which', lambda name: None)
     registry = api.default_registry()
     assert list(registry.engines) == ['sapi5', 'sapi5-32']
@@ -308,7 +311,7 @@ def test_saved_32_bit_voice_resolves_only_after_explicit_identity_selection(monk
     class ExistingCompatibility:
         id = 'sapi5-32'
         _default = selected
-        def __init__(self, binary, *, engine_id):
+        def __init__(self, binary=None, *, engine_id):
             creations.append((binary, engine_id))
         def voices(self, *, cancelled):
             cancelled()
@@ -375,3 +378,98 @@ def test_fixed_factory_uses_supported_pywin32_progid_contract(name):
 def test_fixed_factory_rejects_foreign_class_before_com_admission():
     with pytest.raises(ValueError, match='fixed local SAPI'):
         worker._dispatch('WScript.Shell', SimpleNamespace(), SimpleNamespace())
+
+
+def test_native_engine_stop_waits_for_existing_job_accounting(monkeypatch):
+    import ctypes
+    from carr_library.audio import recording_process
+    events = []
+    active = iter((1, 0))
+    def query(handle, kind, address, size, returned):
+        assert handle == 17 and kind == 1
+        accounting = ctypes.cast(address, ctypes.POINTER(recording_process._Accounting)).contents
+        accounting.active_processes = next(active)
+        events.append(('active', accounting.active_processes))
+        return 1
+    def terminate(handle, code):
+        assert handle == 17 and code == 1
+        events.append('terminate-family')
+        return 1
+    def close(handle):
+        assert handle == 17
+        events.append('close-empty-job')
+        return 1
+    job = SimpleNamespace(handle=17, api=SimpleNamespace(kernel=SimpleNamespace(
+        TerminateJobObject=terminate, QueryInformationJobObject=query, CloseHandle=close)))
+    def wait(*, timeout):
+        assert timeout == 5
+        events.append('leader-exited')
+        return 0
+    process = SimpleNamespace(_carr_job=job, wait=wait,
+                              _handle=SimpleNamespace(Close=lambda: events.append('close-leader-handle')))
+    monkeypatch.setattr(api, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(recording_process, 'os', SimpleNamespace(name='nt'))
+    monkeypatch.setattr(recording_process, 'time', SimpleNamespace(
+        monotonic=lambda: 0, sleep=lambda delay: events.append(('wait', delay))))
+    api._stop(process)
+    assert events == ['terminate-family', 'leader-exited', 'close-leader-handle',
+                      ('active', 1), ('wait', .02), ('active', 0), 'close-empty-job']
+    assert job.handle is None
+
+
+def _pending_engine_stop(monkeypatch, *, stop_error, cancel):
+    from threading import Event, Thread
+    streams, results, errors = [], [], []
+    retry_entered, release, returned = Event(), Event(), Event()
+    process = SimpleNamespace(returncode=0, poll=lambda: 0)
+    def start(command, **options):
+        streams.extend(options[name] for name in ('stdin', 'stdout', 'stderr'))
+        streams[1].write(b'public synthetic result')
+        return process
+    attempts = []
+    def stop(current):
+        assert current is process and all(not stream.closed for stream in streams)
+        attempts.append(True)
+        if len(attempts) == 1:
+            raise stop_error('Synthetic first native settlement failure.')
+        retry_entered.set()
+        if not release.wait(5):
+            raise OSError('Synthetic cleanup owner has not been released.')
+    monkeypatch.setattr(api, '_start_process', start)
+    monkeypatch.setattr(api, '_stop', stop)
+    def work():
+        try:
+            results.append(api._run([Path(sys.executable).resolve(), '-I', '-c', 'pass'],
+                                    cancelled=lambda: bool(streams) and cancel, timeout=5))
+        except BaseException as error:
+            errors.append(error)
+        finally:
+            returned.set()
+    owner = Thread(target=work)
+    owner.start()
+    try:
+        assert retry_entered.wait(5)
+        assert owner.is_alive() and not returned.is_set()
+        assert len(streams) == 3 and all(not stream.closed for stream in streams)
+        release.set()
+        owner.join(5)
+        assert not owner.is_alive() and returned.is_set()
+        assert all(stream.closed for stream in streams)
+        return results, errors
+    finally:
+        release.set()
+        owner.join(5)
+        assert not owner.is_alive(), 'The synthetic cleanup must finish before monkeypatch teardown.'
+
+
+@pytest.mark.parametrize('stop_error', [OSError, KeyboardInterrupt, SystemExit])
+def test_native_engine_cancel_retains_streams_until_pending_cleanup_settles(monkeypatch, stop_error):
+    results, errors = _pending_engine_stop(monkeypatch, stop_error=stop_error, cancel=True)
+    assert results == [] and len(errors) == 1
+    expected = InterruptedError if stop_error is OSError else stop_error
+    assert type(errors[0]) is expected
+
+
+def test_native_engine_success_cannot_return_before_pending_cleanup_settles(monkeypatch):
+    results, errors = _pending_engine_stop(monkeypatch, stop_error=OSError, cancel=False)
+    assert errors == [] and results == [b'public synthetic result']

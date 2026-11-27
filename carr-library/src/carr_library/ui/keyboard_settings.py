@@ -82,9 +82,10 @@ class KeyboardManager:
         migrate_legacy_keymap(self, getattr(self, 'legacy_command_ids', {}))
         if self.load_notice and self.frame is not None:
             import wx
-            wx.CallAfter(self.frame.report, self.load_notice)
+            wx.CallAfter(lambda: self.frame.report(self.load_notice)
+                         if self.load_notice and not getattr(self.frame, '_closing', False) else None)
 
-    def register_menu_command(self, spec, item):
+    def register_menu_command(self, spec, item, *, fallback_unassigned=False):
         """Register an explicit stable ID for a newly installed native module."""
         if spec.context != 'main':
             raise ValueError('A main-window menu command must use the main context.')
@@ -97,6 +98,7 @@ class KeyboardManager:
             raise ValueError('The command is already registered with different metadata.')
         old_registry, old_bindings, old_unmanaged = self.registry, self.bindings, self._unmanaged
         old_overrides = self.overrides
+        old_notice = self.load_notice
         old_label = item.GetItemLabel()
         self.registry, self.bindings = proposed, dict(self.bindings)
         self.bindings[spec.command_id] = _MenuBinding(item, item.GetItemLabel().split('\t', 1)[0], top_index)
@@ -109,11 +111,23 @@ class KeyboardManager:
                     pass  # Other modules may still be registering their IDs.
                 else:
                     self.overrides = recovered
-            self.validate(self.overrides)
+            try:
+                self.validate(self.overrides)
+            except ValueError:
+                if not fallback_unassigned or spec.command_id in known:
+                    raise
+                fallback = dict(self.overrides)
+                fallback[spec.command_id] = ''
+                self.validate(fallback)
+                self.overrides = fallback
+                self.load_notice = (f'The new command "{spec.label}" has no shortcut because its default '
+                                    'conflicts with an existing command. Your saved keymap was kept. '
+                                    'Use Keyboard shortcuts to choose an assignment.')
             self._render()
         except Exception:
             self.registry, self.bindings, self._unmanaged = old_registry, old_bindings, old_unmanaged
             self.overrides = old_overrides
+            self.load_notice = old_notice
             item.SetItemLabel(old_label)
             self._render()
             raise
@@ -546,11 +560,13 @@ def show_command_launcher(parent, manager, *, context='main', invoke=None, avail
     return False
 
 
-def register_menu_command(frame, spec, item):
+def register_menu_command(frame, spec, item, *, fallback_unassigned=False):
     """Register before or after the shared menu manager has been installed."""
     manager = getattr(frame, 'keyboard_commands', None)
     if manager is not None:
-        return manager.register_menu_command(spec, item)
+        return manager.register_menu_command(spec, item, fallback_unassigned=fallback_unassigned)
+    if fallback_unassigned:
+        raise ValueError('Register conflict-tolerant optional shortcuts after the shared keyboard manager is installed.')
     if spec.context != 'main':
         raise ValueError('Native main-window menus require the main context.')
     pending = getattr(frame, '_pending_keyboard_commands', [])
@@ -638,5 +654,6 @@ def install_keyboard_settings(frame):
     manager.activate_loaded()
     migrate_legacy_keymap(manager, legacy_ids)
     if manager.load_notice:
-        wx.CallAfter(frame.report, manager.load_notice)
+        wx.CallAfter(lambda: frame.report(manager.load_notice)
+                     if manager.load_notice and not getattr(frame, '_closing', False) else None)
     return manager

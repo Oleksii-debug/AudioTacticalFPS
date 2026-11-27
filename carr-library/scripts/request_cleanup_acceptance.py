@@ -18,7 +18,8 @@ base.ORACLE_PATH, base.ORACLE = ORACLE_PATH, ORACLE
 base.SUPPORT = (*base.SUPPORT, 'tests/ui/test_operation_progress.py',
                 'tests/ui/test_keyboard_manager.py',
                 'tests/conversion/test_office_selection.py',
-                'tests/conversion/fixtures/ordered_slides.pptx')
+                'tests/conversion/fixtures/ordered_slides.pptx',
+                'tests/audio/test_music_adapters.py')
 read, write, require, file_hash = base.read, base.write, base.require, base.file_hash
 source_identity, installed_identity = base.source_identity, base.installed_identity
 runtime_identity, population = base.runtime_identity, base.population

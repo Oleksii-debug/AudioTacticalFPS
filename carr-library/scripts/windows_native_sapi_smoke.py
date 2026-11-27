@@ -22,6 +22,7 @@ import wave
 MODULES = (
     'carr_library.audio.engines', 'carr_library.audio.sapi_native_worker',
     'carr_library.audio.windows_process', 'carr_library.audio.jobs',
+    'carr_library.audio.recording_process', 'carr_library.audio.cleanup',
     'carr_library.audio.player', 'carr_library.audio.playback',
     'carr_library.reader.live_speech', 'carr_library.reader.live_playback',
     'carr_library.ui.live_reading', 'carr_library.library_backup',
@@ -73,6 +74,35 @@ def private_entry_diagnostic(reply):
     return diagnostic
 
 
+
+def exited_family_control(root, engines):
+    """Actual isolated child holds a private file after its helper exits."""
+    held, ready = root / 'owned-family-open.bin', root / 'owned-family-ready.txt'
+    child = (
+        'import pathlib,sys,time\n'
+        'with open(sys.argv[1],"xb") as held:\n'
+        ' held.write(b"Public synthetic owned descendant"); held.flush()\n'
+        ' pathlib.Path(sys.argv[2]).write_text("ready",encoding="ascii")\n'
+        ' time.sleep(60)\n')
+    parent = (
+        'import pathlib,subprocess,sys,time\n'
+        'subprocess.Popen([sys.executable,"-I","-B","-c",' + repr(child)
+        + ',sys.argv[1],sys.argv[2]],stdin=subprocess.DEVNULL)\n'
+        'deadline=time.monotonic()+5\n'
+        'while not pathlib.Path(sys.argv[2]).exists():\n'
+        ' if time.monotonic()>=deadline: raise RuntimeError("Owned descendant readiness timeout")\n'
+        ' time.sleep(.01)\n')
+    engines._run([Path(sys.executable).resolve(), '-I', '-B', '-c', parent, held, ready],
+                 cwd=root, timeout=10)
+    if ready.read_text(encoding='ascii') != 'ready' or held.read_bytes() != b'Public synthetic owned descendant':
+        raise AssertionError('The actual held-file descendant fixture did not run.')
+    # Windows denies this unlink while the inherited child still owns its
+    # non-delete-sharing handle. There is deliberately no retry or extra sleep.
+    held.unlink()
+    ready.unlink()
+    return True
+
+
 def run_native():
     import wx
     from carr_library.application import LibraryApp
@@ -119,6 +149,33 @@ def run_native():
     try:
         with TemporaryDirectory(prefix='carr-native-sapi-') as directory:
             root = Path(directory).resolve()
+            windows = engines._windows_directory()
+            host64 = engines.SAPI5Engine()
+            host32 = engines.SAPI5Engine(engine_id='sapi5-32')
+            check('actual compatibility hosts use the shared Windows directory and distinct architectures',
+                  host64.binary == windows / 'System32/WindowsPowerShell/v1.0/powershell.exe'
+                  and host32.binary == windows / 'SysWOW64/WindowsPowerShell/v1.0/powershell.exe'
+                  and host64.id == 'sapi5' and host32.id == 'sapi5-32')
+            previous_root = os.environ.get('SystemRoot')
+            try:
+                os.environ['SystemRoot'] = str(root / 'untrusted-environment-root')
+                selected = engines._LazySAPI32Engine()._selected('sapi5-32:' + 'a' * 24)
+                unchanged = (selected.binary == host32.binary
+                             and engines.SAPI5Engine().binary == host64.binary)
+            finally:
+                if previous_root is None:
+                    os.environ.pop('SystemRoot', None)
+                else:
+                    os.environ['SystemRoot'] = previous_root
+            check('spoofed SystemRoot cannot redirect selected saved compatibility voice', unchanged)
+            try:
+                engines.SAPI5Engine(host64.binary, engine_id='sapi5-32')
+            except engines.EngineUnavailable:
+                refused = True
+            else:
+                refused = False
+            check('wrong-architecture compatibility host is refused before any process',
+                  refused and not processes)
             library = LibraryApp(root / 'library')
             workspace = library.create_workspace('Public synthetic native speech')
             book = library.add_text(workspace, 'Literal selected text',
@@ -310,8 +367,9 @@ def run_native():
                   stopped and len(processes) > started)
             check('cancelled native synthesis publishes no partial PCM',
                   not cancelled_target.exists() and not list(root.glob('.speech-*')))
+            family_settled = exited_family_control(root, engines)
             check('every actual native worker leader and job handle is released',
-                  bool(processes) and all(process.poll() is not None
+                  family_settled and bool(processes) and all(process.poll() is not None
                     and getattr(process, '_carr_job', None) is not None
                     and process._carr_job.handle is None for process, _, _ in processes))
             check('native discovery and synthesis never invoke PowerShell',
@@ -338,6 +396,8 @@ def run_native():
                 'native_controls': 'EXECUTED', 'physical_playback': 'NOT_RUN', 'nvda': 'NOT_RUN',
                 'actual_native_pcm': metrics, 'com_client': 'pywin32', 'com_client_version': '312',
                 'private_entrypoint': 'EXECUTED', 'native_cancellation': 'OBSERVED',
+                'owned_descendant_shutdown': 'ACTUAL_FILE_RELEASE_OBSERVED',
+                'compatibility_host_admission': 'PASSIVE_ACTUAL_PATH_CHECKS',
                 'saved_cursor': 0, 'reading_state_sha256': sha256(before).hexdigest(),
                 'restored_state_sha256': sha256(SpeechPositionStore(restored).path.read_bytes()).hexdigest()}
     finally:

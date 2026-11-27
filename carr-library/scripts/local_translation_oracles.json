@@ -1,7 +1,7 @@
 {
   "schema": 1,
-  "required_cases_per_population": 306,
-  "existing_cases_per_population": 268,
+  "required_cases_per_population": 324,
+  "existing_cases_per_population": 286,
   "local_loopback_cases_per_population": 38,
   "local_functions": {
     "tests.loopback.test_translation_local_adapter": {
@@ -34,5 +34,6 @@
     "local-batch"
   ],
   "actual_local_engine": "NOT_RUN",
-  "translation_quality": "NOT_QUALIFIED"
+  "translation_quality": "NOT_QUALIFIED",
+  "canonical_shared_restore_cases": 18
 }

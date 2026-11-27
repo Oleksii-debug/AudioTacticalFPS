@@ -416,3 +416,7 @@ cffi==2.1.1 \
     --hash=sha256:42f6930c31dc7f50732c9ae793c2786c7b6b044195967bbdde40bb9be81c4cc0
 pycparser==3.12 \
     --hash=sha256:a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e
+
+# Current desktop COM owner; exact existing integrated Windows CPython 3.11 x64 wheel.
+pywin32==312 \
+    --hash=sha256:d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a

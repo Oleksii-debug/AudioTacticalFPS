@@ -1,6 +1,7 @@
 """Observed legacy CHM recovery through the existing inert preview boundary."""
 from hashlib import sha256
 import json
+from pathlib import Path
 import time
 
 import pytest
@@ -172,13 +173,16 @@ def test_existing_conversion_worker_keeps_raw_and_recovered_member_identities(tm
         return members[args[-1]]
     monkeypatch.setattr(legacy, '_run', native)
     original = FIXTURES['sample_chm']()
-    result = convert_request(request(stage, '.chm', original, selected))
-    assert result['state'] == 'complete'
-    assert (stage / 'reading.txt').read_text(encoding='utf-8') == 'FIRST\n\nSECOND'
+    message = request(stage, '.chm', original, selected)
+    result = convert_request(message)
+    assert result == {'state': 'complete', 'text_bytes': len(b'FIRST\n\nSECOND'), 'records': 2}
+    reading = (stage / 'reading.txt').read_text(encoding='utf-8')
+    assert reading == 'FIRST\n\nSECOND'
+    assert Path(message['source']).read_bytes() == original
     details = json.loads((stage / 'details.json').read_text(encoding='utf-8'))
     assert details['source_sha256'] == sha256(original).hexdigest()
-    assert details['text_sha256'] == sha256((stage / 'reading.txt').read_bytes()).hexdigest()
-    assert details['original_modified'] is False and details['verified_for_quotation'] is False
+    assert details['source_size'] == len(original)
+    assert set(details) == {'engine', 'separator', 'segments', 'warnings', 'source_sha256', 'source_size'}
     assert [row['logical_locator']['chm_member'] for row in details['segments']] == ['z.htm', 'a.htm']
     for row in details['segments']:
         locator = row['logical_locator']
@@ -187,4 +191,6 @@ def test_existing_conversion_worker_keeps_raw_and_recovered_member_identities(tm
         assert locator['parsed_member_sha256'] == sha256(legacy._chm_html(raw)).hexdigest()
         assert locator['parsed_member_sha256'] != locator['member_sha256']
         assert row['physical_index'] is None and row['printed_label'] is None
-        assert row['status'] == 'review_required'
+        assert row['printed_label_verified'] is False and row['status'] == 'review_required'
+        start, end = row['output_characters']
+        assert row['text_sha256'] == sha256(reading[start:end].encode('utf-8')).hexdigest()

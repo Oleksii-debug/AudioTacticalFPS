@@ -14,6 +14,14 @@ from .paths import filename_component
 SCHEMA = 1
 SAMPLE_RATES = (8000, 16000, 22050, 24000, 44100, 48000, 96000)
 FORMATS = ('wav', 'flac', 'mp3', 'opus', 'm4a', 'm4b', 'aiff', 'ogg', 'aac', 'wma')
+MUSIC_KEYS = ('C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B')
+
+
+def music_key(value):
+    """An optional explicit tonic; None preserves the existing mood default."""
+    if value is not None and (type(value) is not str or value not in MUSIC_KEYS):
+        raise ValueError('Choose an explicit music key from C, C#, D, D#, E, F, F#, G, G#, A, A# or B.')
+    return value
 
 
 def number(value, low, high, name):
@@ -274,11 +282,13 @@ class MusicCue:
     seed: int = 0
     engine: str = 'procedural'
     model_manifest: str | None = None
+    key: str | None = None
 
     def __post_init__(self):
         text(self.mood, 'Music mood', 80)
-        if self.mood not in ('calm', 'suspense', 'bright', 'sad', 'neutral', 'energetic', 'dark'):
-            raise ValueError('Choose a supported music mood: calm, suspense, bright, sad, neutral, energetic or dark.')
+        if self.mood not in ('calm', 'suspense', 'bright', 'hopeful', 'sad', 'neutral', 'energetic', 'dark'):
+            raise ValueError('Choose a supported music mood: calm, suspense, bright, hopeful, sad, neutral, energetic or dark.')
+        music_key(self.key)
         if type(self.tempo) is not int or type(self.seed) is not int:
             raise ValueError('Music tempo and seed must be integers.')
         number(self.tempo, 30, 240, 'Music tempo')
@@ -295,6 +305,14 @@ class MusicCue:
             raise ValueError('The selected music engine needs an explicitly reviewed local asset manifest.')
         if self.engine == 'procedural' and self.model_manifest is not None:
             raise ValueError('Procedural music does not use an installed asset manifest.')
+
+    def to_dict(self):
+        result = asdict(self)
+        # Preserve the existing serialized cue when its mood-selected key is
+        # still requested. Independent renderer-code binding remains required.
+        if self.key is None:
+            result.pop('key')
+        return result
 
 
 @dataclass(frozen=True)
@@ -401,6 +419,8 @@ class ProductionPlan:
             data.pop('master_effects')
             data.pop('master_mix')
         for scene, original in zip(data['scenes'], self.scenes):
+            if original.music is not None:
+                scene['music'] = original.music.to_dict()
             if self.schema_version == 1:
                 # Preserve all existing saved-plan/cache fingerprints verbatim.
                 scene.pop('clips')
@@ -441,7 +461,7 @@ class ProductionPlan:
                 events.append(constructor(**{k: v for k, v in event.items() if k != 'kind'}))
             music = item.get('music')
             if music is not None:
-                music = MusicCue(**_strict(music, ('mood', 'tempo', 'gain', 'seed', 'engine', 'model_manifest'), 'music cue'))
+                music = MusicCue(**_strict(music, ('mood', 'tempo', 'gain', 'seed', 'engine', 'model_manifest', 'key'), 'music cue'))
             clips = tuple(Clip(**_strict(clip, ('id', 'asset', 'start', 'gain_db', 'pan', 'track',
                 'trim_start', 'duration', 'fade_in', 'fade_out', 'title'), 'clip')) for clip in item.get('clips', ()))
             scenes.append(Scene(item['id'], item['title'], tuple(events), music, clips,

@@ -22,11 +22,12 @@ import tempfile
 import wave
 
 from .engines import EngineUnavailable, _binary, _number, _output, _publish, _run
+from .models import MUSIC_KEYS, music_key
 from .model_manifest import LocalModelManifest, ModelManifestError, digest_file, local_path, offline_environment, read_json, _local_inventory
 
 
 COMPOSER_VERSION = 'procedural-score-1'
-MOODS = ('calm', 'suspense', 'bright', 'sad', 'neutral', 'energetic', 'dark')
+MOODS = ('calm', 'suspense', 'bright', 'hopeful', 'sad', 'neutral', 'energetic', 'dark')
 MUSICGEN_SOURCE = '896ec7c47f5e5d1e5aa1e4b260c4405328bf009d'
 ACESTEP_SOURCE = 'ca1e85fe9430179831e6bc6be790c332190a3866'
 FLUIDSYNTH_API_SOURCE = '5500b60788287ceb7297f628f75c488d2720f61a'
@@ -57,11 +58,18 @@ def _settings(duration, mood, tempo, seed, gain, sample_rate):
     return frames, tempo
 
 
-def _notes_for_bars(first_bar, bar_count, *, sample_rate, tempo, mood, seed, total_frames):
+def _keyscale(key, mood):
+    music_key(key)
+    minor = mood in ('suspense', 'sad', 'dark')
+    return (key if key is not None else ('A' if minor else 'C')) + (' minor' if minor else ' major')
+
+
+def _notes_for_bars(first_bar, bar_count, *, sample_rate, tempo, mood, seed, total_frames, key=None):
     """Compose a bounded group of bars with stable per-bar random decisions."""
     minor = mood in ('suspense', 'sad', 'dark')
     scale = (0, 2, 3, 5, 7, 8, 10) if minor else (0, 2, 4, 5, 7, 9, 11)
-    root = 57 if minor else 60
+    music_key(key)
+    root = (57 if minor else 60) if key is None else (48 if minor else 60) + MUSIC_KEYS.index(key)
     progression = (0, 5, 3, 4) if minor else (0, 3, 5, 4)
     beat = sample_rate * 60 / tempo
     notes = []
@@ -98,7 +106,7 @@ def _vlq(value):
 
 
 def _write_midi(path, *, frames, sample_rate, mood, tempo, seed, cancelled,
-                first_bar=0, start_frame=0):
+                first_bar=0, start_frame=0, key=None):
     """Write SMF type 0 incrementally; no full-project event list in RAM."""
     ticks = 480
     micros = round(60_000_000 / tempo)
@@ -114,7 +122,7 @@ def _write_midi(path, *, frames, sample_rate, mood, tempo, seed, cancelled,
             if cancelled():
                 raise InterruptedError('Music generation cancelled.')
             notes = _notes_for_bars(first, min(4, bar_count-first), sample_rate=sample_rate,
-                                    tempo=tempo, mood=mood, seed=seed, total_frames=end_frame)
+                                    tempo=tempo, mood=mood, seed=seed, total_frames=end_frame, key=key)
             events = []
             for note in notes:
                 begin = max(0, round((note.start - start_frame) / sample_rate * tempo / 60 * ticks))
@@ -161,9 +169,9 @@ def _atomic_json(path, data):
 
 
 def _render_procedural_chunk(path, *, first_bar, start_frame, frame_count, total_frames, sample_rate,
-                             tempo, mood, seed, gain, ffmpeg, cancelled):
+                             tempo, mood, seed, gain, ffmpeg, cancelled, key=None):
     notes = _notes_for_bars(first_bar, 4, sample_rate=sample_rate, tempo=tempo,
-                            mood=mood, seed=seed, total_frames=total_frames)
+                            mood=mood, seed=seed, total_frames=total_frames, key=key)
     graph, labels = [], []
     for number, note in enumerate(notes):
         start = max(start_frame, note.start) - start_frame
@@ -245,7 +253,7 @@ print(json.dumps({'frames': samples.shape[1], 'sample_rate': model.sample_rate,
 
 
 def _render_musicgen_chunk(path, *, frame_count, sample_rate, mood, tempo, seed, gain, ffmpeg,
-                          manifest, previous, cancelled):
+                          manifest, previous, cancelled, key=None):
     options = manifest.settings
     if options.get('source_revision') != MUSICGEN_SOURCE:
         raise ModelManifestError('Pin the reviewed AudioCraft source revision in the model profile.')
@@ -267,6 +275,8 @@ def _render_musicgen_chunk(path, *, frame_count, sample_rate, mood, tempo, seed,
     environment.update(HF_HOME=str(cache), HUGGINGFACE_HUB_CACHE=str(cache / 'hub'),
                        AUDIOCRAFT_CACHE_DIR=str(manifest.root), TORCH_HOME=str(manifest.root / 'torch-cache'))
     prompt = f'Original instrumental music, no vocals, {mood} mood, {tempo:g} beats per minute.'
+    if key is not None:
+        prompt += ' Key: ' + _keyscale(key, mood) + '.'
     request = {'root': str(manifest.root), 'device': device, 'seed': seed % (2**31),
                'duration': frame_count / sample_rate, 'previous': str(previous) if previous else None,
                'prompt': prompt, 'output': str(raw)}
@@ -457,7 +467,7 @@ def _stage_budget(stage, cancelled, *, maximum=256 * 1024**2):
 
 
 def _render_fluidsynth_chunk(path, *, first_bar, start_frame, frame_count, sample_rate,
-                             tempo, mood, seed, gain, ffmpeg, manifest, cancelled):
+                             tempo, mood, seed, gain, ffmpeg, manifest, cancelled, key=None):
     options = manifest.settings
     # Recreate one preceding bar so release envelopes survive ordinary joins.
     score_first = max(0, first_bar - 1)
@@ -467,7 +477,7 @@ def _render_fluidsynth_chunk(path, *, first_bar, start_frame, frame_count, sampl
         stage = Path(temporary)
         midi, raw = stage / 'score.mid', stage / 'raw.wav'
         _write_midi(midi, frames=frame_count + preroll, sample_rate=sample_rate, mood=mood,
-                    tempo=tempo, seed=seed, first_bar=score_first, start_frame=score_start, cancelled=cancelled)
+                    tempo=tempo, seed=seed, first_bar=score_first, start_frame=score_start, cancelled=cancelled, key=key)
         check = lambda: _stage_budget(stage, cancelled)
         soundfont = manifest.asset(options['soundfont'])
         if options.get('backend', 'cli') == 'cli':
@@ -578,7 +588,7 @@ print(json.dumps(receipt))
 
 
 def _render_acestep_chunk(path, *, frame_count, sample_rate, mood, tempo, seed, gain,
-                         ffmpeg, manifest, cancelled):
+                         ffmpeg, manifest, cancelled, key=None):
     options = manifest.settings
     with tempfile.TemporaryDirectory(prefix='.ace-step-', dir=Path(path).parent) as temporary:
         stage = Path(temporary)
@@ -589,7 +599,7 @@ def _render_acestep_chunk(path, *, frame_count, sample_rate, mood, tempo, seed, 
                    'duration': max(10, frame_count / sample_rate), 'seed': seed % (2**31),
                    'threads': options.get('threads', 2), 'tempo': tempo,
                    'inference_steps': options.get('inference_steps', 8 if options['model_name'].endswith('turbo') else 32),
-                   'keyscale': 'A minor' if mood in ('suspense', 'sad', 'dark') else 'C major',
+                   'keyscale': _keyscale(key, mood),
                    'prompt': f'Original instrumental music, no vocals, {mood} mood, {tempo:g} beats per minute.'}
         environment = offline_environment()
         # Caller environment cannot select another model, backend or remote cache.
@@ -630,7 +640,7 @@ def music_capabilities():
 
 def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='procedural', ffmpeg,
                  gain=.18, sample_rate=48000, manifest=None, cancelled=lambda: False,
-                 on_status=lambda message: None, max_output_bytes=16 * 1024**3):
+                 on_status=lambda message: None, max_output_bytes=16 * 1024**3, key=None):
     """Compose/render/resume a local cue. Refuse overwrite, silent fallback and egress.
 
     Checkpoints use stable bar/chunk identities. A changed score needs a new
@@ -638,6 +648,7 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
     limit. The final WAV automatically switches to RF64 when required.
     """
     frames, tempo = _settings(duration, mood, tempo, seed, gain, sample_rate)
+    music_key(key)
     if type(max_output_bytes) is not int or max_output_bytes < 1 or frames * 2 > max_output_bytes:
         raise ValueError('Music exceeds the selected output disk budget; raise it explicitly or split the project.')
     if engine not in ('procedural', 'musicgen', 'fluidsynth', 'ace-step'):
@@ -661,6 +672,8 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
                 'ffmpeg_sha256': digest_file(binary),
                 'build_sha256': hashlib.sha256(_run([binary, '-version'], timeout=15)).hexdigest(),
                 'model': model.cache_identity() if model else None}
+    if key is not None:
+        settings['key'] = key
     settings_hash = hashlib.sha256(json.dumps(settings, sort_keys=True, separators=(',', ':'),
                                               allow_nan=False).encode('utf-8')).hexdigest()
     work = local_path(target.with_name(target.stem + '.music-work'), must_exist=False)
@@ -718,19 +731,19 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
                 if engine == 'procedural':
                     _render_procedural_chunk(partial, first_bar=number * 4, start_frame=start,
                         frame_count=count, total_frames=frames, sample_rate=sample_rate, tempo=tempo,
-                        mood=mood, seed=seed, gain=gain, ffmpeg=binary, cancelled=cancelled)
+                        mood=mood, seed=seed, gain=gain, ffmpeg=binary, cancelled=cancelled, key=key)
                 elif engine == 'fluidsynth':
                     _render_fluidsynth_chunk(partial, first_bar=number * 4, start_frame=start,
                         frame_count=count, sample_rate=sample_rate, tempo=tempo, mood=mood, seed=seed,
-                        gain=gain, ffmpeg=binary, manifest=model, cancelled=cancelled)
+                        gain=gain, ffmpeg=binary, manifest=model, cancelled=cancelled, key=key)
                 elif engine == 'ace-step':
                     _render_acestep_chunk(partial, frame_count=count, sample_rate=sample_rate,
                         tempo=tempo, mood=mood, seed=(seed + number) % (2**63), gain=gain,
-                        ffmpeg=binary, manifest=model, cancelled=cancelled)
+                        ffmpeg=binary, manifest=model, cancelled=cancelled, key=key)
                 else:
                     _render_musicgen_chunk(partial, frame_count=count, sample_rate=sample_rate,
                         mood=mood, tempo=tempo, seed=(seed + number) % (2**63), gain=gain, ffmpeg=binary,
-                        manifest=model, previous=previous, cancelled=cancelled)
+                        manifest=model, previous=previous, cancelled=cancelled, key=key)
                 info = _wave_frames(partial)
                 if info['frames'] != count or info['sample_rate'] != sample_rate:
                     raise ValueError('Music chunk duration does not match its sample-accurate plan.')
@@ -767,7 +780,7 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
             local_path(midi_tmp, must_exist=False)
             midi_tmp.unlink(missing_ok=True)
             _write_midi(midi_tmp, frames=frames, sample_rate=sample_rate, mood=mood, tempo=tempo,
-                        seed=seed, cancelled=cancelled)
+                        seed=seed, cancelled=cancelled, key=key)
             if midi.exists():
                 if not midi.is_file() or digest_file(midi) != digest_file(midi_tmp):
                     raise FileExistsError(midi)
@@ -786,6 +799,8 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
                       'kind': kinds[engine], 'assembly': assemblies[engine],
                       'model': model.cache_identity() if model else None,
                       'listening_acceptance': 'NOT_RUN', 'rights': model.license if model else 'Original procedural score; no sampled recording or bundled SoundFont'}
+        if key is not None:
+            provenance.update(key=key, keyscale=_keyscale(key, mood))
         if engine in ('fluidsynth', 'ace-step'):
             provenance['output_rights_notice'] = model.settings['output_rights_notice']
         metadata = local_path(target.with_suffix('.music.json'), must_exist=False)
@@ -826,7 +841,7 @@ def _render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pr
 
 def render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='procedural', ffmpeg,
                  gain=.18, sample_rate=48000, manifest=None, cancelled=lambda: False,
-                 on_status=lambda message: None, max_output_bytes=16 * 1024**3):
+                 on_status=lambda message: None, max_output_bytes=16 * 1024**3, key=None):
     """Serialize writes to one cue while allowing independent cues to render."""
     from filelock import FileLock, Timeout
     target = _output(output)
@@ -840,7 +855,7 @@ def render_music(output, *, duration, mood='calm', tempo=90, seed=0, engine='pro
         return _render_music(target, duration=duration, mood=mood, tempo=tempo, seed=seed,
                              engine=engine, ffmpeg=ffmpeg, gain=gain, sample_rate=sample_rate,
                              manifest=manifest, cancelled=cancelled, on_status=on_status,
-                             max_output_bytes=max_output_bytes)
+                             max_output_bytes=max_output_bytes, key=key)
     finally:
         lock.release()
 

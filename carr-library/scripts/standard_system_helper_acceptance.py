@@ -53,7 +53,7 @@ def main():
     results.mkdir(exist_ok=True)
     oracle = json.loads((PROJECT / 'scripts/v3_acceptance_oracles.json').read_text(encoding='utf-8'))
     expected = Counter(oracle['source'][MODULE])
-    if expected != Counter(oracle['installed'][MODULE]) or sum(expected.values()) != 13:
+    if expected != Counter(oracle['installed'][MODULE]) or sum(expected.values()) != 16:
         raise AssertionError('The exact protected helper oracle changed.')
     source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=PROJECT, text=True).strip()
     tree = subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], cwd=PROJECT, text=True).strip()
@@ -67,7 +67,7 @@ def main():
         root = ET.parse(report).getroot()
         cases = list(root.iter('testcase'))
         actual = Counter(case.attrib['name'].split('[', 1)[0] for case in cases)
-        if (actual != expected or len(cases) != 13
+        if (actual != expected or len(cases) != 16
                 or any(list(root.iter(tag)) for tag in ('failure', 'error', 'skipped'))):
             raise AssertionError('A helper regression is missing, failed or skipped: ' + mode)
         observed[mode] = {'passed': len(cases), 'failed': 0, 'skipped': 0,

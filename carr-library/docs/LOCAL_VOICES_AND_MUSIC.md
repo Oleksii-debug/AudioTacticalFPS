@@ -91,9 +91,9 @@ Nothing in this module downloads or prepares an unreviewed model automatically.
 
 `render_music(...)` returns the generated WAV, MIDI, source manifest and exact
 frame count. `generate_music(...)` returns the WAV path for production jobs.
-Parameters include duration, mood, tempo, seed, source gain, sample rate,
-cancellation, progress and an explicit disk budget. Supported moods are calm,
-suspense, bright, sad, neutral, energetic and dark. Sample rates are 8000, 16000,
+Parameters include duration, mood, tempo, optional key, seed, source gain,
+sample rate, cancellation, progress and an explicit disk budget. Supported moods
+are calm, suspense, bright, hopeful, sad, neutral, energetic and dark. Sample rates are 8000, 16000,
 22050, 24000, 44100, 48000 and 96000 Hz.
 
 The procedural composer produces original note events with repeatable seeded
@@ -177,3 +177,47 @@ Ukrainian/Slovak neural pronunciation and NVDA acceptance remain separate gates.
 - [Pinned AudioCraft MusicGen interface](https://github.com/facebookresearch/audiocraft/blob/896ec7c47f5e5d1e5aa1e4b260c4405328bf009d/audiocraft/models/musicgen.py)
 - [Pinned AudioCraft local model loading](https://github.com/facebookresearch/audiocraft/blob/896ec7c47f5e5d1e5aa1e4b260c4405328bf009d/audiocraft/models/loaders.py)
 - [Pinned AudioCraft weight license](https://github.com/facebookresearch/audiocraft/blob/896ec7c47f5e5d1e5aa1e4b260c4405328bf009d/LICENSE_weights)
+
+## Explicit score key and canonical mood preservation
+
+The current typed script accepts, for example:
+
+```text
+[music mood=hopeful key=F# tempo=120 seed=7]
+Narrator: Exact source text remains unchanged.
+```
+
+The finite tonic set is C, C#, D, D#, E, F, F#, G, G#, A, A# and B.
+Minor modes are selected by suspense, sad and dark; other moods select major.
+The same tonic reaches the procedural notes, exported MIDI, optional
+FluidSynth score, ACE-Step keyscale and MusicGen prompt. An unsupported value
+is rejected before native engine selection. This is a validated control, not
+a guarantee that an unqualified neural model will follow the requested key.
+
+Omitting key preserves the prior C-major/A-minor behavior, serialized cue fields
+and direct music-work settings. Existing production receipts still bind the
+exact composer source hash: a source update is not permission to accept a
+receipt for a different renderer. Explicit keys enter the saved script, typed
+plan, cue cache identity and generated provenance. A completed render replays
+only under its current exact identities; a changed key regenerates its music.
+Managed project and typed complete-backup checks retain the exact source and
+selected key.
+
+The canonical hopeful mood now passes through the existing canonical-project
+review into this score model. The old negative fixture that used hopeful as an
+unsupported current mood instead supplies an actually unknown mood; a separate
+positive fixture protects the newly represented control.
+
+This change adds 23 current-family cases plus one canonical-import case.
+They include actual FFmpeg PCM/MIDI pitch and frame checks, all eight moods,
+exact replay, strict refusal and typed backup. ACE-Step protocol fixtures run
+an explicitly synthetic local child; the MusicGen request fixture substitutes
+only model generation before actual FFmpeg conversion. No model weights,
+neural inference quality, hardware speed or listening acceptance is claimed.
+Their execution remains pending at authoring.
+
+The current Sound and Clip controls use explicitly retained local PCM assets
+on the SFX, ambience and music tracks. The historical door/click/chime/noise
+generator API is not represented as equivalent to those user assets. V3-12
+marks a local sound-effect generator optional; this correction adds no second
+generator or process family.

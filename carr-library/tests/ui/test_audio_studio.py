@@ -739,3 +739,131 @@ def test_studio_failure_observer_cannot_replace_the_real_worker_error(tmp_path, 
         _assert_studio_controls_released(dialog)
     finally:
         dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def _real_studio_progress():
+    """Use the actual shared reporter/presenter without constructing native UI."""
+    import time
+    from unittest.mock import Mock
+    from carr_library.progress import ProgressHub
+    from carr_library.ui.operation_progress import OperationProgress
+
+    presenter = object.__new__(OperationProgress)
+    presenter.library = object()
+    presenter.frame = SimpleNamespace(library=presenter.library)
+    presenter.closed = False
+    presenter.reporter = None
+    presenter.clock = time.monotonic
+    presenter.hub = ProgressHub()
+    presenter.notifications = SimpleNamespace(clear=lambda: None)
+    presenter.tick = Mock()
+    return presenter
+
+
+def _refuse_dead_studio_controls(dialog, monkeypatch):
+    def unavailable(*args, **kwargs):
+        pytest.fail('A detached Studio completion touched dead or newer controls.')
+    for control in (*dialog.controls, dialog.cancel_button):
+        monkeypatch.setattr(control, 'Enable', unavailable)
+        monkeypatch.setattr(control, 'Disable', unavailable)
+    dialog._error = dialog._message = unavailable
+    dialog.close = unavailable
+
+
+@pytest.mark.parametrize('outcome', ['complete', 'failed', 'speech-cancelled', 'dsp-cancelled', 'paused'])
+def test_closed_studio_settles_exact_shared_task_without_touching_dead_controls(
+        tmp_path, monkeypatch, outcome):
+    import os
+    from unittest.mock import Mock
+    from carr_library.audio.jobs import RenderCancelled
+
+    dialog, callbacks, errors = _studio_executor_probe()
+    presenter = dialog.operation_progress = _real_studio_progress()
+    artifact = tmp_path / 'actual-worker-checkpoint.txt'
+    exception = {'failed': OSError('Synthetic receipt publication failure'),
+                 'speech-cancelled': InterruptedError('Speech acknowledged stop'),
+                 'dsp-cancelled': RenderCancelled('DSP acknowledged stop')}.get(outcome)
+    result = {'state': 'paused' if outcome == 'paused' else 'complete',
+              'output': str(artifact)}
+    done, calls = Mock(), []
+    def work():
+        calls.append(True)
+        with artifact.open('x', encoding='utf-8') as stream:
+            stream.write('Actually retained before the real future returns.\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        if exception is not None:
+            raise exception
+        return result
+    try:
+        dialog._run('Closed Studio task', work, done)
+        callback = callbacks.get(timeout=10)
+        reporter = presenter.reporter
+        assert reporter.event.state == 'running' and artifact.is_file()
+        dialog.closed = presenter.closed = True
+        dialog.cancelled.set()  # A late stop cannot hide a real failure or commit.
+        _refuse_dead_studio_controls(dialog, monkeypatch)
+        callback()
+        expected = ('cancelled' if outcome.endswith('cancelled') else outcome)
+        assert reporter.event.state == expected
+        assert reporter.event.verified is (outcome == 'complete')
+        assert (reporter.event.percent == 100) is (outcome == 'complete')
+        if outcome == 'failed':
+            assert 'receipt publication failure' in reporter.event.message
+        assert calls == [True] and artifact.read_text(encoding='utf-8').startswith('Actually retained')
+        assert errors == []
+        done.assert_not_called()
+        presenter.tick.assert_not_called()
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+def test_stale_studio_completion_settles_old_task_without_relabeling_new_work(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+
+    dialog, callbacks, errors = _studio_executor_probe()
+    presenter = dialog.operation_progress = _real_studio_progress()
+    done = Mock()
+    try:
+        dialog._run('Previous task', lambda: {'state': 'complete'}, done)
+        callback = callbacks.get(timeout=10)
+        previous = presenter.reporter
+        presenter.start('New independent task', total=3)
+        current = presenter.reporter
+        before = current.event
+        dialog._job_token = object()
+        dialog.cancelled.set()
+        _refuse_dead_studio_controls(dialog, monkeypatch)
+        callback()
+        assert previous.event.state == 'complete' and previous.event.verified
+        assert current.event == before and current.event.state == 'running'
+        assert current.event.percent == 0 and not current.event.verified
+        assert dialog.busy and errors == []
+        done.assert_not_called()
+        presenter.tick.assert_not_called()
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)
+
+
+@pytest.mark.parametrize('kind', ['speech', 'dsp'])
+def test_live_studio_uses_explicit_speech_and_dsp_cancellation_types(kind):
+    from unittest.mock import Mock
+    from carr_library.audio.jobs import RenderCancelled
+
+    dialog, callbacks, errors = _studio_executor_probe()
+    presenter = dialog.operation_progress = _real_studio_progress()
+    failure = (InterruptedError if kind == 'speech' else RenderCancelled)('Actual typed stop')
+    done = Mock()
+    def stop():
+        raise failure
+    try:
+        dialog._run('Typed cancellation', stop, done)
+        callbacks.get(timeout=10)()
+        assert presenter.reporter.event.state == 'cancelled'
+        assert not presenter.reporter.event.verified
+        assert presenter.reporter.event.percent is None
+        assert errors == [failure]
+        done.assert_not_called()
+        _assert_studio_controls_released(dialog)
+    finally:
+        dialog.executor.shutdown(wait=True, cancel_futures=True)

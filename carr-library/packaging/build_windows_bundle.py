@@ -6,9 +6,11 @@ The build uses packaging for wheel/requirement validation; installation uses pip
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -106,6 +108,58 @@ def verify_application_source(wheel, source_commit):
     return verifier.verify_application_wheel(wheel, HERE.parent.parent, source_commit)
 
 
+def _publication_tools():
+    # Reuse only the current low-level directory publication primitives.
+    # No delivery archive creation or audio redistribution gate is invoked.
+    spec = importlib.util.spec_from_file_location(
+        "carr_bundle_publication", Path(__file__).resolve().with_name("create_delivery.py"))
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    return helper
+
+
+@contextmanager
+def _bundle_stage(output):
+    """Publish one complete directory or clean only the exact owned stage."""
+    helper = _publication_tools()
+    output = helper._absolute(output)
+    # Validate each existing ancestor before creating any missing child.
+    # mkdir(parents=True) would follow a known symlink/reparse ancestor and
+    # create directories outside the reviewed path before _directories refused.
+    parents = []
+    for directory in (*reversed(output.parent.parents), output.parent):
+        try:
+            info = helper._plain(directory, directory=True)
+        except FileNotFoundError:
+            helper._unchanged_directories(parents)
+            try:
+                directory.mkdir(mode=0o700)
+            except FileExistsError:
+                pass  # Inspect a concurrently created directory before use.
+            info = helper._plain(directory, directory=True)
+        parents.append((directory, helper._identity(info)))
+    parent_fd = (os.open(output.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                 if os.name != "nt" else None)
+    stage, identity = None, None
+    try:
+        helper._unchanged_directories(parents)
+        stage = Path(tempfile.mkdtemp(prefix=".carr-bundle-", dir=output.parent))
+        identity = helper._identity(helper._plain(stage, directory=True))
+        yield stage
+        helper._unchanged_directories(parents)
+        if helper._identity(helper._plain(stage, directory=True)) != identity:
+            raise ValueError("Bundle staging directory changed before publication.")
+        helper._publish(stage, output, parent_fd)
+        stage = None
+    finally:
+        try:
+            if stage is not None and identity is not None:
+                helper._cleanup(stage, identity, parent_fd)
+        finally:
+            if parent_fd is not None:
+                os.close(parent_fd)
+
+
 def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                  model_dir=None, model_manifest=None, sbom=None, source_commit=None, ocr_dir=None,
                  ocr_source_archive=None, audio_dir=None, native_launcher=None,
@@ -113,6 +167,13 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
     wheel, wheelhouse, lock, output = map(Path, (wheel, wheelhouse, lock, output))
     if output.exists() or output.is_symlink():
         raise ValueError("output must be a new directory")
+    # A build must not add staging or output files to an admitted input tree.
+    destination = output.resolve(strict=False)
+    for source in (wheelhouse, model_dir, ocr_dir, audio_dir):
+        if source is not None:
+            source = Path(source).resolve(strict=False)
+            if destination.is_relative_to(source) or source.is_relative_to(destination):
+                raise ValueError("output must be outside all input directories")
     if source_commit is not None and not re.fullmatch(r"[0-9a-f]{40}", source_commit):
         raise ValueError("source commit must be a full lowercase Git SHA")
     if wheelhouse.is_symlink() or not wheelhouse.is_dir():
@@ -247,9 +308,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
             if req.url or dependency is None or dependency[1] not in req.specifier:
                 raise ValueError(f"unsatisfied Windows dependency: {req}")
 
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="carr-bundle-", dir=output.parent) as scratch:
-        staged = Path(scratch)
+    with _bundle_stage(output) as staged:
         staged_wheels = staged / "wheelhouse"
         staged_wheels.mkdir()
         install = []
@@ -331,6 +390,9 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
         if launcher_snapshot is not None:
             (staged / "ResearchLibrary.exe").write_bytes(launcher_snapshot[0])
             (staged / "native-launcher-build.json").write_bytes(launcher_snapshot[1])
+        if source_evidence is not None:
+            (staged / "application-source.json").write_bytes(
+                (json.dumps(source_evidence, indent=2, sort_keys=True) + "\n").encode("utf-8"))
         files = {p.relative_to(staged).as_posix(): sha256(p)
                  for p in sorted(staged.rglob("*")) if p.is_file()}
         manifest = {"schema": 1, "target": TARGET, "bundled_python": python_archive is not None,
@@ -341,14 +403,12 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     "files": files}
         if source_commit is not None:
             manifest["source_commit"] = source_commit
+            manifest["source_tree"] = source_evidence["source_tree"]
         (staged / "bundle-manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        # Reserve a fresh destination; never overwrite an existing installation.
-        output.mkdir(exist_ok=False)
-        for item in staged.iterdir():
-            shutil.move(str(item), output / item.name)
+        manifest_sha256 = sha256(staged / "bundle-manifest.json")
     return {"target": TARGET, "wheels": len(selected), "output": str(output),
-            "manifest_sha256": sha256(output / "bundle-manifest.json")}
+            "manifest_sha256": manifest_sha256}
 
 
 def main():

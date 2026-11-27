@@ -177,7 +177,7 @@ def test_conversion_refuses_unknown_or_lossy_features_before_publication(tmp_pat
     elif change == 'neural-engine':
         value['scenes'][0]['music']['engine'] = 'musicgen'
     elif change == 'unsupported-mood':
-        value['scenes'][0]['music']['mood'] = 'hopeful'
+        value['scenes'][0]['music']['mood'] = 'unreviewed-mood'
     elif change == 'unsupported-tempo':
         value['scenes'][0]['music']['tempo'] = 250
     elif change == 'excessive-music-gain':
@@ -362,3 +362,15 @@ def test_current_studio_reopen_checks_provenance_and_save_as_protects_original(t
         StudioController(private_root=app.root).open(document)
 
 
+
+
+def test_canonical_hopeful_mood_is_preserved_by_the_current_score_contract(tmp_path):
+    value = original()
+    value['scenes'][0]['music']['mood'] = 'hopeful'
+    app, path, raw = selected(tmp_path, value)
+    proposal = review(app, path)
+    plan = parse_script(proposal.script, voice='sapi5:default', language='uk')
+    assert plan.scenes[0].music.mood == 'hopeful'
+    assert plan.scenes[0].music.key is None
+    assert path.read_bytes() == raw
+    assert not (app.root / 'audio-projects').exists()

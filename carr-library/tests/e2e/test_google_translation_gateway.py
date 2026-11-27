@@ -342,3 +342,90 @@ def test_existing_wire_only_ledger_migration_is_concurrent_and_never_backfills_p
         columns = [row[1] for row in database.execute('PRAGMA table_info(operation)')]
         assert columns.count('decoded_translation_sha256') == 1
         assert database.execute('SELECT * FROM approval').fetchall() == [('old-job', 'c' * 64)]
+
+@pytest.mark.parametrize('mutation', ['profile', 'model', 'operation', 'bound', 'approval', 'request'])
+def test_known_unsent_reservation_rejects_every_changed_original_binding(setup, mutation):
+    selected, vault, transport, ledger, _ = setup
+    request = GoogleTranslationRequest('Original approved text', 'en', 'uk')
+    permit = approval(selected, request)
+    original_hash = request.fingerprint(selected)
+    ledger.reserve('first', permit, original_hash, 50)
+    ledger.cancel_before_send('first')
+    before = ledger.report(permit.job_id)
+    changed_profile, changed_request, changed_approval, estimate = selected, request, permit, 50
+    if mutation == 'profile':
+        changed_profile = replace(selected, name='Changed selected profile')
+    elif mutation == 'model':
+        changed_profile = ProviderProfile(selected.id, selected.name, 'openai-compatible',
+            'https://example.com/v1', 'different-model', ('llm',))
+    elif mutation == 'operation':
+        changed_request = GoogleTranslationRequest(operation='languages')
+    elif mutation == 'bound':
+        estimate = 49
+    elif mutation == 'approval':
+        changed_approval = replace(permit, budget_micros=100)
+    else:
+        changed_request = replace(request, text='Unreviewed text')
+    with pytest.raises(ProviderError):
+        ledger.reserve('first', changed_approval, changed_request.fingerprint(changed_profile), estimate)
+    assert ledger.report(permit.job_id) == before
+    assert before[0]['state'] == 'cancelled_before_send'
+    assert not vault.reads and not transport.calls
+
+
+@pytest.mark.parametrize('state', ['reserved', 'uncertain', 'complete'])
+def test_sent_or_unresolved_translation_reservation_never_replays(setup, state):
+    selected, vault, transport, ledger, _ = setup
+    request = GoogleTranslationRequest('Original approved text', 'en', 'uk')
+    permit = approval(selected, request)
+    request_hash = request.fingerprint(selected)
+    ledger.reserve('first', permit, request_hash, 50)
+    if state != 'reserved':
+        ledger.finish('first', output_sha256='a' * 64 if state == 'complete' else None)
+    before = ledger.report(permit.job_id)
+    assert before[0]['state'] == state
+    with pytest.raises(ProviderError, match='already recorded'):
+        ledger.reserve('first', permit, request_hash, 50)
+    assert ledger.report(permit.job_id) == before
+    assert not vault.reads and not transport.calls
+
+
+@pytest.mark.parametrize('status', [302, 400, 401, 429, 500])
+def test_each_failed_http_translation_remains_uncertain_without_automatic_retry(setup, monkeypatch, status):
+    selected, vault, _, ledger, _ = setup
+    request = GoogleTranslationRequest('Approved synthetic source <tag> & original.', 'auto', 'uk')
+    permit = approval(selected, request)
+    connection = Mock()
+    response = connection.getresponse.return_value
+    response.status = status
+    monkeypatch.setattr(providers.socket, 'getaddrinfo', lambda *a, **k: [
+        (socket.AF_INET, socket.SOCK_STREAM, 6, '', ('142.250.190.78', 443))])
+    monkeypatch.setattr(providers.http.client, 'HTTPConnection', Mock(return_value=connection))
+    real_context = ssl.SSLContext
+    contexts = []
+    def context(protocol):
+        value = real_context(protocol)
+        value.wrap_socket = Mock(return_value=Mock())
+        contexts.append(value)
+        return value
+    monkeypatch.setattr(providers, 'ssl', SimpleNamespace(
+        PROTOCOL_TLS_CLIENT=ssl.PROTOCOL_TLS_CLIENT, SSLContext=context))
+    gateway = ProviderGateway(ledger, vault=vault, transport=DirectTransport())
+    with pytest.raises(ProviderError) as caught:
+        gateway.perform(selected, request, approval=permit, operation_id='first', estimated_micros=50)
+    assert SECRET not in str(caught.value) and caught.value.__cause__ is None
+    rows = ledger.report(permit.job_id)
+    assert len(rows) == 1 and rows[0]['state'] == 'uncertain'
+    assert rows[0]['output_sha256'] is None and rows[0]['decoded_translation_sha256'] is None
+    with pytest.raises(ProviderError, match='already recorded'):
+        gateway.perform(selected, request, approval=permit, operation_id='first', estimated_micros=50)
+    assert ledger.report(permit.job_id) == rows
+    assert connection.request.call_count == 1 and len(vault.reads) == 1
+    assert connection.request.call_args.args == ('POST', '/language/translate/v2')
+    payload = connection.request.call_args.kwargs['body']
+    assert json.loads(payload) == {'q': request.text, 'target': 'uk', 'format': 'text', 'model': 'nmt'}
+    assert SECRET not in payload.decode('utf-8')
+    assert connection.request.call_args.kwargs['headers']['X-goog-api-key'] == SECRET
+    assert contexts[0].check_hostname and contexts[0].verify_mode == ssl.CERT_REQUIRED
+    connection.close.assert_called_once()
+

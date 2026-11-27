@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "component": "current-desktop-dependency-inventory-reconciliation",
+  "source_base": "e0ff956cafe5105d4b930aad53fe354b73e9fd4a",
+  "observed_failure": {
+    "run_id": 46033904918,
+    "job_id": 140624345878,
+    "module": "tests/packaging/test_windows_bundle.py",
+    "case": "OfflineInstallerInventoryTests.test_installer_roots_and_locks_include_declared_application_features",
+    "cause": "Current desktop pyproject requires pywin32==312; the two older explicit roots and exact lock/SBOM inventories omitted it."
+  },
+  "changes": [
+    {
+      "profile": "windows",
+      "previous_components": 17,
+      "current_components": 18,
+      "added_component": {
+        "type": "library",
+        "bom-ref": "pywin32@312",
+        "name": "pywin32",
+        "version": "312",
+        "purl": "pkg:pypi/pywin32@312",
+        "hashes": [
+          {
+            "alg": "SHA-256",
+            "content": "d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a"
+          }
+        ],
+        "licenses": [
+          {
+            "license": {
+              "name": "Mixed upstream licences; retain all wheel License-File metadata and licence files"
+            }
+          }
+        ],
+        "externalReferences": [
+          {
+            "type": "website",
+            "url": "https://pypi.org/project/pywin32/312/"
+          },
+          {
+            "type": "vcs",
+            "url": "https://github.com/mhammond/pywin32/tree/2a277cb5552756c2b4d42b524dc36d25e0bb6354"
+          }
+        ]
+      },
+      "prior_components_retained": true,
+      "prior_dependency_edges_retained": true
+    },
+    {
+      "profile": "windows-semantic",
+      "previous_components": 53,
+      "current_components": 54,
+      "added_component": {
+        "type": "library",
+        "bom-ref": "pywin32@312",
+        "name": "pywin32",
+        "version": "312",
+        "purl": "pkg:pypi/pywin32@312",
+        "hashes": [
+          {
+            "alg": "SHA-256",
+            "content": "d11417d84412f859b722fad0841b3614459ed0047f7542d8362e77884f6b6e8a"
+          }
+        ],
+        "licenses": [
+          {
+            "license": {
+              "name": "Mixed upstream licences; retain all wheel License-File metadata and licence files"
+            }
+          }
+        ],
+        "externalReferences": [
+          {
+            "type": "website",
+            "url": "https://pypi.org/project/pywin32/312/"
+          },
+          {
+            "type": "vcs",
+            "url": "https://github.com/mhammond/pywin32/tree/2a277cb5552756c2b4d42b524dc36d25e0bb6354"
+          }
+        ]
+      },
+      "prior_components_retained": true,
+      "prior_dependency_edges_retained": true
+    }
+  ],
+  "review_source": "carr-library/packaging/windows-integrated-cp311.lock and windows-integrated-sbom.cdx.json",
+  "notice_source": "carr-library/packaging/wheel-notices/SOURCES.json",
+  "execution_status": "NOT_RUN",
+  "unchanged_assertions": "The existing exact roots equality, lock coverage, unique SBOM inventory and graph tests remain strict.",
+  "qualifications": "Existing admitted integrated wheel record reused. This source composition is not a new resolver run, actual Office availability, new license determination, or complete final installer qualification."
+}

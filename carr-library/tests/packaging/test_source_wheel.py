@@ -104,6 +104,8 @@ def test_exact_historical_commit_verified_independently_of_checkout_head(source,
     evidence = verifier.verify_application_wheel(candidate, repo, first)
 
     assert evidence['source_commit'] == first
+    assert evidence['source_tree'] == git(repo, 'rev-parse', first + '^{tree}')
+    assert evidence['source_tree'] != git(repo, 'rev-parse', 'HEAD^{tree}')
     assert evidence['wheel_sha256'] == sha256(candidate.read_bytes()).hexdigest()
     assert evidence['required_runtime_files'] == 2
     assert evidence['payload_files'] == 3

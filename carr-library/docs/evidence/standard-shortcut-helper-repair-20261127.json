@@ -1,0 +1,175 @@
+{
+  "schema": 1,
+  "component": "standard-shortcut-helper-bounded-com-activation",
+  "source_base": "e0ff956cafe5105d4b930aad53fe354b73e9fd4a",
+  "observed_install_update_failure": {
+    "source": "3e642a5535800aa6a10c248a5b0f7b714de13a67",
+    "run_id": 46035575768,
+    "job_id": 140629999545,
+    "phase": "snapshot of installed A / shortcut target"
+  },
+  "diagnostic": {
+    "run_id": 46046979538,
+    "job_id": 140668567635,
+    "artifact": {
+      "id": 15222144851,
+      "name": "carr-standard-helper-ee96fc627a64d282dd46814af04e23966c60d24f-1",
+      "size_in_bytes": 2237,
+      "url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15222144851",
+      "archive_download_url": "https://api.github.com/repos/Oleksii-debug/AudioTacticalFPS/actions/artifacts/15222144851/zip",
+      "expired": false,
+      "created_at": "2026-11-27T18:25:29Z",
+      "expires_at": "2026-12-04T18:25:28Z",
+      "updated_at": "2026-11-27T18:25:29Z",
+      "digest": "sha256:123abc4a72a63d3dc4b29e15caf6037a2af72e1ebf001bd4dfc9ae84dd625fe6",
+      "workflow_run": {
+        "id": 46046979538,
+        "repository_id": 1341777614,
+        "head_repository_id": 1341777614,
+        "head_branch": "carr/standard-helper-r22-diagnose-d3a-20261127",
+        "head_sha": "ee96fc627a64d282dd46814af04e23966c60d24f"
+      }
+    },
+    "report": {
+      "actual_windows": true,
+      "helper_bytes": 450560,
+      "helper_links": 2,
+      "helper_sha256": "38f4384643b3fa0de714d2367b712c2e0fa1c89e2cfd131ae6b831ad962b1033",
+      "isolated": true,
+      "kind": "standard-helper-diagnostic",
+      "module_sha256": {
+        "carr_library.audio.engines": "1ec6425b30a1a1961bddba13b1686e4cc7766eb205d48c3c981c9de409230d1f",
+        "carr_library.audio.windows_process": "b9636fe98e4a8a594c8a6680d1ac507ef857869cd18964b24cee573ac0447272",
+        "carr_library.security.standard_windows": "f31ee0b6ea25f4b46feb9ffe69a2972367b7f844dce90118cc0aeb66a39f4a8a"
+      },
+      "observations": [
+        {
+          "actual_children": 1,
+          "children_settled": true,
+          "diagnostic_bytes": 49,
+          "elapsed_seconds": 8.094,
+          "exit_code": 0,
+          "label": "filtered-literal-control",
+          "native_errors": [],
+          "phases": [
+            "START",
+            "UTF8"
+          ],
+          "status": "RETURNED",
+          "timeout_seconds": 30
+        },
+        {
+          "actual_children": 1,
+          "children_settled": true,
+          "diagnostic_bytes": 79,
+          "elapsed_seconds": 30,
+          "error_type": "TrustError",
+          "label": "filtered-new-object",
+          "native_errors": [],
+          "phases": [
+            "START",
+            "UTF8",
+            "COM_BEFORE"
+          ],
+          "status": "ERROR",
+          "timeout_seconds": 30
+        },
+        {
+          "actual_children": 1,
+          "children_settled": true,
+          "diagnostic_bytes": 294,
+          "elapsed_seconds": 0.547,
+          "exit_code": 0,
+          "label": "filtered-activator-no-autoload",
+          "native_errors": [],
+          "phases": [
+            "START",
+            "UTF8",
+            "COM_BEFORE",
+            "COM_AFTER",
+            "SHORTCUT_BEFORE",
+            "SHORTCUT_AFTER",
+            "TARGET_SET",
+            "SAVED",
+            "TARGET_MATCHED",
+            "RELEASED"
+          ],
+          "status": "RETURNED",
+          "timeout_seconds": 30
+        },
+        {
+          "actual_children": 1,
+          "children_settled": true,
+          "diagnostic_bytes": 177,
+          "elapsed_seconds": 30.015,
+          "error_type": "TrustError",
+          "label": "fixed-system-modules-new-object",
+          "native_errors": [],
+          "phases": [
+            "START",
+            "UTF8",
+            "COM_BEFORE",
+            "COM_AFTER",
+            "SHORTCUT_BEFORE",
+            "SHORTCUT_AFTER"
+          ],
+          "status": "ERROR",
+          "timeout_seconds": 30
+        },
+        {
+          "actual_children": 1,
+          "children_settled": true,
+          "diagnostic_bytes": 294,
+          "elapsed_seconds": 22.875,
+          "exit_code": 0,
+          "label": "fixed-system-path-new-object",
+          "native_errors": [],
+          "phases": [
+            "START",
+            "UTF8",
+            "COM_BEFORE",
+            "COM_AFTER",
+            "SHORTCUT_BEFORE",
+            "SHORTCUT_AFTER",
+            "TARGET_SET",
+            "SAVED",
+            "TARGET_MATCHED",
+            "RELEASED"
+          ],
+          "status": "RETURNED",
+          "timeout_seconds": 30
+        },
+        {
+          "actual_children": 1,
+          "children_settled": true,
+          "diagnostic_bytes": 59,
+          "elapsed_seconds": 22.735,
+          "label": "unchanged-current-shortcut-target",
+          "native_errors": [],
+          "phases": [],
+          "status": "RETURNED",
+          "target_matches": true,
+          "timeout_seconds": 30
+        }
+      ],
+      "qualification": "NOT_AN_INSTALL_OR_UPDATE_QUALIFICATION",
+      "schema": 1,
+      "source_commit": "ee96fc627a64d282dd46814af04e23966c60d24f",
+      "source_tree": "fe2db31ff564a2e8a0eef0ca9a22bc80947f2a86",
+      "status": "DIAGNOSTIC_COMPLETE",
+      "temporary_shortcuts_removed": true
+    }
+  },
+  "interpretation": "The filtered New-Object path exceeded the existing 30 second bound. The same fixed COM class activated directly with module autoload disabled completed the measured create/save/read/release sequence in 0.547 seconds. This isolates an observed helper bootstrap dependency; it does not establish a universal OS timing claim.",
+  "repair": "Keep the same admitted System32 helper, filtered environment, data-only shortcut variable, 30 second deadline and bounded output. Use fixed .NET COM activation, explicit nested-finally COM release and generic nonzero error exit.",
+  "tests": {
+    "previous": 13,
+    "added": {
+      "test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host": 1,
+      "test_shortcut_helper_failure_never_admits_its_untrusted_target": 2
+    },
+    "total": 16,
+    "status": "NOT_RUN"
+  },
+  "qualification": "The diagnostic completed on real Windows but is not installation, upgrade, recovery or release qualification. Actual A→B successor remains required."
+}

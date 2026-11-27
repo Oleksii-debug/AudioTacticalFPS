@@ -136,3 +136,52 @@ def test_redirected_system_helper_parent_is_refused(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, 'lstat', metadata)
     with pytest.raises(_files.TrustError, match='Directory is linked, redirected'):
         standard.WindowsStandardHost._powershell()
+
+
+def test_shortcut_target_keeps_path_as_data_and_uses_the_same_bounded_fixed_host(tmp_path, monkeypatch):
+    root, helper = fixed_helper(tmp_path)
+    target = tmp_path / "Verified target ' $marker.exe"
+    target.write_bytes(b'inert target; never executed')
+    shortcut = tmp_path / "Reviewed shortcut ' $marker.lnk"
+    original = {'SYSTEMROOT': str(root), 'PIP_NO_INDEX': '1'}
+    calls = []
+    monkeypatch.setattr(standard.WindowsStandardHost, 'environment', staticmethod(lambda: dict(original)))
+    monkeypatch.setattr(standard.WindowsStandardHost, '_powershell', staticmethod(lambda: helper))
+
+    def run(arguments, **options):
+        calls.append((arguments, options))
+        assert arguments[:4] == [helper, '-NoProfile', '-NonInteractive', '-Command']
+        script = arguments[4]
+        assert str(shortcut) not in script and str(target) not in script
+        assert "GetTypeFromProgID('WScript.Shell')" in script
+        assert '[Activator]::CreateInstance' in script and 'New-Object' not in script
+        assert "$PSModuleAutoLoadingPreference='None'" in script
+        assert 'FinalReleaseComObject($link)' in script and 'FinalReleaseComObject($shell)' in script
+        assert options == {'cwd': root, 'environment': dict(original,
+            CARR_STANDARD_SHORTCUT=str(shortcut)), 'timeout': 30}
+        return 0, (str(target) + '\r\n').encode('utf-8')
+
+    monkeypatch.setattr(standard, 'run_owned', run)
+    host = object.__new__(standard.WindowsStandardHost)
+    assert host._shortcut_target(shortcut, root) == target
+    assert len(calls) == 1 and original == {'SYSTEMROOT': str(root), 'PIP_NO_INDEX': '1'}
+    assert target.read_bytes() == b'inert target; never executed' and not shortcut.exists()
+
+
+@pytest.mark.parametrize('failure', ['nonzero-exit', 'oversized-output'])
+def test_shortcut_helper_failure_never_admits_its_untrusted_target(tmp_path, monkeypatch, failure):
+    root, helper = fixed_helper(tmp_path)
+    monkeypatch.setattr(standard.WindowsStandardHost, 'environment', staticmethod(dict))
+    monkeypatch.setattr(standard.WindowsStandardHost, '_powershell', staticmethod(lambda: helper))
+    output = (1, b'untrusted target') if failure == 'nonzero-exit' else (0, b'x' * 32769)
+    calls = []
+    def run(*args, **options):
+        calls.append(options)
+        return output
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A failed or oversized native response reached target admission.')
+    monkeypatch.setattr(standard, 'run_owned', run)
+    monkeypatch.setattr(standard, 'local_path', forbidden)
+    with pytest.raises(_files.TrustError, match='Start-menu target could not be verified'):
+        object.__new__(standard.WindowsStandardHost)._shortcut_target(tmp_path / 'selected.lnk', root)
+    assert len(calls) == 1 and calls[0]['timeout'] == 30

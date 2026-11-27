@@ -3,7 +3,7 @@
   "feature": "Native SAPI through current audio engine, explicit punctuation and preserved saved identities",
   "base": "275a882be727aec2f2ed72e5f543fd449fcd40c3",
   "core_checkpoint": "5cd1ed9501cb9e14c302ea460d417b6e8b84c0ec",
-  "total_cases": 75,
+  "total_cases": 114,
   "fixture_multipliers": 1,
   "tests": {
     "tests/audio/test_native_sapi.py": {
@@ -27,7 +27,10 @@
       "test_invalid_saved_32_bit_identity_never_constructs_a_compatibility_host": 2,
       "test_absent_selected_32_bit_voice_never_chooses_a_different_installed_voice": 1,
       "test_fixed_factory_uses_supported_pywin32_progid_contract": 3,
-      "test_fixed_factory_rejects_foreign_class_before_com_admission": 1
+      "test_fixed_factory_rejects_foreign_class_before_com_admission": 1,
+      "test_native_engine_stop_waits_for_existing_job_accounting": 1,
+      "test_native_engine_cancel_retains_streams_until_pending_cleanup_settles": 3,
+      "test_native_engine_success_cannot_return_before_pending_cleanup_settles": 1
     },
     "tests/reader/test_speech_punctuation.py": {
       "test_false_default_keeps_legacy_engine_options_and_project_models": 1,
@@ -47,10 +50,24 @@
       "test_punctuation_control_is_disabled_during_current_request": 2,
       "test_prepared_request_keeps_its_captured_punctuation_setting": 1,
       "test_ui_does_not_silently_admit_punctuation_for_an_unsupported_voice": 1
+    },
+    "tests/audio/test_sapi_host_admission.py": {
+      "test_serviced_hardlink_is_allowed_only_at_selected_system_host": 2,
+      "test_foreign_or_wrong_architecture_path_is_never_a_system_host": 8,
+      "test_linked_system_host_is_rejected_before_execution": 3,
+      "test_unavailable_system_host_is_refused": 2,
+      "test_architecture_is_typed_before_windows_lookup": 5,
+      "test_default_and_lazy_selection_ignore_spoofed_systemroot": 1,
+      "test_host_path_is_checked_again_before_each_request": 1,
+      "test_cancelled_request_never_resolves_a_host_or_launches": 1,
+      "test_windows_directory_uses_fixed_native_api": 1,
+      "test_invalid_native_windows_directory_is_refused": 6,
+      "test_nonwindows_never_resolves_environment_host": 1,
+      "test_unknown_sapi_identity_is_rejected_before_host_lookup": 3
     }
   },
   "native": {
-    "total_checks": 35,
+    "total_checks": 38,
     "expected_label_counter": {
       "actual Windows native reader controls": 1,
       "existing reviewed pywin32 dependency": 1,
@@ -86,7 +103,10 @@
       "native prepare event handled": 1,
       "native stop event handled": 1,
       "native restore cursor event handled": 1,
-      "native close event handled": 1
+      "native close event handled": 1,
+      "actual compatibility hosts use the shared Windows directory and distinct architectures": 1,
+      "spoofed SystemRoot cannot redirect selected saved compatibility voice": 1,
+      "wrong-architecture compatibility host is refused before any process": 1
     },
     "probe_modules": [
       "carr_library.audio.engines",
@@ -99,7 +119,9 @@
       "carr_library.reader.live_playback",
       "carr_library.ui.live_reading",
       "carr_library.library_backup",
-      "carr_library.__main__"
+      "carr_library.__main__",
+      "carr_library.audio.recording_process",
+      "carr_library.audio.cleanup"
     ]
   },
   "status": "DECLARED_REQUIRES_ACTUAL_EXECUTION",
@@ -110,5 +132,35 @@
     "previous_total_cases": 71,
     "new_factory_cases": 4,
     "native_total_checks_unchanged": 35
+  },
+  "compatibility_host_restore": {
+    "base": "ac186ce5188f63b06f46886ce39b6225382c39b6",
+    "new_cases": 34,
+    "previous_total_cases": 75,
+    "new_native_checks": 3,
+    "previous_native_checks": 35,
+    "native_scope": "Actual Windows host paths and passive admission only; no PowerShell voice enumeration or rendering."
+  },
+  "cleanup_followup": {
+    "prior_native_failure": {
+      "source_commit": "fcc57dd0ef016e7743b7005a4273c5d6612951ac",
+      "run": 46039343585,
+      "job": 140642779359
+    },
+    "later_original_owner_pass": {
+      "source_commit": "6e6d2599f76b489b8081f3d453afbe8c1e477f9a",
+      "run": 46046362281,
+      "job": 140666508892,
+      "source_cases": 109,
+      "installed_cases": 109,
+      "native_checks": 38
+    },
+    "new_cases": 5,
+    "previous_total_cases": 109,
+    "native_labels_unchanged": 38,
+    "required_native_field": {
+      "owned_descendant_shutdown": "ACTUAL_FILE_RELEASE_OBSERVED"
+    },
+    "repair": "Same existing Windows capture _stop_owned confirms full job active count zero. Synchronous engine runner retains logs/staging/admission through existing pending cleanup owner and wait_for_cleanup. POSIX stop algorithm unchanged."
   }
 }

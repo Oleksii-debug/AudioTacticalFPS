@@ -111,9 +111,9 @@ def main():
     old = json.loads((checkout / 'scripts/translation_scope_oracles.json').read_text(encoding='utf-8'))
     local = oracle['local_functions']
     count = sum(sum(values.values()) for values in local.values())
-    if (oracle['schema'] != 1 or count != 38 or old['required_cases_per_population'] != 268
-            or sum(sum(values.values()) for values in old['functions'].values()) != 268
-            or oracle['required_cases_per_population'] != 306
+    if (oracle['schema'] != 1 or count != 38 or old['required_cases_per_population'] != 286
+            or sum(sum(values.values()) for values in old['functions'].values()) != 286
+            or oracle['required_cases_per_population'] != 324
             or set(local) != {'tests.loopback.test_translation_local_adapter'}):
         raise ValueError('The exact protected local and existing translation population differs.')
     paths = [name.replace('.', '/') + '.py' for name in (*old['functions'], *local)]
@@ -175,8 +175,8 @@ def main():
         subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--'], cwd=checkout, check=True, timeout=20)
         if failures:
             raise ValueError('Required translation phases failed: ' + ', '.join(failures))
-        report.update(status='PASS', source_cases=306, installed_cases=306, native_flows=8,
-                      local_loopback_cases_per_population=38, existing_cases_per_population=268)
+        report.update(status='PASS', source_cases=324, installed_cases=324, native_flows=8,
+                      local_loopback_cases_per_population=38, existing_cases_per_population=286)
     except BaseException as error:
         report.update(status='FAIL', error=type(error).__name__ + ': ' + str(error)[:4000])
         raise

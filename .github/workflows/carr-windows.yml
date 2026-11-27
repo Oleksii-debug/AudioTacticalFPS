@@ -208,7 +208,7 @@ jobs:
           $audioBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Run required integrated source workflows
-        timeout-minutes: 60
+        timeout-minutes: 90
         run: |
           # These real-engine source tests must discover the exact prepared
           # runtime. Restrict the override to this source-test process.
@@ -654,7 +654,10 @@ jobs:
             'tests/packaging/test_local_audio_download.py',
             'tests/storage/test_pending_completion_binding.py',
             'tests/conversion/test_canonical_presentation.py',
-            'tests/ingest/test_import_replay_identity.py'
+            'tests/ingest/test_import_replay_identity.py',
+            'tests/audio/test_sapi_host_admission.py',
+            'tests/ui/test_keyboard_registration_compatibility.py',
+            'tests/audio/test_music_controls.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -1545,7 +1548,7 @@ jobs:
               'tests/e2e/test_large_pdf_original.py',
               'tests/e2e/test_large_pdf_scan_continuation.py',
               'tests/security/test_standard_update.py',
-            'tests/security/test_standard_system_helper.py',
+              'tests/security/test_standard_system_helper.py',
               'tests/ui/test_desktop_query_jobs.py',
               'tests/ui/test_desktop_result_modes.py',
               'tests/ui/test_federated_labels.py',
@@ -1693,6 +1696,10 @@ jobs:
               'tests/conversion/test_canonical_presentation.py',
               'tests/e2e/test_search_operation_budget.py',
               'tests/ingest/test_import_replay_identity.py',
+              'tests/ui/test_evidence_draft_recovery.py',
+              'tests/audio/test_sapi_host_admission.py',
+              'tests/ui/test_keyboard_registration_compatibility.py',
+              'tests/audio/test_music_controls.py',
           ]
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
@@ -1813,6 +1820,13 @@ jobs:
           runner = importlib.util.module_from_spec(spec)
           spec.loader.exec_module(runner)
           assert runner.ROOT == stage
+          import carr_library.audio.windows_process as installed_process_owner
+          owner_path = pathlib.Path(installed_process_owner.__file__).resolve(strict=True)
+          assert owner_path.is_relative_to(installed_root)
+          owner_source = project / 'src/carr_library/audio/windows_process.py'
+          owner_digest = hashlib.sha256(owner_source.read_bytes()).hexdigest()
+          assert hashlib.sha256(owner_path.read_bytes()).hexdigest() == owner_digest
+          runner.WINDOWS_OWNER = owner_path
           # Both the pytest child and CLI descendants use the same installed
           # Python. Reject source-path imports before any test can run.
           runner.PYTEST_CHILD = (
@@ -1828,6 +1842,10 @@ jobs:
           assert passed and re.fullmatch(
               r'PASS: tests/loopback/test_local_planning.py: junit_passed=14, failed=0, skipped=0, pytest_exit=0\n',
               verdict.getvalue())
+          assert runner.WINDOWS_OWNER == owner_path
+          assert pathlib.Path(installed_process_owner.__file__).resolve(strict=True) == owner_path
+          assert hashlib.sha256(owner_path.read_bytes()).hexdigest() == owner_digest
+          assert hashlib.sha256(owner_source.read_bytes()).hexdigest() == owner_digest
           assert (bundle / 'bundle-manifest.json').read_bytes() == manifest_raw
           verifier_spec = importlib.util.spec_from_file_location('_carr_installed_loopback_seal', bundle / 'install_windows.py')
           verifier = importlib.util.module_from_spec(verifier_spec)
@@ -1837,6 +1855,7 @@ jobs:
                        required_cases=14, failed=0, skipped=0, exact_selector='tests/loopback/test_local_planning.py',
                        policy='numeric loopback TCP only; no DNS or external access',
                        staging_closure_sha256=closure_hashes,
+                       installed_process_owner={'path': str(owner_path), 'sha256': owner_digest},
                        manifest_sha256=hashlib.sha256(manifest_raw).hexdigest(),
                        actual_local_model='NOT_RUN', nvda='NOT_RUN')
           pathlib.Path('ci-results/full-bundle-local-planning-loopback-proof.json').write_text(
@@ -1889,10 +1908,10 @@ jobs:
               Tee-Object (Join-Path $output 'acceptance.txt')
             if ($LASTEXITCODE -ne 0) { throw 'The exact sealed local/Google translation population failed.' }
             $report = Get-Content (Join-Path $output 'local-translation-gate.json') -Raw | ConvertFrom-Json
-            if ($report.status -ne 'PASS' -or $report.source_cases -ne 306 -or
-                $report.installed_cases -ne 306 -or $report.native_flows -ne 8 -or
+            if ($report.status -ne 'PASS' -or $report.source_cases -ne 324 -or
+                $report.installed_cases -ne 324 -or $report.native_flows -ne 8 -or
                 $report.local_loopback_cases_per_population -ne 38 -or
-                $report.existing_cases_per_population -ne 268 -or
+                $report.existing_cases_per_population -ne 286 -or
                 $report.source_commit -ne $sourceCommit -or $report.source_tree -ne $sourceTree) {
               throw 'The sealed translation receipt is incomplete or belongs to another candidate.'
             }
@@ -1996,7 +2015,7 @@ jobs:
       - name: Require contextual commands and recovery regressions
         id: keyboard-regressions
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_save_all.py tests/ui/test_save_all_current_drafts.py tests/ui/test_desktop_evidence_jobs.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/ui/test_keyboard_registration_compatibility.py tests/ui/test_command_registry.py tests/storage/test_keyboard_preferences.py tests/ui/test_keyboard_manager.py tests/ui/test_save_all.py tests/ui/test_save_all_current_drafts.py tests/ui/test_desktop_evidence_jobs.py tests/ui/test_reader_command_dispatch.py tests/ui/test_reader_keymap_context.py tests/storage/test_evidence_drafts.py tests/ui/test_evidence_draft_recovery.py 2>&1 | Tee-Object 'keyboard-results/source-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise actual native Main keyboard settings and command dispatch

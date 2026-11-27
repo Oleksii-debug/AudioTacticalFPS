@@ -375,3 +375,73 @@ def test_committed_service_result_survives_advisory_progress_failure(native_hand
         assert e.controls['run'].enabled and e.controls['preview'].enabled
         assert not e.controls['pause'].enabled
     e.show(scenario)
+
+@pytest.mark.parametrize('worker_finished', [False, True], ids=['worker-pending', 'ui-callback-pending'])
+def test_saved_job_resume_waits_for_its_current_native_result_callback(native_handlers, tmp_path, worker_finished):
+    """A saved complete summary cannot stand in for the queued resume result."""
+    e = native_handlers
+    inputs, outputs = tmp_path / 'selected-input', tmp_path / 'selected-output'
+    inputs.mkdir()
+    outputs.mkdir()
+    source = inputs / 'railway.txt'
+    source.write_text('Railway transport connected cities.', encoding='utf-8')
+
+    def scenario(e):
+        e.controls['input'].ChangeValue(str(inputs))
+        e.controls['output'].ChangeValue(str(outputs))
+        e.controls['instruction'].ChangeValue(
+            'Create library "Resumed"\nImport "' + str(source) + '"\nSearch "Railway transport"')
+        e.press('preview')
+        e.finish()
+        assert e.controls['run'].enabled
+        e.press('run')
+        e.finish()
+        service = AssistantService(e.app)
+        completed, = service.jobs()
+        completed = service.get(completed.id)
+        assert completed.status == 'complete' and completed.completed == completed.total == 3
+        workspace = completed.results[0]['workspace']
+        imported = tuple(row.edition_id for row in e.app.browse(workspace))
+        assert imported
+        original = source.read_bytes()
+
+        e.press('jobs')
+        assert e.controls['run'].enabled
+        stale_summary = e.controls['review'].GetValue()
+        assert stale_summary.startswith('complete: 3/3.')
+        assert '3 of 3 verified operations' not in stale_summary
+        e.press('run')
+        assert len(e.executor.pending) == 1
+        if worker_finished:
+            e.executor.complete()
+            assert not e.executor.pending and e.queue
+        assert not e.controls['run'].enabled and not e.controls['preview'].enabled
+        assert e.controls['review'].GetValue() == stale_summary
+        # Preview readiness belongs to this current native result callback,
+        # not merely to the completed durable worker.
+        if not worker_finished:
+            e.executor.complete()
+        assert not e.controls['preview'].enabled
+        e.drain()
+        assert e.controls['run'].enabled and e.controls['preview'].enabled
+        assert '3 of 3 verified operations' in e.controls['review'].GetValue()
+        verified = service.get(completed.id)
+        assert verified.status == 'complete' and verified.results == completed.results
+        assert tuple(row.edition_id for row in e.app.browse(workspace)) == imported
+        assert source.read_bytes() == original
+    e.show(scenario)
+
+
+def test_silent_change_of_reviewed_goal_requires_fresh_preview(native_handlers):
+    def scenario(e):
+        e.controls['instruction'].ChangeValue('Create library "Original reviewed goal"')
+        e.press('preview')
+        e.finish()
+        assert e.controls['run'].enabled
+        e.controls['instruction'].ChangeValue('Create library "Unreviewed replacement"')
+        e.press('run')
+        assert not e.executor.pending and not e.controls['run'].enabled
+        assert 'reviewed goal or scope changed' in e.controls['review'].GetValue()
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+    native_handlers.show(scenario)
+

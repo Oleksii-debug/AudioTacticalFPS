@@ -1,0 +1,60 @@
+{
+  "schema": "carr-current-music-control-reconciliation/v1",
+  "status": "SOURCE_IMPLEMENTED_RUNTIME_NOT_RUN",
+  "source_parent": "5070b0e9808e1242936fac314bab9a8d9f20213a",
+  "canonical": {
+    "commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+    "tests_blob": "60220157ca2894589479d9818c97943ababc487e",
+    "music_source_blob": "5b2f7982d11adf7be7dca1e481c34a215ec28ff4"
+  },
+  "scope": {
+    "finalization_blob": "db8adbdc483a03c262885928c7ed214ca70bbaa7",
+    "detailed_scope_blob": "d0b2761dd22b33233b311d4800230fb47f5d3d8b",
+    "requirement": "V3-12 validated music mood/key controls through current local production",
+    "named_sfx": "Optional in V3-12; existing explicit Sound/Clip asset routing remains current. No legacy generator API equivalence is claimed."
+  },
+  "changes": [
+    "MusicCue carries only a finite optional tonic; None omits the added field from its serialized cue and plan, preserving existing data identities.",
+    "The current script parser, source-bound production director and same composer/MIDI/selected adapters receive that validated key.",
+    "The existing C-major/A-minor default score path is unchanged. Explicit tonic shifts bounded note pitches without retiming sample intervals or changing the selected native owner.",
+    "Explicit keys are bound to direct music-work settings and provenance. Existing full production receipts still bind the exact composer implementation SHA256; code identity is not weakened.",
+    "Hopeful is a represented major mood, including canonical project recovery. The obsolete negative example is replaced by an actually unknown mood and protected by one positive case."
+  ],
+  "preserved": [
+    "Original scripts and saved source bytes",
+    "Current production, cache, native ownership, cancellation, resource and no-replace publication families",
+    "Completed-speech checkpoint correction61adc in base production blob6caab04e011162b8b339f92abd409796030c1e1e",
+    "No audio.jobs, engine-selection, broker or backup producer changes",
+    "No PATH trust, model download, unreviewed runtime, remote transport or model inference claim"
+  ],
+  "declared_tests": {
+    "tests/audio/test_music_controls.py": {
+      "test_implicit_key_keeps_exact_legacy_cue_document_and_roundtrip": 2,
+      "test_every_current_mood_renders_actual_bounded_pcm_and_midi": 8,
+      "test_explicit_tonic_changes_actual_pitch_and_midi_without_retiming_notes": 1,
+      "test_unreviewed_key_is_rejected_before_native_engine_lookup": 7,
+      "test_keyed_scene_uses_current_director_cache_and_exact_completed_replay": 1,
+      "test_explicit_key_reaches_existing_isolated_ace_protocol_without_model_weights": 2,
+      "test_explicit_musicgen_key_is_parent_request_data_without_an_inference_claim": 1,
+      "test_selected_key_survives_current_managed_project_and_typed_full_backup": 1
+    },
+    "tests/audio/test_canonical_project_import.py": {
+      "retained_cases": 38,
+      "added": {
+        "test_canonical_hopeful_mood_is_preserved_by_the_current_score_contract": 1
+      },
+      "new_total": 39
+    }
+  },
+  "additional_cases": 24,
+  "installed_test_support": [
+    "tests/audio/test_music_adapters.py supplies the existing synthetic ACE protocol package fixture; its bytes remain unchanged."
+  ],
+  "validation": {
+    "python_compilation": "NOT_RUN",
+    "source_tests": "NOT_RUN",
+    "installed_tests": "NOT_RUN",
+    "native_quality": "NOT_RUN",
+    "independent_source_review": "REQUESTED"
+  }
+}

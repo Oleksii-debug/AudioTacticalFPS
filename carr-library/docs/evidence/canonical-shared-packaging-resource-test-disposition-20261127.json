@@ -1,0 +1,357 @@
+{
+  "schema": 1,
+  "status": "SOURCE_IMPLEMENTED_RUNTIME_NOT_RUN",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_tree": "344567db5c0d99f5d6d7ad24c105645ea75b65e8",
+  "current_base_commit": "e0ff956cafe5105d4b930aad53fe354b73e9fd4a",
+  "current_base_tree": "5ad74d1d1ae625feb4580021586825e3a853f65a",
+  "source_blobs": {
+    "carr-library/tests/packaging/test_ci_check.py": {
+      "canonical_blob": "ea6f6605a7805011097d8b97c93fd22f3528d2ce",
+      "prior_current_blob": "8e68a86ea74507d5a85a4cfd32543023129dd460"
+    },
+    "carr-library/tests/packaging/test_windows_bundle.py": {
+      "canonical_blob": "08a55a00b3157346e9d1b17c0d432f9f8e420d33",
+      "prior_current_blob": "7a3c0f54d62a2c2b3f105665902c83f37b9bfdd3"
+    },
+    "carr-library/tests/packaging/test_audio_bundle.py": {
+      "canonical_blob": "bf63cf92deaf8df1b32d4fef0f5e6d90aa8c795c",
+      "prior_current_blob": "587bab23e4d0d632b36d873edfea432282527bc2"
+    },
+    "carr-library/tests/operations/test_resources.py": {
+      "canonical_blob": "4e6aa26cff15cc91fa4aae53e17070f741a3572f",
+      "prior_current_blob": "e9052925a507e1b0347a7be446c58a190cf453e6"
+    }
+  },
+  "shared_changed_test_paths": 4,
+  "removed_named_functions": 19,
+  "dispositions": [
+    {
+      "canonical_case": "tests/packaging/test_windows_bundle.py::test_native_launcher_is_sealed_and_tampering_is_rejected",
+      "current_contracts": [
+        "tests/packaging/test_native_launcher.py::test_bundle_seals_both_exact_files_and_rejects_tampering"
+      ],
+      "disposition": "MIGRATED_CURRENT_CONTRACT",
+      "reason": "Current separate native-launcher module binds captured executable and reviewed evidence, then verifies both sealed bytes."
+    },
+    {
+      "canonical_case": "tests/packaging/test_windows_bundle.py::test_native_launcher_wrong_identity_fails_before_output",
+      "current_contracts": [
+        "tests/packaging/test_native_launcher.py::test_different_current_source_is_rejected",
+        "tests/packaging/test_native_launcher.py::test_changed_executable_is_not_certified_by_old_evidence",
+        "tests/packaging/test_native_launcher.py::test_wrong_pe_subsystem_is_rejected"
+      ],
+      "disposition": "MIGRATED_CURRENT_CONTRACT",
+      "reason": "The current reviewed native PE/evidence admission is more specific than the old single identity fixture."
+    },
+    {
+      "canonical_case": "tests/packaging/test_windows_bundle.py::test_native_launcher_replaced_during_copy_is_rejected",
+      "current_contracts": [
+        "tests/packaging/test_native_launcher.py::test_actual_mutation_during_capture_is_rejected",
+        "tests/packaging/test_native_launcher.py::test_input_replacement_after_capture_cannot_change_sealed_bytes"
+      ],
+      "disposition": "MIGRATED_WITH_EXPLICIT_SNAPSHOT_SEMANTICS",
+      "reason": "Mutation during capture is refused. Replacement after a completed immutable capture cannot alter the earlier reviewed bytes; the current builder may safely publish that captured snapshot, so this is not identical old exception behavior."
+    },
+    {
+      "canonical_case": "tests/packaging/test_windows_bundle.py::test_native_launcher_directory_is_rejected",
+      "current_contracts": [
+        "tests/packaging/test_native_launcher.py::test_directory_instead_of_native_executable_is_rejected"
+      ],
+      "disposition": "RESTORED_EXPLICIT_REGRESSION",
+      "reason": "Product already requires a bounded regular PE file; the explicit directory regression was absent."
+    },
+    {
+      "canonical_case": "tests/packaging/test_windows_bundle.py::test_exact_verified_historical_tree_is_preserved_in_bundle",
+      "current_contracts": [
+        "tests/packaging/test_windows_bundle.py::test_exact_verified_historical_tree_is_preserved_in_bundle",
+        "tests/packaging/test_source_wheel.py"
+      ],
+      "disposition": "REPAIRED_PRODUCT_AND_REGRESSION",
+      "reason": "The current source verifier discarded the tree and the builder discarded the full verification receipt. Restore exact historical commit/tree and seal application-source.json; two actual Git commits ensure HEAD differs."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_attach_preserves_exact_source_and_every_sealed_byte_without_collecting_local_data",
+      "current_contracts": [
+        "tests/packaging/test_audio_bundle.py::test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory",
+        "tests/packaging/test_windows_bundle.py::test_exact_verified_historical_tree_is_preserved_in_bundle",
+        "tests/packaging/test_delivery_archive.py::test_unlisted_private_environments_and_tests_never_enter_archives"
+      ],
+      "disposition": "CURRENT_BUILDER_BOUNDARIES_WITH_DIFFERENT_RUNTIME",
+      "reason": "Current creation starts from explicitly selected wheels/runtimes and an inventory; it does not attach the old BtbN runtime to an existing sealed bundle. Exact source retention is repaired, while original vendor/archive/provenance remains distinct."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_existing_output_is_preserved",
+      "current_contracts": [
+        "tests/packaging/test_windows_bundle.py::test_existing_installation_preserved",
+        "tests/packaging/test_windows_bundle.py::test_concurrent_foreign_output_is_never_overwritten_or_removed"
+      ],
+      "disposition": "MIGRATED_AND_STRENGTHENED",
+      "reason": "The fresh builder rejects existing output and now uses the existing atomic no-replace publisher for a publication race."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_output_must_be_outside_both_inputs",
+      "current_contracts": [
+        "tests/packaging/test_audio_bundle.py::test_audio_bundle_output_never_mutates_an_admitted_input_tree",
+        "tests/packaging/test_windows_bundle.py::test_output_inside_wheelhouse_is_rejected_before_any_staging"
+      ],
+      "disposition": "REPAIRED_PRODUCT_AND_REGRESSION",
+      "reason": "Reject output equal to, inside, or containing a selected wheel/model/OCR/audio input tree before creating staging. Two actual audio/wheelhouse fixtures retain input bytes."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_manifest_rebound_after_installer_verification_is_rejected",
+      "current_contracts": [
+        "tests/packaging/test_windows_bundle.py::test_application_replaced_after_source_verification_is_rejected",
+        "tests/packaging/test_delivery_archive.py::test_manifest_changed_after_trusted_check_rejected",
+        "tests/packaging/test_delivery_archive.py::test_manifest_aba_cannot_make_installer_validate_a_different_inventory"
+      ],
+      "disposition": "MIGRATED_AT_CURRENT_PRODUCER_BOUNDARIES",
+      "reason": "Fresh builder verifies selected wheel bytes against exact source and rechecks the copied digest. Existing-bundle consumption belongs to the current delivery verifier, which retains exact manifest snapshot and ABA guards."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_changing_a_previously_verified_file_during_copy_never_publishes",
+      "current_contracts": [
+        "tests/packaging/test_audio_bundle.py::test_runtime_changed_during_copy_cannot_be_sealed",
+        "tests/packaging/test_windows_bundle.py::test_application_replaced_after_source_verification_is_rejected"
+      ],
+      "disposition": "MIGRATED_CURRENT_CONTRACT",
+      "reason": "Admitted runtime is reverified in staging and source-bound wheel bytes must retain their original digest."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_tampered_audio_runtime_is_rejected_before_output",
+      "current_contracts": [
+        "tests/packaging/test_audio_bundle.py::test_runtime_corruption_fails_before_output_publication",
+        "tests/packaging/test_audio_bundle.py::test_missing_original_build_documentation_rejects_runtime_before_copy"
+      ],
+      "disposition": "MIGRATED_WITH_DISTINCT_VENDOR_PIN",
+      "reason": "Current reviewed Gyan full-build inventory includes every original notice/document; this does not certify the removed BtbN archive."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_repeat_attachment_is_rejected_without_changing_previous_package",
+      "current_contracts": [
+        "tests/packaging/test_windows_bundle.py::test_existing_installation_preserved",
+        "tests/packaging/test_audio_bundle.py::test_installer_rejects_extra_and_unannounced_audio_payloads"
+      ],
+      "disposition": "OLD_ATTACHMENT_ENTRYPOINT_RETIRED_NOT_IDENTICAL_API",
+      "reason": "There is no second attachment operation in the current integrated builder. Creation requires a fresh output; installer refuses undeclared/extra audio. No claim that old attach_runtime callable or BtbN workflow is preserved."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_interrupted_publication_removes_only_its_incomplete_output",
+      "current_contracts": [
+        "tests/packaging/test_windows_bundle.py::test_failed_staging_preserves_inputs_and_removes_owned_stage",
+        "tests/packaging/test_windows_bundle.py::test_atomic_publication_failure_leaves_no_partial_output",
+        "tests/packaging/test_windows_bundle.py::test_replaced_stage_is_refused_and_foreign_directory_is_not_cleaned",
+        "tests/packaging/test_windows_bundle.py::test_error_after_atomic_commit_preserves_complete_verified_bundle"
+      ],
+      "disposition": "REPAIRED_PRODUCT_AND_REGRESSION",
+      "reason": "Use the current directory no-replace primitives: a whole complete stage is published at once; failed preparation/publication cleans only its retained inode. A published complete directory or foreign replacement is never removed."
+    },
+    {
+      "canonical_case": "tests/packaging/test_audio_bundle.py::test_missing_exact_source_identity_fails_before_copy",
+      "current_contracts": [
+        "tests/packaging/test_windows_bundle.py::test_source_commit_does_not_certify_an_unrelated_application_wheel",
+        "tests/packaging/test_windows_bundle.py::test_exact_verified_historical_tree_is_preserved_in_bundle",
+        "tests/packaging/test_delivery_archive.py::test_wrong_or_invalid_source_rejected_before_publication"
+      ],
+      "disposition": "CURRENT_SOURCE_QUALIFICATION_BOUNDARY_EXPLICIT",
+      "reason": "The generic fresh builder still permits deliberately synthetic/unqualified source-omitted bundles. Source-qualified CI supplies an exact commit and now retains its actual tree. Existing delivery requires its reviewed source identity; old attach_runtime mandatory-source API is not reinstated."
+    },
+    {
+      "canonical_case": "tests/operations/test_resources.py::test_forked_child_cannot_release_parent_reservation",
+      "current_contracts": [
+        "tests/operations/test_resource_fork.py::test_forked_child_cannot_release_parent_reservation"
+      ],
+      "disposition": "RESTORED_ACTUAL_LINUX_REGRESSION",
+      "reason": "Current ResourceLease and register_at_fork guards remain unchanged; d414 executes a real child and parent's still-held native reservation. No Windows skip is counted as coverage."
+    },
+    {
+      "canonical_case": "tests/packaging/test_ci_check.py::test_transient_report_cleanup_permission_error_is_retried_before_pass",
+      "current_contracts": [
+        "tests/packaging/test_ci_check.py::test_transient_report_cleanup_permission_error_is_retried_before_pass"
+      ],
+      "disposition": "RESTORED_CURRENT_OWNER_AND_REGRESSION",
+      "reason": "80615 preserves current strict parser/fixture/watchdog policy, adds process-family settlement and bounded owned-report cleanup. d414 requires every exact48 on both real Windows/Linux; runtime pending at authoring."
+    },
+    {
+      "canonical_case": "tests/packaging/test_ci_check.py::test_persistent_report_cleanup_permission_error_is_named_and_never_passes",
+      "current_contracts": [
+        "tests/packaging/test_ci_check.py::test_persistent_report_cleanup_permission_error_is_named_and_never_passes"
+      ],
+      "disposition": "RESTORED_CURRENT_OWNER_AND_REGRESSION",
+      "reason": "80615 preserves current strict parser/fixture/watchdog policy, adds process-family settlement and bounded owned-report cleanup. d414 requires every exact48 on both real Windows/Linux; runtime pending at authoring."
+    },
+    {
+      "canonical_case": "tests/packaging/test_ci_check.py::test_report_cleanup_permission_error_preserves_original_timeout",
+      "current_contracts": [
+        "tests/packaging/test_ci_check.py::test_report_cleanup_permission_error_preserves_original_timeout"
+      ],
+      "disposition": "RESTORED_CURRENT_OWNER_AND_REGRESSION",
+      "reason": "80615 preserves current strict parser/fixture/watchdog policy, adds process-family settlement and bounded owned-report cleanup. d414 requires every exact48 on both real Windows/Linux; runtime pending at authoring."
+    },
+    {
+      "canonical_case": "tests/packaging/test_ci_check.py::test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed",
+      "current_contracts": [
+        "tests/packaging/test_ci_check.py::test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed"
+      ],
+      "disposition": "RESTORED_CURRENT_OWNER_AND_REGRESSION",
+      "reason": "80615 preserves current strict parser/fixture/watchdog policy, adds process-family settlement and bounded owned-report cleanup. d414 requires every exact48 on both real Windows/Linux; runtime pending at authoring."
+    }
+  ],
+  "product_changes": [
+    "source_wheel returns the exact git commit tree, including a reviewed earlier commit when checkout HEAD is later.",
+    "build_windows_bundle seals the complete source verification receipt at application-source.json, retains source_tree in the manifest and hashes it inside the inventory.",
+    "Fresh bundle staging/final publication reuse exact current create_delivery.py directory identity/no-replace/owned-cleanup primitives; no delivery archive or audio redistribution pipeline is invoked.",
+    "Output may not overlap the selected wheelhouse/model/OCR/audio directories; no input tree is mutated by staging."
+  ],
+  "unchanged_validators": [
+    {
+      "path": "packaging/native_checks.py",
+      "blob": "4134e1c8ec1271cf6876e8afea8a56c5a8471117",
+      "contract": "Existing optional source_commit/source_tree accept full lowercase40hex; generic sealed inventory covers the new proof."
+    },
+    {
+      "path": "packaging/install_windows.py",
+      "blob": "b72dafbc6affb1a4f1fd77cc15ae49ae02fb2c25",
+      "contract": "Every manifest file must retain its checksum; proof tampering is tested."
+    },
+    {
+      "path": "packaging/create_delivery.py",
+      "blob": "6b105aee0643d3afcac8342a067960d4f30d25ef",
+      "contract": "Raw complete manifest remains bound; audio distribution refusal remains, including undeclared payload. Existing no-replace primitives are reused without modifying them."
+    }
+  ],
+  "new_case_counter": {
+    "tests/packaging/test_windows_bundle.py": {
+      "test_exact_verified_historical_tree_is_preserved_in_bundle": 1,
+      "test_failed_staging_preserves_inputs_and_removes_owned_stage": 1,
+      "test_atomic_publication_failure_leaves_no_partial_output": 1,
+      "test_concurrent_foreign_output_is_never_overwritten_or_removed": 1,
+      "test_replaced_stage_is_refused_and_foreign_directory_is_not_cleaned": 1,
+      "test_error_after_atomic_commit_preserves_complete_verified_bundle": 1,
+      "test_output_inside_wheelhouse_is_rejected_before_any_staging": 1,
+      "test_new_nested_output_parents_remain_supported": 1,
+      "test_alias_ancestor_is_refused_before_creating_any_nested_parent": 1
+    },
+    "tests/packaging/test_native_launcher.py": {
+      "test_directory_instead_of_native_executable_is_rejected": 1
+    },
+    "tests/packaging/test_audio_bundle.py": {
+      "test_audio_bundle_output_never_mutates_an_admitted_input_tree": 2
+    }
+  },
+  "new_source_only_cases": 12,
+  "current_module_totals": {
+    "tests/packaging/test_windows_bundle.py": 27,
+    "tests/packaging/test_native_launcher.py": 19,
+    "tests/packaging/test_audio_bundle.py": 7,
+    "tests/packaging/test_source_wheel.py": 26
+  },
+  "ci_full_counter_component": "80615ed23a21af84c2adebacd170f22ea452a3c4",
+  "ci_and_fork_focused_gate": "4e570d78fd496a29f5afefd8789e8d8112e8ba5f",
+  "actual_prior_bundle_failure": {
+    "run_id": 46033904918,
+    "job_id": 140624345878,
+    "cases_passed": 17,
+    "cases_failed": 1,
+    "subtest_failures": 2,
+    "reason": "The current desktop pywin32 dependency was absent in two older roots/locks/SBOMs; distinct root-owned74b14 inventory repair retains this strict assertion."
+  },
+  "limits": [
+    "No code execution/compilation is claimed from source review.",
+    "Current Gyan full build and historical Gyan essentials/BtbN pins are distinct; corresponding source and redistribution remain NOT_CLEARED.",
+    "Generic source-omitted synthetic bundles remain unqualified; source-bound release/delivery claims require their explicit source verification.",
+    "Old attach_runtime API is not reinstated. Mappings describe concrete current boundaries, not wholesale equivalence.",
+    "The root-owned desktop pin component74b14 must be composed for the unchanged current installer inventory assertions to pass."
+  ],
+  "review_correction": {
+    "checkpoint": "615e031d08a12c20585d26832ad68c60ebcf7f35",
+    "finding": "Root review found recursive parent mkdir preceded ancestor alias checks.",
+    "repair": "Inspect each existing ancestor, revalidate retained identities before each missing child creation, and inspect any concurrently created directory. Keep safe new nested output paths supported.",
+    "tests": "Two additional actual-filesystem cases. POSIX observes a real symlink; Windows injects native-style reparse metadata without requiring symlink privilege. No real Windows junction qualification is claimed."
+  },
+  "full_test_counter": {
+    "tests/packaging/test_windows_bundle.py": {
+      "test_complete_bundle_verifies_without_network": 1,
+      "test_sbom_exact_bytes_are_sealed_and_tampering_is_rejected": 1,
+      "test_sbom_initial_mismatch_rejected": 1,
+      "test_duplicate_sbom_component_rejected": 1,
+      "test_sbom_replaced_after_validation_cannot_change_sealed_bytes": 1,
+      "test_changed_wheel_rejected_before_output": 1,
+      "test_missing_or_extra_wheel_rejected": 1,
+      "test_platform_and_dependency_contracts_rejected": 1,
+      "test_application_without_entrypoint_rejected": 1,
+      "test_source_commit_does_not_certify_an_unrelated_application_wheel": 1,
+      "test_exact_verified_historical_tree_is_preserved_in_bundle": 1,
+      "test_failed_staging_preserves_inputs_and_removes_owned_stage": 1,
+      "test_atomic_publication_failure_leaves_no_partial_output": 1,
+      "test_concurrent_foreign_output_is_never_overwritten_or_removed": 1,
+      "test_replaced_stage_is_refused_and_foreign_directory_is_not_cleaned": 1,
+      "test_error_after_atomic_commit_preserves_complete_verified_bundle": 1,
+      "test_output_inside_wheelhouse_is_rejected_before_any_staging": 1,
+      "test_new_nested_output_parents_remain_supported": 1,
+      "test_alias_ancestor_is_refused_before_creating_any_nested_parent": 1,
+      "test_application_replaced_after_source_verification_is_rejected": 1,
+      "test_existing_installation_preserved": 1,
+      "test_installer_detects_tampering_and_extra_wheels": 1,
+      "test_manifest_path_escape_rejected": 1,
+      "test_lock_rejects_network_options_and_missing_hashes": 1,
+      "test_installer_roots_and_locks_include_declared_application_features": 1,
+      "test_sync_download_pins_are_identical_in_each_offline_installer": 1,
+      "test_installer_sbom_covers_the_exact_inventory_and_sync_dependency_graph": 1
+    },
+    "tests/packaging/test_native_launcher.py": {
+      "test_exact_executable_and_evidence_snapshots_are_returned": 1,
+      "test_different_current_source_is_rejected": 1,
+      "test_changed_executable_is_not_certified_by_old_evidence": 1,
+      "test_duplicate_json_fields_are_rejected": 1,
+      "test_missing_or_unknown_source_fields_are_rejected": 1,
+      "test_invalid_toolchain_claims_are_rejected": 1,
+      "test_wrong_pe_subsystem_is_rejected": 1,
+      "test_oversized_executable_and_report_are_rejected": 1,
+      "test_actual_mutation_during_capture_is_rejected": 1,
+      "test_directory_instead_of_native_executable_is_rejected": 1,
+      "test_other_executable_name_is_rejected": 1,
+      "test_launcher_and_evidence_must_be_supplied_together": 1,
+      "test_native_launcher_requires_bundled_python": 1,
+      "test_bundle_seals_both_exact_files_and_rejects_tampering": 1,
+      "test_input_replacement_after_capture_cannot_change_sealed_bytes": 1,
+      "test_existing_installation_is_preserved": 1,
+      "test_unannounced_native_files_are_rejected": 1,
+      "test_invalid_native_launcher_flag_is_rejected": 1,
+      "test_announced_launcher_requires_complete_manifest_and_python": 1
+    },
+    "tests/packaging/test_audio_bundle.py": {
+      "test_sealed_audio_runtime_and_notices_are_installed_with_exact_inventory": 1,
+      "test_missing_original_build_documentation_rejects_runtime_before_copy": 1,
+      "test_runtime_corruption_fails_before_output_publication": 1,
+      "test_runtime_changed_during_copy_cannot_be_sealed": 1,
+      "test_installer_rejects_extra_and_unannounced_audio_payloads": 1,
+      "test_audio_bundle_output_never_mutates_an_admitted_input_tree": 2
+    },
+    "tests/packaging/test_source_wheel.py": {
+      "test_exact_historical_commit_verified_independently_of_checkout_head": 1,
+      "test_same_version_stale_wheel_cannot_be_labeled_as_new_commit": 1,
+      "test_required_runtime_file_cannot_be_omitted_with_updated_record": 2,
+      "test_modified_runtime_and_data_rejected_even_with_valid_record": 1,
+      "test_declared_documentation_and_license_cannot_be_omitted": 2,
+      "test_undeclared_payload_rejected_despite_complete_record": 4,
+      "test_path_alias_and_bytecode_rejected": 5,
+      "test_duplicate_zip_member_rejected": 1,
+      "test_zip_symlink_rejected": 1,
+      "test_record_must_be_complete_unique_and_correct": 3,
+      "test_commit_identity_must_resolve_exactly_and_locally": 3,
+      "test_metadata_identity_and_entry_points_are_bound_to_committed_project": 1,
+      "test_actual_sdist_builds_verified_wheel_and_keeps_ci_helpers_without_private_payloads": 1
+    }
+  },
+  "fixture_parameter_multipliers": {
+    "all_fixture_params": 1,
+    "audio_bundle_explicit_source": 2,
+    "source_wheel_required_runtime": 2,
+    "source_wheel_documentation_license": 2,
+    "source_wheel_undeclared": 4,
+    "source_wheel_alias_bytecode": 5,
+    "source_wheel_record": 3,
+    "source_wheel_identity": 3
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "kind": "canonical-studio-completion-boundary",
+  "source_parent": "5070b0e9808e1242936fac314bab9a8d9f20213a",
+  "canonical_commit": "e5c64a5245583f8f8b404a0f042f6ca438c24d7f",
+  "canonical_sources": {
+    "tests/ui/test_studio_progress_results.py": "54684fa708f027d8e7c5e456186ec2874f27b956",
+    "tests/ui/test_studio_progress_isolation.py": "aa28e07dad812e94e4c5d2f53fb029fd308f3747"
+  },
+  "observed_source_gap": [
+    "AudioStudioDialog._run returned before resolving a completed future and settling its shared task when the dialog was closed or superseded.",
+    "The Studio error observer recognized InterruptedError but classified current audio.jobs.RenderCancelled (RuntimeError) as failure."
+  ],
+  "changes": [
+    "Capture only the exact real ProgressReporter returned by this operation's current presenter, with its matching operation ID.",
+    "If a queued completion belongs to a closed/superseded dialog, settle that captured reporter from the real future using existing progress.finish_result or explicit error type; do not access native controls, current presenter, notification tick, result callback, or new operation.",
+    "Capture cancellation at future completion so a newer task's stop flag cannot reclassify the old result; committed typed results and real failures remain authoritative.",
+    "Recognize current explicit speech and DSP cancellation types in the existing live observer path; never infer cancellation from a stop request alone."
+  ],
+  "declared_function_counter": {
+    "test_closed_studio_settles_exact_shared_task_without_touching_dead_controls": 5,
+    "test_stale_studio_completion_settles_old_task_without_relabeling_new_work": 1,
+    "test_live_studio_uses_explicit_speech_and_dsp_cancellation_types": 2
+  },
+  "declared_additional_cases": 8,
+  "tests": "Actual ThreadPoolExecutor futures, current ProgressHub/ProgressReporter and OperationProgress methods, actual flushed private checkpoint files; explicit dead-control traps. Native widgets are not substituted for a Windows acceptance claim.",
+  "validation": {
+    "source_review": "requested",
+    "python_compilation": "NOT_RUN",
+    "source_tests": "NOT_RUN",
+    "installed_tests": "NOT_RUN",
+    "native_window": "NOT_RUN"
+  }
+}

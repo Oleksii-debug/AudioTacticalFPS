@@ -177,6 +177,13 @@ class NativeLauncherAdmissionTests(unittest.TestCase):
                 self.admit()
         self.assertEqual(len(calls), 2)
 
+    def test_directory_instead_of_native_executable_is_rejected(self):
+        self.executable.unlink()
+        self.executable.mkdir()
+        with self.assertRaisesRegex(ValueError, "bounded regular"):
+            self.admit()
+        self.assertTrue(self.executable.is_dir())
+
     def test_other_executable_name_is_rejected(self):
         renamed = self.root / "unrelated.exe"
         shutil.copyfile(self.executable, renamed)

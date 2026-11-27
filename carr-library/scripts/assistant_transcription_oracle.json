@@ -137,7 +137,9 @@
       "test_model_proposal_requires_separate_preview_and_run": 1,
       "test_saved_profile_change_before_dispatch_never_contacts_stale_model": 1,
       "test_silent_change_of_reviewed_budget_cannot_submit_a_job": 1,
-      "test_voice_inventory_stays_off_event_thread_and_cannot_publish_after_cancel": 2
+      "test_voice_inventory_stays_off_event_thread_and_cannot_publish_after_cancel": 2,
+      "test_saved_job_resume_waits_for_its_current_native_result_callback": 2,
+      "test_silent_change_of_reviewed_goal_requires_fresh_preview": 1
     },
     "tests/assistant/test_planning_runtime.py": {
       "test_assistant_discovers_the_current_registered_engine_path_lazily": 1,
@@ -301,7 +303,8 @@
       "test_uncertain_charge_survives_restart_without_automatic_retry": 1,
       "test_unknown_pending_intent_without_ledger_never_restarts_silently": 1,
       "test_whitespace_chunks_are_preserved_without_billable_requests": 1,
-      "test_windows_native_short_path_connections_bind_the_same_real_library": 1
+      "test_windows_native_short_path_connections_bind_the_same_real_library": 1,
+      "test_encoded_credential_refusal_preserves_existing_language_cache_and_job_receipts": 4
     },
     "tests/assistant/test_workflow_template_binding.py": {
       "test_loaded_template_clears_prior_scope_and_requires_fresh_preview_then_run": 1,
@@ -398,7 +401,7 @@
       "test_library_switch_before_queued_run_never_submits_under_another_owner": 1
     }
   },
-  "total_cases": 684,
+  "total_cases": 691,
   "retained_cases": 612,
   "new_cases": 72,
   "helpers": [
@@ -477,5 +480,7 @@
   },
   "actual_asr_model_inference": "NOT_RUN",
   "nvda": "NOT_RUN",
-  "physical_audio": "NOT_RUN"
+  "physical_audio": "NOT_RUN",
+  "canonical_shared_restored_cases": 7,
+  "canonical_shared_restore_source": "9a9f8d73b77c7c49be1e94681b232184dba18a27"
 }

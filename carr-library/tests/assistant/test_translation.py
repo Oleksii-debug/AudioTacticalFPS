@@ -96,6 +96,8 @@ def test_opening_preview_and_submit_never_send_selected_text(ready):
     value = 'Український synthetic source 🙂\r\n' * 300
     result = service.preview(selected, value, 'en', 'uk', rate_per_million='20')
     assert result['source_sha256'] == sha256(value.encode()).hexdigest()
+    assert result['characters'] == len(value)
+    assert result['calls'] == len(split_text(value))
     assert Decimal(result['estimated_cost']) == Decimal(len(value)) * 20 / 1_000_000
     identity = submit(service, selected, value)
     assert service.jobs.load(identity)['schema'] == 'carr-translation-job/1'
@@ -690,3 +692,42 @@ def test_windows_native_short_path_connections_bind_the_same_real_library(ready)
         assert opened._ledger_identity() == [ledger.path.stat().st_dev, ledger.path.stat().st_ino]
         assert opened.available_profiles()[0].id == 'native-path-account'
         assert not text_calls(transport)
+
+@pytest.mark.parametrize('encoding', ['html', 'json-unicode'])
+@pytest.mark.parametrize('operation', ['text', 'languages'])
+def test_encoded_credential_refusal_preserves_existing_language_cache_and_job_receipts(
+        ready, monkeypatch, encoding, operation):
+    service, selected, _, transport = ready
+    cached = service._languages_path(selected)
+    before = cached.read_bytes()
+    encoded = ''.join('&#%d;' % ord(char) for char in SECRET) if encoding == 'html' else SECRET
+    document = ({'data': {'translations': [{'translatedText': encoded}]}}
+                if operation == 'text' else
+                {'data': {'languages': [{'language': 'en', 'name': encoded}]}})
+    raw = json.dumps(document).encode('utf-8')
+    if encoding == 'json-unicode':
+        raw = raw.replace(SECRET.encode(), ''.join('\\u%04x' % ord(char) for char in SECRET).encode())
+    calls = []
+    def reflected(*args, **kwargs):
+        calls.append(True)
+        return raw
+    monkeypatch.setattr(transport, 'post' if operation == 'text' else 'get', reflected)
+    if operation == 'text':
+        identity = submit(service, selected)
+        action = lambda: service.resume(identity)
+    else:
+        approval = language_approval(selected)
+        identity = approval.job_id
+        action = lambda: service.refresh_languages(selected, approval=approval)
+    with pytest.raises(ProviderError) as caught:
+        action()
+    assert SECRET not in str(caught.value) and caught.value.__cause__ is None
+    assert calls == [True] and cached.read_bytes() == before
+    rows = service.gateway.ledger.report(identity)
+    assert len(rows) == 1 and rows[0]['state'] == 'uncertain'
+    assert rows[0]['output_sha256'] is None and rows[0]['decoded_translation_sha256'] is None
+    if operation == 'text':
+        assert service.jobs.load(identity)['receipts'] == []
+    for path in (service.root / 'state' / 'translation').rglob('*.json'):
+        assert SECRET not in path.read_text(encoding='utf-8')
+

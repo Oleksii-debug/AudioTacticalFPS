@@ -1,12 +1,17 @@
 """Offline distribution boundaries, using synthetic wheel bytes and real files."""
+import base64
+import csv
 import hashlib
 import importlib.util
+import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import subprocess
 import tomllib
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -177,6 +182,206 @@ class WindowsBundleTests(unittest.TestCase):
             builder.build_bundle(self.app, self.wheels, self.lock, self.output,
                                  source_commit=commit)
         self.assertFalse(self.output.exists())
+
+    def test_exact_verified_historical_tree_is_preserved_in_bundle(self):
+        repo = self.root / 'source repository'
+        package = repo / 'carr-library/src/carr_library'
+        package.mkdir(parents=True)
+        (repo / 'carr-library/pyproject.toml').write_text('''[project]
+name = "universal-research-library"
+version = "1.0"
+dependencies = ["fixture==1.0"]
+[tool.setuptools]
+packages = ["carr_library"]
+package-dir = {"" = "src"}
+''', encoding='utf-8')
+        main = b"print('synthetic source-bound application')\n"
+        (package / '__main__.py').write_bytes(main)
+        environment = dict(os.environ, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
+                           GIT_AUTHOR_NAME='Synthetic Test', GIT_AUTHOR_EMAIL='test@example.invalid',
+                           GIT_COMMITTER_NAME='Synthetic Test', GIT_COMMITTER_EMAIL='test@example.invalid')
+        def git(*args):
+            return subprocess.check_output(['git', '-C', str(repo), *args], env=environment,
+                                           text=True).strip()
+        git('init', '-q')
+        git('add', '.')
+        git('commit', '-qm', 'Synthetic release source')
+        release = git('rev-parse', 'HEAD')
+        tree = git('rev-parse', release + '^{tree}')
+        (repo / 'later.txt').write_text('Unrelated later commit.\n', encoding='utf-8')
+        git('add', '.')
+        git('commit', '-qm', 'Later source checkout')
+        self.assertNotEqual(tree, git('rev-parse', 'HEAD^{tree}'))
+
+        metadata = 'universal_research_library-1.0.dist-info/'
+        payload = {'carr_library/__main__.py': main,
+                   metadata + 'METADATA': b'Metadata-Version: 2.4\nName: universal-research-library\nVersion: 1.0\nRequires-Dist: fixture==1.0\n',
+                   metadata + 'WHEEL': b'Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n'}
+        rows = [[name, 'sha256=' + base64.urlsafe_b64encode(hashlib.sha256(raw).digest()).decode().rstrip('='),
+                 str(len(raw))] for name, raw in payload.items()]
+        rows.append([metadata + 'RECORD', '', ''])
+        record = io.StringIO(newline='')
+        csv.writer(record, lineterminator='\n').writerows(rows)
+        with ZipFile(self.app, 'w', ZIP_DEFLATED) as archive:
+            for name, raw in payload.items():
+                archive.writestr(name, raw)
+            archive.writestr(metadata + 'RECORD', record.getvalue().encode())
+
+        verifier = module('source_wheel')
+        def verify(path, source_commit):
+            return verifier.verify_application_wheel(path, repo, source_commit)
+        with patch.object(builder, 'verify_application_source', side_effect=verify):
+            builder.build_bundle(self.app, self.wheels, self.lock, self.output,
+                                 source_commit=release)
+        manifest = json.loads((self.output / 'bundle-manifest.json').read_text())
+        self.assertEqual(manifest['source_commit'], release)
+        self.assertEqual(manifest['source_tree'], tree)
+        proof_path = self.output / 'application-source.json'
+        proof_bytes = proof_path.read_bytes()
+        proof = json.loads(proof_bytes)
+        self.assertEqual(proof['source_commit'], release)
+        self.assertEqual(proof['source_tree'], tree)
+        self.assertEqual(proof['wheel_sha256'], builder.sha256(self.app))
+        self.assertEqual(proof['project_name'], 'universal-research-library')
+        self.assertEqual(manifest['files']['application-source.json'],
+                         hashlib.sha256(proof_bytes).hexdigest())
+        self.assertNotIn(b'\r', proof_bytes)
+        installer.verify(self.output)
+        proof_path.write_bytes(proof_bytes.replace(release.encode(), b'0' * 40))
+        with self.assertRaisesRegex(ValueError, 'checksum'):
+            installer.verify(self.output)
+
+
+    def test_failed_staging_preserves_inputs_and_removes_owned_stage(self):
+        original = builder.shutil.copyfile
+        source_bytes = self.app.read_bytes()
+        def fail(source, target, *args, **kwargs):
+            if Path(source) == self.app:
+                raise OSError('Synthetic owned staging failure')
+            return original(source, target, *args, **kwargs)
+        with patch.object(builder.shutil, 'copyfile', side_effect=fail):
+            with self.assertRaisesRegex(OSError, 'staging failure'):
+                self.build()
+        self.assertFalse(self.output.exists())
+        self.assertEqual(self.app.read_bytes(), source_bytes)
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+
+    def test_atomic_publication_failure_leaves_no_partial_output(self):
+        helper = builder._publication_tools()
+        unrelated = self.root / 'unrelated.txt'
+        unrelated.write_bytes(b'Unrelated retained bytes')
+        with (patch.object(builder, '_publication_tools', return_value=helper),
+              patch.object(helper, '_publish', side_effect=OSError('Synthetic atomic publication failure'))):
+            with self.assertRaisesRegex(OSError, 'publication failure'):
+                self.build()
+        self.assertFalse(self.output.exists())
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+        self.assertEqual(unrelated.read_bytes(), b'Unrelated retained bytes')
+
+    def test_concurrent_foreign_output_is_never_overwritten_or_removed(self):
+        helper = builder._publication_tools()
+        publish = helper._publish
+        def concurrent(stage, output, parent_fd):
+            output.mkdir()
+            (output / 'foreign.txt').write_bytes(b'Another operation owns this output')
+            return publish(stage, output, parent_fd)
+        with (patch.object(builder, '_publication_tools', return_value=helper),
+              patch.object(helper, '_publish', side_effect=concurrent)):
+            with self.assertRaises(FileExistsError):
+                self.build()
+        self.assertEqual((self.output / 'foreign.txt').read_bytes(), b'Another operation owns this output')
+        self.assertEqual({path.name for path in self.output.iterdir()}, {'foreign.txt'})
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+
+    def test_replaced_stage_is_refused_and_foreign_directory_is_not_cleaned(self):
+        helper = builder._publication_tools()
+        unchanged = helper._unchanged_directories
+        observed = []
+        retained = self.root / 'relocated-owned-stage'
+        def replace_stage(parents):
+            unchanged(parents)
+            observed.append(True)
+            if len(observed) == 2:
+                stage, = self.root.glob('.carr-bundle-*')
+                stage.rename(retained)
+                stage.mkdir()
+                (stage / 'foreign.txt').write_bytes(b'Foreign replacement')
+        with (patch.object(builder, '_publication_tools', return_value=helper),
+              patch.object(helper, '_unchanged_directories', side_effect=replace_stage)):
+            with self.assertRaisesRegex(ValueError, 'staging directory changed'):
+                self.build()
+        self.assertFalse(self.output.exists())
+        foreign, = self.root.glob('.carr-bundle-*')
+        self.assertEqual((foreign / 'foreign.txt').read_bytes(), b'Foreign replacement')
+        self.assertTrue((retained / 'bundle-manifest.json').is_file())
+        installer.verify(retained)
+
+    def test_error_after_atomic_commit_preserves_complete_verified_bundle(self):
+        helper = builder._publication_tools()
+        publish = helper._publish
+        def committed(stage, output, parent_fd):
+            publish(stage, output, parent_fd)
+            raise OSError('Synthetic acknowledgement failure after publication')
+        with (patch.object(builder, '_publication_tools', return_value=helper),
+              patch.object(helper, '_publish', side_effect=committed)):
+            with self.assertRaisesRegex(OSError, 'acknowledgement failure'):
+                self.build()
+        installer.verify(self.output)
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
+        self.assertEqual((self.output / 'wheelhouse' / self.app.name).read_bytes(), self.app.read_bytes())
+
+    def test_output_inside_wheelhouse_is_rejected_before_any_staging(self):
+        self.output = self.wheels / 'nested-output'
+        before = {path.name: path.read_bytes() for path in self.wheels.iterdir()}
+        with self.assertRaisesRegex(ValueError, 'outside all input directories'):
+            self.build()
+        self.assertFalse(self.output.exists())
+        self.assertEqual({path.name: path.read_bytes() for path in self.wheels.iterdir()}, before)
+
+
+    def test_new_nested_output_parents_remain_supported(self):
+        self.output = self.root / 'new safe parent' / 'nested' / 'complete bundle'
+        self.build()
+        installer.verify(self.output)
+        self.assertEqual(list(self.root.rglob('.carr-bundle-*')), [])
+
+    def test_alias_ancestor_is_refused_before_creating_any_nested_parent(self):
+        foreign = self.root / 'foreign target'
+        foreign.mkdir()
+        sentinel = foreign / 'keep.txt'
+        sentinel.write_bytes(b'Unrelated retained target')
+        alias = self.root / 'alias parent'
+        before = {p.relative_to(foreign).as_posix(): p.read_bytes()
+                  for p in foreign.rglob('*') if p.is_file()}
+        self.output = alias / 'must not be created' / 'nested' / 'bundle'
+        if os.name != 'nt':
+            # Actual filesystem alias; the old mkdir(parents=True) creates
+            # foreign/must-not-be-created before rejecting the ancestor.
+            alias.symlink_to(foreign, target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, 'unlinked local directory'):
+                self.build()
+        else:
+            # Do not require Windows symlink privilege. Feed the existing
+            # reparse guard exact native-style metadata for a real directory,
+            # then observe that no descendant is created beneath it.
+            alias.mkdir()
+            original = Path.lstat
+            def reparse(path):
+                info = original(path)
+                if path == alias:
+                    return SimpleNamespace(st_mode=info.st_mode, st_dev=info.st_dev,
+                        st_ino=info.st_ino, st_file_attributes=(
+                            getattr(info, 'st_file_attributes', 0) | 0x400))
+                return info
+            with patch.object(Path, 'lstat', reparse):
+                with self.assertRaisesRegex(ValueError, 'unlinked local directory'):
+                    self.build()
+            self.assertEqual(list(alias.iterdir()), [])
+        self.assertFalse((foreign / 'must not be created').exists())
+        self.assertFalse(self.output.exists())
+        self.assertEqual(before, {p.relative_to(foreign).as_posix(): p.read_bytes()
+                                 for p in foreign.rglob('*') if p.is_file()})
+        self.assertEqual(list(self.root.glob('.carr-bundle-*')), [])
 
     def test_application_replaced_after_source_verification_is_rejected(self):
         verified_digest = builder.sha256(self.app)

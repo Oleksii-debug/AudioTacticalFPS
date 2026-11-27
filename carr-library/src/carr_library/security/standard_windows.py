@@ -299,9 +299,19 @@ class WindowsStandardHost:
     def _shortcut_target(self, shortcut, root):
         environment = self.environment()
         environment['CARR_STANDARD_SHORTCUT'] = str(shortcut)
-        script = ("[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new(); "
-                  "(New-Object -ComObject WScript.Shell).CreateShortcut("
-                  "$env:CARR_STANDARD_SHORTCUT).TargetPath")
+        # The bounded native diagnosis reproduced New-Object module bootstrap
+        # stalls under this deliberately filtered environment. Activate only the
+        # same fixed local COM class, with no PowerShell module autoload.
+        script = ("$ErrorActionPreference='Stop';$PSModuleAutoLoadingPreference='None';"
+                  "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();"
+                  "$shell=$null;$link=$null;"
+                  "try{try{$shell=[Activator]::CreateInstance("
+                  "[Type]::GetTypeFromProgID('WScript.Shell'));"
+                  "$link=$shell.CreateShortcut($env:CARR_STANDARD_SHORTCUT);"
+                  "[Console]::Write([string]$link.TargetPath)}finally{"
+                  "try{if($null -ne $link){[void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($link)}}"
+                  "finally{if($null -ne $shell){[void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell)}}"
+                  "}}catch{exit 7}")
         code, raw = run_owned([self._powershell(), '-NoProfile', '-NonInteractive', '-Command', script],
                              cwd=root, environment=environment, timeout=30)
         if code or len(raw) > 32768:

@@ -200,7 +200,7 @@ def main():
     plan = json.loads(oracle_path.read_text(encoding='utf-8'))
     expected = plan['functions']
     count = sum(sum(functions.values()) for functions in expected.values())
-    if plan['schema'] != 1 or count != plan['required_cases_per_population'] or count != 268:
+    if plan['schema'] != 1 or count != plan['required_cases_per_population'] or count != 286:
         raise ValueError('The finite translation case manifest differs.')
     paths = [module.replace('.', '/') + '.py' for module in expected]
     paths += ['scripts/windows_translation_v3_smoke.py', 'scripts/windows_translation_scope_smoke.py',

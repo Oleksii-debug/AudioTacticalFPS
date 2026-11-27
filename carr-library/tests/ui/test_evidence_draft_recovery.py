@@ -291,3 +291,47 @@ def test_declined_or_failed_discard_keeps_scope_open(recovery):
     panel._recovery_store.discard = Mock(side_effect=OSError('Disk unavailable'))
     assert not env['_confirm'](frame)
     assert panel.note.GetValue() == 'Keep unless explicitly discarded'
+
+
+def test_save_all_waits_for_actual_note_commit_and_retains_newer_edit(recovery):
+    from carr_library.ui.save_all import SaveCoordinator
+    panel, app, _, _, _ = recovery
+    checkpoint(panel, 'First edit to commit')
+    coordinator = SaveCoordinator()
+    coordinator.register('note', 'Research note', dirty=panel._dirty,
+                         save=lambda done: panel.save_note(completed=done))
+    results = []
+    assert coordinator.save_all(results.append)
+    assert coordinator.busy and results == []
+    assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'
+    assert execute(panel, before_completion=lambda: panel.note.SetValue('Newer edit'))
+    assert app.evidence(panel.workspace, panel.topic)[0].note == 'First edit to commit'
+    assert len(results) == 1 and not results[0].complete
+    assert results[0].saved == ('Research note',)
+    assert results[0].remaining == (('Research note', 'newer or unsaved edits are retained'),)
+    assert panel.note.GetValue() == 'Newer edit' and panel._dirty()
+
+
+@pytest.mark.parametrize('blocked', ('busy', 'cancelled', 'changed_view'))
+def test_save_all_never_claims_a_blocked_or_stale_note_was_saved(recovery, blocked):
+    from carr_library.ui.save_all import SaveCoordinator
+    panel, app, _, _, _ = recovery
+    checkpoint(panel, 'Retained private draft')
+    coordinator = SaveCoordinator()
+    coordinator.register('note', 'Research note', dirty=panel._dirty,
+                         save=lambda done: panel.save_note(completed=done))
+    results = []
+    if blocked == 'busy':
+        panel.frame.working = True
+    coordinator.save_all(results.append)
+    if blocked == 'cancelled':
+        panel.frame.cancel_event.set()
+        assert not execute(panel)
+    elif blocked == 'changed_view':
+        assert execute(panel, before_completion=lambda: setattr(panel.frame, 'active', None))
+    assert len(results) == 1 and not results[0].complete
+    assert not coordinator.busy
+    assert results[0].saved == ()
+    assert panel.note.GetValue() == 'Retained private draft'
+    if blocked != 'changed_view':
+        assert app.evidence(panel.workspace, panel.topic)[0].note == 'Saved note'

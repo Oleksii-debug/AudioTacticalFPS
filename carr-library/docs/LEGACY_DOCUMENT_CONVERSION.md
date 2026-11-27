@@ -17,13 +17,18 @@ actual compressed input. The remaining three cases verify protected-input
 refusal, output bounds and cancellation after native output. They are not three
 additional supported formats.
 
-This successor enables ordinary admission only for those six suffixes with an
-explicitly selected installation. The fixed wrapper still rejects every calibre
-version except 9.19.0. Its fresh ordinary-admission native gate is **NOT_RUN** at
-authoring; the earlier preview PASS does not qualify this changed head. The
-required gate retains all nine real cases from source and installed wheel, and
-adds eight portable selection/version cases (187 per mode). CHM remains
-unqualified while its publisher HTML recovery is being diagnosed.
+Ordinary admission for those six suffixes is now qualified at the frozen
+08fb93a68ebbdb0c564a1e09b9960d2d718d020e candidate: run 46039340019 passed all
+187 portable cases and all nine actual native cases from both source and the
+isolated installed wheel. The independent bounded artifact reader
+(run 46042627256) verified the exact ZIP digest and all four raw JUnit function
+Counters, zero failure/error/skip, publisher inventory, source/tree, wheel and
+installed module origins. The fixed wrapper still requires an explicitly
+selected installation and rejects every calibre version except 9.19.0.
+This evidence applies to those six tested unprotected format/container
+combinations; it does not qualify every book or Palm subtype. Later CHM recovery
+changes require their own current 221-case portable gate. CHM remains
+unqualified while that separate gate is pending.
 
 Selection never follows PATH or enables a runtime silently. Missing DjVu text
 layers, indirect/shared references, OCR, arbitrary real books, other Palm
@@ -186,10 +191,12 @@ The pinned publisher source used for this narrow adaptation is:
 https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/utils/safe_atexit.py
 https://github.com/kovidgoyal/calibre/blob/v9.19.0/src/calibre/ptempfile.py
 The six actual unprotected formats and the three native refusal/budget/cancel
-cases passed at779967 in both source and installed fixture-preview mode. The
-ordinary-admission successor must also pass all nine at its own frozen head.
-See evidence/calibre-native-preview-independent-read-20261127.json for exact
-artifact, raw JUnit, installed-origin and publisher identities.
+cases passed at779967 in both source and installed fixture-preview mode.
+The ordinary-admission successor08fb93 then passed all nine native cases and
+187 portable cases per mode, independently read from the exact artifact.
+See evidence/calibre-native-preview-independent-read-20261127.json and
+evidence/calibre-ordinary-admission-independent-read-20261127.json for their
+separate frozen heads, raw JUnit, installed origins and publisher identities.
 
 ## Complete CHM publisher census and bounded HTML recovery
 
