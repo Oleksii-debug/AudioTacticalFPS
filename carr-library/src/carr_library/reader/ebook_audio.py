@@ -319,7 +319,7 @@ class EbookAudioSession:
                 del data
                 result = run_process([sys.executable, '-I', '-B', '-X', 'utf8', '-c', bootstrap,
                     str(len(roots)), *roots, str(self.source), identity.asset_sha256, str(ordinal)],
-                    budget=budget, cancelled=lease.cancelled)
+                    budget=budget, cancelled=lease.cancelled, owned_tree=True)
             value = json.loads(result.stdout)
             self.chapter = _decode_chapter(value, self.page, identity)
             self.check()
@@ -443,11 +443,11 @@ class EbookAudioSession:
                     self._finish_prepare()
 
     def _finish_prepare(self):
-        try:
-            if self._closed.is_set() and self._temporary is not None:
-                self._temporary.cleanup()
-        finally:
-            self._lock.release()
+        self._lock.release()
+        # close() can request cancellation while this worker still holds the
+        # lock. Recheck after releasing so that request cannot miss cleanup.
+        if self._closed.is_set():
+            self.close()
 
     def admit(self, prepared):
         """Full content admission on the worker, before scheduling native start."""

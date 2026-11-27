@@ -89,7 +89,8 @@ class OverlayPlayback:
     def stop(self):
         self.generation += 1
         self.active = False
-        self.player.close()
+        if self.player.close() is False:
+            raise RuntimeError('The recorded-audio device has not confirmed closure.')
         if self.prepared is not None:
             self.prepared.close()
             self.prepared = None

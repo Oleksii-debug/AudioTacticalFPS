@@ -743,3 +743,137 @@ def test_detached_overlay_observation_keeps_silence_latch_without_native_polling
     transport = OverlayPlayback(object(), NativePlayer())
     transport.closed = True
     assert transport.observed.state == 'stopping'
+
+
+@pytest.mark.parametrize('stage', ['parser', 'inspection', 'decoder'])
+def test_actual_worker_uncertain_cleanup_retains_source_clip_lock_and_admission(
+        imported, monkeypatch, stage):
+    import os
+    from dataclasses import replace
+    from carr_library.audio import process
+    from carr_library.audio.models import AudioCleanupPending
+    from carr_library.audio.windows_job import JobProcess
+    from carr_library.operations import ResourceBroker, ResourceRequest, ResourceTimeout
+
+    app, _workspace, original, _book, desk = imported
+    before = original.read_bytes()
+    broker = ResourceBroker.for_app(app.root)
+    broker.configure(replace(broker.limits, cpu_slots=1, min_free_disk_bytes=0))
+    session = None if stage == 'parser' else EbookAudioSession(desk, 1)
+    permitted, released = Event(), Event()
+    attempts, files = [], []
+    target, name = ((JobProcess, 'close') if stage == 'parser' and os.name == 'nt'
+                    else (process, '_terminate'))
+    actual = getattr(target, name)
+
+    def uncertain(child):
+        args = child.args
+        selected = (stage == 'parser' and len(args) >= 3 and Path(args[-3]).name == 'source.epub'
+                    or stage == 'inspection' and Path(args[-1]).name == 'recording.mp3'
+                    or stage == 'decoder' and Path(args[-1]).name == 'render.wav'
+                    and Path(args[-1]).parent.name.startswith('.audio-'))
+        if selected:
+            attempts.append(child)
+            files.append(Path(args[-3] if stage == 'parser' else args[-1]))
+            if not permitted.is_set():
+                raise OSError('Synthetic refusal after the actual native worker ran')
+        return actual(child)
+
+    monkeypatch.setattr(target, name, uncertain)
+    owner = None
+    try:
+        with pytest.raises(AudioCleanupPending) as failure:
+            if session is None:
+                EbookAudioSession(desk, 1)
+            else:
+                session.prepare(0)
+        owner = failure.value.cleanup_owner
+        owner.add_quiescent_callback(released.set)
+        assert attempts and files and all(child.returncode == 0 for child in attempts)
+        retained = files[0]
+        assert retained.is_file(), 'Native-owned input/output was removed before shutdown confirmation.'
+        assert owner.close() is False and not owner.quiescent
+        assert len(broker.snapshot()['leases']) == 1
+        with pytest.raises(ResourceTimeout):
+            with broker.reserve(ResourceRequest(cpu_slots=1), operation_id='competing-reader', timeout=0):
+                pytest.fail('Unconfirmed native ownership released its shared admission.')
+        if session is None:
+            assert retained.read_bytes() == before
+            source_root = retained.parent
+        else:
+            source_root = session.root
+            assert session.source.read_bytes() == before and session._lock.locked()
+            with pytest.raises(ValueError, match='Wait for the current'):
+                session.prepare(1)
+            if stage == 'decoder':
+                with wave.open(str(retained), 'rb') as rendered:
+                    assert rendered.getnframes() == 4800 and rendered.getframerate() == 24000
+            session.close()
+            assert session.source.is_file() and retained.is_file() and session._lock.locked()
+        assert original.read_bytes() == before and not app._selections
+        permitted.set()
+        owner.close()
+        assert released.wait(10), 'Native completion did not release all retained consumers.'
+        assert owner.quiescent and not retained.exists() and not source_root.exists()
+        assert not broker.snapshot()['leases']
+        if session is not None:
+            assert not session._lock.locked()
+        assert original.read_bytes() == before and not app._selections
+    finally:
+        permitted.set()
+        if owner is not None:
+            owner.close()
+            assert released.wait(10)
+        if session is not None:
+            session.close()
+
+
+def test_explicit_unconfirmed_player_close_retains_prepared_recording(imported):
+    session = EbookAudioSession(imported[-1], 1)
+    prepared = session.prepare(0)
+    player = TrackedPlayer()
+    transport = OverlayPlayback(session, player)
+    transport.start(prepared, transport.ticket)
+    actual = player.close
+    player.close = lambda: False
+    try:
+        with pytest.raises(RuntimeError, match='not confirmed'):
+            transport.stop()
+        assert transport.prepared is prepared and prepared.path.is_file()
+        assert not transport.closed and not transport.active
+        player.close = actual
+        transport.close()
+        assert transport.closed and not prepared.path.exists() and not session.root.exists()
+    finally:
+        player.close = actual
+        transport.close()
+
+
+def test_close_at_preparation_unlock_cannot_leave_source_snapshot_retained(imported):
+    session = EbookAudioSession(imported[-1], 1)
+    actual = session._lock
+    closing = []
+
+    class ClosingLock:
+        def acquire(self, *args, **kwargs):
+            return actual.acquire(*args, **kwargs)
+
+        def release(self):
+            if not closing:
+                closing.append(True)
+                session.close()
+                assert actual.locked() and session.source.is_file()
+            actual.release()
+
+    session._lock = ClosingLock()
+    prepared = None
+    try:
+        prepared = session.prepare(0)
+        assert closing == [True] and session.stopped() and not actual.locked()
+        assert not session.root.exists(), 'A close arriving at unlock lost its source cleanup request.'
+        assert prepared.path.is_file(), 'The separately owned prepared result belongs to its caller.'
+        assert not session.broker.snapshot()['leases']
+    finally:
+        if prepared is not None:
+            prepared.close()
+        session.close()
