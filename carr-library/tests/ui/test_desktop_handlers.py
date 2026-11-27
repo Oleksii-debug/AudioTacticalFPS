@@ -129,7 +129,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
                         SimpleNamespace(install_ebook_reader=ebook))
-    new_installers = []
+    new_installers, install_order = [], []
     for module, installer in [('speech_dialog', 'install_speech_actions'),
                               ('language_matrix', 'install_language_actions'),
                               ('translation_dialog', 'install_translation_actions'),
@@ -139,8 +139,10 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
                               ('keyboard_settings', 'install_keyboard_settings'),
                               ('citation_formatting', 'install_citation_actions'),
                               ('operation_progress', 'install_operation_progress'),
+                              ('transcription_dialog', 'install_transcription_actions'),
+                              ('command_palette', 'install_command_palette'),
                               ('save_actions', 'install_save_actions')]:
-        callback = Mock()
+        callback = Mock(side_effect=lambda frame, name=installer: install_order.append(name))
         new_installers.append(callback)
         monkeypatch.setitem(sys.modules, 'carr_library.ui.' + module,
                             SimpleNamespace(**{installer: callback}))
@@ -156,6 +158,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
     for installer in (*installers.values(), ebook, *new_installers):
         installer.assert_called_once_with(value)
+    assert install_order[-1] == 'install_keyboard_settings'
+    assert install_order.index('install_transcription_actions') < install_order.index('install_command_palette')
     value.help(None)
     guide = env['show_text'].call_args.args[2]
     assert 'Alt+A for Academic' in guide and 'Alt+B for Bibliography' in guide
@@ -163,6 +167,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Ctrl+Shift+B opens Import Center' not in guide
     assert 'Ctrl+Alt+F opens Research Search Center' in guide
     assert 'Ctrl+Shift+F searches saved quotations and notes' in guide
+    assert 'Ctrl+Shift+P opens Help, Find a command' in guide
 
 
 def test_repeated_enter_does_not_clear_an_active_search(classes):

@@ -47,8 +47,9 @@ def show_transcription(frame):
               'часові мітки слів — за вибором. Моделі не завантажуються автоматично. '
               'Після зупинки завершені файли повторно використовуються, незавершений файл обробляється спочатку.')
     buttons = {}
-    row = wx.GridSizer(rows=2, cols=4, vgap=3, hgap=3)
+    row = wx.GridSizer(rows=3, cols=3, vgap=3, hgap=3)
     for name, label in [('configure', 'Підключити &Whisper'), ('create', '&Додати записи'),
+                        ('folder', 'Додати папку з п&ідпапками'),
                         ('run', 'Запустити / &продовжити'), ('stop', 'З&упинити'),
                         ('save', 'Зберегти &правки'), ('export', '&Експорт'),
                         ('refresh', '&Оновити'), ('close', '&Закрити')]:
@@ -177,6 +178,24 @@ def show_transcription(frame):
                   lambda value: report('Рушій підключено. Якість і доступність моделі перевіряються під час фактичного розпізнавання.'))
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
+    def create_selected(selected, *, folder=False):
+        options = {'model': model.GetValue().strip(), 'language': language.GetValue().strip(),
+                   'word_timestamps': words.GetValue(), 'multilingual': mixed.GetValue(),
+                   'device': 'cuda' if device.GetSelection() == 1 else 'cpu',
+                   'compute_type': 'float16' if device.GetSelection() == 1 else 'int8'}
+        job_title = title.GetValue()
+        if folder:
+            def created(result):
+                refresh(result['id'])
+                report(f"Збережено записів: {result['files']}. Непідтримуваних файлів пропущено: "
+                       f"{result['excluded_files']}. Підпапки включено. Завдання готове до запуску.")
+            begin('Перевірка папки й збереження оригінальних записів',
+                  lambda: service.submit_folder(selected, title=job_title, options=options, cancelled=cancelled),
+                  created)
+        else:
+            begin('Збереження оригінальних записів',
+                  lambda: service.submit(selected, title=job_title, options=options, cancelled=cancelled),
+                  lambda identity: refresh(identity))
     def create(event):
         if not can_replace():
             return
@@ -185,14 +204,19 @@ def show_transcription(frame):
                 if chooser.ShowModal() != wx.ID_OK:
                     return
                 selected = chooser.GetPaths()
-            options = {'model': model.GetValue().strip(), 'language': language.GetValue().strip(),
-                       'word_timestamps': words.GetValue(), 'multilingual': mixed.GetValue(),
-                       'device': 'cuda' if device.GetSelection() == 1 else 'cpu',
-                       'compute_type': 'float16' if device.GetSelection() == 1 else 'int8'}
-            job_title = title.GetValue()
-            begin('Збереження оригінальних записів',
-                  lambda: service.submit(selected, title=job_title, options=options, cancelled=cancelled),
-                  lambda identity: refresh(identity))
+            create_selected(selected)
+        except (ValueError, OSError, RuntimeError) as exc:
+            report(exc)
+    def create_folder(event):
+        if not can_replace():
+            return
+        try:
+            with wx.DirDialog(dialog, 'Оберіть папку аудіо або відео; підпапки буде включено',
+                              style=wx.DD_DIR_MUST_EXIST) as chooser:
+                if chooser.ShowModal() != wx.ID_OK:
+                    return
+                selected = chooser.GetPath()
+            create_selected(selected, folder=True)
         except (ValueError, OSError, RuntimeError) as exc:
             report(exc)
     def run(event):
@@ -206,7 +230,8 @@ def show_transcription(frame):
             def advanced(done, total, phase):
                 if progress is not None:
                     progress.update(done, total, phase, token=token)
-                wx.CallAfter(report, f'{done}/{total}: {phase}')
+                wx.CallAfter(report, f'{done}/{total}: {phase}. Кількість файлів повідомляє рушій; '
+                            'підтверджені результати показані у стані завдання.')
             return service.run(identity, cancelled=cancelled, progress=advanced)
         begin('Локальна транскрипція Whisper', operation, lambda result: refresh(identity))
     def save(event):
@@ -288,7 +313,8 @@ def show_transcription(frame):
             return
         alive = False
         dialog.EndModal(wx.ID_CLOSE)
-    for name, handler in [('configure', configure), ('create', create), ('run', run), ('save', save),
+    for name, handler in [('configure', configure), ('create', create), ('folder', create_folder),
+                          ('run', run), ('save', save),
                           ('export', export), ('refresh', update_jobs), ('close', close)]:
         buttons[name].Bind(wx.EVT_BUTTON, handler)
     buttons['stop'].Bind(wx.EVT_BUTTON, lambda event: cancel.set())

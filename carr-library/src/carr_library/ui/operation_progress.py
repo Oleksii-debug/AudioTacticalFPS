@@ -41,7 +41,7 @@ def operation_outcome(result):
     complete = {'complete', 'completed', 'succeeded', 'success', 'ok', 'passed', 'pass',
                 'ready', 'verified', 'saved', 'exported', 'duplicate', 'excluded'}
     failure = {'failed', 'error', 'timed_out', 'timeout', 'corrupt', 'invalid'}
-    cancelled = {'cancelled', 'canceled', 'aborted'}
+    cancelled = {'cancelled', 'canceled', 'aborted', 'stopped'}
     rank = {'succeeded': 0, 'paused': 1, 'cancelled': 2, 'failed': 3}
     outcome, pending, inspected = 'succeeded', [result], 0
     while pending:
@@ -517,7 +517,9 @@ class OperationProgress:
         if self.root is not None and root != self.root:
             # A persisted speech preference never authorizes another library's
             # helper or voice. The user selects a local voice again explicitly.
+            self._pending_sound = None
             self.set_speech_provider(None)
+            self._timer_state()
         self.root = root
         try:
             self.preferences = load_preferences(self.root)
@@ -576,6 +578,11 @@ class OperationProgress:
                             or not self.preferences.background and not self.frame.IsActive()
                             or recording or uncertain or self.preferences.mute_during_audio
                             and (self.audio_active or playing or playback_wait))
+        if self.sound.muted:
+            # A mute boundary discards deferred audio immediately, even if the
+            # policy is lifted before the next GUI timer event.
+            self._pending_sound = None
+            self._timer_state()
 
     def set_speech_provider(self, provider, *, root=None):
         """Select an approved local voice for this session; never enable sound."""

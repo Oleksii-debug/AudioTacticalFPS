@@ -1,7 +1,12 @@
 name: CARR academic reconciliation acceptance
 on:
+  pull_request:
+    branches: [carr-library]
+    paths:
+      - carr-library/**
+      - .github/workflows/carr-academic-reconciliation.yml
   push:
-    branches: [carr/academic-search-20261126]
+    branches: [carr/academic-search-20261126, carr-library]
     paths:
       - carr-library/**
       - .github/workflows/carr-academic-reconciliation.yml
@@ -19,6 +24,7 @@ jobs:
       run:
         working-directory: carr-library
     env:
+      CARR_TEST_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       PYTHONUTF8: '1'
       PYTHONUNBUFFERED: '1'
       HF_HUB_OFFLINE: '1'
@@ -28,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
         with:
@@ -36,7 +42,7 @@ jobs:
       - name: Install the source package and required synthetic-test dependencies
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "$CARR_TEST_COMMIT"
           git rev-parse HEAD 'HEAD^{tree}'
           python -m pip install '.[test]'
           python -m pip check
@@ -73,6 +79,7 @@ jobs:
             tests/e2e/test_research_search_cli.py \
             tests/storage/test_library_backup_reading_state.py \
             tests/storage/test_v3_state_backup.py \
+            tests/storage/test_state_backup_portability.py \
             tests/storage/test_pending_backup.py \
             tests/storage/test_complete_pending_backup.py \
             tests/storage/test_backup_v4_review.py \

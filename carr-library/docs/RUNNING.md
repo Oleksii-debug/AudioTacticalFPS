@@ -227,6 +227,17 @@ interchange details.
 
 ## Research from the keyboard
 
+### Find a main-window command
+
+Press **Ctrl+Shift+P**, or choose **Help, Find a command**. Type words from a
+command name, menu path or current shortcut. **Tab** reaches the results;
+**Up** and **Down** change the selection. **Enter** runs an available command
+through its existing menu handler. **Escape** closes the search and returns
+focus without running a command. Disabled commands remain visible with their
+availability stated. **Help, Keyboard shortcuts** changes these keys; a saved
+assignment takes priority over a newly added default. See
+[Find a command](COMMAND_PALETTE.md) for focus and shortcut behavior.
+
 ### Search several libraries and manage saved criteria
 
 Press **Ctrl+Alt+F**, or choose **Research, Research Search Center...**.

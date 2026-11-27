@@ -309,7 +309,49 @@ class TranscriptionService:
             result.append(self.get(path.name))
         return tuple(sorted(result, key=lambda x: (x['created'], x['id']), reverse=True))
 
-    def submit(self, files, *, title='Transcription', options=None, cancelled=lambda: False):
+    def submit_folder(self, folder, *, title='Transcription', options=None, cancelled=lambda: False):
+        """Retain one explicitly selected folder through the shared bounded scanner."""
+        from .ingest.batch_scan import scan_paths
+        self._authorize()
+        settings(options)
+        if cancelled():
+            raise AudioCancelled('Transcription folder intake was cancelled.')
+        folder = local_path(folder, exists=True)
+        regular(folder, directory=True)
+        total = 0
+        def media_manifest(path):
+            nonlocal total
+            size = regular(path).st_size
+            if not 0 < size <= MAX_SOURCE_BYTES:
+                raise ValueError('A media file is empty or exceeds the transcription source budget.')
+            total += size
+            if total > MAX_BATCH_BYTES:
+                raise ValueError('The selected folder exceeds the transcription batch size budget.')
+            return {'size': size, 'mime': 'application/octet-stream',
+                    'sha256': _checked_digest(path, size, cancelled)}
+        try:
+            rows = scan_paths([folder], cancelled=cancelled, supported=MEDIA_SUFFIXES,
+                              file_manifest=media_manifest, max_files=MAX_FILES,
+                              skip_unsupported=True)
+        except InterruptedError as exc:
+            raise AudioCancelled('Transcription folder intake was cancelled.') from exc
+        rejected = next((row for row in rows if row['state'] == 'rejected'), None)
+        if rejected is not None:
+            raise ValueError('Folder intake stopped at ' + rejected['file'] + ': ' +
+                             rejected['message'] + ' No transcription job was created.')
+        accepted = [row for row in rows if row['state'] in ('queued', 'duplicate')]
+        files = [row['source'] for row in accepted]
+        source_manifests = [{'size_bytes': row['manifest']['size'],
+                             'sha256': row['manifest']['sha256']} for row in accepted]
+        excluded = sum(row['state'] == 'excluded' for row in rows)
+        if not files:
+            raise ValueError(f'No supported audio or video files were found; {excluded} unsupported files excluded.')
+        identity = self.submit(files, title=title, options=options, cancelled=cancelled,
+                               source_root=folder, source_manifests=source_manifests)
+        return {'id': identity, 'files': len(files), 'excluded_files': excluded}
+
+    def submit(self, files, *, title='Transcription', options=None, cancelled=lambda: False,
+               source_root=None, source_manifests=None):
         self._authorize()
         chosen = settings(options)
         files = tuple(files)
@@ -317,6 +359,16 @@ class TranscriptionService:
             raise ValueError('Choose between 1 and 64 local audio or video files.')
         if not isinstance(title, str) or not title.strip() or len(title) > 200 or '\0' in title:
             raise ValueError('Enter a transcription title of 1 to 200 characters.')
+        if source_root is not None:
+            source_root = local_path(source_root, exists=True)
+            regular(source_root, directory=True)
+        if source_manifests is not None and (
+                not isinstance(source_manifests, (tuple, list)) or len(source_manifests) != len(files)
+                or any(not isinstance(item, dict) or set(item) != {'size_bytes', 'sha256'}
+                       or type(item['size_bytes']) is not int or not 0 <= item['size_bytes'] <= MAX_SOURCE_BYTES
+                       or not isinstance(item['sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', item['sha256'])
+                       for item in source_manifests)):
+            raise ValueError('Invalid transcription source manifests.')
         identity = uuid4().hex
         with state_lock(self.jobs_root, 'submit'):
             pending = self.jobs_root / ('.pending-' + identity)
@@ -325,20 +377,29 @@ class TranscriptionService:
             total, sources = 0, []
             try:
                 for index, original in enumerate(files):
-                    original = local_path(original, exists=True)
+                    original = local_path(original, root=source_root, exists=True)
+                    expected = source_manifests[index] if source_manifests is not None else None
+                    if expected is not None and regular(original).st_size != expected['size_bytes']:
+                        raise ValueError('A source changed after the folder scan; select the folder again.')
                     suffix = original.suffix.lower()
                     if suffix not in MEDIA_SUFFIXES:
                         raise ValueError('Unsupported audio/video extension: ' + suffix)
                     name = f'{index + 1:03d}-{uuid4().hex}{suffix}'
                     record = _copy(original, pending / 'input' / name,
                         maximum=min(MAX_SOURCE_BYTES, MAX_BATCH_BYTES - total), cancelled=cancelled)
+                    if expected is not None and record != expected:
+                        raise ValueError('A source changed after the folder scan; select the folder again.')
                     total += record['size_bytes']
-                    sources.append({'filename': name, 'original_name': original.name, **record})
+                    original_name = (original.relative_to(source_root).as_posix()
+                                     if source_root is not None else original.name)
+                    sources.append({'filename': name, 'original_name': original_name, **record})
                 value = {'version': 1, 'id': identity, 'workspace': self.workspace,
                          'title': title.strip(), 'created': time.time(), 'updated': time.time(),
                          'status': 'ready', 'sources': sources, 'settings': chosen,
                          'done': 0, 'failed': 0, 'receipts': [], 'artifacts': [],
                          'run_context': None, 'last_error': ''}
+                if cancelled():
+                    raise AudioCancelled('Transcription input preparation was cancelled before publication.')
                 self._authorize()
                 atomic_json(pending / 'job.json', value)
                 os.rename(pending, self._path(identity))
@@ -484,12 +545,17 @@ class TranscriptionService:
                 'PYTHONUTF8': '1', 'PYTHONDONTWRITEBYTECODE': '1',
                 'OMP_NUM_THREADS': '2', 'OPENBLAS_NUM_THREADS': '2'})
             stop_at, notice_at = None, 0.0
-            observer_available = progress is not None
+            reported_done, observer_available = 0, progress is not None
             def notify(done, total, phase):
-                nonlocal observer_available
+                nonlocal reported_done, observer_available
+                # Worker-reported files are distinct from verified job.done.
+                # Stop defers receipt verification and must not rewind measured
+                # progress or promote saved files into accepted exports.
+                if type(done) is int and 0 <= done <= len(job['sources']):
+                    reported_done = max(reported_done, done)
                 if observer_available:
                     try:
-                        progress(done, total, phase)
+                        progress(reported_done, total, phase)
                     except Exception:
                         # A detached UI must not kill the worker or reverse a
                         # durable result. Disable only this optional observer.

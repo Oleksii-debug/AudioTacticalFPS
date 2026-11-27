@@ -607,6 +607,8 @@ class DesktopFrame(WorkspaceFrame):
         install_operation_progress(self)
         from .transcription_dialog import install_transcription_actions
         install_transcription_actions(self)
+        from .command_palette import install_command_palette
+        install_command_palette(self)
         install_keyboard_settings(self)
 
     def build_advanced_query(self, event=None):
@@ -1267,6 +1269,9 @@ class DesktopFrame(WorkspaceFrame):
         show_text(self, 'Keyboard guide',
             'Use Alt+L for Library, Alt+R for Research, Alt+A for Academic, Alt+B for Bibliography, '
             'Alt+S for Source, Alt+D for Reading, and Alt+H for Help.\n'
+            'Ctrl+Shift+P opens Help, Find a command: filter by name, menu path or current shortcut. '
+            'Tab moves to results; Enter runs the selected available command; Escape returns without running it.\n'
+            'Help, Keyboard shortcuts changes these application keys. A saved choice keeps priority over a newly added default.\n'
             'Ctrl+Alt+M compares saved sources in the active topic. Academic also exports filtered outlines, reviews RIS fields, and checks the catalog.\n'
 
             'Ctrl+N creates a library. Ctrl+I imports books. Ctrl+Shift+N adds original text.\n'
