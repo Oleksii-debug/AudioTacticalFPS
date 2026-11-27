@@ -128,7 +128,8 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_reading_desk_actions', 'install_ebook_actions', 'install_catalog_insights_actions',
         'install_federated_search_actions', 'install_query_manager_actions',
         'install_academic_comparison_actions', 'install_portable_sync_actions',
-        'install_audio_studio_actions', 'install_api_connection_actions', 'install_assistant_actions')}
+        'install_audio_studio_actions', 'install_api_connection_actions', 'install_assistant_actions',
+        'install_language_actions')}
     env.update(installers)
     ebook = Mock()
     monkeypatch.setitem(sys.modules, 'carr_library.ui.ebook_reader',
@@ -211,6 +212,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
             self.items.append(Item(None))
         def GetMenuItems(self):
             return tuple(self.items)
+        def GetMenuItemCount(self):
+            return len(self.items)
         def Delete(self, identity):
             self.items = [item for item in self.items if item.GetId() != identity]
 
@@ -259,6 +262,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('audio_studio', 'install_audio_studio_actions'),
                 ('api_connections', 'install_api_connection_actions'),
                 ('assistant_dialog', 'install_assistant_actions'),
+                ('language_matrix', 'install_language_actions'),
                 ('portable_sync', 'install_portable_sync_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
@@ -288,6 +292,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert all(bindings.get(name) == shortcut for name, shortcut in required.items())
         assert 'file.open_reading_copy' in bindings
         assert 'options.keyboard' in bindings
+        assert 'language.capabilities' in bindings
         assert value.menu_bar.GetMenuLabel(0) == '&File'
         assert not hasattr(value, 'keyboard_actions')
         assert sum(value.menu_bar.GetMenuLabel(index).replace('&', '') == 'Options'

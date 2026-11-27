@@ -171,7 +171,7 @@ jobs:
           }
 
       - name: Run required integrated source workflows
-        timeout-minutes: 20
+        timeout-minutes: 30
         run: |
           $suites = @(
             'tests/packaging/test_offline_runtime_policy.py',
@@ -187,6 +187,8 @@ jobs:
             'tests/assistant',
             'tests/ui/test_assistant_actions.py',
             'tests/ui/test_assistant_menu.py',
+            'tests/language_qualification',
+            'tests/ui/test_language_matrix_host.py',
             'tests/ui/test_backup_options.py',
             'tests/e2e/test_library_backup_cli.py',
             'tests/packaging/test_install_bytecode.py',
@@ -224,6 +226,7 @@ jobs:
             'tests/e2e/test_search_operation_budget.py',
             'tests/e2e/test_nested_search_clock_budget.py',
             'tests/ingest/test_application_atomic_gate.py',
+            'tests/ingest/test_import_replay_identity.py',
             'tests/ingest/test_worker_isolated_launch.py',
             'tests/ingest/test_application_atomic_docx_gate.py',
             'tests/e2e/test_semantic_fallback_status.py',
@@ -374,6 +377,12 @@ jobs:
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/probe_operation_progress_native.py --native 2>&1 | Tee-Object 'ci-results/native-progress.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed language evidence and actual runtime inventory
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_language_matrix_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-language-matrix.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed native citation formatting and BibTeX import
@@ -613,6 +622,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_assistant_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-assistant-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $installedPython -I -B -c "import runpy,sys; from carr_library.native_runtime import activate_bundled_runtime; handle=activate_bundled_runtime(); assert handle is not None; probe=sys.argv.pop(1); runpy.run_path(probe,run_name='__main__')" (Resolve-Path tests/ui/native_language_matrix_smoke.py).Path --native 2>&1 | Tee-Object 'ci-results/full-bundle-language-matrix.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $installedPython -I -B scripts/windows_ocr_languages_smoke.py --require-bundled 2>&1 | Tee-Object 'ci-results/full-bundle-ocr-languages-native.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ((Get-FileHash -LiteralPath $manifest -Algorithm SHA256).Hash -ne $manifestBefore) { throw 'Bundle manifest changed during installation or startup.' }
@@ -692,6 +703,9 @@ jobs:
                             'tests/assistant',
                             'tests/ui/test_assistant_actions.py',
                             'tests/ui/test_assistant_menu.py',
+                            'tests/ingest/test_import_replay_identity.py',
+                            'tests/language_qualification',
+                            'tests/ui/test_language_matrix_host.py',
                             'tests/ui/test_backup_options.py',
                             'tests/audio/test_managed_projects.py',
                             'tests/audio/test_managed_input_adoption.py',

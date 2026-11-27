@@ -382,6 +382,13 @@ winsound.PlaySound(raw, winsound.SND_MEMORY | winsound.SND_SYNC | winsound.SND_N
 '''
 
 
+class _NotificationCleanupError(FeedbackUnavailable):
+    """A failed stop keeps its process owner until exit is actually observed."""
+    def __init__(self, process):
+        super().__init__('Operation audio has not confirmed that its output stopped.')
+        self.process = process
+
+
 def _run_notification(command, request, *, cancelled, timeout):
     """Own only this short process; never stop another audio owner's output."""
     if cancelled():
@@ -389,19 +396,38 @@ def _run_notification(command, request, *, cancelled, timeout):
     process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
     start = time.monotonic()
-    first = True
+    write_errors = []
+    def send():
+        try:
+            process.stdin.write(request)
+            process.stdin.flush()
+        except (OSError, ValueError) as exc:
+            write_errors.append(exc)
+        finally:
+            try:
+                process.stdin.close()
+            except OSError:
+                pass
+    # Windows communicate(input=...) writes synchronously before it applies its
+    # wait timeout. A stalled child must not block cancellation on a full pipe.
+    writer = threading.Thread(target=send, name='operation-feedback-input', daemon=True)
     try:
+        writer.start()
         while True:
             if cancelled():
                 return False
             if time.monotonic() - start > timeout:
                 raise FeedbackUnavailable('Operation audio did not complete within its notification limit.')
             try:
-                process.communicate(input=request if first else None, timeout=0.05)
+                process.wait(timeout=0.05)
                 break
             except subprocess.TimeoutExpired:
-                first = False
-        if process.returncode != 0:
+                pass
+        if writer.ident is not None:
+            writer.join(timeout=0.5)
+        else:
+            process.stdin.close()
+        if process.returncode != 0 or writer.is_alive() or write_errors:
             raise FeedbackUnavailable('Operation audio output is unavailable; check the installed audio support.')
         return True
     finally:
@@ -410,7 +436,14 @@ def _run_notification(command, request, *, cancelled, timeout):
                 process.kill()
             except OSError:
                 pass
-            process.wait(timeout=2)
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired as exc:
+                raise _NotificationCleanupError(process) from exc
+        if writer.ident is not None:
+            writer.join(timeout=0.5)
+        else:
+            process.stdin.close()
 
 
 class WindowsFeedbackAdapter:
@@ -477,6 +510,7 @@ The external busy callback must only inspect thread-safe host state, never wx.
         self._notice = ''
         self._thread = None
         self._active = False
+        self._unreleased = set()
 
     @property
     def notice(self):
@@ -514,12 +548,16 @@ The external busy callback must only inspect thread-safe host state, never wx.
             raise ValueError('Choose a quiet handoff timeout between zero and two seconds.')
         deadline = time.monotonic() + timeout
         with self._condition:
-            while self._active:
+            while self._active or self._live_unreleased():
                 remaining = deadline - time.monotonic()
                 if remaining <= 0 or threading.current_thread() is self._thread:
                     return False
-                self._condition.wait(timeout=remaining)
+                self._condition.wait(timeout=min(remaining, 0.05) if self._unreleased else remaining)
             return True
+
+    def _live_unreleased(self):
+        self._unreleased = {process for process in self._unreleased if process.poll() is None}
+        return bool(self._unreleased)
 
     def set_background(self, background):
         if type(background) is not bool:
@@ -537,7 +575,7 @@ The external busy callback must only inspect thread-safe host state, never wx.
             media = bool(self.media_busy())
         except Exception:
             media = True
-        return (self._closed or preferences.mode == 'Off' or preferences.muted
+        return (self._closed or self._live_unreleased() or preferences.mode == 'Off' or preferences.muted
                 or preferences.volume == 0 or self._playback or self._recording or media
                 or (self._background and not preferences.background))
 
@@ -590,9 +628,11 @@ The external busy callback must only inspect thread-safe host state, never wx.
                     self.adapter.speak(event.describe(), volume=preferences.volume, cancelled=cancelled)
             except Exception as exc:
                 with self._condition:
+                    if type(exc) is _NotificationCleanupError:
+                        self._unreleased.add(exc.process)
                     # Only our fixed capability messages are user-visible; an
                     # adapter's arbitrary diagnostic never becomes UI content.
-                    self._notice = (str(exc) if type(exc) is FeedbackUnavailable else
+                    self._notice = (str(exc) if type(exc) in (FeedbackUnavailable, _NotificationCleanupError) else
                                     'Operation audio feedback is unavailable; visual progress remains active.')
                     self._pending.clear()
             finally:

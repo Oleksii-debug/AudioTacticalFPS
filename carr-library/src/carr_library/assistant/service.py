@@ -26,27 +26,36 @@ def _hash_file(path, cancelled=lambda: False):
     def stamp(value):
         return (value.st_dev, value.st_ino, value.st_mode, value.st_nlink,
                 value.st_size, value.st_mtime_ns, value.st_ctime_ns)
-    digest = sha256()
     flags = os.O_RDONLY | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
-    with os.fdopen(os.open(path, flags), 'rb') as stream:
+    # An unbuffered second pass compares actual content, including same-size
+    # writes on filesystems with coarse/deferred modification timestamps.
+    # Windows st_ctime is creation time, not a reliable content-change counter.
+    with os.fdopen(os.open(path, flags), 'rb', buffering=0) as stream:
         if stamp(os.fstat(stream.fileno())) != stamp(before):
             raise ValueError('Assistant artifact changed while opening.')
-        remaining = before.st_size
-        while True:
-            if cancelled():
-                raise InterruptedError('Assistant operation was stopped.')
-            block = stream.read(min(1024 * 1024, remaining + 1))
-            if not block:
-                break
-            remaining -= len(block)
-            if remaining < 0:
-                raise ValueError('Assistant artifact grew while verifying.')
-            digest.update(block)
-        if remaining or stamp(os.fstat(stream.fileno())) != stamp(before):
-            raise ValueError('Assistant artifact changed while verifying.')
+        def read_digest():
+            remaining = before.st_size
+            digest = sha256()
+            while True:
+                block = stream.read(min(1024 * 1024, remaining + 1))
+                if cancelled():
+                    raise InterruptedError('Assistant operation was stopped.')
+                if not block:
+                    break
+                remaining -= len(block)
+                if remaining < 0:
+                    raise ValueError('Assistant artifact grew while verifying.')
+                digest.update(block)
+            if remaining or stamp(os.fstat(stream.fileno())) != stamp(before):
+                raise ValueError('Assistant artifact changed while verifying.')
+            return digest.hexdigest()
+        checksum = read_digest()
+        stream.seek(0)
+        if read_digest() != checksum:
+            raise ValueError('Assistant artifact content changed while verifying.')
     if stamp(regular_file(path)) != stamp(before):
         raise ValueError('Assistant artifact changed while verifying.')
-    return digest.hexdigest()
+    return checksum
 
 
 def _plain(value):

@@ -475,3 +475,62 @@ def test_uncooperative_notification_cannot_approve_media_start():
     finally:
         adapter.release.set()
         feedback.close()
+
+
+def test_full_stdin_pipe_cannot_block_cancellation_or_real_child_reaping(tmp_path, monkeypatch):
+    """Exercise Windows communicate's blocking-write hazard on every OS."""
+    from carr_library.progress import _run_notification
+    started = tmp_path / 'does-not-read-stdin'
+    children, original = [], subprocess.Popen
+    def spawn(*args, **kwargs):
+        child = original(*args, **kwargs)
+        children.append(child)
+        return child
+    monkeypatch.setattr('carr_library.progress.subprocess.Popen', spawn)
+    program = ('import pathlib,sys,time; pathlib.Path(sys.argv[1]).write_text("started"); '
+               'time.sleep(30)')
+    began = time.monotonic()
+    assert not _run_notification([sys.executable, '-I', '-c', program, str(started)],
+                                 b'x' * (1024 * 1024), cancelled=started.exists, timeout=5)
+    assert time.monotonic() - began < 4
+    assert children and all(child.poll() is not None for child in children)
+
+
+def test_unconfirmed_child_cleanup_retains_quiet_guard_until_actual_exit():
+    from carr_library.progress import _NotificationCleanupError
+    child = subprocess.Popen([sys.executable, '-I', '-c', 'import time; time.sleep(30)'])
+    class PendingAdapter:
+        def play(self, raw, *, cancelled):
+            raise _NotificationCleanupError(child)
+    feedback = ProgressFeedback(FeedbackPreferences('Beep'), adapter=PendingAdapter())
+    try:
+        assert feedback.submit(event_at())
+        wait_for(lambda: bool(feedback.notice))
+        feedback.set_media_state(playback=True)
+        assert not feedback.wait_quiet(0.01)
+        assert child.poll() is None
+        child.kill()
+        child.wait(timeout=2)
+        assert feedback.wait_quiet(1)
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait(timeout=2)
+        feedback.close()
+
+
+def test_rejected_notification_writer_thread_reaps_its_actual_child(monkeypatch):
+    from carr_library.progress import _run_notification
+    children, original = [], subprocess.Popen
+    def spawn(*args, **kwargs):
+        child = original(*args, **kwargs)
+        children.append(child)
+        return child
+    def reject(thread):
+        raise RuntimeError('No notification writer available')
+    monkeypatch.setattr('carr_library.progress.subprocess.Popen', spawn)
+    monkeypatch.setattr('carr_library.progress.threading.Thread.start', reject)
+    with pytest.raises(RuntimeError, match='No notification writer'):
+        _run_notification([sys.executable, '-I', '-c', 'import time; time.sleep(30)'], b'input',
+                          cancelled=lambda: False, timeout=2)
+    assert children and all(child.poll() is not None and child.stdin.closed for child in children)

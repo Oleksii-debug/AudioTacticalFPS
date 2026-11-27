@@ -41,6 +41,7 @@ from .portable_sync import install_portable_sync_actions
 from .audio_studio import install_audio_studio_actions
 from .api_connections import install_api_connection_actions
 from .assistant_dialog import install_assistant_actions
+from .language_matrix import install_language_actions
 from .acquisition_dialog import show_acquisition_dialog
 
 
@@ -576,6 +577,7 @@ class DesktopFrame(WorkspaceFrame):
         install_audio_studio_actions(self)
         install_api_connection_actions(self)
         install_assistant_actions(self)
+        install_language_actions(self)
 
     def build_advanced_query(self, event=None):
         if self.working:

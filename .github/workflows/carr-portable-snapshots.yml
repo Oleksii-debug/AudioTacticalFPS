@@ -81,6 +81,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & $env:CARR_SYNC_PYTHON -m pip check
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare the reviewed native audio runtime for snapshot roundtrips
+        timeout-minutes: 10
+        run: |
+          $audioRuntime = Join-Path $env:RUNNER_TEMP 'carr-snapshot-audio-runtime'
+          & $env:CARR_SYNC_PYTHON -I -B packaging/prepare_windows_audio.py --download --output $audioRuntime | Tee-Object 'ci-sync/audio-runtime.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_AUDIO_RUNTIME=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_FFMPEG=$(Join-Path $audioRuntime 'bin/ffmpeg.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Join-Path $audioRuntime 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Run strict offline source regressions
         run: |
           & $env:CARR_SYNC_PYTHON scripts/ci_check.py tests/sync tests/ui/test_portable_sync.py tests/ui/test_desktop_handlers.py 2>&1 | Tee-Object 'ci-sync/source-tests.txt'

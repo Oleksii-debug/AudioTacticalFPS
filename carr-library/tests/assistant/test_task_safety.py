@@ -1,6 +1,7 @@
 """Real source, permission and publication boundaries of the local assistant."""
 from hashlib import sha256
 import json
+import os
 from threading import Event
 
 import pytest
@@ -176,6 +177,38 @@ def test_artifact_modification_during_hashing_is_rejected(tmp_path):
         return False
     with pytest.raises(ValueError, match='changed'):
         _hash_file(path, mutate)
+
+
+def test_same_size_artifact_write_with_restored_mtime_is_rejected(tmp_path):
+    path = tmp_path / 'artifact.bin'
+    path.write_bytes(b'a' * 8192)
+    before = path.stat()
+    changed = False
+    def mutate():
+        nonlocal changed
+        if not changed:
+            path.write_bytes(b'b' * before.st_size)
+            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+            changed = True
+        return False
+    with pytest.raises(ValueError, match='changed'):
+        _hash_file(path, mutate)
+    assert changed and path.read_bytes() == b'b' * before.st_size
+
+
+def test_stable_artifact_hash_and_second_pass_cancellation(tmp_path):
+    path = tmp_path / 'artifact.bin'
+    contents = b'actual bounded file content' * 1000
+    path.write_bytes(contents)
+    assert _hash_file(path) == sha256(contents).hexdigest()
+    calls = 0
+    def stop_second_pass():
+        nonlocal calls
+        calls += 1
+        return calls == 3
+    with pytest.raises(InterruptedError, match='stopped'):
+        _hash_file(path, stop_second_pass)
+    assert calls == 3 and path.read_bytes() == contents
 
 
 def test_json_plan_rejects_duplicate_tool_fields():
