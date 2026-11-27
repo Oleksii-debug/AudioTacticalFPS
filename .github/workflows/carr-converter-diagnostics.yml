@@ -9,11 +9,11 @@ permissions:
   actions: read
 jobs:
   inspect-existing:
-    runs-on: windows-2022
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
-        shell: pwsh
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -28,4 +28,3 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           python -I -B -X utf8 carr-library/scripts/converter_artifact_diagnostics.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
