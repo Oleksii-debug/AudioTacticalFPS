@@ -338,6 +338,12 @@ def _native():
             elif stage[0] == 'policy_tools_closed':
                 check('closing category tools restores actual reader keyboard focus',
                       wx.Window.FindFocus() is editor and editor.GetValue() == 'b')
+                # Ctrl+A was used for the policy review. Re-establish the
+                # original intentional cursor using an actual native key.
+                key(editor, wx.WXK_END, 'policy_cursor_positioned')
+            elif stage[0] == 'policy_cursor_positioned':
+                check('native End positions the cursor after the reviewed selection',
+                      editor.GetInsertionPoint() == 1 and editor.GetStringSelection() == '')
                 key(editor, ord('S'), 'policy_saved', wx.MOD_CONTROL)
             elif stage[0] == 'policy_saved':
                 index, saved = drafts()
@@ -345,6 +351,8 @@ def _native():
                       saved[1].document.to_dict()['schema'] == 'carr.reading-copy.v4'
                       and saved[1].document.narration_policy['regions'][0]['id'] == evidence['region_id']
                       and saved[1].document.source_text == '')
+                check('native Save retains the explicitly positioned saved cursor',
+                      saved[1].cursor == 1)
                 if evidence['policy_round'] == 1:
                     key(wx.FindWindowById(wx.ID_CANCEL, reader), wx.WXK_SPACE, 'first_closing')
                 else:
