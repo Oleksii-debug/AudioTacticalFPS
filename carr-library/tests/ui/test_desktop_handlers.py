@@ -182,6 +182,7 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
     import importlib
     from itertools import count
     from carr_library.ui.productivity import install_productivity_actions
+    from carr_library.ui.keyboard_settings import install_keyboard_settings
 
     identifiers = count(1)
 
@@ -269,25 +270,29 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         value.Bind, value.Unbind, value.SetMenuBar = Mock(), Mock(), Mock()
         value.GetMenuBar = lambda: value.menu_bar
         value._menus()
-        keyboard = install_productivity_actions(value)
-        bindings = {item.command.identity: item.command.shortcut for item in keyboard.bindings}
+        install_productivity_actions(value)
+        keyboard = install_keyboard_settings(value)
+        bindings = {identity: keyboard.shortcut(identity) for identity in keyboard.bindings}
         required = {
-            'File/Save current changes': 'Ctrl+S',
-            'File/Save all changes': 'Ctrl+Shift+S',
-            'Research/Build advanced query': 'Ctrl+Alt+Q',
-            'Research/Research Search Center': 'Ctrl+Alt+F',
-            'Academic/Compare sources in active topic': 'Ctrl+Alt+M',
-            'Academic/Academic library': 'Ctrl+Shift+B',
-            'Reading/Read selected book': 'Ctrl+R',
-            'Library/Read EPUB book': 'Ctrl+Shift+R',
+            'file.save': 'Ctrl+S',
+            'file.save_all': 'Ctrl+Shift+S',
+            'research.advanced_query': 'Ctrl+Alt+Q',
+            'research.search_center': 'Ctrl+Alt+F',
+            'academic.compare_sources': 'Ctrl+Alt+M',
+            'academic.open': 'Ctrl+Shift+B',
+            'reading.open': 'Ctrl+R',
+            'library.epub_reader': 'Ctrl+Shift+R',
         }
         assert all(bindings.get(name) == shortcut for name, shortcut in required.items())
-        assert 'File/Open saved reading copy' in bindings
-        assert 'Options/Keyboard shortcuts' in bindings
+        assert 'file.open_reading_copy' in bindings
+        assert 'options.keyboard' in bindings
         assert value.menu_bar.GetMenuLabel(0) == '&File'
+        assert not hasattr(value, 'keyboard_actions')
+        assert sum(value.menu_bar.GetMenuLabel(index).replace('&', '') == 'Options'
+                   for index in range(value.menu_bar.GetMenuCount())) == 1
         shortcuts = [shortcut.casefold() for shortcut in bindings.values() if shortcut]
         assert len(shortcuts) == len(set(shortcuts))
-        assert keyboard.notice == ''
+        assert keyboard.load_notice == ''
     finally:
         # Native modules imported under this temporary headless wx adapter must
         # not remain cached for later genuine native probes or other tests.

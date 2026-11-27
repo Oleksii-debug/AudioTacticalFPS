@@ -62,6 +62,10 @@ jobs:
           git rev-parse HEAD
           & $binary -version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Observe actual MP3 framing before the unchanged acceptance gate
+        run: |
+          python -I -B scripts/windows_mp3_verification_probe.py 2>&1 | Tee-Object 'ci-audio/mp3-framing.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run provider safety, source integrity and audio recovery regressions
         run: |
           python scripts/ci_check.py tests/audio tests/reader/test_narration_text.py tests/ui/test_audio_studio.py tests/ui/test_api_connections.py tests/e2e/test_provider_gateway.py tests/e2e/test_provider_transport_boundaries.py tests/e2e/test_audio_cli.py tests/packaging/test_windows_audio.py 2>&1 | Tee-Object 'ci-audio/strict-tests.txt'
