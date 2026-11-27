@@ -51,11 +51,15 @@ def _walk_error(error):
 
 
 def snapshot_state(root, target, *, include_generated=False, max_bytes=MAX_STATE_BYTES,
-                   cancelled=lambda: False):
+                   cancelled=lambda: False, missing_ok=True):
     root = Path(root)
     if cancelled():
         raise InterruptedError('Backup cancelled.')
-    if not os.path.lexists(root):
+    try:
+        root.lstat()
+    except FileNotFoundError:
+        if not missing_ok:
+            raise
         return []
     root = local_path(root, exists=True)
     regular(root, directory=True)

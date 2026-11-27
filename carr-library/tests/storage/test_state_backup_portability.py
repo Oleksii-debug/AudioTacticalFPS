@@ -150,3 +150,32 @@ def test_state_restore_rejects_unlisted_file_before_scanning_later_subtree(tmp_p
     with pytest.raises(ValueError, match='missing or unlisted'):
         restore_state(root, tmp_path / 'target', [entry('later/settings.json')])
     assert not (tmp_path / 'target').exists()
+
+
+@pytest.mark.parametrize('failure', (PermissionError, NotADirectoryError))
+def test_state_root_lookup_error_is_not_absence(tmp_path, monkeypatch, failure):
+    from pathlib import Path
+
+    root = tmp_path / 'source'
+    root.mkdir()
+    (root / 'draft.json').write_bytes(b'x')
+    target = tmp_path / 'stage'
+    original = Path.lstat
+
+    def denied(path, *args, **kwargs):
+        if path == root:
+            raise failure('state lookup failed')
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'lstat', denied)
+    with pytest.raises(failure, match='state lookup failed'):
+        snapshot_state(root, target)
+    assert not target.exists()
+
+
+def test_state_root_missing_is_optional_only_when_requested(tmp_path):
+    root, target = tmp_path / 'missing', tmp_path / 'stage'
+    assert snapshot_state(root, target) == []
+    with pytest.raises(FileNotFoundError):
+        snapshot_state(root, target, missing_ok=False)
+    assert not target.exists()

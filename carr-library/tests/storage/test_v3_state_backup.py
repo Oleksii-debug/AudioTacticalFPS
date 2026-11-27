@@ -295,3 +295,28 @@ def test_legacy_backup_still_restores_without_state(tmp_path):
     restored = LibraryApp(restore_backup(backup, tmp_path / 'restored', digest))
     assert restored.search(workspace, 'Legacy')[0].quote == 'Legacy'
     assert not (restored.root / 'state').exists()
+
+
+@pytest.mark.parametrize('failure', (PermissionError, FileNotFoundError))
+def test_backup_state_lookup_failure_never_publishes(populated, tmp_path, monkeypatch, failure):
+    app, *_ = populated
+    root = app.root / 'state'
+    destination = tmp_path / 'backup'
+    original = Path.lstat
+    probes = 0
+
+    def denied(path, *args, **kwargs):
+        nonlocal probes
+        if path == root:
+            probes += 1
+            # Permission failure at the caller, or disappearance after its
+            # successful initial presence probe (before the snapshot).
+            if failure is PermissionError or probes >= 2:
+                raise failure('state lookup failed')
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'lstat', denied)
+    with pytest.raises(failure, match='state lookup failed'):
+        create_backup(app, destination)
+    assert not destination.exists()
+    assert probes >= (1 if failure is PermissionError else 2)
