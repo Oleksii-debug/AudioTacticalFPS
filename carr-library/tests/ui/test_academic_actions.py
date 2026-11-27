@@ -16,6 +16,7 @@ import pytest
 import carr_library
 from carr_library.catalog.read_views import EditionView
 from carr_library.catalog.reference_exchange import preview_references
+from carr_library.research import export_file
 
 
 class Control:
@@ -417,6 +418,99 @@ def test_export_cancellation_after_backend_returns_preserves_existing_destinatio
     with pytest.raises(InterruptedError, match='destination was not changed'):
         finish(frame)
     assert destination.read_bytes() == b'Existing bytes must remain'
+
+
+@pytest.mark.parametrize('action,change', [
+    ('bibliography', 'workspace'), ('bibliography', 'library'), ('bibliography', 'closing'),
+    ('outline', 'workspace'), ('outline', 'library'), ('outline', 'closing'), ('outline', 'topic'),
+])
+def test_export_rechecks_scope_after_replacement_confirmation(
+        module, edition, tmp_path, monkeypatch, action, change):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'selected-export.txt'
+    previous = b'Existing explicitly selected export'
+    destination.write_bytes(previous)
+    choose(module, monkeypatch, path=destination)
+
+    def confirm(*args):
+        if change == 'library':
+            frame.library = SimpleNamespace(root=tmp_path / 'another-library')
+        elif change == 'closing':
+            frame._closing = True
+        elif change == 'topic':
+            frame.active = ('workspace', 'another-topic')
+        else:
+            frame.active = ('another-workspace', 'another-topic')
+        return module.wx.YES
+
+    module.wx.MessageBox.side_effect = confirm
+    handler = module.export_bibliography if action == 'bibliography' else module.export_research_outline
+    handler(frame)
+
+    module.wx.MessageBox.assert_called_once()
+    assert not frame.jobs
+    library.export_bibliography.assert_not_called()
+    library.export_outline.assert_not_called()
+    assert destination.read_bytes() == previous
+    assert len(frame.reports) == 1 and 'selection changed' in frame.reports[0]
+
+
+@pytest.mark.parametrize('action', ['bibliography', 'outline'])
+@pytest.mark.parametrize('phase', ['queued', 'rendering', 'staging'])
+def test_export_preserves_existing_file_when_scope_changes_before_publication(
+        module, edition, tmp_path, monkeypatch, action, phase):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'selected-export.txt'
+    previous = b'Existing explicitly selected export'
+    destination.write_bytes(previous)
+    choose(module, monkeypatch, path=destination)
+    handler = module.export_bibliography if action == 'bibliography' else module.export_research_outline
+    backend = library.export_bibliography if action == 'bibliography' else library.export_outline
+    handler(frame)
+    assert len(frame.jobs) == 1
+
+    def change_scope():
+        frame.active = ('another-workspace', 'another-topic')
+
+    if phase == 'queued':
+        change_scope()
+    elif phase == 'rendering':
+        def render(*args, **kwargs):
+            change_scope()
+            return backend.return_value
+        backend.side_effect = render
+    else:
+        original_fsync = export_file.os.fsync
+        def flush_then_change_scope(descriptor):
+            original_fsync(descriptor)
+            change_scope()
+        monkeypatch.setattr(export_file.os, 'fsync', flush_then_change_scope)
+
+    with pytest.raises(ValueError, match='selection changed'):
+        finish(frame)
+    if phase == 'queued':
+        backend.assert_not_called()
+    else:
+        assert backend.call_count == 1
+    assert destination.read_bytes() == previous
+    assert not list(tmp_path.glob('.research-export-*'))
+    assert not frame.reports
+
+
+def test_bibliography_confirmation_can_change_topic_within_its_selected_workspace(
+        module, edition, tmp_path, monkeypatch):
+    frame, _, library = host(tmp_path, edition)
+    destination = tmp_path / 'selected-export.json'
+    destination.write_bytes(b'Previous bibliography')
+    choose(module, monkeypatch, path=destination)
+    def confirm(*args):
+        frame.active = ('workspace', 'another-topic')
+        return module.wx.YES
+    module.wx.MessageBox.side_effect = confirm
+    module.export_bibliography(frame)
+    finish(frame)
+    assert destination.read_text(encoding='utf-8') == library.export_bibliography.return_value
+    assert len(frame.reports) == 1 and 'Bibliography exported' in frame.reports[0]
 
 
 @pytest.mark.parametrize('action', ['bibliography', 'outline'])

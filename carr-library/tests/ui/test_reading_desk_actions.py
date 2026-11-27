@@ -241,6 +241,10 @@ class Dialogs:
             callback()
         return self.chosen_path
 
+    def approve_export(self, parent, path, *, private_root):
+        from carr_library.research.export_file import capture_export_destination
+        return capture_export_destination(path, private_root=private_root)
+
 
 def test_open_selected_book_preserves_unsaved_notes_and_restores_focus(source):
     app, workspace, _, _, raw = source

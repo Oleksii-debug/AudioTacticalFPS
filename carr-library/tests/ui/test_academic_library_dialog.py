@@ -176,6 +176,27 @@ def test_export_uses_existing_destination_guard(controller, tmp_path):
     assert private.read_text() == 'Existing private file'
 
 
+@pytest.mark.parametrize('existing', [False, True])
+def test_bibliography_preserves_newer_destination_during_render(
+        controller, tmp_path, monkeypatch, existing):
+    target = tmp_path / 'bibliography.txt'
+    if existing:
+        target.write_bytes(b'Explicitly selected old bibliography.')
+    render = controller.export
+    newer = b'Independent work saved while bibliography renders.'
+
+    def render_and_change(**options):
+        value = render(**options)
+        target.write_bytes(newer)
+        return value
+
+    monkeypatch.setattr(controller, 'export', render_and_change)
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export_to(target)
+    assert target.read_bytes() == newer
+    assert not list(tmp_path.glob('.research-export-*'))
+
+
 def test_reference_pages_have_distinct_labels_and_all_active_export(controller):
     with controller.library.write(controller.workspace) as db:
         service = AcademicLibrary(db, controller.workspace)
@@ -547,6 +568,28 @@ def test_live_academic_completion_reports_done_callback_error(controller, native
     native_handlers.drain()
     assert not window.pending and window.modal
     assert 'Visible callback failure' in window.status.value
+
+
+def test_native_export_handler_retains_text_return_and_cleanup_notice(
+        controller, native_handlers, monkeypatch, tmp_path):
+    from carr_library.ui import academic_library_dialog as ui
+    from carr_library.research.export_file import ExportReceipt
+    controller.create(form_values(draft()))
+    actual_writer = ui.write_export
+
+    def completed_with_notice(*args, **kwargs):
+        receipt = actual_writer(*args, **kwargs)
+        return ExportReceipt(receipt.path, 'Completed; temporary cleanup needs attention.')
+
+    monkeypatch.setattr(ui, 'write_export', completed_with_notice)
+    window = native_handlers.make('academic', controller)
+    window.controller = controller
+    destination = tmp_path / 'references.ris'
+    result = window.export_to(destination, format='ris')
+    assert isinstance(result, str)
+    assert result.encode('utf-8') == destination.read_bytes()
+    assert len(controller.preview(result.encode('utf-8'), 'ris').entries) == 1
+    assert 'Completed; temporary cleanup needs attention.' in window.status.value
 
 
 @pytest.mark.parametrize('existing', [False, True])
