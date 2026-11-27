@@ -95,6 +95,32 @@ remain available if a later source fails or the user cancels. Batches do not hav
 a durable extraction/resume journal; use the existing import workflow when
 checkpoint recovery is required.
 
+## Explicit encoding for legacy TXT
+
+Plain TXT keeps its strict UTF-8 default, including an optional UTF-8 BOM. It
+does not guess a legacy codec or silently retry a failed decode. API callers
+can restore an explicitly known encoding with
+`extract(source, "reading.txt", encoding="windows-1251")` or
+`extract_many(sources, encoding="windows-1251")`.
+
+The finite allowlist is `utf-8`, `utf-8-sig`, `utf-16`, `utf-16-le`,
+`utf-16-be`, `cp1251`/`windows-1251`, `cp1252`/`windows-1252`,
+`iso-8859-1`, and `ascii`. Names are case-insensitive and accept underscores
+in place of hyphens. The selected decoder is strict: malformed bytes, binary
+signatures and unsupported control characters fail without a published result.
+The option applies only to `.txt`; it cannot replace HTML/XML declarations,
+document adapters or the separate streamed UTF-8 import profile.
+
+The child receives the canonical codec in its exact request schema. The parent
+requires the same `source_encoding` in the returned provenance before
+publication; the final report retains that field alongside the original byte
+size and SHA256. The output is UTF-8, with the decoded CR/LF/form-feed sequence
+and ordered segment intervals preserved. Original bytes and filenames remain
+unchanged. Source, decoded-output, record and worker-time limits still apply.
+The desktop retains its existing conversion flow; this restores the explicit
+service and batch API without adding an implicit encoding guess or a new
+selection dialog.
+
 ## Resource and filesystem boundaries
 
 Defaults and maxima are 64 MiB per source, 32 MiB reading text, 16 MiB provenance,
