@@ -28,6 +28,8 @@ import urllib.request
 import zipfile
 
 ARCHIVE_URL = "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack46.zip"
+EXPECTED_ARCHIVE_SHA256 = "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90"
+EXPECTED_ARCHIVE_SIZE = 1324680
 DOCUMENT_URLS = (
     "https://vb-audio.com/Cable/index.htm",
     "https://vb-audio.com/Services/licensing.htm",
@@ -51,7 +53,7 @@ OUTPUT_LIMIT = 16 * 1024
 CHUNK = 64 * 1024
 MAX_MEMBERS = 256
 MAX_SIGNATURE_FILES = 64
-MAX_VERIFICATIONS = 128
+MAX_VERIFICATIONS = 160  # Observed Pack46: 20 embedded + 8 catalogs * 17 members = 156.
 DEADLINE_SECONDS = 600
 SIGNATURE_EXTENSIONS = {".exe", ".sys", ".cat", ".inf"}
 TEXT_EXTENSIONS = {".txt", ".md", ".html", ".htm", ".rtf", ".inf"}
@@ -671,6 +673,9 @@ def run(report_dir: Path, work: Path) -> int:
         archive_path = work / "VBCABLE_Driver_Pack46.zip"
         metadata, _ = download(ARCHIVE_URL, ARCHIVE_LIMIT, deadline, archive_path)
         report["archive"] = {**metadata, "identity_status": "MEASURED_NOT_PREAPPROVED"}
+        if (metadata.get("sha256"), metadata.get("size")) != (EXPECTED_ARCHIVE_SHA256, EXPECTED_ARCHIVE_SIZE):
+            raise ValueError("Pack46 bytes differ from the exact first inspection; fresh review is required.")
+        report["archive"]["identity_status"] = "PINNED_INSPECTION_BYTES_NOT_APPROVED_FOR_INSTALLATION"
         extraction = work / "members"
         extraction.mkdir()
         selected = inspect_archive(archive_path, extraction, deadline, report)

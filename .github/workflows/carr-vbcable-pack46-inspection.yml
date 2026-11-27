@@ -150,8 +150,8 @@ jobs:
           record = json.loads(report.read_text(encoding='utf-8'))
           keys = ('schema', 'source_commit', 'inspection_status', 'archive', 'members', 'inf', 'package_documents', 'official_documents', 'windows', 'signtool_os_target', 'verification_summary', 'reviewed_vendor_contract', 'qualification', 'temporary_payload_cleanup', 'error', 'cleanup_error_type')
           view = {key: record[key] for key in keys if key in record}
-          view['verification'] = [{**{key: value for key, value in row.items() if key not in ('stdout', 'stderr')}, 'stdout_tail': row.get('stdout', '')[-2048:], 'stderr_tail': row.get('stderr', '')[-2048:]} for row in record.get('verification', [])]
-          view['console_notes'] = 'Signature output tails limited to2048 characters each; the two retained text files remain the complete diagnostic evidence.'
+          view['verification'] = [{**{key: value for key, value in row.items() if key not in ('stdout', 'stderr')}, 'stdout_tail': row.get('stdout', '')[-1024:], 'stderr_tail': row.get('stderr', '')[-1024:]} for row in record.get('verification', [])]
+          view['console_notes'] = 'Signature output tails limited to1024 characters each; the two retained text files remain the complete diagnostic evidence.'
           output = json.dumps(view, ensure_ascii=True, sort_keys=True, indent=2)
           if len(output.encode('utf-8')) > 512 * 1024:
               raise ValueError('Console findings exceeded the separate512KiB limit; use the retained text report.')

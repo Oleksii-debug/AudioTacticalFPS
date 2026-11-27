@@ -1,0 +1,31 @@
+{
+  "schema": "resonance-audio-inspection-correction/1",
+  "prior_commit": "87e54705211aaa6d8b5adee29e5e35f40a0a37a5",
+  "prior_run": 46016557289,
+  "first_observation": "Windows Server2022 build20348; 31 archive members; signature inspection stopped before executing SignTool because156 planned checks exceeded128.",
+  "archive": {
+    "sha256": "bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90",
+    "size": 1324680,
+    "source": "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack46.zip"
+  },
+  "changes": [
+    "Pin exact first-measured archive bytes before extraction.",
+    "Raise the finite verification bound to160 for all156 observed checks; preserve all policy, time, output and cleanup limits.",
+    "Console tails1024characters each; full retained text reports unchanged."
+  ],
+  "files": [
+    {
+      "path": "diagnostics/ci_audio/inspect_vbcable_pack46.py",
+      "sha": "6432005020bee4fa75cb8c8c6f282f2b3c9f2b26",
+      "mode": "100644",
+      "type": "blob"
+    },
+    {
+      "path": ".github/workflows/carr-vbcable-pack46-inspection.yml",
+      "sha": "688aa3604a6c434ec2cac029c64e362317f8f9ec",
+      "mode": "100644",
+      "type": "blob"
+    }
+  ],
+  "qualification": "INSPECTION_ONLY_NOT_APPROVED_FOR_INSTALLATION"
+}
