@@ -60,11 +60,17 @@ def browse_editions(catalog: Catalog, *, collection=None, title=None, author=Non
     title, author, language, edition = map(_metadata, (title, author, language, edition))
     if any(v == '' for v in (title, author, language, edition)):
         raise ValueError('empty filter')
+    # A nullable OR prevents SQLite from using the ID portion of the existing
+    # (workspace,id) key. Keep optional predicates explicit and parameterized.
+    identity_filters = ''
+    if after is not None:
+        identity_filters += ' AND e.id COLLATE BINARY > :after'
+    if edition_id is not None:
+        identity_filters += ' AND e.id=:edition_id'
     rows = db.execute('''WITH selected AS (
         SELECT e.workspace,e.id,e.work,e.asset,w.title,e.language,e.edition,e.volume
         FROM catalog_edition e JOIN catalog_work w ON w.workspace=e.workspace AND w.id=e.work
-        WHERE e.workspace=:scope AND (:after IS NULL OR e.id COLLATE BINARY > :after)
-        AND (:edition_id IS NULL OR e.id=:edition_id)
+        WHERE e.workspace=:scope''' + identity_filters + '''
         AND (:collection IS NULL OR EXISTS (SELECT 1 FROM catalog_membership m
             WHERE m.workspace=e.workspace AND m.edition=e.id AND m.collection=:collection))
         AND (:title IS NULL OR instr(w.title,:title)>0)

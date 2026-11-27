@@ -169,12 +169,17 @@ def _fingerprint(db, catalog, filters, policy, budget):
             digest.update(_json(('edition', asdict(view))))
             digest.update(b'\n')
         ids = tuple(view.edition_id for view in views)
-        query = ('SELECT p.id,p.edition,p.revision,p.ordinal,p.physical,p.printed,'
-                 'p.verified,p.digest,length(p.raw),p.asset,m.author,m.title,m.volume,m.edition_label '
-                 'FROM active_page p LEFT JOIN source_metadata m '
-                 'ON m.workspace=p.workspace AND m.edition=p.edition AND m.revision=p.revision '
-                 'WHERE p.workspace=? AND p.edition IN (' + ','.join('?' for _ in ids) +
-                 ') ORDER BY p.edition COLLATE BINARY,p.ordinal,p.id')
+        # Use the existing scoped active key. The generic view joins active by
+        # revision alone, causing a query-time index over all active editions
+        # for each small catalogue batch. Keep the complete fresh fingerprint.
+        query = ('SELECT p.id,a.edition,p.revision,p.ordinal,p.physical,p.printed,'
+                 'p.verified,p.digest,length(p.raw),r.asset,m.author,m.title,m.volume,m.edition_label '
+                 'FROM active a JOIN revision r ON r.id=a.revision '
+                 'AND r.workspace=a.workspace AND r.edition=a.edition '
+                 'JOIN page p ON p.revision=r.id LEFT JOIN source_metadata m '
+                 'ON m.workspace=a.workspace AND m.edition=a.edition AND m.revision=p.revision '
+                 'WHERE a.workspace=? AND a.edition IN (' + ','.join('?' for _ in ids) +
+                 ') ORDER BY a.edition COLLATE BINARY,p.ordinal,p.id')
         cursor = db.execute(query, (catalog.workspace, *ids))
         try:
             for row in cursor:
@@ -202,12 +207,15 @@ def _source_batch(db, catalog, filters, policy, budget, state):
             return {}, (), True
         allowed = {view.edition_id: view.work_id for view in views}
         params = (catalog.workspace, *allowed)
-        sql = ('SELECT id,edition,ordinal,length(raw) FROM active_page WHERE workspace=? '
-               'AND edition IN (' + ','.join('?' for _ in allowed) + ')')
+        sql = ('SELECT p.id,a.edition,p.ordinal,length(p.raw) '
+               'FROM active a JOIN revision r ON r.id=a.revision '
+               'AND r.workspace=a.workspace AND r.edition=a.edition '
+               'JOIN page p ON p.revision=r.id WHERE a.workspace=? '
+               'AND a.edition IN (' + ','.join('?' for _ in allowed) + ')')
         if state['source'] is not None:
-            sql += ' AND (edition,ordinal,id) > (?,?,?)'
+            sql += ' AND (a.edition,p.ordinal,p.id) > (?,?,?)'
             params += state['source']
-        sql += ' ORDER BY edition COLLATE BINARY,ordinal,id LIMIT ?'
+        sql += ' ORDER BY a.edition COLLATE BINARY,p.ordinal,p.id LIMIT ?'
         cursor = db.execute(sql, (*params, policy.pages + 1))
         selected, size = [], 0
         try:
