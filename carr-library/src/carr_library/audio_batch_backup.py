@@ -22,6 +22,7 @@ from .audio.managed import ManagedProjects
 _ID = re.compile(r'[0-9a-f]{32}\Z')
 _PENDING_CREATE = re.compile(r'\.pending-create-[A-Za-z0-9_-]+\Z')
 _PENDING_ITEM = re.compile(r'\.pending-item-([0-9a-f]{32})-[A-Za-z0-9_-]+\Z')
+_CHECKPOINT = re.compile(r'\.checkpoint-[A-Za-z0-9_-]+\Z')
 MAX_FILES = 100000
 MAX_OUTPUT_BYTES = 32 * 1024**3
 
@@ -102,7 +103,15 @@ def _pending(path, batch):
         raise ValueError('Unknown audio queue scratch must not be silently omitted.')
     regular(path, directory=True)
     # An empty directory can remain if the process died before its owner record.
-    entries = _children(path, limit=4)
+    entries = _children(path, limit=8)
+    if not entries:
+        return
+    checkpoints = [entry for entry in entries if _CHECKPOINT.fullmatch(entry.name)]
+    for entry in checkpoints:
+        info = regular(entry)
+        if info.st_size > MAX_STATE_BYTES:
+            raise ValueError('An interrupted audio checkpoint exceeds its metadata allowance.')
+    entries = tuple(entry for entry in entries if entry not in checkpoints)
     if not entries:
         return
     if {entry.name for entry in entries} - {'owner.json', 'work', 'publish'}:
@@ -136,6 +145,9 @@ def state_paths(library_root, *, cancelled=lambda: False):
                 result.append(entry)
             elif entry.name == '.control.lock':
                 regular(entry)
+            elif _CHECKPOINT.fullmatch(entry.name):
+                if regular(entry).st_size > MAX_STATE_BYTES:
+                    raise ValueError('An interrupted queue checkpoint exceeds its metadata allowance.')
             elif entry.name in ('sources', 'outputs'):
                 regular(entry, directory=True)
             elif _PENDING_ITEM.fullmatch(entry.name):
@@ -149,7 +161,9 @@ def state_paths(library_root, *, cancelled=lambda: False):
             raise ValueError('An audio queue lost retained originals or contains unclaimed inputs.')
         result.extend(observed_sources)
         items = {item.id: item for item in batch.items}
-        for output in _children(directory / 'outputs', limit=MAX_ITEMS):
+        outputs = directory / 'outputs'
+        inventory = _children(outputs, limit=MAX_ITEMS) if optional_present(outputs) else ()
+        for output in inventory:
             if output.name not in items:
                 raise ValueError('An audio output belongs to an unknown queue item.')
             files = _children(output, limit=len(items[output.name].outputs) + 2)
@@ -235,7 +249,7 @@ def validate_state_tree(library_root, *, db=None, cancelled=lambda: False):
                 AudioBatchService._verify_file(path, record['bytes'], record['sha256'], cancelled)
                 if item.preset.output_format == 'wav':
                     info = wav_info(path)
-                    if (info.sample_rate, info.channels, info.frames) != (
+                    if (info.rate, info.channels, info.frames) != (
                             record['sample_rate'], record['channels'], record['frames']):
                         raise ValueError('A retained WAV differs from its completed sample receipt.')
             completed.append((batch.id, item.id))

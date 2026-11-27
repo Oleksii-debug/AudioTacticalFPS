@@ -779,6 +779,7 @@ class AudioStudioDialog:
         production_buttons = wx.WrapSizer(wx.HORIZONTAL)
         self._button(production_page, production_buttons, 'Preview plan', self.preview)
         self._button(production_page, production_buttons, 'Edit chapter clips', self.edit_clips)
+        self._button(production_page, production_buttons, 'Audio batches and audiobooks', self.audio_batches)
         self.render_button = self._button(production_page, production_buttons, 'Render / resume', self.render)
         self.cancel_button = self._button(production_page, production_buttons, 'Cancel studio operation', self.cancel, busy_safe=True)
         self.cancel_button.Disable()
@@ -1844,6 +1845,13 @@ class AudioStudioDialog:
         self.segment_choice.SetItems([f'{seconds:.2f} seconds — {title}' for seconds, title in self.playback.segments])
         if self.playback.segments:
             self.segment_choice.SetSelection(0)
+
+    def audio_batches(self, event=None):
+        try:
+            from .audio_batches import show_audio_batches
+            show_audio_batches(self)
+        except Exception as error:
+            self._error(error)
 
     def record_microphone(self, event=None):
         if self.busy or self.closed or getattr(self.parent, 'working', False):

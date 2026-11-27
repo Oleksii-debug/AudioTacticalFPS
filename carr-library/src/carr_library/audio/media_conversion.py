@@ -208,7 +208,7 @@ def decode(source, target, *, demuxer, stream_index, ffmpeg, preset,
                  '-f', 'wav', '-rf64', 'auto', '-n', str(target)]
         _run(args, budget=_budget(preset), cancelled=cancelled, watch=(target,))
         info = wav_info(target)
-        if (info.sample_rate != preset.sample_rate or info.channels != preset.channels
+        if (info.rate != preset.sample_rate or info.channels != preset.channels
                 or info.seconds > limit):
             raise ValueError('The input exceeds the selected duration/rate/channel allowance; no truncated result was accepted.')
         return info
@@ -228,7 +228,7 @@ def encode(source, target, *, ffmpeg, preset, cancelled=lambda: False):
     original = file_identity(regular_file(source))
     with verified_reader(source, expected_identity=original):
         info = wav_info(source)
-        if info.sample_rate != preset.sample_rate or info.channels != preset.channels:
+        if info.rate != preset.sample_rate or info.channels != preset.channels:
             raise ValueError('The staged PCM differs from its selected preset.')
         args = [*_prefix(ffmpeg), *input_arguments(source, 'wav'), '-map', '0:a:0',
                 '-vn', '-sn', '-dn', '-map_metadata', '-1', '-map_chapters', '-1',
@@ -252,6 +252,6 @@ def verify_encoded(path, scratch, *, ffmpeg, preset, cancelled=lambda: False):
                       ffmpeg=ffmpeg, preset=preset, cancelled=cancelled, verification=True)
         result = {'name': path.name, 'bytes': regular_file(path).st_size,
                   'sha256': sha256_file(path, cancelled=cancelled, expected_identity=expected),
-                  'sample_rate': info.sample_rate, 'channels': info.channels, 'frames': info.frames}
+                  'sample_rate': info.rate, 'channels': info.channels, 'frames': info.frames}
     scratch.unlink()
     return result

@@ -24,6 +24,7 @@ _LOCATIONS = {
     'document': ('import-requests', False, 64000),
     'import': ('import-batches', False, 16 * 1024 * 1024),
     'studio': ('audio-projects', True, 1024 * 1024),
+    'audio-batch': ('audio-batches', True, 16 * 1024 * 1024),
     'translation': ('state/translation', False, 64 * 1024 * 1024),
 }
 _TERMINAL = {'complete', 'cancelled', 'failed', 'attention', 'superseded',
@@ -119,7 +120,7 @@ def resource_view(snapshot):
         request = ResourceRequest.from_dict(row['request'])
         operation = row.get('operation_id')
         if (type(operation) is not str or re.fullmatch(
-                r'(?:asr|studio|document|assistant|translation|import):[0-9a-f]{32}', operation) is None):
+                r'(?:asr|studio|audio-batch|audio-export|document|assistant|translation|import):[0-9a-f]{32}', operation) is None):
             operation = 'other'
         leases.append({
             'id': row['id'], 'operation_id': operation,
@@ -140,13 +141,13 @@ def resource_view(snapshot):
 
 
 class OperationFacade:
-    def __init__(self, app, *, broker=None, assistant=None, transcription=None):
+    def __init__(self, app, *, broker=None, assistant=None, transcription=None, audio_batches=None):
         self.app = app
         self.root = local_path(app.root, exists=True)
         info = regular(self.root, directory=True)
         self._root_identity = (info.st_dev, info.st_ino)
         self.broker = broker
-        self.services = {'assistant': assistant, 'asr': transcription}
+        self.services = {'assistant': assistant, 'asr': transcription, 'audio-batch': audio_batches}
         self._validate_scope()
 
     def _validate_scope(self):
@@ -167,12 +168,19 @@ class OperationFacade:
                 or Path(assistant.store.directory).absolute() != self.root / 'state' / 'assistant'):
             raise ResourceStateError('The assistant service belongs to another data directory.')
 
+        batch = self.services['audio-batch']
+        if batch is not None and (Path(batch.library).absolute() != self.root
+                or Path(batch.root).absolute() != self.root / 'audio-batches'):
+            raise ResourceStateError('The audio queue service belongs to another data directory.')
+
     def _path(self, kind, identity):
         if kind not in _LOCATIONS or type(identity) is not str or not _ID.fullmatch(identity):
             raise ValueError('Choose a known operation and its existing 32-character identity.')
         directory, nested, _ = _LOCATIONS[kind]
         if kind == 'studio':
             suffix = identity + '/audio/render-journal.json'
+        elif kind == 'audio-batch':
+            suffix = identity + '/batch.json'
         else:
             suffix = identity + ('/job.json' if nested else '.json')
         return local_path(self.root / directory / suffix, root=self.root)
@@ -188,6 +196,8 @@ class OperationFacade:
         if not bound or status in _TERMINAL:
             return ()
         if kind == 'assistant' and status in ('queued', 'running', 'paused'):
+            return ('cancel',) if status == 'paused' else ('pause', 'cancel')
+        if kind == 'audio-batch' and status in ('queued', 'running', 'paused'):
             return ('cancel',) if status == 'paused' else ('pause', 'cancel')
         if kind == 'asr' and status in ('verifying', 'running', 'paused'):
             return ('cancel',) if status == 'paused' else ('pause', 'cancel')
@@ -252,6 +262,17 @@ class OperationFacade:
                 if result.get('total') is not None:
                     total = _count(result['total'])
             unit, phase = 'records', 'Stored import request; verify its publication in Import centre.'
+        elif kind == 'audio-batch':
+            from ..audio.batch_models import BatchState, BatchControl
+            batch = BatchState.from_dict(data)
+            control = BatchControl.from_dict(budget.read(path.parent / 'control.json', 8192))
+            if batch.id != identity or control.batch_id != identity or control.sequence < batch.control_sequence:
+                raise ValueError('Audio queue metadata or control identity changed.')
+            status, completed, total, unit = batch.status, sum(
+                item.state == 'complete' for item in batch.items), len(batch.items), 'items'
+            phase = 'Stored audio queue checkpoint; verify outputs or resume in Audio Studio.'
+            if control.sequence > batch.control_sequence and control.action in ('pause', 'cancel'):
+                phase += ' ' + control.action.capitalize() + ' requested; acknowledgement is pending.'
         elif kind == 'studio':
             if (type(data.get('schema_version')) is not int or data['schema_version'] != 1
                     or type(data.get('run_key')) is not str or not _HASH.fullmatch(data['run_key'])
@@ -347,7 +368,7 @@ class OperationFacade:
                         raise
                     except (ValueError, OSError, TypeError, KeyError, RecursionError):
                         suffix = identity + ('/audio/render-journal.json' if kind == 'studio'
-                            else '/job.json' if nested else '.json')
+                            else '/batch.json' if kind == 'audio-batch' else '/job.json' if nested else '.json')
                         value = OperationView(kind, identity, None, 'attention', None, None,
                             'Checkpoint needs review in its original workflow.', '', (),
                             directory + '/' + suffix)
@@ -378,7 +399,11 @@ class OperationFacade:
         _check(cancelled)
         service = self.services.get(kind)
         if service is None:
-            if kind == 'asr':
+            if kind == 'audio-batch':
+                from ..audio.batches import AudioBatchService
+                service = AudioBatchService(self.root, broker=self.broker,
+                    trust_controller=getattr(self.app, 'trust_controller', None))
+            elif kind == 'asr':
                 from ..transcription_service import TranscriptionService
                 service = TranscriptionService(self.root)
             else:
@@ -386,7 +411,9 @@ class OperationFacade:
                 service = AssistantService(self.app)
             self.services[kind] = service
         self._validate_scope()
-        if kind == 'asr':
+        if kind == 'audio-batch':
+            service.control(identity, action)
+        elif kind == 'asr':
             service.control(identity, 'stop' if action == 'cancel' else 'pause')
         else:
             # This retains the owning service's scope and reapproval checks.

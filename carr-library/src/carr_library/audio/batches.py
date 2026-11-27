@@ -280,7 +280,7 @@ class AudioBatchService:
             self._verify_file(path, record['bytes'], record['sha256'], cancelled)
             if item.preset.output_format == 'wav':
                 info = wav_info(path)
-                if (info.sample_rate, info.channels, info.frames) != (
+                if (info.rate, info.channels, info.frames) != (
                         record['sample_rate'], record['channels'], record['frames']):
                     raise ValueError('The completed WAV receipt disagrees with actual PCM.')
         if durable:
@@ -410,12 +410,29 @@ class AudioBatchService:
                 # no-replace directory move. Next items still observe the request.
                 return self.verified_receipt(batch, item, durable=True)
 
+    def _discard_interrupted_work(self, batch):
+        """Remove only typed derived scratch after the actual producer is idle."""
+        from ..audio_batch_backup import _pending
+        root = self.path(batch.id)
+        with state_lock(root, 'control'):
+            for path in tuple(root.iterdir()):
+                if re.fullmatch(r'\.checkpoint-[A-Za-z0-9_-]+', path.name):
+                    if regular_file(path).st_nlink != 1 or path.stat().st_size > MAX_STATE_BYTES:
+                        raise ValueError('Interrupted queue metadata is not a bounded owned file.')
+                    path.unlink()
+                elif re.fullmatch(r'\.pending-item-[0-9a-f]{32}-[A-Za-z0-9_-]+', path.name):
+                    _pending(path, batch)
+                    shutil.rmtree(path)
+            _sync_directory(root)
+
     def run(self, batch_id, *, action='run', retry_items=(), cancelled=lambda: False,
             on_status=lambda message: None):
         if action not in ('run', 'resume', 'retry'):
             raise ValueError('Choose run, resume, or retry explicitly.')
         with producer_guard(self.library):
             batch = self.load(batch_id)
+            checked_directory(self.path(batch_id) / 'outputs', create=True)
+            self._discard_interrupted_work(batch)
             if action == 'run' and batch.status in ('paused', 'cancelled'):
                 raise ValueError('This queue was stopped; use explicit Resume to continue it.')
             selected = set(retry_items)
