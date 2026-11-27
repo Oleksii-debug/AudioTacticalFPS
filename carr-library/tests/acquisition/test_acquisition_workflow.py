@@ -416,3 +416,29 @@ def test_copy_publication_fallback_never_overwrites_and_cancels_cleanly(tmp_path
     with pytest.raises(InterruptedError):
         service._publish_file(source, target, lambda: checks.pop(0))
     assert not target.exists() and source.read_bytes() == b'A' * 200000
+
+
+def test_ambiguous_identical_editions_do_not_auto_link_or_assign(sample, tmp_path):
+    app, workspace, transfers = sample
+    transfers.pdf = pdf_bytes()
+    original = tmp_path / 'same-original.pdf'
+    original.write_bytes(transfers.pdf)
+    for identity, title in (('a' * 32, 'Synthetic edition A'), ('b' * 32, 'Synthetic edition B')):
+        imported = app.import_file(workspace, original, title=title,
+            authors=('Synthetic Author',), edition_id=identity)
+        assert imported['state'] == 'complete'
+    before = app.browse(workspace)
+    assert len(before) == 2
+    assert {e.asset for e in before} == {sha256(transfers.pdf).hexdigest()}
+    collection = app.create_collection(workspace, 'Requires explicit edition selection')
+    preview = lookup(app, workspace, oa=True)
+    result = app.acquire_doi_source(workspace, preview, 0, tmp_path / 'ambiguous-download',
+        online_allowed=True, rights_confirmed=True, collection=collection)
+    assert result.state == 'downloaded'
+    assert result.edition_id is None and result.reference_id is None
+    assert 'Multiple editions' in result.message
+    assert result.path.read_bytes() == transfers.pdf
+    assert json.loads(result.receipt_path.read_text(encoding='utf-8'))['sha256'] == result.sha256
+    assert app.browse(workspace) == before
+    assert not app.browse(workspace, collection=collection)
+    assert references(app, workspace) == ()
