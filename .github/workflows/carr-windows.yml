@@ -246,10 +246,11 @@ jobs:
       - name: Check final export, import and installation regressions before long suites
         timeout-minutes: 6
         run: |
-          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_provider_ledger_lifetime.py tests/ui/test_keyboard_manager.py tests/reader/test_export_no_clobber.py tests/ui/test_citation_styles_jobs.py tests/packaging/test_native_checks.py tests/ingest/test_import_metadata_shape.py tests/storage/test_keyboard_preferences.py tests/audio/test_dordiai_discovery.py tests/catalog/test_epub_metadata.py 2>&1 | Tee-Object 'ci-results/finalization-regressions.txt'
+          & $env:CARR_PYTHON scripts/ci_check.py tests/e2e/test_provider_ledger_lifetime.py tests/ui/test_keyboard_manager.py tests/reader/test_export_no_clobber.py tests/ui/test_citation_styles_jobs.py tests/packaging/test_native_checks.py tests/ingest/test_import_metadata_shape.py tests/storage/test_keyboard_preferences.py tests/audio/test_dordiai_discovery.py tests/catalog/test_epub_metadata.py tests/assistant/test_complete_recovery.py 2>&1 | Tee-Object 'ci-results/finalization-regressions.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run required integrated source workflows
+        id: required_source
         timeout-minutes: 35
         run: |
           $suites = @(
@@ -469,6 +470,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the pinned local model through the existing upstream verifier
+        id: pinned_model
+        if: ${{ !cancelled() && (steps.required_source.outcome == 'success' || steps.required_source.outcome == 'failure') }}
         timeout-minutes: 10
         run: |
           $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
@@ -504,6 +507,7 @@ jobs:
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
+        if: ${{ !cancelled() && steps.pinned_model.outcome == 'success' }}
         timeout-minutes: 35
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
