@@ -1050,3 +1050,17 @@ def test_windows_native_dialog_async_lookup_focus_and_close(tmp_path, identifier
         form.Destroy()
         host.Destroy()
         app.ProcessPendingEvents()
+
+
+def test_committed_import_reference_pending_does_not_direct_user_to_import_center(setup):
+    form, frame, library = looked_up(setup)
+    library.result_state = 'imported_reference_pending'
+    form.rights.SetValue(True)
+    assert form.download_source()
+    frame.finish()
+    status = form.status.GetValue()
+    assert 'Import state: imported_reference_pending' in status
+    assert 'Edition ID: edition-imported' in status
+    assert 'review or link the already imported edition' in status
+    assert 'Import Center' not in status
+    assert form.changed
