@@ -146,7 +146,12 @@ def parse_language_report(report):
     header = re.fullmatch(r'List of available languages in "[^"\r\n]+" \(([0-9]{1,5})\):', lines[0])
     if header is None:
         raise OcrLanguageError('The OCR engine returned an unsupported model inventory.')
-    codes = lines[1:]
+    # Tesseract reports filesystem-relative model names with native separators.
+    # Canonicalize only its Windows script directory, not user selections or
+    # arbitrary paths; validation below still rejects traversal and aliases.
+    codes = tuple(code.replace('\\', '/', 1)
+                  if code.startswith('script\\') and code.count('\\') == 1 else code
+                  for code in lines[1:])
     if (int(header[1]) != len(codes) or len(codes) > MAX_MODELS
             or any(not valid_model_code(code) for code in codes)
             or len({code.casefold() for code in codes}) != len(codes)):

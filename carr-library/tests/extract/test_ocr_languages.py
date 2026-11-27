@@ -111,6 +111,35 @@ def test_invalid_native_inventory_is_not_silently_filtered_into_a_valid_choice(t
         models.parse_language_report(text)
 
 
+def test_windows_script_report_is_canonical_without_relaxing_user_selection(monkeypatch):
+    native = runtime(monkeypatch, codes=('eng', 'script/Latin', 'osd'), portable=True)
+    windows_report = report('eng', r'script\Latin', 'osd')
+    assert models.parse_language_report(windows_report) == ('eng', 'script/Latin', 'osd')
+    models._capture.side_effect = ['tesseract 5.5.0', windows_report]
+    catalog = models.discover_languages()
+    assert catalog.codes == native.languages
+    assert catalog.validate('script/Latin+eng') == ('script/Latin', 'eng')
+    native.assert_unchanged.assert_called_once()
+    with pytest.raises(ValueError):
+        Config(languages=r'script\Latin')
+
+
+@pytest.mark.parametrize('alias', ['script/Latin', 'script/latin'],
+                         ids=('same-case', 'case-alias'))
+def test_native_and_canonical_script_aliases_are_duplicate_models(alias):
+    with pytest.raises(models.OcrLanguageError, match='invalid model inventory'):
+        models.parse_language_report(report('eng', r'script\Latin', alias))
+
+
+@pytest.mark.parametrize('code', [r'script\..\eng', r'script\\Latin',
+    r'script\Latin\eng', r'script\Latin/eng', r'..\eng', r'\eng', r'C:\eng',
+    r'script\CON'], ids=('traversal', 'double-separator', 'nested', 'mixed-separators',
+                        'relative-path', 'absolute-path', 'drive-path', 'device-name'))
+def test_native_separator_handling_does_not_accept_unsafe_model_paths(code):
+    with pytest.raises(models.OcrLanguageError, match='invalid model inventory'):
+        models.parse_language_report(report('eng', code))
+
+
 @pytest.mark.parametrize('timeout', [True, 0, -1, 31, float('nan'), float('inf'), '10'])
 def test_invalid_discovery_budget_cannot_launch_runtime(monkeypatch, timeout):
     choose = Mock()
