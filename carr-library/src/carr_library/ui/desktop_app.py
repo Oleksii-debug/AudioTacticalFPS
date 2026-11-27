@@ -684,7 +684,13 @@ class DesktopFrame(WorkspaceFrame):
                     if not self.working and (status is None or status.GetValue() == before):
                         label = {'succeeded': 'complete', 'paused': 'needs attention',
                                  'failed': 'failed', 'cancelled': 'cancelled'}[outcome]
-                        self.report(title + ': ' + label + '.')
+                        message = title + ': ' + label + '.'
+                        if done is not None and status is not None:
+                            # The callback may focus its own readable result.
+                            # Keep completion visible without taking that focus.
+                            status.SetValue(message)
+                        else:
+                            self.report(message)
                 except Exception as exc:
                     if progress is not None:
                         if isinstance(exc, InterruptedError):

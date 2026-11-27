@@ -29,7 +29,6 @@ class DordiaiSpeechProvider:
                                             expected_worker_sha256=expected_worker_sha256)
         self.executable = self.adapter.python
         self._tokens = {}
-        self._asset_hashes = {}
         self._installation_revision = None
         self._worker_revision = None
         self._render_lock = Lock()
@@ -79,9 +78,6 @@ class DordiaiSpeechProvider:
         check_cancelled(cancelled)
         path = local_file(path)
         signature = self._signature(path)
-        cached = self._asset_hashes.get(path)
-        if cached is not None and cached[0] == signature:
-            return cached[1]
         checksum = sha256()
         with path.open("rb") as stream:
             while True:
@@ -94,14 +90,14 @@ class DordiaiSpeechProvider:
         result = checksum.hexdigest()
         if signature != self._signature(path):
             raise ValueError("The dordiai-voices installation changed while fingerprinting it.")
-        self._asset_hashes[path] = (signature, result)
         return result
 
     def fingerprint(self, voice_id, *, cancelled=lambda: False):
-        """Content identity of installed assets, memoized by file signatures.
+        """Content identity verified from installed asset bytes.
 
-        Initial hashing can read a large private installation. No asset names or
-        content are returned; unchanged files are not rehashed for every chunk.
+        Hashing can read a large private installation and remains cancellable.
+        File timestamps are not write counters, so each boundary reads the bytes.
+        No private asset names or content are returned.
         A changed, added or removed model/profile invalidates render-cache reuse.
         """
         from ..speech._io import check_cancelled, linked
@@ -140,8 +136,6 @@ class DordiaiSpeechProvider:
             identity.update(label.encode("utf-8") + b"\0"
                             + self._asset_digest(path, cancelled=cancelled).encode("ascii") + b"\0")
         check_cancelled(cancelled)
-        # Drop removed assets from the memoization map as well as the identity.
-        self._asset_hashes = {path: row for path, row in self._asset_hashes.items() if path in paths}
         self._installation_revision = identity.hexdigest()
         return sha256(json.dumps({"adapter": ADAPTER_API_VERSION, "voice": self._tokens[voice_id],
                                   "installation": self._installation_revision}, sort_keys=True).encode("utf-8")).hexdigest()

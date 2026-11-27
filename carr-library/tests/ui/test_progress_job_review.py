@@ -128,6 +128,32 @@ def test_success_preserves_callback_output_location_and_waits_for_it(desktop):
     assert reports[-1] == 'Saved verified output to the selected private directory.'
 
 
+@pytest.mark.parametrize('callback_owns_focus', [False, True])
+def test_completion_preserves_callback_focus_and_keeps_default_feedback(desktop, callback_owns_focus):
+    frame, queued, reports = desktop
+    text, focus = ['Ready'], ['initial']
+    frame.status = SimpleNamespace(GetValue=lambda: text[0],
+                                   SetValue=lambda value: text.__setitem__(0, value))
+    def report(message):
+        text[0] = message
+        focus[0] = 'frame status'
+        reports.append(message)
+    frame.report = report
+    def source_ready(result):
+        focus[0] = 'search status'
+    future = Future()
+    frame.executor.submit.return_value = future
+    frame.run_job('Preparing original source file', lambda: None,
+                  source_ready if callback_owns_focus else None)
+    assert focus[0] == 'frame status'
+    future.set_result(None)
+    queued.pop()()
+    assert text[0] == 'Preparing original source file: complete.'
+    assert focus[0] == ('search status' if callback_owns_focus else 'frame status')
+    assert frame.operation_progress.tracker.event.state == 'succeeded'
+    assert not frame.working
+
+
 def test_old_completion_does_not_overwrite_a_callback_started_job(desktop):
     frame, queued, reports = desktop
     first, second = Future(), Future()
@@ -241,12 +267,16 @@ def test_reader_close_always_unregisters_playback_and_finishes_resource_cleanup(
     cleanup = next(node.finalbody for node in reversed(reader.body) if isinstance(node, ast.Try) and node.finalbody)
     env = {name: Mock() for name in ('autosave_timer', 'cancel', 'player', 'progress', 'parent',
                                       'executor', 'audio_files', 'dialog')}
+    registries = [Mock(), Mock()]
+    env['owned_registries'] = registries
     if device_failure:
         env['player'].close.side_effect = RuntimeError('Audio device disconnected')
     exec(compile(ast.Module(body=cleanup, type_ignores=[]), str(path), 'exec'), env)
     env['player'].close.assert_called_once_with()
     env['progress'].unregister_player.assert_called_once_with(env['player'])
     env['executor'].shutdown.assert_called_once_with(wait=True, cancel_futures=True)
+    for registry in registries:
+        registry.close.assert_called_once_with()
     env['audio_files'].cleanup.assert_called_once_with()
     env['dialog'].Destroy.assert_called_once_with()
     assert env['alive'] is False

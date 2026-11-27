@@ -158,12 +158,41 @@ def test_provider_cold_discovery_cancellation_closes_owned_child(provider, runti
             child.close()
 
 
-def test_model_fingerprint_can_be_cancelled_without_losing_content_checks(provider, runtime):
+@pytest.mark.parametrize('unchanged_metadata', [False, True])
+def test_model_fingerprint_can_be_cancelled_without_losing_content_checks(provider, runtime, monkeypatch,
+                                                                        unchanged_metadata):
     voice = provider.voices()[0]
     resource = runtime / 'models/Holos/synthetic-resource.bin'
     resource.write_bytes(b'first model bytes')
+    if unchanged_metadata:
+        signature = provider._signature
+        recorded = signature(resource)
+        monkeypatch.setattr(provider, '_signature',
+                            lambda path: recorded if path == resource else signature(path))
     original = provider.fingerprint(voice.id)
     with pytest.raises(InterruptedError):
         provider.fingerprint(voice.id, cancelled=lambda: True)
     resource.write_bytes(b'other model bytes')
     assert provider.fingerprint(voice.id) != original
+
+
+def test_same_metadata_model_change_restarts_only_the_changed_warm_worker(
+        provider, shared_speech, runtime, tmp_path, monkeypatch):
+    voice = provider.voices()[0]
+    resource = runtime / 'models/Holos/synthetic-resource.bin'
+    resource.write_bytes(b'first model bytes')
+    signature = provider._signature
+    recorded = signature(resource)
+    monkeypatch.setattr(provider, '_signature',
+                        lambda path: recorded if path == resource else signature(path))
+    settings = shared_speech.SpeechSettings()
+    provider.render('First request.', voice, tmp_path / 'first.wav', settings, lambda: False)
+    warm = provider.adapter._worker
+    assert warm is not None and warm.process.poll() is None
+    provider.render('Unchanged model.', voice, tmp_path / 'unchanged.wav', settings, lambda: False)
+    assert provider.adapter._worker is warm
+    resource.write_bytes(b'other model bytes')
+    provider.render('Changed model.', voice, tmp_path / 'changed.wav', settings, lambda: False)
+    assert provider.adapter._worker is not None and provider.adapter._worker is not warm
+    assert warm.process.poll() is not None
+    assert not warm._reader.is_alive() and not warm._writer.is_alive()
