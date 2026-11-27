@@ -1,4 +1,7 @@
 """Real export publication must preserve files created after caller preflight."""
+import _compression
+from hashlib import sha256
+from importlib.util import cache_from_source
 import os
 from pathlib import Path
 import subprocess
@@ -63,6 +66,26 @@ def test_file_created_after_final_destination_check_is_never_replaced(export, mo
     assert not list(target.parent.glob('.research-export-*'))
 
 
+def test_default_new_destination_never_replaces_a_last_moment_competing_file(export, monkeypatch):
+    target, _, publish = export
+    inspect = export_file._destination
+    checks = 0
+
+    def create_after_final_check(*args):
+        nonlocal checks
+        state = inspect(*args)
+        checks += 1
+        if checks == 2:
+            target.write_bytes(b'Concurrent writer after the final default-policy check')
+        return state
+
+    monkeypatch.setattr(export_file, '_destination', create_after_final_check)
+    with pytest.raises(FileExistsError):
+        publish()
+    assert target.read_bytes() == b'Concurrent writer after the final default-policy check'
+    assert not list(target.parent.glob('.research-export-*'))
+
+
 def test_cancel_after_staging_leaves_no_destination_or_temporary(export):
     target, _, publish = export
     with pytest.raises(TimeoutError, match='cancelled'):
@@ -78,6 +101,10 @@ def test_explicit_existing_replacement_still_uses_supported_export_path(export):
     publish(require_absent=False)
     assert target.read_bytes() == expected
     assert not list(target.parent.glob('.research-export-*'))
+
+
+
+
 
 
 def test_cli_without_overwrite_preserves_file_created_during_formatting(tmp_path, monkeypatch, capsys):
@@ -282,14 +309,16 @@ def test_permanent_cleanup_failure_reports_published_bytes_truthfully(export, mo
     assert target.stat().st_nlink == 1
 
 
-def test_real_process_exit_after_publication_preserves_output_and_windows_replacement(export):
+def test_real_process_exit_after_publication_preserves_output_and_windows_replacement(export, monkeypatch):
     target, expected, publish = export
     script = '''
+from hashlib import sha256
 import os
 from pathlib import Path
 import sys
 from carr_library.research import export_file
 
+assert sha256(Path(export_file.__file__).read_bytes()).hexdigest() == sys.argv[5]
 primitive = 'rename' if os.name == 'nt' else 'link'
 original = getattr(os, primitive)
 def exit_after_publication(*args, **kwargs):
@@ -301,11 +330,27 @@ writer = export_file.write_export if sys.argv[4] == 'text' else export_file.writ
 writer(Path(sys.argv[1]), payload.decode('utf-8') if sys.argv[4] == 'text' else payload,
        private_root=Path(sys.argv[2]), require_absent=True)
 '''
-    result = subprocess.run([sys.executable, '-c', script, str(target),
+    # A fresh child does not inherit its parent's -B. Exercise the real export
+    # with a stale, pre-existing stdlib cache and require it to stay sealed.
+    cache_root = target.parent / 'sealed-runtime-cache'
+    with monkeypatch.context() as context:
+        context.setattr(sys, 'pycache_prefix', str(cache_root))
+        compression_cache = Path(cache_from_source(_compression.__file__))
+    compression_cache.parent.mkdir(parents=True)
+    sealed_cache = b'Synthetic stale sealed _compression bytecode cache'
+    compression_cache.write_bytes(sealed_cache)
+    environment = os.environ.copy()
+    environment.pop('PYTHONDONTWRITEBYTECODE', None)
+    environment['PYTHONPYCACHEPREFIX'] = str(cache_root)
+    environment['PYTHONPATH'] = str(Path(export_file.__file__).resolve().parents[2])
+    result = subprocess.run([sys.executable, '-B', '-c', script, str(target),
                              str(target.parent / 'private'), expected.hex(),
-                             'text' if target.suffix == '.txt' else 'binary'],
-                            capture_output=True, timeout=20, check=False)
+                             'text' if target.suffix == '.txt' else 'binary',
+                             sha256(Path(export_file.__file__).read_bytes()).hexdigest()],
+                            capture_output=True, timeout=20, check=False, env=environment)
     assert result.returncode == 74, result.stderr.decode('utf-8', errors='replace')
+    assert compression_cache.read_bytes() == sealed_cache
+    assert list(cache_root.rglob('*.pyc')) == [compression_cache]
     assert target.read_bytes() == expected
     stages = list(target.parent.glob('.research-export-*'))
     if os.name == 'nt':
