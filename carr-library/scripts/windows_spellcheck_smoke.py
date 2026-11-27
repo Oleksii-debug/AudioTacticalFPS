@@ -52,6 +52,9 @@ def run_native():
     with TemporaryDirectory(prefix='carr-native-spelling-') as temporary:
         base = Path(temporary)
         root = base / 'library'; root.mkdir()
+        # LibraryApp normalizes the selected root before nested editor guards.
+        # Windows temporary directories may otherwise retain an 8.3 spelling.
+        root = root.resolve(strict=True)
         source_file = base / 'Original source Україна.txt'
         source = '😀 retained.\r\nwurld outside; hello wurld books world.'
         source_file.write_bytes(source.encode('utf-8'))
@@ -92,7 +95,8 @@ def run_native():
         frame.run_job = run_job
         frame.Show(); app.SetTopWindow(frame)
         state = {'active': True, 'phase': 'reader', 'view': None, 'session': None,
-                 'reader': None, 'controller': None, 'controls': None, 'complete': False}
+                 'reader': None, 'controller': None, 'controls': None, 'complete': False,
+                 'factory_entered': False, 'factory_error': None, 'reported_phase': None}
         deadline = monotonic() + 45
 
         def press(button):
@@ -107,7 +111,18 @@ def run_native():
             timers.append(wx.CallLater(20, poll))
 
         def fail(error):
-            errors.append(str(error))
+            errors.append(error)
+            controls = state.get('controls')
+            try:
+                editor_status = controls['status'].GetValue() if controls is not None else ''
+            except RuntimeError:
+                editor_status = '<native editor already destroyed>'
+            print('FAIL: native spelling ' + json.dumps({
+                'phase': state['phase'], 'error_type': type(error).__name__,
+                'error': str(error)[:1000], 'editor_status': editor_status[:1000],
+                'factory_entered': state['factory_entered'],
+                'factory_error': state['factory_error'], 'ready': state['view'] is not None,
+            }, ensure_ascii=True, sort_keys=True), flush=True)
             session = state.get('session')
             if session is not None:
                 session.request_close()
@@ -121,6 +136,9 @@ def run_native():
                 if state['phase'] != 'failed' and monotonic() >= deadline:
                     raise TimeoutError('The spelling native flow exceeded its time budget.')
                 phase, view = state['phase'], state['view']
+                if phase != state['reported_phase']:
+                    print('PHASE: native spelling ' + phase, flush=True)
+                    state['reported_phase'] = phase
                 if phase == 'reader':
                     if state['reader'] is None:
                         schedule(); return
@@ -133,6 +151,9 @@ def run_native():
                     state['phase'] = 'dialog'
                     schedule()
                     press(controls['spelling'])
+                    if state['view'] is None:
+                        raise AssertionError('The native spelling action returned without opening its dialog: '
+                                             + controls['status'].GetValue()[:1000])
                     return
                 if phase == 'dialog':
                     if view is None or not view.IsModal():
@@ -225,12 +246,19 @@ def run_native():
             state.update(view=view, session=session)
 
         def spelling_factory(parent, **kwargs):
-            return spelling.show_spellcheck_dialog(parent, **kwargs, on_ready=spelling_ready)
+            state['factory_entered'] = True
+            try:
+                return spelling.show_spellcheck_dialog(parent, **kwargs, on_ready=spelling_ready)
+            except Exception as exc:
+                state['factory_error'] = type(exc).__name__ + ': ' + str(exc)[:1000]
+                raise
 
         try:
             result = open_narration_editor(frame, store, project, on_ready=ready,
                                            spelling_factory=spelling_factory)
-            check('native flow completed', state['complete'] and not errors)
+            if errors:
+                raise errors[0]
+            check('native flow completed', state['complete'])
             check('original content digest retained', result.original_sha256 == sha256(original_bytes).hexdigest())
             check('all submitted operations settled', all(future.done() for future in futures))
         finally:
