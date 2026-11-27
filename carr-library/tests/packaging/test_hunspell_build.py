@@ -129,6 +129,31 @@ def test_source_directory_link_is_rejected_without_following_it(source, tmp_path
         helper._verified_source(link, manifest)
 
 
+@pytest.mark.parametrize('names', [
+    ('ProgramData', 'ALLUSERSPROFILE', 'SystemDrive'),
+    ('PROGRAMDATA', 'allusersprofile', 'systemdrive'),
+])
+def test_sanitized_environment_preserves_common_application_data_roots(toolchain, names):
+    # Windows documents these three forms for FOLDERID_ProgramData. MSBuild's
+    # FileTracker resolves that known folder before processing tracked outputs.
+    inherited = {
+        'SystemRoot': r'C:\Windows',
+        names[0]: r'C:\ProgramData', names[1]: r'C:\ProgramData', names[2]: 'C:',
+        'CL': '/FIunreviewed.h', '_CL_': '/FIanother.h', 'LINK': 'unreviewed.obj',
+        'ForceImportBeforeCppTargets': 'unreviewed.targets',
+        'MSBuildExtensionsPath': 'unreviewed extensions', 'OtherProperty': 'arbitrary',
+    }
+    env = helper._environment(helper._tools(**toolchain), inherited)
+    assert {name: env.get(name) for name in names} == {
+        names[0]: r'C:\ProgramData', names[1]: r'C:\ProgramData', names[2]: 'C:',
+    }
+    assert env['SystemRoot'] == r'C:\Windows'
+    assert env['CL'] == '/utf-8'
+    assert not {'_CL_', 'LINK', 'ForceImportBeforeCppTargets',
+                'MSBuildExtensionsPath', 'OtherProperty'} & env.keys()
+    assert inherited['CL'] == '/FIunreviewed.h'
+
+
 def test_build_fixture_retains_only_verified_source_and_separates_native_api_claim(build_fixture, monkeypatch):
     source, output, kwargs, calls, _ = build_fixture
     (source / 'Directory.Build.targets').write_text('Unselected arbitrary build input.', encoding='utf-8')
@@ -215,9 +240,11 @@ def test_actual_owned_process_is_reaped_and_log_is_retained(tmp_path, monkeypatc
             "pathlib.Path(sys.argv[1]).write_text('started',encoding='utf-8'); "
             + ("sys.exit(7)" if mode == 'failure' else "time.sleep(30)"))
     expected = {'cancel': InterruptedError, 'deadline': TimeoutError, 'failure': RuntimeError}[mode]
-    with pytest.raises(expected):
+    with pytest.raises(expected) as failure:
         helper._run([sys.executable, '-I', '-B', '-c', code, str(marker)], cwd=tmp_path, log=log,
                     env=os.environ.copy(), timeout=.4 if mode == 'deadline' else 10,
                     cancelled=lambda: mode == 'cancel' and marker.exists())
     assert created and created[0].poll() is not None and log.is_file()
     if mode != 'deadline': assert b'owned fixture' in log.read_bytes()
+    if mode == 'failure':
+        assert 'exit 7' in str(failure.value) and 'owned fixture' in str(failure.value)

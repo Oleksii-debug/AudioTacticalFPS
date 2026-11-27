@@ -189,7 +189,10 @@ def _command(output, tools):
 def _environment(tools, inherited):
     # Do not inherit CL/LINK options, forced imports, or arbitrary MSBuild
     # property variables. The installed compiler/SDK locations are explicit.
+    # FileTracker resolves CommonApplicationData through Windows known folders.
+    # Preserve their OS directory roots without admitting build overrides.
     allowed = {'systemroot', 'windir', 'comspec', 'temp', 'tmp', 'userprofile',
+               'systemdrive', 'programdata', 'allusersprofile',
                'localappdata', 'appdata', 'programfiles', 'programfiles(x86)',
                'programw6432', 'commonprogramfiles', 'commonprogramfiles(x86)',
                'processor_architecture', 'number_of_processors', 'pathext'}
@@ -262,7 +265,15 @@ def _run(command, *, cwd, log, env, timeout, cancelled=lambda: False):
                     raise ValueError('The build log exceeded its byte bound.')
                 sleep(.05)
             if process.wait() != 0:
-                raise RuntimeError(f'MSBuild failed with exit {process.returncode}; inspect {log}')
+                stream.flush()
+                # Keep the full bounded log as evidence and surface its final
+                # diagnostics in the job console. Otherwise a failed build is
+                # opaque until GitHub finishes uploading the complete job.
+                with log.open('rb') as diagnostic:
+                    diagnostic.seek(max(0, os.fstat(diagnostic.fileno()).st_size - 16384))
+                    tail = diagnostic.read(16384).decode('utf-8', errors='replace')
+                raise RuntimeError(f'MSBuild failed with exit {process.returncode}; inspect {log}\n'
+                                   f'Final compiler diagnostics (at most 16 KiB):\n{tail}')
             if os.fstat(stream.fileno()).st_size > MAX_LOG_BYTES:
                 raise ValueError('The build log exceeded its byte bound.')
         finally:

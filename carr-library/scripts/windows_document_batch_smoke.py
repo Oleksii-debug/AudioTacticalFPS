@@ -16,6 +16,18 @@ from time import monotonic
 import traceback
 
 
+def _document_batch_command(commands):
+    # Display labels retain wx access-key markers and may gain an accelerator.
+    # Use the actual registry identity captured from the installed Convert menu.
+    action = 'convert/document batches — split, name and produce'
+    matches = [command for command in commands if command.action == action]
+    if len(matches) != 1:
+        raise AssertionError('Expected exactly one registered document-batch action; found '
+                             + str(len(matches)) + '. Convert actions: '
+                             + repr([command.action for command in commands if command.action.startswith('convert/')]))
+    return matches[0]
+
+
 def _abort(wx, app, frame, loop, timer, release, errors, detail):
     errors.append(detail); print('FAIL:', detail, flush=True)
     try:
@@ -200,8 +212,7 @@ def run_native():
             if name == 'starting':
                 if frame.working:
                     return
-                binding, = [row for row in frame.keyboard_settings.commands
-                            if 'Document batches' in row.item.GetItemLabel()]
+                binding = _document_batch_command(frame.keyboard_settings.commands)
                 check('document batch action belongs to the existing command registry',
                       binding.action.startswith('convert/') and binding.item.IsEnabled())
                 frame.keyboard_settings.apply({**frame.keyboard_settings.overrides, binding.action: 'Ctrl+Shift+F10'})

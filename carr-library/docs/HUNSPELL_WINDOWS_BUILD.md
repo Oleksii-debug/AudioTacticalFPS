@@ -103,7 +103,17 @@ no-clobber output, unchanged source/tools, PE architecture refusal, and actual
 owned Python-process cancellation/deadline/nonzero cleanup. Header-only PE and
 compiler fixtures are explicitly synthetic and do not execute Hunspell.
 
-The source suite passed 29 cases on POSIX during implementation. Actual MSVC
+The source suite now passes 31 cases on POSIX. The first actual Windows build
+reached all ten C++ translation units but failed in MSBuild FileTracker's
+`InitializeCommonApplicationDataPaths`. Its retained compiler log identifies
+`Path.GetPathRoot` on an unavailable common-data path. The sanitized build
+environment now preserves the OS `ProgramData`, `ALLUSERSPROFILE` and
+`SystemDrive` values while still rejecting inherited compiler flags and forced
+MSBuild imports. A failing compiler also prints at most the final 16 KiB of its
+owned diagnostic log, preserving the nonzero outcome and full artifact log.
+Microsoft documents the [known-folder paths](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid)
+used by [FileTracker](https://github.com/dotnet/msbuild/blob/main/src/Utilities/TrackedDependencies/FileTracker.cs).
+The exact pinned source, manifest and build arguments are unchanged. Actual MSVC
 compilation and Windows C API execution must be established by the separate CI
 reports above. Human NVDA, real dictionary/language quality, signing, runtime
 redistribution, and full dependency distribution review remain unqualified by

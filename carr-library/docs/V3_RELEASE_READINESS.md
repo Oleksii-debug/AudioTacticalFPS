@@ -522,3 +522,20 @@ dependent native/source/bundle gates require that actual preparation. Independen
 installed/OCR/reading checks continue after unrelated failures. Hunspell remains
 a required gate, with unchanged commands, assertions and deadlines; its actual
 build error is still under diagnosis.
+
+The retained compiler artifact subsequently localized the failure to MSBuild
+FileTracker's common-data folder initialization after all ten C++ units reached
+compilation. The narrow source correction preserves three required Windows OS
+directory variables in the otherwise restricted compiler environment. Source,
+manifest, toolchain selection and build arguments remain unchanged; diagnostics
+now include a bounded log tail on failure. The native document-batch probe also
+now selects its exact registered action instead of searching an access-key-marked
+display label. This preserves the real keyboard dispatch and all output checks.
+Both corrections composed at `275a4d1` passed **39 cases, zero failures/skips**
+(31 build-helper cases and eight native batch-driver cases).
+
+The intervening workflow-only candidate `9f8d9ae` restored actual pinned audio
+preparation. Native clip/conversion/recording/publishing, Tasks and voice
+preferences passed, while metadata/cover, synchronized EPUB reading and the
+not-yet-corrected batch-menu probe failed. These exact failures still need their
+own diagnosis/replay; the helper/menu fixes do not claim to resolve all three.
