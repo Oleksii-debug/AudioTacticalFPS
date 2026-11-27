@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import threading
 from tempfile import TemporaryDirectory
 from time import monotonic
 import traceback
@@ -26,6 +27,9 @@ def main():
     import wx
     from carr_library.application import LibraryApp
     from carr_library.audio import AudioRuntime
+    from carr_library.audio_runtime import bundled_audio_tools, verify_audio_runtime
+    from carr_library.progress import ProgressState
+    from carr_library.ui.progress_panel import NativeProgressPanel
     from carr_library.audio.models import AudioCancelled
     import carr_library.audio.process as process_module
     import carr_library.audio.recording as recording_module
@@ -52,7 +56,7 @@ def main():
                 digest = file_digest(stream, 'sha256').hexdigest()
             audio_proof[name] = {'path': str(binary), 'sha256': digest}
             if bundle:
-                entry = 'audio/bin/' + name + '.exe'
+                entry = 'audio-runtime/bin/' + name + '.exe'
                 check('exact bundled executable: ' + name, binary == (bundle / entry).resolve(strict=True))
                 check('sealed executable bytes: ' + name, digest == manifest['files'][entry])
 
@@ -70,6 +74,8 @@ def main():
             return True
 
     app = ProbeApp(False)
+    app.SetExitOnFrameDelete(False)
+    frame_destroyed = threading.Event()
     simulator = wx.UIActionSimulator()
     original_factory = dialog_module.RecordingService
 
@@ -77,7 +83,12 @@ def main():
         root = Path(temporary)
         library = LibraryApp(root / 'library')
         library.create_workspace('Synthetic recording acceptance')
-        runtime = AudioRuntime(root / 'runtime', ffmpeg=arguments.ffmpeg, ffprobe=arguments.ffprobe)
+        tools = bundled_audio_tools()
+        if tools is None and os.environ.get('CARR_V3_AUDIO'):
+            tools = verify_audio_runtime(Path(os.environ['CARR_V3_AUDIO']))['tools']
+        runtime = AudioRuntime(root / 'runtime',
+            ffmpeg=arguments.ffmpeg or (tools or {}).get('ffmpeg'),
+            ffprobe=arguments.ffprobe or (tools or {}).get('ffprobe'))
         verify_audio(runtime)
         service = recording_module.RecordingService(library.root, runtime=runtime)
         alternative = '@device_test_explicit_synthetic'
@@ -168,8 +179,17 @@ def main():
             status = control('Recording status')
             if stage == 0 and refresh.IsEnabled():
                 check('opening the dialog does not discover or capture', not service._devices and not captures)
+                panel = dialog.progress_panel
+                check('recording uses the canonical private native progress panel',
+                      isinstance(panel, NativeProgressPanel)
+                      and dialog.operation_progress is panel
+                      and panel.hub is frame.progress_panel.hub)
                 check('recording progress has a native accessible gauge',
-                      isinstance(control('Recording operation progress'), wx.Gauge))
+                      isinstance(panel.gauge, wx.Gauge) and panel.gauge.GetParent() is panel.panel
+                      and panel.gauge.GetName().startswith('Current operation progress: '))
+                check('recording progress query and phase remain keyboard accessible',
+                      panel.text.AcceptsFocusFromKeyboard() and panel.query_button.AcceptsFocusFromKeyboard()
+                      and control('Query recording progress') is panel.query_button)
                 stage = 1
                 press(refresh)
             elif stage == 1 and selection.GetCount() == 1 and refresh.IsEnabled():
@@ -182,14 +202,23 @@ def main():
                 control('Recording title').SetValue('Native synthetic recording')
                 stage = 3
                 press(start)
-            elif stage == 3 and captures and captures[0]['seconds'] >= .1 and stop.IsEnabled():
+            elif (stage == 3 and captures and captures[0]['seconds'] >= .1 and stop.IsEnabled()
+                    and dialog.progress_panel.active_task.snapshot().completed > 0):
                 check('actual FFmpeg reports recorded PCM while UI remains responsive', captures[0]['active'])
+                snapshot = dialog.progress_panel.active_task.snapshot()
+                check('native progress reports measured recording duration without an invented total',
+                      snapshot.state == ProgressState.RUNNING and snapshot.unit == 'milliseconds'
+                      and snapshot.completed > 0 and snapshot.total is None and snapshot.percent is None)
                 stage = 4
                 press(stop)
             elif stage == 4 and saved.GetCount() == 1 and start.IsEnabled():
                 check('Stop finalizes and verifies an actual retained recording', len(completed) == 1
                     and completed[0]['completion'] == 'stopped' and service.get(completed[0]['id']) == completed[0])
                 check('Stop reports retained completion', status.GetValue().startswith('Saved and verified.'))
+                snapshot = dialog.progress_panel.active_task.snapshot()
+                check('native progress completes only after retained recording verification',
+                      snapshot.state == ProgressState.SUCCEEDED and snapshot.percent == 100
+                      and dialog.progress_panel.gauge.GetValue() == 100)
                 stage = 5
                 press(start)
             elif stage == 5 and len(captures) == 2 and captures[1]['seconds'] >= .1:
@@ -200,12 +229,31 @@ def main():
                     and service.get(completed[0]['id']) == completed[0]
                     and len(list(service.root.glob('*.wav'))) == 1 and not list(service.root.glob('.pending-*')))
                 check('Cancel is announced distinctly', status.GetValue().startswith('Cancelled.'))
+                check('native progress keeps Cancel distinct from retained completion',
+                      dialog.progress_panel.active_task.snapshot().state == ProgressState.CANCELLED)
                 stage = 7
                 press(start)
             elif stage == 7 and len(captures) == 3 and captures[2]['seconds'] >= .1:
                 stage = 8
                 press(stop, wx.WXK_ESCAPE)
             wx.CallLater(25, guarded(drive))
+
+        def owner_destroyed(event):
+            if event.GetEventObject() is frame:
+                frame_destroyed.set()
+            event.Skip()
+
+        def finish_owner_close():
+            if (not frame_destroyed.is_set()
+                    or any(thread.is_alive() for thread in frame.executor._threads)
+                    or any(thread.is_alive() for thread in threading.enumerate()
+                           if thread.name.startswith('carr-recording'))):
+                if monotonic() >= deadline:
+                    raise TimeoutError('Native recording owners did not finish closing.')
+                wx.CallLater(25, guarded(finish_owner_close))
+                return
+            check('actual native frame destruction finishes owned workers', frame_destroyed.is_set())
+            app.ExitMainLoop()
 
         def open_recording():
             nonlocal frame, finished
@@ -223,10 +271,12 @@ def main():
                 check('closing preserves exactly the verified original', len(service.list()) == 1
                     and service.get(completed[0]['id']) == completed[0]
                     and not list(service.root.glob('.pending-*')))
-            app.ExitMainLoop()
+            frame.Close()
+            wx.CallLater(25, guarded(finish_owner_close))
 
         try:
             frame = DesktopFrame(library)
+            frame.Bind(wx.EVT_WINDOW_DESTROY, owner_destroyed)
             app.SetTopWindow(frame)
             frame.Show()
             frame.Raise()
@@ -241,8 +291,8 @@ def main():
             if frame is not None:
                 frame.cancel_event.set()
                 frame.executor.shutdown(wait=True, cancel_futures=True)
-                frame.Destroy()
-                app.Yield()
+                if not frame_destroyed.is_set():
+                    frame.Destroy()
             if native_handle is not None:
                 native_handle.close()
     print(json.dumps({'status': 'PASS', 'checks': checks, 'actual_native_keys': True,

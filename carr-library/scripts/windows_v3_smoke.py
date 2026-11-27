@@ -285,7 +285,8 @@ def main():
                 assert panel.speech_provider.provider.registry is selected_progress.registry
                 assert not panel.speech_provider.provider._closed.is_set()
                 child_progress.append(panel.speech_provider.provider)
-                assert panel.gauge.GetName() == 'Audio Studio operation progress'
+                assert isinstance(panel.gauge, wx.Gauge) and panel.gauge.GetParent() is panel.panel
+                assert panel.gauge.GetName().startswith('Current operation progress: ')
                 assert panel.text.GetName() == 'Audio Studio current progress and phase'
                 assert panel.query_button.GetName() == 'Query Audio Studio progress'
                 assert panel.text.AcceptsFocusFromKeyboard() and panel.query_button.AcceptsFocusFromKeyboard()
