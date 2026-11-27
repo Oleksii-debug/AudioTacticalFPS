@@ -16,8 +16,8 @@ from .research_actions import NativeDialogs
 class ReadingImportDialogs(NativeDialogs):
     def path(self, parent):
         import wx
-        picker = wx.FileDialog(parent, 'Import an earlier reading-copy history',
-            wildcard='Reading-copy JSON (*.json)|*.json|All files (*.*)|*.*',
+        picker = wx.FileDialog(parent, 'Import an earlier reading history or reader session',
+            wildcard='Reading history or reader session JSON (*.json)|*.json|All files (*.*)|*.*',
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
         try:
             return Path(picker.GetPath()) if picker.ShowModal() == wx.ID_OK else None
@@ -32,7 +32,8 @@ class ReadingImportDialogs(NativeDialogs):
             layout = wx.BoxSizer(wx.VERTICAL)
             label = wx.StaticText(dialog, label=(
                 'The complete original history will be retained unchanged. '
-                'Create a new editable copy only after reviewing this revision.'))
+                'Create a new editable copy only after reviewing this revision. '
+                'Saved session settings are shown as history; playback and current voice selection stay explicit.'))
             label.Wrap(850)
             layout.Add(label, 0, wx.EXPAND | wx.ALL, 8)
             layout.Add(wx.StaticText(dialog, label='New reading-copy title (up to 200 characters)'),
@@ -167,7 +168,7 @@ class ReadingImportActions:
         if snapshot.source_anchor is not None and snapshot.source_anchor.workspace != scope.workspace:
             raise ValueError('The imported reading copy belongs to another library.')
         selected = self.dialogs.choose(self.frame, 'Choose historical reading revision',
-            f'Saved cursor: {snapshot.saved_revision}. All {len(snapshot.edits)} edits, '
+            f'Saved history revision: {snapshot.saved_revision}. All {len(snapshot.edits)} edits, '
             'including redo history, remain available.', snapshot.revision_labels)
         if selected is None:
             return
@@ -223,7 +224,7 @@ def install_reading_import_actions(frame):
         raise ValueError('Install the shared Tools menu before reading-history actions.')
     actions = ReadingImportActions(frame)
     for command, label, handler in (
-        ('reading.import_legacy_copy', 'Import earlier reading-copy history...', actions.import_file),
+        ('reading.import_legacy_copy', 'Import earlier reading history or reader session...', actions.import_file),
         ('reading.open_legacy_history', 'Open retained reading-copy history...', actions.open_retained),
     ):
         item = menu.Append(wx.ID_ANY, label)

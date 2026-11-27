@@ -1,0 +1,219 @@
+name: CARR canonical reader-session recovery qualification
+on:
+  push:
+    branches: ['carr/v3-acceptance-*', 'carr/reader-session-*']
+    paths: ['carr-library/**', '.github/workflows/carr-reader-session.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# New development heads do not cancel a different exact-SHA acceptance run.
+concurrency:
+  group: carr-reader-session-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  source-installed-native:
+    name: Windows / canonical reader-session / exact history / passive restore
+    runs-on: windows-2022
+    timeout-minutes: 65
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: carr-library
+    env:
+      PYTHONUTF8: '1'
+      PYTHONUNBUFFERED: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      ORT_DISABLE_TELEMETRY: '1'
+      HF_HUB_OFFLINE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      HF_HUB_DISABLE_IMPLICIT_TOKEN: '1'
+      TRANSFORMERS_OFFLINE: '1'
+      DO_NOT_TRACK: '1'
+    steps:
+      - name: Check out the exact event source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Record exact candidate and initial qualification status
+        run: |
+          New-Item -ItemType Directory -Path reader-session-ci-results -ErrorAction Stop | Out-Null
+          $head = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve source commit.' }
+          $tree = (& git rev-parse 'HEAD^{tree}').Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve source tree.' }
+          @{
+            schema = 1; status = 'NOT_RUN'; source_commit = $head; source_tree = $tree
+            github_sha = $env:GITHUB_SHA; workflow_ref = $env:GITHUB_WORKFLOW_REF
+            workflow_sha = $env:GITHUB_WORKFLOW_SHA; run_id = $env:GITHUB_RUN_ID
+            run_attempt = $env:GITHUB_RUN_ATTEMPT
+          } | ConvertTo-Json | Set-Content -Encoding utf8 reader-session-ci-results/source-provenance.json
+          @{ schema = 1; status = 'NOT_RUN'; reason = 'Required source, installed, and native phases have not completed.' } |
+            ConvertTo-Json | Set-Content -Encoding utf8 reader-session-ci-results/legacy-reader-session-gate.json
+          if ($head -ne $env:GITHUB_SHA) { throw 'The checkout differs from the event source.' }
+          & git diff --exit-code HEAD --
+          if ($LASTEXITCODE -ne 0) { throw 'Tracked source differs from the candidate.' }
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.11'
+          architecture: x64
+
+      - name: Build the source-bound wheel and install the existing 56-pin runtime with signed-admission fixtures
+        id: prepare-runtime
+        timeout-minutes: 10
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP ("carr-reader-session-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT)
+          $wheels = Join-Path $work 'application-wheels'
+          $environment = Join-Path $work 'installed'
+          if (Test-Path -LiteralPath $work) { throw 'The qualification environment must be fresh.' }
+          New-Item -ItemType Directory $wheels -ErrorAction Stop | Out-Null
+          python -m pip install --only-binary=:all: setuptools==84.2.1 wheel==0.48.0 packaging==26.4
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip wheel --no-deps --no-build-isolation --wheel-dir $wheels .
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $built = @(Get-ChildItem -LiteralPath $wheels -Filter '*.whl')
+          if ($built.Count -ne 1) { throw 'Expected exactly one application wheel.' }
+          $sourceCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $verifyWheel = @'
+          import importlib.util, json, pathlib, sys
+          spec = importlib.util.spec_from_file_location('source_wheel_verification', pathlib.Path('packaging/source_wheel.py').resolve())
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          print(json.dumps(module.verify_application_wheel(pathlib.Path(sys.argv[1]), pathlib.Path.cwd().parent, sys.argv[2]), sort_keys=True))
+          '@
+          python -I -B -c $verifyWheel $built[0].FullName $sourceCommit | Tee-Object 'reader-session-ci-results/source-wheel.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m venv $environment
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $python = Join-Path $environment 'Scripts/python.exe'
+          & $python -I -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -m pip install --no-deps --no-index --no-compile $built[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installedSources = @'
+          import hashlib, importlib, json, pathlib, sys, zipfile
+          wheel = pathlib.Path(sys.argv[1])
+          prefix = pathlib.Path(sys.prefix).resolve(strict=True)
+          origins, files = {}, {}
+          for name in ("carr_library", "bootstrap"):
+              package = importlib.import_module(name)
+              origin = pathlib.Path(package.__file__).resolve(strict=True)
+              if not origin.is_relative_to(prefix) or "site-packages" not in {part.casefold() for part in origin.parts}:
+                  raise ValueError("Application package resolved outside the isolated installed environment.")
+              origins[name] = str(origin)
+              for path in origin.parent.rglob("*.py"):
+                  actual = path.resolve(strict=True)
+                  if not actual.is_relative_to(origin.parent):
+                      raise ValueError("Installed source inventory escaped its package.")
+                  files[name + "/" + path.relative_to(origin.parent).as_posix()] = hashlib.sha256(actual.read_bytes()).hexdigest()
+          with zipfile.ZipFile(wheel) as archive:
+              expected = {name: hashlib.sha256(archive.read(name)).hexdigest()
+                          for name in archive.namelist()
+                          if name.endswith(".py") and name.split("/")[0] in ("carr_library", "bootstrap")}
+          if not files or files != expected or not sys.flags.isolated:
+              raise ValueError("Installed source differs from the source-bound wheel.")
+          print(json.dumps({"status": "PASS", "isolated": True, "module_origins": origins,
+                            "installed_python": files, "wheel_sha256": hashlib.sha256(wheel.read_bytes()).hexdigest()},
+                           sort_keys=True))
+          '@
+          & $python -I -B -c $installedSources $built[0].FullName |
+            Tee-Object 'reader-session-ci-results/installed-source.json'
+          if ($LASTEXITCODE -ne 0) { throw 'Installed wheel source binding failed.' }
+          $inventory = @'
+          import importlib.metadata as metadata, json, pathlib, re
+          pins = dict(re.findall(r'^([A-Za-z0-9_.-]+)==([^\s]+)', pathlib.Path('packaging/windows-integrated-cp311.lock').read_text(), re.M))
+          actual = {name: metadata.version(name) for name in pins}
+          assert len(pins) == 56 and actual == pins
+          print(json.dumps(actual, sort_keys=True))
+          '@
+          & $python -I -B -c $inventory | Tee-Object 'reader-session-ci-results/runtime-56-pins.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # Test tooling follows the complete production-inventory check.
+          & $python -I -m pip install --only-binary=:all: pytest==9.0.2
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -I -B -c $inventory | Tee-Object 'reader-session-ci-results/runtime-56-pins-after-test-tools.json'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_READER_SESSION_PYTHON=$python" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_READER_SESSION_WORK=$work" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_READER_SESSION_WHEEL=$($built[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "CARR_BATCH_WHEEL=$($built[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $sourceCommit | Set-Content 'reader-session-ci-results/source-commit.txt'
+
+
+      - name: Deny outgoing network for the exact installed historical reader review host
+        id: offline-native
+        timeout-minutes: 3
+        run: |
+          $ruleName = "CARR-Reader-Session-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          New-NetFirewallRule -Name $ruleName -DisplayName $ruleName -Direction Outbound -Action Block -Program $env:CARR_READER_SESSION_PYTHON -Profile Any -Enabled True -ErrorAction Stop | Out-Null
+          $rule = Get-NetFirewallRule -Name $ruleName -ErrorAction Stop
+          $filter = $rule | Get-NetFirewallApplicationFilter -ErrorAction Stop
+          $enabled = @((Get-NetFirewallProfile -ErrorAction Stop) | Where-Object { -not $_.Enabled }).Count -eq 0
+          if ($rule.Enabled.ToString() -ne 'True' -or $rule.Action.ToString() -ne 'Block' -or $rule.Direction.ToString() -ne 'Outbound' -or $filter.Program -ne $env:CARR_READER_SESSION_PYTHON -or -not $enabled) { throw 'Historical reader firewall policy was not applied.' }
+          @{ status = 'PASS'; enabled = $true; profiles_enabled = $enabled; direction = 'Outbound'; action = 'Block'; program = $filter.Program; name = $ruleName } |
+            ConvertTo-Json | Set-Content -Encoding utf8 reader-session-ci-results/native-firewall.json
+
+      - name: Run exact source historical reader-session and preserved history regressions
+        id: source
+        timeout-minutes: 22
+        run: |
+          & $env:CARR_READER_SESSION_PYTHON -I -B -X utf8 scripts/legacy_reader_session_acceptance.py source --results reader-session-ci-results --work $env:CARR_READER_SESSION_WORK 2>&1 | Tee-Object 'reader-session-ci-results/source-runner.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run exact installed historical reader-session and preserved history regressions
+        id: installed
+        if: ${{ !cancelled() && steps.prepare-runtime.outcome == 'success' && steps.offline-native.outcome == 'success' }}
+        timeout-minutes: 22
+        run: |
+          & $env:CARR_READER_SESSION_PYTHON -I -B -X utf8 scripts/legacy_reader_session_acceptance.py installed --results reader-session-ci-results --work $env:CARR_READER_SESSION_WORK 2>&1 | Tee-Object 'reader-session-ci-results/installed-runner.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run actual installed reader-session revision preview Cancel and passive restore controls
+        id: native
+        if: ${{ !cancelled() && steps.prepare-runtime.outcome == 'success' && steps.offline-native.outcome == 'success' }}
+        timeout-minutes: 4
+        run: |
+          & $env:CARR_READER_SESSION_PYTHON -I -B -X utf8 scripts/windows_legacy_reader_session_smoke.py --native 2>&1 | Tee-Object 'reader-session-ci-results/native.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Require every exact source installed and native receipt
+        if: always()
+        timeout-minutes: 3
+        env:
+          SOURCE_OUTCOME: ${{ steps.source.outcome }}
+          INSTALLED_OUTCOME: ${{ steps.installed.outcome }}
+          NATIVE_OUTCOME: ${{ steps.native.outcome }}
+        run: |
+          if (-not $env:CARR_READER_SESSION_PYTHON -or -not (Test-Path -LiteralPath $env:CARR_READER_SESSION_PYTHON)) {
+            @{ schema = 1; status = 'FAIL'; reason = 'The installed qualification environment was not prepared.' } |
+              ConvertTo-Json | Set-Content -Encoding utf8 reader-session-ci-results/legacy-reader-session-gate.json
+            throw 'The installed qualification environment was not prepared.'
+          }
+          & $env:CARR_READER_SESSION_PYTHON -I -B -X utf8 scripts/legacy_reader_session_acceptance.py finalize --results reader-session-ci-results
+          if ($LASTEXITCODE -ne 0) { throw 'Historical reader-session qualification FAIL; preserve the exact raw evidence.' }
+
+      - name: Preserve textual qualification evidence on every outcome
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: carr-reader-session-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/reader-session-ci-results/*.json
+            carr-library/reader-session-ci-results/*.xml
+            carr-library/reader-session-ci-results/*.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove this run's ephemeral synthetic fixtures and the installed environment
+        if: always()
+        run: |
+          $work = Join-Path $env:RUNNER_TEMP ("carr-reader-session-" + $env:GITHUB_RUN_ID + "-" + $env:GITHUB_RUN_ATTEMPT)
+          if (Test-Path -LiteralPath $work) { Remove-Item -LiteralPath $work -Recurse -Force }
+          $ruleName = "CARR-Reader-Session-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          Get-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction Continue

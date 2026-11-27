@@ -8,6 +8,7 @@ source positions or replace the original file.
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -251,6 +252,31 @@ def _replay(source, anchor, edits, selected, cancelled):
 
 
 @dataclass(frozen=True)
+class LegacySession:
+    """Historical observations only; never current voice or playback authority."""
+    voice_id: str
+    rate: int
+    volume: int
+    cursor: int
+    audio_seconds: float | int
+
+
+def _session_metadata(value, saved_length):
+    voice = _text(value['voice_id'], 'historical voice identity', maximum=2048)
+    if type(value['rate']) is not int or not -10 <= value['rate'] <= 10:
+        raise ValueError('Invalid historical reader rate.')
+    if type(value['volume']) is not int or not 0 <= value['volume'] <= 100:
+        raise ValueError('Invalid historical reader volume.')
+    if type(value['cursor']) is not int or not 0 <= value['cursor'] <= saved_length:
+        raise ValueError('The historical reader cursor is outside its saved revision.')
+    seconds = value['audio_seconds']
+    if (type(seconds) not in (int, float) or not 0 <= seconds <= 31_536_000
+            or not math.isfinite(seconds)):
+        raise ValueError('Invalid historical playback position.')
+    return LegacySession(voice, value['rate'], value['volume'], value['cursor'], seconds)
+
+
+@dataclass(frozen=True)
 class LegacySnapshot:
     raw: bytes
     archive_sha256: str
@@ -262,6 +288,7 @@ class LegacySnapshot:
     saved_revision: int
     selected_revision: int
     runs: tuple[MappedRun, ...]
+    session: LegacySession | None = None
 
     @property
     def text(self):
@@ -289,9 +316,15 @@ def decode_snapshot(raw, *, revision=None, cancelled=lambda: False):
         raise ValueError('Invalid JSON number in a reading copy.')
     try:
         value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique, parse_constant=constant)
+        session = None
+        if type(value) is dict and value.get('schema') == 'carr.reader-session.v1':
+            if set(value) != {'schema', 'document', 'voice_id', 'rate', 'volume',
+                              'cursor', 'audio_seconds'}:
+                raise ValueError('Unsupported historical reader-session fields.')
+            session, value = value, value['document']
         fields = {'schema', 'title', 'source_text', 'source_sha256', 'edits', 'revision'}
         if type(value) is not dict or value.get('schema') not in ('carr.reading-copy.v1', 'carr.reading-copy.v2'):
-            raise ValueError('Choose a canonical reading-copy v1 or v2 JSON file.')
+            raise ValueError('Choose a canonical reading-copy v1/v2 or reader-session v1 JSON file.')
         version2 = value['schema'] == 'carr.reading-copy.v2'
         if version2:
             extras = set(value) - fields
@@ -329,8 +362,15 @@ def decode_snapshot(raw, *, revision=None, cancelled=lambda: False):
             raise ValueError('Choose an existing historical reading revision.')
         edits = tuple(edits)
         runs = _replay(source, anchor, edits, selected, cancelled)
+        if session is not None:
+            # The saved cursor belongs to the envelope's saved revision, even
+            # when the user reviews a different undo/redo revision. All edits
+            # have already been checked against their exact preceding text.
+            saved_length = len(source) + sum(
+                len(edit.replacement) - (edit.end - edit.start) for edit in edits[:saved])
+            session = _session_metadata(session, saved_length)
         return LegacySnapshot(raw, sha256(raw).hexdigest(), title, source,
-                              value['source_sha256'], anchor, edits, saved, selected, runs)
+                              value['source_sha256'], anchor, edits, saved, selected, runs, session)
     except (UnicodeError, RecursionError, KeyError, TypeError) as exc:
         raise ValueError('Invalid canonical reading-copy data; the original file was kept.') from exc
 
@@ -525,10 +565,20 @@ def project_from_snapshot(snapshot, *, title, original_path=None):
 def history_description(snapshot):
     anchor = snapshot.source_anchor
     lines = [snapshot.title, 'Historical revision: ' + str(snapshot.selected_revision),
-             'Saved cursor: ' + str(snapshot.saved_revision),
+             'Saved history revision: ' + str(snapshot.saved_revision),
              'Complete history: ' + str(len(snapshot.edits)) + ' edits',
              'Original file SHA256: ' + snapshot.archive_sha256,
              'Quotation authority: none. Captured verification flags remain historical data.']
+    if snapshot.session is not None:
+        saved = snapshot.session
+        lines.extend((
+            'Historical reader-session settings: review only; not applied to current reading.',
+            'Saved voice identity: ' + json.dumps(saved.voice_id, ensure_ascii=False),
+            'Saved rate: ' + str(saved.rate) + '; volume: ' + str(saved.volume) + '.',
+            'Saved character cursor at history revision ' + str(snapshot.saved_revision)
+                + ': ' + str(saved.cursor) + '.',
+            'Historical audio position: ' + str(saved.audio_seconds) + ' seconds.',
+            'No audio is retained by this envelope. Playback and current voice selection remain explicit.'))
     if anchor is not None:
         lines.extend(('Library: ' + anchor.workspace, 'Edition: ' + anchor.edition,
                       'Source revision: ' + anchor.revision,
