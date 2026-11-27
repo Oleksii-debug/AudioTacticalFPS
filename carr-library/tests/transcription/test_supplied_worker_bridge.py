@@ -41,6 +41,7 @@ def unexpected_error(kind, value, trace):
     sys.__excepthook__(kind, value, trace)
 sys.excepthook = unexpected_error
 cfg = json.loads((job / 'job_config.json').read_text(encoding='utf-8'))
+assert set(cfg) == {'job_name', 'folders', 'results_root', 'models_dir', 'settings', 'expected_model_identity'}
 options = cfg['settings']
 sources = sorted(pathlib.Path(cfg['folders'][0]).iterdir())
 output = pathlib.Path(cfg['results_root'])
@@ -99,8 +100,11 @@ export_keys = ('output_mode','output_txt','output_srt','output_vtt','output_json
 for index, source in enumerate(sources):
     if MODE == 'partial' and index:
         break
-    model = bind({'selected': options['model'], 'requested_revision': options['model_revision'],
-                  'resolved_revision': 'synthetic-only', 'files': []})
+    model = cfg['expected_model_identity']
+    if MODE == 'model-mismatch':
+        changed = {key: value for key, value in model.items() if key != 'sha256'}
+        changed['resolved_revision'] = '0' * 40
+        model = bind(changed)
     runtime = bind({'executable': {'size_bytes': pathlib.Path(sys.executable).stat().st_size,
                                   'sha256': digest(pathlib.Path(sys.executable))},
                     'worker_sha256': digest(pathlib.Path(__file__)),
@@ -156,13 +160,21 @@ raise SystemExit(1 if status['failed'] else 0)
 '''
 
 
+def synthetic_models(root):
+    """Inert byte identity fixtures, never a usable acoustic model."""
+    model = root / 'small'
+    model.mkdir(parents=True)
+    for name in ('model.bin', 'config.json', 'tokenizer.json', 'vocabulary.json'):
+        (model / name).write_bytes(b'Synthetic protocol asset, not a usable model.\n')
+    return root
+
+
 @pytest.fixture
 def prepared(tmp_path):
     app = LibraryApp(tmp_path / 'library')
     workspace = app.create_workspace('Synthetic transcription library')
     service = app.transcription(workspace)
-    models = tmp_path / 'models'
-    models.mkdir()
+    models = synthetic_models(tmp_path / 'models')
     original = tmp_path / 'Лекція.wav'
     with wave.open(str(original), 'wb') as audio:
         audio.setnchannels(1)
@@ -418,7 +430,7 @@ def test_actual_child_guards_fail_closed(prepared, mode):
     assert not (original.parent / 'models' / 'forbidden.txt').exists()
 
 
-@pytest.mark.parametrize('mode', ['missing-output', 'metadata-mismatch', 'escape'])
+@pytest.mark.parametrize('mode', ['missing-output', 'metadata-mismatch', 'escape', 'model-mismatch'])
 def test_worker_success_alone_does_not_publish_incomplete_results(prepared, mode):
     _, _, service, original, configure = prepared
     configure(mode)
@@ -940,3 +952,170 @@ def test_edit_publication_excludes_concurrent_workspace_archival(prepared, monke
     app.archive_workspace(workspace)
     with pytest.raises(ValueError, match='archived'):
         service.get(identity)
+
+
+def test_receipt_model_identity_binds_actual_selected_bytes_and_revision(prepared):
+    from carr_library.transcription_contract import bound_identity
+
+    _, _, service, _, _ = prepared
+    model = Path(service.configuration()['models_dir']) / 'small'
+    marker = model / 'revision.txt'
+    marker.write_text('1' * 40 + '\n', encoding='ascii')
+    nested = model / 'assets'
+    nested.mkdir()
+    (nested / 'extra.bin').write_bytes(b'Additional retained model inventory bytes.')
+    (model / '__pycache__').mkdir()
+    (model / '__pycache__' / 'ignored.bin').write_bytes(b'Interpreter cache is excluded.')
+    (model / 'ignored.pyc').write_bytes(b'Excluded bytecode.')
+    (model / 'ignored.pyo').write_bytes(b'Excluded bytecode.')
+    (model / 'retained.PYC').write_bytes(b'Case-sensitive suffix stays in the inventory.')
+    expected = bound_identity({
+        'selected': 'small', 'requested_revision': '1' * 40,
+        'resolved_revision': '1' * 40,
+        'files': sorted([
+            {'path': path.relative_to(model).as_posix(),
+             'size_bytes': len(path.read_bytes()), 'sha256': sha256(path.read_bytes()).hexdigest()}
+            for path in model.rglob('*') if (path.is_file()
+                and '__pycache__' not in path.relative_to(model).parts
+                and not path.name.endswith(('.pyc', '.pyo')))
+        ], key=lambda item: item['path']),
+    })
+    identity, result = completed(prepared, options={'model_revision': '1' * 40})
+    assert result['run_context']['model_identity'] == expected
+    path = service._path(identity)
+    config = read_json(path / 'job_config.json')
+    assert config['expected_model_identity'] == expected
+    assert set(config) == {'job_name', 'folders', 'results_root', 'models_dir',
+                           'settings', 'expected_model_identity'}
+    for receipt in result['receipts']:
+        assert read_json(path / receipt)['identity']['model'] == expected
+
+
+@pytest.mark.parametrize('name', ['model.bin', 'config.json', 'tokenizer.json', 'vocabulary.json'])
+@pytest.mark.parametrize('damage', ['missing', 'empty'])
+def test_incomplete_receipt_model_is_refused_before_worker_start(prepared, monkeypatch, name, damage):
+    from carr_library import transcription
+
+    _, _, service, original, _ = prepared
+    model = Path(service.configuration()['models_dir']) / 'small'
+    selected = model / name
+    if damage == 'missing':
+        selected.unlink()
+    else:
+        selected.write_bytes(b'')
+    identity = service.submit([original])
+    started = []
+    monkeypatch.setattr(transcription, 'run_process', lambda *args, **kwargs: started.append(args))
+    with pytest.raises(ValueError, match='complete selected local model'):
+        service.run(identity, timeout=10)
+    assert started == []
+    assert service.get(identity)['status'] == 'ready'
+    assert not (service._path(identity) / 'job_config.json').exists()
+    assert original.exists()
+
+
+@pytest.mark.parametrize('marker', [None, '2' * 40, 'invalid revision'])
+def test_receipt_model_exact_revision_is_checked_before_worker_start(prepared, monkeypatch, marker):
+    from carr_library import transcription
+
+    _, _, service, original, _ = prepared
+    if marker is not None:
+        model = Path(service.configuration()['models_dir']) / 'small'
+        (model / 'revision.txt').write_text(marker + '\n', encoding='ascii')
+    identity = service.submit([original], options={'model_revision': '1' * 40})
+    started = []
+    monkeypatch.setattr(transcription, 'run_process', lambda *args, **kwargs: started.append(args))
+    with pytest.raises(ValueError, match='revision'):
+        service.run(identity, timeout=10)
+    assert started == []
+    assert service.get(identity)['status'] == 'ready'
+    assert not (service._path(identity) / 'job_config.json').exists()
+
+
+@pytest.mark.parametrize('limit', ['MAX_MODEL_BYTES', 'MAX_MODEL_FILES'])
+def test_receipt_model_inventory_has_actual_byte_and_file_budgets(prepared, monkeypatch, limit):
+    from carr_library import transcription_contract
+
+    service = prepared[2]
+    models = Path(service.configuration()['models_dir'])
+    monkeypatch.setattr(transcription_contract, limit, 3)
+    with pytest.raises(ValueError, match='verification allowance'):
+        transcription_contract.model_inventory(models, settings())
+
+
+@pytest.mark.parametrize('change', ['same-size', 'growth'])
+def test_receipt_model_change_during_streaming_is_rejected(prepared, monkeypatch, change):
+    from carr_library import transcription_contract
+
+    service = prepared[2]
+    models = Path(service.configuration()['models_dir'])
+    selected = models / 'small' / 'model.bin'
+    original_open = Path.open
+    changed = []
+
+    class ChangingReader:
+        def __init__(self, stream):
+            self.stream = stream
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.stream.close()
+
+        def fileno(self):
+            return self.stream.fileno()
+
+        def read(self, size):
+            value = self.stream.read(size)
+            if value and not changed:
+                with original_open(selected, 'wb') as writer:
+                    writer.write(b'x' * (len(value) + (1 if change == 'growth' else 0)))
+                changed.append(True)
+            return value
+
+    def open_snapshot(path, mode='r', *args, **kwargs):
+        stream = original_open(path, mode, *args, **kwargs)
+        return ChangingReader(stream) if path == selected and mode == 'rb' else stream
+
+    monkeypatch.setattr(Path, 'open', open_snapshot)
+    with pytest.raises(ValueError, match='Local model bytes (changed|grew)'):
+        transcription_contract.model_inventory(models, settings())
+    assert changed == [True]
+
+
+def test_receipt_model_cancellation_precedes_worker_and_checkpoint(prepared, monkeypatch):
+    from carr_library import transcription
+    from carr_library.transcription_host import AudioCancelled
+
+    _, _, service, original, _ = prepared
+    identity = service.submit([original])
+    started = []
+    monkeypatch.setattr(transcription, 'run_process', lambda *args, **kwargs: started.append(args))
+    with pytest.raises(AudioCancelled, match='model verification was cancelled'):
+        service.run(identity, cancelled=lambda: True, timeout=10)
+    assert started == []
+    assert service.get(identity)['status'] == 'ready'
+    assert not (service._path(identity) / 'job_config.json').exists()
+
+
+def test_bound_receipt_backup_needs_no_external_model_or_worker(prepared, tmp_path):
+    import shutil
+
+    app, workspace, service, original, _ = prepared
+    identity, result = completed(prepared)
+    expected = result['run_context']['model_identity']
+    config = service.configuration()
+    shutil.rmtree(config['models_dir'])
+    Path(config['worker']).unlink()
+    original.unlink()
+    assert service.verify(identity)['run_context']['model_identity'] == expected
+    destination = tmp_path / 'bound-model-backup'
+    checksum = app.backup(destination)
+    restored = restore_backup(destination, tmp_path / 'bound-model-restored',
+                              expected_manifest_sha256=checksum)
+    recovered = LibraryApp(restored).transcription(workspace)
+    assert recovered.verify(identity)['run_context']['model_identity'] == expected
+    assert read_json(recovered._path(identity) / 'job_config.json')['expected_model_identity'] == expected
+    assert not Path(config['models_dir']).exists()
+    assert not Path(config['worker']).exists()

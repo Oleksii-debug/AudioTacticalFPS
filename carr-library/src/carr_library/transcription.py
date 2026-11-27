@@ -22,6 +22,7 @@ from .durable_state import (atomic_bytes, atomic_json, digest_file, local_path,
 from .ingest.writer_guard import exclusive_writer
 from .backup_files import portable_relative as relative_name
 from .file_publication import publish_directory_no_replace
+from .transcription_contract import model_inventory
 
 MAX_FILES = 64
 MAX_SOURCE_BYTES = 8 * 1024**3
@@ -888,6 +889,10 @@ class TranscriptionService:
                     or identity['runtime'].get('executable', {}).get('sha256') != context['python_sha256']
                     or identity['model'].get('selected') != job['settings']['model']):
                 raise ValueError('A transcription receipt belongs to another engine or model.')
+            if job['protocol'] == RECEIPTS_PROTOCOL and 'model_identity' in context:
+                _identity(context['model_identity'])
+                if identity['model'] != context['model_identity']:
+                    raise ValueError('Recognition model bytes differ from the verified selected local model.')
             if job['protocol'] == V5_PROTOCOL:
                 effective = next((item for item in job.get('effective_runs', ()) if item['source'] == name), None)
                 if (identity.get('protocol') != V5_PROTOCOL or identity.get('host_run_id') != context['host_run_id']
@@ -950,6 +955,8 @@ class TranscriptionService:
             config = self.configuration(verify=True)
             if config['protocol'] != job['protocol']:
                 raise ValueError('This saved job requires its original worker protocol; configure that profile before resuming.')
+            model = (model_inventory(config['models_dir'], job['settings'], cancelled=cancelled)
+                     if job['protocol'] == RECEIPTS_PROTOCOL else None)
             self._sources(path, job, cancelled)
             for name in ('stop.flag', 'pause.flag', 'settings_live.json'):
                 candidate = path / name
@@ -963,6 +970,8 @@ class TranscriptionService:
             context = {'input_root': str((path / 'input').resolve()),
                        'worker_sha256': config['worker_sha256'],
                        'python_sha256': config['python_sha256']}
+            if job['protocol'] == RECEIPTS_PROTOCOL:
+                context['model_identity'] = model
             worker_settings, results_root = job['settings'], path / 'results'
             if job['protocol'] == V5_PROTOCOL:
                 model = local_path(config['models_dir'], exists=True)
@@ -984,10 +993,13 @@ class TranscriptionService:
             self._save(path, job)
             for name in ('results', 'temporary', 'runtime-home'):
                 (path / name).mkdir(exist_ok=True, mode=0o700)
-            atomic_json(path / 'job_config.json', {
+            worker_config = {
                 'job_name': job['title'], 'folders': [context['input_root']],
                 'results_root': str(results_root), 'models_dir': config['models_dir'],
-                'settings': worker_settings}, replace=True)
+                'settings': worker_settings}
+            if job['protocol'] == RECEIPTS_PROTOCOL:
+                worker_config['expected_model_identity'] = model
+            atomic_json(path / 'job_config.json', worker_config, replace=True)
             environment = {key: os.environ[key] for key in (
                 'SystemRoot', 'SYSTEMROOT', 'WINDIR', 'COMSPEC', 'LANG', 'LC_ALL',
                 'NUMBER_OF_PROCESSORS', 'PROCESSOR_ARCHITECTURE') if key in os.environ}
