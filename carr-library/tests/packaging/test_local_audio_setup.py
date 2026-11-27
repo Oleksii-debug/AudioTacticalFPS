@@ -130,7 +130,10 @@ def test_default_real_pinned_plan_has_no_network_or_writes(setup, tmp_path, monk
     assert setup.main([]) == 0
     assert sys.path == path_before
     assert not base.exists()
-    assert 'Лише план' in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert 'Лише план' in out
+    assert 'Право на публічне розповсюдження пакета не підтверджено' in out
+    assert 'комплект вихідних кодів сторонніх залежностей неповний' in out
 
 
 @pytest.mark.parametrize('mode', ['download', 'interactive'])
@@ -160,6 +163,9 @@ def test_real_helpers_prepare_and_verify_external_runtime_without_mutating_insta
         assert report['tools'][name] in out
     assert 'Choose FFmpeg executable' in out
     assert 'Choose FFprobe executable' in out
+    # Rights limitations are explicit both before consent and after preparation.
+    assert out.count('Право на публічне розповсюдження пакета не підтверджено') == 2
+    assert out.count('комплект вихідних кодів сторонніх залежностей неповний') == 2
 
 
 @pytest.mark.parametrize('answer', [None, '', 'NO', 'yes'])
