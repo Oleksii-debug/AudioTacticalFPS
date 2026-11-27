@@ -88,13 +88,17 @@ class ProductionService:
 
     @property
     def broker(self):
+        return self._admission_broker()
+
+    def _admission_broker(self, cancelled=lambda: False):
+        from ..operations import ResourceBroker, ResourceStateError
+        app_root = (self.root.parent.parent if self.root.name == 'studio'
+                    and self.root.parent.name == 'state' else self.root.parent)
         if self._broker is None:
-            from ..operations import ResourceBroker
-            # Canonical app state shares the same broker as ASR and other
-            # admitted engines. Standalone service users may inject one.
-            app_root = (self.root.parent.parent if self.root.name == 'studio'
-                        and self.root.parent.name == 'state' else self.root.parent)
-            self._broker = ResourceBroker.for_app(app_root)
+            self._broker = ResourceBroker.for_app(app_root, cancelled=cancelled)
+        if (self._broker.root != app_root / 'runtime' / 'resources'
+                or self._broker.policy_path != app_root / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The production resource policy belongs to another data folder.')
         return self._broker
 
     def _resource_plan(self, project, state, runtime):
@@ -245,6 +249,7 @@ class ProductionService:
                 return bool(cancelled()) or control.exists()
 
             try:
+                self._admission_broker(admission_cancelled)
                 runtime = self._runtime()
                 request, resource_plan = self._resource_plan(project, state, runtime)
                 state['resource_plan'] = resource_plan

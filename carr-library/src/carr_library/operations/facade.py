@@ -54,6 +54,24 @@ class OperationFacade:
         self.broker = broker
         self.services = {'studio': studio, 'assistant': assistant, 'asr': transcription,
                          'translation': translation}
+        self._validate_scope()
+
+    def _validate_scope(self):
+        if self.broker is not None and (
+                self.broker.root != self.root / 'runtime' / 'resources'
+                or self.broker.policy_path != self.root / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The resource coordinator belongs to another data folder.')
+        for kind, name in (('studio', 'studio'), ('asr', 'transcription')):
+            service = self.services.get(kind)
+            if service is not None and service.root != self.root / 'state' / name:
+                raise ResourceStateError('The operation service belongs to another data folder.')
+        assistant = self.services.get('assistant')
+        if assistant is not None and (assistant.app.root != self.root
+                or assistant.store.directory != self.root / 'state' / 'assistant'):
+            raise ResourceStateError('The assistant service belongs to another data folder.')
+        translation = self.services.get('translation')
+        if translation is not None and translation.directory != self.root / 'state' / 'translation':
+            raise ResourceStateError('The translation service belongs to another data folder.')
 
     def _path(self, kind, identity):
         if kind not in _LOCATIONS or not isinstance(identity, str) or not _JOB_ID.fullmatch(identity):
@@ -77,6 +95,7 @@ class OperationFacade:
         return tuple(values)
 
     def _read_view(self, kind, identity):
+        self._validate_scope()
         path = self._path(kind, identity)
         if regular(path).st_size > _MAX_CHECKPOINT:
             raise ResourceStateError('Operation checkpoint exceeds the bounded dashboard reader.')
@@ -158,10 +177,10 @@ class OperationFacade:
         return OperationView(kind, identity, workspace, status, completed, total, phase, updated,
                              self._controls(kind, status), path.relative_to(self.root).as_posix())
 
-    def _live(self, values):
+    def _live(self, values, *, cancelled=lambda: False):
         if self.broker is None:
             return tuple(values)
-        active = {row['operation_id'] for row in self.broker.snapshot()['leases']}
+        active = {row['operation_id'] for row in self.broker.snapshot(cancelled=cancelled)['leases']}
         # Legacy and non-heavy operations need not participate in this broker.
         # Absence is unknown, never proof that their process died.
         return tuple(replace(value, live=True) if value.key in active else value for value in values)
@@ -172,6 +191,7 @@ class OperationFacade:
                 pass
 
     def list(self, *, workspace=None, limit=1000, cancelled=lambda: False):
+        self._validate_scope()
         if cancelled():
             raise InterruptedError('Loading saved operations was cancelled.')
         self._authorize(workspace)
@@ -198,6 +218,8 @@ class OperationFacade:
                     raise ResourceStateError('Operation inventory exceeds its bounded discovery limit.')
                 try:
                     value = self._read_view(kind, identity)
+                except InterruptedError:
+                    raise
                 except (ValueError, OSError, ResourceStateError):
                     # Do not print exception bodies, original text, provider
                     # profiles or file contents in a shared recovery dashboard.
@@ -206,7 +228,7 @@ class OperationFacade:
                         path.relative_to(self.root).as_posix())
                 if workspace is None or value.workspace in (None, workspace):
                     values.append(value)
-        return self._live(sorted(values, key=lambda value: (value.kind, value.id))[:limit])
+        return self._live(sorted(values, key=lambda value: (value.kind, value.id))[:limit], cancelled=cancelled)
 
     def get(self, kind, job_id, *, workspace=None):
         self._authorize(workspace)

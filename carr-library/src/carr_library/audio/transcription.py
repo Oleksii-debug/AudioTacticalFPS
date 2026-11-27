@@ -328,14 +328,21 @@ class TranscriptionService:
 
     @property
     def broker(self):
+        return self._admission_broker()
+
+    def _admission_broker(self, cancelled=lambda: False):
+        from ..operations import ResourceBroker, ResourceStateError
+        app_root = self.root.parent.parent
         if self._broker is None:
-            from ..operations import ResourceBroker
-            self._broker = ResourceBroker.for_app(self.root.parent.parent)
+            self._broker = ResourceBroker.for_app(app_root, cancelled=cancelled)
+        if (self._broker.root != app_root / 'runtime' / 'resources'
+                or self._broker.policy_path != app_root / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The transcription resource policy belongs to another data folder.')
         return self._broker
 
-    def _resource_plan(self, item, request, settings):
+    def _resource_plan(self, item, request, settings, cancelled=lambda: False):
         from ..operations import ResourceRequest, ResourceUnavailable
-        limits = self.broker.limits
+        limits = self._admission_broker(cancelled).limits
         if not limits.memory_bytes:
             raise ResourceUnavailable('Configure a positive declared memory allowance before transcription.')
         device = 'cuda:0' if settings.device == 'cuda' else None
@@ -490,6 +497,9 @@ class TranscriptionService:
     def recorded_status(self, job_id):
         """Validated journal summary; output receipts are not verified by this view."""
         value = self._record(job_id)
+        if value['status'] == 'complete' and set(value['completed']) != {
+                item['file'] for item in value['request']['inputs']}:
+            raise ValueError('A completed transcription journal has missing completion records.')
         return {'id': value['id'], 'status': value['status'],
                 'completed': len(value['completed']), 'total': len(value['request']['inputs'])}
 
@@ -607,6 +617,7 @@ class TranscriptionService:
         return receipt
 
     def run(self, job_id, *, cancelled=lambda: False, on_status=lambda text: None):
+        from ..operations import ResourceCancelled
         if self.runtime is None:
             raise ValueError('Select a reviewed local transcription runtime before resuming a job.')
         directory = self._directory(job_id)
@@ -649,8 +660,7 @@ class TranscriptionService:
                             raise ValueError('The retained audio snapshot failed its identity check.')
                         receipt = self._receipt(directory, item, request, cancelled=stopped)
                         if receipt is None:
-                            from ..operations import ResourceCancelled
-                            resource, plan = self._resource_plan(item, request, settings)
+                            resource, plan = self._resource_plan(item, request, settings, stopped)
                             record['resource_plan'] = plan
                             save('queued')
                             notify('Waiting for shared local transcription resources.')
@@ -675,9 +685,11 @@ class TranscriptionService:
                     save('complete')
                     notify('Transcription complete; every requested output has been verified.')
                     return record
-            except AudioCancelled:
+            except (AudioCancelled, ResourceCancelled) as exc:
                 if record['status'] != 'complete':
                     save('paused' if command == 'pause' else 'cancelled')
+                if isinstance(exc, ResourceCancelled):
+                    raise AudioCancelled('Transcription stopped while waiting for shared resources.') from exc
                 raise
             except KeyboardInterrupt:
                 if record['status'] != 'complete':
