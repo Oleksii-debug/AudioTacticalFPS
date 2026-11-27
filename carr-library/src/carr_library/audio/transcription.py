@@ -317,13 +317,52 @@ runpy.run_path(worker, run_name='__main__')
 
 class TranscriptionService:
     """Typed ASR operations below the existing application state/backup tree."""
-    def __init__(self, state_root, runtime=None, *, budget=None):
+    def __init__(self, state_root, runtime=None, *, budget=None, broker=None):
         if runtime is not None and not isinstance(runtime, SuppliedWhisperRuntime):
             raise TypeError('Use a reviewed supplied-worker runtime.')
         self.root = local_path(Path(state_root) / 'transcription')
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
         self.runtime = runtime
         self.budget = budget or AudioBudget()
+        self._broker = broker
+
+    @property
+    def broker(self):
+        return self._admission_broker()
+
+    def _admission_broker(self, cancelled=lambda: False):
+        from ..operations import ResourceBroker, ResourceStateError
+        app_root = self.root.parent.parent
+        if self._broker is None:
+            self._broker = ResourceBroker.for_app(app_root, cancelled=cancelled)
+        if (self._broker.root != app_root / 'runtime' / 'resources'
+                or self._broker.policy_path != app_root / 'state' / 'operations' / 'resources.json'):
+            raise ResourceStateError('The transcription resource policy belongs to another data folder.')
+        return self._broker
+
+    def _resource_plan(self, item, request, settings, cancelled=lambda: False):
+        from ..operations import ResourceRequest, ResourceUnavailable
+        limits = self._admission_broker(cancelled).limits
+        if not limits.memory_bytes:
+            raise ResourceUnavailable('Configure a positive declared memory allowance before transcription.')
+        device = 'cuda:0' if settings.device == 'cuda' else None
+        capacity = dict(limits.gpu_devices).get(device, 0) if device else 0
+        if device and not capacity:
+            raise ResourceUnavailable('The selected CUDA device needs an explicit resource capacity before transcription.')
+        if device and any(os.environ.get(name) for name in ('CUDA_VISIBLE_DEVICES', 'CUDA_DEVICE_ORDER')):
+            raise ResourceUnavailable('Clear inherited CUDA device remapping before reserving the supplied worker GPU.')
+        # The supplied worker owns its native thread/model configuration. Until
+        # its peak is measured, one inference reserves the whole declared CPU
+        # and RAM pool, plus the explicitly selected whole GPU capacity.
+        disk = min(self.budget.max_output_bytes,
+                   item['bytes'] + MAX_RESULT_BYTES * (2 * len(request['formats']) + 1) + 1024**2)
+        resource = ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=limits.memory_bytes,
+            gpu_device=device, gpu_memory_bytes=capacity,
+            disk_path=self.root, disk_bytes=disk)
+        return resource, {'schema': 1, 'request': resource.to_dict(),
+            'cpu_memory_basis': 'whole configured CPU/RAM pool; supplied worker thread count and model peak are not measured',
+            'disk_basis': 'retained input staging and bounded transcript copies; existing worker output budget remains in force',
+            'gpu_basis': 'whole explicitly configured cuda:0 capacity; no GPU inference or capacity measurement is inferred'}
 
     def _directory(self, job_id):
         if not isinstance(job_id, str) or not re.fullmatch('[0-9a-f]{64}', job_id):
@@ -455,6 +494,15 @@ class TranscriptionService:
                     raise ValueError('A completed transcription job has a missing artifact receipt.')
         return value
 
+    def recorded_status(self, job_id):
+        """Validated journal summary; output receipts are not verified by this view."""
+        value = self._record(job_id)
+        if value['status'] == 'complete' and set(value['completed']) != {
+                item['file'] for item in value['request']['inputs']}:
+            raise ValueError('A completed transcription journal has missing completion records.')
+        return {'id': value['id'], 'status': value['status'],
+                'completed': len(value['completed']), 'total': len(value['request']['inputs'])}
+
     def jobs(self, *, cancelled=lambda: False, limit=1000):
         """Bounded summaries; damaged jobs stay visible instead of claiming success."""
         integer(limit, 'Saved transcription job limit', 1, 1000)
@@ -569,6 +617,7 @@ class TranscriptionService:
         return receipt
 
     def run(self, job_id, *, cancelled=lambda: False, on_status=lambda text: None):
+        from ..operations import ResourceCancelled
         if self.runtime is None:
             raise ValueError('Select a reviewed local transcription runtime before resuming a job.')
         directory = self._directory(job_id)
@@ -611,9 +660,19 @@ class TranscriptionService:
                             raise ValueError('The retained audio snapshot failed its identity check.')
                         receipt = self._receipt(directory, item, request, cancelled=stopped)
                         if receipt is None:
-                            notify(f'Transcribing file {index} of {len(request["inputs"])} locally.')
-                            notice = self._run_one(directory, item, request, source, settings,
-                                                   prepared, python, runtime_root, model_root, stopped)
+                            resource, plan = self._resource_plan(item, request, settings, stopped)
+                            record['resource_plan'] = plan
+                            save('queued')
+                            notify('Waiting for shared local transcription resources.')
+                            try:
+                                with self.broker.reserve(resource, operation_id='asr:' + job_id,
+                                                         cancelled=stopped, timeout=60) as lease:
+                                    save('running')
+                                    notify(f'Transcribing file {index} of {len(request["inputs"])} locally.')
+                                    notice = self._run_one(directory, item, request, source, settings,
+                                        prepared, python, runtime_root, model_root, lease.cancelled)
+                            except ResourceCancelled as exc:
+                                raise AudioCancelled('Transcription stopped while waiting for shared resources.') from exc
                             if notice is not None:
                                 record.setdefault('cleanup_pending', []).append(notice)
                             receipt = self._receipt(directory, item, request, cancelled=stopped)
@@ -626,9 +685,11 @@ class TranscriptionService:
                     save('complete')
                     notify('Transcription complete; every requested output has been verified.')
                     return record
-            except AudioCancelled:
+            except (AudioCancelled, ResourceCancelled) as exc:
                 if record['status'] != 'complete':
                     save('paused' if command == 'pause' else 'cancelled')
+                if isinstance(exc, ResourceCancelled):
+                    raise AudioCancelled('Transcription stopped while waiting for shared resources.') from exc
                 raise
             except KeyboardInterrupt:
                 if record['status'] != 'complete':

@@ -509,6 +509,7 @@ class DesktopFrame(WorkspaceFrame):
         install_query_manager_actions(self)
         from .speech_dialog import install_speech_actions
         from .studio_dialog import install_studio_actions
+        from .operations_dialog import install_operations_actions
         from .assistant_dialog import install_assistant_actions
         from .save_actions import install_save_actions
         from .document_conversion import install_conversion_actions
@@ -520,6 +521,7 @@ class DesktopFrame(WorkspaceFrame):
         install_speech_actions(self)
         install_language_actions(self)
         install_studio_actions(self)
+        install_operations_actions(self)
         install_assistant_actions(self)
         install_translation_actions(self)
         install_conversion_actions(self)

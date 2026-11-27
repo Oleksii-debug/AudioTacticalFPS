@@ -76,6 +76,9 @@ def main(argv=None):
     if arguments[:1] == ['transcribe']:
         from .transcription_cli import main as transcription_main
         return transcription_main(arguments[1:])
+    if arguments[:1] == ['operations']:
+        from .operations_cli import main as operations_main
+        return operations_main(arguments[1:])
     from . import __version__
     parser = argparse.ArgumentParser(description='Resonance offline research library and audio workspace')
     parser.add_argument('--version', action='version', version=__version__)

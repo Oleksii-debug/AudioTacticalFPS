@@ -16,7 +16,7 @@ import sqlite3
 import stat
 import subprocess
 import sys
-from tempfile import TemporaryDirectory, TemporaryFile
+from tempfile import TemporaryDirectory, TemporaryFile, gettempdir
 import time
 from uuid import uuid4
 
@@ -521,12 +521,41 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         nonlocal started
         started = True
 
-    record_progress(root, request_id, state='running')
-    result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'attempt_id': attempt_id, 'request_sha256': fingerprint,
-                      'source': record['source'], 'timeout': timeout},
-                     timeout=timeout, cancelled=cancelled,
-                     on_started=worker_started)
+    # Reserve around the existing isolated parser/OCR supervisor, without
+    # holding a database transaction or changing its request/journal protocol.
+    # Native engine thread count and peak RAM are not measured, so this caller
+    # takes the whole declared CPU/RAM pool rather than claiming one thread.
+    from ..operations import (ResourceBroker, ResourceRequest, ResourceCancelled,
+                              ResourceTimeout, ResourceError, ResourceUnavailable)
+    from ..extract.page_ocr import Config
+    try:
+        broker = ResourceBroker.for_app(app.root, cancelled=cancelled)
+        limits = broker.limits
+        if not limits.memory_bytes:
+            raise ResourceUnavailable('Configure a positive declared memory allowance before isolated import/OCR.')
+        selected = Config(**record['config'])
+        temporary_bytes = (4 * selected.max_pixels + 64 * 1024**2 + MAX_REPLY + MAX_LOG)
+        request = ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=limits.memory_bytes,
+            disk_path=app.root, disk_bytes=256 * 1024**2,
+            additional_disks=((Path(gettempdir()), temporary_bytes),))
+        with broker.reserve(request, operation_id='import:' + request_id,
+                            cancelled=cancelled, timeout=min(60, timeout)) as lease:
+            # Reauthorize after waiting. This read snapshot is released before
+            # native parsing; revocation while queued cannot authorize a launch.
+            with app.read(workspace):
+                pass
+            record_progress(root, request_id, state='running')
+            result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
+                              'attempt_id': attempt_id, 'request_sha256': fingerprint,
+                              'source': record['source'], 'timeout': timeout},
+                             timeout=timeout, cancelled=lease.cancelled,
+                             on_started=worker_started)
+    except ResourceCancelled:
+        result = {'state': 'cancelled', 'message': 'Import cancelled while waiting for shared local resources.'}
+    except ResourceTimeout:
+        result = {'state': 'timed_out', 'message': 'Shared local resources remained busy; the saved import can be resumed.'}
+    except ResourceError as exc:
+        result = {'state': 'failed', 'message': str(exc)[:2000]}
     if started and result.get('state') in ('cancelled', 'timed_out', 'failed'):
         committed = _published_after_stop(app, record, attempt_id)
         if committed is not None:
