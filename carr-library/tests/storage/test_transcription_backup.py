@@ -324,3 +324,67 @@ def test_restore_rejects_cache_contradicting_manifest_inclusion(prepared, tmp_pa
     with pytest.raises(ValueError, match='Transcription cache requires explicit manifest inclusion'):
         restore_backup(backup, destination, sha256(raw).hexdigest())
     assert not destination.exists()
+
+
+@pytest.mark.parametrize('include_generated', [False, True])
+def test_combined_asr_and_production_backup_preserves_operation_and_export(prepared, tmp_path, include_generated):
+    """The composed backup must retain both typed producers in the same snapshot."""
+    from carr_library.library_backup import verify_backup
+    from carr_library.speech import Voice
+    from carr_library.studio.render import ProductionService
+
+    class InventoryOnly:
+        def voices(self):
+            return (Voice('test:inventory', 'Inventory fixture', 'test', 'en'),)
+
+    app, _, asr, profile, _, _ = prepared
+    audio = tmp_path / 'source.wav'
+    original = b'Synthetic retained ASR transport bytes'
+    audio.write_bytes(original)
+    asr_job = asr.create_job(profile['id'], [audio], settings={'output_txt': True})
+    assert asr.run(asr_job['id'])['status'] == 'complete'
+    recognized = asr.read_transcript(asr_job['id'])
+
+    outputs = tmp_path / 'production'
+    outputs.mkdir()
+    studio = ProductionService(app.root / 'state/studio', voices=InventoryOnly())
+    project = studio.create('Narrator: Retain the original production options.',
+                            voice_ids=('test:inventory',))
+    job = studio.submit(project, outputs, format='flac', stems=True,
+                        operation_id='a' * 32)
+    path = studio.jobs_root / job / 'job.json'
+    raw = path.read_bytes()
+    saved = studio.get(job)
+    assert saved['status'] == 'pending' and len(saved['operation_sha256']) == 64
+
+    backup = tmp_path / 'combined-backup'
+    checksum = create_backup(app, backup, include_generated=include_generated)
+    manifest = read_json(backup / 'manifest.json')
+    assert manifest['generated_audio_included'] is include_generated
+    assert any(backup_transcription.is_cache_file(row['filename'])
+               for row in manifest['sidecars']) is include_generated
+    relative = path.relative_to(app.root)
+    assert (backup / relative).read_bytes() == raw
+    assert verify_backup(backup, checksum) == manifest
+    audio.unlink()
+
+    restored_root = restore_backup(backup, tmp_path / 'restored', checksum)
+    restored_studio = ProductionService(restored_root / 'state/studio', voices=InventoryOnly())
+    assert (restored_root / relative).read_bytes() == raw
+    assert restored_studio.get(job) == saved
+    restored_asr = TranscriptionService(restored_root / 'state/transcription')
+    assert restored_asr.read_transcript(asr_job['id']) == recognized
+    assert restored_asr.list_runtimes()[0]['trusted'] is False
+    restored_job = restored_asr.get_job(asr_job['id'])
+    retained = restored_asr.jobs_root / asr_job['id'] / restored_job['sources'][0]['retained_path']
+    assert retained.read_bytes() == original
+
+    destination = tmp_path / 'verified-export'
+    destination.mkdir()
+    result = restored_asr.export(asr_job['id'], destination, formats=('txt',))
+    assert result['status'] == 'complete' and result['citation_authority'] is False
+    exported, = result['files']
+    exported_bytes = Path(exported['path']).read_bytes()
+    assert len(exported_bytes) == exported['size']
+    assert sha256(exported_bytes).hexdigest() == exported['sha256']
+    assert path.read_bytes() == raw

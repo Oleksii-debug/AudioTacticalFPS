@@ -103,6 +103,7 @@ jobs:
           report = pathlib.Path('ci-v3-results/installed-recovery.xml')
           suites = ['tests/storage/test_v3_state_backup.py',
                     'tests/storage/test_asr_additional_profile.py',
+                    'tests/storage/test_transcription_backup.py::test_combined_asr_and_production_backup_preserves_operation_and_export',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_collisions',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_allows_distinct_siblings',
                     'tests/storage/test_state_backup_portability.py::test_portable_manifest_rejects_non_windows_names',
