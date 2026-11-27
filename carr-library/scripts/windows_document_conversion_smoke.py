@@ -631,7 +631,7 @@ def main(argv=None):
                     check('cancelling the selected runtime picker admits no conversion or output',
                           len(selected) == 2 and not conversion_calls and not list(outputs.iterdir()))
                     dispatch_picker(source, outputs)
-                    pump(lambda: frame.conversion_results_dialog is not None and not frame.working,
+                    pump(lambda: getattr(frame, 'conversion_results_dialog', None) is not None and not frame.working,
                          'Actual Pandoc conversion did not return its native result window.', timeout=50)
                     result_dialog = frame.conversion_results_dialog
                     check('actual existing menu converts RTF with the selected native Pandoc',

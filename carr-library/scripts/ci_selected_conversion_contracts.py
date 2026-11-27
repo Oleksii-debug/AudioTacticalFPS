@@ -18,25 +18,25 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = {
-    "tests/conversion/test_selected_conversion.py": 26,
-    "tests/conversion/test_calibre_admission.py": 44,
+    "tests/conversion/test_selected_conversion.py": 29,
+    "tests/conversion/test_calibre_admission.py": 49,
     "tests/conversion/test_office_admission.py": 19,
     "tests/ui/test_document_conversion.py": 17,
     "tests/extract/test_document_formats_xml.py": 95,
 }
 PINS = {
     "src/carr_library/conversion/_selected_files.py": "2b8030e3c437b0b3a4ccb6d8bce8d67b6b68ebf4",
-    "src/carr_library/conversion/calibre.py": "c2626810e0d0131062cbd7c609be7bc8cbc308ed",
-    "src/carr_library/conversion/office.py": "c5c524215128900f389790917a308e6e149f0fd6",
-    "src/carr_library/conversion/selected_adapters.py": "55e8b10b731827ade1c1c3af7790a928c84af11b",
+    "src/carr_library/conversion/calibre.py": "917146418b06b28ac927c9a5cccbe90e9e86426c",
+    "src/carr_library/conversion/office.py": "e3d6f71b063b0640dc248304e74e0480a9f56090",
+    "src/carr_library/conversion/selected_adapters.py": "51ed8d7076ab9a5f4168aeaba8f2365e18ce588a",
     "src/carr_library/conversion/selected_worker.py": "f1ec36e0c1a3a2e482a85087874b82f28c9b8673",
     "src/carr_library/conversion/selected.py": "cfc956106d320c43a3cd5b78c58eed3e3dc64de6",
     "src/carr_library/conversion/models.py": "fc087b6acd2284b08f5384c986a9c1233a5fda5c",
     "src/carr_library/conversion/worker.py": "722d3c7b61717890dc242d8113d0617714d53a67",
     "src/carr_library/conversion/service.py": "5a50e9e1c28517e7851d0d67a39df4b5bae172ab",
     "src/carr_library/ui/document_conversion.py": "83a48872bd07a0e4611ee68b1a59155fe4468239",
-    "tests/conversion/test_selected_conversion.py": "7732eee3d6f4753efb2fb466315281320649a74c",
-    "tests/conversion/test_calibre_admission.py": "5383663ad30f71ea2782c991826afe16d3f92017",
+    "tests/conversion/test_selected_conversion.py": "ef810691b6474a45ba4fbd4c0992918cc07ded10",
+    "tests/conversion/test_calibre_admission.py": "bdea0804017e54a38d6036ca137feb778fea2e97",
     "tests/conversion/test_office_admission.py": "b60d2784e25df42d29f486396010393865a2aa1b",
     "tests/ui/test_document_conversion.py": "a92b5e20180462812634dda50266a61df8b9d4e3",
     "tests/conversion/test_conversion.py": "db3884363c51654c7d16ef2c5d2e82d0e714b411",

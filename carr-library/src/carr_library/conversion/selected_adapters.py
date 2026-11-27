@@ -63,9 +63,13 @@ def _pandoc(source, data, budget, deadline, selection):
     environment = {key: value for key, value in os.environ.items()
                    if key in ('PATH', 'SYSTEMROOT', 'WINDIR', 'LANG', 'LD_LIBRARY_PATH')}
     environment.update(TMPDIR=str(source.parent), TEMP=str(source.parent), TMP=str(source.parent))
-    with TemporaryFile() as stdout, TemporaryFile() as stderr:
+    # Native stdin is an empty owned file. subprocess.DEVNULL opens the null
+    # device O_RDWR, which correctly violates the worker's staging-only audit.
+    with (TemporaryFile(dir=source.parent) as stdin,
+          TemporaryFile(dir=source.parent) as stdout,
+          TemporaryFile(dir=source.parent) as stderr):
         process = subprocess.Popen(args, cwd=source.parent, env=environment,
-            stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, shell=False,
+            stdin=stdin, stdout=stdout, stderr=stderr, shell=False,
             start_new_session=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
             while True:

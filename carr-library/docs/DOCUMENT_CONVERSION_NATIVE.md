@@ -1,7 +1,7 @@
 # Selected-converter native qualification
 
 This is the explicit Windows CI route for the external-runtime reading-copy
-feature. It is separate from the portable 106-case source/installed gate and
+feature. It is separate from the portable 114-case source/installed gate and
 the 95-case strict XML suite. A completed route qualifies the named reading
 derivatives and observed controls only. Native catalog fidelity, scanned-DjVu
 OCR, DRM bypass, linguistic/layout quality, physical audio and NVDA remain

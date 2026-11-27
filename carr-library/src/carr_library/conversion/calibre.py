@@ -260,11 +260,15 @@ def _run(args, stage, deadline, *, environment, output=None, output_limit=0, sta
     This function deliberately never creates a new POSIX session.
     """
     from .selected_adapters import _remaining
-    with TemporaryFile() as stdout, TemporaryFile() as stderr:
+    # Native stdin is an empty owned file. subprocess.DEVNULL opens the null
+    # device O_RDWR, which correctly violates the worker's staging-only audit.
+    with (TemporaryFile(dir=stage) as stdin,
+          TemporaryFile(dir=stage) as stdout,
+          TemporaryFile(dir=stage) as stderr):
         _remaining(deadline)
         _stage_usage(stage, stage_limit, deadline)
         process = subprocess.Popen([str(arg) for arg in args], cwd=stage, env=environment,
-            stdin=subprocess.DEVNULL, stdout=stdout, stderr=stderr, shell=False,
+            stdin=stdin, stdout=stdout, stderr=stderr, shell=False,
             start_new_session=False, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         try:
             while True:
@@ -302,9 +306,13 @@ def calibre_records(source, data, suffix, budget, deadline, selection):
     stage_limit = budget.max_source_bytes + budget.max_text_bytes + PRIVATE_BYTES
     version, _ = _run([executable, '--version'], source.parent, deadline,
                      environment=environment, stage_limit=stage_limit)
-    version = version.decode('utf-8', 'strict').strip()
-    if not re.fullmatch(r'ebook-convert(?:\.exe)? \(calibre [0-9]{1,3}\.[0-9]{1,3}(?:\.[0-9]{1,3})?\)', version):
+    version_lines = version.decode('utf-8', 'strict').strip().splitlines()
+    if (len(version_lines) not in (1, 2)
+            or not re.fullmatch(r'ebook-convert(?:\.exe)? \(calibre [0-9]{1,3}\.[0-9]{1,3}(?:\.[0-9]{1,3})?\)', version_lines[0])
+            or len(version_lines) == 2
+            and version_lines[1] != 'Created by: Kovid Goyal <kovid@kovidgoyal.net>'):
         raise ConversionUnavailable('The selected executable did not identify a compatible bounded Calibre CLI.')
+    version = version_lines[0]
     _admit(selection, deadline)
     output = source.parent / 'calibre-reading.txt'
     if os.path.lexists(output):

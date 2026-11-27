@@ -1,0 +1,116 @@
+{
+  "schema": "resonance-selected-native-actual-failure-correction/1",
+  "base": "a2d9a436c28bf4fef1b6f93042d32978a630a05a",
+  "base_tree": "0aee68889aa2873b1f93f71b7688381ae0d67bb6",
+  "status": "STATIC_NOT_RUN",
+  "files": [
+    {
+      "path": "carr-library/src/carr_library/conversion/calibre.py",
+      "preimage": "c2626810e0d0131062cbd7c609be7bc8cbc308ed",
+      "sha": "917146418b06b28ac927c9a5cccbe90e9e86426c"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/office.py",
+      "preimage": "c5c524215128900f389790917a308e6e149f0fd6",
+      "sha": "e3d6f71b063b0640dc248304e74e0480a9f56090"
+    },
+    {
+      "path": "carr-library/src/carr_library/conversion/selected_adapters.py",
+      "preimage": "55e8b10b731827ade1c1c3af7790a928c84af11b",
+      "sha": "51ed8d7076ab9a5f4168aeaba8f2365e18ce588a"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_selected_conversion.py",
+      "preimage": "7732eee3d6f4753efb2fb466315281320649a74c",
+      "sha": "ef810691b6474a45ba4fbd4c0992918cc07ded10"
+    },
+    {
+      "path": "carr-library/tests/conversion/test_calibre_admission.py",
+      "preimage": "5383663ad30f71ea2782c991826afe16d3f92017",
+      "sha": "bdea0804017e54a38d6036ca137feb778fea2e97"
+    },
+    {
+      "path": "carr-library/scripts/windows_document_conversion_smoke.py",
+      "preimage": "5527d7a7ff2b830e926af8666ff4679e1a5374a3",
+      "sha": "c976addba03264d8ebd4dc19bf7c8795560a9a1a"
+    },
+    {
+      "path": "carr-library/scripts/ci_selected_conversion_contracts.py",
+      "preimage": "9547792ede0f652e51f4d60e1740d1186c360f7f",
+      "sha": "6f6afea73ae3ff24a7d5b1f84c334f29f69f4ba7"
+    },
+    {
+      "path": ".github/workflows/carr-next15-conversion.yml",
+      "preimage": "08beb31dd646b539036ed1b8a162cc28b97e743b",
+      "sha": "590873a86e4b4c42fb60e4ad6d35cc1067f1ab21"
+    },
+    {
+      "path": "carr-library/docs/DOCUMENT_CONVERSION_NATIVE.md",
+      "preimage": "1650c828cef463e734b0714b96c8e14c4c83992e",
+      "sha": "6dd396123bb2a97134a6f8286299262eb17ac133"
+    }
+  ],
+  "actual_evidence": "fa53640f214d6c9666ecb956067b557833e02326",
+  "source_changes": [
+    "Keep conversion.worker byte-identical: its audit correctly rejects writes outside staging.",
+    "All3 selected adapters use explicitly private empty stdin and private stdout/stderr TemporaryFiles; native group/Job ownership, shell=False, kill/wait, budgets and diagnostics remain.",
+    "Calibre accepts its strict existing version identity plus only the exact standard optional creator line observed in this actual runtime report; other extra/altered lines are rejected.",
+    "Native GUI waits for the actual first result attribute with getattr; all later direct reads,30checks,30origins and180s owner cleanup remain.",
+    "Workflow cleanup retries only an actual READONLY owned regular single-link file after PermissionError from unlink; root/parents/file identity and reparse checks bracket chmod/retry. Other errors remain failures."
+  ],
+  "tests": {
+    "whole_source_and_installed": [
+      {
+        "path": "tests/conversion/test_selected_conversion.py",
+        "cases": 29
+      },
+      {
+        "path": "tests/conversion/test_calibre_admission.py",
+        "cases": 49
+      },
+      {
+        "path": "tests/conversion/test_office_admission.py",
+        "cases": 19
+      },
+      {
+        "path": "tests/ui/test_document_conversion.py",
+        "cases": 17
+      },
+      {
+        "path": "tests/extract/test_document_formats_xml.py",
+        "cases": 95
+      }
+    ],
+    "total": 209,
+    "new_cases": 8,
+    "new_functions": [
+      "test_actual_adapter_stdin_and_logs_remain_inside_unchanged_worker_audit",
+      "test_observed_calibre_creator_banner_keeps_exact_version_identity",
+      "test_unknown_calibre_version_banner_never_reaches_conversion"
+    ],
+    "actual_child_scope": "Three real nested Python children under the unchanged production worker audit verify private stdin EOF, fixed transport ownership, source bytes and rejected external writes; no native format claim.",
+    "old_assertion_change": "Existing Calibre transport case now requires empty stdin and closure of its actual staged stream instead of the forbidden DEVNULL token. All other original assertions/cases retained."
+  },
+  "preserved": {
+    "ci_check": "8a23ef36c2df93928b0aff3edd8b59a53c54684c",
+    "installed_child": "byte-identical to954779",
+    "whole_suite_seconds": 600,
+    "source_aggregate_seconds": 2000,
+    "native_formats_per_mode": 14,
+    "old_suite_per_mode": 34,
+    "old_suite_seconds": 600,
+    "gui_checks_per_mode": 30,
+    "gui_origins": 30,
+    "gui_seconds": 180,
+    "native_outer_seconds": 1200,
+    "active_program_firewall": "unchanged",
+    "runtime_acquisition": "same7 exact public inputs, lockc582, preparerbfe7",
+    "branches_and_refs": "unchanged by this agent"
+  },
+  "independent_reviews": {
+    "source_tests": "Root and Progress accepted the bounded private-stream/banner and actual-audit tests statically.",
+    "gui": "Locate identified exact initial wait seam; only that line changed.",
+    "helper_workflow": "Exact readback; bounded peer review in progress, execution not claimed."
+  },
+  "integration_note": "This is a self-contained successor for the narrow a2d9 converter rerun. The separately accepted ci_check6ad factory and its repins are intentionally excluded here; final integration must compose those pins coherently."
+}

@@ -54,7 +54,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           from pathlib import Path
-          pins = {"scripts/ci_selected_conversion_contracts.py":"9547792ede0f652e51f4d60e1740d1186c360f7f","scripts/prepare_selected_conversion_runtime.py":"bfe7c95d27e57859aa458a18caaa5d47dba5a7fb","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"574a297765039cd765c1b352a6a9d8f27ca6b3be","scripts/windows_document_conversion_smoke.py":"5527d7a7ff2b830e926af8666ff4679e1a5374a3","scripts/translation_loopback_check.py":"194df6f0589c077fac26fc38751d79068c7570ea","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          pins = {"scripts/ci_selected_conversion_contracts.py":"6f6afea73ae3ff24a7d5b1f84c334f29f69f4ba7","scripts/prepare_selected_conversion_runtime.py":"bfe7c95d27e57859aa458a18caaa5d47dba5a7fb","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"574a297765039cd765c1b352a6a9d8f27ca6b3be","scripts/windows_document_conversion_smoke.py":"c976addba03264d8ebd4dc19bf7c8795560a9a1a","scripts/translation_loopback_check.py":"194df6f0589c077fac26fc38751d79068c7570ea","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
           for relative, wanted in pins.items():
               path = Path(relative)
               assert path.is_file() and not path.is_symlink()
@@ -62,7 +62,7 @@ jobs:
               assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == wanted, relative
               if path.suffix == '.py':
                   compile(raw,str(path),'exec')
-          print('Exact201 portable contracts and selected-native script/lock identities admitted.')
+          print('Exact209 portable contracts and selected-native script/lock identities admitted.')
           '@
           $verify | & python -I -B -X utf8 -
           if ($LASTEXITCODE -ne 0) { throw 'Conversion script/lock source or syntax differs.' }
@@ -79,14 +79,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Actual fixture APIs or versions differ.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Conversion dependency closure is inconsistent.' }
-      - name: Require201 source and201 isolated installed whole cases
+      - name: Require209 source and209 isolated installed whole cases
         id: portable
         timeout-minutes: 105
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
           & python -I -B -X utf8 scripts/ci_selected_conversion_contracts.py --evidence ci-conversion-contracts --expected-head $env:EXPECTED_SOURCE_SHA
-          if ($LASTEXITCODE -ne 0) { throw 'All201 source and201 isolated installed conversion cases are required.' }
+          if ($LASTEXITCODE -ne 0) { throw 'All209 source and209 isolated installed conversion cases are required.' }
 
       - name: Retain closed JSON text and JUnit evidence only
         id: retain
@@ -202,7 +202,7 @@ jobs:
           $verify = @'
           from hashlib import sha1
           from pathlib import Path
-          pins = {"scripts/ci_selected_conversion_contracts.py":"9547792ede0f652e51f4d60e1740d1186c360f7f","scripts/prepare_selected_conversion_runtime.py":"bfe7c95d27e57859aa458a18caaa5d47dba5a7fb","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"574a297765039cd765c1b352a6a9d8f27ca6b3be","scripts/windows_document_conversion_smoke.py":"5527d7a7ff2b830e926af8666ff4679e1a5374a3","scripts/translation_loopback_check.py":"194df6f0589c077fac26fc38751d79068c7570ea","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
+          pins = {"scripts/ci_selected_conversion_contracts.py":"6f6afea73ae3ff24a7d5b1f84c334f29f69f4ba7","scripts/prepare_selected_conversion_runtime.py":"bfe7c95d27e57859aa458a18caaa5d47dba5a7fb","scripts/selected_conversion_fixture_support.py":"ff9cb600f0ddf9b10479e92d401a0ddd88e4aa1b","scripts/selected_conversion_acceptance.py":"574a297765039cd765c1b352a6a9d8f27ca6b3be","scripts/windows_document_conversion_smoke.py":"c976addba03264d8ebd4dc19bf7c8795560a9a1a","scripts/translation_loopback_check.py":"194df6f0589c077fac26fc38751d79068c7570ea","packaging/windows-document-converters.lock.json":"c5822c7ff56d5139da911ea153a8fdcd626d70dd","packaging/windows-cp311.lock":"8dad99c0ea80470b7253873aee78e08857affec6","packaging/windows-sync-cp311.lock":"cd9c18a24d7a7ac203d81cf6a8d82d8bcb8f8ab3","packaging/linux-sync-core-cp311.lock":"08f945066be748972a10d5b0ce46480fff722959","packaging/trusted-client.lock":"6c4b48ac09572dc259d62d0d801057ab47c04583","packaging/windows-sync-test-cp311.lock":"e3f6eda5976e867abe7267c04e0b867b1fd16f7a"}
           for relative, wanted in pins.items():
               path = Path(relative)
               assert path.is_file() and not path.is_symlink()
@@ -210,7 +210,7 @@ jobs:
               assert sha1(b'blob ' + str(len(raw)).encode('ascii') + b'\0' + raw).hexdigest() == wanted, relative
               if path.suffix == '.py':
                   compile(raw,str(path),'exec')
-          print('Exact201 portable contracts and selected-native script/lock identities admitted.')
+          print('Exact209 portable contracts and selected-native script/lock identities admitted.')
           '@
           $verify | & python -I -B -X utf8 -
           if ($LASTEXITCODE -ne 0) { throw 'Conversion script/lock source or syntax differs.' }
@@ -227,14 +227,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Actual fixture APIs or versions differ.' }
           & python -I -B -m pip check
           if ($LASTEXITCODE -ne 0) { throw 'Conversion dependency closure is inconsistent.' }
-      - name: Require201 source and201 isolated installed whole cases
+      - name: Require209 source and209 isolated installed whole cases
         id: portable
         timeout-minutes: 105
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $false
           & python -I -B -X utf8 scripts/ci_selected_conversion_contracts.py --evidence ci-conversion-contracts --expected-head $env:EXPECTED_SOURCE_SHA
-          if ($LASTEXITCODE -ne 0) { throw 'All201 source and201 isolated installed conversion cases are required.' }
+          if ($LASTEXITCODE -ne 0) { throw 'All209 source and209 isolated installed conversion cases are required.' }
       - name: Acquire only exact public runtime archives and fixture notices
         id: acquisition
         if: ${{ !cancelled() && steps.portable.outcome == 'success' }}
@@ -399,7 +399,7 @@ jobs:
               probe = checkout/'scripts/windows_document_conversion_smoke.py'
               git_bound(probe)
               raw = probe.read_bytes()
-              assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == '5527d7a7ff2b830e926af8666ff4679e1a5374a3'
+              assert sha1(b'blob '+str(len(raw)).encode('ascii')+b'\0'+raw).hexdigest() == 'c976addba03264d8ebd4dc19bf7c8795560a9a1a'
               assert type(report.get('checks')) is list and all(type(name) is str for name in report['checks'])
               assert len(GUI_CHECKS) == len(report['checks']) == 30
               assert Counter(report['checks']) == Counter(GUI_CHECKS)
@@ -511,7 +511,7 @@ jobs:
           $PSNativeCommandUseErrorActionPreference = $false
           $cleanup = @'
           from hashlib import sha256
-          import json, os, shutil
+          import json, os, shutil, stat
           from pathlib import Path
           folder = Path('ci-conversion-native')
           if folder.exists():
@@ -528,9 +528,56 @@ jobs:
                   info = root.stat()
                   assert not getattr(info,'st_file_attributes',0) & 0x400
                   assert [info.st_dev,info.st_ino] == value['root_identity']
-                  shutil.rmtree(root)
+                  readonly_retries = []
+                  def retry_owned_readonly_file(function, filename, error_info):
+                      error = error_info[1]
+                      path = Path(filename)
+                      # MSI administrative images can retain a read-only file bit.
+                      # A live-handle, ACL, link or scope error is not this case.
+                      current_root = root.lstat()
+                      assert (stat.S_ISDIR(current_root.st_mode)
+                              and not getattr(current_root, 'st_file_attributes', 0) & 0x400
+                              and [current_root.st_dev, current_root.st_ino] == value['root_identity'])
+                      assert path.is_absolute() and path.is_relative_to(root) and path != root
+                      current = path.lstat()
+                      attributes = getattr(current, 'st_file_attributes', 0)
+                      diagnostic = {'relative_owned_path': str(path.relative_to(root))[:1024],
+                          'file_attributes': attributes, 'links': current.st_nlink,
+                          'regular_file': stat.S_ISREG(current.st_mode),
+                          'error_type': type(error).__name__,
+                          'winerror': getattr(error, 'winerror', None)}
+                      admitted = (os.name == 'nt' and isinstance(error, PermissionError)
+                          and function in (os.unlink, os.remove)
+                          and stat.S_ISREG(current.st_mode) and current.st_nlink == 1
+                          and not attributes & 0x400 and bool(attributes & 1))
+                      if len(readonly_retries) < 8 or not admitted:
+                          print('OWNED_INPUT_CLEANUP_DIAGNOSTIC ' + json.dumps(diagnostic, ensure_ascii=True),
+                                flush=True)
+                      if not admitted:
+                          raise error
+                      assert len(readonly_retries) < 50000
+                      parent = path.parent
+                      while parent != root:
+                          item = parent.lstat()
+                          assert stat.S_ISDIR(item.st_mode) and not stat.S_ISLNK(item.st_mode)
+                          assert not getattr(item, 'st_file_attributes', 0) & 0x400
+                          parent = parent.parent
+                      identity = (current.st_dev, current.st_ino, current.st_size,
+                                  current.st_mtime_ns, current.st_nlink)
+                      os.chmod(path, current.st_mode | stat.S_IWUSR)
+                      after = path.lstat()
+                      assert identity == (after.st_dev, after.st_ino, after.st_size,
+                                          after.st_mtime_ns, after.st_nlink)
+                      assert stat.S_ISREG(after.st_mode) and not getattr(after, 'st_file_attributes', 0) & 0x401
+                      current_root = root.lstat()
+                      assert [current_root.st_dev, current_root.st_ino] == value['root_identity']
+                      function(filename)
+                      assert not os.path.lexists(path)
+                      readonly_retries.append(1)
+                  shutil.rmtree(root, onerror=retry_owned_readonly_file)
                   assert not root.exists()
                   state = {'status':'PASS','owned_runtime_inputs_removed':True,
+                           'readonly_file_retries':len(readonly_retries),
                            'acquisition_receipt_sha256':sha256(raw).hexdigest()}
               else:
                   state = {'status':'NO_ACQUISITION_RECEIPT','owned_runtime_inputs_removed':False,
