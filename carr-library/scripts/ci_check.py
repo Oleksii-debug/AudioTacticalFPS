@@ -4,12 +4,14 @@ Use only on a trusted synthetic test checkout, never on imported documents.
 """
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import signal
 import subprocess
 import sys
 import tempfile
+from time import sleep
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -100,6 +102,41 @@ raise SystemExit(status)
 """
 
 
+def _cleanup_report_directory(directory) -> None:
+    # Windows may still be releasing a terminated child's file handles.
+    # Retry only permission failures, briefly; persistent residue is a failure.
+    for attempt in range(5):
+        try:
+            directory.cleanup()
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            sleep(.05)
+
+
+@contextmanager
+def _report_directory(suite):
+    directory = tempfile.TemporaryDirectory(prefix='carr-ci-')
+    original_error = None
+    try:
+        yield directory.name
+    except BaseException as exc:
+        original_error = exc
+        raise
+    finally:
+        try:
+            _cleanup_report_directory(directory)
+        except OSError as exc:
+            if original_error is None:
+                raise
+            # Do not replace a suite timeout or other primary failure with a
+            # secondary cleanup exception; record both, with the suite name.
+            print(f'FAIL: {suite}: temporary report cleanup failed after '
+                  f'{type(original_error).__name__}: {type(exc).__name__}: {exc}; '
+                  f'directory={directory.name}', flush=True)
+
+
 def run_suite(suite: str) -> bool:
     path = (ROOT / suite).resolve()
     if not path.is_relative_to(ROOT) or not path.exists():
@@ -118,7 +155,7 @@ def run_suite(suite: str) -> bool:
     env['HF_HUB_DISABLE_TELEMETRY'] = '1'
     env['DO_NOT_TRACK'] = '1'
     try:
-        with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
+        with _report_directory(suite) as tmp:
             report = Path(tmp) / 'junit.xml'
             returncode = _run_test_process([
                 sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
@@ -131,13 +168,16 @@ def run_suite(suite: str) -> bool:
             skipped = sum(c.find('skipped') is not None for c in cases)
             passed = len(cases) - failed - skipped
             ok = returncode == 0 and passed > 0 and failed == skipped == 0
-            print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-                  f'skipped={skipped}, pytest_exit={returncode}', flush=True)
-            return ok
+        # A passing child is not a completed suite until its temporary report
+        # and test data have also been cleaned up successfully.
+        print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
+              f'skipped={skipped}, pytest_exit={returncode}', flush=True)
+        return ok
     except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
         # Cleanup failures also remain failed required suites, rather than
         # escaping the aggregator and hiding other independently run verdicts.
-        print(f'FAIL: required suite did not produce a valid report: {type(exc).__name__}', flush=True)
+        print(f'FAIL: {suite}: required suite did not complete cleanly: '
+              f'{type(exc).__name__}: {exc}', flush=True)
         return False
 
 

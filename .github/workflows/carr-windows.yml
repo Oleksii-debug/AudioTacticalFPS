@@ -382,6 +382,7 @@ jobs:
           $audioLock = Get-Content packaging/audio-runtime/source-lock.json -Raw | ConvertFrom-Json
           & $env:CARR_PYTHON packaging/prepare_audio_runtime.py --archive (Join-Path $audioInputs $audioLock.archive.name) --sources-dir $audioInputs --output $audioRuntime | Tee-Object 'ci-results/audio-preparation.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           $runtime = Get-Content packaging/windows-python.json -Raw | ConvertFrom-Json
           $pythonArchive = Join-Path $bundleWork 'windows-python.tar.gz'
           Invoke-WebRequest -Uri $runtime.download.url -OutFile $pythonArchive
@@ -499,7 +500,11 @@ jobs:
           assert manifest['bundled_model'] and manifest['bundled_ocr'] and manifest['bundled_native_runtime'] and manifest['bundled_audio_runtime']
           # Test-only command discovery is scoped to this installed-package child.
           # Production calls bind the verified runtime and never mutate PATH.
-          os.environ['PATH'] = str(root / 'ocr') + os.pathsep + os.environ.get('PATH', '')
+          # Synthetic non-isolated descendants inherit this; production -I
+          # children must still carry their own explicit -B launch option.
+          os.environ['PYTHONDONTWRITEBYTECODE'] = '1'
+          os.environ['PATH'] = os.pathsep.join((str(root / 'audio-runtime' / 'bin'),
+                                               str(root / 'ocr'), os.environ.get('PATH', '')))
           os.environ['TESSDATA_PREFIX'] = str(root / 'ocr' / 'tessdata')
           runtime_handle = activate_bundled_runtime(bundle_root=root)
           assert runtime_handle is not None
@@ -615,6 +620,19 @@ jobs:
             foreach ($ruleName in $ruleNames) { Remove-NetFirewallRule -Name $ruleName -ErrorAction SilentlyContinue }
             foreach ($profile in $profilesBefore) { Set-NetFirewallProfile -Profile $profile.Name -Enabled $profile.Enabled -ErrorAction Stop }
           }
+
+      - name: Publish public phase diagnostics before extended source acceptance
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: carr-phase-diagnostics-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            carr-library/ci-results/*.txt
+            carr-library/ci-results/*.log
+            carr-library/ci-results/*.json
+            carr-library/ci-results/*.xml
+          if-no-files-found: warn
+          retention-days: 3
 
       # Evidence and exact public-source Python wheel only: no model, native DLLs, OCR source payload, or user documents
       # are uploaded. NVDA and final-download identity remain separate acceptance.
@@ -837,8 +855,34 @@ jobs:
             'tests/storage/test_backup_v4_sidecars.py',
             'tests/storage/test_v3_state_backup.py'
           )
-          & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $previousPath = $env:PATH
+          $previousOcr = $env:CARR_OCR_DIR
+          $previousTessdata = $env:TESSDATA_PREFIX
+          try {
+            if (-not $env:CARR_CI_AUDIO_DIR -or -not $env:CARR_CI_OCR_DIR) { throw 'Verified audio and OCR prerequisites are required for source acceptance.' }
+            $audioBin = Join-Path $env:CARR_CI_AUDIO_DIR 'bin'
+            foreach ($tool in @('ffmpeg.exe', 'ffprobe.exe')) {
+              if (-not (Test-Path -LiteralPath (Join-Path $audioBin $tool) -PathType Leaf)) { throw "Verified audio executable is missing: $tool" }
+            }
+            if (-not (Test-Path -LiteralPath (Join-Path $env:CARR_CI_OCR_DIR 'tesseract.exe') -PathType Leaf)) { throw 'Verified OCR executable is missing.' }
+            $env:PATH = "$audioBin;$env:CARR_CI_OCR_DIR;$previousPath"
+            $env:CARR_OCR_DIR = $env:CARR_CI_OCR_DIR
+            $env:TESSDATA_PREFIX = Join-Path $env:CARR_CI_OCR_DIR 'tessdata'
+            # The actual Windows run completed this suite alone in 208 seconds;
+            # another run reached its unchanged 600-second bound alongside other suites.
+            $academicSuite = 'tests/research/test_academic_library.py'
+            $parallelSuites = @($suites | Where-Object { $_ -cne $academicSuite })
+            if ($parallelSuites.Count + 1 -ne $suites.Count) { throw 'Required academic suite must occur exactly once.' }
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 1 $academicSuite 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
+            $academicExit = $LASTEXITCODE
+            & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @parallelSuites 2>&1 | Tee-Object -Append 'ci-results/integrated-tests.txt'
+            $parallelExit = $LASTEXITCODE
+            if ($academicExit -ne 0 -or $parallelExit -ne 0) { exit 1 }
+          } finally {
+            $env:PATH = $previousPath
+            $env:CARR_OCR_DIR = $previousOcr
+            $env:TESSDATA_PREFIX = $previousTessdata
+          }
 
 
       - name: Preserve exact-commit runtime and test evidence

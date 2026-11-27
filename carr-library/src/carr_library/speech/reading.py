@@ -222,7 +222,7 @@ class ReadingDocument:
             if rule.regex:
                 payload = json.dumps({'text': clone.text, 'pattern': rule.pattern,
                     'replacement': rule.replacement, 'ignore_case': rule.ignore_case}, ensure_ascii=False).encode('utf-8')
-                reply, _, _ = run_process([sys.executable, '-I', '-S', str(Path(__file__).with_name('regex_worker.py'))],
+                reply, _, _ = run_process([sys.executable, '-I', '-B', '-X', 'utf8', '-S', str(Path(__file__).with_name('regex_worker.py'))],
                                           input_bytes=payload, timeout=timeout, cancelled=cancelled)
                 matches = json.loads(reply.decode('utf-8'))['matches']
                 result, position = [], 0

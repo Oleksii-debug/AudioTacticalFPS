@@ -23,6 +23,10 @@ CLASSMATE_LOCALES = frozenset({"sk"})
 def main():
     root = Path(__file__).resolve().parent
     scenario = json.loads((root / "scenario.json").read_text())["mode"]
+    if scenario == "delayed_normal":
+        # Explicitly outlast the fixture's one-second reply deadline before
+        # announcing readiness; no model or real inference is involved.
+        Event().wait(1.25)
     (root / "worker-ready.json").write_text(json.dumps({"pid": os.getpid()}))
     if scenario == "stall_reader":
         Event().wait(15)

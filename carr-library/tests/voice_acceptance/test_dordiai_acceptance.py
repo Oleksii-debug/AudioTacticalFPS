@@ -33,6 +33,15 @@ def wait_for(predicate, timeout=2.0):
     pytest.fail("Synthetic worker did not reach its expected bounded checkpoint")
 
 
+def worker_is_ready(runtime, pid):
+    # A prior process leaves this marker behind. Bind readiness to the new
+    # child rather than mistaking an old marker for completed interpreter startup.
+    try:
+        return json.loads((runtime / "worker-ready.json").read_text())["pid"] == pid
+    except (OSError, ValueError, KeyError):
+        return False
+
+
 def test_exact_pull_protocol_preserves_unicode_and_pcm_without_inference(adapter, runtime):
     text = "Synthetic: \u041a\u0438\u0457\u0432; a\u0301; newline\nsecond line."
     chunks = list(adapter.stream_pcm(text, "speaker_a", "uk"))
@@ -57,7 +66,8 @@ def test_external_cancel_between_chunks_never_dispatches_next_generation(api, ad
     assert modes[0] == "reference" and "cancel" in modes and modes[-1] == "drop"
 
 
-def test_cancel_drains_loading_and_inflight_chunk_before_drop_ack(api, adapter, runtime):
+@pytest.mark.parametrize("recovery_scenario", ("normal", "delayed_normal"))
+def test_cancel_drains_loading_and_inflight_chunk_before_drop_ack(api, adapter, runtime, recovery_scenario):
     scenario(runtime, "late_cancel_chunk")
     output, errors = [], []
 
@@ -70,15 +80,31 @@ def test_cancel_drains_loading_and_inflight_chunk_before_drop_ack(api, adapter, 
     thread = Thread(target=run, daemon=True)
     thread.start()
     wait_for(lambda: (runtime / "awaiting-cancel").exists())
+    cancelled_worker = adapter._worker
+    assert cancelled_worker is not None and cancelled_worker.process.poll() is None
     adapter.cancel()
     thread.join(timeout=3)
     assert not thread.is_alive() and not output
     assert len(errors) == 1 and isinstance(errors[0], api.DordiaiCancelled)
     assert [r["mode"] for r in records(runtime)][-1] == "drop"
-    # Replace the old process explicitly to make the following scenario normal.
+    assert adapter._worker is cancelled_worker and cancelled_worker.process.poll() is None
+    # Refresh must close the cancelled process before the next scenario starts.
     adapter.voices(refresh=True)
-    scenario(runtime, "normal")
+    assert cancelled_worker.process.poll() is not None and adapter._worker is None
+    scenario(runtime, recovery_scenario)
+    # This test checks cancellation and reply framing, not subsecond Windows
+    # interpreter startup. Wait for a PID-bound fixture checkpoint, preserving
+    # the same one-second protocol deadline for the actual recovery render.
+    recovered_worker = adapter._start_worker()
+    assert recovered_worker.process.pid != cancelled_worker.process.pid
+    wait_for(lambda: worker_is_ready(runtime, recovered_worker.process.pid), timeout=5.0)
+    assert recovered_worker.process.poll() is None and adapter.request_timeout == 1.0
     assert len(list(adapter.stream_pcm("After cancellation.", "speaker_a", "uk"))) == 2
+    assert adapter._worker is recovered_worker
+    assert [r["mode"] for r in records(runtime) if r["pid"] == recovered_worker.process.pid] == [
+        "reference", "next", "next"]
+    adapter.close()
+    assert recovered_worker.process.poll() is not None
 
 
 def test_bad_drop_ack_disposes_owned_process_before_following_request(api, adapter, runtime):
