@@ -329,3 +329,28 @@ def test_selected_workspace_never_opens_another_asr_scope_or_leaks_its_corrupt_r
     assert all(not path.is_relative_to(b.jobs_root) for path in opened)
     global_rows = {row.id: row for row in OperationFacade(app).list()}
     assert global_rows[second_id].status == 'attention'
+
+
+
+@pytest.mark.parametrize('damage', ['source-shape', 'missing-settings', 'timestamp'])
+def test_malformed_asr_journal_stays_attention_without_aborting_valid_jobs(tmp_path, damage):
+    from carr_library.transcription import TranscriptionService
+    app = LibraryApp(tmp_path / 'data')
+    workspace = app.create_workspace('Bounded ASR checkpoint reader')
+    original = tmp_path / 'clip.wav'
+    original.write_bytes(b'Synthetic media')
+    service = TranscriptionService(app, workspace)
+    valid, invalid = service.submit([original]), service.submit([original])
+    path = service.jobs_root / invalid / 'job.json'
+    value = read_json(path)
+    if damage == 'source-shape':
+        value['sources'] = [None]
+    elif damage == 'missing-settings':
+        del value['settings']
+    else:
+        value['updated'] = 10**400
+    atomic_json(path, value, replace=True)
+    rows = {row.id: row for row in OperationFacade(app).list(workspace=workspace)}
+    assert rows[valid].status == 'ready'
+    assert rows[invalid].status == 'attention' and rows[invalid].controls == ()
+    assert 'Synthetic media' not in repr(rows[invalid])

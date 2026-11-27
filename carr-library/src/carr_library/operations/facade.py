@@ -147,13 +147,17 @@ class OperationFacade:
             service = self.services.get('asr') or self.app.transcription(selected)
             if service.workspace != selected or Path(service.app.root) != self.root:
                 raise ResourceStateError('The transcription service belongs to another selected library.')
-            summary = service.get(identity)
+            try:
+                summary = service.get(identity)
+            except (KeyError, TypeError, AttributeError) as exc:
+                raise ResourceStateError('Invalid saved transcription checkpoint shape.') from exc
             status, total, completed = summary.get('status'), len(summary['sources']), summary.get('done')
             if (type(status) is not str or status not in _STATES
                     or type(completed) is not int or not 0 <= completed <= total):
                 raise ResourceStateError('Invalid saved transcription status or accepted count.')
             updated = summary.get('updated', summary.get('created', 0))
-            if type(updated) not in (int, float) or not math.isfinite(updated) or updated < 0:
+            if (type(updated) not in (int, float) or not 0 <= updated <= 2**63 - 1
+                    or not math.isfinite(updated)):
                 raise ResourceStateError('Invalid saved transcription update time.')
             return OperationView(kind, identity, selected, status, completed, total,
                 'Stored transcription checkpoint; accepted receipt counts. Open its original workstation to verify outputs.',
