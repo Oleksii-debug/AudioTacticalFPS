@@ -352,11 +352,14 @@ def show_assistant(frame, *, production=None, on_ready=None):
             progress_token = token
             def advanced(completed, total, message):
                 if progress is not None:
-                    progress.update(completed, total, message, token=token)
+                    try:
+                        progress.update(completed, total, message, token=token)
+                    except Exception:
+                        pass  # A progress observer cannot change a durable operation.
                 def display():
                     if alive and frame.library is bound_library and progress_token == token:
                         report(f'{completed}/{total}: {message}')
-                wx.CallAfter(display)
+                post(display)
             def work():
                 nonlocal job_id
                 if stopped():
@@ -390,7 +393,10 @@ def show_assistant(frame, *, production=None, on_ready=None):
                             progress.fail(exc, token=token)
                 else:
                     if progress is not None:
-                        progress.finish_result(result, cancelled=cancel.is_set(), token=token)
+                        try:
+                            progress.finish_result(result, cancelled=cancel.is_set(), token=token)
+                        except Exception:
+                            pass  # Keep the service result and settle the native controls.
                 if not alive or not library_current() or progress_token != token:
                     return
                 change_busy(None)

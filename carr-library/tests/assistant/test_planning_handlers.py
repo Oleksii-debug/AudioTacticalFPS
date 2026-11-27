@@ -325,3 +325,53 @@ def test_cancel_after_run_click_before_dispatch_never_submits(native_handlers):
         assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
         assert 'before submitting' in e.controls['review'].GetValue()
     native_handlers.show(scenario)
+
+
+@pytest.mark.parametrize('failure', ['update', 'finish_result'])
+def test_committed_service_result_survives_advisory_progress_failure(native_handlers, failure):
+    e = native_handlers
+    notifications, finished, unexpected_failures = [], [], []
+
+    class Observer:
+        def start(self, *args, **kwargs):
+            return SimpleNamespace(token='actual-service-observer-test')
+        def update(self, completed, total, message, **kwargs):
+            notifications.append((completed, total, message))
+            # Exercise the final notification after the real service has
+            # persisted its completed job, not a fake successful return.
+            if failure == 'update' and completed == total:
+                raise RuntimeError('Synthetic final progress observer failure')
+        def finish_result(self, result, **kwargs):
+            finished.append(result)
+            if failure == 'finish_result':
+                raise RuntimeError('Synthetic completion observer failure')
+        def fail(self, error, **kwargs):
+            unexpected_failures.append(error)
+        def cancel(self, *args, **kwargs):
+            unexpected_failures.append('unexpected cancellation')
+        def request_cancel(self):
+            pass
+
+    e.frame.operation_progress = Observer()
+    def scenario(e):
+        e.controls['instruction'].ChangeValue('Create library "Committed despite notification"')
+        e.press('preview')
+        e.finish()
+        assert e.controls['run'].enabled
+        e.press('run')
+        assert AssistantService(e.app).jobs() == () and e.app.workspaces() == ()
+        e.finish()
+        service = AssistantService(e.app)
+        jobs = service.jobs()
+        assert len(jobs) == 1 and jobs[0].status == 'complete'
+        saved = service.store.load(jobs[0].id)
+        assert saved['status'] == 'complete'
+        assert len(saved['steps']) == 1 and saved['steps'][0]['status'] == 'complete'
+        assert [row.name for row in e.app.workspaces()] == ['Committed despite notification']
+        assert notifications[-1] == (1, 1, 'complete')
+        assert len(finished) == 1 and finished[0].status == 'complete'
+        assert not unexpected_failures and not e.executor.pending
+        assert e.controls['review'].GetValue().startswith('complete: 1 of 1')
+        assert e.controls['run'].enabled and e.controls['preview'].enabled
+        assert not e.controls['pause'].enabled
+    e.show(scenario)
