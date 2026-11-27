@@ -99,6 +99,8 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $runtimePython = (Get-Item -LiteralPath (Join-Path $env:RUNNER_TEMP 'carr-musicgen-canonical-win-install\runtime\python.exe')).FullName
+          $runtimeRoot = Split-Path -Parent $runtimePython
+          $env:PATH = @($runtimeRoot, (Join-Path $runtimeRoot 'Library\bin'), (Join-Path $runtimeRoot 'Scripts'), (Join-Path $env:SystemRoot 'System32')) -join [IO.Path]::PathSeparator
           $options = @('--source-root', "$env:GITHUB_WORKSPACE/carr-library", '--root', "$env:RUNNER_TEMP/carr-musicgen-canonical-win-install", '--ffmpeg-root', "$env:RUNNER_TEMP/carr-musicgen-win-audio", '--preflight-receipt', "$env:RUNNER_TEMP/carr-musicgen-canonical-win-preflight.jsonl", '--output', "$env:RUNNER_TEMP/carr-musicgen-canonical-win-output/sample.wav", '--accept-personal-noncommercial')
           & $runtimePython -I -B "$env:GITHUB_WORKSPACE/carr-library/scripts/musicgen_canonical_windows_qualification.py" render @options
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
