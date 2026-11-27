@@ -1,0 +1,32 @@
+{
+  "schema": "carr.office-stage-path-forensics-events.v1",
+  "status": "DIAGNOSTIC_NOT_RUN",
+  "parent": "74e0520ee04f0d7fa3ed62dfc84227b2c9ad0643",
+  "previous_diagnostic": {
+    "run_id": 46062054170,
+    "job_id": 140718414420,
+    "result": "SUCCESS_DIAGNOSTIC_ONLY",
+    "artifact": {
+      "id": 15230120040,
+      "bytes": 5707984,
+      "sha256": "9de380ca8a134a8f5fb95ba7f9bee067dfd7773fc619f9ec2904288669490ab3"
+    },
+    "interpretation": "Seven source and seven installed native cases and the unchanged full runtime inventory completed. No failing checker exception recurred. This is not a new ordinary-admission qualification."
+  },
+  "changes": [
+    "Retain each bounded checker/classifier event in a fresh exclusive-created JSON file under the synthetic test's separate diagnostic directory, including errors that the existing disappearance logic later handles.",
+    "At most32 event files per child, each at most1751 characters. Unique process/counter filenames and x-mode writes cannot overwrite an existing file.",
+    "Exercise exactly four successive XLS conversions in each mode, with a separate output destination and all original assertions for every conversion. Other six cases remain once per mode. Any failed conversion still fails its case immediately; no retry-until-pass or ignored error is introduced."
+  ],
+  "native_junit_cases_per_mode": 7,
+  "xls_conversion_attempts_per_mode": 4,
+  "product_changes": [],
+  "qualification_claim": false,
+  "preserved": [
+    "All existing budget/root/alias refusals",
+    "All source/output/provenance assertions in every attempted conversion",
+    "Same worker executable, flags, admitted package roots and existing process owner",
+    "Complete runtime inventory comparison",
+    "Ordinary d729 failed source6/7 record"
+  ]
+}

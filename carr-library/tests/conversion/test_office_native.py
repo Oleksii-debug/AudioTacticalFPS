@@ -106,7 +106,7 @@ def _carr_arm_office_stage(frame, event, argument):
             return [label(path), type(error).__name__, error.errno,
                     getattr(error, 'winerror', None)]
     initial_root = state(root)
-    last = [None]
+    last, events = [None], [0]
     def message(error, report):
         encoded = json.dumps(report, ensure_ascii=True, separators=(',', ':'))
         if len(encoded) > 1500:
@@ -117,6 +117,13 @@ def _carr_arm_office_stage(frame, event, argument):
                                   'operation': report['operation'],
                                   'checked': report['checked'][:384]})
         error.args = (report['error'] + ' OFFICE_STAGE_FACTS ' + encoded,)
+        if events[0] < 32:
+            import os
+            destination = Path(_CARR_OFFICE_STAGE_EVENTS) / (
+                'event-' + str(os.getpid()) + '-' + str(events[0]) + '.json')
+            with destination.open('x', encoding='utf-8') as stream:
+                stream.write(encoded + '\n')
+            events[0] += 1
     def observe(actual, operation):
         def checked(path, *args, **options):
             try:
@@ -179,14 +186,15 @@ sys.settrace(_carr_arm_office_stage)
 """
 
 
-def _observe_office_stage_admission(monkeypatch):
+def _observe_office_stage_admission(monkeypatch, event_directory):
     """Diagnostic-only hook; retain the same isolated roots and process owner."""
     import sys
     from carr_library.audio import engines
     actual = engines._start_process
     bootstrap = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
                  "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
-    observed = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; exec("
+    observed = ("import sys,runpy; sys.path[:0]=sys.argv[1:]; "
+                + '_CARR_OFFICE_STAGE_EVENTS=' + repr(str(event_directory)) + '; exec('
                 + repr(_OFFICE_STAGE_OBSERVER) + "); "
                 "runpy.run_module('carr_library.ingest.worker',run_name='__main__')")
     def start(args, **options):
@@ -299,7 +307,9 @@ def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_p
         source.write_bytes((wordperfect if kind == 'wpd' else palmdoc)(text))
     original = source.read_bytes()
     if kind == 'xls':
-        _observe_office_stage_admission(monkeypatch)
+        event_directory = tmp_path / 'office-stage-events'
+        event_directory.mkdir()
+        _observe_office_stage_admission(monkeypatch, event_directory)
         from carr_library.conversion import service as service_module
         actual_invoke = service_module._invoke
         def observed(message, **options):
@@ -307,21 +317,23 @@ def test_real_selected_legacy_filter_retains_original_and_exact_provenance(tmp_p
             _xls_visibility_diagnostic(message, result)
             return result
         monkeypatch.setattr(service_module, '_invoke', observed)
-    destination = tmp_path / 'Читальна копія'
-    destination.mkdir()
-    result = ConversionService(destination, input_roots=(source,), office=office()).extract(source, 'reading.txt')
-    assert text in result.path.read_text(encoding='utf-8')
-    assert source.read_bytes() == original
-    assert result.report['source_sha256'] == sha256(original).hexdigest()
-    assert result.report['text_sha256'] == sha256(result.path.read_bytes()).hexdigest()
-    assert result.report['verified_for_quotation'] is False
-    assert result.report['engine'] == 'selected-libreoffice-' + kind
-    assert 'macros_active_content_and_untrusted_links_disabled' in result.report['warnings']
-    for row in result.report['segments']:
-        assert row['physical_index'] is None and row['printed_label'] is None
-        assert row['status'] == 'review_required'
-        assert row['logical_locator']['private_profile_sha256'] == sha256(PROFILE).hexdigest()
-    assert len(list(destination.iterdir())) == 2
+    # Fixed stress population, never retry after a failed conversion.
+    for attempt in range(4 if kind == 'xls' else 1):
+        destination = tmp_path / ('Читальна копія-' + str(attempt))
+        destination.mkdir()
+        result = ConversionService(destination, input_roots=(source,), office=office()).extract(source, 'reading.txt')
+        assert text in result.path.read_text(encoding='utf-8')
+        assert source.read_bytes() == original
+        assert result.report['source_sha256'] == sha256(original).hexdigest()
+        assert result.report['text_sha256'] == sha256(result.path.read_bytes()).hexdigest()
+        assert result.report['verified_for_quotation'] is False
+        assert result.report['engine'] == 'selected-libreoffice-' + kind
+        assert 'macros_active_content_and_untrusted_links_disabled' in result.report['warnings']
+        for row in result.report['segments']:
+            assert row['physical_index'] is None and row['printed_label'] is None
+            assert row['status'] == 'review_required'
+            assert row['logical_locator']['private_profile_sha256'] == sha256(PROFILE).hexdigest()
+        assert len(list(destination.iterdir())) == 2
 
 
 def test_selected_office_cancellation_settles_family_before_private_profile_cleanup(tmp_path, monkeypatch):
