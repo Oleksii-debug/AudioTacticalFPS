@@ -1,0 +1,128 @@
+{
+  "schema": 1,
+  "component": "Current assistant audio.transcribe",
+  "status": "IMPLEMENTED_SOURCE_AND_AUTHORED_TESTS",
+  "execution": "NOT_RUN",
+  "base_commit": "3f2e047ffea5179831970098acd3d662786de212",
+  "source_checkpoint": "d24b517ed34b4d22a2d141c0c7b7c4d3bfbfe08d",
+  "tests_checkpoint": "a809c0117dbda515659bbef4b66737b457b4a7b9",
+  "source_peer_review": "GO: capacity_measurements; current owner cancellation and passive retained-job cross-binding included.",
+  "tests_peer_review": "GO: capacity_measurements; synthetic worker compatibility, ten actual isolated exit seams and passive restore/rebackup reviewed.",
+  "canonical_gap": "The previously OPEN public audio.transcribe assistant bridge is implemented through the existing supplied-worker service. Execution qualification remains separate.",
+  "existing_owner": "carr_library.transcription_service.TranscriptionService",
+  "interfaces": [
+    "Existing AssistantService Preview/submit/Run and saved jobs",
+    "Explicit current EngineProfileStore selection outside all typed/model/template arguments",
+    "Current native assistant named profile choice, None by default",
+    "Existing assistant CLI --transcription-profile and passive --list-transcription-profiles",
+    "Existing typed assistant and supplied_transcription_backup producers; no alternate store"
+  ],
+  "authority": [
+    "Source checksum and all17 effective settings are captured before execution.",
+    "Native preview selection, root identity, current owner and profile fingerprint are rechecked before Run.",
+    "Selected-owner cancellation flows into the real prepare/run/receipt/publication callbacks.",
+    "Restored jobs remain unapproved; profile/runtime paths cannot become executable authority."
+  ],
+  "crash_contract": [
+    "Preparation dispatch is persisted before the random-ID domain prepare; an unbound result is never adopted.",
+    "Run dispatch is persisted before inference; an uncertain execution is never automatically rerun.",
+    "Accepted completion is verified through existing retained output receipts before export or completed-step recovery.",
+    "Partial staging is resumed only under its exact saved inode/parent and existing per-file hashes.",
+    "One sealed directory is atomically published without overwrite; foreign matching bytes cannot grant ownership.",
+    "Late stop after publication remains committed; empty transcripts remain legitimate."
+  ],
+  "backup_contract": [
+    "Pure structural checkpoint validation never opens saved paths.",
+    "The assistant snapshot validator cross-binds managed retained definition and completion only.",
+    "Full backup/restore/rebackup retain original source/runtime provenance as inert strings.",
+    "Current ASR producer remains responsible for every retained input, execution, receipt and output."
+  ],
+  "tool_inventory": {
+    "previous_tools": 16,
+    "current_tools": 17,
+    "existing_changed_selector": "tests/assistant/test_topic_tools.py::test_current_thirteen_tools_remain_allowed_alongside_exact_three_topic_tools",
+    "old_cases": 1,
+    "new_cases": 1,
+    "changed_assertion": "Retain every previous tool and add exactly audio.transcribe.",
+    "reviewed_current_assistant_modules": 24,
+    "additional_reviewed_paths": [
+      "carr-library/tests/loopback/test_local_planning.py",
+      "carr-library/tests/storage/test_backup_assistant_state.py",
+      "carr-library/tests/ui/test_assistant_interactive.py"
+    ],
+    "dynamic_TOOLS_parametrize_found": false,
+    "scope": "Bounded direct source inspection; exact source/installed collection gates validate the retained declared population."
+  },
+  "new_cases": 69,
+  "new_function_counters": {
+    "test_transcription_tools.py": {
+      "test_guided_transcription_shows_all_effective_settings_without_creating_jobs": 2,
+      "test_preview_requires_current_explicit_profile_without_activating_settings": 3,
+      "test_typed_arguments_cannot_choose_runtime_or_grant_profile_authority": 5,
+      "test_invalid_settings_and_output_names_refuse_before_dispatch": 6,
+      "test_source_outside_selected_folder_and_private_library_are_refused": 1,
+      "test_export_budget_includes_all_formats_and_provenance": 1,
+      "test_overlapping_transcription_directories_refuse_whole_plan_before_preparation": 2,
+      "test_actual_protocol_child_exports_all_formats_and_retains_independent_owned_inputs": 1,
+      "test_actual_empty_transcripts_are_legitimate_silence_and_never_rerun": 1,
+      "test_actual_unaccepted_child_outputs_are_not_published_or_replayed": 3,
+      "test_selected_owner_revocation_cancels_actual_domain_child_and_releases_lease": 1,
+      "test_profile_disabled_after_submission_blocks_before_owned_preparation": 1,
+      "test_same_size_and_mtime_source_change_refuses_before_inference": 2,
+      "test_new_output_directory_after_preview_preserves_foreign_data": 1,
+      "test_pure_pending_checkpoint_validation_does_not_open_saved_paths_or_profiles": 1,
+      "test_all_seventeen_tools_are_explicit_with_no_dynamic_runtime_names": 1
+    },
+    "test_transcription_recovery.py": {
+      "test_actual_process_exit_resumes_only_bound_work_and_never_replays_uncertain_inference": 10,
+      "test_same_byte_foreign_output_directory_cannot_adopt_owned_sealed_stage": 1,
+      "test_changed_partial_export_is_refused_without_overwrite_or_worker_replay": 1,
+      "test_changed_parent_after_sealing_cannot_rebind_directory_publication": 1,
+      "test_stop_immediately_after_complete_publication_preserves_committed_success": 1,
+      "test_completed_step_same_size_source_change_refuses_replay_and_preserves_export": 1,
+      "test_completed_receipt_cannot_change_source_settings_runtime_or_artifact_binding": 1,
+      "test_restore_and_rebackup_keep_retained_transcripts_without_external_paths_or_launch_authority": 1,
+      "test_backup_rejects_shape_valid_assistant_binding_to_different_managed_definition": 4
+    },
+    "test_assistant_transcription.py": {
+      "test_native_profile_choice_is_explicit_none_and_preview_cannot_enable_it": 1,
+      "test_current_native_selection_previews_then_runs_existing_protocol_service": 1,
+      "test_profile_choice_change_invalidates_preview_even_without_native_event": 2,
+      "test_profile_change_during_queued_preview_cannot_replace_captured_registration": 1,
+      "test_close_before_queued_run_cancels_without_creating_managed_asr_job": 1,
+      "test_loading_template_clears_transcription_profile_and_current_authority": 1,
+      "test_library_switch_before_queued_run_never_submits_under_another_owner": 1
+    },
+    "test_transcription_cli.py": {
+      "test_cli_profile_listing_is_passive_and_has_no_automatic_selection": 1,
+      "test_cli_preview_requires_explicit_selected_profile": 1,
+      "test_cli_preview_displays_complete_settings_without_executing": 1,
+      "test_cli_actual_protocol_run_and_completed_resume_use_current_checkpoint": 1,
+      "test_cli_profile_authority_is_rejected_for_passive_unrelated_actions": 3,
+      "test_named_transcription_template_retains_only_inert_typed_options": 1
+    }
+  },
+  "focused_gate": {
+    "source_cases": 681,
+    "installed_cases": 681,
+    "retained_cases": 612,
+    "new_cases": 69,
+    "native_checks": 30,
+    "oracle": "scripts/assistant_transcription_oracle.json",
+    "workflow": ".github/workflows/carr-assistant-transcription.yml"
+  },
+  "fixture": {
+    "path": "tests/assistant/transcription_fixture.py",
+    "sha256": "8fb51637e1d6aba3c2a54374f95bf5ace5844d4dbe2da0fdcf00fa02eface2ac",
+    "actual_owned_protocol_process": true,
+    "synthetic_payload": true,
+    "contains_real_model_weights": false
+  },
+  "known_limits": {
+    "actual_asr_model_inference": "NOT_RUN",
+    "model_or_language_quality": "NOT_QUALIFIED",
+    "nvda": "NOT_RUN",
+    "physical_audio": "NOT_RUN",
+    "remote_or_fallback_execution": "NOT_SUPPORTED_BY_THIS_TOOL"
+  }
+}
