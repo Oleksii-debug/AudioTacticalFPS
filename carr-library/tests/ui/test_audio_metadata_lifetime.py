@@ -126,7 +126,8 @@ def test_released_lease_metadata_notice_preserves_actual_saved_copy(session, mon
         session.controller.save(session.form)
         result, error, _ = session.perform()
     assert error is None and result.receipt_path.is_file()
-    assert 'stale coordination metadata' in result.warning
+    assert 'Shared resource release was not confirmed: OSError' in result.warning
+    assert 'injected stale lease JSON cleanup failure' in result.warning
     assert result.audio.sha256 == sha256(result.audio.path.read_bytes()).hexdigest()
     assert broker.snapshot()['leases'] == []
 
