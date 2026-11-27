@@ -140,6 +140,49 @@ def test_parallel_barrier():
                                           '--jobs', workers, 'test_sample.py')
                 self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
 
+    def test_cleanup_failure_is_named_and_cannot_publish_pass_or_hide_timeout(self):
+        spec = importlib.util.spec_from_file_location('diagnostic_ci_check', SCRIPT)
+        runner = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(runner)
+        original_temp = tempfile.TemporaryDirectory
+        with original_temp(prefix='CARR cleanup diagnosis ') as temporary:
+            root = Path(temporary)
+            (root / 'test_ok.py').write_text('def test_ok(): assert True\n', encoding='utf-8')
+
+            @contextlib.contextmanager
+            def failing_cleanup(*args, **kwargs):
+                # Exercise a real temporary directory and a real passing child.
+                # Inject only the Windows-style cleanup fault, independently of
+                # whether the underlying platform permits unlinking open files.
+                with original_temp(*args, dir=root, **kwargs) as directory:
+                    try:
+                        yield directory
+                    finally:
+                        raise PermissionError('Synthetic held-library.lock cleanup failure')
+
+            for timed_out in (False, True):
+                with self.subTest(timed_out=timed_out):
+                    output, errors = io.StringIO(), io.StringIO()
+                    process = (mock.patch.object(runner, '_run_test_process',
+                        side_effect=subprocess.TimeoutExpired(['synthetic pytest'], 600))
+                        if timed_out else contextlib.nullcontext())
+                    with (mock.patch.object(runner, 'ROOT', root),
+                          mock.patch.object(runner, 'tempfile', types.SimpleNamespace(
+                              TemporaryDirectory=failing_cleanup)), process,
+                          contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors)):
+                        result = runner.run_suite('test_ok.py')
+                    self.assertFalse(result)
+                    self.assertNotIn('PASS: test_ok.py:', output.getvalue())
+                    self.assertIn('FAIL: test_ok.py:', output.getvalue())
+                    self.assertIn('held-library.lock', output.getvalue())
+                    self.assertIn('PermissionError', errors.getvalue())
+                    if timed_out:
+                        self.assertIn('last phase=pytest process', output.getvalue())
+                        self.assertIn('TimeoutExpired', errors.getvalue())
+                        self.assertIn('600', errors.getvalue())
+                    else:
+                        self.assertIn('last phase=temporary directory cleanup', output.getvalue())
+
     def test_timeout_terminates_real_descendant_before_temp_cleanup_and_stays_failed(self):
         spec = importlib.util.spec_from_file_location('reviewed_ci_check', SCRIPT)
         runner = importlib.util.module_from_spec(spec)

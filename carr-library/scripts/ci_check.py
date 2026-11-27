@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import traceback
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -117,27 +118,38 @@ def run_suite(suite: str) -> bool:
     env['HF_HUB_OFFLINE'] = '1'
     env['HF_HUB_DISABLE_TELEMETRY'] = '1'
     env['DO_NOT_TRACK'] = '1'
+    phase = 'temporary directory setup'
     try:
         with tempfile.TemporaryDirectory(prefix='carr-ci-') as tmp:
             report = Path(tmp) / 'junit.xml'
+            phase = 'pytest process'
             returncode = _run_test_process([
-                sys.executable, '-c', PYTEST_CHILD, '-o', 'addopts=',
-                '-o', 'xfail_strict=true', '--junitxml', str(report),
+                sys.executable, '-c', PYTEST_CHILD, '-v', '-o', 'addopts=',
+                '-o', 'xfail_strict=true', '-o', 'faulthandler_timeout=120',
+                '-o', 'faulthandler_exit_on_timeout=false', '--junitxml', str(report),
                 '--basetemp', str(Path(tmp) / 'pytest'),
                 '--', str(path),
             ], env=env)
+            phase = 'JUnit report validation'
             cases = list(ET.parse(report).iter('testcase'))
             failed = sum(any(c.find(tag) is not None for tag in ('failure', 'error')) for c in cases)
             skipped = sum(c.find('skipped') is not None for c in cases)
             passed = len(cases) - failed - skipped
             ok = returncode == 0 and passed > 0 and failed == skipped == 0
-            print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
-                  f'skipped={skipped}, pytest_exit={returncode}', flush=True)
-            return ok
+            phase = 'temporary directory cleanup'
+        # A valid report is not a successful suite until owned files are closed
+        # and its temporary directory has actually been removed.
+        print(f'{"PASS" if ok else "FAIL"}: {suite}: junit_passed={passed}, failed={failed}, '
+              f'skipped={skipped}, pytest_exit={returncode}', flush=True)
+        return ok
     except (OSError, subprocess.TimeoutExpired, ET.ParseError) as exc:
         # Cleanup failures also remain failed required suites, rather than
         # escaping the aggregator and hiding other independently run verdicts.
-        print(f'FAIL: required suite did not produce a valid report: {type(exc).__name__}', flush=True)
+        print(f'FAIL: {suite}: required suite did not produce a valid report; '
+              f'last phase={phase}; {type(exc).__name__}: {exc}', flush=True)
+        # Keep the original timeout/process failure if cleanup raises a second
+        # exception, including the concrete file and active Python stack.
+        traceback.print_exception(type(exc), exc, exc.__traceback__, file=sys.stderr)
         return False
 
 

@@ -14,6 +14,15 @@ class NarrationSource:
     revision: str
     positions: tuple[dict, ...]
     warnings: tuple[str, ...]
+    asset_sha256: str
+
+    def reading_document(self):
+        """Build the existing editable document with explicit, non-authorizing lineage."""
+        from .reading import ReadingDocument
+        return ReadingDocument(self.text, title=self.title, source_anchor={
+            'workspace': self.workspace, 'edition': self.edition, 'revision': self.revision,
+            'asset_sha256': self.asset_sha256, 'positions': list(self.positions),
+            'quotation_authority': False})
 
 
 def read_source_range(desk, first, last, *, guard=lambda: None,
@@ -43,10 +52,11 @@ def read_source_range(desk, first, last, *, guard=lambda: None,
         offset += len(page.raw_text)
         positions.append({'ordinal': page.ordinal, 'kind': page.location.kind,
                           'index': page.location.index, 'start': start, 'end': offset,
-                          'text_sha256': sha256(page.raw_text.encode('utf-8')).hexdigest()})
+                          'text_sha256': sha256(page.raw_text.encode('utf-8')).hexdigest(),
+                          'text_verified_at_capture': page.verified})
         if not page.verified:
             warnings.append(f'Reading position {ordinal}: extracted text has not been independently approved.')
     guard()
     check_cancelled(cancelled)
     return NarrationSource(''.join(pieces), desk.title, desk.workspace, desk.edition,
-                           desk.revision, tuple(positions), tuple(warnings))
+                           desk.revision, tuple(positions), tuple(warnings), desk.identity.asset_sha256)

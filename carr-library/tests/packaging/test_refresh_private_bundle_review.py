@@ -60,6 +60,7 @@ def _dependency(path, name='fixture-dependency', version='1.0'):
 def bundle(tmp_path, monkeypatch):
     monkeypatch.syspath_prepend(str(ROOT / 'packaging'))
     refresh = _load('review_refresh_private_bundle', ROOT / 'packaging/refresh_private_bundle.py')
+    from build_windows_bundle import USER_GUIDES
     verifier = _load('review_refresh_source_wheel', ROOT / 'packaging/source_wheel.py')
     repo = tmp_path / 'trusted-source'
     project = repo / 'carr-library'
@@ -68,8 +69,8 @@ def bundle(tmp_path, monkeypatch):
     (packaging / 'wheel-notices').mkdir()
     (packaging / 'wheel-notices' / 'SOURCES.json').write_text('{"synthetic-current-notices":true}\n')
     (project / 'docs').mkdir()
-    for name in ('RUNNING.md', 'START_V3_UK.txt'):
-        (project / 'docs' / name).write_text('Synthetic current installation guidance.\n')
+    for name in ('RUNNING.md', 'START_UK.txt', 'START_V3_UK.txt', *USER_GUIDES):
+        (project / 'docs' / name).write_text('Synthetic current guidance for ' + name + '.\n', encoding='utf-8')
     for name in ('install_windows.py', 'Install.cmd', 'ResearchLibrary.cmd', 'CheckInstallation.cmd'):
         (packaging / name).write_text('raise AssertionError("PACKAGING MUST NOT EXECUTE PAYLOAD")\n')
     package = project / 'src/carr_library'
@@ -109,6 +110,7 @@ package-dir = {"" = "src"}
         'install.lock': b'synthetic prior lock\n', 'install_windows.py': b'raise AssertionError("OLD PAYLOAD MUST NOT EXECUTE")\n',
         'Install.cmd': b'old launcher', 'ResearchLibrary.cmd': b'old launcher',
         'CheckInstallation.cmd': b'old launcher', 'README.txt': b'old guidance',
+        'START_UK.txt': b'old quick start', 'docs/TRANSCRIPTION.md': b'old transcription guide',
         'ocr/tesseract.exe': b'INERT SYNTHETIC NATIVE PAYLOAD', 'ocr/tessdata/eng.traineddata': b'synthetic model',
         'ocr/ocr-manifest.json': b'{"synthetic":true}\n', **protected}.items():
         path = previous / name
@@ -133,7 +135,7 @@ package-dir = {"" = "src"}
                         lambda candidate, expected: verifier.verify_application_wheel(candidate, repo, expected))
     return SimpleNamespace(module=refresh, source=previous, wheel=wheel, commit=commit, repo=repo, packaging=packaging,
         payload=payload, prefix=prefix, parent_hash=sha256(raw).hexdigest(), protected=protected,
-        output=tmp_path / 'refreshed', lock=lock, sbom=sbom)
+        output=tmp_path / 'refreshed', lock=lock, sbom=sbom, guides=USER_GUIDES)
 
 
 def _refresh(bundle, **kwargs):
@@ -175,6 +177,21 @@ def test_wrong_recorded_parent_hash_fails_before_publication(bundle):
     with pytest.raises(ValueError, match='recorded SHA256'):
         _refresh(bundle)
     assert not bundle.output.exists()
+
+
+def test_refresh_replaces_stale_guides_and_adds_current_missing_guides_before_sealing(bundle):
+    assert not (bundle.source / 'docs/ADVANCED_SEARCH.md').exists()
+    previous = (bundle.source / 'docs/TRANSCRIPTION.md').read_bytes()
+    _refresh(bundle)
+    manifest = json.loads((bundle.output / 'bundle-manifest.json').read_bytes())
+    for name in bundle.guides:
+        target = bundle.output / 'docs' / name
+        expected = (bundle.packaging.parent / 'docs' / name).read_bytes()
+        assert target.read_bytes() == expected
+        assert manifest['files']['docs/' + name] == sha256(expected).hexdigest()
+    for name in ('START_UK.txt', 'START_V3_UK.txt'):
+        assert (bundle.output / name).read_bytes() == (bundle.packaging.parent / 'docs' / name).read_bytes()
+    assert (bundle.source / 'docs/TRANSCRIPTION.md').read_bytes() == previous
 
 
 def test_manifest_is_never_reopened_after_verification_for_copy_paths(bundle, monkeypatch, tmp_path):

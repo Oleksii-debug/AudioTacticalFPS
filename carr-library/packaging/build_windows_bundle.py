@@ -27,6 +27,12 @@ from packaging.utils import canonicalize_name, parse_wheel_filename
 
 TARGET = "Windows x64 / CPython 3.11"
 HERE = Path(__file__).resolve().parent
+USER_GUIDES = (
+    "ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
+    "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
+    "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
+    "TRANSCRIPTION.md", "ACADEMIC_CATALOG_INSIGHTS.md", "V3_RELEASE_READINESS.md",
+)
 TAGS = set(cpython_tags((3, 11), abis=["cp311"], platforms=["win_amd64"]))
 TAGS.update(compatible_tags((3, 11), interpreter="cp311", platforms=["win_amd64"]))
 
@@ -42,6 +48,17 @@ def regular(path):
             or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError(f"expected a regular file: {path.name}")
     return path
+
+
+def copy_user_guides(source, destination):
+    """Use current guides for both new and refreshed private bundles."""
+    for origin, name in (("RUNNING.md", "README.txt"), ("START_UK.txt", "START_UK.txt"),
+                         ("START_V3_UK.txt", "START_V3_UK.txt")):
+        shutil.copyfile(regular(source / origin), destination / name)
+    guides = destination / "docs"
+    guides.mkdir(exist_ok=True)
+    for name in USER_GUIDES:
+        shutil.copyfile(regular(source / name), guides / name)
 
 
 def read_lock(path):
@@ -292,17 +309,7 @@ def build_bundle(wheel, wheelhouse, lock, output, python_archive=None,
                     raise ValueError("OCR source archive changed during bundle assembly")
         for name in ("install_windows.py", "Install.cmd", "ResearchLibrary.cmd", "CheckInstallation.cmd"):
             shutil.copyfile(regular(HERE / name), staged / name)
-        shutil.copyfile(HERE.parent / "docs" / "RUNNING.md", staged / "README.txt")
-        shutil.copyfile(HERE.parent / "docs" / "START_UK.txt", staged / "START_UK.txt")
-        # Ship the guides referenced by the installed README, including the
-        # exact advanced-query syntax and complete-backup behavior.
-        guides = staged / "docs"
-        guides.mkdir()
-        for name in ("ACADEMIC_SEARCH.md", "ADVANCED_SEARCH.md", "ACADEMIC_LIBRARY.md",
-                     "ACADEMIC_WORKFLOWS.md", "CATALOG_TOOLS.md", "READING_DESK.md",
-                     "RESEARCH_NOTEBOOK.md", "EPUB_READING.md", "IMPORT_CENTER.md",
-                     "TRANSCRIPTION.md"):
-            shutil.copyfile(regular(HERE.parent / "docs" / name), guides / name)
+        copy_user_guides(HERE.parent / "docs", staged)
         if sbom is not None:
             (staged / "runtime-sbom.cdx.json").write_bytes(sbom_bytes)
         files = {p.relative_to(staged).as_posix(): sha256(p)

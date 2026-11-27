@@ -32,7 +32,7 @@ def test_reading_copy_keeps_library_original_and_saved_evidence(tmp_path):
     assert source.workspace == workspace and source.edition == imported['edition']
     assert source.revision == desk.revision
     assert source.positions[0]['text_sha256'] == sha256(text.encode('utf-8')).hexdigest()
-    copy = ReadingDocument(source.text, title=source.title)
+    copy = source.reading_document()
     copy.set_text('An independently authored reading copy.')
     assert app.assets.resolve(imported['asset']).read_bytes() == text.encode('utf-8')
     assert app.evidence(workspace, topic) == original_evidence
@@ -189,4 +189,85 @@ def test_source_save_as_reauthorizes_after_picker(tmp_path, monkeypatch, archive
         assert not output.exists(), ('A source-bound reading project was written after its topic '
                                      'was archived in Save As: ' + repr(statuses))
     else:
-        assert ReadingDocument.load(output).source_text == original
+        reopened = ReadingDocument.load(output)
+        assert reopened.source_text == original
+        assert reopened.source_anchor == read_source_range(desk, 1, 1).reading_document().source_anchor
+        assert reopened.source_anchor['quotation_authority'] is False
+
+
+def test_source_lineage_is_distinct_and_survives_save_and_backup(tmp_path):
+    from carr_library.library_backup import restore_backup
+    from carr_library.speech.session import ReaderDraftStore, ReaderResume
+
+    app = LibraryApp(tmp_path / 'library')
+    raw = 'Київ — e\u0301\r\n\fDruhý oddiel'
+    first = app.create_workspace('First research library')
+    second = app.create_workspace('Second research library')
+    one = app.add_text(first, 'Identical title', raw)
+    two = app.add_text(second, 'Identical title', raw)
+    desk = ReadingDesk(app, first, one['edition'])
+    other = ReadingDesk(app, second, two['edition'])
+    doc = read_source_range(desk, 1, len(desk.pages)).reading_document()
+    other_doc = read_source_range(other, 1, len(other.pages)).reading_document()
+    assert doc.source_text == other_doc.source_text
+    assert doc.source_anchor != other_doc.source_anchor
+    anchor = doc.source_anchor
+    assert (anchor['workspace'], anchor['edition'], anchor['revision'], anchor['asset_sha256']) == (
+        first, one['edition'], desk.revision, one['asset'])
+    assert anchor['quotation_authority'] is False
+    assert len(anchor['positions']) == 2
+    a, b = anchor['positions']
+    assert a['kind'] == b['kind'] == 'logical_segment'
+    assert doc.source_text[a['end']:b['start']] == '\n\n'
+    assert not doc.source_span(a['end'], b['start']).exact
+    assert not doc.source_span(0, len(doc.source_text)).exact
+    doc.replace(0, 4, 'Edited')
+    assert doc.source_anchor == anchor
+    path = tmp_path / 'portable.reading.json'
+    doc.save(path)
+    reopened = ReadingDocument.load(path)
+    assert reopened.source_anchor == anchor and reopened.text == doc.text
+    assert reopened.undo() and reopened.text == doc.source_text
+    assert reopened.source_anchor == anchor
+    copied = reopened.source_anchor
+    copied['positions'][0]['start'] = 99
+    assert reopened.source_anchor == anchor
+    store = ReaderDraftStore(app.root, slot='synthetic-bound-source')
+    store.save(ReaderResume(doc))
+    backup = tmp_path / 'backup'
+    manifest = app.backup(backup)
+    destination = tmp_path / 'restored'
+    restore_backup(backup, destination, expected_manifest_sha256=manifest)
+    restored = ReaderDraftStore(destination, slot='synthetic-bound-source').load().document
+    assert restored.source_anchor == anchor and restored.text == doc.text
+    restored_app = LibraryApp(destination)
+    restored_desk = ReadingDesk(restored_app, first, one['edition'])
+    assert read_source_range(restored_desk, 1, len(restored_desk.pages)).reading_document().source_anchor == anchor
+    assert ReadingDocument.from_dict(ReadingDocument(doc.source_text).to_dict()).source_anchor is None
+
+
+@pytest.mark.parametrize('mutation', ['authority', 'hash', 'range', 'kind', 'separator', 'extra', 'null'])
+def test_portable_source_anchor_rejects_inconsistent_data(tmp_path, mutation):
+    app = LibraryApp(tmp_path / 'library')
+    workspace = app.create_workspace('Source')
+    imported = app.add_text(workspace, 'Source', 'A source\fSecond segment')
+    desk = ReadingDesk(app, workspace, imported['edition'])
+    doc = read_source_range(desk, 1, len(desk.pages)).reading_document()
+    data = doc.to_dict()
+    anchor = data['source_anchor']
+    if mutation == 'authority':
+        anchor['quotation_authority'] = True
+    elif mutation == 'hash':
+        anchor['positions'][0]['text_sha256'] = '0' * 64
+    elif mutation == 'range':
+        anchor['positions'][0]['start'] = 1
+    elif mutation == 'kind':
+        anchor['positions'][0]['kind'] = 'printed_page'
+    elif mutation == 'separator':
+        anchor['positions'][1]['start'] -= 1
+    elif mutation == 'extra':
+        anchor['printed_page'] = 'iv'
+    else:
+        data['source_anchor'] = None
+    with pytest.raises(ValueError):
+        ReadingDocument.from_dict(data)
