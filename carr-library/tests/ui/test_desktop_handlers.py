@@ -143,6 +143,9 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
         'install_academic_comparison_actions',
         'install_portable_sync_actions', 'install_language_actions')}
     env.update(installers)
+    env['wx'].Dialog = object
+    monkeypatch.setitem(sys.modules, 'wx', env['wx'])
+    from carr_library.ui.trust_status import install_trust_actions
     from carr_library.ui.audio_studio import install_audio_studio_actions
     from carr_library.ui.recording_dialog import install_recording_actions
     from carr_library.ui.api_connections import install_api_connection_actions
@@ -153,6 +156,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     from carr_library.ui.operations_dialog import install_operations_actions
     from carr_library.ui.reading_import import install_reading_import_actions
     real_installers = {
+        'install_trust_actions': Mock(wraps=install_trust_actions),
         'install_audio_studio_actions': Mock(wraps=install_audio_studio_actions),
         'install_recording_actions': Mock(wraps=install_recording_actions),
         'install_api_connection_actions': Mock(wraps=install_api_connection_actions),
@@ -190,7 +194,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert {spec.command_id for spec, _ in value._pending_keyboard_commands} >= {
         'audio.recording', 'translation.text', 'conversion.documents', 'conversion.formats',
         'engines.local', 'operations.tasks',
-        'reading.import_legacy_copy', 'reading.open_legacy_history'}
+        'reading.import_legacy_copy', 'reading.open_legacy_history', 'delivery.trust_status'}
     assert 'Documents' not in menus
     tools_labels = {item.title for item in menus['&Tools'].items if item.title is not None}
     assert tools_labels == {'Local assistant...\tCtrl+Alt+J', 'Translate selected te&xt...',
@@ -202,6 +206,7 @@ def test_combined_menus_keep_import_and_academic_actions_without_shortcut_collis
     assert 'Academic library...\tCtrl+Shift+B' in labels
     assert 'DOI lookup and open-access sources...' in labels
     assert 'Document formats' in labels
+    assert labels.count('License and signed updates') == 1
     assert 'Import Center: files, folders and queues' in labels
     for handler in (value.import_center, value.open_academic_library, value.export_topic):
         assert any(call.args[1] == handler for call in value.Bind.call_args_list)
@@ -326,7 +331,8 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
                 ('document_conversion', 'install_conversion_actions'),
                 ('engine_settings', 'install_engine_settings_actions'),
                 ('operations_dialog', 'install_operations_actions'),
-                ('reading_import', 'install_reading_import_actions')):
+                ('reading_import', 'install_reading_import_actions'),
+                ('trust_status', 'install_trust_actions')):
             if action_name in menu_globals:
                 module = importlib.import_module('carr_library.ui.' + module_name)
                 if hasattr(module, 'wx'):
@@ -360,6 +366,13 @@ def test_actual_menu_installers_compose_before_keyboard_inventory(classes, monke
         assert 'audio.language_evidence' in keyboard.bindings
         assert 'audio.recording' in keyboard.bindings
         assert keyboard.shortcut('audio.recording') == ''
+        assert 'delivery.trust_status' in keyboard.bindings
+        from carr_library.ui.trust_status import install_trust_actions
+        before_trust_items = [(binding.command.identity, binding.item.GetId())
+                              for binding in collect_commands(value.menu_bar)]
+        install_trust_actions(value)
+        assert [(binding.command.identity, binding.item.GetId())
+                for binding in collect_commands(value.menu_bar)] == before_trust_items
         for command in ('translation.text', 'conversion.documents', 'conversion.formats',
                         'engines.local', 'operations.tasks',
                         'reading.import_legacy_copy', 'reading.open_legacy_history'):
