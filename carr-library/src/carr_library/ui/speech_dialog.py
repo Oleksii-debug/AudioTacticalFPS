@@ -9,6 +9,7 @@ from ..speech import ReadingDocument, SpeechSettings, VoiceRegistry
 from ..speech.player import WavePlayer
 from ..speech.progress_speech import activate_progress_voice, play_when_quiet
 from ..speech.session import ReaderDraftStore, ReaderResume
+from ..speech.navigation import native_cursor_position, native_insertion_offset, select_text_unit
 
 
 def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=None,
@@ -84,6 +85,23 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     layout.Add(controls, 0, wx.EXPAND)
     editor = labelled('&Reading copy (editable; Ctrl+S saves)', wx.TextCtrl,
                       value=text, style=wx.TE_MULTILINE | wx.TE_DONTWRAP, proportion=1)
+    navigation = wx.BoxSizer(wx.HORIZONTAL)
+    navigation.Add(wx.StaticText(dialog, label='Navigation unit'), 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL, 4)
+    navigation_unit = wx.Choice(dialog, choices=['Word', 'Sentence', 'Paragraph'])
+    navigation_unit.SetName('Navigation unit')
+    navigation_unit.SetSelection(0)
+    navigation.Add(navigation_unit, 0, wx.ALL, 4)
+    previous_unit = wx.Button(dialog, label='Previous unit')
+    previous_unit.SetName('Previous text unit')
+    current_unit = wx.Button(dialog, label='Select current unit')
+    current_unit.SetName('Select current text unit')
+    next_unit = wx.Button(dialog, label='Next unit')
+    next_unit.SetName('Next text unit')
+    read_unit = wx.Button(dialog, label='Read current unit')
+    read_unit.SetName('Read current text unit')
+    for control in (previous_unit, current_unit, next_unit, read_unit):
+        navigation.Add(control, 0, wx.ALL, 4)
+    layout.Add(navigation, 0, wx.EXPAND)
     status = labelled('Speech and save status', wx.TextCtrl, style=wx.TE_READONLY | wx.TE_MULTILINE,
                       value='Finding installed local voices. No speech starts automatically.', size=(-1, 90))
     row = wx.BoxSizer(wx.HORIZONTAL)
@@ -136,6 +154,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
             button.Enable(bool(current) and not busy)
         progress_voice.Enable(bool(progress is not None and current and 'volume' in current.capabilities) and not busy)
         pronunciation.Enable(source_loaded and not busy)
+        for button in (navigation_unit, previous_unit, current_unit, next_unit):
+            button.Enable(source_loaded and not busy)
+        read_unit.Enable(source_loaded and bool(current) and not busy)
         if event is not None and current:
             report(f'{current.name}; {current.language}; {current.engine}. '
                    f'Controls: {", ".join(current.capabilities) or "voice defaults only"}. {current.timing}')
@@ -247,7 +268,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
                                  if recovered is not None and voice.id == recovered.voice_id), 0)
                 voice_choice.SetSelection(selected)
                 if recovered is not None:
-                    editor.SetInsertionPoint(min(recovered.cursor, len(editor.GetValue())))
+                    editor.SetInsertionPoint(native_cursor_position(editor, document.text, min(recovered.cursor, len(document.text))))
                 report(recovery_notice + f'{len(voices)} installed voices available. Select text or press F6 to read. '
                        'Voice pitch, emotional delivery and word timing depend on the selected engine.')
             else:
@@ -274,7 +295,7 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
         selected = voice_choice.GetSelection()
         voice_id = voices[selected].id if 0 <= selected < len(voices) else ''
         position = player.position_seconds if last_audio is not None else 0
-        cursor_offset = min(editor.GetInsertionPoint(), len(document.text))
+        cursor_offset = native_insertion_offset(editor, document.text)
         signature = (document._signature(), voice_id, rate.GetValue(), volume.GetValue(), cursor_offset,
                      round(position, 1))
         if not force and signature == last_recovery_signature:
@@ -293,9 +314,30 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     def selected_text(from_cursor=False):
         sync_document()
         if from_cursor:
-            return editor.GetValue()[editor.GetInsertionPoint():]
+            return document.text[native_insertion_offset(editor, document.text):]
         selected = editor.GetStringSelection()
         return selected or editor.GetValue()
+
+    def navigate_unit(event=None, *, direction=0, read_aloud=False):
+        try:
+            if not alive or busy or not source_loaded:
+                raise ValueError('Wait for the current reader operation before navigating text.')
+            source_guard()
+            displayed = editor.GetValue()
+            index = navigation_unit.GetSelection()
+            if not 0 <= index < 3:
+                raise ValueError('Choose word, sentence or paragraph navigation.')
+            unit = ('word', 'sentence', 'paragraph')[index]
+            span = select_text_unit(editor, displayed, unit, direction=direction)
+            if span is None:
+                report('No further ' + unit + ' in this direction. The selection is unchanged.')
+                return
+            report(f'Selected {unit}, characters {span[0] + 1} to {span[1]}. '
+                   'Navigation does not start speech; F6 reads the selection.')
+            if read_aloud:
+                speak()
+        except Exception as exc:
+            report(str(exc), focus=True)
 
     def pronunciations(event=None):
         try:
@@ -587,6 +629,9 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
 
     for control, handler in ((reload_button, reload), (progress_voice, select_progress_voice), (read, speak),
         (cursor, lambda event: speak(from_cursor=True)), (pause, pause_audio), (stop, stop_audio),
+        (previous_unit, lambda event: navigate_unit(direction=-1)), (current_unit, navigate_unit),
+        (next_unit, lambda event: navigate_unit(direction=1)),
+        (read_unit, lambda event: navigate_unit(read_aloud=True)),
         (export_audio, save_audio), (save_button, save_project),
         (save_as, lambda event: save_project(choose=True)), (open_button, open_project),
         (undo, history), (redo, lambda event: history(forward=True)),
@@ -597,7 +642,11 @@ def show_speech_reader(parent, *, text='', title='Reading copy', source_loader=N
     accelerators = []
     for flags, key, handler in ((wx.ACCEL_CTRL, ord('S'), save_project),
         (wx.ACCEL_CTRL | wx.ACCEL_SHIFT, ord('S'), lambda event: save_project(choose=True)),
-        (0, wx.WXK_F6, speak), (0, wx.WXK_F7, pause_audio), (0, wx.WXK_F8, stop_audio)):
+        (0, wx.WXK_F6, speak), (0, wx.WXK_F7, pause_audio), (0, wx.WXK_F8, stop_audio),
+        (wx.ACCEL_CTRL | wx.ACCEL_ALT, wx.WXK_LEFT, lambda event: navigate_unit(direction=-1)),
+        (wx.ACCEL_CTRL | wx.ACCEL_ALT, wx.WXK_HOME, navigate_unit),
+        (wx.ACCEL_CTRL | wx.ACCEL_ALT, wx.WXK_RIGHT, lambda event: navigate_unit(direction=1)),
+        (wx.ACCEL_CTRL | wx.ACCEL_ALT, wx.WXK_RETURN, lambda event: navigate_unit(read_aloud=True))):
         identifier = wx.NewIdRef()
         accelerators.append((flags, key, int(identifier)))
         dialog.Bind(wx.EVT_MENU, handler, id=int(identifier))

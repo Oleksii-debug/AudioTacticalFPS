@@ -36,6 +36,7 @@ def _run_native():
     from carr_library.speech.source import read_source_range
     from carr_library.ui.speech_dialog import show_speech_reader
     import carr_library.speech.reading as reading_module
+    import carr_library.speech.navigation as navigation_module
     import carr_library.ui.pronunciation_dialog as pronunciation_module
     import carr_library.ui.speech_dialog as reader_module
     import carr_library.runtime_settings as runtime_settings
@@ -53,7 +54,7 @@ def _run_native():
           else 'site-packages' in origin.parts)
     checkout = Path(__file__).resolve().parents[1]
     source_identity = {}
-    for module in (reading_module, pronunciation_module, reader_module):
+    for module in (reading_module, navigation_module, pronunciation_module, reader_module):
         actual = Path(module.__file__).resolve()
         expected = checkout / 'src' / Path(*module.__name__.split('.')).with_suffix('.py')
         digest = sha256(actual.read_bytes()).hexdigest()
@@ -303,6 +304,58 @@ def _run_native():
 
         def finish_reader():
             reader = observed['reader']
+            editor = observed['editor']
+            observed['navigation_initial'] = editor.GetValue()
+            named(reader, 'Navigation unit').SetSelection(0)
+            editor.SetInsertionPoint(editor.GetLastPosition() - len('listens.'))
+            press(named(reader, 'Select current text unit'), selected_word)
+
+        def selected_word():
+            reader, editor = observed['reader'], observed['editor']
+            check('native current-word selection after emoji and newline',
+                  editor.GetStringSelection() == 'listens' and wx.Window.FindFocus() is editor)
+            press(named(reader, 'Previous text unit'), previous_word)
+
+        def previous_word():
+            reader, editor = observed['reader'], observed['editor']
+            check('native previous word without autoplay', editor.GetStringSelection() == 'Second')
+            key(editor, wx.WXK_RIGHT, next_word, modifiers=wx.MOD_CONTROL | wx.MOD_ALT)
+
+        def next_word():
+            reader, editor = observed['reader'], observed['editor']
+            check('native next-word accelerator preserves text', editor.GetStringSelection() == 'listens'
+                  and editor.GetValue() == observed['navigation_initial'])
+            named(reader, 'Navigation unit').SetSelection(1)
+            press(named(reader, 'Select current text unit'), selected_sentence)
+
+        def selected_sentence():
+            reader, editor = observed['reader'], observed['editor']
+            check('native deterministic sentence boundary', editor.GetStringSelection() == 'Second listens.')
+            named(reader, 'Navigation unit').SetSelection(2)
+            press(named(reader, 'Select current text unit'), selected_paragraph)
+
+        def selected_paragraph():
+            reader, editor = observed['reader'], observed['editor']
+            check('native paragraph spans one ordinary line break',
+                  editor.GetStringSelection() == observed['navigation_initial'])
+            named(reader, 'Navigation unit').SetSelection(0)
+            editor.SetInsertionPoint(editor.GetLastPosition() - len('Second listens.'))
+            press(named(reader, 'Select current text unit'), navigation_complete)
+
+        def navigation_complete():
+            editor = observed['editor']
+            check('navigation changes no reading or source bytes',
+                  editor.GetStringSelection() == 'Second'
+                  and editor.GetValue() == observed['navigation_initial']
+                  and original_asset.read_bytes() == asset_bytes)
+            observed['expected_cursor'] = observed['navigation_initial'].rindex('Second') + len('Second')
+            def cursor_saved():
+                saved = ReaderDraftStore(library.root, slot='pronunciation-native').load()
+                return saved is not None and saved.cursor == observed['expected_cursor']
+            until(cursor_saved, finish_after_cursor_saved, timeout=10)
+
+        def finish_after_cursor_saved():
+            reader = observed['reader']
             close = next(control for control in children(reader)
                          if isinstance(control, wx.Button) and control.GetLabel() == 'C&lose')
             press(close, lambda: None)
@@ -318,6 +371,7 @@ def _run_native():
                 check('reading recovery retains exact source lineage', recovered is not None
                       and recovered.document.source_anchor == source.reading_document().source_anchor
                       and recovered.document.source_text == source.text)
+                check('native cursor saved as a Python character offset', recovered.cursor == observed['expected_cursor'])
                 check('source locator grants no quotation authority',
                       recovered.document.source_anchor['quotation_authority'] is False)
                 check('final source asset digest unchanged', sha256(original_asset.read_bytes()).hexdigest()

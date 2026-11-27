@@ -113,3 +113,38 @@ is copied:
 - [Readium locators](https://readium.org/architecture/models/locators/): resource
   identity and saved locations. CARR uses its existing stricter revision and
   content-digest identities rather than adopting another reader dependency.
+
+## Voice-reader text navigation
+
+The existing Voice reader now selects a current, previous or next word,
+sentence or paragraph. Choose **Navigation unit**, then use the named buttons
+or Ctrl+Alt+Left / Ctrl+Alt+Right. Ctrl+Alt+Home selects the current unit.
+Selection alone starts no speech. **Read current unit**, Ctrl+Alt+Enter or the
+existing F6 command explicitly reads the selected text through the same local
+voice registry and quiet-playback path.
+
+Words keep Unicode letters, numbers and combining marks together, including
+internal apostrophes and hyphens. Sentence units use punctuation and line
+boundaries; abbreviation handling and languages without word separators are
+not linguistic alignment claims. Paragraphs end at a blank line or Unicode
+paragraph separator. An ordinary CRLF is one line break, not a blank paragraph.
+Previous/next never wrap into another book or start whole-document playback
+when no further unit exists.
+
+Native positions are mapped through the control's observed Unicode prefixes,
+so an emoji's UTF-16 units and displayed line-ending normalization cannot
+silently shift the selected text. The same mapping now corrects reading from
+the cursor and saved/recovered cursor positions. Original source bytes,
+source anchors and quotation authority are unchanged; navigation does not
+replace text or synthesize timing.
+
+The prefix/cursor mapping reuses the canonical-compatible PR149 source
+`906aa1a95a8f40ef119682d2d5c805c017c327f4` without its additional live-reader
+or speech adapter. New deterministic navigation and actual-callback tests are
+`tests/speech/test_navigation.py` and
+`tests/ui/test_reader_navigation.py`. The existing installed
+`scripts/windows_pronunciation_smoke.py` additionally drives the real reader
+buttons and next-word accelerator, checks paragraph/Unicode selection,
+unchanged source bytes and saved character offsets. This API-composed change
+requires fresh execution; no new Linux, Windows, NVDA or listening PASS is
+claimed from source review alone.
