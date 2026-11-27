@@ -84,8 +84,8 @@ def studio_output_fixture(project=None, store=None):
                run=lambda op, done, **kw: done(op(lambda _: None)),
                rows=rows, calls=calls, reports=reports, decisions=decisions,
                prompts=prompts, saves=saves, entries=entries)
-    path = Path(__file__).resolve().parents[2] / 'src/carr_library/ui/studio_dialog.py'
-    source = path.read_text(encoding='utf-8')
+    from carr_library.ui import studio_dialog
+    source = Path(studio_dialog.__file__).read_text(encoding='utf-8')
     methods = source[source.index('    def render(event=None):'):
                      source.index('    def preview(event=None):')]
     exec('def factory():\n    current_job = None\n    busy = False\n'
