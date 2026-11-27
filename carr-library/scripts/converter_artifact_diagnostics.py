@@ -12,25 +12,25 @@ import xml.etree.ElementTree as ET
 REPOSITORY = 'Oleksii-debug/AudioTacticalFPS'
 ARTIFACTS = [
   {
-    "run": 45992503530,
-    "commit": "955165132fd530d6c3deb0e5b4b48f66dde77963",
-    "id": 15194279779,
-    "sha256": "a677aad0a042786d01468d3e6c3a5bda8396d370c88f4d1f540cd72f5e847103",
-    "kind": "selected"
+    "run": 46004249451,
+    "commit": "67c717c48660a32080aadcd5cf331de557e890d5",
+    "id": 15202124359,
+    "sha256": "8cbb3ffdb04b7127512efd94de1e214971dfb35086993b1c48a69678e6c3eb41",
+    "kind": "calibre"
   },
   {
-    "run": 45992503530,
-    "commit": "955165132fd530d6c3deb0e5b4b48f66dde77963",
-    "id": 15196092117,
-    "sha256": "942daaa852b2cd4394fa9217fd1bdfa49cfaa512729d6dc819ff4ca78f4461e2",
-    "kind": "office"
+    "run": 46004249451,
+    "commit": "67c717c48660a32080aadcd5cf331de557e890d5",
+    "id": 15202261396,
+    "sha256": "d778bd37dc5b8f9942671e6a4575fd62a1780764fb5bf7cec863437d336e89a0",
+    "kind": "chm"
   },
   {
-    "run": 46000394557,
-    "commit": "a68fb643bc968020a11e1625e4e59b2d8a9865df",
-    "id": 15200390892,
-    "sha256": "d6b1132c2549a10e6ab46b9bcadc4a1ef4152b606a30a3d07dc6e644d0a6a091",
-    "kind": "translation"
+    "run": 46007037492,
+    "commit": "ac47716ab40a839ed289e08ebe73a919216c8f12",
+    "id": 15202676085,
+    "sha256": "ca9c84f530dfd187f04ee0bd07b67fab9d098206615f7ebc210553524aab23c1",
+    "kind": "translation-followup"
   }
 ]
 
@@ -65,7 +65,8 @@ def brief(value):
     return value
 
 wanted = {
-    'converter-gate.json', 'publisher-identities.json', 'source-provenance.json',
+    'converter-gate.json', 'legacy-converter-gate.json', 'before-execution.json',
+    'publisher-identities.json', 'source-provenance.json',
     'source-origins.json', 'installed-origins.json', 'translation-scope-gate.json',
     'native-selected-advanced.txt', 'native-selected-advanced.json',
     'native-document.txt', 'native-document.json', 'native-chapter.txt',
@@ -111,6 +112,18 @@ for pin in ARTIFACTS:
                         print('FAILED_CASE', case.get('classname'), case.get('name'), flush=True)
                         print((failure.text or '')[-12000:], flush=True)
             elif name.endswith('.json'):
-                print(name, json.dumps(brief(json.loads(content)), sort_keys=True, ensure_ascii=False)[-80000:], flush=True)
+                value = json.loads(content)
+                if isinstance(value, dict) and isinstance(value.get('runtime_files'), dict):
+                    files = value['runtime_files']
+                    code = {key: row for key, row in files.items()
+                            if PurePosixPath(key).suffix.casefold() in ('.exe', '.dll', '.pyd', '.zip', '.so')
+                            or key == 'calibre-debug'}
+                    print('RUNTIME_CODE_INVENTORY', json.dumps({
+                        'artifact': pin['id'], 'member': name, 'files': len(files), 'code_handles': len(code),
+                        'code_bytes': sum(row['bytes'] for row in code.values()),
+                        'suffix_counts': dict(Counter(PurePosixPath(key).suffix.casefold() for key in code)),
+                        'canonical_sha256': hashlib.sha256(json.dumps(code, sort_keys=True,
+                            separators=(',', ':')).encode()).hexdigest()}), flush=True)
+                print(name, json.dumps(brief(value), sort_keys=True, ensure_ascii=False)[-80000:], flush=True)
             else:
                 print(name, content.decode('utf-8', errors='replace')[-48000:], flush=True)
