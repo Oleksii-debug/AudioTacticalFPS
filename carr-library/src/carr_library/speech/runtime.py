@@ -360,7 +360,15 @@ class VoiceRegistry:
             raise ValueError('The voice changed after the production plan was fingerprinted. Retry with its current identity.')
         count, frames, params = 0, 0, None
         target = Path(destination).absolute()
-        with new_output(target, cancelled=check) as staged:
+        def attest_output(staged):
+            # Bind the receipt to the exact flushed file and final voice identity.
+            if self.fingerprint(voice_id, cancelled=check) != initial_identity:
+                raise ValueError('The installed voice assets changed during synthesis; no audio was published.')
+            audio = local_file(staged)
+            if audio.stat().st_size > options.max_output_bytes or digest(audio, cancelled=check) != checksum:
+                raise ValueError('The staged WAV no longer matches its rendering receipt.')
+
+        with new_output(target, cancelled=check, before_publish=attest_output) as staged:
             with wave.open(str(staged), 'wb') as combined:
                 # A first-chunk cancellation must preserve its original error,
                 # not be replaced by Wave_write.close complaining about unset
@@ -401,8 +409,6 @@ class VoiceRegistry:
             rate, channels, frames, _ = _wave_info(staged, cancelled=check,
                                                   max_output_bytes=options.max_output_bytes)
             checksum = digest(staged, cancelled=check)
-            if self.fingerprint(voice_id, cancelled=check) != initial_identity:
-                raise ValueError('The installed voice assets changed during synthesis; no audio was published.')
         return SpeechResult(target, checksum, frames / rate, rate, channels, frames,
                             voice_id, sha256(text.encode('utf-8')).hexdigest(), count)
 

@@ -170,3 +170,71 @@ def test_native_windows_sapi_voice_and_pcm_output(tmp_path):
     assert result.frames > result.sample_rate
     assert result.path.is_file()
     assert result.sha256 == sha256(result.path.read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize('change', ['none', 'audio', 'voice', 'cancel'])
+def test_pcm_receipt_attests_flushed_output(tmp_path, monkeypatch, change):
+    """Exercise real no-clobber publication with a synthetic local PCM provider."""
+    asset = tmp_path / 'voice.fixture'
+    asset.write_bytes(b'synthetic voice identity')
+    output = tmp_path / 'result.wav'
+    stopped = False
+    flushed = False
+
+    class SyntheticVoice:
+        name = 'Synthetic PCM fixture'
+        executable = asset
+
+        def voices(self):
+            return (Voice('fixture:voice', 'Fixture', self.name, 'uk'),)
+
+        def render(self, text, voice, destination, settings, cancelled):
+            with wave.open(str(destination), 'wb') as stream:
+                stream.setnchannels(1)
+                stream.setsampwidth(2)
+                stream.setframerate(22050)
+                stream.writeframes(b'\x01\x00' * 32)
+
+    actual_fsync = os.fsync
+
+    def flush(fd):
+        nonlocal stopped, flushed
+        actual_fsync(fd)
+        staged = list(tmp_path.glob('.speech-*/output.wav'))
+        if not staged or flushed:
+            return
+        opened, candidate = os.fstat(fd), staged[0].stat()
+        if (opened.st_dev, opened.st_ino) != (candidate.st_dev, candidate.st_ino):
+            return
+        flushed = True
+        if change == 'audio':
+            os.lseek(fd, -1, os.SEEK_END)
+            os.write(fd, b'\x7f')
+            actual_fsync(fd)
+        elif change == 'voice':
+            asset.write_bytes(b'changed voice identity')
+        elif change == 'cancel':
+            stopped = True
+
+    monkeypatch.setattr(os, 'fsync', flush)
+    registry = VoiceRegistry([SyntheticVoice()])
+    try:
+        text = 'Дослівний текст — Dobrý deň.'
+        def render():
+            return registry.synthesize(text, 'fixture:voice', output,
+                                       cancelled=lambda: stopped)
+        if change == 'none':
+            result = render()
+            assert result.sha256 == sha256(output.read_bytes()).hexdigest()
+            assert result.text_sha256 == sha256(text.encode('utf-8')).hexdigest()
+        elif change == 'cancel':
+            with pytest.raises(InterruptedError):
+                render()
+        else:
+            with pytest.raises(ValueError, match='receipt' if change == 'audio' else 'voice assets changed'):
+                render()
+        assert flushed
+        assert output.exists() == (change == 'none')
+        assert not list(tmp_path.glob('.speech-*'))
+    finally:
+        registry.close()
