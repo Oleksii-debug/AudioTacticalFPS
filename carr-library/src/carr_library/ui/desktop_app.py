@@ -4,6 +4,7 @@ The existing scoped panels and wx data-view grid supply the main workflows.
 Long operations run outside the UI thread; focus returns to readable status.
 """
 from .worker_lifetime import DesktopExecutor
+from .source_launch import call_on_ui
 from contextlib import contextmanager
 from pathlib import Path
 import threading
@@ -483,11 +484,18 @@ class DesktopSearchPanel(PagedSearchPanel):
                 raise ValueError('The selection changed. Select the source again.')
 
         def prepare():
-            # Read only captured scope here; native selection controls belong to
-            # the UI thread. The service rechecks topic access in its transaction.
+            # File copying and complete original/view verification stay on the
+            # existing worker. Only the final checked native opener is queued
+            # onto wx; its worker keeps both exact readers alive until it returns.
             check_context()
-            return prepare_source_file(library, *selection, authorized_topic=topic,
-                                       cancelled=cancelled)
+            source = prepare_source_file(library, *selection, authorized_topic=topic,
+                                         cancelled=cancelled)
+            if (source.identity.workspace, source.ref, source.identity.revision) != selection:
+                raise ValueError('The prepared source changed. Select the source again.')
+            launch_source_file(library, source, launch, authorized_topic=topic,
+                cancelled=cancelled, native_dispatch=lambda action: call_on_ui(
+                    wx.CallAfter, action, cancelled=cancelled))
+            return source
 
         def launch(path):
             # Source validation may take time. Check scope again immediately
@@ -496,21 +504,25 @@ class DesktopSearchPanel(PagedSearchPanel):
             return wx.LaunchDefaultApplication(path)
 
         def ready(source):
-            try:
-                check_selection()
-                if (source.identity.workspace, source.ref, source.identity.revision) != selection:
-                    raise ValueError('The prepared source changed. Select the source again.')
-                launch_source_file(library, source, launch, authorized_topic=topic,
-                                   cancelled=cancelled)
-                self.status.ChangeValue(f'Opened a viewing copy of {source.title}. '
-                    f'Source location: {source.locator.display()}. '
-                    'Use the external viewer to navigate to this location. '
-                    'The retained original is unchanged.')
-            except Exception as exc:
-                self.status.ChangeValue(f'Original not opened: {exc}')
+            # The native action already returned successfully. A later Stop
+            # cannot turn that acknowledgement into "not opened".
+            if (getattr(self.frame, '_closing', False)
+                    or self.frame.library is not library or self.bound_library is not library
+                    or self.frame.active != active or self._context_epoch != epoch):
+                return
+            self.status.ChangeValue(f'Opened a viewing copy of {source.title}. '
+                f'Source location: {source.locator.display()}. '
+                'Use the external viewer to navigate to this location. '
+                'The retained original is unchanged.')
             self.status.SetFocus()
 
-        self.frame.run_job('Preparing original source file', prepare, ready)
+        def failed(error):
+            if getattr(self.frame, '_closing', False):
+                return
+            self.status.ChangeValue(f'Original not opened: {error}')
+            self.status.SetFocus()
+
+        self.frame.run_job('Preparing and verifying original source file', prepare, ready, failed=failed)
 
     def save_selected(self, event):
         if self.frame.working:

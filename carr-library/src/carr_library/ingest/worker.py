@@ -47,6 +47,31 @@ def _path(root, request_id):
     return _directory(root) / (request_id + '.json')
 
 
+def request_profile(record):
+    """Pure versioned admission; historical requests keep their exact byte limit."""
+    version = record.get('version') if isinstance(record, dict) else None
+    if type(version) is not int or version not in (1, 2):
+        raise ValueError('Invalid import request source-profile version.')
+    if version == 1:
+        if 'source_profile' in record:
+            raise ValueError('A legacy import request cannot acquire a streamed source profile.')
+        return None
+    from .streamed_text import profile_from_value
+    return profile_from_value(record.get('source_profile'))
+
+
+def validate_request_admission(root, request_id, identity, attempt):
+    """Recheck the parent's frozen admission before source access or publication."""
+    if (not isinstance(identity, str) or re.fullmatch('[0-9a-f]{64}', identity) is None
+            or not isinstance(attempt, str) or re.fullmatch('[0-9a-f]{32}', attempt) is None):
+        raise ValueError('Invalid frozen import worker admission.')
+    record = load_request(root, request_id)
+    if (request_identity(record) != identity or record.get('attempt_id') != attempt
+            or record.get('attempt') != attempt):
+        raise ValueError('The import request or worker attempt changed after admission.')
+    return record
+
+
 def load_request(root, request_id):
     path = _path(root, request_id)
     info = path.lstat()
@@ -54,10 +79,12 @@ def load_request(root, request_id):
             or getattr(info, 'st_file_attributes', 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT):
         raise ValueError('Invalid import request file.')
     record = json.loads(path.read_text(encoding='utf-8'))
-    if (not isinstance(record, dict) or record.get('version') != 1
+    if (not isinstance(record, dict) or type(record.get('version')) is not int
+            or record['version'] not in (1, 2)
             or record.get('request_id') != request_id
             or record.get('data_dir') != str(Path(root).resolve())):
         raise ValueError('Import request identity changed.')
+    request_profile(record)
     return record
 
 
@@ -98,11 +125,14 @@ def request_identity(record):
     """Hash only immutable admission fields, never a claimed terminal result."""
     keys = {'version', 'request_id', 'data_dir', 'workspace', 'source', 'metadata', 'config'}
     if (not isinstance(record, dict) or not keys <= set(record)
-            or type(record['version']) is not int or record['version'] != 1
+            or type(record['version']) is not int or record['version'] not in (1, 2)
             or not isinstance(record['metadata'], dict) or set(record['metadata']) != FIELDS
             or not isinstance(record['config'], dict)):
         raise ValueError('Invalid persisted import request identity.')
+    profile = request_profile(record)
     identity = {key: record[key] for key in keys}
+    if profile is not None:
+        identity['source_profile'] = profile.to_dict()
     identity['expected_manifest'] = record.get('expected_manifest')
     return sha256(canonical(identity).encode('utf-8')).hexdigest()
 
@@ -243,9 +273,13 @@ def confirm_publication(root, request_id):
 
 def _request_identity(record):
     """Stable request identity; progress and publication candidates are not authority."""
-    return {key: record.get(key) for key in (
+    value = {key: record.get(key) for key in (
         'version', 'request_id', 'data_dir', 'workspace', 'source',
         'metadata', 'config', 'expected_manifest')}
+    profile = request_profile(record)
+    if profile is not None:
+        value['source_profile'] = profile.to_dict()
+    return value
 
 
 def _publication_state(db, record, revision, *, allow_superseded=False):
@@ -304,6 +338,9 @@ def _publication_state(db, record, revision, *, allow_superseded=False):
             _metadata(metadata['volume']), _metadata(metadata['edition']))):
         raise ValueError('Import publication source metadata changed.')
     config = json.loads(row['config'])
+    profile = request_profile(record)
+    if profile is not None and config != profile.configuration():
+        raise ValueError('Streamed import publication configuration changed.')
     if (not isinstance(config, dict)
             or (config.get('kind') == 'physical_page' and config.get('config') != record['config'])):
         raise ValueError('Import publication extraction settings changed.')
@@ -329,6 +366,8 @@ def _publication_state(db, record, revision, *, allow_superseded=False):
 def validate_publication_candidate_document(record):
     """Pure strict decoder for the accepted canonical V5 publication hint."""
     from ..catalog.intake import MAX_BYTES
+    profile = (request_profile(record) if record.get('version', 1) != 1
+               or 'source_profile' in record else None)
     attempt = record.get('attempt')
     if 'attempt' in record and (not isinstance(attempt, str)
             or not re.fullmatch('[0-9a-f]{32}', attempt)):
@@ -352,7 +391,9 @@ def validate_publication_candidate_document(record):
             or not isinstance(manifest.get('sha256'), str)
             or not re.fullmatch('[0-9a-f]{64}', manifest['sha256'])
             or manifest.get('mime') not in MIME_SUFFIXES
-            or type(manifest.get('size')) is not int or not 1 <= manifest['size'] <= MAX_BYTES
+            or type(manifest.get('size')) is not int
+            or not 1 <= manifest['size'] <= (profile.maximum_bytes if profile else MAX_BYTES)
+            or profile is not None and manifest['mime'] != profile.mime
             or manifest['sha256'] != record.get('asset_sha256')
             or (record.get('expected_manifest') is not None
                 and manifest != record['expected_manifest'])
@@ -768,7 +809,8 @@ def _stop(process):
         process.wait(timeout=2)
 
 
-def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None):
+def _request_record(root, workspace, source, metadata, config, request_id, expected_manifest=None,
+                    source_profile=None):
     metadata = dict(metadata)
     if metadata.get('title') in (None, ''):
         metadata['title'] = Path(source).stem
@@ -777,6 +819,13 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
     record = dict(version=1, request_id=request_id, data_dir=str(Path(root).resolve()),
                   workspace=workspace, source=str(Path(source).absolute()),
                   metadata=metadata, config=config_dict(config), state='pending')
+    profile = None
+    if source_profile is not None:
+        from .streamed_text import profile_from_value
+        profile = profile_from_value(source_profile)
+        if Path(source).suffix.casefold() != profile.suffix:
+            raise ValueError('The selected source format differs from its explicit profile.')
+        record.update(version=2, source_profile=profile.to_dict())
     if expected_manifest is not None:
         from ..catalog.intake import MAX_BYTES
         if (not isinstance(expected_manifest, dict)
@@ -785,7 +834,8 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
                 or not re.fullmatch('[0-9a-f]{64}', expected_manifest['sha256'])
                 or expected_manifest['mime'] not in MIME_SUFFIXES
                 or type(expected_manifest['size']) is not int
-                or not 0 < expected_manifest['size'] <= MAX_BYTES):
+                or not 0 < expected_manifest['size'] <= (profile.maximum_bytes if profile else MAX_BYTES)
+                or profile is not None and expected_manifest['mime'] != profile.mime):
             raise ValueError('Invalid planned source manifest.')
         record['expected_manifest'] = dict(expected_manifest)
     # Compare the exact representation persisted by JSON, including sequences.
@@ -793,7 +843,7 @@ def _request_record(root, workspace, source, metadata, config, request_id, expec
 
 
 def prepare_request(root, workspace, source, metadata, config, *, request_id=None,
-                    expected_manifest=None):
+                    expected_manifest=None, source_profile=None):
     """Persist stable import identities without opening or processing the source.
 
     A batch can save its request ID first and safely repeat this preparation
@@ -802,7 +852,7 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         planned = _request_record(root, workspace, source, metadata, config,
-                                  request_id, expected_manifest)
+                                  request_id, expected_manifest, source_profile)
         try:
             existing = load_request(root, request_id)
         except FileNotFoundError:
@@ -816,28 +866,34 @@ def prepare_request(root, workspace, source, metadata, config, *, request_id=Non
 
 
 def run_request(root, workspace, source, metadata, config, *, cancelled=lambda: False,
-                timeout=120.0, request_id=None):
+                timeout=120.0, request_id=None, source_profile=None):
     """Execute a new or resumed document request without parsing in the caller."""
     new = request_id is None
     request_id = request_id or uuid4().hex
     with request_lock(root, request_id):
         return _run_request(root, workspace, source, metadata, config,
                             cancelled=cancelled, timeout=timeout,
-                            request_id=request_id, new=new)
+                            request_id=request_id, new=new, source_profile=source_profile)
 
 
 def _run_request(root, workspace, source, metadata, config, *, cancelled,
-                 timeout, request_id, new):
+                 timeout, request_id, new, source_profile=None):
     if (not callable(cancelled) or type(timeout) not in (int, float)
             or not math.isfinite(timeout) or not 0.1 <= timeout <= 600):
         raise ValueError('Import timeout must be between 0.1 and 600 seconds.')
     if new:
-        record = _request_record(root, workspace, source, metadata, config, request_id)
+        record = _request_record(root, workspace, source, metadata, config, request_id,
+                                 source_profile=source_profile)
         _store(root, request_id, record, create=True)
     else:
         record = load_request(root, request_id)
         if record.get('workspace') != workspace:
             raise ValueError('Import request belongs to another library.')
+    profile = request_profile(record)
+    if not new and source_profile is not None:
+        from .streamed_text import profile_from_value
+        if profile_from_value(source_profile) != profile:
+            raise ValueError('The resumed import must keep its original source profile.')
     identity = request_identity(record)
     if not cancelled() and (record.get('publication') is not None
                             or record.get('publication_candidate') is not None
@@ -845,14 +901,44 @@ def _run_request(root, workspace, source, metadata, config, *, cancelled,
         recovered = _settle_request(root, request_id, identity)
         if recovered is not None:
             return recovered
-    attempt = uuid4().hex
-    record_progress(root, request_id, state='running', attempt_id=attempt, attempt=attempt,
-                    publication=None, publication_candidate=None)
-    result = _invoke({'data_dir': str(Path(root).resolve()), 'request_id': request_id,
-                      'timeout': timeout}, timeout=timeout, cancelled=cancelled)
-    # _invoke returns only after its process has exited or has been stopped and
-    # reaped. A timeout/cancel/lost stdout receipt cannot undo a durable commit.
-    return _settle_request(root, request_id, identity, result)
+    def execute(stopped):
+        attempt = uuid4().hex
+        record_progress(root, request_id, state='running', attempt_id=attempt, attempt=attempt,
+                        publication=None, publication_candidate=None)
+        message = {'data_dir': str(Path(root).resolve()), 'request_id': request_id,
+                   'timeout': timeout}
+        if profile is not None:
+            message.update(request_sha256=identity, attempt_id=attempt)
+        result = _invoke(message, timeout=timeout, cancelled=stopped)
+        # The unchanged supervisor has stopped/reaped its exact interpreter
+        # before publication reconciliation. A late stop cannot undo a commit.
+        return _settle_request(root, request_id, identity, result)
+
+    if profile is None:
+        return execute(cancelled)
+    from ..operations import ResourceBroker, ResourceRequest, ResourceCancelled
+    broker = ResourceBroker.for_app(root)
+    # Same existing broker; declared source/checkpoint/catalog/scratch capacity.
+    # This is finite admission, not measured RSS or an OS memory sandbox.
+    request = ResourceRequest(cpu_slots=1, memory_bytes=512 * 1024**2,
+        disk_bytes=10 * profile.maximum_bytes + 128 * 1024**2,
+        disk_path=Path(root).resolve())
+    try:
+        with broker.reserve(request, operation_id='document:' + request_id,
+                            cancelled=cancelled, timeout=60) as lease:
+            if request_identity(load_request(root, request_id)) != identity:
+                raise ValueError('The import request changed while waiting for shared resources.')
+            def stopped():
+                if lease.cancelled():
+                    return True
+                lease.checkpoint()
+                return False
+            return execute(stopped)
+    except ResourceCancelled:
+        result = dict(state='cancelled', message='Import stopped while waiting for shared resources.',
+                      request_id=request_id, isolated=True)
+        record_progress(root, request_id, state='cancelled', result=result)
+        return result
 
 
 def _invoke(message, *, timeout, cancelled=lambda: False):
@@ -984,9 +1070,10 @@ def main():
             raise ValueError('Import worker request exceeded its limit.')
         message = json.loads(raw)
         import_keys = {'data_dir', 'request_id', 'timeout'}
+        streamed_keys = import_keys | {'request_sha256', 'attempt_id'}
         render_keys = {'action', 'source', 'sha256', 'physical', 'timeout'}
         direct_keys = {'action', 'source', 'sha256', 'mime', 'workspace', 'edition', 'timeout'}
-        if not isinstance(message, dict) or set(message) not in (import_keys, render_keys, direct_keys):
+        if not isinstance(message, dict) or set(message) not in (import_keys, streamed_keys, render_keys, direct_keys):
             raise ValueError('Invalid import worker request schema.')
         timeout = message['timeout']
         if type(timeout) not in (int, float) or not math.isfinite(timeout) or not 0.1 <= timeout <= 600:
@@ -1022,6 +1109,14 @@ def main():
             print(canonical({'result': dict(renderer=renderer, fingerprint=fingerprint)}))
             return 0
         record = load_request(message['data_dir'], message['request_id'])
+        profile = request_profile(record)
+        if profile is not None:
+            if set(message) != streamed_keys:
+                raise ValueError('A streamed import requires its frozen supervising attempt.')
+            record = validate_request_admission(message['data_dir'], message['request_id'],
+                message['request_sha256'], message['attempt_id'])
+        elif set(message) != import_keys:
+            raise ValueError('A historical request cannot acquire streamed worker admission.')
         if (not isinstance(record.get('metadata'), dict) or set(record['metadata']) != FIELDS
                 or not isinstance(record.get('config'), dict)
                 or not isinstance(record.get('workspace'), str)
@@ -1038,11 +1133,16 @@ def main():
             app = LibraryApp(message['data_dir'])
             source = record['source']
             if record.get('asset_sha256'):
-                source = app.assets.resolve(record['asset_sha256'])
+                source = (app.assets.resolve(record['asset_sha256']) if profile is None else
+                          app.assets.resolve(record['asset_sha256'], profile=profile))
             result = app._import_file(record['workspace'], source, **metadata,
                                       config=Config(**record['config']),
                                       _request_id=record['request_id'], _resume_job=record.get('job'),
-                                      _expected_manifest=record.get('expected_manifest'))
+                                      _expected_manifest=record.get('expected_manifest'),
+                                      **(dict(_source_profile=profile,
+                                              _request_sha256=message['request_sha256'],
+                                              _request_attempt=message['attempt_id'])
+                                         if profile is not None else {}))
         print(canonical({'result': result}))
         return 0
     except Exception as exc:

@@ -114,15 +114,17 @@ class _SearchBudget:
 
 class _CatalogPublisher:
     """Keep the existing ingest journal, with one atomic catalog publication."""
-    def __init__(self, storage, registration, *, root=None, request_id=None):
+    def __init__(self, storage, registration, *, root=None, request_id=None, request_guard=None):
         self.storage, self.record = storage, registration
         self.db = storage.db
         self.review_records = lambda: ()
         self.root, self.request_id = root, request_id
+        self.request_guard = request_guard or (lambda: None)
         self.published_here = False
         self.publication_result = None
 
     def publish_revision(self, workspace, edition, revision, asset, config, pages):
+        self.request_guard()
         if edition != self.record.edition_id or asset != self.record.manifest['sha256']:
             raise ValueError('Import identity changed.')
         from .ingest.worker import publication_before, prepare_publication, confirm_publication
@@ -153,6 +155,7 @@ class _CatalogPublisher:
             result = self.publication_result or dict(state='complete', id=revision,
                 workspace=workspace, edition=edition, asset=asset, completed=count,
                 total=count, error=None, verified=self.record.manifest['mime'] == 'text/plain')
+            self.request_guard()
             prepare_publication(self.root, self.request_id, self.db, revision, before, result)
         # Set only after the catalog/source transaction committed. Replays must
         # still pass their independent cancellation and membership checks.
@@ -160,6 +163,7 @@ class _CatalogPublisher:
         confirm_publication(self.root, self.request_id)
 
     def check(self):
+        self.request_guard()
         return self.storage.check()
 
 
@@ -526,7 +530,8 @@ class LibraryApp:
 
     def import_file(self, workspace, path, *, title=None, authors=(), language=None,
                     edition=None, volume=None, collections=(), work_id=None,
-                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0):
+                    edition_id=None, cancelled=lambda: False, config=None, timeout=120.0,
+                    source_profile=None):
         """Isolate document parsing; retain the exact strict UTF-8 TXT path inline."""
         from .extract.page_ocr import Config
         if not isinstance(authors, (tuple, list)) or len(authors) > 100:
@@ -534,15 +539,21 @@ class LibraryApp:
         if not isinstance(collections, (tuple, list)) or len(collections) > 100:
             raise ValueError('invalid collections')
         path = Path(path).absolute()
+        if source_profile is not None:
+            from .ingest.streamed_text import profile_from_value
+            source_profile = profile_from_value(source_profile)
+            if path.suffix.casefold() != source_profile.suffix:
+                raise ValueError('The selected source format differs from its explicit profile.')
         metadata = dict(title=title, authors=tuple(authors), language=language,
                         edition=edition, volume=volume, collections=tuple(collections),
                         work_id=work_id, edition_id=edition_id)
-        if path.suffix.casefold() in ISOLATED_SUFFIXES:
+        if source_profile is not None or path.suffix.casefold() in ISOLATED_SUFFIXES:
             from .ingest.worker import run_request
             with self.read(workspace):
                 pass
             return run_request(self.root, workspace, path, metadata, config or Config(),
-                               cancelled=cancelled, timeout=timeout)
+                               cancelled=cancelled, timeout=timeout,
+                               **(dict(source_profile=source_profile) if source_profile is not None else {}))
         return self._import_file(workspace, path, **metadata, cancelled=cancelled, config=config)
 
     def resume_import(self, workspace, request_id, *, cancelled=lambda: False, timeout=120.0):
@@ -653,7 +664,12 @@ class LibraryApp:
                 raise ValueError('Import source or configuration changed.')
             if publication_pages(db, revision) != (intent['page_count'], intent['pages_sha256']):
                 raise ValueError('Sealed import publication pages changed.')
-            original = self.assets.resolve(published[2])
+            from .ingest.worker import request_profile
+            profile = request_profile(request)
+            if profile is not None and settings != profile.configuration():
+                raise ValueError('Streamed import publication source profile changed.')
+            original = (self.assets.resolve(published[2]) if profile is None else
+                        self.assets.resolve(published[2], profile=profile))
             manifest = db.execute('SELECT mime,size FROM catalog_asset WHERE digest=?',
                                   (published[2],)).fetchone()
             if (manifest is None or manifest[1] != original.stat().st_size
@@ -690,7 +706,8 @@ class LibraryApp:
     def _import_file(self, workspace, path, *, title=None, authors=(), language=None,
                      edition=None, volume=None, collections=(), work_id=None,
                      edition_id=None, cancelled=lambda: False, config=None,
-                     _request_id=None, _resume_job=None, _expected_manifest=None):
+                     _request_id=None, _resume_job=None, _expected_manifest=None,
+                     _source_profile=None, _request_sha256=None, _request_attempt=None):
         """Retain original bytes and reuse resumable ingest with atomic publication.
 
         A completed TXT import is independently verified against original bytes.
@@ -698,13 +715,32 @@ class LibraryApp:
         OCR is reported explicitly and never silently exposed as verified text.
         """
         from .extract.page_ocr import Config
+        profile = None
+        request_guard = lambda: None
+        if _source_profile is not None:
+            from .ingest.streamed_text import profile_from_value
+            from .ingest.worker import request_profile, validate_request_admission
+            profile = profile_from_value(_source_profile)
+            if _request_id is None:
+                raise ValueError('Streamed text must use the existing owned import request.')
+            def request_guard():
+                record = validate_request_admission(self.root, _request_id,
+                    _request_sha256, _request_attempt)
+                if request_profile(record) != profile:
+                    raise ValueError('The admitted streamed source profile changed.')
+            request_guard()
+        elif _request_sha256 is not None or _request_attempt is not None:
+            raise ValueError('Frozen streamed admission cannot change the original source adapter.')
         path = Path(path).absolute()
         collections = tuple(collections)
         with self.read(workspace) as db:
             catalog = Catalog(db, workspace)
             for collection in collections:
                 catalog._active_collection(collection)
-        if _expected_manifest is None:
+        if profile is not None:
+            from .ingest.streamed_text import inspect_text
+            asset = inspect_text(path, profile, cancelled=cancelled)
+        elif _expected_manifest is None:
             asset = snapshot(path.parent, path.name)
         else:
             from .ingest.batch_scan import planned_snapshot
@@ -720,11 +756,15 @@ class LibraryApp:
                 self._authorize(storage.db, workspace)
                 for collection in collections:
                     Catalog(storage.db, workspace)._active_collection(collection)
-                retained = self.assets.retain(asset.data, asset.mime, asset.digest)
+                request_guard()
+                retained = (self.assets.retain(asset.data, asset.mime, asset.digest) if profile is None else
+                    self.assets.retain_file(path, asset.mime, asset.digest, asset.size,
+                        profile=profile, expected_identity=asset.identity, cancelled=cancelled))
                 from .ingest.worker import (RuntimeBoundIngest, load_reviews, record_progress,
                     publication_before, prepare_publication, confirm_publication)
                 record_progress(self.root, _request_id, asset_sha256=asset.digest)
-                publisher = _CatalogPublisher(storage, record, root=self.root, request_id=_request_id)
+                publisher = _CatalogPublisher(storage, record, root=self.root, request_id=_request_id,
+                                              request_guard=request_guard)
                 if asset.mime in EXTENDED_MIMES or asset.mime in (
                         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                         'application/epub+zip'):
@@ -790,6 +830,9 @@ class LibraryApp:
                 engine = RuntimeBoundIngest if asset.mime == 'application/pdf' else Ingest
                 extra = (dict(reviews=load_reviews(self.root, _request_id), review_asset=asset.data)
                          if asset.mime == 'application/pdf' else {})
+                if profile is not None:
+                    from .ingest.streamed_ingest import StreamedTextIngest
+                    engine, extra = StreamedTextIngest, dict(profile=profile)
                 with closing(engine(self.root / 'imports.sqlite', publisher, **extra)) as ingest:
                     if isinstance(ingest, RuntimeBoundIngest):
                         publisher.review_records = lambda: tuple(ingest.validated_reviews.values())
@@ -802,8 +845,10 @@ class LibraryApp:
                         if previous['state'] in ('failed', 'cancelled', 'quarantined'):
                             ingest.retry(workspace, job)
                     else:
-                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings)
+                        job = ingest.start(workspace, record.edition_id, self.assets_dir, retained.name, settings,
+                                           **(dict(cancelled=cancelled) if profile is not None else {}))
                     record_progress(self.root, _request_id, job=job)
+                    request_guard()
                     result = ingest.run(workspace, job, self.assets_dir, retained.name, settings, cancelled=cancelled)
                     result['verified'] = asset.mime == 'text/plain' and result['state'] == 'complete'
                     if result['state'] in ('complete', 'superseded') and not publisher.published_here:
@@ -833,6 +878,7 @@ class LibraryApp:
                                 raise ValueError('Completed import active revision changed.')
                             register_batch(Catalog(storage.db, workspace), (record,))
                             storage._check()
+                            request_guard()
                             prepare_publication(self.root, _request_id, storage.db, job, before, result)
                             if cancelled():
                                 raise InterruptedError('Import registration cancelled before commit.')
@@ -906,16 +952,19 @@ class LibraryApp:
         if row is None:
             raise ValueError('Source is outside the selected library.')
         mime, size = row
-        if mime not in SUFFIXES or type(size) is not int or not 0 < size <= MAX_SOURCE_BYTES:
+        if mime not in SUFFIXES or type(size) is not int or size < 1:
             raise ValueError('Invalid original source catalog manifest.')
+        from .ingest.streamed_text import catalog_profile
+        profile = catalog_profile(db, identity.asset_sha256, mime, size)
         if cancelled():
             raise InterruptedError('Source verification cancelled.')
         key = identity.asset_sha256, mime, size
         if checked_assets is not None and key in checked_assets:
             return checked_assets[key], mime, size
-        # Existing retention resolution checks regular-file/link rules, the
-        # 64 MiB size bound, and the complete original-byte SHA256.
-        path = self.assets.resolve(identity.asset_sha256)
+        # Larger TXT admission comes only from exact sealed extraction state.
+        # Both paths still verify the complete original-byte SHA256 and links.
+        path = (self.assets.resolve(identity.asset_sha256) if profile is None else
+                self.assets.resolve(identity.asset_sha256, profile=profile, cancelled=cancelled))
         if path.suffix != SUFFIXES[mime] or path.stat().st_size != size:
             raise ValueError('The original source differs from its catalog manifest.')
         if cancelled():
@@ -936,6 +985,10 @@ class LibraryApp:
     def _loaders(self, db, workspace, *, cancelled=lambda: False):
         resolve_asset = lambda identity: self._asset_bytes(db, workspace, identity, cancelled=cancelled)
         text = strict_text_attestor(db, workspace, resolve_asset)
+        from .citations.streamed_text_attestation import streamed_text_attestor
+        streamed_paths = {}
+        streamed = streamed_text_attestor(db, workspace, lambda identity: self._retained_source(
+            db, workspace, identity, checked_assets=streamed_paths, cancelled=cancelled)[0], cancelled=cancelled)
 
         def review(identity, physical):
             row = db.execute('SELECT raw_sha256,render_sha256,renderer,reviewer FROM source_page_review '
@@ -950,7 +1003,8 @@ class LibraryApp:
         def attest(identity, locator, raw_hash):
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
-            verified = text(identity, locator, raw_hash) or pdf(identity, locator, raw_hash)
+            verified = (text(identity, locator, raw_hash) or streamed(identity, locator, raw_hash)
+                        or pdf(identity, locator, raw_hash))
             if cancelled():
                 raise InterruptedError('Source verification cancelled.')
             return verified

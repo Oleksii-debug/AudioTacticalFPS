@@ -461,7 +461,7 @@ claimed by this checkpoint. Protected voice-package transfer is also separate
 from this library-snapshot envelope. Full exact-head execution, model/device
 quality, Windows 11/manual NVDA and final release evidence remain outstanding.
 
-## Observed Windows failures and bounded corrections (2026-11-27 18:24 UTC)
+## Observed Windows failures and bounded corrections (2026-11-27 18:23 UTC)
 
 The completed native evidence from run 46031920263 at `94ecfdd4` was read from
 its exact retained pre-source/recording artifacts by diagnostic run
@@ -500,3 +500,56 @@ DAISY constant import, native Book lease wrapper and transcription cache/root
 restoration failures. Current source and installed suites must establish that
 these changes resolve the original failures. The failed `94ecfdd4` run retained
 no eligible wheel; a final bundle cannot use its wheel.
+
+## Explicit finite streamed TXT intake (2026-11-27 18:23 UTC)
+
+Source checkpoint `4eb3aa9d087104da6c27abb3d173302ea5b6a0d8` reuses the
+reviewed PR99 intake/attestation path, reconciled onto current application,
+owned interpreter, resource admission and format-5 backup. The separate narrow
+CLI/Desktop hooks from `9c4f8100` are composed with the current Word and Sync
+hooks; no whole stale Desktop/application file replaces another domain.
+The Sync-preserving library_backup seam is `d26c07dd` on `0391f0da`.
+
+Only explicit UTF-8 TXT intake accepts a selected 1–128 MiB allowance, with
+strict incremental decoding and at most 8,192 finite logical fragments. Ordinary
+64 MiB intake and format limits remain. Original hashes, field/character offsets,
+sealed immutable revisions and quotation verification remain authoritative.
+The donor's later multi-gigabyte/PDF profiles and capacity-v4 state are excluded.
+
+The existing import worker receives the typed source profile and current resource
+budget. Pending ordinary backups retain their original v1 shape; only explicit
+streamed requests use the bounded v3 component, whose profile inventory is
+validated against actual requests/journal configurations. Outer backup format5
+and catalog schema6 are unchanged. Copy/restore preserves original bytes and
+revokes execution authority; no live database or worker is transferred.
+
+Opening a retained original now performs complete verification and viewing-copy
+work on the existing Desktop worker. Only the fresh selection check and native
+opener run on wx. The worker retains both verified readers through that action;
+queued cancellation cannot cause a later launch and late cancellation cannot
+relabel an acknowledged native open. Existing normal-source assertions remain.
+
+Twelve focused suites join source and installed/full-runtime inventories,
+including actual files larger than 64 MiB and real backup/restore. Native probe
+`dbb66d72` uses real Import Center controls, the existing worker/child and current
+SQLite catalog, verifies quotation and unchanged original, and binds exact
+source or unique installed RECORD module bytes. It has an independent 180-second
+watchdog through cleanup. Its small native fixture does not claim large-file
+capacity, OS file-picker behavior or manual NVDA; those remain separate evidence.
+The delivered guide list includes LARGE_SOURCE_PROFILES.md.
+
+All new code remains **INTEGRATED / NOT_RUN**. Scope-ranked and federated search
+continuation and protected voice-package transfer are separate pending changes.
+
+### Capture-access diagnostic boundary
+
+Run [46045811596](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/46045811596)
+at `f2fe6dcb` did read the fixed consent/policy keys without writes. Its device
+setup was correctly rejected by the existing exact evaluation-branch guard;
+therefore it did not repeat the earlier endpoint failure. The machine microphone
+Value was Allow; the queried user/desktop/policy values were not configured at
+those exact keys; process session ID was 2. These observations do not establish
+the cause of E_ACCESSDENIED on a different runner. The next ordinary evaluation
+retains that guard unchanged and runs the read-only observations on the already
+authorized `carr/ci-endpoint-evaluation-20261127` branch. No environment spoofing,
+consent/policy mutation or device fallback is introduced.
