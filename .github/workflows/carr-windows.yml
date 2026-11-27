@@ -59,6 +59,7 @@ jobs:
           architecture: x64
 
       - name: Install the actual desktop package in a fresh environment
+        id: desktop_install
         run: |
           $environment = Join-Path $env:RUNNER_TEMP 'carr-windows-python'
           python -m venv $environment
@@ -82,12 +83,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check the installed application through its self-test entrypoint
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -m carr_library --self-test | Tee-Object 'ci-results/installed-self-test.json'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Check the installed offline OCR catalogue and console entrypoint
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 2
         run: |
           & $env:CARR_PYTHON -I -B scripts/ocr_catalog_smoke.py | Tee-Object 'ci-results/installed-ocr-catalogue.json'
@@ -97,6 +100,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise the installed native OCR catalogue and model manager
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_ocr_models_smoke.py 2>&1 | Tee-Object 'ci-results/native-ocr-models.txt'
@@ -104,24 +108,28 @@ jobs:
 
 
       - name: Exercise native academic references and reading controls
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-library.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise native advanced query builder and source search
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B tests/ui/probe_advanced_search_native.py 2>&1 | Tee-Object 'ci-results/native-advanced-search.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Exercise installed native BibTeX and citation controls
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 3
         run: |
           & $env:CARR_PYTHON -I -B scripts/windows_citation_styles_smoke.py 2>&1 | Tee-Object 'ci-results/native-citation-styles.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Retain core-only fallback and offline startup coverage
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           & $env:CARR_PYTHON -I -B -c "import importlib.util; assert importlib.util.find_spec('fastembed') is None; assert importlib.util.find_spec('onnxruntime') is None"
@@ -130,6 +138,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Match production dependencies before required source suites
+        id: production_dependencies
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
         timeout-minutes: 10
         run: |
           & $env:CARR_PYTHON -m pip install --only-binary=:all: --require-hashes -r packaging/windows-semantic-cp311.lock
@@ -140,6 +150,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Prepare the verified OCR engine before its required source regression
+        id: ocr_runtime
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
         timeout-minutes: 10
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -154,6 +166,7 @@ jobs:
 
 
       - name: Verify real OCR Unicode paths and review provenance before the full source gate
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           $previousPath = $env:PATH
@@ -173,6 +186,8 @@ jobs:
           }
 
       - name: Prepare the pinned shared audio runtime before its source regressions
+        id: audio_runtime
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
         timeout-minutes: 10
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
@@ -185,7 +200,129 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "CARR_CI_AUDIO_DIR=$audioRuntime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      # Collect independent native evidence before the longer source gate.
+      # Failed checks still fail this job; only their successful setup is shared.
+      - name: Exercise native Import Center and durable batch workflow
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise installed document formats and native accessible reading
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_document_formats_smoke.py 2>&1 | Tee-Object 'ci-results/native-document-formats.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native wx startup and source-opening events
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/probe_source_open_native.py 2>&1 | Tee-Object 'ci-results/native-desktop.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native saved-evidence page selection and note recovery
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_evidence_pages_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-pages.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native reference metadata review and historical outline export
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-workflows.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native academic comparison, bibliography and catalog review
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_academic_comparison_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/native-academic.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native reviewed library workflows and checkpoint recovery
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_library_workflow_smoke.py 2>&1 | Tee-Object 'ci-results/native-library-workflow.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native research-notebook search and keyboard actions
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_notebook_search_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-notebook-search.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native EPUB section navigation and image descriptions
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_ebook_reader_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-ebook-reader.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native library reports and academic exports
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_catalog_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-catalog-tools.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native EPUB contents and exact chapter search
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/probe_ebook_native.py 2>&1 | Tee-Object 'ci-results/native-ebook-contents.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native full-source reader and page bookmarks
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/native_reading_desk_smoke.py 2>&1 | Tee-Object 'ci-results/native-reading-desk.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native catalog reports and source comparison export
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I tests/ui/probe_catalog_insights_native.py 2>&1 | Tee-Object 'ci-results/native-catalog-insights.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual native Main keyboard settings and command dispatch
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-keyboard-settings.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise actual contextual Reader key remapping
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_reader_keymap_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-reader-keymap.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native research-note draft recovery and explicit save
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-drafts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Exercise native Save All after durable note and studio commits
+        if: ${{ !cancelled() && steps.desktop_install.outcome == 'success' }}
+        timeout-minutes: 3
+        run: |
+          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_save_all_smoke.py 2>&1 | Tee-Object 'ci-results/native-save-all.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run required integrated source workflows
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' }}
         timeout-minutes: 25
         run: |
           # Use the verified real OCR engine, shared audio runtime and pinned
@@ -381,109 +518,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 
-      - name: Exercise native Import Center and durable batch workflow
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_import_center_smoke.py 2>&1 | Tee-Object 'ci-results/native-import-center.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise installed document formats and native accessible reading
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_document_formats_smoke.py 2>&1 | Tee-Object 'ci-results/native-document-formats.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native wx startup and source-opening events
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/probe_source_open_native.py 2>&1 | Tee-Object 'ci-results/native-desktop.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native saved-evidence page selection and note recovery
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_evidence_pages_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-pages.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native reference metadata review and historical outline export
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_academic_smoke.py 2>&1 | Tee-Object 'ci-results/native-academic-workflows.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native academic comparison, bibliography and catalog review
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_academic_comparison_smoke.py --require-windows 2>&1 | Tee-Object 'ci-results/native-academic.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native reviewed library workflows and checkpoint recovery
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_library_workflow_smoke.py 2>&1 | Tee-Object 'ci-results/native-library-workflow.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native research-notebook search and keyboard actions
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_notebook_search_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-notebook-search.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native EPUB section navigation and image descriptions
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_ebook_reader_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-ebook-reader.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native library reports and academic exports
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_catalog_tools_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-catalog-tools.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native EPUB contents and exact chapter search
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/probe_ebook_native.py 2>&1 | Tee-Object 'ci-results/native-ebook-contents.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native full-source reader and page bookmarks
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/native_reading_desk_smoke.py 2>&1 | Tee-Object 'ci-results/native-reading-desk.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native catalog reports and source comparison export
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I tests/ui/probe_catalog_insights_native.py 2>&1 | Tee-Object 'ci-results/native-catalog-insights.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise actual native Main keyboard settings and command dispatch
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_keyboard_settings_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-keyboard-settings.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise actual contextual Reader key remapping
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_reader_keymap_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-reader-keymap.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native research-note draft recovery and explicit save
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B tests/ui/native_evidence_drafts_smoke.py --native 2>&1 | Tee-Object 'ci-results/native-evidence-drafts.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Exercise native Save All after durable note and studio commits
-        timeout-minutes: 3
-        run: |
-          & $env:CARR_PYTHON -I -B -X utf8 tests/ui/native_save_all_smoke.py 2>&1 | Tee-Object 'ci-results/native-save-all.txt'
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
       - name: Prepare the pinned local model through the existing upstream verifier
+        id: semantic_model
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' }}
         timeout-minutes: 10
         run: |
           $model = Join-Path $env:RUNNER_TEMP 'carr-model-ci/minilm'
@@ -519,6 +556,7 @@ jobs:
           "CARR_CI_MODEL_MANIFEST=$modelManifest" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build, install and exercise the complete bundle with runtime egress blocked
+        if: ${{ !cancelled() && steps.production_dependencies.outcome == 'success' && steps.ocr_runtime.outcome == 'success' && steps.audio_runtime.outcome == 'success' && steps.semantic_model.outcome == 'success' }}
         timeout-minutes: 20
         run: |
           $bundleWork = Join-Path $env:RUNNER_TEMP 'carr-bundle-ci'
