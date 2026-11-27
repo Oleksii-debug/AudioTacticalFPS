@@ -142,8 +142,16 @@ def run(work):
         api.FindWindowW.restype = wintypes.HWND
         api.GetWindow.argtypes = (wintypes.HWND, wintypes.UINT)
         api.GetWindow.restype = wintypes.HWND
-        api.SendMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
-        api.SendMessageW.restype = ctypes.c_ssize_t
+        api.GetDlgItem.argtypes = (wintypes.HWND, ctypes.c_int)
+        api.GetDlgItem.restype = wintypes.HWND
+        api.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
+        api.GetWindowThreadProcessId.restype = wintypes.DWORD
+        api.IsWindowVisible.argtypes = api.IsWindowEnabled.argtypes = (wintypes.HWND,)
+        api.IsWindowVisible.restype = api.IsWindowEnabled.restype = wintypes.BOOL
+        api.SetActiveWindow.argtypes = (wintypes.HWND,)
+        api.SetActiveWindow.restype = wintypes.HWND
+        api.PostMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+        api.PostMessageW.restype = wintypes.BOOL
         owner = parent.GetHandle()
         def accept():
             handle = api.FindWindowW(None, 'Remove workflow template')
@@ -152,8 +160,19 @@ def run(work):
                 return
             if api.GetWindow(handle, 4) != owner:  # GW_OWNER
                 raise AssertionError('The native removal prompt belongs to another window.')
-            print('ACTION confirm owned native removal prompt', flush=True)
-            api.SendMessageW(handle, 0x0111, 6, 0)  # WM_COMMAND / IDYES
+            process_id = wintypes.DWORD()
+            api.GetWindowThreadProcessId(handle, ctypes.byref(process_id))
+            if process_id.value != os.getpid():
+                raise AssertionError('The native removal prompt belongs to another process.')
+            button = api.GetDlgItem(handle, 6)  # Existing standard IDYES button.
+            if not button or not api.IsWindowVisible(button) or not api.IsWindowEnabled(button):
+                raise AssertionError('The owned removal prompt has no enabled native Yes button.')
+            api.SetActiveWindow(handle)
+            print('ACTION click owned native removal Yes button', flush=True)
+            # wxWidgets may use the Vista TaskDialog. Sending WM_COMMAND to
+            # that parent does not operate its button; BM_CLICK does.
+            if not api.PostMessageW(button, 0x00F5, 0, 0):  # BM_CLICK
+                raise ctypes.WinError(ctypes.get_last_error())
         later(accept)
 
     def template_window():

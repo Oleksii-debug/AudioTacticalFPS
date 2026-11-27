@@ -173,3 +173,40 @@ def test_execution_on_ui_thread_is_refused_without_blocking_native_events(tmp_pa
         env.bridge.execute_step(step(action='select'), SCOPE, operation_id='2' * 32,
                                 cancelled=lambda: False, progress=lambda *_: None)
     assert env.reader.actions == []
+
+
+@pytest.mark.parametrize('enabled', [False, True])
+def test_punctuation_capture_preserves_default_shape_and_explicit_enabled_setting(tmp_path, enabled):
+    env = Harness(tmp_path)
+    env.reader.settings['punctuation'] = enabled
+    command = step()
+    if enabled:
+        command.arguments['settings']['punctuation'] = True
+    assert env.run(lambda: env.bridge.validate_step(command, SCOPE)) is command
+    observed = env.execute(command)['interactive_receipt']['observation']['settings']
+    assert observed == command.arguments['settings']
+    assert ('punctuation' in observed) is enabled
+    assert ('read', False) in env.reader.actions
+
+
+@pytest.mark.parametrize('enabled', [False, True])
+def test_punctuation_change_after_preview_refuses_dispatch_in_both_directions(tmp_path, enabled):
+    env = Harness(tmp_path)
+    env.reader.settings['punctuation'] = enabled
+    command = step()
+    if enabled:
+        command.arguments['settings']['punctuation'] = True
+    env.run(lambda: env.bridge.validate_step(command, SCOPE))
+    env.reader.settings['punctuation'] = not enabled
+    with pytest.raises(ValueError, match='settings'):
+        env.execute(command)
+    assert env.reader.actions == []
+
+
+def test_explicit_false_punctuation_keeps_legacy_effective_settings(tmp_path):
+    env = Harness(tmp_path)
+    command = step()
+    command.arguments['settings']['punctuation'] = False
+    receipt = env.execute(command)['interactive_receipt']
+    assert receipt['observation']['settings'] == _fixture.SETTINGS
+    assert 'punctuation' not in receipt['observation']['settings']

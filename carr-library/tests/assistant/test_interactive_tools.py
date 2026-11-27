@@ -137,3 +137,21 @@ def test_saved_seek_receipt_requires_the_same_measured_position_bound(frames):
     value['interactive_receipt']['observation']['playback']['position_frames'] = frames
     with pytest.raises(ValueError, match='sought position'):
         validate_result(command, value, SCOPE, INTENT)
+
+
+@pytest.mark.parametrize('invalid', [0, 1, 'true', None, [], {}])
+def test_punctuation_requires_a_typed_boolean_in_current_commands(invalid):
+    command = step()
+    command.arguments['settings']['punctuation'] = invalid
+    with pytest.raises(ValueError, match='punctuation'):
+        validate_arguments(command)
+
+
+def test_saved_receipt_cannot_silently_drop_enabled_punctuation():
+    command = step()
+    command.arguments['settings']['punctuation'] = True
+    receipt = result(command)
+    assert validate_result(command, receipt, SCOPE, INTENT) is receipt
+    del receipt['interactive_receipt']['observation']['settings']['punctuation']
+    with pytest.raises(ValueError, match='settings'):
+        validate_result(command, receipt, SCOPE, INTENT)

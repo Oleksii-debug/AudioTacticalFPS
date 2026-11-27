@@ -98,7 +98,8 @@ class Reader:
         self.check_thread()
     def _settings(self):
         self.check_thread()
-        return SpeechSettings(**{key: self.settings[key] for key in ('voice', 'language', 'rate', 'pitch', 'volume')})
+        return SpeechSettings(**{key: self.settings[key] for key in ('voice', 'language', 'rate', 'pitch', 'volume')},
+                              punctuation=self.settings.get('punctuation', False))
     def _playback_settings(self):
         self.check_thread()
         return PlaybackSettings(self.settings['playback_tempo'], self.settings['playback_pitch'])

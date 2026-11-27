@@ -67,7 +67,7 @@ class NativeReaderBridge:
 
     def _settings(self):
         selected, playback = self.reader._settings(), self.reader._playback_settings()
-        return validate_settings({**asdict(selected), 'playback_tempo': playback.tempo,
+        return validate_settings({**selected.engine_options(), 'playback_tempo': playback.tempo,
                                   'playback_pitch': playback.pitch})
 
     def _pcm(self):
@@ -154,7 +154,7 @@ class NativeReaderBridge:
             if action in ('prepare', 'read'):
                 if not reader.source[args['start']:args['end']].strip():
                     raise ValueError('Select non-whitespace text for speech preparation.')
-                if self._settings() != args['settings']:
+                if self._settings() != validate_settings(args['settings']):
                     raise ValueError('The selected voice or playback settings changed after capture.')
             if action == 'read' and reader.player.native is None:
                 raise ValueError('Interactive playback requires the existing native Windows player.')
@@ -222,7 +222,8 @@ class NativeReaderBridge:
             return None
         from .live_reading import selected_source_offsets
         selected = list(selected_source_offsets(reader.text, reader.source))
-        pcm, playback, settings = self._pcm(), None, args.get('settings')
+        pcm, playback = self._pcm(), None
+        settings = validate_settings(args['settings']) if args.get('settings') is not None else None
         action = args['action']
         if action == 'stop':
             if reader.session is not None:

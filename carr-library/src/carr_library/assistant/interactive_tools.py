@@ -73,8 +73,10 @@ def validate_target(value):
 
 
 def validate_settings(value):
-    if type(value) is not dict or set(value) != _SETTINGS:
+    if type(value) is not dict or set(value) not in (_SETTINGS, _SETTINGS | {'punctuation'}):
         raise ValueError('Capture the exact selected voice and independent playback settings.')
+    if type(value.get('punctuation', False)) is not bool:
+        raise ValueError('Interactive punctuation reading must be boolean.')
     _text(value['voice'], 2048)
     if ':' not in value['voice']:
         raise ValueError('Select an enumerated local voice.')
@@ -82,7 +84,12 @@ def validate_settings(value):
     for name, low, high in (('rate', -10, 10), ('pitch', -12, 12), ('volume', 0, 1),
                            ('playback_tempo', .25, 4), ('playback_pitch', -12, 12)):
         _number(value[name], low, high)
-    return value
+    # Historical commands omit the disabled option. Keep that default shape
+    # while binding enabled punctuation as an explicit current setting.
+    normalized = dict(value)
+    if not normalized.get('punctuation', False):
+        normalized.pop('punctuation', None)
+    return normalized
 
 
 def validate_pcm(value, target):
@@ -166,9 +173,9 @@ def validate_result(step, result, scope_dict, intent):
     action = args['action']
     if value['pcm'] is not None:
         validate_pcm(value['pcm'], args['target'])
-    if value['settings'] is not None:
-        validate_settings(value['settings'])
-    if value['settings'] != args.get('settings'):
+    observed_settings = validate_settings(value['settings']) if value['settings'] is not None else None
+    approved_settings = validate_settings(args['settings']) if args.get('settings') is not None else None
+    if observed_settings != approved_settings:
         raise ValueError('The prepared speech settings differ from the approved snapshot.')
     playback = value['playback']
     if playback is not None:
