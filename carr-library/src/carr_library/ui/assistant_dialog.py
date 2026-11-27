@@ -10,7 +10,7 @@ from ..research.export_file import write_export, export_completion
 from .export_destination import confirm_export_destination
 
 
-def create_assistant_dialog(frame, *, wx_module=None):
+def create_assistant_dialog(frame, *, wx_module=None, initial_instruction=None):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
@@ -129,13 +129,13 @@ def create_assistant_dialog(frame, *, wx_module=None):
     planning_notice.Wrap(850)
     layout.Add(planning_notice, 0, wx.ALL | wx.EXPAND, 5)
     instruction = field('&Goal — guided English/Ukrainian commands or typed JSON plan', proportion=1,
-                        style=wx.TE_MULTILINE, value='Покажи бібліотеки')
+                        style=wx.TE_MULTILINE, value='Покажи бібліотеки' if initial_instruction is None else initial_instruction)
     review = field('Plan &preview and actual results', proportion=1, style=wx.TE_MULTILINE | wx.TE_READONLY,
                    value='LOCAL ONLY. Nothing executes until you review the plan and choose Run.')
     row = wx.BoxSizer(wx.HORIZONTAL)
     buttons = {}
     for identity, label in [('preview', '&Preview plan'), ('run', '&Run / resume'), ('pause', '&Pause'),
-                             ('jobs', 'Saved &jobs'), ('help', '&Help'), ('close', '&Close')]:
+                             ('jobs', 'Saved &jobs'), ('template', 'Save as &template'), ('help', '&Help'), ('close', '&Close')]:
         button = wx.Button(dialog, label=label)
         buttons[identity] = button
         row.Add(button, 0, wx.ALL, 4)
@@ -387,6 +387,26 @@ def create_assistant_dialog(frame, *, wx_module=None):
             if choice:
                 choice.Destroy()
 
+    def save_template(event=None):
+        if not alive or busy:
+            return
+        try:
+            if frame.library.root != library_root:
+                raise ValueError('The library changed. Reopen the assistant.')
+            selected_plan = plan
+            if selected_plan is not None and approved_inputs != input_identity():
+                raise ValueError('Preview the current typed plan before saving its reusable operations.')
+            if selected_plan is None and job_id is not None:
+                _record, selected_plan = service._load(job_id)
+            if selected_plan is None:
+                raise ValueError('Preview a typed plan or select a saved job first.')
+            from ..assistant.templates import definition_from_plan
+            from .workflow_templates import show_workflow_templates
+            definition = definition_from_plan(selected_plan)
+            show_workflow_templates(frame, initial=('assistant', definition))
+        except Exception as exc:
+            report(exc)
+
     def close(event=None):
         if not alive:
             return
@@ -404,7 +424,7 @@ def create_assistant_dialog(frame, *, wx_module=None):
         show_text(dialog, 'Local assistant commands', HELP)
 
     for identity, callback in {'preview': preview, 'run': run, 'pause': lambda e: cancel.set(),
-                               'jobs': jobs, 'help': help_text, 'close': close}.items():
+                               'jobs': jobs, 'template': save_template, 'help': help_text, 'close': close}.items():
         buttons[identity].Bind(wx.EVT_BUTTON, callback)
     for control in (input_folder, output_folder, instruction):
         control.Bind(wx.EVT_TEXT, invalidate)
@@ -421,8 +441,9 @@ def create_assistant_dialog(frame, *, wx_module=None):
     return dialog
 
 
-def show_assistant(frame):
-    dialog = create_assistant_dialog(frame)
+def show_assistant(frame, *, initial_instruction=None):
+    dialog = (create_assistant_dialog(frame) if initial_instruction is None else
+              create_assistant_dialog(frame, initial_instruction=initial_instruction))
     try:
         dialog.ShowModal()
     finally:

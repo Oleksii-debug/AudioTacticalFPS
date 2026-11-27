@@ -31,16 +31,19 @@ def show_recording(frame, *, on_selected=None):
     dialog._destroy_requested = False
     dialog.recording_alive = True
     dialog.library = library
+    panel = wx.ScrolledWindow(dialog, style=wx.VSCROLL)
+    panel.SetScrollRate(0, 12)
     layout = wx.BoxSizer(wx.VERTICAL)
-    layout.Add(wx.StaticText(dialog, label='Refresh devices and select a microphone, then choose Start. '
+    layout.Add(wx.StaticText(panel, label='Refresh devices and select a microphone, then choose Start. '
+        'Pause closes the microphone; Resume starts the next segment. '
         'Stop saves a verified recording; Cancel discards an unfinished recording. '
         'No microphone opens automatically. Recording uses the selected Windows device locally.'),
         0, wx.EXPAND | wx.ALL, 8)
 
-    def field(label, factory, **kwargs):
-        layout.Add(wx.StaticText(dialog, label=label), 0, wx.LEFT | wx.TOP, 8)
-        control = factory(dialog, **kwargs)
-        control.SetName(label)
+    def field(caption, factory, **kwargs):
+        layout.Add(wx.StaticText(panel, label=caption), 0, wx.LEFT | wx.TOP, 8)
+        control = factory(panel, **kwargs)
+        control.SetName(caption)
         layout.Add(control, 0, wx.EXPAND | wx.ALL, 6)
         return control
 
@@ -51,28 +54,40 @@ def show_recording(frame, *, on_selected=None):
     sample_rate.SetSelection(0)
     channels = field('Recorded WAV channels', wx.Choice, choices=['Mono', 'Stereo'])
     channels.SetSelection(0)
+    monitoring = field('Monitor microphone in headphones (off by default)', wx.CheckBox,
+                       label='Enable dry input monitoring')
+    monitoring.SetName('Enable dry input monitoring')
+    monitoring.SetValue(False)
+    monitor_output = field('Monitoring output (explicit selection required)', wx.Choice, choices=[])
+    monitor_output.SetSelection(wx.NOT_FOUND)
     saved = field('Saved recordings', wx.Choice, choices=[])
     details = field('Recording result and retained input path', wx.TextCtrl,
                     value='', style=wx.TE_MULTILINE | wx.TE_READONLY)
     status = field('Recording status', wx.TextCtrl, value='No microphone selected.', style=wx.TE_READONLY)
-    gauge = wx.Gauge(dialog, range=100)
+    gauge = wx.Gauge(panel, range=100)
     gauge.SetName('Recording operation progress')
-    progress_label = wx.StaticText(dialog, label='Ready')
+    progress_label = wx.StaticText(panel, label='Ready')
     layout.Add(gauge, 0, wx.EXPAND | wx.ALL, 6)
     layout.Add(progress_label, 0, wx.EXPAND | wx.ALL, 6)
     buttons = {}
-    for row in ((('refresh', 'Refresh microphones'), ('start', 'Start recording'),
-                 ('stop', 'Stop and save recording'), ('cancel', 'Cancel unfinished recording')),
+    for row in ((('refresh', 'Refresh microphones'), ('refresh_monitor', 'Refresh monitoring outputs'),
+                 ('start', 'Start recording')),
+                (('pause', 'Pause microphone recording'), ('resume', 'Resume microphone recording')),
+                (('stop', 'Stop and save recording'), ('cancel', 'Cancel unfinished recording')),
                 (('preview', 'Listen to saved recording'), ('stop_preview', 'Stop playback'),
                  ('use', 'Use selected recording'), ('close', 'Close'))):
         box = wx.BoxSizer(wx.HORIZONTAL)
         for key, label in row:
-            button = wx.Button(dialog, label=label)
+            button = wx.Button(panel, label=label)
             button.SetName(label)
             buttons[key] = button
             box.Add(button, 0, wx.ALL, 4)
         layout.Add(box, 0, wx.EXPAND)
-    dialog.SetSizer(layout)
+    panel.SetSizer(layout)
+    outer = wx.BoxSizer(wx.VERTICAL)
+    outer.Add(panel, 1, wx.EXPAND)
+    dialog.SetSizer(outer)
+    panel.FitInside()
     dialog.SetEscapeId(buttons['close'].GetId())
     dialog.status = status
     progress = OperationProgress(dialog, gauge, progress_label, wx_module=wx,
@@ -84,8 +99,10 @@ def show_recording(frame, *, on_selected=None):
     for controller in controllers:
         controller.register_player(player)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='carr-recording')
-    cancelled, stopped = threading.Event(), threading.Event()
+    cancelled, stopped, paused = threading.Event(), threading.Event(), threading.Event()
     busy, alive, closing, devices, records, holds, selected_result = False, True, False, (), (), [], None
+    monitor_outputs, capture_phase, current_token = (), 'idle', None
+    dialog.capture_state = capture_phase
     generation = 0
     active_future = None
     cleanup_owner = cleanup_future = cleanup_retry = None
@@ -102,6 +119,7 @@ def show_recording(frame, *, on_selected=None):
         generation += 1
         cancelled.set()
         stopped.set()
+        paused.clear()
 
     def on_destroy(event):
         if event.GetId() == native_id:
@@ -119,10 +137,17 @@ def show_recording(frame, *, on_selected=None):
     def controls():
         if not alive:
             return
-        for control in (microphone, title, minutes, sample_rate, channels, saved):
+        for control in (microphone, title, minutes, sample_rate, channels, saved, monitoring):
             control.Enable(not busy)
+        monitor_output.Enable(not busy and monitoring.GetValue())
         buttons['refresh'].Enable(not busy)
-        buttons['start'].Enable(not busy and 0 <= microphone.GetSelection() < len(devices))
+        buttons['refresh_monitor'].Enable(not busy)
+        monitor_ready = not monitoring.GetValue() or 0 <= monitor_output.GetSelection() < len(monitor_outputs)
+        buttons['start'].Enable(not busy and monitor_ready and 0 <= microphone.GetSelection() < len(devices))
+        buttons['pause'].Enable(busy and capture_phase == 'recording' and not paused.is_set()
+                                and not stopped.is_set() and not cancelled.is_set())
+        buttons['resume'].Enable(busy and capture_phase == 'paused' and paused.is_set()
+                                 and not stopped.is_set() and not cancelled.is_set())
         buttons['stop'].Enable(busy and bool(holds))
         buttons['cancel'].Enable(busy)
         for key in ('preview', 'use'):
@@ -167,12 +192,13 @@ def show_recording(frame, *, on_selected=None):
             release_holds()
 
     def poll_cleanup():
-        nonlocal busy
+        nonlocal busy, capture_phase
         if not alive or cleanup_owner is None:
             return
         if cleanup_owner.quiescent:
             release_holds()
             busy = False
+            capture_phase = dialog.capture_state = 'idle'
             report('Microphone cleanup confirmed. No unfinished recording was published.')
             controls()
             if closing:
@@ -205,7 +231,7 @@ def show_recording(frame, *, on_selected=None):
         display_record()
 
     def run(operation, complete, phase, *, prepared=False, measured=False):
-        nonlocal busy, active_future
+        nonlocal busy, active_future, current_token
         if not alive:
             return
         if busy and not prepared:
@@ -219,7 +245,7 @@ def show_recording(frame, *, on_selected=None):
                 return getattr(progress, method)(*args, **kwargs)
             except Exception as exc:
                 progress.reporting_error = 'Recording progress feedback is unavailable: ' + str(exc)
-        token = observe('start', phase)
+        token = current_token = observe('start', phase)
         def measured_progress(seconds):
             if token is not None:
                 observe('update', seconds, None, f'Recorded {seconds:.1f} seconds', token=token)
@@ -236,10 +262,11 @@ def show_recording(frame, *, on_selected=None):
         def finished(future):
             release_completed(future)
             def apply():
-                nonlocal busy
+                nonlocal busy, capture_phase
                 if not alive:
                     return
                 busy = False
+                capture_phase = dialog.capture_state = 'idle'
                 try:
                     result = future.result()
                     complete(result)
@@ -286,8 +313,25 @@ def show_recording(frame, *, on_selected=None):
             report('Choose a microphone explicitly, then Start. Device discovery did not record audio.')
         run(lambda: service.devices(cancelled=cancelled.is_set), complete, 'Listing local microphones')
 
+    def refresh_monitor(event=None):
+        nonlocal monitor_outputs
+        if not alive or busy:
+            return
+        monitor_outputs = ()
+        monitor_output.SetItems([])
+        monitor_output.SetSelection(wx.NOT_FOUND)
+        cancelled.clear()
+        def complete(values):
+            nonlocal monitor_outputs
+            monitor_outputs = tuple(values)
+            monitor_output.SetItems([value.label for value in monitor_outputs])
+            monitor_output.SetSelection(wx.NOT_FOUND)
+            report('Choose a monitoring output explicitly. Use headphones to avoid microphone feedback; no output was opened.')
+        run(lambda: service.monitoring_outputs(cancelled=cancelled.is_set), complete,
+            'Listing monitoring outputs without playing audio')
+
     def start(event=None):
-        nonlocal busy, generation, holds
+        nonlocal busy, generation, holds, capture_phase
         if not alive:
             return
         if busy:
@@ -302,8 +346,16 @@ def show_recording(frame, *, on_selected=None):
                 max_bytes=2 * 1024**3)
             requested_title = title.GetValue()
             device_id = devices[index].id
+            output = None
+            if monitoring.GetValue():
+                output_index = monitor_output.GetSelection()
+                if not 0 <= output_index < len(monitor_outputs):
+                    raise ValueError('Select a monitoring output explicitly before Start.')
+                output = monitor_outputs[output_index]
             cancelled.clear()
             stopped.clear()
+            paused.clear()
+            capture_phase = dialog.capture_state = 'opening'
             generation += 1
             current_generation = generation
             busy = True
@@ -339,13 +391,42 @@ def show_recording(frame, *, on_selected=None):
 
                 def operation(report):
                     player.close()
+                    def state_changed(snapshot):
+                        token = current_token
+                        def apply_state():
+                            nonlocal capture_phase
+                            if (not alive or not busy or current_generation != generation
+                                    or frame.library is not library
+                                    or cancelled.is_set() or (stopped.is_set() and snapshot.state != 'finalizing')):
+                                return
+                            capture_phase = dialog.capture_state = snapshot.state
+                            messages = {
+                                'opening': 'Opening the selected microphone for a new segment.',
+                                'recording': 'Recording. Pause closes this microphone segment; Stop saves.',
+                                'pausing': 'Finishing the segment and closing microphone and monitoring.',
+                                'paused': 'Paused; microphone and monitoring are closed. Resume starts a new segment. Stop saves retained frames.',
+                                'finalizing': 'Verifying retained PCM frames; review pause joins before use.',
+                            }
+                            report_text = messages.get(snapshot.state, snapshot.state)
+                            try:
+                                if snapshot.state == 'paused' and token is not None:
+                                    progress.pause(report_text, token=token)
+                                elif snapshot.state != 'paused' and token is not None and progress.event.state == 'paused':
+                                    progress.resume(report_text, token=token)
+                            except Exception as exc:
+                                progress.reporting_error = 'Recording progress feedback is unavailable: ' + str(exc)
+                            status.SetValue(report_text)
+                            controls()
+                        if alive:
+                            wx.CallAfter(apply_state)
                     return service.capture(device_id, title=requested_title, options=options,
                         cancelled=cancelled.is_set, stop_requested=stopped.is_set,
-                        progress=report)
+                        progress=report, pause_requested=paused.is_set,
+                        state_changed=state_changed, monitor_output=output)
 
                 def complete(value):
                     show_records((*records, value), value['id'])
-                    message = 'Saved and verified. The recording is retained as a new Studio input.'
+                    message = 'Saved and verified. The recording is retained as a new Studio input. Review pause joins before use.'
                     if value.get('warnings'):
                         message += '\n' + '\n'.join(value['warnings'])
                     report(message)
@@ -396,6 +477,7 @@ def show_recording(frame, *, on_selected=None):
         if busy:
             closing = True
             cancelled.set()
+            paused.clear()
             if cleanup_owner is not None and not cleanup_owner.quiescent:
                 frame.report('Microphone cleanup is still pending. Its capture owner and media quiet reservation are retained.')
                 dialog.EndModal(wx.ID_CANCEL)
@@ -416,10 +498,13 @@ def show_recording(frame, *, on_selected=None):
             controller.refresh_audio_state()
 
     def stop_recording(event=None):
-        nonlocal cleanup_retry
+        nonlocal cleanup_retry, capture_phase
         if not alive:
             return
         stopped.set()
+        paused.clear()
+        capture_phase = dialog.capture_state = 'stopping'
+        controls()
         if cleanup_owner is not None and not cleanup_owner.quiescent:
             if cleanup_retry is None or not cleanup_retry.is_alive():
                 cleanup_retry = threading.Thread(target=cleanup_owner.close,
@@ -430,17 +515,40 @@ def show_recording(frame, *, on_selected=None):
             report('Stop requested. Waiting for WAV finalization and owned process cleanup.')
 
     def cancel_recording(event=None):
+        nonlocal capture_phase
         if not alive:
             return
         cancelled.set()
+        paused.clear()
+        capture_phase = dialog.capture_state = 'cancelling'
+        controls()
         if busy:
             report('Cancellation requested. Waiting for the microphone and owned processes to stop.')
 
-    for key, callback in (('refresh', refresh), ('start', start), ('stop', stop_recording),
+    def pause_recording(event=None):
+        nonlocal capture_phase
+        if alive and busy and capture_phase == 'recording' and not stopped.is_set() and not cancelled.is_set():
+            paused.set()
+            capture_phase = dialog.capture_state = 'pausing'
+            status.SetValue('Pause requested. Waiting for the microphone and monitoring to close.')
+            controls()
+
+    def resume_recording(event=None):
+        nonlocal capture_phase
+        if alive and busy and capture_phase == 'paused' and not stopped.is_set() and not cancelled.is_set():
+            paused.clear()
+            capture_phase = dialog.capture_state = 'opening'
+            status.SetValue('Resume requested. Reopening the explicitly selected microphone.')
+            controls()
+
+    for key, callback in (('refresh', refresh), ('refresh_monitor', refresh_monitor),
+            ('start', start), ('stop', stop_recording), ('pause', pause_recording), ('resume', resume_recording),
             ('cancel', cancel_recording), ('preview', preview), ('stop_preview', stop_playback),
             ('use', use), ('close', close)):
         buttons[key].Bind(wx.EVT_BUTTON, callback)
     microphone.Bind(wx.EVT_CHOICE, lambda event: controls())
+    monitoring.Bind(wx.EVT_CHECKBOX, lambda event: controls())
+    monitor_output.Bind(wx.EVT_CHOICE, lambda event: controls())
     saved.Bind(wx.EVT_CHOICE, display_record)
     dialog.Bind(wx.EVT_CLOSE, close)
     try:

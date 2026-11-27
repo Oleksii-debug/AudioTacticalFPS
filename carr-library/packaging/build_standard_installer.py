@@ -98,6 +98,8 @@ def prepare(bundle, source_commit, manifest_sha256, output, *, compiler=None,
     manifest = delivery._manifest(raw, source_commit)
     delivery._require_transferable_audio_inventory(manifest)
     files = manifest["files"]
+    if "portable-update.ini" in files or os.path.lexists(bundle / "portable-update.ini"):
+        raise ValueError("Use the ordinary sealed bundle for a standard installer; portable ownership is a separate layout.")
     if any("{" in name or "}" in name for name in files):
         # Inno has both runtime constants and an inline preprocessor. Reject
         # these rare inventory names rather than interpret them as build code.

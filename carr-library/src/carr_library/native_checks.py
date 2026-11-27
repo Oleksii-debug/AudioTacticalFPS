@@ -178,6 +178,10 @@ def check_native_dependencies(bundle_root):
     return report
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--bundle-root', required=True, type=Path)

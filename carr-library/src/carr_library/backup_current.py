@@ -11,7 +11,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 
-from . import backup_extensions, backup_document_batches, backup_transcription
+from . import backup_extensions, backup_document_batches, backup_transcription, backup_translation_batches
 from .durable_state import atomic_json, encode, regular
 from .ingest.restore import RestoreError
 from .state_backup import relative_name
@@ -30,6 +30,7 @@ _UUID = r'[0-9a-f]{32}'
 _LINKS = re.compile(r'state/speech/' + _HEX + r'\.reader-links\.json\Z')
 _PUBLICATION = re.compile(r'state/studio/publications/(' + _UUID + r')\.json\Z')
 _EFFECT_PRESET = re.compile(r'state/studio/effect-presets/(' + _UUID + r')\.json\Z')
+_WORKFLOW_TEMPLATE = re.compile(r'state/workflows/templates/(' + _UUID + r')\.json\Z')
 _RECORDING = re.compile(r'state/studio/recordings/(' + _UUID + r')\.(json|wav)\Z')
 _INPUT = re.compile(r'state/studio/inputs/' + _HEX + r'\.audio\Z')
 _TRANSCRIPTION = re.compile(r'state/transcription/(' + _HEX + r')/(.+)\Z')
@@ -42,6 +43,8 @@ def limit(name):
         from .studio.backup_inputs import _reserved_names
         _reserved_names((name.removeprefix('state/'),))
     if maximum := backup_document_batches.limit(name):
+        return maximum
+    if maximum := backup_translation_batches.limit(name):
         return maximum
     if name in ROOT_LIMITS:
         return ROOT_LIMITS[name]
@@ -64,6 +67,9 @@ def limit(name):
         return 32 * 1024**2
     if _EFFECT_PRESET.fullmatch(name):
         return 64 * 1024
+    if _WORKFLOW_TEMPLATE.fullmatch(name):
+        from .assistant.templates import MAX_TEMPLATE_BYTES
+        return MAX_TEMPLATE_BYTES
     if (_LINKS.fullmatch(name) or _PUBLICATION.fullmatch(name)
             or name in ('state/studio/backup-inputs.json', 'state/studio/legacy-input-review.json')):
         return MAX_JSON
@@ -109,6 +115,9 @@ def validate(db, name, raw):
     from .backup_sidecars import _json
     if backup_document_batches.limit(name) is not None:
         backup_document_batches.validate_file(name, raw)
+        return
+    if backup_translation_batches.limit(name) is not None:
+        backup_translation_batches.validate_file(db, name, raw)
         return
     if name in _TRUSTED_RECOVERY:
         if type(raw) is not bytes or len(raw) > _TRUSTED_RECOVERY_BYTES:
@@ -193,6 +202,10 @@ def validate(db, name, raw):
                 or any(type(key) is not str or not re.fullmatch(_HEX, key) for key in value['copies'])
                 or len(set(value['copies'])) != len(value['copies'])):
             raise ValueError('Invalid reading recovery-family identities.')
+    elif match := _WORKFLOW_TEMPLATE.fullmatch(name):
+        from .assistant.templates import WorkflowTemplate
+        if WorkflowTemplate.from_dict(value).id != match[1]:
+            raise ValueError('Workflow template identity differs from its exact saved filename.')
     elif match := _EFFECT_PRESET.fullmatch(name):
         from .audio.effect_presets import EffectPreset
         if EffectPreset.from_dict(value).id != match[1]:
@@ -237,9 +250,16 @@ def legacy_empty_directories(entries):
 
 
 def validate_collection(db, stage, entries, *, independent=True, cancelled=lambda: False):
+    from .assistant.templates import MAX_TEMPLATES
+    if sum(bool(_WORKFLOW_TEMPLATE.fullmatch(entry['filename'])) for entry in entries) > MAX_TEMPLATES:
+        raise RestoreError('The workflow template collection exceeds 64 records.')
     if sum(bool(_EFFECT_PRESET.fullmatch(entry['filename'])) for entry in entries) > 256:
         raise RestoreError('The effect preset inventory exceeds its 256-record allowance.')
     backup_document_batches.validate_collection(stage, entries, cancelled=cancelled)
+    backup_translation_batches.validate_collection(db, stage, entries,
+        independent=independent, cancelled=cancelled)
+    from . import backup_recordings
+    backup_recordings.validate_collection(stage, entries, cancelled=cancelled)
     canonical = tuple(entry for entry in entries
                       if backup_transcription.limit(entry['filename']) is not None)
     if canonical and not independent:
@@ -316,6 +336,7 @@ def project_restored(db, stage, destination, inventory, *, cancelled):
     from .backup_sidecars import _capture, _check_cancelled, Inventory
     from .studio.backup_inputs import restore_inputs
     stage, destination = Path(stage), Path(destination)
+    backup_translation_batches.project_restored(stage, inventory.entries, cancelled=cancelled)
     state = state_entries(inventory.entries)
     if state:
         restore_inputs(stage / 'state', destination / 'state', state, cancelled=cancelled)

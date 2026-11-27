@@ -13,7 +13,7 @@ import sys
 import pytest
 
 import carr_library
-import carr_runtime_bootstrap
+import bootstrap
 from carr_library.transcription import runtime as module
 
 
@@ -70,7 +70,7 @@ def test_real_child_never_blocks_on_post_selection_fifo(tmp_path, api, replaceme
     os.mkfifo(outside)
     roots = list(dict.fromkeys([
         str(Path(carr_library.__file__).resolve().parent.parent),
-        str(Path(carr_runtime_bootstrap.__file__).resolve().parent.parent),
+        str(Path(bootstrap.__file__).resolve().parent.parent),
     ]))
     expected = {'path': str(Path(module.__file__).resolve()),
                 'sha256': sha256(Path(module.__file__).read_bytes()).hexdigest()}

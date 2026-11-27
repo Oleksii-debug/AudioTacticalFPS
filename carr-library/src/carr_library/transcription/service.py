@@ -323,16 +323,22 @@ class TranscriptionService:
 
     @staticmethod
     def _plan(state):
-        return fingerprint({name: state[name] for name in ('id', 'profile_id', 'profile_fingerprint', 'sources', 'settings')})
+        fields = ('id', 'profile_id', 'profile_fingerprint', 'sources', 'settings')
+        if not isinstance(state, dict) or any(name not in state for name in fields):
+            raise ValueError('Invalid or modified transcription job plan.')
+        return fingerprint({name: state[name] for name in fields})
 
     def _load(self, identity):
         value = read_json(self._job_root(identity) / 'job.json')
-        if value.get('schema') != SCHEMA or value.get('id') != identity or value.get('plan_fingerprint') != self._plan(value):
+        if (not isinstance(value, dict) or value.get('schema') != SCHEMA
+                or value.get('id') != identity or value.get('plan_fingerprint') != self._plan(value)):
             raise ValueError('Invalid or modified transcription job plan.')
         validate_settings(value['settings'])
         if not isinstance(value['sources'], list) or not 0 < len(value['sources']) <= MAX_SOURCES:
             raise ValueError('Invalid retained transcription sources.')
-        if len({_id(source['id']) for source in value['sources']}) != len(value['sources']):
+        if any(not isinstance(source, dict) for source in value['sources']):
+            raise ValueError('Invalid retained transcription source declaration.')
+        if len({_id(source.get('id')) for source in value['sources']}) != len(value['sources']):
             raise ValueError('Duplicate transcription source identity.')
         return value
 

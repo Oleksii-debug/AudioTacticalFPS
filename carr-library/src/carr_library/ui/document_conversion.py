@@ -2,7 +2,7 @@
 from pathlib import Path
 import re
 
-from ..conversion import ConversionService
+from ..conversion import ConversionService, ConversionBudget
 from ..conversion.service import IMAGES
 
 
@@ -54,6 +54,24 @@ def convert_selected_documents(frame):
         if config is None:
             return
         languages = tuple(config.languages.split('+'))
+    office = None
+    from ..conversion.office import OFFICE_SUFFIXES, OfficeSelection
+    if any(source.suffix.casefold() in OFFICE_SUFFIXES for source in sources):
+        converter_dialog = wx.FileDialog(frame,
+            'Select installed LibreOffice program/soffice for legacy reading conversion (4 GiB worker budget)',
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        try:
+            result = converter_dialog.ShowModal()
+            if result != wx.ID_OK or not converter_dialog or not alive():
+                return
+            guard()
+            office = OfficeSelection.capture(Path(converter_dialog.GetPath()))
+        except Exception as exc:
+            report(exc)
+            return
+        finally:
+            if converter_dialog:
+                converter_dialog.Destroy()
     destination = wx.DirDialog(frame, 'Choose the folder for new reading text and provenance reports')
     try:
         result = destination.ShowModal()
@@ -79,7 +97,8 @@ def convert_selected_documents(frame):
 
     def run():
         stopped()
-        converter = ConversionService(root, input_roots=tuple(dict.fromkeys(source.parent for source in sources)))
+        options = {} if office is None else {'office': office, 'budget': ConversionBudget(memory_bytes=4 * 1024**3)}
+        converter = ConversionService(root, input_roots=tuple(dict.fromkeys(source.parent for source in sources)), **options)
         completed = []
         for index, source in enumerate(sources, 1):
             if stopped():

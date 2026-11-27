@@ -541,6 +541,12 @@ def install_translation_actions(frame):
     register_menu_command(frame, CommandSpec('tools.translation', 'Translate selected text'), item)
     frame.Bind(wx.EVT_MENU, lambda event: show_translation(frame), id=int(identity))
 
+    from .translation_batch_dialog import show_translation_batch
+    batch_item = menu.Append(wx.ID_ANY, 'Translate reviewed document &batch...')
+    register_menu_command(frame,
+        CommandSpec('tools.translation_batch', 'Translate reviewed document batch'), batch_item)
+    frame.Bind(wx.EVT_MENU, lambda event: show_translation_batch(frame), batch_item)
+
     class BookTranslation:
         def __init__(self, parent, desk, state, guard):
             self.parent, self.desk, self.guard = parent, desk, guard

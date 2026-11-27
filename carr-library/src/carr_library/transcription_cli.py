@@ -14,6 +14,10 @@ def _runtime_arguments(parser):
     parser.add_argument('--model', type=Path, required=True, help='Existing local model directory; never downloaded')
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Resonance local transcription with retained sources and verified results')
     parser.add_argument('--data-dir', type=Path)
@@ -182,11 +186,15 @@ def main(argv=None):
             return 1
         return 0
     except KeyboardInterrupt:
-        print('Transcription interrupted. Retained inputs and accepted results remain available.' +
-              (f' Saved job: {job_id}' if job_id else ''), file=sys.stderr)
+        if args.command == 'draft-runtime':
+            print('Runtime manifest inspection interrupted; any draft remains unapproved. '
+                  'No transcription job was created.', file=sys.stderr)
+        else:
+            print('Transcription interrupted. Retained inputs and accepted results remain available.' +
+                  (f' Saved job: {job_id}' if job_id else ''), file=sys.stderr)
         return 130
     except (ValueError, TypeError, OSError, RuntimeError) as exc:
-        print('Resonance transcription: ' + str(exc), file=sys.stderr)
+        print('Transcription: ' + str(exc), file=sys.stderr)
         return 1
 
 

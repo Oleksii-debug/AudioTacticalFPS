@@ -97,7 +97,13 @@ class AssistantService:
         self.transcription = transcription
 
     def preview(self, instruction, scope):
-        plan = preview(instruction, scope)
+        # Saved recipes supply typed data only. Current scope is still selected
+        # here, and the ordinary preview/submit/run contracts remain authoritative.
+        text(instruction, 'assistant instruction', maximum=4 * 1024 * 1024)
+        from .templates import REQUEST_SCHEMA, plan_from_request
+        proposed = json.loads(instruction) if instruction.lstrip().startswith('{') else None
+        plan = (plan_from_request(proposed, scope) if isinstance(proposed, dict)
+                and proposed.get('schema') == REQUEST_SCHEMA else preview(instruction, scope))
         self.validate(plan)
         return plan
 

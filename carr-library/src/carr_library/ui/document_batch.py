@@ -46,7 +46,7 @@ def preview_text(preview):
     return '\n'.join(rows)
 
 
-def create_document_batch_dialog(frame, *, service=None, wx_module=None):
+def create_document_batch_dialog(frame, *, service=None, wx_module=None, initial_settings=None):
     if wx_module is None:
         import wx as wx_module
     wx = wx_module
@@ -110,7 +110,8 @@ def create_document_batch_dialog(frame, *, service=None, wx_module=None):
                  ('reading', 'Capture saved reading &copies', lambda e: self.capture('reading')),
                  ('reload', '&Reload saved jobs', self.reload)),
                 (('prepare', '&Prepare reading text', self.prepare), ('destination', 'Choose output directory', self.choose_destination),
-                 ('voices', 'Load installed voices', self.load_voices), ('preview', 'Pre&view split and names', self.on_preview)),
+                 ('voices', 'Load installed voices', self.load_voices), ('preview', 'Pre&view split and names', self.on_preview),
+                 ('preset', 'Save batch &preset...', self.save_preset)),
                 (('approve', '&Save reviewed plan', self.approve), ('run', '&Run / resume saved plan', self.run_saved),
                  ('pause', '&Pause', self.pause), ('stop', 'S&top operation', self.stop), ('close', '&Close', self.close))):
                 row = wx.BoxSizer(wx.HORIZONTAL)
@@ -128,6 +129,8 @@ def create_document_batch_dialog(frame, *, service=None, wx_module=None):
             for control in (self.size, self.marker, self.seconds, self.wpm, self.template, self.destination, self.language):
                 control.Bind(wx.EVT_TEXT, self.changed)
             self.report('Choose an explicit capture or reload saved jobs. No conversion or synthesis has started.')
+            if initial_settings is not None:
+                self.apply_preset(initial_settings)
             self.enable()
 
         def dispose(self):
@@ -404,26 +407,74 @@ def create_document_batch_dialog(frame, *, service=None, wx_module=None):
                 self.report('Choose an installed voice explicitly. Availability does not qualify its language or pronunciation quality.')
             return self.begin('Listing installed local voices', work, loaded)
 
+        def preset_settings(self):
+            self.guard()
+            from dataclasses import asdict
+            from ..assistant.templates import batch_settings
+            def choice(control, count):
+                selected = control.GetSelection()
+                if not 0 <= selected < count:
+                    raise ValueError('Choose every required split, grouping and format option.')
+                return selected
+            options = SplitOptions(METHODS[choice(self.method, len(METHODS))][0], size=int(self.size.GetValue()),
+                marker=self.marker.GetValue(), ignore_case=bool(choice(self.ignore_case, 2)),
+                seconds=float(self.seconds.GetValue()), words_per_minute=int(self.wpm.GetValue()))
+            action = ('text', 'studio')[choice(self.action, 2)]
+            index = self.voice.GetSelection()
+            voice = self.voices[index]['id'] if 0 <= index < len(self.voices) else ''
+            if action == 'studio' and not voice:
+                raise ValueError('Load and explicitly choose an installed Studio voice.')
+            return batch_settings(dict(options=asdict(options), template=self.template.GetValue(),
+                combined=bool(choice(self.combine, 2)), action=action, voice_id=voice,
+                language=self.language.GetValue(), format=FORMATS[choice(self.format, len(FORMATS))]))
+
+        def apply_preset(self, settings):
+            self.guard()
+            from ..assistant.templates import batch_settings
+            settings = batch_settings(settings)
+            options = settings['options']
+            methods = [key for key, _ in METHODS]
+            if options['mode'] not in methods:
+                raise ValueError('This split mode is not exposed by the current native batch controls.')
+            self.method.SetSelection(methods.index(options['mode']))
+            for control, value in ((self.size, options['size']), (self.marker, options['marker']),
+                    (self.seconds, options['seconds']), (self.wpm, options['words_per_minute']),
+                    (self.template, settings['template']), (self.language, settings['language'])):
+                control.ChangeValue(str(value))
+            self.ignore_case.SetSelection(int(options['ignore_case']))
+            self.combine.SetSelection(int(settings['combined']))
+            self.action.SetSelection(int(settings['action'] == 'studio'))
+            self.format.SetSelection(FORMATS.index(settings['format']))
+            self.voices = ()
+            if settings['voice_id']:
+                self.voices = ({'id': settings['voice_id'],
+                    'name': 'Template voice — current availability must be checked before rendering'},)
+            self.fill_voices(settings['voice_id'])
+            self.identity = None
+            self.preview = self.preview_scope = self.approved_scope = None
+            self.destination.ChangeValue('')
+            self.review.ChangeValue('')
+            self.report('Preset settings loaded. Select current source files and a NEW output directory. '
+                        'Capture, prepare, preview and approve explicitly; no saved job or permission was reused.')
+
+        def save_preset(self, event=None):
+            if not self.alive or self.pending:
+                return
+            try:
+                settings = self.preset_settings()
+                from .workflow_templates import show_workflow_templates
+                show_workflow_templates(frame, initial=('document-batch', settings))
+            except Exception as exc:
+                self.report(exc)
+
         def on_preview(self, event=None):
             try:
                 identity = self.selected()
-                def choice(control, count):
-                    selected = control.GetSelection()
-                    if not 0 <= selected < count:
-                        raise ValueError('Choose every required split, grouping and format option.')
-                    return selected
-                options = SplitOptions(METHODS[choice(self.method, len(METHODS))][0], size=int(self.size.GetValue()),
-                    marker=self.marker.GetValue(), ignore_case=bool(choice(self.ignore_case, 2)),
-                    seconds=float(self.seconds.GetValue()), words_per_minute=int(self.wpm.GetValue()))
+                settings = self.preset_settings()
+                options = SplitOptions(**settings['options'])
+                arguments = {key: value for key, value in settings.items() if key != 'options'}
                 if not self.destination.GetValue().strip():
                     raise ValueError('Choose an existing output directory.')
-                action = ('text', 'studio')[choice(self.action, 2)]
-                index = self.voice.GetSelection()
-                voice = self.voices[index]['id'] if 0 <= index < len(self.voices) else ''
-                if action == 'studio' and not voice:
-                    raise ValueError('Load and explicitly choose an installed Studio voice.')
-                arguments = dict(template=self.template.GetValue(), combined=bool(choice(self.combine, 2)),
-                    action=action, voice_id=voice, language=self.language.GetValue(), format=FORMATS[choice(self.format, len(FORMATS))])
                 destination, scope = Path(self.destination.GetValue()), self.signature()
                 self.preview = self.preview_scope = self.approved_scope = None
                 def work(stopped, progress):
@@ -513,8 +564,9 @@ def create_document_batch_dialog(frame, *, service=None, wx_module=None):
     return DocumentBatchDialog()
 
 
-def show_document_batches(frame):
-    dialog = create_document_batch_dialog(frame)
+def show_document_batches(frame, *, initial_settings=None):
+    dialog = (create_document_batch_dialog(frame) if initial_settings is None else
+              create_document_batch_dialog(frame, initial_settings=initial_settings))
     try:
         dialog.ShowModal()
     finally:

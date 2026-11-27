@@ -62,6 +62,10 @@ def self_test():
             'native_gui': 'NOT_RUN', 'windows_nvda': 'NOT_RUN'}
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint(allow_bootstrap_self_test=True)
 def main(argv=None):
     arguments = list(sys.argv[1:] if argv is None else argv)
     if arguments[:1] == ['--carr-doi-metadata-worker'] and len(arguments) in (1, 3):
@@ -82,6 +86,12 @@ def main(argv=None):
     if arguments[:1] in (['translate'], ['translation']):
         from .assistant.translation_cli import main as translation_main
         return translation_main(arguments[1:])
+    if arguments[:1] == ['workflows']:
+        from .assistant.templates_cli import main as workflows_main
+        return workflows_main(arguments[1:])
+    if arguments[:1] == ['translate-batch']:
+        from .assistant.translation_batch_cli import main as batch_translation_main
+        return batch_translation_main(arguments[1:])
     if arguments[:1] == ['documents']:
         from .conversion.cli import main as documents_main
         return documents_main(arguments[1:])

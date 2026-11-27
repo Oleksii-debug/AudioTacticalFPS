@@ -44,6 +44,10 @@ def _review(service, profile, args):
     return value, {**review, 'review_sha256': sha256(canonical(review).encode('utf-8')).hexdigest()}
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Reviewed Google Basic v2 / Advanced v3 plain-text translation')
     parser.add_argument('--data-dir', type=Path, required=True, help='Existing private Resonance library folder')

@@ -601,6 +601,7 @@ class DesktopFrame(WorkspaceFrame):
         from .assistant_dialog import install_assistant_actions
         from .save_actions import install_save_actions
         from .document_conversion import install_conversion_actions
+        from .workflow_templates import install_workflow_templates_actions
         from .keyboard_settings import install_keyboard_settings
         from .citation_formatting import install_citation_actions
         from .language_matrix import install_language_actions
@@ -621,6 +622,7 @@ class DesktopFrame(WorkspaceFrame):
         install_portable_sync_actions(self)
         install_trust_actions(self)
         install_language_actions(self)
+        install_workflow_templates_actions(self)
         install_keyboard_settings(self)
         from .progress_panel import install_progress_panel
         install_progress_panel(self)

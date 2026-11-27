@@ -190,7 +190,7 @@ def test_equal_transcripts_have_separate_recoverable_reading_drafts_and_keep_ori
 
 
 @pytest.mark.parametrize('command', ('pause', 'cancel'))
-def test_manifest_cli_keeps_the_original_control_receipt_contract(selected, capsys):
+def test_manifest_cli_keeps_the_original_control_receipt_contract(selected, capsys, command):
     from carr_library.transcription_cli import main
     app, service, runtime, profile, source = selected
     identity = service.create([source])

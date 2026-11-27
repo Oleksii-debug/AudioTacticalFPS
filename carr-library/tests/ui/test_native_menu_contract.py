@@ -28,7 +28,7 @@ class Item:
         self.record = record
     def GetId(self): return self.record.identity
     def IsSeparator(self): return self.record.label is None
-    def GetSubMenu(self): return None
+    def GetSubMenu(self): return getattr(self.record, "submenu", None)
     def GetItemLabel(self): return self.record.label
     def SetItemLabel(self, label): self.record.label = label
     def Enable(self, value=True): self.record.enabled = value
@@ -49,6 +49,10 @@ class Menu:
                                  label=label, enabled=True)
         self.records.append(record)
         return self.wrap(record)
+    def AppendSubMenu(self, menu, label):
+        item = self.Append(-1, label)
+        item.record.submenu = menu
+        return item
     def AppendSeparator(self):
         self.Append(-1, None)
     def GetMenuItems(self): return [self.wrap(record) for record in self.records]
@@ -306,3 +310,39 @@ def test_active_manager_still_rejects_an_unregistered_second_native_leaf(native_
     assert second.GetId() not in {binding.item.GetId() for binding in manager.bindings.values()}
     with pytest.raises(ValueError, match='menu commands changed'):
         manager.guard_native()
+
+
+def test_named_workflow_macros_use_one_manager_and_only_open_new_review(native_menus, monkeypatch):
+    from carr_library.assistant import AssistantService
+    from carr_library.assistant.templates import TemplateStore
+    from carr_library.ui import workflow_templates
+    from carr_library.ui.keyboard_settings import install_keyboard_settings
+
+    frame = native_menus.frame
+    store = TemplateStore(frame.library.root)
+    recipe = store.save('Create after review', 'assistant',
+        {'steps': [{'tool': 'library.create', 'arguments': {'name': 'Not yet created'}}]})
+    frame.menu_bar = MenuBar(); frame.menu_bar.Append(Menu(), '&Options')
+    manager = install_keyboard_settings(frame)
+    called = []
+    monkeypatch.setattr(workflow_templates, 'show_workflow_templates',
+        lambda actual, **kwargs: called.append((actual, kwargs)))
+    workflow_templates.install_workflow_templates_actions(frame)
+    assert frame.keyboard_commands is manager
+    binding = manager.bindings[recipe.command_id]
+    assert binding.item.GetId() in native_menus.bindings
+    assert manager.registry.get(recipe.command_id).default_shortcut == ''
+    manager.apply_overrides({recipe.command_id: 'Ctrl+Alt+Shift+F9'})
+    manager.guard_native(); frame.keyboard_settings._guard()
+    native_menus.bindings[binding.item.GetId()](SimpleNamespace())
+    assert called == [(frame, {'selected_id': recipe.id})]
+    assert frame.library.workspaces() == () and AssistantService(frame.library).jobs() == ()
+    before = set(native_menus.bindings)
+    workflow_templates.install_workflow_templates_actions(frame)
+    assert set(native_menus.bindings) == before
+    assert manager.shortcut(recipe.command_id) == 'Ctrl+Alt+Shift+F9'
+
+    # Another library must not inherit an old menu's stored recipe authority.
+    frame.library = LibraryApp(frame.library.root.parent / 'other-library')
+    native_menus.bindings[binding.item.GetId()](SimpleNamespace())
+    assert len(called) == 1 and 'library changed' in native_menus.notices[-1].lower()

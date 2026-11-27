@@ -378,15 +378,57 @@ def review_metadata(runtime, source, output, changes, *, cancelled=lambda: False
     return plan
 
 
+def _parse_stream_hash(raw):
+    """Accept only one mapped audio packet digest in supported FFmpeg formats.
+
+    FFmpeg 9.1 emits the version-2 stream-checksum header. Both layouts attest
+    the same encoded packet bytes because this caller explicitly uses -c:a copy.
+    Extradata declarations are checked as syntax but are not substituted for
+    the packet hash stored in the existing audio_packet_sha256 receipt field.
+    """
+    error = 'FFmpeg did not attest the encoded audio stream.'
+    if type(raw) is not bytes or not 0 < len(raw) <= 65536:
+        raise AudioError(error)
+    try:
+        value = raw.decode('ascii', 'strict').strip()
+    except UnicodeDecodeError:
+        raise AudioError(error) from None
+    prefix = '0,a,SHA256='
+    if value.startswith(prefix) and _DIGEST.fullmatch(value[len(prefix):]):
+        return value[len(prefix):]
+    lines = value.splitlines()
+    if (not 8 <= len(lines) <= 16 or any(not line or len(line) > 1024 for line in lines)
+            or lines[:3] != ['#format: stream checksums', '#version: 2', '#hash: SHA256']
+            or lines[-2] != '#stream#, size, hash'):
+        raise AudioError(error)
+    patterns = {
+        'extradata': r'#extradata 0, *[0-9]{1,10}, [0-9a-f]{64}',
+        'software': r'#software: Lavf[0-9]+\.[0-9]+\.[0-9]+',
+        'timebase': r'#tb 0: [1-9][0-9]{0,9}/[1-9][0-9]{0,9}',
+        'media': r'#media_type 0: audio',
+        'codec': r'#codec_id 0: [a-z0-9_]{1,80}',
+        'rate': r'#sample_rate 0: [1-9][0-9]{0,8}',
+        'layout': r'#channel_layout_name 0: [ -~]{1,256}',
+    }
+    observed = set()
+    for line in lines[3:-2]:
+        matches = [name for name, pattern in patterns.items() if re.fullmatch(pattern, line)]
+        if len(matches) != 1 or matches[0] in observed:
+            raise AudioError(error)
+        observed.add(matches[0])
+    if not {'software', 'timebase', 'media', 'codec', 'rate', 'layout'} <= observed:
+        raise AudioError(error)
+    result = re.fullmatch(r'0, *[1-9][0-9]{0,19}, ([0-9a-f]{64})', lines[-1])
+    if result is None:
+        raise AudioError(error)
+    return result[1]
+
+
 def _stream_hash(runtime, path, cancelled):
     result = run_process([*runtime._base_args(), *runtime._input_args(path), '-map', '0:a:0',
         '-c:a', 'copy', '-f', 'streamhash', '-hash', 'sha256', 'pipe:1'],
         budget=runtime.budget, cancelled=cancelled)
-    value = result.stdout.decode('ascii', 'strict').strip()
-    prefix = '0,a,SHA256='
-    if not value.startswith(prefix) or not _DIGEST.fullmatch(value[len(prefix):]):
-        raise AudioError('FFmpeg did not attest the encoded audio stream.')
-    return value[len(prefix):]
+    return _parse_stream_hash(result.stdout)
 
 
 def _warning(completed, message):

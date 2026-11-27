@@ -66,6 +66,10 @@ def _load_review(path, expected):
     return preview
 
 
+from carr_library.installation_lease import installed_entrypoint
+
+
+@installed_entrypoint
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Reviewed document extraction, split/naming and Studio batches; no remote fallback')
     parser.add_argument('--data-dir', type=Path, required=True, help='Existing Resonance library folder')
