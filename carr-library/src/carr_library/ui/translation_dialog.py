@@ -18,8 +18,10 @@ def show_translation_result(frame, result):
     import wx
     dialog = wx.Dialog(frame, title='Translation result', size=(850, 600))
     layout = wx.BoxSizer(wx.VERTICAL)
-    status = wx.TextCtrl(dialog, value='Translation saved with its original text and provenance:\n'
-        + result['output'], style=wx.TE_MULTILINE | wx.TE_READONLY)
+    information = 'Translation saved with its original text and provenance:\n' + result['output']
+    if result.get('cleanup_pending'):
+        information += '\nThe saved result is complete. A temporary copy remains at: ' + result['cleanup_pending']
+    status = wx.TextCtrl(dialog, value=information, style=wx.TE_MULTILINE | wx.TE_READONLY)
     status.SetName('Saved translation information')
     layout.Add(status, 0, wx.EXPAND | wx.ALL, 8)
     text = wx.TextCtrl(dialog, value=result['translation_text'], style=wx.TE_MULTILINE | wx.TE_READONLY)
@@ -37,6 +39,11 @@ def show_translation_result(frame, result):
 
 def show_translation_dialog(frame, source_text=''):
     """Translate pasted or explicitly selected text; opening stays offline."""
+    if getattr(frame, '_closing', False):
+        return
+    if getattr(frame, 'working', False) or getattr(frame, 'busy', False):
+        frame.report('Wait for the current operation or cancel it before opening translation.')
+        return
     import wx
     controller = ConnectionsController(frame.library.root)
 
@@ -105,6 +112,11 @@ def show_translation_dialog(frame, source_text=''):
 
         def run(self, event):
             try:
+                if getattr(frame, '_closing', False):
+                    self.EndModal(wx.ID_CANCEL)
+                    return
+                if getattr(frame, 'working', False) or getattr(frame, 'busy', False):
+                    raise ProviderError('Wait for the current operation or cancel it before translating.')
                 choice = self.profiles.GetSelection()
                 if not 0 <= choice < len(self.rows):
                     raise ProviderError('Choose a connected Google Translation profile.')
@@ -132,6 +144,11 @@ def show_translation_dialog(frame, source_text=''):
                 if wx.MessageBox(notice, 'Approve translation and external transfer',
                         wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) != wx.YES:
                     return
+                if getattr(frame, '_closing', False):
+                    self.EndModal(wx.ID_CANCEL)
+                    return
+                if getattr(frame, 'working', False) or getattr(frame, 'busy', False):
+                    raise ProviderError('Another operation is running. Your text remains here; wait before translating.')
                 self.task = (profile, request, output, estimate)
                 self.EndModal(wx.ID_OK)
             except Exception as exc:
