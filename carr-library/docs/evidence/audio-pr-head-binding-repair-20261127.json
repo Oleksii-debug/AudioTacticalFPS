@@ -1,0 +1,94 @@
+{
+  "schema": "carr.auxiliary-audio-pr-head-binding-repair.v1",
+  "status": "OBSERVED_FAILURE_WITH_SOURCE_ONLY_REPAIR",
+  "observed_source": {
+    "commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "tree": "9b1de961f054691406da899dc5377266c8e17703",
+    "event": "pull_request",
+    "pull_request": 209,
+    "run_id": 46069523387,
+    "job_id": 140742846240,
+    "conclusion": "failure",
+    "workflow": ".github/workflows/carr-audio.yml",
+    "workflow_blob": "dbe443ebd50f0b75b4ab8a0bac04d3e38b9edaa8"
+  },
+  "evidence": {
+    "decoded_job_log_sha256": "d8a0705e4f1cf4ce983c2031ca048892d73bbaff038ec2e666f51939e1bdf213",
+    "artifact": {
+      "id": 15232995249,
+      "name": "carr-audio-f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3-1",
+      "bytes": 2999,
+      "sha256": "0c5ecf851d73de0d6c676cb6e32d14fa907863c78a21d084dc7a7a9f8f935613",
+      "head": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+      "run": 46069523387
+    },
+    "artifact_zip_read": "NOT_RUN"
+  },
+  "observed": {
+    "checkout_commit": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "explicit_git_head": "f16959c76c1702fbdf6d6c9a6c113b2cb6660cd3",
+    "runner_event_commit_preamble": "b8a594ea514ff44cadb5342986c68b1eac6e22ed",
+    "native_audio_checks": 16,
+    "native_audio_status": "PASS",
+    "physical_playback_device": "UNAVAILABLE",
+    "physical_playback_reason": "Windows reports no audio output device.",
+    "effect_probe_status": "PASS",
+    "effect_probe_checks": 151,
+    "strict_effect_gate_status": "FAIL",
+    "strict_effect_gate_reason": "ValueError: The installed native probe does not belong to the exact event source.",
+    "later_clips_publication_regressions_self_test": "NOT_RUN"
+  },
+  "cause": {
+    "path": "carr-library/scripts/r7_native_gate.py",
+    "blob": "29e75a6415eb914894e9aec62b87b315ccb97f16",
+    "contract": "The gate compares actual git HEAD with CARR_EXPECTED_SOURCE_COMMIT, falling back to GITHUB_SHA when the explicit variable is absent.",
+    "actual_workflow": "The checkout already selects the PR head. This workflow omitted the explicit expected-head variable, so its gate compared that checkout with the event merge identity instead."
+  },
+  "repair": {
+    "path": ".github/workflows/carr-audio.yml",
+    "scope": "Add the same CARR_EXPECTED_SOURCE_COMMIT expression used by the existing main gate, equal to the already reviewed checkout and artifact source expression.",
+    "exact_value": "${{ github.event.pull_request.head.sha || github.sha }}",
+    "unchanged": [
+      "r7_native_gate.py strict mismatch refusal",
+      "All151 effects labels and installed module/source hashes",
+      "All clip/publication and source regression selectors",
+      "Every product file, runtime pin, oracle and timeout",
+      "Current running/frozen refs"
+    ],
+    "execution": "NOT_RUN_FOR_SUCCESSOR"
+  },
+  "other_active_workflows": [
+    {
+      "path": ".github/workflows/carr-windows.yml",
+      "blob": "48ce451b12048babec276abd8f60cd9698b3c954",
+      "shared_native_gate": true,
+      "expected_head": "CARR_EXPECTED_SOURCE_COMMIT already explicitly names the PR head"
+    },
+    {
+      "path": ".github/workflows/carr-sync.yml",
+      "blob": "2948f76744098977518b5540a278445a5acab905",
+      "shared_native_gate": false,
+      "checkout": "explicit PR head",
+      "source_identity": "actual checkout receipt; installed source/package tests are independently reported"
+    },
+    {
+      "path": ".github/workflows/carr-native-launcher.yml",
+      "blob": "794048714f5f5c08e0f44ef7fe3f8776d8858895",
+      "shared_native_gate": false,
+      "checkout": "explicit PR head",
+      "source_identity": "actual git HEAD plus compiled source/executable receipts"
+    },
+    {
+      "path": ".github/workflows/carr-bibliography.yml",
+      "blob": "071b297771d16a762d62d80af3f780da2343a207",
+      "shared_native_gate": false,
+      "checkout": "explicit PR head",
+      "source_identity": "asserted EXPECTED_SOURCE_COMMIT plus source-wheel receipt"
+    }
+  ],
+  "limits": [
+    "The frozen f169 audio job remains FAIL; actual151 effect subchecks cannot satisfy the rejected strict source binding.",
+    "This workflow-only correction makes no product, acoustic, physical-audio, NVDA or full-platform acceptance claim.",
+    "A fresh executed successor is required; the previous main and auxiliary jobs are not cancelled or rewritten."
+  ]
+}
