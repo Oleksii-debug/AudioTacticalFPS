@@ -44,6 +44,8 @@ jobs:
           New-Item -ItemType Directory -Force ci-results | Out-Null
           python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-integrated-cp311.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pip install --only-binary=:all: --require-hashes -r packaging/windows-sync-test-cp311.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m pip install --no-deps .
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git rev-parse HEAD | Set-Content ci-results/tested-commit.txt
