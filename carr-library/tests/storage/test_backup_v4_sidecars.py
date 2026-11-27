@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -72,6 +73,8 @@ def test_exact_v3_reader_shapes_restore_without_rewriting(reading, tmp_path, sha
     create_backup(app, folder)
     value = manifest(folder)
     value['version'] = 3
+    value.pop('pending', None)
+    shutil.rmtree(folder / 'pending', ignore_errors=True)
     del value['generated_audio_included']
     if shape == 'reading_state':
         value['reading_state'] = value.pop('sidecars')[0]

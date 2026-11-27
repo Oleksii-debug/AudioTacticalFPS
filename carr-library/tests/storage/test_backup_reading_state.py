@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 import json
+import shutil
 import os
 
 import pytest
@@ -283,6 +284,8 @@ def test_legacy_backups_remain_usable_without_inventing_reading_state(tmp_path, 
     manifest = json.loads((folder / 'manifest.json').read_text(encoding='utf-8'))
     assert manifest['version'] == 4 and manifest['sidecars'] == []
     manifest['version'] = version
+    manifest.pop('pending', None)
+    shutil.rmtree(folder / 'pending', ignore_errors=True)
     del manifest['sidecars']
     del manifest['generated_audio_included']
     if version == 1:

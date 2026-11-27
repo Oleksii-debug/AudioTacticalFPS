@@ -2,9 +2,9 @@
 
 Backups include all workspaces, saved research, registered original files and
 explicitly validated reader/editor/settings sidecars. Unknown application state
-is refused, never silently discarded. Active job checkpoint formats require
-their producer's snapshot adapter; this is not a live-job backup claim.
-Retained files from failed/unpublished imports are deliberately not included.
+is refused, never silently discarded. Pending import journals, requests, review
+records and their required originals use the canonical producer snapshot.
+Restore rebinds locations without automatically executing or resuming jobs.
 The independently retained manifest digest binds the database and every asset.
 Version 2 also identifies the exact schema, not just its numeric user_version.
 Format 4 unifies registered sidecars. Exact legacy formats 1/2 and the three
@@ -29,9 +29,10 @@ from .ingest.retained_assets import MAX_BYTES, SUFFIXES, RetainedAssets
 from .ingest.restore import RestoreError
 from .ingest.writer_guard import exclusive_writer
 from .data_paths import guard_data_directory
+from .durable_state import local_path
 from .storage.revisions import Storage
 from .storage.schema_identity import expected_schema_fingerprint, schema_fingerprint
-from . import backup_sidecars
+from . import backup_sidecars, pending_backup
 
 DATABASE = 'library.sqlite'
 ORIGINALS = 'originals'
@@ -44,7 +45,7 @@ MAX_ASSET_BYTES = 8 * 1024**3
 
 
 def _destination(value, source):
-    path = guard_data_directory(value, purpose='backup or restored library')
+    path = local_path(guard_data_directory(value, purpose='backup or restored library'))
     _plain(path.parent, directory=True)
     if os.path.lexists(path):
         raise FileExistsError(path)
@@ -142,6 +143,13 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                                           max_bytes=asset_budget, cancelled=cancelled)
                 fingerprint = schema_fingerprint(snapshot_storage.db)
                 total = size + sum(entry.size for entry in entries)
+                pending = None
+                if any(os.path.lexists(app.root / name) for name in
+                       ('imports.sqlite', 'import-requests', 'import-batches')):
+                    pending = pending_backup.snapshot_pending(app, stage / 'pending',
+                        max_bytes=pending_backup.MAX_TOTAL if max_bytes is None else max_bytes - total,
+                        cancelled=cancelled)
+                    total += sum(entry['size_bytes'] for entry in pending['files'])
                 state_budget = backup_sidecars.MAX_BYTES if max_bytes is None else max_bytes - total
                 sidecars = backup_sidecars.snapshot(snapshot_storage.db, app.root, stage,
                     max_bytes=state_budget, cancelled=cancelled)
@@ -149,6 +157,8 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
                 schema_fingerprint=fingerprint,
                 database=dict(filename=DATABASE, size_bytes=size, sha256=hash_file(snapshot)),
                 assets=_asset_manifest(entries), sidecars=sidecars, generated_audio_included=False)
+            if pending is not None:
+                manifest['pending'] = pending
             backup_sidecars.normalize_manifest(manifest)
             raw = (json.dumps(manifest, ensure_ascii=False, sort_keys=True,
                               separators=(',', ':')) + '\n').encode('utf-8')
@@ -166,7 +176,14 @@ def create_backup(app, destination, *, include_generated=False, max_bytes=None, 
             for entry in entries:
                 os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
             backup_sidecars.publish(stage, destination, sidecars, sync_directory=_sync_directory)
+            if pending is not None:
+                (destination / 'pending').mkdir(mode=0o700)
+                backup_sidecars.publish(stage, destination,
+                    [dict(entry, filename='pending/' + entry['filename']) for entry in pending['files']],
+                    sync_directory=_sync_directory)
+                _sync_directory(destination / 'pending')
             _sync_directory(destination / ORIGINALS)
+            backup_sidecars._check_cancelled(cancelled)
             os.link(stage / MANIFEST, destination / MANIFEST)
             _sync_directory(destination)
             _sync_directory(destination.parent)
@@ -267,7 +284,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
     the application must reject such a root instead of opening partial data.
     """
     backup_sidecars._check_cancelled(cancelled)
-    source = Path(source).absolute()
+    source = local_path(source, exists=True)
     _plain(source, directory=True)
     source = source.resolve(strict=True)
     destination = _destination(destination, source)
@@ -287,6 +304,14 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
                 raise RestoreError('asset manifest disagrees with the database')
             _copy_originals(storage.db, original_store, stage / ORIGINALS, cancelled=cancelled)
             restored_sidecars = backup_sidecars.restore(storage.db, source, stage, inventory, cancelled=cancelled)
+        pending_entries = []
+        if inventory.pending is not None:
+            recovered = pending_backup.restore_pending(source / 'pending', stage, destination,
+                inventory.pending, cancelled=cancelled)
+            pending_entries.extend(dict(filename=entry['filename']) for entry in inventory.pending['files']
+                                   if not entry['filename'].startswith('originals/'))
+            pending_entries.extend(dict(filename='originals/' + entry['filename'])
+                                   for entry in recovered['assets'])
         backup_sidecars._check_cancelled(cancelled)
         destination.mkdir(mode=0o700)
         _sync_file(destination / INCOMPLETE, b'Restore has not completed. Do not open this data directory.\n')
@@ -296,6 +321,7 @@ def restore_backup(source, destination, expected_manifest_sha256, *, cancelled=l
         for entry in entries:
             os.link(stage / ORIGINALS / entry.filename, destination / ORIGINALS / entry.filename)
         backup_sidecars.publish(stage, destination, restored_sidecars, sync_directory=_sync_directory)
+        backup_sidecars.publish(stage, destination, pending_entries, sync_directory=_sync_directory)
         _sync_directory(destination / ORIGINALS)
         _sync_directory(destination)
     # Temporary hard links are now gone; retained originals have one link.
