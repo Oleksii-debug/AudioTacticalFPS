@@ -152,6 +152,7 @@ def minimal_view(frame, actions):
     view.frame, view.actions = frame, actions
     view.alive = view.window_alive = True
     view.dialog = object()
+    view._window_id = 7311
     view.measured = None
     view.executor = RecordingExecutor()
     view.callbacks = []
@@ -163,7 +164,7 @@ def minimal_view(frame, actions):
     return view
 
 
-@pytest.mark.parametrize('event_kind', ['root', 'destroy'])
+@pytest.mark.parametrize('event_kind', ['root', 'destroy', 'destroy_alias'])
 def test_queued_native_completion_never_touches_stale_or_destroyed_controls(setup, event_kind):
     frame, actions, prepared, _, _ = captured(setup)
     view = minimal_view(frame, actions)
@@ -181,7 +182,9 @@ def test_queued_native_completion_never_touches_stale_or_destroyed_controls(setu
             frame.library = LibraryApp(frame.library.root.parent / 'new-host-root')
         else:
             skipped = []
-            event = SimpleNamespace(GetEventObject=lambda: view.dialog, Skip=lambda: skipped.append(True))
+            wrapper = view.dialog if event_kind == 'destroy' else object()
+            event = SimpleNamespace(GetId=lambda: view._window_id,
+                GetEventObject=lambda: wrapper, Skip=lambda: skipped.append(True))
             view.destroyed(event)
             assert skipped == [True] and not view.window_alive
         count = len(view.running)
@@ -197,7 +200,8 @@ def test_child_window_destruction_does_not_cancel_parent_operation(setup):
     frame, actions, _, _, _ = captured(setup)
     view = minimal_view(frame, actions)
     try:
-        event = SimpleNamespace(GetEventObject=object, Skip=lambda: None)
+        event = SimpleNamespace(GetId=lambda: view._window_id + 1,
+                                GetEventObject=object, Skip=lambda: None)
         view.destroyed(event)
         assert view.alive and view.window_alive and not actions.closed
     finally:
@@ -253,7 +257,8 @@ def test_withdrawn_real_job_terminalizes_only_its_observer_after_owned_future_st
         if withdrawal == 'scope':
             frame.active = ('another-library', 'Other')
         else:
-            view.destroyed(SimpleNamespace(GetEventObject=lambda: view.dialog, Skip=lambda: None))
+            view.destroyed(SimpleNamespace(GetId=lambda: view._window_id,
+                GetEventObject=object, Skip=lambda: None))
         with pytest.raises(InterruptedError):
             future.result(timeout=6)
         deadline = time.monotonic() + 5

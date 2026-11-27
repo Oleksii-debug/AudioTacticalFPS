@@ -99,6 +99,7 @@ class DesktopSearchPanel(PagedSearchPanel):
         self._init_paging()
         super().__init__(parent, services.search, services.load_context,
                          verified_copy=services.verified_copy)
+        self._search_window_id = self.GetId()
         self.retrieval.SetItems(['Exact phrase', 'Whole word', 'All words on one page',
                                  'Thematic (local keywords)', 'Semantic (local model)',
                                  'Advanced (AND, OR, NOT, NEAR)'])
@@ -207,7 +208,7 @@ class DesktopSearchPanel(PagedSearchPanel):
             return False
 
     def _search_destroyed(self, event):
-        if event.GetEventObject() is self:
+        if event.GetId() == self._search_window_id:
             self._search_alive = False
             self._context_epoch += 1
             self._retire_page_handles()
@@ -698,6 +699,7 @@ class DesktopFrame(WorkspaceFrame):
         self.working = False
         self._closing = False
         super().__init__(None, library.list_scopes, self._bind)
+        self._progress_window_id = self.GetId()
         self.SetTitle('Resonance — Sceneria Innovative Technologies')
         self.SetMinSize((760, 650))
         self._menus()
@@ -1500,7 +1502,7 @@ class DesktopFrame(WorkspaceFrame):
             self.executor.shutdown(wait=False, cancel_futures=True)
 
     def _progress_destroyed(self, event):
-        if event.GetEventObject() is self:
+        if event.GetId() == self._progress_window_id:
             self._closing = True
             self.cancel_event.set()
             progress = getattr(self, 'progress_actions', None)

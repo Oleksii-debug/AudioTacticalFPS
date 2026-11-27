@@ -228,6 +228,17 @@ def run_native(source=None, timeout=150):
 
         def destroy_scan(dialog):
             release = held_scan(dialog)
+            window_id = dialog.GetId()
+            events = []
+            observations['destruction'] = {'dialog_id': window_id, 'events': events}
+            def observed_destroy(event):
+                # Passive evidence only: the production handler must cancel
+                # ownership itself; never invoke it or alter its lifetime flags.
+                obj = event.GetEventObject()
+                events.append({'event_id': event.GetId(), 'wrapper_type': type(obj).__name__,
+                               'same_python_wrapper': obj is dialog})
+                event.Skip()
+            dialog.Bind(wx.EVT_WINDOW_DESTROY, observed_destroy)
             dialog.Destroy()
             check('forced native destruction invalidates the child lifetime',
                   pump(lambda: not dialog._window_alive))
@@ -293,6 +304,7 @@ def run_native(source=None, timeout=150):
             return 0
         except Exception as exc:
             print(json.dumps({'status': 'FAIL', 'checks_passed': len(checks), 'error': str(exc),
+                              'observations': observations,
                               'nvda': 'NOT_RUN'}), flush=True)
             traceback.print_exc()
             return 1

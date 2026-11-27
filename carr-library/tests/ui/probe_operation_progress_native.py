@@ -38,7 +38,7 @@ def run_native(source=None):
     from carr_library.ui import desktop_app, operation_progress, audio_studio
     from carr_library.progress import FeedbackPreferences, ProgressPreferenceStore
 
-    errors, checks, timers = [], [], []
+    errors, checks, timers, studio_destroy_events = [], [], [], []
     panel = None
 
     class ProbeApp(wx.App):
@@ -73,6 +73,7 @@ def run_native(source=None):
                         'displayed': panel.text.GetValue(),
                         'events': [item.describe() for item in panel.hub.snapshot()],
                         'feedback_notice': panel.feedback.notice,
+                        'studio_destroy_events': studio_destroy_events[-8:],
                     }
                     print(json.dumps({'native_progress_diagnostic': detail},
                                      ensure_ascii=True), flush=True)
@@ -274,6 +275,16 @@ def run_native(source=None):
 
             studio = audio_studio.AudioStudioDialog(frame,
                 audio_studio.StudioController(private_root=library.root))
+            studio_window_id = studio.dialog.GetId()
+            def observe_studio_destroy(event):
+                # Passive native evidence; Skip retains the production handler.
+                try:
+                    studio_destroy_events.append(dict(event_id=event.GetId(),
+                        studio_id=studio_window_id,
+                        same_python_wrapper=event.GetEventObject() is studio.dialog))
+                finally:
+                    event.Skip()
+            studio.dialog.Bind(wx.EVT_WINDOW_DESTROY, observe_studio_destroy)
             studio.dialog.Show()
             studio_accepted, studio_started, studio_release = [], Event(), Event()
             try:

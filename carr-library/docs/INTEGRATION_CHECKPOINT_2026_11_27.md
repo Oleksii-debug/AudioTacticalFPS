@@ -8,6 +8,77 @@ product acceptance work are complete.
 
 ## Latest composed checkpoint
 
+### Shared recovery, translation, planning and search composition
+
+Source-only checkpoint
+[`10d64892c8f5a38560fbdf5df62d7bd11aa47dc4`](https://github.com/Oleksii-debug/AudioTacticalFPS/commit/10d64892c8f5a38560fbdf5df62d7bd11aa47dc4)
+has exactly the local composed tree `1bff2e4f09260eb11c91bc962cafede22b1bee4e`.
+It contains no private engine, model, voice, worker, credentials or user corpus.
+It integrates the following through the existing Desktop and domain services:
+
+- Schema-five publication receipts bind an import to its exact request and
+  attempt. Explicit migrations retain older layout fingerprints and identities.
+- Typed pending-import and transcription producers preserve captured inputs,
+  journals and validated outputs in the common format-four backup. Restored
+  work requires new review; old scan cursors and external-operation approvals
+  are not silently reinstated. Re-backup and portable publication are covered.
+- Google Basic v2 translation uses the current credential vault, provider
+  gateway and budget ledger. Exact text, language and cost are reviewed before
+  transfer. Accepted chunks survive restart; an uncertain sending checkpoint
+  is not automatically retried. Translation jobs and language caches participate
+  in the same validated backup. Exported text is a derivative, never a quotation.
+- The existing assistant can request a typed plan from an explicitly selected
+  loopback model profile. Request approval and execution approval are separate;
+  model output has no direct command, path or network authority.
+- Main Search continues through verified result pages and catalog windows,
+  preserving the last valid page when navigation fails or is cancelled.
+- Reader playback withdraws a revoked prepared recording only after stopping
+  its device. Failed stops retain ownership and notification suppression.
+- Distinct menu access keys and the actual academic evidence-panel focus
+  contract replace two reproduced Desktop integration defects.
+
+The composed local source run covered 25 distinct suite paths: **1,565 passed,
+zero failed or skipped**. The common-backup composition covered nine paths and
+222 cases; packaging covered four paths and 140 cases; the academic correction
+covered six paths and 113 cases. These runs overlap and are not additive. Their
+controlled providers do not establish live Google translation, real local-model
+inference, acoustic quality, Windows acceptance or manual NVDA operation.
+
+### Complete Windows feedback from source f6a0485
+
+The [integrated run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45936329615)
+completed all 196 required source-suite paths: **5,410 passing and 50 failing
+cases, zero skips**. Three suite paths failed: transcription (42), the real
+5,001-file continuation fixture (one scan deadline), and federated reading
+presentation (seven outdated view/adapter fixtures). This job is a failure.
+
+Actual installed progress now passes the 99-percent and verified 100-percent
+gauge assertions. It subsequently fails forced Studio destruction. Language
+inventory similarly fails forced dialog destruction; the reader transport fails
+to withdraw a recording after a data-folder change. Academic comparison fails
+the duplicate Settings/Tools access key. These failures remain visible; later
+independent probes run without converting a failed gate into success.
+
+The source corrections use fresh filesystem metadata for Windows transcription
+link checks, preserve the exact paged-search presentation assertions, and bind
+dialog destruction to the captured native window ID instead of Python-wrapper
+identity. Native probes retain their original assertions and record passive
+destruction-event evidence. Re-execution on the corrected Windows package is
+required; the earlier failure is not relabeled as passing.
+
+The [audio run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45936329613)
+passes all ten source groups, **523 cases**, and the real Windows SAPI/FFmpeg,
+credential-vault and Studio smoke. The later reader transport failure still
+fails that workflow. The separate native keyboard, bibliography and portable
+snapshot jobs pass on that source. Manual NVDA, owner-engine inference, voice
+similarity, recognition accuracy and neural music remain separate acceptance.
+
+The supplied owner voice package has now been privately reconstructed and
+hash-verified, and its worker contract inspected against the existing public
+adapter. No additional voice engine or competing bridge is selected. Source
+availability and a matching protocol do not establish runtime or rights
+qualification, and none of that private package is included in this repository.
+
 ### Native feedback from source 6d8fdfd
 
 The next exact-source Windows integrated run passed actual managed Unicode OCR

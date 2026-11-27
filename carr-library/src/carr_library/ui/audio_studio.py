@@ -496,12 +496,14 @@ class AudioStudioDialog:
         self.wx, self.parent, self.controller = wx, parent, controller
         self.dialog = wx.Dialog(parent, title='Audio Studio — Local only', size=(940, 760),
                                 style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        self._window_id = self.dialog.GetId()
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='audio-studio')
         self.cancelled = threading.Event()
         self.busy = self.closed = self.close_pending = False
         self._window_alive, self._job_epoch, self._disposed = True, 0, False
         self._owner_scope = self._scope_identity()
         self._operation_progress = None
+        self._job_future = None
         self._media_panel = getattr(getattr(parent, 'progress_actions', None), 'panel', None)
         self.editing_dirty = False
         self._script_dirty = False
@@ -800,8 +802,10 @@ class AudioStudioDialog:
                 with lock:
                     pending['active'] = False
 
+        self._job_future = None
         try:
             future = self.executor.submit(work)
+            self._job_future = future
         except Exception as exc:
             with lock:
                 pending['active'] = False
@@ -811,6 +815,11 @@ class AudioStudioDialog:
             return
 
         def complete(completed):
+            if self.closed or not self._window_alive:
+                # Future completion is the acknowledgement that owned work
+                # stopped. No callback needs the destroyed native controls.
+                measured.finish(state='cancelled')
+                return
             def apply():
                 if self.closed or not self._window_alive:
                     measured.finish(state='cancelled')
@@ -822,6 +831,8 @@ class AudioStudioDialog:
                     return
                 try:
                     result = completed.result()
+                    if self.cancelled.is_set():
+                        raise InterruptedError('Audio operation cancelled before its result was accepted.')
                     done(result)
                     measured.complete(result)
                 except Exception as exc:
@@ -1417,7 +1428,11 @@ class AudioStudioDialog:
         self._job_epoch += 1
         self.cancelled.set()
         if self._operation_progress is not None:
-            self._operation_progress.finish(state='cancelled')
+            future = getattr(self, '_job_future', None)
+            if future is not None and not future.done():
+                self._operation_progress.update(phase='Cancellation requested; waiting for the worker to stop.')
+            else:
+                self._operation_progress.finish(state='cancelled')
         try:
             self.timer.Stop()
         except RuntimeError:
@@ -1433,7 +1448,9 @@ class AudioStudioDialog:
         self.executor.shutdown(wait=False, cancel_futures=True)
 
     def _destroyed(self, event):
-        if event.GetEventObject() is self.dialog:
+        # Native top-level destruction may expose a different Python wrapper.
+        # Use its captured native ID and ignore propagated child destruction.
+        if event.GetId() == self._window_id:
             self._window_alive = False
             self._dispose()
         event.Skip()

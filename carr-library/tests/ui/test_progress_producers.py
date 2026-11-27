@@ -16,6 +16,7 @@ from test_portable_sync import state, defer, finish, TOKEN, PASSWORD
 
 def tracked_frame(classes, panel):
     value = frame(classes)
+    value._progress_window_id = 901
     value.progress_actions = SimpleNamespace(panel=panel)
     value.menu_bar.GetMenuLabel.side_effect = ['&Library', '&Options', '&Research']
     return value
@@ -89,22 +90,53 @@ def test_main_start_failure_and_rejected_result_are_failed_tasks(classes, panel)
     assert all(event.percent is None for event in panel.hub.snapshot())
 
 
-def test_forced_main_destroy_withdraws_progress_before_queued_result(classes, panel):
+@pytest.mark.parametrize('alias', [False, True])
+@pytest.mark.parametrize('completed_before_destroy', [False, True])
+def test_forced_main_destroy_withdraws_progress_before_queued_result(
+        classes, panel, alias, completed_before_destroy):
     value = tracked_frame(classes, panel)
     future = Future()
     value.executor.submit.return_value = future
     done = Mock()
     value.run_job('Check sources', lambda: None, done)
-    future.set_result(())
-    event = SimpleNamespace(GetEventObject=lambda: value, Skip=Mock())
+    if completed_before_destroy:
+        future.set_result(())
+    source = SimpleNamespace(GetId=lambda:value._progress_window_id) if alias else value
+    event = SimpleNamespace(GetId=lambda:value._progress_window_id,
+                            GetEventObject=lambda:source, Skip=Mock())
+    value.GetId = Mock(side_effect=AssertionError('The deleted frame was queried again'))
     value._progress_destroyed(event)
     calls = value.report.call_count
     for control in (panel.window, panel.text, panel.gauge):
         control.alive = False
-    classes[1].pop(0)()
+    if not completed_before_destroy:
+        future.set_result(())
+    while classes[1]:
+        classes[1].pop(0)()
     assert not panel.alive and panel.hub.snapshot() == ()
     assert value.report.call_count == calls and not done.called
     assert value.cancel_event.is_set()
+    assert value._closing
+    event.Skip.assert_called_once()
+    value.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+
+
+def test_propagated_child_destroy_keeps_main_job_and_progress_live(classes, panel):
+    value = tracked_frame(classes, panel)
+    future, done = Future(), Mock()
+    value.executor.submit.return_value = future
+    value.run_job('Check sources', lambda:None, done)
+    event = SimpleNamespace(GetId=lambda:value._progress_window_id + 1,
+                            GetEventObject=lambda:object(), Skip=Mock())
+    value._progress_destroyed(event)
+    assert not value._closing and not value.cancel_event.is_set() and panel.alive
+    assert panel.hub.snapshot()[-1].state == 'running'
+    value.executor.shutdown.assert_not_called()
+    future.set_result(('accepted source',))
+    classes[1].pop(0)()
+    done.assert_called_once_with(('accepted source',))
+    assert panel.hub.snapshot()[-1].percent == 100
+    event.Skip.assert_called_once()
 
 
 def test_main_data_root_change_reloads_progress_with_the_new_owner(classes, tmp_path):

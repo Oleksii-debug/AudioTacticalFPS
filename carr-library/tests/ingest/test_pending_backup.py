@@ -69,13 +69,16 @@ def stop_after_checkpoint(root):
     return cancelled
 
 
-@pytest.mark.parametrize('version', [1, 2])
-def test_queued_v1_v2_restores_owned_sources_and_requires_exact_review(tmp_path, version):
+@pytest.mark.parametrize('version,scan_budget', [(1, None), (2, None), (2, 300)])
+def test_queued_v1_v2_restores_owned_sources_and_requires_exact_review(tmp_path, version, scan_budget):
     app, workspace, source = setup(tmp_path)
-    batch = app.plan_import_batch(workspace, (source,))
+    batch = app.plan_import_batch(workspace, (source,), scan_timeout=scan_budget or 120)
     if version == 1:
         batch['version'] = 1
         batch.pop('scan')
+    elif scan_budget is None:
+        batch['scan'].pop('timeout_seconds')
+    if version == 1 or scan_budget is None:
         (app.root / 'import-batches' / (batch['batch_id'] + '.json')).write_text(
             canonical(batch) + '\n', encoding='utf-8')
     bundle = tmp_path / 'bundle'
@@ -87,6 +90,9 @@ def test_queued_v1_v2_restores_owned_sources_and_requires_exact_review(tmp_path,
     restored = restore(bundle, tmp_path / 'restored', checksum)
     saved = restored.import_batch(workspace, batch['batch_id'])
     assert saved['version'] == version and saved['rows'][0]['edition_id'] == batch['rows'][0]['edition_id']
+    if version == 2:
+        assert saved['scan'].get('timeout_seconds') == scan_budget
+        assert saved['scan']['next_offset'] is None
     captured = Path(saved['rows'][0]['source'])
     assert captured.is_relative_to(restored.root / 'pending-imports' / 'originals')
     assert captured.read_bytes() == TEXT.encode('utf-8')
@@ -337,6 +343,23 @@ def rehash_component(bundle):
     raw = (canonical(outer) + '\n').encode('utf-8')
     outer_path.write_bytes(raw)
     return sha256(raw).hexdigest()
+
+
+@pytest.mark.parametrize('value', [True, 29, 601])
+def test_rehashed_out_of_budget_pending_scan_cannot_be_restored(tmp_path, value):
+    app, workspace, source = setup(tmp_path)
+    batch = app.plan_import_batch(workspace, (source,), scan_timeout=300)
+    bundle = tmp_path / 'bundle'
+    backup(app, bundle)
+    path = bundle / 'pending-imports' / 'import-batches' / (batch['batch_id'] + '.json')
+    changed = json.loads(path.read_bytes())
+    changed['scan']['timeout_seconds'] = value
+    path.write_text(canonical(changed) + '\n', encoding='utf-8')
+    checksum = rehash_component(bundle)
+    destination = tmp_path / 'must-not-create'
+    with pytest.raises(ValueError, match='scan time limit'):
+        restore_backup(bundle, destination, checksum)
+    assert not destination.exists()
 
 
 def test_rehashed_false_txt_checkpoint_still_fails_exact_source_validation(tmp_path):

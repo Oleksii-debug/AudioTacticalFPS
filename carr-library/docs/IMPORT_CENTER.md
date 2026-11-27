@@ -1,28 +1,37 @@
 # Import Center
 
 Open **Library → Import Center: files, folders and queues** inside a library.
-The center prepares and saves import plans for
-TXT, PDF, DOCX and EPUB documents. It uses the same retained originals, extraction
+The center prepares and saves import plans for the supported document formats
+listed under **Help → Document formats**. It uses the same retained originals, extraction
 worker, review requirements and search publication as ordinary book import.
 
 ## Import a collection of documents
 
 1. Choose the destination collection and the languages used on scanned PDF pages.
    These settings apply to the next plan, not to an older saved plan.
-2. Choose **Add files** or **Add folder**. For a folder, the **Include subfolders**
+2. Keep the default 120-second **Scan time limit per page**, or explicitly choose
+   30–600 seconds for this scan. A larger allowance can help on a slow local disk;
+   source, file-count and memory limits remain in force.
+3. Choose **Add files** or **Add folder**. For a folder, the **Include subfolders**
    checkbox controls whether nested directories are scanned.
-3. Wait for the file check. The saved plan lists every accepted candidate and
+4. Wait for the file check. The saved plan lists every accepted candidate and
    explains exact duplicates, unsupported files and rejected sources. Checking a
    plan does not add books to the catalog.
-4. Select a file with the arrow keys. Its status and explanation are available in
+5. Select a file with the arrow keys. Its status and explanation are available in
    **Selected file details**. **Exclude or include selected file** changes an
    unstarted candidate; it does not delete a document or a catalog record.
-5. Choose **Start queued files**. The list and status update as individual files
+6. Choose **Start queued files**. The list and status update as individual files
    finish. Successful imports become available in the existing Books and
    Collections and Search sections.
-6. Use **Cancel operation** to stop. Files that have not started remain queued.
+7. Use **Cancel operation** to stop. Files that have not started remain queued.
    Close the center once the current worker has stopped. Reopen it later, select
    the saved batch and choose **Start queued files** to continue.
+
+The scan allowance is saved with each page and restored when that queue is
+selected. **Next scan page** retains the queue's destination and extraction
+choices, while capturing the currently displayed scan allowance. A timeout
+keeps earlier pages intact. You can increase this explicit allowance and retry;
+every attempt still verifies the complete bounded source inventory.
 
 Use Tab and Shift+Tab to move between the native controls. The batch and file
 lists have distinct accessible names and numbered entries. Selected-file details
@@ -77,11 +86,14 @@ data directory. Each planned document receives stable request, work and edition
 identities before processing. Restarting the program reconciles the same
 request, including an import that finished immediately before an interruption.
 
-The existing checked library backup includes completed library records and their
-retained sources. It **does not include unfinished import plans, worker journals
-or pending review requests**. Continue these on the original installation, or
-create a fresh plan after moving to a restored data directory. A text report is
-an outcome record, not a restorable copy of the import queue.
+The checked library backup includes completed library records and retained
+sources, plus validated pending import queues, requests, checkpoints and their
+captured input bytes. Missing or changed planned sources fail backup rather than
+being silently omitted. Restored imports remain paused until **Review restored
+imports** approves the exact captured selection. External folder paths are not
+followed; old scan continuations are disabled. The saved scan allowance remains
+available as metadata. Sources beyond the captured pages need a new folder scan.
+A text report is an outcome record, not a restorable copy of the import queue.
 
 ## Workflow research and implementation boundary
 

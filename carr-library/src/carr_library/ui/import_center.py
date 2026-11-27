@@ -231,6 +231,7 @@ class ImportCenterActions:
     def _display(self, batch):
         selected = self.rows.GetSelection()
         self.batch = batch
+        self.scan_timeout.SetValue(int((batch.get('scan') or {}).get('timeout_seconds', 120)))
         self.rows.SetItems([f'{i}. {readable(row["file"])} — {row["state"].replace("_", " ")}'
                            for i, row in enumerate(batch['rows'], 1)])
         self.rows.SetSelection(min(max(selected, 0), len(batch['rows']) - 1))
@@ -294,6 +295,8 @@ class ImportCenterActions:
         config = self._new_plan_ocr_config()
         collections = () if self.collection_ids[index] is None else (self.collection_ids[index],)
         recursive = self.recursive.GetValue()
+        from ..ingest.batches import _scan_timeout
+        scan_timeout = _scan_timeout(self.scan_timeout.GetValue())
 
         def done(batch):
             self.refresh(selected=batch['batch_id'])
@@ -302,7 +305,7 @@ class ImportCenterActions:
 
         self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
             self.workspace, paths, collections=collections, recursive=recursive, config=config,
-            cancelled=self._cancelled), done, planning=True)
+            cancelled=self._cancelled, scan_timeout=scan_timeout), done, planning=True)
 
 
     def review_restored_imports(self, event=None):
@@ -369,12 +372,15 @@ class ImportCenterActions:
             if self.batch is None or (self.batch.get('scan') or {}).get('next_offset') is None:
                 raise ValueError('Select a saved scan page with more source files to check.')
             batch_id = self.batch['batch_id']
+            from ..ingest.batches import _scan_timeout
+            scan_timeout = _scan_timeout(self.scan_timeout.GetValue())
             def done(batch):
                 self.refresh(selected=batch['batch_id'])
                 self.report('Next scan page saved. ' + batch_summary(batch) +
                     ' Review this page before starting its queued files. Earlier pages were kept.')
             self._job('Checking next scan page', lambda: self.library.next_import_scan_page(
-                self.workspace, batch_id, cancelled=self._cancelled), done, planning=True)
+                self.workspace, batch_id, cancelled=self._cancelled,
+                scan_timeout=scan_timeout), done, planning=True)
         except Exception as exc:
             self.report(str(exc))
 
@@ -575,6 +581,12 @@ def show_import_center(frame, workspace):
                 options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
                 options.Add(control, 1, wx.EXPAND)
                 self.mutable.append(control)
+            scan_label = 'Scan time limit per page (30–600 seconds)'
+            self.scan_timeout = wx.SpinCtrl(self, min=30, max=600, initial=120)
+            self.scan_timeout.SetName(scan_label)
+            options.Add(wx.StaticText(self, label=scan_label), 0, wx.ALIGN_CENTER_VERTICAL)
+            options.Add(self.scan_timeout, 1, wx.EXPAND)
+            self.mutable.append(self.scan_timeout)
             layout.Add(options, 0, wx.EXPAND | wx.ALL, 8)
             self.ocr_models_button = wx.Button(self, label='Choose installed or managed OCR &models…')
             self.ocr_models_button.SetName('Choose installed or managed OCR models for new plans')

@@ -588,11 +588,11 @@ class LibraryApp:
             return tuple(rows)
 
     def plan_import_batch(self, workspace, paths, *, collections=(), recursive=True,
-                          config=None, cancelled=lambda: False):
+                          config=None, cancelled=lambda: False, scan_timeout=120.0):
         """Inspect selected files and persist a resumable private import queue."""
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).plan(workspace, paths, collections=collections,
-            recursive=recursive, config=config, cancelled=cancelled)
+            recursive=recursive, config=config, cancelled=cancelled, scan_timeout=scan_timeout)
 
     def import_batches(self, workspace):
         from .ingest.batches import ImportBatchStore
@@ -602,10 +602,11 @@ class LibraryApp:
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).get(workspace, batch_id)
 
-    def next_import_scan_page(self, workspace, batch_id, *, cancelled=lambda: False):
+    def next_import_scan_page(self, workspace, batch_id, *, cancelled=lambda: False, scan_timeout=None):
         """Persist the next bounded source page with the saved scope and choices."""
         from .ingest.batches import ImportBatchStore
-        return ImportBatchStore(self).next_scan_page(workspace, batch_id, cancelled=cancelled)
+        return ImportBatchStore(self).next_scan_page(workspace, batch_id,
+            cancelled=cancelled, scan_timeout=scan_timeout)
 
     def run_import_batch(self, workspace, batch_id, *, cancelled=lambda: False,
                          timeout=120.0, retry_failed=False, progress=None):

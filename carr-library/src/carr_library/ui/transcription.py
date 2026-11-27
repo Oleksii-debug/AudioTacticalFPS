@@ -159,6 +159,7 @@ class NativeTranscriptionDialog:
         self.on_ready = on_ready
         self.dialog = wx.Dialog(frame, title='Local transcription — reviewed private runtime', size=(850, 850),
                                 style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        self._window_id = self.dialog.GetId()
         self.dialog.SetName('Local transcription')
         outer = wx.BoxSizer(wx.VERTICAL)
         page = wx.ScrolledWindow(self.dialog, style=wx.VSCROLL)
@@ -472,7 +473,9 @@ class NativeTranscriptionDialog:
                 self.dialog.Destroy()
 
     def destroyed(self, event):
-        if event.GetEventObject() is self.dialog:
+        # The native destroy event carries the window ID even when its Python
+        # object is a different wrapper; never query the deleted dialog here.
+        if event.GetId() == self._window_id:
             if self.actions.busy and self.measured is not None:
                 self.measured.cancel_requested()
             self.window_alive = self.alive = False

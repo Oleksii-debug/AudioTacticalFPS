@@ -86,8 +86,9 @@ def native(tmp_path):
     value.measured = value.origin = value.result_state = None
     value.profile_rows = value.language_rows = ()
     value.dialogs = Dialogs()
+    value._dialog_id = 701
     value.dialog = SimpleNamespace(IsModal=lambda: True, EndModal=lambda result: value.ends.append(result),
-                                   Destroy=lambda: value.ends.append('destroyed'))
+        GetId=lambda:value._dialog_id, Destroy=lambda: value.ends.append('destroyed'))
     value.ends = []
     for name in ('profile','title','source','from_language','to_language','budget','per_call','review','status'):
         setattr(value, name, Control())
@@ -111,6 +112,13 @@ def drain(native):
     while not native.queue.empty():
         callback, args = native.queue.get_nowait()
         callback(*args)
+
+
+def destroy_event(native, *, alias=False, child=False):
+    # wx may return a different Python wrapper for this same native window.
+    identity = native._dialog_id + int(child)
+    source = SimpleNamespace(GetId=lambda:identity) if alias or child else native.dialog
+    return SimpleNamespace(GetId=lambda:identity, GetEventObject=lambda:source, Skip=lambda:None)
 
 
 def run(native):
@@ -189,13 +197,12 @@ def test_changed_scope_inside_confirmation_never_sends(native):
     assert native.transport.calls == [] and not native.executor.pending
 
 
-@pytest.mark.parametrize('change', ['destroy','scope','database'])
+@pytest.mark.parametrize('change', ['destroy','destroy_alias','scope','database'])
 def test_queued_completion_cannot_touch_destroyed_or_rebound_controls(native, tmp_path, change):
     native.prepare()
     native.executor.run()
-    if change == 'destroy':
-        event = SimpleNamespace(GetEventObject=lambda:native.dialog, Skip=lambda:None)
-        native.destroyed(event)
+    if change.startswith('destroy'):
+        native.destroyed(destroy_event(native, alias=change == 'destroy_alias'))
     elif change == 'scope':
         native.frame.active = None
     else:
@@ -205,6 +212,26 @@ def test_queued_completion_cannot_touch_destroyed_or_rebound_controls(native, tm
     drain(native)
     assert not native.actions.busy and native.actions.review is None
     assert native.frame.progress_actions.panel.snapshot()[-1].state == 'cancelled'
+
+
+def test_propagated_child_destroy_keeps_translation_and_completed_review_live(native):
+    native.prepare()
+    native.executor.run()
+    native.destroyed(destroy_event(native, child=True))
+    assert native.window_alive and native.alive and native.actions.current()
+    drain(native)
+    assert native.actions.review is not None and native.buttons['run'].enabled
+    assert native.frame.progress_actions.panel.snapshot()[-1].state == 'completed'
+    assert native.transport.calls == []
+
+
+def test_show_finally_does_not_redestroy_native_window_after_alias_event(native):
+    native.on_ready = None
+    native.dialog.ShowModal = lambda:native.destroyed(destroy_event(native, alias=True))
+    native.dialog.GetId = lambda:pytest.fail('The destroyed native window was queried again')
+    native.dialog.Destroy = lambda:pytest.fail('The destroyed native window was destroyed twice')
+    native.show()
+    assert not native.window_alive and not native.alive and native.actions.closed
 
 
 def test_close_veto_waits_for_worker_then_settles_cancelled(native):
@@ -218,7 +245,8 @@ def test_close_veto_waits_for_worker_then_settles_cancelled(native):
     assert native.transport.calls == []
 
 
-def test_real_worker_destroy_keeps_progress_live_until_owned_future_finishes(native):
+@pytest.mark.parametrize('alias', [False, True])
+def test_real_worker_destroy_keeps_progress_live_until_owned_future_finishes(native, alias):
     native.executor = ThreadPoolExecutor(max_workers=1)
     entered, release = Event(), Event()
     def operation(stopped, progress):
@@ -228,9 +256,14 @@ def test_real_worker_destroy_keeps_progress_live_until_owned_future_finishes(nat
         raise InterruptedError('Owned work stopped')
     assert native._start('Held actual worker', operation, lambda value:pytest.fail('Destroyed result delivery'))
     assert entered.wait(5)
-    native.destroyed(SimpleNamespace(GetEventObject=lambda:native.dialog, Skip=lambda:None))
-    assert native.frame.progress_actions.panel.snapshot()[-1].state == 'running'
-    release.set()
+    try:
+        native.destroyed(destroy_event(native, alias=alias))
+        assert not native.window_alive and native.actions.cancelled.is_set()
+        assert native.frame.progress_actions.panel.snapshot()[-1].state == 'running'
+        for control in native.inputs + [native.status,native.review] + list(native.buttons.values()):
+            control.dead = True
+    finally:
+        release.set()
     native.executor.shutdown(wait=True)
     drain(native)
     assert native.frame.progress_actions.panel.snapshot()[-1].state == 'cancelled'

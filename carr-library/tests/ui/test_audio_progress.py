@@ -4,6 +4,7 @@ Native controls and the audible player are explicit doubles. The shared audio
 worker's child-process quiescence is exercised separately in test_progress.
 """
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -48,6 +49,7 @@ def view(controller, panel, tmp_path):
     value.wx = SimpleNamespace(CallAfter=lambda callback, *args: value.queued.append(
         lambda: callback(*args)), ID_CANCEL=2)
     value.dialog = SimpleNamespace(IsModal=lambda: False, Hide=Mock(), Destroy=Mock())
+    value._window_id = 8127
     value.timer = SimpleNamespace(Stop=Mock())
     value.playback = SimpleNamespace(play=Mock(), stop=Mock())
     value.status, value.cancel_button = Control(), Control()
@@ -132,13 +134,77 @@ def test_forced_destroy_suppresses_every_queued_status_and_completion(view, pane
     view._run('Render', lambda status: status('A final queued phase') or (), accepted,
               reports_status=True)
     view.executor.run()
-    event = SimpleNamespace(GetEventObject=lambda: view.dialog, Skip=Mock())
+    event = SimpleNamespace(GetEventObject=lambda: view.dialog, GetId=lambda: view._window_id, Skip=Mock())
     view._destroyed(event)
     for control in (*view.controls, view.status, view.cancel_button):
         control.alive = False
     pump(view)
     assert view.closed and not view._window_alive and view.executor.stopped
     assert not accepted.called and panel.hub.snapshot()[-1].state == 'cancelled'
+
+
+def test_native_destroy_identity_does_not_depend_on_the_python_wrapper(view, panel):
+    accepted = Mock()
+    view._run('Render', lambda status: status('A final queued phase') or (), accepted,
+              reports_status=True)
+    view.executor.run()
+    # A propagated child event is not permission to dispose the whole Studio.
+    child = SimpleNamespace(GetEventObject=lambda: object(),
+                            GetId=lambda: view._window_id + 1, Skip=Mock())
+    view._destroyed(child)
+    assert view._window_alive and not view.closed and not view.executor.stopped
+    # Top-level destruction can expose a base/native wrapper. Its event ID
+    # remains the ID captured before deletion; do not query a deleted dialog.
+    alias = SimpleNamespace(GetEventObject=lambda: object(),
+                            GetId=lambda: view._window_id, Skip=Mock())
+    view._destroyed(alias)
+    for control in (*view.controls, view.status, view.cancel_button):
+        control.alive = False
+    pump(view)
+    assert child.Skip.called and alias.Skip.called
+    assert view.closed and not view._window_alive and view.executor.stopped
+    assert view.cancelled.is_set() and not accepted.called
+    assert panel.hub.snapshot()[-1].state == 'cancelled'
+
+
+def test_destroyed_studio_waits_for_its_running_worker_before_terminal_progress(view, panel):
+    entered, release = Event(), Event()
+    accepted = Mock()
+    view.executor = ThreadPoolExecutor(max_workers=1)
+    def held():
+        entered.set()
+        if not release.wait(5):
+            raise TimeoutError('The controlled worker was not released.')
+        if view.cancelled.is_set():
+            raise InterruptedError('The controlled worker acknowledged cancellation.')
+        return 'result'
+    try:
+        view._run('Held operation', held, accepted)
+        assert entered.wait(5)
+        view._destroyed(SimpleNamespace(GetEventObject=lambda: object(),
+            GetId=lambda: view._window_id, Skip=Mock()))
+        for control in (*view.controls, view.status, view.cancel_button):
+            control.alive = False
+        assert view.closed and view.cancelled.is_set()
+        assert panel.hub.snapshot()[-1].state == 'running'
+        assert 'waiting' in panel.hub.snapshot()[-1].phase.lower()
+    finally:
+        release.set()
+        view.executor.shutdown(wait=True)
+        pump(view)
+    assert panel.hub.snapshot()[-1].state == 'cancelled'
+    assert not accepted.called
+
+
+def test_cancel_after_worker_return_prevents_studio_result_acceptance(view, panel):
+    accepted = Mock()
+    view._run('Completed worker', lambda: 'unaccepted result', accepted)
+    view.executor.run()
+    view.cancelled.set()
+    pump(view)
+    assert not accepted.called
+    assert panel.hub.snapshot()[-1].state == 'cancelled'
+    assert not view.busy
 
 
 def test_root_replacement_discards_old_result_without_changing_new_scope(view, panel, tmp_path):
@@ -185,6 +251,7 @@ def test_failed_stop_retains_suppression_and_forced_close_still_disposes_worker(
     view.playback.stop.side_effect = OSError('Output has not stopped')
     view.stop_playback()
     assert panel.feedback.media == (True, False)
-    view._destroyed(SimpleNamespace(GetEventObject=lambda: view.dialog, Skip=Mock()))
+    view._destroyed(SimpleNamespace(GetEventObject=lambda: view.dialog,
+                                   GetId=lambda: view._window_id, Skip=Mock()))
     assert view.executor.stopped and view.closed
     assert panel.feedback.media == (True, False)

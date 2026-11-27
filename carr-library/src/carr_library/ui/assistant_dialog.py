@@ -17,6 +17,7 @@ def show_assistant(frame, *, production=None, local_planner=None, on_ready=None)
     model_actions = LocalPlanningActions(actions, planner=local_planner)
     dialog = wx.Dialog(frame, title='Local assistant — review and run a bounded plan', size=(900, 850),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+    dialog_id = dialog.GetId()
     layout = wx.BoxSizer(wx.VERTICAL)
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='local-assistant')
     alive, busy, plan, job_id = True, False, None, None
@@ -421,7 +422,8 @@ def show_assistant(frame, *, production=None, local_planner=None, on_ready=None)
 
     def destroyed(event):
         nonlocal alive, window_alive
-        if event.GetEventObject() is dialog:
+        # Match the captured native ID without querying a deleted wrapper.
+        if event.GetId() == dialog_id:
             window_alive = alive = False
             actions.close()
             model_actions.close()

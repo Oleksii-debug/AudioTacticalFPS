@@ -32,7 +32,7 @@ from .library_backup import _sync_directory as sync_directory
 from .extract.page_ocr import Config
 from .ingest.batch_scan import planned_snapshot
 from .ingest.batches import (MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _BATCH_KEYS, _ROW_KEYS,
-                             _SCAN_KEYS, _page_id, _options_digest)
+                             _SCAN_KEYS, _page_id, _options_digest, _scan_timeout)
 from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
 from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
@@ -419,7 +419,7 @@ def _scan(record):
     # snapshot to be reviewed on another OS without resolving any external path.
     from .ingest.batch_scan import MAX_ROOTS, MAX_SCAN_ENTRIES, MAX_PATH_BYTES
     scan = record['scan']
-    if (type(scan) is not dict or set(scan) != _SCAN_KEYS
+    if (type(scan) is not dict or not _SCAN_KEYS <= set(scan) <= _SCAN_KEYS | {'timeout_seconds'}
             or type(scan['version']) is not int or scan['version'] != 1
             or type(scan['roots']) is not list or len(scan['roots']) > MAX_ROOTS
             or any(not isinstance(p, str) for p in scan['roots'])
@@ -437,6 +437,7 @@ def _scan(record):
                 or not scan['offset'] < scan['next_offset'] <= MAX_SCAN_ENTRIES + MAX_ROOTS)
             or type(scan['unscanned']) is not list or len(scan['unscanned']) > MAX_ROOTS + 1):
         raise ValueError('Invalid portable import scan continuation.')
+    _scan_timeout(scan.get('timeout_seconds', 120.0))
     for path in (*scan['roots'], *scan['unscanned']):
         _source(path)
     if ((scan['page'] == 1) != (scan['offset'] == 0)

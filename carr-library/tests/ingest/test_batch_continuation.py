@@ -40,9 +40,12 @@ def test_5001_actual_files_reopen_last_page_import_and_backup_boundary(tmp_path)
         app = LibraryApp(root / 'library')
         workspace = app.create_workspace('Large selected inventory')
         folder = sources(root / 'selected', 5001)
-        first = app.plan_import_batch(workspace, [folder])
+        # The caller explicitly chooses a larger bounded scan allowance for
+        # this real 5,001-file NTFS fixture; ordinary plans still default to120s.
+        first = app.plan_import_batch(workspace, [folder], scan_timeout=300)
         assert len(first['rows']) == first['counts']['queued'] == 5000
         assert first['scan']['next_offset'] == 5000 and first['scan']['unscanned'] == []
+        assert first['scan']['timeout_seconds'] == 300
         saved = journal(app, first).read_bytes()
         reopened = LibraryApp(app.root)
         last = reopened.next_import_scan_page(workspace, first['batch_id'])
@@ -50,6 +53,7 @@ def test_5001_actual_files_reopen_last_page_import_and_backup_boundary(tmp_path)
         assert last['scan']['previous_batch_id'] == first['batch_id']
         assert last['scan']['next_offset'] is last['scan']['next_batch_id'] is None
         assert last['scan']['inventory_sha256'] == first['scan']['inventory_sha256']
+        assert last['scan']['timeout_seconds'] == 300
         assert journal(app, first).read_bytes() == saved
         assert len({row['source'] for row in first['rows'] + last['rows']}) == 5001
         assert reopened.next_import_scan_page(workspace, first['batch_id']) == last
@@ -67,6 +71,7 @@ def test_5001_actual_files_reopen_last_page_import_and_backup_boundary(tmp_path)
         assert recovered_first['scan']['roots'] == []
         assert recovered_first['scan']['next_offset'] is None
         assert recovered_first['scan']['next_batch_id'] is None
+        assert recovered_first['scan']['timeout_seconds'] == 300
         assert all(Path(row['source']).is_relative_to(
             restored.root / 'pending-imports' / 'originals')
             for batch in (recovered_first, recovered_last) for row in batch['rows'])
@@ -78,6 +83,78 @@ def test_5001_actual_files_reopen_last_page_import_and_backup_boundary(tmp_path)
         hit, = restored.search(workspace, 'document 5000')
         assert restored.copy(workspace, hit.ref, hit.revision, 'quote') == 'document 5000'
         assert journal(app, first).read_bytes() == saved
+
+
+def test_scan_budget_survives_reopen_and_explicit_retry_keeps_content_choices(tmp_path, monkeypatch):
+    app, workspace, folder = fixture(tmp_path, monkeypatch)
+    first = app.plan_import_batch(workspace, [folder], scan_timeout=300)
+    original = journal(app, first).read_bytes()
+    reopened = LibraryApp(app.root)
+    second = reopened.next_import_scan_page(workspace, first['batch_id'])
+    assert second['scan']['timeout_seconds'] == 300
+    second_raw = journal(app, second).read_bytes()
+    third = reopened.next_import_scan_page(workspace, second['batch_id'], scan_timeout=45)
+    assert third['scan']['timeout_seconds'] == 45
+    assert third['scan']['options_sha256'] == first['scan']['options_sha256']
+    assert third['scan']['inventory_sha256'] == first['scan']['inventory_sha256']
+    # Rechecking a published next page cannot relabel its saved resource budget.
+    assert reopened.next_import_scan_page(workspace, first['batch_id'], scan_timeout=600) == second
+    assert journal(app, first).read_bytes() == original
+    assert journal(app, second).read_bytes() == second_raw
+
+
+def test_legacy_v2_without_scan_budget_uses_the_unchanged_default(tmp_path, monkeypatch):
+    app, workspace, folder = fixture(tmp_path, monkeypatch)
+    first = app.plan_import_batch(workspace, [folder])
+    assert first['scan'].pop('timeout_seconds') == 120
+    journal(app, first).write_text(json.dumps(first), encoding='utf-8')
+    original = journal(app, first).read_bytes()
+    reopened = LibraryApp(app.root)
+    assert reopened.import_batch(workspace, first['batch_id']) == first
+    following = reopened.next_import_scan_page(workspace, first['batch_id'])
+    assert following['scan']['timeout_seconds'] == 120
+    assert following['scan']['options_sha256'] == first['scan']['options_sha256']
+    assert journal(app, first).read_bytes() == original
+
+
+@pytest.mark.parametrize('budget', [True, False, '300', 0, 29, 601, float('nan'), float('inf'),
+                                   pytest.param(10**400, id='huge-integer')])
+def test_invalid_public_scan_budget_cannot_create_or_change_a_saved_page(tmp_path, monkeypatch, budget):
+    app, workspace, folder = fixture(tmp_path, monkeypatch)
+    first = app.plan_import_batch(workspace, [folder])
+    original = journal(app, first).read_bytes()
+    with pytest.raises(ValueError, match='scan time limit'):
+        app.plan_import_batch(workspace, [folder], scan_timeout=budget)
+    with pytest.raises(ValueError, match='scan time limit'):
+        app.next_import_scan_page(workspace, first['batch_id'], scan_timeout=budget)
+    assert journal(app, first).read_bytes() == original
+    assert len(tuple((app.root / 'import-batches').glob('*.json'))) == 1
+
+
+def test_explicit_scan_budget_covers_the_whole_next_page_and_a_retry_is_durable(tmp_path, monkeypatch):
+    app, workspace, folder = fixture(tmp_path, monkeypatch, 3)
+    first = app.plan_import_batch(workspace, [folder])
+    original = journal(app, first).read_bytes()
+    elapsed = [0.0]
+    snapshot = batch_scan.planned_snapshot
+    def slow_source(path):
+        result = snapshot(path)
+        elapsed[0] = 121.0
+        return result
+    with monkeypatch.context() as patch:
+        patch.setattr(batch_scan.time, 'monotonic', lambda: elapsed[0])
+        patch.setattr(batch_scan, 'planned_snapshot', slow_source)
+        with pytest.raises(TimeoutError, match='deadline'):
+            app.next_import_scan_page(workspace, first['batch_id'])
+        assert not journal(app, {'batch_id': first['scan']['next_batch_id']}).exists()
+        assert journal(app, first).read_bytes() == original
+        elapsed[0] = 0.0
+        following = app.next_import_scan_page(workspace, first['batch_id'], scan_timeout=300)
+    assert following['scan']['timeout_seconds'] == 300
+    assert following['scan']['next_offset'] is None
+    assert following['rows'][0]['manifest']['size'] == (folder / '00002.txt').stat().st_size
+    assert journal(app, first).read_bytes() == original
+    assert LibraryApp(app.root).import_batch(workspace, following['batch_id']) == following
 
 
 def test_three_saved_pages_keep_choices_ids_and_page_scoped_duplicate_checks(tmp_path, monkeypatch):

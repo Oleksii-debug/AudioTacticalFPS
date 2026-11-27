@@ -135,6 +135,7 @@ class TranslationDialog:
         self.profile_rows, self.language_rows = (), ()
         self.dialog = wx.Dialog(frame, title='Translate text — explicit Google approval', size=(930, 850),
                                 style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+        self._dialog_id = self.dialog.GetId()
         self.dialog.SetName('Reviewed text translation')
         layout = wx.BoxSizer(wx.VERTICAL)
         self.inputs = []
@@ -600,7 +601,8 @@ class TranslationDialog:
                 self.dialog.Destroy()
 
     def destroyed(self, event):
-        if event.GetEventObject() is self.dialog:
+        # wx can expose the same native window through another Python wrapper.
+        if event.GetId() == self._dialog_id:
             self.window_alive = self.alive = False
             self.actions.close()
             if self.measured is not None and self.actions.busy:

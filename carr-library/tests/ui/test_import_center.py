@@ -85,11 +85,12 @@ def center(monkeypatch, tmp_path):
     view.custom_ocr_config = None
     view.ocr_models_button = Control()
     view.recursive = Control(value=True)
+    view.scan_timeout = Control(value=120)
     view.batches, view.rows = Control(), Control(selection=0)
     view.details, view.status, view.cancel = Control(), Control(), Control()
     view.cancel.Disable()
     view.mutable = [view.collection, view.languages, view.ocr_models_button,
-                    view.recursive, view.batches, Control()]
+                    view.recursive, view.scan_timeout, view.batches, Control()]
     view.EndModal = Mock()
     view.jobs, view.pending, view.saved = jobs, pending, saved
     return view
@@ -108,6 +109,7 @@ def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(c
     center.collection.SetSelection(0)
     center.ocr_config = Config(languages='eng')
     center.recursive.SetValue(False)
+    center.scan_timeout.SetValue(600)
     center.cancel_operation()
     center.jobs[0].operation()
     args, kwargs = center.library.plan_import_batch.call_args
@@ -115,22 +117,49 @@ def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(c
     assert kwargs['collections'] == ('selected-collection',)
     assert kwargs['config'].languages == 'eng+ukr+slk'
     assert kwargs['recursive'] is True and kwargs['cancelled']()
+    assert kwargs['scan_timeout'] == 120
 
 
 def test_next_scan_page_uses_saved_identity_and_not_current_new_plan_options(center):
     center.batch['scan'] = dict(page=1, next_offset=5000, unscanned=[])
     center.library.next_import_scan_page = Mock()
+    center.scan_timeout.SetValue(300)
     center.next_scan_page()
     assert center.busy and len(center.jobs) == 1
     center.collection.SetSelection(0)
     center.recursive.SetValue(False)
     center.languages.SetSelection(0)
+    center.scan_timeout.SetValue(600)
     center.jobs[0].operation()
     args, kwargs = center.library.next_import_scan_page.call_args
-    assert args == ('library', 'first') and set(kwargs) == {'cancelled'}
+    assert args == ('library', 'first') and set(kwargs) == {'cancelled', 'scan_timeout'}
+    assert kwargs['scan_timeout'] == 300
     assert kwargs['cancelled']() is False
     center.cancel_operation()
     assert kwargs['cancelled']() is True
+
+
+@pytest.mark.parametrize('saved,expected', [(None, 120), ({'page': 1, 'timeout_seconds': 300}, 300)])
+def test_selected_scan_budget_is_displayed_without_changing_saved_options(center, saved, expected):
+    selected = batch()
+    if saved is not None:
+        selected['scan'] = saved
+    original = deepcopy(selected)
+    center._display(selected)
+    assert center.scan_timeout.GetValue() == expected and selected == original
+
+
+@pytest.mark.parametrize('value', [True, 29, 601, '300'])
+def test_invalid_native_scan_budget_never_queues_work(center, value):
+    center.scan_timeout.SetValue(value)
+    with pytest.raises(ValueError, match='scan time limit'):
+        center.plan(('/selected/folder',))
+    center.batch['scan'] = dict(page=1, next_offset=5000, unscanned=[])
+    center.library.next_import_scan_page = Mock()
+    center.next_scan_page()
+    assert not center.jobs and 'scan time limit' in center.status.value
+    center.library.plan_import_batch.assert_not_called()
+    center.library.next_import_scan_page.assert_not_called()
 
 
 def test_next_scan_completion_selects_saved_page_and_keeps_previous(center):

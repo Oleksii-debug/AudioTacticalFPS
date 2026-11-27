@@ -262,7 +262,10 @@ receipt exposes output names; recognized text is always a derived asset.
                     if entries > budget.max_files * 2 + 128:
                         raise ValueError('Transcription job entries exceed their budget.')
                     try:
-                        info = entry.stat(follow_symlinks=False)
+                        # Windows DirEntry.stat() leaves st_nlink/st_ino/st_dev
+                        # at zero. Fetch current filesystem metadata instead of
+                        # treating that cached placeholder as an external link.
+                        info = os.stat(entry.path, follow_symlinks=False)
                     except FileNotFoundError:
                         if active:
                             continue  # A worker may just have renamed its temporary file.

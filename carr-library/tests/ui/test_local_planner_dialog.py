@@ -42,6 +42,7 @@ class NativeDoubles:
         self.choice_hook = lambda: None
         self.choice_result = 1
         self.choice_index = 0
+        self.destroy_alias = False
         owner = self
         class Control:
             def __init__(self, parent=None, *, value='', label='', choices=(), **kwargs):
@@ -49,11 +50,13 @@ class NativeDoubles:
                 self.choices, self.selection = list(choices), -1
                 self.name, self.enabled, self.dead = label, True, False
                 self.events, self.focused, self.thread = {}, False, get_ident()
+                self.identity = len(owner.windows) + 1
                 owner.windows.append(self)
             def touch(self):
                 assert not self.dead, 'Late callback touched a deleted native control'
                 assert self.thread == get_ident(), 'A worker touched a native control'
             def Bind(self, event, callback): self.touch(); self.events[event] = callback
+            def GetId(self): self.touch(); return self.identity
             def Enable(self, value=True): self.touch(); self.enabled = bool(value)
             def Disable(self): self.Enable(False)
             def SetName(self, value): self.touch(); self.name = value
@@ -73,9 +76,15 @@ class NativeDoubles:
             def IsBeingDeleted(self): return self.dead
             def Destroy(self):
                 if self.dead: return
-                callback = self.events.get('destroy')
-                if callback: callback(SimpleNamespace(GetEventObject=lambda:self, Skip=lambda:None))
                 self.dead = True
+                source = SimpleNamespace(GetId=lambda:self.identity) if owner.destroy_alias else self
+                event = SimpleNamespace(GetId=lambda:self.identity,
+                    GetEventObject=lambda:source, Skip=lambda:None)
+                current = self
+                while isinstance(current, Control):
+                    callback = current.events.get('destroy')
+                    if callback: callback(event)
+                    current = current.parent
                 for item in list(owner.windows):
                     if item.parent is self: item.Destroy()
         class Dialog(Control):
@@ -224,13 +233,15 @@ def test_late_cancel_discards_model_proposal_but_keeps_completed_ledger(host):
     show(host,exercise)
 
 
-@pytest.mark.parametrize('change',['close','destroy','scope'])
+@pytest.mark.parametrize('change',['close','destroy','destroy_alias','scope'])
 def test_owned_completion_cannot_touch_closed_or_rebound_native_controls(host,change):
     def exercise(dialog,controls):
         prepare(host,controls); controls['model'].fire()
         host.executor.run()
         if change=='close': controls['close'].fire()
-        elif change=='destroy': dialog.Destroy()
+        elif change.startswith('destroy'):
+            host.native.destroy_alias = change == 'destroy_alias'
+            dialog.Destroy()
         else:
             host.frame.active=None
             for control in controls.values():
@@ -246,7 +257,24 @@ def test_owned_completion_cannot_touch_closed_or_rebound_native_controls(host,ch
     show(host,exercise)
 
 
-def test_forced_destroy_waits_for_actual_model_worker_before_terminal_progress(host,monkeypatch):
+def test_propagated_child_destroy_keeps_reviewed_model_request_live(host):
+    def exercise(dialog,controls):
+        prepare(host,controls)
+        host.native.destroy_alias = True
+        child = host.native.module.Dialog(dialog, title='Closed transient child')
+        child.Destroy()
+        assert controls['actions'].current() and controls['model_actions'].review is not None
+        controls['model'].fire()
+        host.executor.run(); host.native.drain()
+        assert controls['actions'].plan is not None and controls['run'].enabled
+        assert host.frame.progress_actions.panel.snapshot()[-1].state == 'completed'
+        assert len(host.transport.calls) == 1 and not host.service.jobs()
+        host.native.destroy_alias = False
+    show(host,exercise)
+
+
+@pytest.mark.parametrize('alias',[False,True])
+def test_forced_destroy_waits_for_actual_model_worker_before_terminal_progress(host,monkeypatch,alias):
     entered,release=Event(),Event()
     def held():
         entered.set()
@@ -257,9 +285,11 @@ def test_forced_destroy_waits_for_actual_model_worker_before_terminal_progress(h
         def exercise(dialog,controls):
             prepare(host,controls); controls['model'].fire()
             assert entered.wait(5)
-            dialog.Destroy()
-            assert controls['model_actions'].busy
             try:
+                host.native.destroy_alias = alias
+                dialog.Destroy()
+                assert controls['actions'].closed and controls['model_actions'].closed
+                assert controls['model_actions'].busy
                 event=host.frame.progress_actions.panel.snapshot()[-1]
                 assert event.state=='running' and 'Cancellation requested' in event.phase
             finally:
@@ -310,7 +340,8 @@ def test_rejected_dialog_executor_consumes_review_without_sending(host):
         module.ThreadPoolExecutor=original
 
 
-def test_existing_job_close_keeps_progress_owned_until_real_worker_finishes(host,monkeypatch):
+@pytest.mark.parametrize('exit_kind',['close','destroy_alias'])
+def test_existing_job_exit_keeps_progress_owned_until_real_worker_finishes(host,monkeypatch,exit_kind):
     entered,release=Event(),Event()
     with ThreadPoolExecutor(max_workers=1) as real:
         monkeypatch.setattr(module,'ThreadPoolExecutor',lambda **kwargs:real)
@@ -326,8 +357,13 @@ def test_existing_job_close_keeps_progress_owned_until_real_worker_finishes(host
             controls['actions'].service._execute=held
             controls['run'].fire()
             assert entered.wait(5)
-            controls['close'].fire()
             try:
+                if exit_kind == 'close':
+                    controls['close'].fire()
+                else:
+                    host.native.destroy_alias = True
+                    dialog.Destroy()
+                assert controls['actions'].closed and controls['model_actions'].closed
                 assert controls['actions'].busy
                 event=host.frame.progress_actions.panel.snapshot()[-1]
                 assert event.state=='running' and 'Cancellation requested' in event.phase

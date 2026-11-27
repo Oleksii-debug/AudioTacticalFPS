@@ -1,0 +1,197 @@
+{
+  "corpus": {
+    "all_retained_originals_rechecked": true,
+    "content": "Deterministic short synthetic English/Ukrainian documents; one logical segment each",
+    "editions": 1000,
+    "format": "UTF-8 TXT",
+    "ordered_length_prefixed_utf8_sha256": "76e5811e7067029176ec95bcd96f52833e7480c788e128ad84b180626a087375",
+    "primary_workspace_count": 1,
+    "source_bytes": 237000
+  },
+  "declared_budget": {
+    "editions": 1000,
+    "queries": 64,
+    "seconds": 1800
+  },
+  "elapsed_seconds": 37.570486217002326,
+  "environment": {
+    "architecture": "x86_64",
+    "available_cpu_affinity_count": 9,
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "filesystem": "tmpfs",
+    "logical_cpus": 9,
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "reported_host_memory_bytes": 10451427328,
+    "sqlite": "3.53.1"
+  },
+  "import_cancellation_and_recovery": {
+    "auxiliary_editions": 1,
+    "auxiliary_source_bytes": 45,
+    "cancelled_state": "cancelled",
+    "completed_checkpoints_before_stop": 1,
+    "exact_retained_source_and_quote_verified": true,
+    "external_input_removed_before_resume": true,
+    "operation_before_stop_seconds": 0.005593612000666326,
+    "resume_seconds": 0.33475585199994384,
+    "resumed_same_job": true,
+    "retained_checkpoint_digest_unchanged": true,
+    "seconds_after_cancel_requested": 0.0006078070000512525
+  },
+  "library_footprint_after_recovery": {
+    "allocated_bytes_if_reported": 13369344,
+    "logical_bytes": 6741759,
+    "logical_bytes_by_category": {
+      "catalog_database": 3764224,
+      "import-requests": 1582538,
+      "import_database": 1142784,
+      "originals": 237045,
+      "source-views": 15168
+    },
+    "regular_files": 2068
+  },
+  "limits": [
+    "Small synthetic TXT corpus only; no PDF/OCR, neural model, ASR or audio load.",
+    "Warm filesystem caches; reopening LibraryApp does not flush OS caches.",
+    "Original opening prepares a verified view copy; no external viewer was launched.",
+    "No physical-disk throughput claim when the selected work filesystem is tmpfs.",
+    "No multi-gigabyte, 50,000-edition or concurrent-writer capacity claim."
+  ],
+  "measured_at_utc": "2026-11-27T04:59:09.628069+00:00",
+  "measurements": {
+    "catalog_page_500": {
+      "maximum": 4.310241998609854,
+      "mean": 1.8778785141269811,
+      "minimum": 0.7661249983357266,
+      "p50": 2.2457580016634893,
+      "p95": 3.0579030026274268,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 72,
+      "total_seconds": 0.13520725301714265,
+      "unit": "milliseconds"
+    },
+    "complete_catalog_browse": {
+      "maximum": 9.836957997322315,
+      "mean": 6.006154291450609,
+      "minimum": 5.614640002022497,
+      "p50": 5.720969998947112,
+      "p95": 7.995310999831418,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 24,
+      "total_seconds": 0.1441477029948146,
+      "unit": "milliseconds"
+    },
+    "complete_unique_query": {
+      "maximum": 117.98302299939678,
+      "mean": 63.683063187284006,
+      "minimum": 57.235191998188384,
+      "p50": 60.780928000895074,
+      "p95": 79.61437800258864,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 64,
+      "total_seconds": 4.075716043986176,
+      "unit": "milliseconds"
+    },
+    "fresh_verified_quote_copy": {
+      "maximum": 2.560642999014817,
+      "mean": 1.7388916408549449,
+      "minimum": 1.5280660009011626,
+      "p50": 1.6456719968118705,
+      "p95": 2.201691000664141,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 64,
+      "total_seconds": 0.11128906501471647,
+      "unit": "milliseconds"
+    },
+    "individual_import": {
+      "maximum": 116.63359200247214,
+      "mean": 29.879005091959698,
+      "minimum": 8.221213996876031,
+      "p50": 29.344159996981034,
+      "p95": 51.217192001786316,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 1000,
+      "total_seconds": 29.879005091959698,
+      "unit": "milliseconds"
+    },
+    "library_reopen": {
+      "maximum": 36.04528599680634,
+      "mean": 25.21958016647356,
+      "minimum": 22.588034000364132,
+      "p50": 24.023198999202577,
+      "p95": 36.04528599680634,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 12,
+      "total_seconds": 0.3026349619976827,
+      "unit": "milliseconds"
+    },
+    "prepare_exact_original_view": {
+      "maximum": 5.5675790026725736,
+      "mean": 3.790413250214897,
+      "minimum": 3.381659000297077,
+      "p50": 3.6370469970279373,
+      "p95": 4.782203999639023,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 64,
+      "total_seconds": 0.2425864480137534,
+      "unit": "milliseconds"
+    },
+    "search_page": {
+      "maximum": 85.22330499909003,
+      "mean": 31.835982843745114,
+      "minimum": 27.790292999270605,
+      "p50": 30.329061999509577,
+      "p95": 37.23508999974001,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 128,
+      "total_seconds": 4.075005803999375,
+      "unit": "milliseconds"
+    },
+    "verified_context_open": {
+      "maximum": 3.8296669990813825,
+      "mean": 1.7719783903089592,
+      "minimum": 1.4417900019907393,
+      "p50": 1.7087079977500252,
+      "p95": 2.2390879967133515,
+      "percentile_method": "nearest rank; ceil(n*p), one-based",
+      "samples": 64,
+      "total_seconds": 0.11340661697977339,
+      "unit": "milliseconds"
+    }
+  },
+  "memory": {
+    "baseline_parent_peak_rss_bytes": 21757952,
+    "method": "resource.getrusage(RUSAGE_SELF).ru_maxrss; KiB converted to bytes",
+    "parent_peak_rss_bytes": 31985664,
+    "scope": "Whole parent process high-water mark; excludes separate resume worker RSS"
+  },
+  "report_version": 1,
+  "schema_version": 5,
+  "search": {
+    "complete_shared_query_hits": 1000,
+    "complete_shared_query_pages": 10,
+    "complete_shared_query_seconds": 2.1276227950002067,
+    "edition_limit_per_page": 500,
+    "global_relevance_ranking": false,
+    "maximum_pages_per_query": 2,
+    "minimum_pages_per_query": 2,
+    "mode": "phrase",
+    "queries": 64,
+    "result_limit_per_page": 100,
+    "simultaneous_cross_page_snapshot": false
+  },
+  "search_cancellation": {
+    "callback_count": 64,
+    "operation_seconds": 0.0010799970004882198,
+    "outcome": "TimeoutError",
+    "previous_exact_quote_still_valid": true,
+    "seconds_after_cancel_requested": 0.00011941200136789121
+  },
+  "source": {
+    "commit": "19f334283a7c35a97b10e2757466bfc9561998c9",
+    "production_python_sha256": "9138da3e91316afded5bf22375a85e60dbd31de6dc0ec56136abee80090fb7de",
+    "script_sha256": "25c567cdd4761fa68d20301bc78a881290facbea50a7f2243115c3063ebe2c8a"
+  },
+  "status": "PASS",
+  "synthetic_corpus_removed_after_measurement": true
+}

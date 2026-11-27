@@ -251,6 +251,9 @@ def _native_dialog_type():
         def __init__(self, parent, controller):
             super().__init__(parent, title="Languages and capability evidence", size=(960, 760),
                              style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
+            # Retain the native identity while the derived window is alive.
+            # A destruction event can expose a different Python wrapper.
+            self._window_id = self.GetId()
             self.controller = controller
             self.rows = ()
             self._alive = True
@@ -437,7 +440,7 @@ def _native_dialog_type():
                 self.request.cancel()
 
         def destroyed(self, event):
-            if event.GetEventObject() is self:
+            if event.GetId() == self._window_id:
                 self._window_alive = False
                 self.shutdown()
             event.Skip()

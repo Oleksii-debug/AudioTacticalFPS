@@ -17,9 +17,10 @@ from carr_library.ui.search_model import Hit, SearchModel
 class Control:
     def __init__(self, value='', selection=0):
         self.value, self.selection = value, selection
-        self.enabled = True
+        self.enabled = self.alive = True
         self.owner = get_ident()
     def _ui(self):
+        assert self.alive, 'A late callback touched a deleted search control.'
         assert get_ident() == self.owner, 'A worker accessed a native-control boundary.'
     def GetValue(self): self._ui(); return self.value
     def GetSelection(self): self._ui(); return self.selection
@@ -49,6 +50,7 @@ def view(tmp_path):
     panel.model, panel.results = SearchModel(), {}
     panel.model.set_workspace(workspace)
     panel._context_epoch, panel._search_alive = 0, True
+    panel._search_window_id = 902
     panel._init_paging()
     panel.query = Control('needle')
     panel.retrieval, panel.result_mode, panel.collection = Control(), Control(), Control()
@@ -185,9 +187,9 @@ def test_navigation_cannot_reuse_an_old_request_after_silent_control_change(view
     assert not view.previous_result_page.enabled and not view.next_result_page.enabled
 
 
-@pytest.mark.parametrize('change', ['scope', 'root-object', 'same-path-root', 'destroy'])
+@pytest.mark.parametrize('change', ['scope', 'root-object', 'same-path-root', 'destroy', 'destroy_alias'])
 def test_late_page_completion_never_populates_withdrawn_window_or_scope(view, tmp_path, change):
-    first(view)
+    initial = first(view)
     view.on_next_result_page()
     operation, done, failed = submitted(view)
     with ThreadPoolExecutor(max_workers=1) as executor:
@@ -203,9 +205,18 @@ def test_late_page_completion_never_populates_withdrawn_window_or_scope(view, tm
         prior_root.rename(retained)
         shutil.copytree(retained, prior_root)
     else:
-        event = SimpleNamespace(GetEventObject=lambda: view, Skip=Mock())
+        source = SimpleNamespace(GetId=lambda:view._search_window_id) if change == 'destroy_alias' else view
+        event = SimpleNamespace(GetId=lambda:view._search_window_id,
+                                GetEventObject=lambda:source, Skip=Mock())
+        view.GetId = Mock(side_effect=AssertionError('The deleted search window was queried again'))
         view._search_destroyed(event)
         event.Skip.assert_called_once()
+        assert not view._search_alive and not view._page_selections
+        with pytest.raises(ValueError):
+            copy_row(view, initial.results[0])
+        for control in vars(view).values():
+            if isinstance(control, Control):
+                control.alive = False
     try:
         with pytest.raises(InterruptedError) as caught:
             done(page)
@@ -220,10 +231,12 @@ def test_late_page_completion_never_populates_withdrawn_window_or_scope(view, tm
 
 def test_child_destroy_event_does_not_withdraw_search_window(view):
     page = first(view)
-    event = SimpleNamespace(GetEventObject=lambda: object(), Skip=Mock())
+    event = SimpleNamespace(GetId=lambda:view._search_window_id + 1,
+                            GetEventObject=lambda:object(), Skip=Mock())
     view._search_destroyed(event)
     assert view._search_current()
     assert copy_row(view, page.results[0]) == page.results[0].quote
+    event.Skip.assert_called_once()
 
 
 def test_archived_bound_topic_refuses_navigation_with_fresh_authorization(view):

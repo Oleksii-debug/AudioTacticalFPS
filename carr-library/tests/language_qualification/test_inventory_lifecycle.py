@@ -214,15 +214,45 @@ def test_child_destroy_event_does_not_dispose_parent_but_own_destroy_cancels(mon
     dialog = object.__new__(native_type)
     cancelled = Event()
     dialog._alive = dialog._window_alive = True
+    dialog._window_id = 7301
     dialog.request = SimpleNamespace(cancel=cancelled.set)
     events = []
-    dialog.destroyed(SimpleNamespace(GetEventObject=lambda: object(), Skip=lambda: events.append('child')))
+    dialog.destroyed(SimpleNamespace(GetId=lambda: 7302,
+        GetEventObject=lambda: object(), Skip=lambda: events.append('child')))
     assert dialog._alive and dialog._window_alive and not cancelled.is_set()
-    dialog.destroyed(SimpleNamespace(GetEventObject=lambda: dialog, Skip=lambda: events.append('own')))
+    # A top-level destroy event need not return the same Python wrapper as
+    # the derived dialog. Do not query methods on an already destroyed window.
+    dialog.GetId = lambda: pytest.fail('Queried the deleted native dialog.')
+    dialog.destroyed(SimpleNamespace(GetId=lambda: 7301,
+        GetEventObject=lambda: object(), Skip=lambda: events.append('own')))
     assert not dialog._alive and not dialog._window_alive and cancelled.is_set()
     # Dead controls were never supplied: each stale handler must return first.
     dialog.filter(); dialog.select(); dialog.refresh(); dialog.cancel(); dialog.close()
     assert events == ['child', 'own']
+
+
+def test_native_id_destruction_withdraws_real_pending_inventory_before_late_publication(tmp_path, monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, 'wx', SimpleNamespace(Dialog=object))
+    dialog = object.__new__(ui._native_dialog_type())
+    dialog._alive = dialog._window_alive = True
+    dialog._window_id = 7301
+    frame, jobs = host(tmp_path)
+    controller, results, errors = ui.LanguageMatrixController(), [], []
+    request = ui.request_voice_inventory(frame, controller, registry=registry(),
+        alive=lambda: dialog._alive and dialog._window_alive,
+        completed=results.append, failed=errors.append)
+    dialog.request = request
+    operation, done, failed = jobs.pop()
+    inventory = operation()
+    dialog.destroyed(SimpleNamespace(GetId=lambda: 7302, Skip=lambda: None))
+    assert not request.cancelled()
+    dialog.destroyed(SimpleNamespace(GetId=lambda: 7301, Skip=lambda: None))
+    assert request.cancelled() and not frame.cancel_event.is_set()
+    with pytest.raises(InterruptedError):
+        done(inventory)
+    failed(RuntimeError('A late bounded adapter error'))
+    assert controller.inventory is None and not results and not errors
 
 
 def test_native_handler_restores_controls_when_host_executor_rejects_submission(tmp_path, monkeypatch):

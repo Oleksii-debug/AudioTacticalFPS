@@ -34,6 +34,10 @@ class View:
         self.verified = self.selected = self.busy = False
         self.copied, self.focus = [], None
         self.busy_history = []
+        self.navigation = (False, False)
+
+    def set_navigation(self, previous, next_page):
+        self.navigation = previous, next_page
 
     def clear_results(self):
         self.labels, self.details, self.index = (), '', -1
@@ -220,6 +224,7 @@ def test_same_title_and_library_results_identify_editions_and_save_exact_source(
         workspaces = tuple(reversed(workspaces))
     controller.search(SearchOptions(workspaces, 'Railway history'))
     assert len(controller.rows) == len(view.labels) == 2
+    assert view.navigation == (False, False)
     assert len(set(map(label_key, view.labels))) == 2
     assert f'library {empty}; library only): 0' in view.messages[-1]
     for index, (hit, label) in enumerate(zip(controller.rows, view.labels)):
@@ -242,11 +247,14 @@ def test_result_ordinals_distinguish_repeated_page_and_unknown_edition():
         return SimpleNamespace(workspace='w', library_name='Library', result=SimpleNamespace(
             title='Same title', author='Same author', page='p. 5', edition=edition, verified=verified))
     hits = (hit('First', True), hit('Second', True), hit(None, False), hit('First', True))
-    session = SimpleNamespace(workspaces=('w',), hits=hits,
-                              groups=(SimpleNamespace(workspace='w', library_name='Library', hits=hits),))
+    session = SimpleNamespace(workspaces=('w',), selected_workspaces=('w',), hits=hits,
+        groups=(SimpleNamespace(workspace='w', library_name='Library', hits=hits),),
+        has_more=False, next_cursor=None, library_start=1, library_end=1,
+        source_ranges=(('w', 1, 1, 0),))
     controller = SimpleNamespace(view=View(), epoch=0, _ready=Mock(), _clear_rows=Mock(),
-        selection_changed=Mock(), _report_error=Mock(), _cancelled=lambda: False,
-        service=SimpleNamespace(search=Mock(return_value=session)))
+        selection_changed=Mock(), _refresh_navigation=Mock(), _report_error=Mock(),
+        _cancelled=lambda: False,
+        service=SimpleNamespace(search_page=Mock(return_value=session)))
     controller._job = lambda title, operation, done, **kwargs: done(operation())
     SearchCenter.search(controller, SearchOptions(('w',), 'test'))
     controller._report_error.assert_not_called()

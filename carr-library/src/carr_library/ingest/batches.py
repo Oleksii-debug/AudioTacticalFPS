@@ -44,6 +44,13 @@ _SCAN_KEYS = {'version', 'roots', 'inventory_sha256', 'inventory_entries', 'offs
               'next_batch_id', 'options_sha256'}
 
 
+def _scan_timeout(value=120.0):
+    if (type(value) not in (int, float) or not 30 <= value <= 600
+            or not math.isfinite(value)):
+        raise ValueError('Choose a scan time limit between 30 and 600 seconds.')
+    return float(value)
+
+
 def _options_digest(record):
     fields = {key: record[key] for key in ('workspace', 'collections', 'recursive', 'config')}
     fields['roots'] = record['scan']['roots']
@@ -208,7 +215,8 @@ class ImportBatchStore:
     def _validate_scan(record):
         from .batch_scan import MAX_ROOTS, MAX_SCAN_ENTRIES, MAX_PATH_BYTES
         scan = record['scan']
-        if (type(scan) is not dict or set(scan) != _SCAN_KEYS or type(scan['version']) is not int
+        if (type(scan) is not dict or not _SCAN_KEYS <= set(scan) <= _SCAN_KEYS | {'timeout_seconds'}
+                or type(scan['version']) is not int
                 or scan['version'] != 1 or type(scan['roots']) is not list or len(scan['roots']) > MAX_ROOTS
                 or any(not _text(path, 32768, empty=False) or not Path(path).is_absolute()
                        or '..' in Path(path).parts for path in scan['roots'])
@@ -226,6 +234,7 @@ class ImportBatchStore:
                 or any(not _text(path, 32768, empty=False) or not Path(path).is_absolute()
                        for path in scan['unscanned'])):
             raise ValueError('Invalid import scan continuation metadata.')
+        _scan_timeout(scan.get('timeout_seconds', 120.0))
         if ((scan['page'] == 1) != (scan['offset'] == 0)
                 or (scan['page'] == 1) != (scan['previous_batch_id'] is None)
                 or scan['previous_batch_id'] is not None and
@@ -297,8 +306,9 @@ class ImportBatchStore:
             temporary.unlink(missing_ok=True)
 
     def plan(self, workspace, paths, *, collections=(), recursive=True,
-             config=None, cancelled=lambda: False):
+             config=None, cancelled=lambda: False, scan_timeout=120.0):
         from .batch_scan import scan_page
+        scan_timeout = _scan_timeout(scan_timeout)
         if (not isinstance(collections, (list, tuple)) or len(collections) > 128
                 or type(recursive) is not bool or not callable(cancelled)):
             raise ValueError('Invalid import batch options.')
@@ -309,8 +319,10 @@ class ImportBatchStore:
         check = self._cancellation(cancelled)
         check()
         self._authorize(workspace, collections)
-        page = scan_page(paths, recursive=recursive, existing_assets=self._existing(workspace), cancelled=check)
-        record = self._planned_record(workspace, collections, recursive, settings, page)
+        page = scan_page(paths, recursive=recursive, existing_assets=self._existing(workspace),
+                         cancelled=check, timeout=scan_timeout)
+        record = self._planned_record(workspace, collections, recursive, settings, page,
+                                      scan_timeout=scan_timeout)
         self._authorize(workspace, collections)
         with self._lock(record['batch_id']):
             check()
@@ -325,7 +337,8 @@ class ImportBatchStore:
                 'SELECT DISTINCT asset FROM catalog_edition WHERE workspace=? LIMIT ?',
                 (workspace, MAX_EXISTING_ASSETS + 1)))
 
-    def _planned_record(self, workspace, collections, recursive, settings, page, *, previous=None):
+    def _planned_record(self, workspace, collections, recursive, settings, page, *,
+                        previous=None, scan_timeout=120.0):
         rows = []
         for candidate in page.rows:
             rows.append(dict(candidate, row_id=uuid4().hex, work_id=uuid4().hex,
@@ -338,7 +351,8 @@ class ImportBatchStore:
                       workspace=workspace, created=_now(), updated=_now(), state='queued',
                       collections=list(collections), recursive=recursive, config=settings,
                       rows=rows, counts={}, total=len(rows),
-                      scan=dict(version=1, roots=list(page.roots), inventory_sha256=page.inventory_sha256,
+                      scan=dict(version=1, timeout_seconds=scan_timeout,
+                        roots=list(page.roots), inventory_sha256=page.inventory_sha256,
                         inventory_entries=page.inventory_entries, offset=page.offset,
                         next_offset=page.next_offset, unscanned=list(page.unscanned),
                         chain_id=chain, page=number, previous_batch_id=None if previous is None else previous['batch_id'],
@@ -347,14 +361,17 @@ class ImportBatchStore:
         record['scan']['options_sha256'] = _options_digest(record)
         return record
 
-    def next_scan_page(self, workspace, batch_id, *, cancelled=lambda: False):
+    def next_scan_page(self, workspace, batch_id, *, cancelled=lambda: False, scan_timeout=None):
         """Save one next page, using the original choices; repeat calls reuse its ID.
 
         Every page remains an ordinary import batch. Neither a failed scan nor a
         cancellation rewrites previous rows or advances their saved continuation.
-        Pending external sources keep the existing local-only backup boundary.
+        A missing time limit reuses the saved budget (120 seconds for legacy
+        pages). An explicit retry budget changes no source or content choices.
         """
         from .batch_scan import scan_page
+        if scan_timeout is not None:
+            scan_timeout = _scan_timeout(scan_timeout)
         check = self._cancellation(cancelled)
         check()
         self._authorize(workspace)
@@ -365,19 +382,26 @@ class ImportBatchStore:
             scan = previous.get('scan')
             if scan is None or scan['next_offset'] is None:
                 raise ValueError('This saved page has no continuation. Select new source folders to scan.')
+            selected_timeout = (_scan_timeout(scan.get('timeout_seconds', 120.0))
+                                if scan_timeout is None else scan_timeout)
             self._authorize(workspace, previous['collections'])
             page = scan_page(scan['roots'], recursive=previous['recursive'],
                 existing_assets=self._existing(workspace), offset=scan['next_offset'],
-                expected_inventory=scan['inventory_sha256'], cancelled=check)
+                expected_inventory=scan['inventory_sha256'], cancelled=check, timeout=selected_timeout)
             record = self._planned_record(workspace, previous['collections'], previous['recursive'],
-                                          previous['config'], page, previous=previous)
+                previous['config'], page, previous=previous, scan_timeout=selected_timeout)
             self._authorize(workspace, previous['collections'])
             with self._lock(record['batch_id']):
                 check()
                 self._authorize(workspace, previous['collections'])
                 if self._path(record['batch_id']).exists():
                     saved = self.get(workspace, record['batch_id'])
-                    if (saved['scan'] != record['scan'] or saved['collections'] != record['collections']
+                    # A completed next page is immutable. A retry can spend a
+                    # different bounded time checking its identity, but cannot
+                    # rewrite the budget under which that page was first saved.
+                    saved_scan = {k: v for k, v in saved['scan'].items() if k != 'timeout_seconds'}
+                    current_scan = {k: v for k, v in record['scan'].items() if k != 'timeout_seconds'}
+                    if (saved_scan != current_scan or saved['collections'] != record['collections']
                             or saved['config'] != record['config'] or saved['recursive'] != record['recursive']
                             or [(row['source'], row['manifest']) for row in saved['rows']]
                                != [(row['source'], row['manifest']) for row in record['rows']]):

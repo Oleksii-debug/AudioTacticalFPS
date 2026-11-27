@@ -31,7 +31,13 @@ extraction or confers citation authority.
 
 Workspace and destination collections are authorized before and after scanning.
 Replacing the library/database/assets identity invalidates the operation.
-Cancellation is sticky and each scan page has a 120-second deadline. Failure or
+Cancellation is sticky and each scan page has one deadline, including both
+inventory checks and source reads. The default remains 120 seconds. The named
+**Scan time limit per page (30–600 seconds)** control permits an explicit bounded
+allowance for slow local disks or large pages. The selected allowance is saved
+with the page and shown when that queue is reopened. After a timeout, increase
+the allowance if appropriate and retry **Add folder** or **Next scan page**;
+content choices and source validation are unchanged. Failure or
 cancellation before saving the page leaves the previous journal unchanged.
 Per-batch process locks serialize cooperating writers. Repeating Next after a
 lost reply finds the same deterministic saved page, preserving its row, request,
@@ -62,22 +68,33 @@ reachable on the next page, even when no further supported documents exist.
 
 Scan pages survive an application restart in the existing private
 `import-batches` directory. A source plan references external selected files;
-it does not copy them into the library. The existing complete-library backup
-contract still excludes unpublished source plans, import requests and their
-external paths. Completed catalog imports and retained originals follow the
-normal backup/restore contract. This change does not claim that restoring a
-library transports pending external source folders or their scan cursors.
+it does not copy them into the library during scanning. The checked complete
+library backup captures those planned bytes into its owned pending-import
+component, together with validated queues and request journals. Missing or
+changed planned bytes cause backup to fail explicitly. Restoration keeps the
+saved scan allowance, rebinds sources to the captured bytes and disables old
+folder continuations. Choose **Review restored imports** before execution;
+the old external paths are provenance, never permission to read those folders.
+Select folders again to scan source files that were never captured.
 
 ```python
 first = app.plan_import_batch(workspace, selected_paths,
-                              collections=(collection,), recursive=True)
+                              collections=(collection,), recursive=True,
+                              scan_timeout=300)
 if first['scan']['next_offset'] is not None:
     following = app.next_import_scan_page(workspace, first['batch_id'],
                                          cancelled=cancel_event.is_set)
-completed = app.run_import_batch(workspace, following['batch_id'])
+    completed = app.run_import_batch(workspace, following['batch_id'])
 ```
 
 Each returned record contains `scan.page`, `scan.next_offset`,
 `scan.next_batch_id`, `scan.previous_batch_id` and `scan.unscanned`. The lower
 level `batch_scan.scan_page` exposes the same bounded read-only scanner; callers
 must supply the preceding inventory fingerprint with a nonzero offset.
+
+New V2 records also contain `scan.timeout_seconds`. Existing V1 records are
+unchanged; V2 records without this optional field use 120 seconds. Calling
+`next_import_scan_page(..., scan_timeout=None)` reuses the preceding allowance.
+An explicit 30–600 second value changes the next scan's resource budget without
+changing its source fingerprint, extraction options or deterministic page ID.
+Reopening an already saved next page returns its original record and allowance.
