@@ -127,7 +127,9 @@ def run_native():
     ui_module.NativeLibraryWorkflow = ObservedNativeWorkflow
     try:
         with TemporaryDirectory(prefix='carr-native-library-workflow-') as temporary:
-            root = Path(temporary)
+            # Windows may return an 8.3 temporary-folder spelling; the service
+            # resolves selected folders before displaying and persisting them.
+            root = Path(temporary).resolve(strict=True)
             inputs, outputs = root / 'selected inputs', root / 'selected outputs'
             inputs.mkdir()
             outputs.mkdir()
