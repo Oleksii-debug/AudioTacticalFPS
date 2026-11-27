@@ -5,6 +5,7 @@ from pathlib import Path
 from ..keybindings import (Command, KeybindingStore, normalize_shortcut,
                            validate_bindings, read_preferences, encode_preferences)
 from ..research.export_file import write_binary_export
+from .export_destination import approve_export_destination
 from .research_actions import NativeDialogs
 
 
@@ -148,7 +149,7 @@ class KeyboardActions:
         import wx
         dialog = wx.FileDialog(self.frame, 'Export keyboard shortcuts' if save else 'Import keyboard shortcuts',
             defaultFile='research-keybindings.json' if save else '', wildcard='Keyboard preferences (*.json)|*.json',
-            style=(wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
+            style=wx.FD_SAVE if save else (wx.FD_OPEN | wx.FD_FILE_MUST_EXIST))
         try:
             if dialog.ShowModal() != wx.ID_OK:
                 return
@@ -157,7 +158,14 @@ class KeyboardActions:
             dialog.Destroy()
         try:
             if save:
-                write_binary_export(path, encode_preferences(self.overrides), private_root=self.frame.library.root)
+                library = self.frame.library
+                approval = approve_export_destination(self.frame, path, private_root=library.root)
+                if approval is None:
+                    return
+                if self.frame.library is not library:
+                    raise ValueError('The active library changed. Choose the export destination again.')
+                write_binary_export(path, encode_preferences(self.overrides), private_root=library.root,
+                                    approval=approval)
                 self.frame.report('Keyboard shortcuts exported.')
             else:
                 candidate = read_preferences(path)

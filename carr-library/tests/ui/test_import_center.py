@@ -98,6 +98,36 @@ def complete(center, job, value):
     job.done(value)
 
 
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_import_report_keeps_file_changed_during_report_render(center, monkeypatch, tmp_path, existing):
+    from carr_library.ui import import_center as ui
+    private = tmp_path / 'private'
+    private.mkdir()
+    center.library.root = private
+    target = tmp_path / 'import-report.txt'
+    if existing:
+        target.write_bytes(b'Approved previous report')
+    chooser = Mock()
+    chooser.ShowModal.return_value = 1
+    chooser.GetPath.return_value = str(target)
+    wx = sys.modules['wx']
+    wx.ID_OK, wx.FD_SAVE, wx.FD_OVERWRITE_PROMPT = 1, 2, 4
+    wx.FileDialog = Mock(return_value=chooser)
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
+    original = ui.batch_report
+
+    def changed_during_render(value):
+        report = original(value)
+        target.write_bytes(b'Newer import report from another application')
+        return report
+
+    monkeypatch.setattr(ui, 'batch_report', changed_during_render)
+    center.save_report()
+    assert target.read_bytes() == b'Newer import report from another application'
+    assert 'destination changed' in center.status.GetValue()
+    chooser.Destroy.assert_called_once()
+
+
 def test_plan_captures_choices_and_passes_live_cancellation_to_background_work(center):
     center.plan(('/selected/folder',))
     center.library.plan_import_batch.assert_not_called()

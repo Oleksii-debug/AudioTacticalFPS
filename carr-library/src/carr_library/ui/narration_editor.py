@@ -7,12 +7,14 @@ the dialog. Background autosave never steals keyboard or screen-reader focus.
 from dataclasses import replace
 from hashlib import sha256
 
+from ..research.export_file import capture_export_destination
 from ..reader.narration import (
     NarrationStore, PronunciationRule, comparison_text, encode_project, export_text,
     import_text, new_project, normalization_preview, pronunciation_preview, redo,
     revise, save_as, undo,
 )
 from .research_actions import NativeDialogs
+from .export_destination import approve_export_destination
 
 
 class NarrationController:
@@ -78,9 +80,12 @@ class NarrationController:
         candidate = replace(self.candidate(), rules=tuple(rules))
         self.project, self.pending_text = candidate, candidate.current_text
 
-    def export(self, path, *, overwrite=False):
+    def export(self, path, *, overwrite=False, approval=None):
+        if approval is None:
+            approval = capture_export_destination(path, private_root=self.store.root)
         candidate = self.candidate()
-        export_text(candidate, path, private_root=self.store.root, overwrite=overwrite)
+        export_text(candidate, path, private_root=self.store.root, overwrite=overwrite,
+                    approval=approval)
         return 'UTF-8 reading text exported. The project remains separate from its original source.'
 
     def prepare_audio_studio(self, *, controller_factory=None):
@@ -307,10 +312,15 @@ def open_narration_editor(parent, store, project, *, expected_digest=None, draft
 
     def export(event=None):
         picker = wx.FileDialog(dialog, 'Export UTF-8 reading text', wildcard='Text files (*.txt)|*.txt',
-                               style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                               style=wx.FD_SAVE)
         try:
             if picker.ShowModal() == wx.ID_OK:
-                run(lambda: controller.export(picker.GetPath(), overwrite=True))
+                path = picker.GetPath()
+                approval = approve_export_destination(dialog, path, private_root=controller.store.root)
+                if approval is not None:
+                    run(lambda: controller.export(path, overwrite=True, approval=approval))
+        except Exception as exc:
+            say(str(exc))
         finally:
             picker.Destroy()
 

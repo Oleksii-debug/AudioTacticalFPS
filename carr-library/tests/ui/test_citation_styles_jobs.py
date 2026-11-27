@@ -437,3 +437,46 @@ def test_unavailable_custom_selection_does_not_submit_a_formatting_job(form, mon
     assert dialog.preview is None and not dialog.copy_bibliography.enabled
     assert dialog.generate.enabled and dialog.custom_style_button.enabled
     assert 'load a custom CSL file' in dialog.status.value
+
+
+def test_regeneration_is_an_explicit_background_job_with_new_output(form):
+    form.dialog.workbench.regenerate_document = Mock()
+    form.dialog.on_regenerate()
+    assert form.dialog.pending is not None
+    assert not form.dialog.regenerate_button.enabled
+    assert not form.dialog.generate.enabled
+    approved = form.executor.calls[0][2]['approval']
+    assert approved.require_absent and approved.requested == form.destination.absolute()
+    form.dialog.workbench.regenerate_document.assert_not_called()
+    form.executor.finish(0)
+    form.drain()
+    form.dialog.workbench.regenerate_document.assert_called_once()
+    assert form.dialog.regenerate_button.enabled
+    assert 'Original document' in form.dialog.status.value
+
+
+def test_regeneration_decline_does_not_open_a_file_or_queue_work(form):
+    form.wx.MessageDialog.return_value.ShowModal = lambda: form.wx.ID_NO
+    form.dialog.on_regenerate()
+    assert not form.executor.calls
+    form.wx.FileDialog.assert_not_called()
+
+
+def test_regeneration_refuses_existing_file_and_keeps_its_bytes(form):
+    form.destination.write_bytes(b'Existing Word document')
+    form.dialog.on_regenerate()
+    assert not form.executor.calls
+    assert form.destination.read_bytes() == b'Existing Word document'
+    assert 'Choose a new filename' in form.dialog.status.value
+
+
+def test_closed_regeneration_keeps_worker_cancellation_and_ignores_delivery(form):
+    form.dialog.workbench.regenerate_document = Mock()
+    form.dialog.on_regenerate()
+    cancelled = form.executor.calls[0][2]['cancelled']
+    form.dialog.on_close()
+    assert cancelled()
+    before = form.dialog.status.value
+    form.executor.finish(0)
+    form.drain()
+    assert form.dialog.status.value == before

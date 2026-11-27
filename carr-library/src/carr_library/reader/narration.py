@@ -505,11 +505,12 @@ def import_text(path, *, title=None):
                        original_path=str(path.resolve(strict=True)))
 
 
-def export_text(project, path, *, private_root, overwrite=False):
+def export_text(project, path, *, private_root, overwrite=False, approval=None):
     protect_original_path(project.original_path, path)
     if Path(path).exists() and not overwrite:
         raise FileExistsError('Choose another filename or explicitly approve replacing the existing export.')
-    write_export(path, project.current_text, private_root=private_root)
+    write_export(path, project.current_text, private_root=private_root,
+                 require_absent=not overwrite, approval=approval)
 
 
 def save_as(project, *, title=None):

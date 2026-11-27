@@ -210,8 +210,10 @@ def citation_document(records, *, style='apa', locale='en-US', citations=None,
     metadata.set('schema', SCHEMA)
     metadata.set('sha256', sha256(raw).hexdigest())
     metadata.text = raw.decode('utf-8')
-    part = Part(PackURI('/' + _PART), 'application/xml',
-        etree.tostring(metadata, xml_declaration=True, encoding='UTF-8', standalone=True))
+    serialized = etree.tostring(metadata, xml_declaration=True, encoding='UTF-8', standalone=True)
+    if len(serialized) > _MAX_METADATA:
+        raise ValueError('Serialized citation provenance exceeds its byte budget.')
+    part = Part(PackURI('/' + _PART), 'application/xml', serialized)
     document.part.relate_to(part, RT.CUSTOM_XML)
     output = BytesIO()
     document.save(output)
@@ -241,8 +243,14 @@ def read_citation_docx(source):
     A checksum detects corruption. It is not an authenticity signature, and
     matching it does not verify the visible Word text or a quotation.
     """
+    return _read_citation_bytes(read_document(source, byte_budget=_MAX_DOCUMENT))
+
+
+def _read_citation_bytes(data):
+    """Parse the same bounded snapshot from one already captured byte string."""
     from defusedxml import ElementTree
-    data = read_document(source, byte_budget=_MAX_DOCUMENT)
+    if type(data) is not bytes or len(data) > _MAX_DOCUMENT:
+        raise ValueError('Citation document exceeds its byte budget.')
     try:
         with ZipFile(BytesIO(data)) as archive:
             infos = archive.infolist()

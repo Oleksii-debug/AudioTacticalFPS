@@ -8,7 +8,8 @@ from pathlib import Path
 import threading
 
 from ..research.academic_library import AcademicLibrary
-from ..research.export_file import write_export
+from ..research.export_file import capture_export_destination, write_export
+from .export_destination import approve_export_destination
 
 
 PAGE_SIZE = 200
@@ -94,10 +95,13 @@ class AcademicController:
             return AcademicLibrary(db, self.workspace).export(
                 None if identity is None else (identity,), format=format, include_notes=include_notes)
 
-    def export_to(self, destination, *, identity=None, format='text', include_notes=False):
-        # The native Save dialog obtains overwrite confirmation first.
+    def export_to(self, destination, *, identity=None, format='text', include_notes=False, approval=None):
+        if approval is None:
+            approval = capture_export_destination(destination, private_root=self.library.root)
+            if not approval.require_absent:
+                raise FileExistsError('Confirm replacement of the existing export before rendering it.')
         content = self.export(identity=identity, format=format, include_notes=include_notes)
-        write_export(destination, content, private_root=self.library.root)
+        write_export(destination, content, private_root=self.library.root, approval=approval)
         return content
 
     def books(self):
@@ -975,8 +979,9 @@ def create_academic_dialog(parent, controller, *, executor=None):
             finally:
                 dialog.Destroy()
 
-        def export_to(self, path, *, format='text', identity=None, include_notes=False):
-            content = self.controller.export_to(path, identity=identity, format=format, include_notes=include_notes)
+        def export_to(self, path, *, format='text', identity=None, include_notes=False, approval=None):
+            content = self.controller.export_to(path, identity=identity, format=format,
+                                                include_notes=include_notes, approval=approval)
             report(self.status, f'Bibliography exported to {path}. '
                    + ('Personal notes were included.' if include_notes else 'Personal notes were not included.'))
             return content
@@ -990,14 +995,18 @@ def create_academic_dialog(parent, controller, *, executor=None):
                 dialog = wx.FileDialog(self, 'Save academic bibliography',
                                        defaultFile='academic-bibliography.' + extension,
                                        wildcard=f'{label} (*.{extension})|*.{extension}',
-                                       style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+                                       style=wx.FD_SAVE)
                 try:
                     if dialog.ShowModal() != wx.ID_OK:
                         return
                     path = Path(dialog.GetPath())
                 finally:
                     dialog.Destroy()
-                self.export_to(path, format=format, identity=identity, include_notes=include_notes)
+                approval = approve_export_destination(self, path, private_root=self.controller.library.root)
+                if approval is None:
+                    return
+                self.export_to(path, format=format, identity=identity, include_notes=include_notes,
+                               approval=approval)
             except Exception as exc:
                 report(self.status, f'Bibliography not exported: {exc}')
 

@@ -80,6 +80,30 @@ def test_revoked_guard_blocks_save_and_draft(controller):
     assert not (controller.store.root / 'narration-projects').exists()
 
 
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_narration_export_retains_destination_approval_across_candidate_preparation(
+        controller, tmp_path, existing):
+    from carr_library.ui.export_destination import approve_export_destination
+    target = tmp_path / 'reading-copy.txt'
+    if existing:
+        target.write_bytes(b'Approved previous reading copy')
+    approval = approve_export_destination(None, target, private_root=controller.store.root,
+                                          confirm=lambda *_: True)
+    controller.guard = lambda: target.write_bytes(b'Newer external reading copy')
+    with pytest.raises(ValueError, match='destination changed'):
+        controller.export(target, overwrite=True, approval=approval)
+    assert target.read_bytes() == b'Newer external reading copy'
+    assert controller.project.original_text == 'Original'
+
+
+def test_programmatic_narration_new_export_keeps_file_created_during_preparation(controller, tmp_path):
+    target = tmp_path / 'reading-copy.txt'
+    controller.guard = lambda: target.write_bytes(b'Competing new reading copy')
+    with pytest.raises((ValueError, FileExistsError)):
+        controller.export(target)
+    assert target.read_bytes() == b'Competing new reading copy'
+
+
 def test_dictionary_interchange_rejects_unexpected_fields_and_duplicates():
     assert _parse_rules('[{"written":"a","spoken":"b"}]') == (PronunciationRule('a', 'b'),)
     for invalid in ['{}', '[null]', '[{"written":"a","spoken":"b","execute":"shell"}]',

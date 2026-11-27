@@ -29,7 +29,7 @@ def research(tmp_path):
                            original=app.assets.resolve(imported['asset']))
 
 
-def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
+def export_using_dialog(research, destination, monkeypatch, *, format_index=1, consent=True):
     class FileDialog:
         def __init__(self, *args, **kwargs):
             pass
@@ -47,6 +47,10 @@ def export_using_dialog(research, destination, monkeypatch, *, format_index=1):
             pass
 
     monkeypatch.setattr(desktop_app.wx, 'FileDialog', FileDialog)
+    # The real handler/helper capture the destination before this explicit
+    # dialog answer. This headless protocol never opens a native question.
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace',
+                        lambda *_: consent)
     reports = []
 
     def run_job(title, operation, done=None, failed=None):
@@ -98,6 +102,14 @@ def test_desktop_export_to_external_file_keeps_source_and_notes_separate(researc
     assert 'source exact quotation' in expected and 'Separate research note' in expected
     assert research.original.read_bytes() == before_original
     assert not list(tmp_path.glob('.carr-export-*'))
+
+
+def test_declined_desktop_overwrite_preserves_existing_output(research, tmp_path, monkeypatch):
+    destination = tmp_path / 'research-topic.txt'
+    destination.write_bytes(b'Unapproved existing export')
+    reports = export_using_dialog(research, destination, monkeypatch, consent=False)
+    assert reports == []
+    assert destination.read_bytes() == b'Unapproved existing export'
 
 
 def test_failed_export_preserves_existing_output_and_library(research, tmp_path, monkeypatch):

@@ -120,6 +120,9 @@ class Dialogs:
 
 class CatalogInsightsActionsTests(unittest.TestCase):
     def setUp(self):
+        consent = patch('carr_library.ui.export_destination._confirm_replace', return_value=True)
+        consent.start()
+        self.addCleanup(consent.stop)
         temporary = TemporaryDirectory(prefix='catalog-insights-actions-')
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
@@ -465,6 +468,21 @@ class CatalogInsightsActionsTests(unittest.TestCase):
         actions.export_matrix()
         self.assertFalse(protected.exists())
         self.assertIn('outside the private library', self.frame.messages[-1])
+
+    def test_matrix_keeps_a_destination_changed_before_the_worker(self):
+        self.destination.write_bytes(b'Approved previous matrix')
+        self.frame.before_worker = lambda: self.destination.write_bytes(b'Newer external matrix')
+        actions, _ = self.actions((0, 0))
+        actions.export_matrix()
+        self.assertEqual(self.destination.read_bytes(), b'Newer external matrix')
+        self.assertIn('destination changed', self.frame.messages[-1])
+
+    def test_matrix_new_filename_cannot_clobber_a_file_that_appears_before_worker(self):
+        self.frame.before_worker = lambda: self.destination.write_bytes(b'Competing new matrix')
+        actions, _ = self.actions((0, 0))
+        actions.export_matrix()
+        self.assertEqual(self.destination.read_bytes(), b'Competing new matrix')
+        self.assertIn('destination changed', self.frame.messages[-1])
 
     def test_checked_export_failure_keeps_existing_destination(self):
         self.destination.write_text('Keep existing', encoding='utf-8')

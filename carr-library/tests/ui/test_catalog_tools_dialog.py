@@ -43,7 +43,8 @@ class Control:
 
 
 @pytest.fixture
-def module():
+def module(monkeypatch):
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
     wx = ModuleType('wx')
     for name in ('Dialog', 'BoxSizer', 'StaticText', 'TextCtrl', 'Choice', 'Button'):
         setattr(wx, name, Control)
@@ -207,7 +208,7 @@ def test_exports_forward_exact_scope_format_and_write_complete_utf8(module, setu
     assert getattr(form, 'export_' + kind)()
     assert module.wx.files[0].destroyed
     style = module.wx.files[0].options['style']
-    assert style & module.wx.FD_SAVE and style & module.wx.FD_OVERWRITE_PROMPT
+    assert style & module.wx.FD_SAVE and not style & module.wx.FD_OVERWRITE_PROMPT
     destination = Path(module.wx.file_path)
     assert not destination.exists() and library.calls == []
     frame.finish()
@@ -275,11 +276,37 @@ def test_late_report_callback_does_not_display_foreign_scope_data(setup):
 def test_checked_writer_refuses_private_source_overwrite(module, setup):
     form, frame, library = setup
     module.wx.file_path = str(library.original)
-    assert form.export_inventory()
-    frame.finish()
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == []
     assert library.original.read_bytes() == b'unchanged original source'
     assert 'outside the private library folder' in form.status.GetValue()
     assert not form.pending and form.inventory_button.enabled
+
+
+@pytest.mark.parametrize('kind', ['bibliography', 'inventory', 'matrix'])
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_catalog_export_does_not_replace_a_newer_destination(module, setup, kind, existing):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    if existing:
+        target.write_bytes(b'Approved previous export')
+    assert getattr(form, 'export_' + kind)()
+    target.write_bytes(b'Changed after the destination was chosen')
+    frame.finish()
+    assert target.read_bytes() == b'Changed after the destination was chosen'
+    assert 'destination changed' in form.status.GetValue()
+    assert not form.pending and library.original.read_bytes() == b'unchanged original source'
+
+
+def test_declined_catalog_overwrite_starts_no_job(module, setup, monkeypatch):
+    form, frame, library = setup
+    target = Path(module.wx.file_path)
+    target.write_bytes(b'Keep the existing output')
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: False)
+    assert form.export_inventory() is False
+    assert frame.jobs == [] and library.calls == []
+    assert form.inventory_button.focused
+    assert target.read_bytes() == b'Keep the existing output'
 
 
 def test_report_limit_is_explicit_and_does_not_show_a_partial_result(module, setup):

@@ -162,13 +162,14 @@ def test_export_cannot_replace_private_database(research):
     frame, actions, _ = make_actions(research, save_path=research[0].database)
     before = research[0].database.read_bytes()
     actions.outline()
-    with pytest.raises(ValueError, match='private library'):
-        frame.complete()
+    assert not frame.jobs
+    assert 'private library' in frame.report.call_args.args[0]
     assert research[0].database.read_bytes() == before
     assert research[0].search(research[1], 'Exact original quotation.')
 
 
-def test_cancel_before_export_keeps_existing_file(research, tmp_path):
+def test_cancel_before_export_keeps_existing_file(research, tmp_path, monkeypatch):
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
     output = tmp_path / 'outline.md'
     output.write_text('Previous export', encoding='utf-8')
     frame, actions, _ = make_actions(research, save_path=output)
@@ -177,6 +178,21 @@ def test_cancel_before_export_keeps_existing_file(research, tmp_path):
     with pytest.raises((InterruptedError, TimeoutError)):
         frame.complete()
     assert output.read_text(encoding='utf-8') == 'Previous export'
+
+
+@pytest.mark.parametrize('existing', [False, True], ids=['new', 'confirmed-existing'])
+def test_outline_rejects_destination_changes_after_job_submission(research, tmp_path, monkeypatch, existing):
+    monkeypatch.setattr('carr_library.ui.export_destination._confirm_replace', lambda *_: True)
+    output = tmp_path / 'outline.md'
+    if existing:
+        output.write_bytes(b'Approved output')
+    frame, actions, _ = make_actions(research, save_path=output)
+    actions.outline()
+    assert len(frame.jobs) == 1
+    output.write_bytes(b'Output from another application')
+    with pytest.raises(ValueError, match='destination changed'):
+        frame.complete()
+    assert output.read_bytes() == b'Output from another application'
 
 
 def test_scope_change_in_save_dialog_writes_nothing(research, tmp_path):

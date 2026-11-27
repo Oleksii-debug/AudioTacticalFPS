@@ -388,7 +388,13 @@ jobs:
             'tests/assistant/test_backup_receipt.py',
             'tests/catalog/test_ris_apply_v4.py',
             'tests/extract/test_ocr_packs.py',
-            'tests/extract/test_ocr_pack_path_binding.py'
+            'tests/extract/test_ocr_pack_path_binding.py',
+            'tests/ui/test_export_destination_approval.py',
+            'tests/test_supplied_asr_preparer.py',
+            'tests/citations/test_regeneration.py',
+            'tests/conversion/test_conversion.py',
+            'tests/ingest/test_worker_publication_boundary.py',
+            'tests/conversion/test_conversion_ui.py'
           )
           & $env:CARR_PYTHON scripts/ci_check.py --jobs 3 @suites 2>&1 | Tee-Object 'ci-results/integrated-tests.txt'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -734,7 +740,13 @@ jobs:
               'tests/assistant/test_backup_receipt.py',
               'tests/catalog/test_ris_apply_v4.py',
               'tests/ui/test_academic_tools.py',
-          ]
+              'tests/ui/test_export_destination_approval.py',
+              'tests/citations/test_regeneration.py',
+              'tests/conversion/test_conversion.py',
+              'tests/ingest/test_worker_publication_boundary.py',
+              'tests/conversion/test_conversion_ui.py',
+              'tests/search/test_semantic_cache.py',
+              'tests/search/test_semantic_cache_boundary.py']
           status = pytest.main([*sys.argv[2:], *contents_suites])
           if status:
               raise SystemExit(status)
