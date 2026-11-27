@@ -64,10 +64,10 @@ def drive_chain(wx, show_editor, frame, editor, *, private_root, check, cancel=F
             if dialog.GetParent() is not frame:
                 raise AssertionError('The effect editor belongs to another native parent.')
             if phase == 'ready':
-                check('named native chain window', dialog.GetName() == 'Role effect chains')
+                check('named native chain window', dialog.GetName() == 'Role and master effect chains')
                 check('native role and effect-order controls',
                       isinstance(fields['role'], wx.Choice) and isinstance(fields['chain'], wx.ListBox)
-                      and fields['role'].GetName() == 'Effect chain role'
+                      and fields['role'].GetName() == 'Effect chain target'
                       and fields['chain'].GetName() == 'Effects in processing order')
                 check('preset actions are named and require explicit apply',
                       not buttons['apply_preset'].IsEnabled()
@@ -150,6 +150,24 @@ def drive_chain(wx, show_editor, frame, editor, *, private_root, check, cancel=F
                 press(buttons['remove'])
                 check('native removal affects only the selected step', fields['chain'].GetCount() == 2
                       and fields['chain'].GetString(0).startswith('1. highpass'))
+                choose(fields['role'], len(editor.roles), wx.EVT_CHOICE)
+                check('master has a distinct actual native target',
+                      fields['role'].GetStringSelection() == 'Master: entire programme'
+                      and fields['chain'].GetCount() == 2)
+                check('dry wet control is named and enabled only for master',
+                      isinstance(fields['master_mix'], wx.TextCtrl)
+                      and fields['master_mix'].GetName() == 'Master dry wet mix from zero to one'
+                      and fields['master_mix'].IsEnabled())
+                fields['master_mix'].ChangeValue('nan')
+                press(buttons['accept'])
+                check('invalid master mix keeps the actual modal open',
+                      dialog.IsModal() and 'finite' in state['status'].GetValue())
+                fields['master_mix'].ChangeValue('0.5')
+                press(buttons['bypass'])
+                press(buttons['down'])
+                check('native master chain has actual bypass and order controls',
+                      fields['chain'].GetString(0).startswith('1. limiter')
+                      and 'bypassed' in fields['chain'].GetString(1))
                 state['phase'] = 'accepted'
                 schedule()
                 press(buttons['cancel' if cancel else 'accept'])
@@ -347,7 +365,9 @@ def run_native():
             check('Cancel returns no effect from ' + phase, drive(cancel_at=phase) is None)
         check('invalid numeric entry is rejected after native confirmation',
               drive(invalid_number=True) == 'invalid-number-rejected')
-        source = ('[role Ірина]\r\n[effect Ірина gain gain_db=-6]\r\n'
+        source = ('[master mix=1]\r\n[master-effect gain gain_db=-6]\r\n'
+                  '[master-effect limiter ceiling_db=-3]\r\n'
+                  '[role Ірина]\r\n[effect Ірина gain gain_db=-6]\r\n'
                   '[effect Ірина highpass frequency=80]\r\nІрина: Точні слова.')
         with TemporaryDirectory(prefix='carr-native-effect-chain-') as folder:
             private = Path(folder) / 'library'
@@ -365,6 +385,10 @@ def run_native():
                           selected.effects == (models.Effect('highpass', (('frequency', 80.0),)),
                               models.Effect('gain', (('gain_db', -9.0),), enabled=False)))
                     check('unselected native role remains unchanged', plan.roles[0].effects == ())
+                    check('native master apply retains typed mix, order and bypass',
+                          plan.schema_version == 3 and plan.master_mix == .5
+                          and plan.master_effects == (models.Effect('limiter', (('ceiling_db', -3.0),)),
+                              models.Effect('gain', (('gain_db', -6.0),), enabled=False)))
                     check('native chain retains exact spoken source',
                           plan.scenes == parse_script(source).scenes and draft.source_text == source)
                     path = Path(folder) / 'synthetic-preset.json'
@@ -377,7 +401,8 @@ def run_native():
         check('no native callback failed', not errors)
         print(json.dumps(dict(status='PASS', checks=len(checks), wx=wx.version(),
                               native_controls='PASS', typed_parameters='PASS', cancellation='PASS',
-                              role_chain='PASS', preset_file_roundtrip='PASS', preset_native_picker='NOT_RUN',
+                              role_chain='PASS', master_chain='PASS', master_mix='PASS',
+                              preset_file_roundtrip='PASS', preset_native_picker='NOT_RUN',
                               nvda='NOT_RUN', signal_rendering='NOT_RUN'), sort_keys=True), flush=True)
     finally:
         for dialog in owned_modals():

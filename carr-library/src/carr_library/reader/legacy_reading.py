@@ -15,7 +15,7 @@ from pathlib import Path
 import re
 from tempfile import NamedTemporaryFile
 
-from ..backup_files import local_path, regular
+from ..backup_files import local_path, regular, optional_present
 from ..ingest.writer_guard import _private_root, exclusive_writer
 from .reading_state import ReadingLocation, _unique
 
@@ -400,7 +400,7 @@ def _directory(root, *, create=False):
     path = root / DIRECTORY
     if create:
         path.mkdir(mode=0o700, exist_ok=True)
-    if os.path.lexists(path):
+    if optional_present(path):
         local_path(path, root=root, exists=True)
         regular(path, directory=True)
     return path
@@ -411,7 +411,7 @@ def snapshot_import_files(root, *, cancelled=lambda: False):
     from .narration import _read_bytes
     path = _directory(root)
     result, total = {}, 0
-    if not os.path.lexists(path):
+    if not optional_present(path):
         return result
     for count, item in enumerate(path.iterdir()):
         _cancel(cancelled)
@@ -450,7 +450,7 @@ def session_paths(root, *, cancelled=lambda: False):
     """Bounded original recovery inventory; runtime profiles are never collected."""
     root = local_path(root, exists=True)
     directory = local_path(root / SESSION_DIRECTORY, root=root)
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         return ()
     regular(directory, directory=True)
     result = []
@@ -480,7 +480,7 @@ def session_snapshot_guard(root, *, cancelled=lambda: False):
             _cancel(cancelled)
             key = _SESSION_FILE.fullmatch(path.name).group(1)
             lock = path.parent / ('.' + key + '.lock')
-            if os.path.lexists(lock):
+            if optional_present(lock):
                 regular(lock)
             try:
                 stack.enter_context(FileLock(lock, timeout=0, mode=0o600))

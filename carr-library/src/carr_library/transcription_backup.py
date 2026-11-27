@@ -11,6 +11,7 @@ from datetime import datetime
 import math
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from .backup_files import optional_present
 import re
 import stat
 import unicodedata
@@ -220,7 +221,7 @@ def _definition(job):
 
 def _jobs(root, *, cancelled=lambda: False):
     folder = Path(root) / DIRECTORY
-    if not os.path.lexists(folder):
+    if not optional_present(folder):
         return ()
     _plain(folder, directory=True)
     jobs = []
@@ -431,7 +432,7 @@ def state_paths(root, *, cancelled=lambda: False):
 def snapshot_guard(root):
     """Caller holds the app writer. The standalone worker lock is mandatory."""
     folder = Path(root) / DIRECTORY
-    if not os.path.lexists(folder):
+    if not optional_present(folder):
         yield
         return
     with project_lock(folder), ExitStack() as stack:

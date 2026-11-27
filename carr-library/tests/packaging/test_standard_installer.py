@@ -702,6 +702,97 @@ def test_interrupt_during_native_cleanup_is_delivered_only_after_quiescence(monk
 probe = load('standard_installer_native_probe_test', ROOT / 'scripts/windows_standard_installer_smoke.py')
 
 
+@pytest.fixture
+def shortcut_targets(tmp_path):
+    root = tmp_path / 'Managed Resonance Україна Ω'
+    values = {}
+    for name, relative in {'Resonance': 'app/ResearchLibrary.exe',
+                           'Repair Resonance': 'maintenance/ResonanceSetup.exe',
+                           'Uninstall Resonance': 'unins000.exe'}.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'Synthetic target identity, never executed')
+        values[name] = str(path)
+    return root, values
+
+
+def test_shortcut_inspection_retains_exact_unicode_and_real_target_identity(shortcut_targets):
+    root, values = shortcut_targets
+    probe.validate_shortcut_targets(root, values)
+    assert 'Україна Ω' in values['Resonance']
+
+
+@pytest.mark.parametrize('name', ['Resonance', 'Repair Resonance', 'Uninstall Resonance'],
+                         ids=['application', 'repair', 'uninstall'])
+def test_shortcut_inspection_refuses_an_existing_foreign_target(shortcut_targets, tmp_path, name):
+    root, values = shortcut_targets
+    other = tmp_path / 'Another installation' / Path(values[name]).name
+    other.parent.mkdir()
+    other.write_bytes(Path(values[name]).read_bytes())
+    values[name] = str(other)
+    with pytest.raises(RuntimeError, match='targets another installation'):
+        probe.validate_shortcut_targets(root, values)
+
+
+@pytest.mark.parametrize('kind', ['lossy-ansi', 'missing', 'directory', 'relative'])
+def test_shortcut_inspection_does_not_repair_or_guess_a_target(shortcut_targets, kind):
+    root, values = shortcut_targets
+    if kind == 'lossy-ansi':
+        values['Resonance'] = values['Resonance'].replace('Україна Ω', '??????? O')
+    elif kind == 'missing':
+        Path(values['Resonance']).unlink()
+    elif kind == 'directory':
+        values['Resonance'] = str(root / 'app')
+    else:
+        values['Resonance'] = 'app/ResearchLibrary.exe'
+    with pytest.raises(RuntimeError, match='targets another installation'):
+        probe.validate_shortcut_targets(root, values)
+
+
+@pytest.mark.parametrize('kind', ['list', 'missing-key', 'extra-key', 'empty', 'null', 'nul', 'long'])
+def test_shortcut_inspection_requires_the_complete_typed_inventory(shortcut_targets, kind):
+    root, values = shortcut_targets
+    if kind == 'list':
+        values = list(values.values())
+    elif kind == 'missing-key':
+        del values['Repair Resonance']
+    elif kind == 'extra-key':
+        values['Other program'] = values['Resonance']
+    else:
+        values['Resonance'] = {'empty': '', 'null': None, 'nul': '\x00', 'long': 'x' * 32768}[kind]
+    with pytest.raises(RuntimeError, match='inventory|invalid target'):
+        probe.validate_shortcut_targets(root, values)
+
+
+def test_native_shortcut_probe_keeps_unicode_report_from_owned_inspection(
+        shortcut_targets, tmp_path, monkeypatch):
+    root, values = shortcut_targets
+    appdata = tmp_path / 'Roaming Україна Ω'
+    folder = appdata / 'Microsoft/Windows/Start Menu/Programs/Resonance'
+    folder.mkdir(parents=True)
+    for name in values:
+        (folder / (name + '.lnk')).write_bytes(b'Synthetic link placeholder; COM is not run here')
+    monkeypatch.setenv('APPDATA', str(appdata))
+    monkeypatch.setenv('SystemRoot', str(tmp_path / 'Windows'))
+    report = tmp_path / 'report'
+    report.mkdir()
+    invocations = []
+
+    def inspected(command, *, cwd, log, timeout):
+        invocations.append(command)
+        assert cwd == report and timeout == 30
+        assert Path(command[command.index('-Folder') + 1]) == folder
+        output = Path(command[command.index('-Output') + 1])
+        output.write_text(json.dumps(values, ensure_ascii=False), encoding='utf-8-sig')
+        log.write_text('Synthetic process boundary, no native acceptance claim')
+
+    monkeypatch.setattr(probe, 'owned_process', inspected)
+    assert probe.inspect_shortcuts(root, report) == folder
+    assert len(invocations) == 1
+    assert json.loads((report / 'shortcuts.json').read_text(encoding='utf-8-sig')) == values
+    assert Path(values['Resonance']).read_bytes() == b'Synthetic target identity, never executed'
+
+
 def test_native_probe_fixture_populates_a_real_library(tmp_path, monkeypatch):
     root = tmp_path / 'retained real SQLite library'
     monkeypatch.setattr(sys, 'argv', ['native-fixture', str(root)])

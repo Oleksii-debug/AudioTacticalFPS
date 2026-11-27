@@ -36,6 +36,7 @@ _ID = re.compile('[0-9a-f]{32}')
 _MIMES = frozenset(MIME_SUFFIXES)
 _BATCH_KEYS = {'version', 'batch_id', 'data_dir', 'workspace', 'created', 'updated',
                'state', 'collections', 'recursive', 'config', 'rows', 'counts', 'total'}
+_BATCH_V2_KEYS = _BATCH_KEYS | {'scan'}
 _ROW_KEYS = {'row_id', 'work_id', 'edition_id', 'request_id', 'source', 'file', 'title',
              'state', 'message', 'manifest', 'duplicate_of', 'result'}
 
@@ -102,8 +103,9 @@ class ImportBatchStore:
                 catalog._active_collection(collection)
 
     def _validate(self, record, batch_id):
-        if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-                or type(record['version']) is not int or record['version'] != 1
+        if (not isinstance(record, dict)
+                or set(record) != (_BATCH_KEYS if record.get('version') == 1 else _BATCH_V2_KEYS)
+                or type(record['version']) is not int or record['version'] not in (1, 2)
                 or record['batch_id'] != batch_id or record['data_dir'] != str(self.root)
                 or not _text(record['workspace'], 200, empty=False)
                 or not _text(record['created'], 64, empty=False)
@@ -117,6 +119,9 @@ class ImportBatchStore:
                 or not isinstance(record['rows'], list) or len(record['rows']) > MAX_ROWS):
             raise ValueError('Invalid import batch schema or data-directory binding.')
         Config(**record['config'])
+        if record['version'] == 2:
+            from .scan_pages import validate_batch_scan
+            validate_batch_scan(record['scan'], batch_id=batch_id, recursive=record['recursive'])
         seen = {name: set() for name in ('row_id', 'work_id', 'edition_id', 'request_id')}
         for row in record['rows']:
             if (not isinstance(row, dict) or set(row) != _ROW_KEYS
@@ -204,7 +209,11 @@ class ImportBatchStore:
                 stream.write(raw)
                 stream.flush()
                 os.fsync(stream.fileno())
-            os.replace(temporary, path)
+            if create:
+                from ..audio.jobs import publish_noreplace
+                publish_noreplace(temporary, path)
+            else:
+                os.replace(temporary, path)
             if os.name != 'nt':
                 directory = os.open(path.parent, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
                 try:
@@ -244,6 +253,140 @@ class ImportBatchStore:
         with self._lock(record['batch_id']):
             self._store(record, create=True, paused=bool(cancelled()))
         return _copy(record)
+
+    def _scan_slot(self):
+        # This remains an explicit journal bound, not a corpus-size claim.
+        for count, path in enumerate(self._directory().glob('*.json'), 1):
+            if count >= MAX_BATCHES:
+                raise ValueError('The saved import-batch count limit is reached; retain or export completed plans before creating more.')
+
+    def _scan_candidate(self, workspace, roots, *, collections, recursive, config,
+                        batch_id, previous, input_cursor, page_number,
+                        file_budget, entry_budget, timeout, cancelled):
+        from .batch_scan import scan_paths_page
+        from .scan_pages import BATCH_SCAN_SCHEMA
+        with self.app.read(workspace) as db:
+            def existing(digest):
+                return db.execute('SELECT 1 FROM catalog_edition WHERE workspace=? AND asset=? LIMIT 1',
+                                  (workspace, digest)).fetchone() is not None
+            page = scan_paths_page(roots, recursive=recursive, cursor=input_cursor,
+                existing_contains=existing, file_budget=file_budget,
+                entry_budget=entry_budget, timeout=timeout, cancelled=cancelled)
+        self._authorize(workspace, collections)
+        rows = [dict(candidate, row_id=uuid4().hex, work_id=uuid4().hex,
+                     edition_id=uuid4().hex, request_id=uuid4().hex, result=None)
+                for candidate in page.rows]
+        if len(rows) > MAX_ROWS:
+            raise ValueError('Too many files in one import scan page.')
+        now = _now()
+        return dict(version=2, batch_id=batch_id, data_dir=str(self.root),
+            workspace=workspace, created=now, updated=now, state='queued',
+            collections=list(collections), recursive=recursive, config=_copy(config),
+            rows=rows, counts={}, total=len(rows),
+            scan=dict(schema=BATCH_SCAN_SCHEMA, roots=list(map(str, roots)),
+                input_cursor=input_cursor, next_cursor=page.next_cursor, page=page_number,
+                previous_batch=previous, next_batch=None, resumable=True,
+                file_budget=file_budget, entry_budget=entry_budget, timeout=timeout,
+                examined_files=page.examined_files, scanned_entries=page.scanned_entries,
+                rejected_entries=page.rejected_entries))
+
+    def plan_page(self, workspace, paths, *, collections=(), recursive=True,
+                  config=None, file_budget=5000, entry_budget=20000,
+                  timeout=60.0, cancelled=lambda: False):
+        """Save the first bounded scan page; imports remain an explicit action."""
+        from .scan_pages import selected_paths
+        from .writer_guard import exclusive_writer
+        if (not isinstance(collections, (list, tuple)) or len(collections) > 128
+                or type(recursive) is not bool or not callable(cancelled)):
+            raise ValueError('Invalid import scan options.')
+        def check():
+            if cancelled():
+                raise InterruptedError('Import scan cancelled before saving a new page.')
+        check()
+        roots = selected_paths(paths, recursive, check)
+        collections = tuple(dict.fromkeys(collections))
+        settings = asdict(config or Config())
+        Config(**settings)
+        with exclusive_writer(self.root):
+            self._authorize(workspace, collections)
+            self._scan_slot()
+            record = self._scan_candidate(workspace, roots, collections=collections,
+                recursive=recursive, config=settings, batch_id=uuid4().hex,
+                previous=None, input_cursor=None, page_number=1,
+                file_budget=file_budget, entry_budget=entry_budget,
+                timeout=timeout, cancelled=cancelled)
+            check()
+            with self._lock(record['batch_id']):
+                self._store(record, create=True)
+            return _copy(record)
+
+    def continue_scan(self, workspace, batch_id, *, file_budget=None, entry_budget=None,
+                      timeout=None, cancelled=lambda: False):
+        """Create or recover exactly one next page; never revisit archived roots.
+
+        The child ID is bound to the parent and its exact cursor. A crash after
+        child publication but before the parent link reuses that same child.
+        Existing saved children can be opened after restore; new traversal
+        requires a live, non-restored cursor and explicit user continuation.
+        """
+        from ..audio.jobs import _sync_directory
+        from .scan_pages import successor_id, validate_scan_successor
+        from .writer_guard import exclusive_writer
+        if not callable(cancelled):
+            raise ValueError('A scan cancellation callback is required.')
+        for value, maximum in ((file_budget, 5000), (entry_budget, 20000)):
+            if value is not None and (type(value) is not int or not 1 <= value <= maximum):
+                raise ValueError('Choose bounded file and entry budgets for the next scan page.')
+        if timeout is not None and (type(timeout) not in (int, float)
+                or not math.isfinite(timeout) or not 0 < timeout <= 3600):
+            raise ValueError('Choose a scan time budget between zero and 3600 seconds.')
+        def check():
+            if cancelled():
+                raise InterruptedError('Import scan cancelled; the saved page remains unchanged.')
+        check()
+        with exclusive_writer(self.root), self._lock(batch_id):
+            parent = self.get(workspace, batch_id)
+            self._authorize(workspace, parent['collections'])
+            if parent.get('version') != 2 or parent['scan']['next_cursor'] is None:
+                raise ValueError('This saved plan has no scan continuation. Select roots for a new first page.')
+            scan = parent['scan']
+            following = successor_id(batch_id, scan['next_cursor'])
+            # The deterministic child may exist even when the parent link was
+            # not durable. Validate before acknowledgement, without source I/O.
+            with self._lock(following):
+                try:
+                    child = self._load(following)
+                except FileNotFoundError:
+                    child = None
+                if child is not None:
+                    validate_scan_successor(parent, child)
+                    check()
+                    _sync_directory(self._directory())
+                else:
+                    if scan['next_batch'] is not None:
+                        raise ValueError('A linked saved scan page is missing; restore it before continuing.')
+                    if not scan['resumable']:
+                        raise ValueError('Restored folder cursors are historical only. Select source roots for a new first page; saved queued files remain usable.')
+                    if scan['page'] >= MAX_BATCHES:
+                        raise ValueError('The bounded scan-page chain limit is reached.')
+                    self._scan_slot()
+                    check()
+                    child = self._scan_candidate(workspace, scan['roots'],
+                        collections=parent['collections'], recursive=parent['recursive'],
+                        config=parent['config'], batch_id=following, previous=batch_id,
+                        input_cursor=scan['next_cursor'], page_number=scan['page'] + 1,
+                        file_budget=scan['file_budget'] if file_budget is None else file_budget,
+                        entry_budget=scan['entry_budget'] if entry_budget is None else entry_budget,
+                        timeout=scan['timeout'] if timeout is None else timeout,
+                        cancelled=cancelled)
+                    check()
+                    validate_scan_successor(parent, child)
+                    self._store(child, create=True)
+                parent['scan']['next_batch'] = following
+                # No post-publication cancellation reclassifies an accepted
+                # child as unsaved. The parent link is completed or recoverable.
+                self._store(parent, paused=parent['state'] == 'paused')
+                return _copy(self._reconcile(child))
 
     def get(self, workspace, batch_id):
         self._authorize(workspace)

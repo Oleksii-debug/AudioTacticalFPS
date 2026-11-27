@@ -85,7 +85,8 @@ def production_request(plan, root, limits, *, music_devices=(), sound_seconds=No
     music = int(any(scene.music is not None for scene in plan.scenes))
     # Cache, staged mix, independent publication, stems, generated music,
     # optional encoding and metadata may coexist on the selected output disk.
-    disk = (pcm * (8 + 3 * stems + 3 * music + int(plan.output_format != 'wav'))
+    mastering = 4 if plan.schema_version >= 3 else 0
+    disk = (pcm * (8 + mastering + 3 * stems + 3 * music + int(plan.output_format != 'wav'))
             + math.ceil(clip_seconds * plan.sample_rate * 4) * 3 + 32 * MIB)
     return ResourceRequest(cpu_slots=limits.cpu_slots, memory_bytes=limits.memory_bytes,
         gpu_device=gpu, gpu_memory_bytes=capacity, disk_bytes=disk, disk_path=root)

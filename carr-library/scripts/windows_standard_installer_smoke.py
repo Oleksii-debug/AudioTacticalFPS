@@ -119,6 +119,77 @@ def wait_ready(path, child, seconds=30):
         time.sleep(0.05)
 
 
+# WScript.Shell.TargetPath can lose characters outside the process ANSI code
+# page. Use the explicitly Unicode Shell-link interface on the actual .lnk;
+# never Resolve/Save it or accept the lossy path as an installation alias.
+# https://learn.microsoft.com/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishelllinkw
+UNICODE_SHORTCUTS_SCRIPT = r'''param([string]$Folder,[string]$Output)
+$ErrorActionPreference='Stop'
+Add-Type -TypeDefinition @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
+
+[ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+class NativeShellLink {}
+
+// GetPath is the first method after IUnknown in the IShellLinkW vtable.
+// Only that read-only method is exposed; IPersistFile.Load is also read-only.
+[ComImport, Guid("000214F9-0000-0000-C000-000000000046"),
+ InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+interface UnicodeShellLink {
+    [PreserveSig]
+    int GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder path,
+                int characters, IntPtr findData, uint flags);
+}
+
+public static class ShortcutTarget {
+    public static string Read(string filename) {
+        object link = new NativeShellLink();
+        try {
+            ((IPersistFile)link).Load(filename, 0); // STGM_READ
+            StringBuilder path = new StringBuilder(32768);
+            int result = ((UnicodeShellLink)link).GetPath(path, path.Capacity,
+                                                         IntPtr.Zero, 4); // SLGP_RAWPATH
+            if (result != 0 || path.Length == 0 || path.Length >= path.Capacity - 1)
+                throw new InvalidOperationException("A shortcut has no complete Unicode target.");
+            return path.ToString();
+        } finally {
+            Marshal.FinalReleaseComObject(link);
+        }
+    }
+}
+'@
+$values=@{}
+foreach($name in @('Resonance','Repair Resonance','Uninstall Resonance')) {
+    $values[$name]=[ShortcutTarget]::Read((Join-Path $Folder ($name+'.lnk')))
+}
+$values | ConvertTo-Json | Set-Content -Encoding utf8 $Output
+'''
+
+
+def validate_shortcut_targets(root, result):
+    expected = {'Resonance': root / 'app/ResearchLibrary.exe',
+                'Repair Resonance': root / 'maintenance/ResonanceSetup.exe',
+                'Uninstall Resonance': root / 'unins000.exe'}
+    if type(result) is not dict or set(result) != set(expected):
+        raise RuntimeError('The native shortcut target inventory is incomplete.')
+    for name, path in expected.items():
+        value = result[name]
+        if type(value) is not str or not value or '\x00' in value or len(value) > 32767:
+            raise RuntimeError('A native shortcut has an invalid target.')
+        actual = Path(value)
+        try:
+            matches = (actual.is_absolute() and actual.is_file() and path.is_file()
+                       and actual.resolve(strict=True) == path.resolve(strict=True)
+                       and actual.samefile(path))
+        except (OSError, ValueError):
+            matches = False
+        if not matches:
+            raise RuntimeError(f'The {name} Start-menu shortcut targets another installation.')
+
+
 def inspect_shortcuts(root, report):
     folder = Path(os.environ['APPDATA']) / 'Microsoft/Windows/Start Menu/Programs/Resonance'
     names = ('Resonance', 'Repair Resonance', 'Uninstall Resonance')
@@ -126,22 +197,13 @@ def inspect_shortcuts(root, report):
         raise RuntimeError('The per-user Start-menu shortcuts were not installed.')
     powershell = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
     script = report / 'inspect-shortcuts.ps1'
-    script.write_text(
-        "param([string]$Folder,[string]$Output)\n$ErrorActionPreference='Stop'\n"
-        "$shell=New-Object -ComObject WScript.Shell\n$values=@{}\n"
-        "foreach($name in @('Resonance','Repair Resonance','Uninstall Resonance')) { "
-        "$values[$name]=$shell.CreateShortcut((Join-Path $Folder ($name+'.lnk'))).TargetPath }\n"
-        "$values | ConvertTo-Json | Set-Content -Encoding utf8 $Output\n", encoding='utf-8')
+    script.write_text(UNICODE_SHORTCUTS_SCRIPT, encoding='utf-8')
     output = report / 'shortcuts.json'
-    owned_process([powershell, '-NoProfile', '-NonInteractive', '-File', script,
+    owned_process([powershell, '-NoProfile', '-NonInteractive', '-Sta', '-File', script,
                    '-Folder', folder, '-Output', output], cwd=report,
                   log=report / 'shortcuts-process.log', timeout=30)
     result = json.loads(output.read_text(encoding='utf-8-sig'))
-    expected = {'Resonance': root / 'app/ResearchLibrary.exe',
-                'Repair Resonance': root / 'maintenance/ResonanceSetup.exe',
-                'Uninstall Resonance': root / 'unins000.exe'}
-    if any(Path(result[name]).resolve() != path.resolve() for name, path in expected.items()):
-        raise RuntimeError('A Start-menu shortcut targets another installation.')
+    validate_shortcut_targets(root, result)
     return folder
 
 

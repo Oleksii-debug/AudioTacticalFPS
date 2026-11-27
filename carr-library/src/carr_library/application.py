@@ -589,6 +589,22 @@ class LibraryApp:
         return ImportBatchStore(self).plan(workspace, paths, collections=collections,
             recursive=recursive, config=config, cancelled=cancelled)
 
+    def plan_import_batch_page(self, workspace, paths, *, collections=(), recursive=True,
+                               config=None, file_budget=5000, entry_budget=20000,
+                               timeout=60.0, cancelled=lambda: False):
+        """Review one bounded source scan page without starting an import."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).plan_page(workspace, paths, collections=collections,
+            recursive=recursive, config=config, file_budget=file_budget,
+            entry_budget=entry_budget, timeout=timeout, cancelled=cancelled)
+
+    def continue_import_scan(self, workspace, batch_id, *, file_budget=None, entry_budget=None,
+                             timeout=None, cancelled=lambda: False):
+        """Open/create the next explicit scan page, preserving saved predecessors."""
+        from .ingest.batches import ImportBatchStore
+        return ImportBatchStore(self).continue_scan(workspace, batch_id,
+            file_budget=file_budget, entry_budget=entry_budget, timeout=timeout, cancelled=cancelled)
+
     def import_batches(self, workspace):
         from .ingest.batches import ImportBatchStore
         return ImportBatchStore(self).list(workspace)

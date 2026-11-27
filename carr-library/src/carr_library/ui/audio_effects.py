@@ -116,9 +116,9 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
 
     if not isinstance(editor, RoleEffectEditor):
         raise TypeError('Open an effect editor for the current production script.')
-    dialog = wx.Dialog(parent, title='Role effect chains', size=(900, 730),
+    dialog = wx.Dialog(parent, title='Role and master effect chains', size=(900, 780),
                        style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER)
-    dialog.SetName('Role effect chains')
+    dialog.SetName('Role and master effect chains')
     accepted, loaded = None, None
     layout = wx.BoxSizer(wx.VERTICAL)
     layout.Add(wx.StaticText(dialog, label=(
@@ -126,24 +126,35 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
         'Apply chain changes updates the reading draft; Cancel keeps its current script.\n'
         'Saving a preset writes a separate file immediately. Original text and audio stay unchanged.')),
         0, wx.EXPAND | wx.ALL, 8)
-    layout.Add(wx.StaticText(dialog, label='Role'), 0, wx.LEFT | wx.TOP, 8)
-    role_choice = wx.Choice(dialog, choices=list(editor.roles))
-    role_choice.SetName('Effect chain role')
+    layout.Add(wx.StaticText(dialog, label='Processing target'), 0, wx.LEFT | wx.TOP, 8)
+    role_choice = wx.Choice(dialog, choices=[f'Role: {name}' for name in editor.roles]
+                            + ['Master: entire programme'])
+    role_choice.SetName('Effect chain target')
     role_choice.SetSelection(0)
     layout.Add(role_choice, 0, wx.EXPAND | wx.ALL, 8)
+    layout.Add(wx.StaticText(dialog, label=(
+        'Master dry/wet: 0 keeps dry audio; 1 uses the complete chain. Linear blend, no automatic gain normalization.\n'
+        'Tempo and pitch are role-only. Master chapters keep exact frame boundaries; stems remain pre-master.')),
+        0, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
+    mix = wx.TextCtrl(dialog, value=str(editor.master_mix))
+    mix.SetName('Master dry wet mix from zero to one')
+    layout.Add(mix, 0, wx.EXPAND | wx.ALL, 8)
     chain = wx.ListBox(dialog, style=wx.LB_SINGLE | wx.LB_HSCROLL, size=(-1, 160))
     chain.SetName('Effects in processing order')
     layout.Add(chain, 1, wx.EXPAND | wx.LEFT | wx.RIGHT, 8)
     buttons = {}
-    status = wx.TextCtrl(dialog, value='Choose a role and an effect to edit.',
+    status = wx.TextCtrl(dialog, value='Choose a role or master and an effect to edit.',
                         style=wx.TE_READONLY | wx.TE_MULTILINE, size=(-1, 65))
     status.SetName('Effect editing status')
 
     def current_role():
         index = role_choice.GetSelection()
-        if not 0 <= index < len(editor.roles):
-            raise ValueError('Choose a role.')
-        return editor.roles[index]
+        if not 0 <= index < len(editor.targets):
+            raise ValueError('Choose a role or the master.')
+        return editor.targets[index]
+
+    def target_name(role):
+        return 'Master: entire programme' if role is None else role
 
     def current_index():
         index = chain.GetSelection()
@@ -167,6 +178,7 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
 
     def refresh(index=0):
         effects = editor.effects(current_role())
+        mix.Enable(current_role() is None)
         chain.SetItems([f'{number}. {effect_summary(effect)}' for number, effect in enumerate(effects, 1)])
         chain.SetSelection(min(index, len(effects) - 1) if effects else wx.NOT_FOUND)
         selected()
@@ -180,14 +192,14 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
             role = current_role()
             index = chain.GetSelection()
             if action == 'add':
-                result = choose_role_effect(dialog, (role,))
+                result = choose_role_effect(dialog, (target_name(role),))
                 if result is None:
                     return
                 editor.add(role, result[1])
                 index = len(editor.effects(role)) - 1
             elif action == 'edit':
                 index = current_index()
-                result = edit_effect_parameters(dialog, role, editor.effects(role)[index])
+                result = edit_effect_parameters(dialog, target_name(role), editor.effects(role)[index])
                 if result is None:
                     return
                 editor.edit(role, index, result)
@@ -232,12 +244,12 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
             if action == 'apply_preset':
                 editor.apply_preset(role, loaded)
                 refresh()
-                report(f'Preset "{loaded.name}" replaces the pending chain for {role}. Apply changes to keep it.')
+                report(f'Preset "{loaded.name}" replaces the pending chain for {target_name(role)}. Apply changes to keep it.')
                 return
             preset = editor.preset(role, preset_name.GetValue()) if action == 'save_preset' else None
             picker = wx.FileDialog(dialog,
-                'Save a reusable role-effect preset' if preset else 'Load a role-effect preset',
-                wildcard='Role effect presets (*.json)|*.json',
+                'Save a reusable effect preset' if preset else 'Load an effect preset',
+                wildcard='Effect presets (*.json)|*.json',
                 style=wx.FD_SAVE if preset else wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
             try:
                 if picker.ShowModal() != wx.ID_OK:
@@ -258,9 +270,9 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
                 preset_name.ChangeValue(candidate.name)
                 preview.ChangeValue(candidate.name + '\n' + (
                     '\n'.join(f'{index}. {effect_summary(effect)}' for index, effect in enumerate(candidate.effects, 1))
-                    or 'Empty chain: applying it removes every effect from the selected role.'))
+                    or 'Empty chain: applying it removes every effect from the selected target.'))
                 buttons['apply_preset'].Enable(True)
-                report('Preset checked. Review its steps, choose the target role, then Apply loaded preset.')
+                report('Preset checked. Review its steps, choose a role or master, then Apply loaded preset. Master restrictions apply.')
         except (ValueError, TypeError, OSError, RuntimeError) as exc:
             report(exc)
 
@@ -279,6 +291,7 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
     def apply(event):
         nonlocal accepted
         try:
+            editor.set_master_mix(float(mix.GetValue()))
             accepted = editor.script()
             dialog.EndModal(wx.ID_OK)
         except (ValueError, TypeError, OSError, RuntimeError) as exc:
@@ -295,7 +308,7 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
         row.Add(button, 0, wx.ALL, 4)
     layout.Add(row, 0, wx.ALIGN_RIGHT | wx.ALL, 4)
     dialog.SetSizer(layout)
-    dialog.SetMinSize((750, 620))
+    dialog.SetMinSize((750, 720))
     role_choice.Bind(wx.EVT_CHOICE, lambda event: refresh())
     chain.Bind(wx.EVT_LISTBOX, selected)
     refresh()
@@ -303,7 +316,7 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
     try:
         if on_ready is not None:
             wx.CallAfter(on_ready, dialog, {'role': role_choice, 'chain': chain,
-                'preset_name': preset_name, 'preset_preview': preview}, buttons, status)
+                'master_mix': mix, 'preset_name': preset_name, 'preset_preview': preview}, buttons, status)
         return accepted if dialog.ShowModal() == wx.ID_OK else None
     finally:
         dialog.Destroy()
@@ -311,14 +324,16 @@ def show_effect_editor(parent, editor, *, private_root, protect_destination=lamb
 
 def effect_reference():
     lines = ['Local effect controls', '',
-             'Use Structured production script and Role effect chains.',
+             'Use Structured production script and Role and master effect chains.',
              'Edit, move, bypass or remove steps, then Apply chain changes.',
-             'Each role has at most 16 effects; they run in the displayed order.',
-             'Load a named JSON preset, review it, then apply it to one selected role.',
+             'Each role and the master has at most 16 effects; they run in the displayed order.',
+             'Load a named JSON preset, review it, then apply it to one selected role or the master.',
              'Save named preset writes a separate reusable file after destination approval.',
              'Preset files contain only a name and typed numeric effects, never voices or executable paths.',
              'Reverb uses four reflections. Pitch and tempo are separate controls.',
-             'Mix controls belong to the effects that expose them; this editor has no master effect chain.',
+             'Master dry/wet uses a linear blend from 0 (dry) to 1 (fully processed), with no automatic gain normalization.',
+             'The master uses a 0.95 safety ceiling. Tempo and pitch remain role-only before timing is measured.',
+             'Master chapter files are exact frame slices of the processed programme; stems are pre-master.',
              'No effect downloads a model or changes the original source.', '']
     for kind, parameters in effect_controls().items():
         lines.append(kind)

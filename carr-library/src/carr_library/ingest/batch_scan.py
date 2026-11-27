@@ -229,3 +229,9 @@ def scan_paths(paths, *, recursive=True, existing_assets=(), cancelled=lambda: F
             f'{omitted} additional entries were rejected or skipped; '
             f'{rejections} total rejected or skipped entries in this scan.'))
     return tuple(rows)
+
+
+def scan_paths_page(paths, **options):
+    """Additive bounded preflight; ordinary scan_paths keeps its legacy contract."""
+    from .scan_pages import scan_page
+    return scan_page(paths, **options)

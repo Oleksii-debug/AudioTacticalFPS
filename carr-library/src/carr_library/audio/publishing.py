@@ -192,7 +192,7 @@ def _segments(project, timeline, check=lambda: None):
                 or _integer(chapter['start_frame'], 'Chapter start') != cursor
                 or _integer(chapter['end_frame'], 'Chapter end', 1, rate * 365 * 86400) <= cursor):
             raise ValueError('Measured chapters must cover the master in order with exact source titles.')
-        scene_fields = {'scene_id', 'events'} | ({'clips', 'minimum_duration'} if project.schema_version == 2 else set())
+        scene_fields = {'scene_id', 'events'} | ({'clips', 'minimum_duration'} if project.schema_version >= 2 else set())
         if (type(measured) is not dict or set(measured) != scene_fields
                 or measured['scene_id'] != scene.id or type(measured['events']) is not list
                 or len(measured['events']) != len(scene.events)):
@@ -232,7 +232,7 @@ def _segments(project, timeline, check=lambda: None):
                 spoken.append((event, cursor + local, cursor + local + frames))
             local += frames
         extent = local
-        if project.schema_version == 2:
+        if project.schema_version >= 2:
             from .clip_audio import clip_window
             if (type(measured['clips']) is not list or len(measured['clips']) != len(scene.clips)
                     or type(measured['minimum_duration']) not in (int, float)

@@ -164,3 +164,23 @@ def test_managed_save_open_and_complete_backup_keep_chain_and_source(tmp_path):
     assert parse_script(reopened.script).roles[0].effects == (
         Effect('gain', (('gain_db', -6.0),), enabled=False),
         Effect('limiter', (('ceiling_db', -3.0),)))
+
+
+def test_master_apply_uses_the_same_single_undoable_native_draft_edit(dialog, monkeypatch):
+    from carr_library.audio.production import parse_script
+
+    window, errors, _, refreshed = dialog
+    original = window.controller.script
+    def accept(parent, editor, **kwargs):
+        editor.add(None, Effect('gain', (('gain_db', -6),)))
+        editor.set_master_mix(.5)
+        return editor.script()
+    monkeypatch.setattr(audio_effects, 'show_effect_editor', accept)
+    AudioStudioDialog.add_effect(window)
+    assert not errors and refreshed and len(window.controller.draft.edits) == 1
+    plan = parse_script(window.controller.script)
+    assert plan.schema_version == 3 and plan.master_mix == .5
+    assert plan.master_effects == (Effect('gain', (('gain_db', -6.0),)),)
+    assert plan.roles == parse_script(original).roles
+    assert window.controller.draft.source_text == original
+    assert window.controller.draft.undo() and window.controller.script == original

@@ -381,7 +381,7 @@ class ClipEditor:
             from .models import Scene
             if not isinstance(broker, ResourceBroker):
                 raise TypeError('Use the shared typed resource coordinator.')
-            preview_plan = replace(self.plan, schema_version=2,
+            preview_plan = replace(self.plan, schema_version=2, master_effects=(), master_mix=1.0,
                 scenes=(Scene('preview', 'Selected clip', (), clips=(replace(clip, start=0),)),))
             request = production_request(preview_plan, self.root, broker.limits,
                                          sound_seconds={clip.asset: info.seconds})

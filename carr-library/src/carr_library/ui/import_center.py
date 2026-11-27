@@ -15,7 +15,19 @@ def batch_summary(batch):
               ('duplicate', 'exact duplicates'), ('rejected', 'not accepted'),
               ('failed', 'failed'), ('quarantined', 'need page review'), ('excluded', 'excluded')]
     detail = ', '.join(f'{counts.get(key, 0)} {label}' for key, label in labels if counts.get(key, 0))
-    return f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    summary = f'{batch.get("total", len(batch.get("rows", ())))} files: {detail or "none"}.'
+    scan = batch.get('scan')
+    if isinstance(scan, dict):
+        summary += (f' Scan page {scan["page"]}: {scan["scanned_entries"]} directory entries checked; '
+                    f'{scan["examined_files"]} supported files examined. ')
+        if scan['next_cursor'] is None:
+            summary += 'Selected folder scan complete.'
+        elif not scan['resumable']:
+            summary += ('Archived folder continuation is inactive. Saved next pages can be opened; '
+                        'select roots again before scanning new external files.')
+        else:
+            summary += 'More entries may remain. Choose Continue folder scan to save the next page.'
+    return summary
 
 
 def row_details(row):
@@ -110,6 +122,7 @@ class ImportCenterActions:
             self.rows.SetItems([])
             self.details.SetValue('')
             self.report(str(exc))
+        self._scan_controls()
 
     def select_batch(self, event=None):
         if self.busy:
@@ -122,6 +135,7 @@ class ImportCenterActions:
                 self.rows.SetItems([])
                 self.details.SetValue('')
                 self.report('No saved import batches. Choose Add files or Add folder.', focus=False)
+                self._scan_controls()
                 return
             self._display(self.library.import_batch(self.workspace,
                                                     self.summaries[index]['batch_id']))
@@ -130,15 +144,32 @@ class ImportCenterActions:
             self.rows.SetItems([])
             self.details.SetValue('')
             self.report(str(exc))
+        self._scan_controls()
 
     def _display(self, batch):
         selected = self.rows.GetSelection()
+        old = self.batch or {}
+        old_rows = old.get('rows', ())
+        selected_id = (old_rows[selected]['row_id'] if old.get('batch_id') == batch.get('batch_id')
+                       and 0 <= selected < len(old_rows) else None)
         self.batch = batch
         self.rows.SetItems([f'{i}. {readable(row["file"])} — {row["state"].replace("_", " ")}'
                            for i, row in enumerate(batch['rows'], 1)])
-        self.rows.SetSelection(min(max(selected, 0), len(batch['rows']) - 1))
+        position = next((index for index, row in enumerate(batch['rows'])
+                         if row['row_id'] == selected_id), 0 if batch['rows'] else -1)
+        self.rows.SetSelection(position)
         self.select_row()
         self.report(batch_summary(batch), focus=False)
+        self._scan_controls()
+
+    def _scan_controls(self):
+        control = getattr(self, 'continue_folder', None)
+        if control is not None:
+            scan = (self.batch or {}).get('scan') or {}
+            if not self.busy and scan.get('next_cursor') is not None:
+                control.Enable()
+            else:
+                control.Disable()
 
     def select_row(self, event=None):
         index = self.rows.GetSelection()
@@ -173,6 +204,7 @@ class ImportCenterActions:
                     done(value)
                 except Exception as exc:
                     self.report(str(exc))
+            self._scan_controls()
 
         try:
             self.frame.run_job(title, operation, lambda value: finish(value),
@@ -180,7 +212,7 @@ class ImportCenterActions:
         except Exception as exc:
             finish(error=exc)
 
-    def plan(self, paths):
+    def plan(self, paths, *, paged=False):
         from dataclasses import replace
         from ..extract.page_ocr import Config
         self._bound()
@@ -198,9 +230,23 @@ class ImportCenterActions:
             self.report('Plan saved. ' + batch_summary(batch) +
                         ' Review the files, exclude any you do not want, then choose Start queued files.')
 
-        self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
-            self.workspace, paths, collections=collections, recursive=recursive, config=config,
-            cancelled=self.frame.cancel_event.is_set), done, planning=True)
+        self._paged_planning = bool(paged)
+        if paged:
+            file_budget = self.scan_files.GetValue()
+            timeout = self.scan_timeout.GetValue()
+            if type(file_budget) is not int or not 1 <= file_budget <= 5000:
+                raise ValueError('Choose between 1 and 5000 supported files per scan page.')
+            if type(timeout) is not int or not 1 <= timeout <= 3600:
+                raise ValueError('Choose between 1 and 3600 seconds per scan page.')
+            self._job('Checking the first folder scan page',
+                lambda: self.library.plan_import_batch_page(self.workspace, paths,
+                    collections=collections, recursive=recursive, config=config,
+                    file_budget=file_budget, timeout=timeout,
+                    cancelled=self.frame.cancel_event.is_set), done, planning=True)
+        else:
+            self._job('Checking files and duplicates', lambda: self.library.plan_import_batch(
+                self.workspace, paths, collections=collections, recursive=recursive, config=config,
+                cancelled=self.frame.cancel_event.is_set), done, planning=True)
 
     def choose_languages(self, event=None):
         from .ocr_options import choose_model_config, config_summary
@@ -251,6 +297,47 @@ class ImportCenterActions:
                 self.plan((path,))
             except Exception as exc:
                 self.report(str(exc))
+
+    def add_folder_page(self, event=None):
+        import wx
+        dialog = wx.DirDialog(self, 'Select roots for a first bounded folder scan page',
+                              style=wx.DD_DIR_MUST_EXIST)
+        try:
+            path = dialog.GetPath() if dialog.ShowModal() == wx.ID_OK else None
+        finally:
+            dialog.Destroy()
+        if path:
+            try:
+                self.plan((path,), paged=True)
+            except Exception as exc:
+                self.report(str(exc))
+
+    def continue_scan(self, event=None):
+        try:
+            self._bound()
+            if self.batch is None or self.batch.get('version') != 2:
+                raise ValueError('Choose a saved bounded folder scan page first.')
+            scan = self.batch['scan']
+            if scan['next_cursor'] is None:
+                raise ValueError('The selected folder scan is complete.')
+            batch_id = self.batch['batch_id']
+            file_budget = self.scan_files.GetValue()
+            timeout = self.scan_timeout.GetValue()
+            if type(file_budget) is not int or not 1 <= file_budget <= 5000:
+                raise ValueError('Choose between 1 and 5000 supported files per scan page.')
+            if type(timeout) is not int or not 1 <= timeout <= 3600:
+                raise ValueError('Choose between 1 and 3600 seconds per scan page.')
+            self._paged_planning = True
+            def done(batch):
+                self.refresh(selected=batch['batch_id'])
+                self.report('Scan page saved or reopened. ' + batch_summary(batch) +
+                            ' Review this page, then start its queued files when ready.')
+            self._job('Opening or checking the next folder scan page',
+                lambda: self.library.continue_import_scan(self.workspace, batch_id,
+                    file_budget=file_budget, timeout=timeout, cancelled=self.frame.cancel_event.is_set),
+                done, planning=True)
+        except Exception as exc:
+            self.report(str(exc))
 
     def run(self, event=None, *, retry=False):
         try:
@@ -330,9 +417,13 @@ class ImportCenterActions:
     def cancel_operation(self, event=None):
         if self.busy:
             self.frame.cancel_event.set()
-            self.report('Stopping the file check. An unfinished scan has not saved a new plan.'
-                        if getattr(self, 'planning', False) else
-                        'Stopping the current operation. Queued files will remain saved.')
+            if getattr(self, 'planning', False) and getattr(self, '_paged_planning', False):
+                self.report('Stopping the folder check. Durably saved pages and queued files remain. '
+                            'Retry the unchanged page continuation after the operation settles.')
+            else:
+                self.report('Stopping the file check. An unfinished scan has not saved a new plan.'
+                            if getattr(self, 'planning', False) else
+                            'Stopping the current operation. Queued files will remain saved.')
 
     def close(self, event=None):
         if self.busy:
@@ -399,6 +490,29 @@ def show_import_center(frame, workspace):
                 self.mutable.append(control)
                 add.Add(control, 0, wx.RIGHT, 8)
             layout.Add(add, 0, wx.ALL, 8)
+            scan_options = wx.FlexGridSizer(cols=2, hgap=8, vgap=6)
+            scan_options.AddGrowableCol(1)
+            self.scan_files = wx.SpinCtrl(self, min=1, max=5000, initial=500)
+            self.scan_timeout = wx.SpinCtrl(self, min=1, max=3600, initial=60)
+            for label, control in [('Supported files per folder scan page', self.scan_files),
+                                   ('Seconds allowed per folder scan page', self.scan_timeout)]:
+                control.SetName(label)
+                scan_options.Add(wx.StaticText(self, label=label), 0, wx.ALIGN_CENTER_VERTICAL)
+                scan_options.Add(control, 1, wx.EXPAND)
+                self.mutable.append(control)
+            layout.Add(scan_options, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+            pages = wx.BoxSizer(wx.HORIZONTAL)
+            first_page = wx.Button(self, label='Plan &first folder page...')
+            first_page.SetName('Plan first bounded folder scan page')
+            first_page.Bind(wx.EVT_BUTTON, self.add_folder_page)
+            self.continue_folder = wx.Button(self, label='&Continue folder scan')
+            self.continue_folder.SetName('Open or continue the next saved folder scan page')
+            self.continue_folder.Bind(wx.EVT_BUTTON, self.continue_scan)
+            self.continue_folder.Disable()
+            for control in (first_page, self.continue_folder):
+                self.mutable.append(control)
+                pages.Add(control, 0, wx.RIGHT, 8)
+            layout.Add(pages, 0, wx.ALL, 8)
             layout.Add(wx.StaticText(self, label='Saved import batches'), 0, wx.LEFT | wx.RIGHT, 8)
             self.batches = wx.ListBox(self, size=(-1, 65))
             self.batches.SetName('Saved import batches')

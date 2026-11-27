@@ -1,9 +1,10 @@
-"""Bounded role-effect edits in the existing production script and draft.
+"""Bounded role and master edits in the existing production script and draft.
 
 Only effect directives and a necessary implicit-role declaration are inserted
 or replaced. Spoken words, scene directions and immutable narration sources are
 never regenerated from a parsed plan. Presets are inert numeric data, selected
-explicitly and applied only to the chosen role.
+explicitly and applied only to the chosen chain. ``None`` is the master target;
+it cannot collide with a role whose actual name happens to contain "Master".
 """
 from __future__ import annotations
 
@@ -13,7 +14,7 @@ from pathlib import Path
 import shlex
 
 from .jobs import read_json
-from .models import Effect, Role
+from .models import Effect, Role, master_chain, number
 from .production import parse_script
 
 
@@ -37,6 +38,13 @@ def effect_directive(role, effect):
     return f'[effect {shlex.quote(role)} {effect.kind}{parameters}{enabled}]'
 
 
+def master_directive(effect):
+    master_chain((effect,))
+    parameters = ''.join(f' {name}={value!r}' for name, value in effect.parameters)
+    enabled = '' if effect.enabled else ' enabled=false'
+    return f'[master-effect {effect.kind}{parameters}{enabled}]'
+
+
 def _ending(line):
     if line.endswith('\r\n'):
         return '\r\n'
@@ -47,19 +55,25 @@ def _ending(line):
     return ''
 
 
-def _rewrite_script(script, plan, chains, *, voice, language):
+def _rewrite_script(script, plan, chains, *, master_effects, master_mix, voice, language):
     changed = {role.name: role for role in plan.roles if role.effects != chains[role.name]}
-    if not changed:
+    master_changed = (plan.master_effects, plan.master_mix) != (master_effects, master_mix)
+    if not changed and not master_changed:
         return script
     lines = script.splitlines(keepends=True)
     positions = {name: [] for name in changed}
     declarations = {name: [] for name in changed}
     first_speech = {}
+    master_positions, master_configuration = [], []
     # One bounded scan, independent of the number of selected roles.
     for index, raw in enumerate(lines):
         line = raw.strip()
         if line.startswith('[') and line.endswith(']'):
             parts = shlex.split(line[1:-1], posix=True)
+            if parts and parts[0] == 'master-effect':
+                master_positions.append(index)
+            elif parts and parts[0] == 'master':
+                master_configuration.append(index)
             if len(parts) >= 2 and parts[1] in changed:
                 if parts[0] == 'effect':
                     positions[parts[1]].append(index)
@@ -92,6 +106,30 @@ def _rewrite_script(script, plan, chains, *, voice, language):
                 added.append(raw if _ending(raw) else raw + ending)
         insertions.setdefault(insertion, []).extend(added)
         omitted.update(selected)
+    if master_changed:
+        if len(master_positions) != len(plan.master_effects):
+            raise ValueError('The master directives no longer match the current plan.')
+        master_chain(master_effects)
+        number(master_mix, 0, 1, 'Master dry/wet mix')
+        selected = sorted((*master_positions, *master_configuration))
+        insertion = selected[0] if selected else 0
+        ending = (_ending(lines[insertion]) if insertion < len(lines) else '') or default_ending
+        if master_configuration and master_mix == plan.master_mix:
+            raw = lines[master_configuration[0]]
+            added = [raw if _ending(raw) else raw + ending]
+        else:
+            added = [f'[master mix={master_mix!r}]{ending}']
+        available = list(zip(plan.master_effects, (lines[index] for index in master_positions)))
+        for effect in master_effects:
+            matching = next((index for index, (old, _) in enumerate(available) if old == effect), None)
+            if matching is None:
+                added.append(master_directive(effect) + ending)
+            else:
+                raw = available.pop(matching)[1]
+                added.append(raw if _ending(raw) else raw + ending)
+        # Master directives precede role insertions at the same source offset.
+        insertions[insertion] = added + insertions.get(insertion, [])
+        omitted.update(selected)
     result = []
     for index in range(len(lines) + 1):
         added = insertions.get(index)
@@ -104,7 +142,9 @@ def _rewrite_script(script, plan, chains, *, voice, language):
     updated = ''.join(result)
     after = parse_script(updated, voice=voice, language=language)
     expected = replace(plan, original_script=updated,
-                       roles=tuple(replace(role, effects=chains[role.name]) for role in plan.roles))
+                       roles=tuple(replace(role, effects=chains[role.name]) for role in plan.roles),
+                       master_effects=master_effects, master_mix=master_mix,
+                       schema_version=max(plan.schema_version, 3) if master_changed else plan.schema_version)
     if after != expected:
         raise ValueError('The effect edit would change another part of the production plan.')
     return updated
@@ -118,17 +158,23 @@ class RoleEffectEditor:
         self.voice, self.language = voice, language
         self.plan = parse_script(script, voice=voice, language=language)
         self.roles = tuple(role.name for role in self.plan.roles)
+        self.targets = (*self.roles, None)
         self._effects = {role.name: role.effects for role in self.plan.roles}
+        self._effects[None] = self.plan.master_effects
+        self.master_mix = self.plan.master_mix
 
     def effects(self, role):
         if role not in self._effects:
-            raise ValueError('Choose a role from the current production plan.')
+            raise ValueError('Choose a role from the current production plan or the master.')
         return self._effects[role]
 
     def set_chain(self, role, effects):
         self.effects(role)
-        candidate = _chain(effects)
+        candidate = master_chain(effects) if role is None else _chain(effects)
         self._effects[role] = candidate
+
+    def set_master_mix(self, value):
+        self.master_mix = number(value, 0, 1, 'Master dry/wet mix')
 
     def _index(self, role, index):
         effects = self.effects(role)
@@ -173,6 +219,7 @@ class RoleEffectEditor:
 
     def script(self):
         return _rewrite_script(self.original_script, self.plan, self._effects,
+                               master_effects=self.effects(None), master_mix=self.master_mix,
                                voice=self.voice, language=self.language)
 
 

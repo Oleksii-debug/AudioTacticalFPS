@@ -16,6 +16,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from .backup_files import optional_present
 import re
 import sqlite3
 import time
@@ -24,7 +25,7 @@ from .catalog.intake import MAX_BYTES, classify
 from .backup_files import local_path, regular, sync_directory
 from .extract.page_ocr import Config
 from .ingest.batch_scan import planned_snapshot
-from .ingest.batches import MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _BATCH_KEYS, _ROW_KEYS
+from .ingest.batches import MAX_BATCH, MAX_BATCHES, MAX_ROWS, STATES, _BATCH_KEYS, _BATCH_V2_KEYS, _ROW_KEYS
 from .ingest.pipeline import canonical, digest
 from .ingest.retained_assets import SUFFIXES
 from .ingest.worker import FIELDS, MAX_REQUEST, MAX_REVIEWS
@@ -307,8 +308,9 @@ def _request(record, request_id, data_dir, db):
 
 
 def _batch(record, batch_id, data_dir, db):
-    if (not isinstance(record, dict) or set(record) != _BATCH_KEYS
-            or type(record['version']) is not int or record['version'] != 1
+    if (not isinstance(record, dict)
+            or set(record) != (_BATCH_KEYS if record.get('version') == 1 else _BATCH_V2_KEYS)
+            or type(record['version']) is not int or record['version'] not in (1, 2)
             or record['batch_id'] != batch_id or not _id(batch_id) or record['data_dir'] != data_dir
             or record['state'] not in ('queued', 'running', 'paused', 'attention', 'complete')
             or type(record['recursive']) is not bool
@@ -320,6 +322,9 @@ def _batch(record, batch_id, data_dir, db):
         raise ValueError('Invalid pending batch schema or data-directory binding.')
     _workspace(db, record['workspace'])
     _config(record['config'])
+    if record['version'] == 2:
+        from .ingest.scan_pages import validate_batch_scan
+        validate_batch_scan(record['scan'], batch_id=batch_id, recursive=record['recursive'])
     seen = {key: set() for key in ('row_id', 'work_id', 'edition_id', 'request_id')}
     sources = {}
     for row in record['rows']:
@@ -486,7 +491,7 @@ def _inventory(root):
     found = {}
     for name in ('import-requests', 'import-batches'):
         directory = root / name
-        if not os.path.lexists(directory):
+        if not optional_present(directory):
             continue
         local_path(directory, exists=True)
         regular(directory, directory=True)
@@ -536,6 +541,8 @@ def _records(root, data_dir, db, names):
 
 
 def _relations(requests, batches, reviews, jobs, journal):
+    from .ingest.scan_pages import validate_scan_relations
+    validate_scan_relations(batches)
     for request in requests.values():
         if 'job' in request:
             job = jobs.get(request['job'])
@@ -631,7 +638,7 @@ def _pending_guards(app, cancelled):
         for identity in batches:
             _check(cancelled)
             path = root / 'import-batches' / (identity + '.lock')
-            if os.path.lexists(path):
+            if optional_present(path):
                 local_path(path, exists=True)
                 regular(path)
             try:
@@ -672,9 +679,9 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
         with closing(_catalog(catalog_path)) as catalog:
             jobs = {}
             journal_path = root / 'imports.sqlite'
-            if os.path.lexists(journal_path):
+            if optional_present(journal_path):
                 for suffix in ('-wal', '-shm', '-journal'):
-                    if os.path.lexists(Path(str(journal_path) + suffix)):
+                    if optional_present(Path(str(journal_path) + suffix)):
                         local_path(Path(str(journal_path) + suffix), exists=True)
                 source_db, _ = _journal(journal_path, catalog, cancelled)
                 page_size = source_db.execute('PRAGMA page_size').fetchone()[0]
@@ -714,7 +721,7 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
                 retained = None
                 if wanted is not None:
                     candidates = [root / 'originals' / (wanted + suffix) for suffix in SUFFIXES.values()]
-                    if any(os.path.lexists(path) for path in candidates):
+                    if any(optional_present(path) for path in candidates):
                         retained = app.assets.resolve(wanted)
                 try:
                     incoming = planned_snapshot(local_path(retained or source, exists=True)) if retained or source else None
@@ -756,6 +763,9 @@ def _snapshot_pending(app, target, *, cancelled=lambda: False):
             journal.close()
     result = dict(version=1, data_dir=str(root), files=sorted(files, key=lambda item: item['filename']),
                   assets=sorted(assets.values(), key=lambda item: item['filename']), sources=bindings)
+    scan_pages = _scan_manifest(batches)
+    if scan_pages:
+        result.update(version=2, scan_pages=scan_pages)
     validate_pending(result)
     sync_directory(target)
     return result
@@ -771,14 +781,41 @@ def _component_name(name):
         r'import-batches/[0-9a-f]{32}\.json|originals/[0-9a-f]{64}(?:' + suffixes + ')', name))
 
 
+def _scan_manifest(batches):
+    """Make omitted undiscovered inputs explicit; a cursor never copies a root."""
+    return [dict(batch_id=identity, page=batch['scan']['page'],
+                 has_continuation=batch['scan']['next_cursor'] is not None,
+                 next_batch=batch['scan']['next_batch'],
+                 unscanned_sources='external_not_included', restore_traversal='inactive')
+            for identity, batch in sorted(batches.items()) if batch['version'] == 2]
+
+
 def validate_pending(metadata):
     """Validate enclosing manifest fields before touching component paths."""
-    if (not isinstance(metadata, dict) or set(metadata) != {'version', 'data_dir', 'files', 'assets', 'sources'}
-            or type(metadata['version']) is not int or metadata['version'] != 1
+    base_keys = {'version', 'data_dir', 'files', 'assets', 'sources'}
+    if (not isinstance(metadata, dict)
+            or set(metadata) != (base_keys if metadata.get('version') == 1 else base_keys | {'scan_pages'})
+            or type(metadata['version']) is not int or metadata['version'] not in (1, 2)
             or any(not isinstance(metadata[key], list) for key in ('files', 'assets', 'sources'))
             or any(len(metadata[key]) > MAX_FILES for key in ('files', 'assets', 'sources'))):
         raise ValueError('Invalid pending import backup manifest.')
     _source(metadata['data_dir'])
+    if metadata['version'] == 2:
+        summaries = metadata['scan_pages']
+        if not isinstance(summaries, list) or not 1 <= len(summaries) <= MAX_BATCHES:
+            raise ValueError('Invalid saved scan-page backup summary.')
+        seen = set()
+        for row in summaries:
+            if (not isinstance(row, dict) or set(row) != {'batch_id', 'page', 'has_continuation',
+                    'next_batch', 'unscanned_sources', 'restore_traversal'}
+                    or not _id(row['batch_id']) or row['batch_id'] in seen
+                    or type(row['page']) is not int or not 1 <= row['page'] <= MAX_BATCHES
+                    or type(row['has_continuation']) is not bool
+                    or row['next_batch'] is not None and (not _id(row['next_batch']) or not row['has_continuation'])
+                    or row['unscanned_sources'] != 'external_not_included'
+                    or row['restore_traversal'] != 'inactive'):
+                raise ValueError('Invalid saved scan-page backup summary.')
+            seen.add(row['batch_id'])
     files, total = {}, 0
     for item in metadata['files']:
         if (not isinstance(item, dict) or set(item) != {'filename', 'size_bytes', 'sha256'}
@@ -856,6 +893,10 @@ def _validated_contents(source, catalog_path, metadata, *, journal_path, cancell
                 journal, jobs = _journal(journal_path, catalog, cancelled)
             requests, batches, reviews = _records(source, metadata['data_dir'], catalog, names)
             _relations(requests, batches, reviews, jobs, journal)
+            summaries = _scan_manifest(batches)
+            if (metadata.get('scan_pages', []) != summaries
+                    or bool(summaries) != (metadata['version'] == 2)):
+                raise ValueError('Scan-page backup summary differs from its saved batches.')
             assets = {entry['sha256']: entry for entry in metadata['assets']}
             bindings = {(entry['filename'], entry['row_id']): entry for entry in metadata['sources']}
             expected_bindings, referenced = set(), {job['asset'] for job in jobs.values()}
@@ -965,6 +1006,10 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     for batch_id, batch in batches.items():
         _check(cancelled)
         batch['data_dir'] = str(new_root)
+        if batch['version'] == 2:
+            # Saved source locations/cursors are history, never permission to
+            # traverse external roots on a different machine or library root.
+            batch['scan']['resumable'] = False
         rebased = {}
         for row in batch['rows']:
             if row['manifest'] is None:
@@ -987,7 +1032,7 @@ def restore_pending(source, stage, new_root, metadata, *, cancelled=lambda: Fals
     for asset in metadata['assets']:
         _check(cancelled)
         target = stage / 'originals' / asset['filename']
-        if os.path.lexists(target):
+        if optional_present(target):
             raw = _read(target, MAX_BYTES)
             if len(raw) != asset['size_bytes'] or sha256(raw).hexdigest() != asset['sha256']:
                 raise ValueError('Pending original conflicts with a catalog original.')

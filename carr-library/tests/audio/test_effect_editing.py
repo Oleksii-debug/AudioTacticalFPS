@@ -183,7 +183,7 @@ def test_preset_schema_is_inert_strict_and_bounded(mutation):
     b'{"schema":"carr-role-effect-preset/1","name":"A","name":"B","effects":[]}',
     b'{"schema":"carr-role-effect-preset/1","name":"A","effects":[],"run":true}',
     b' ' * (64 * 1024 + 1),
-])
+], ids=['duplicate-name', 'unknown-field', 'oversized-preset'])
 def test_actual_preset_file_reader_rejects_ambiguity_and_oversize(tmp_path, raw):
     path = tmp_path / 'preset.json'
     path.write_bytes(raw)

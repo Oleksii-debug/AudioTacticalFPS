@@ -717,7 +717,7 @@ class AudioStudioDialog:
         from .legacy_studio_import import import_canonical_project
         self._button(script_page, script_buttons, 'Import canonical project',
                      lambda event: import_canonical_project(self, event))
-        self._button(script_page, script_buttons, 'Role effect chains', self.add_effect)
+        self._button(script_page, script_buttons, 'Role and master effect chains', self.add_effect)
         self._button(script_page, script_buttons, 'Script and keyboard help', self.help)
         script_layout.Add(script_buttons, 0, wx.ALL, 5)
         script_page.SetSizer(script_layout)
@@ -1438,7 +1438,7 @@ class AudioStudioDialog:
             self._capture()
             controller = self.controller
             if controller.input_kind != 'script':
-                raise ValueError('Choose Structured production script before editing a role effect chain.')
+                raise ValueError('Choose Structured production script before editing role or master effects.')
             from ..audio.effect_editing import RoleEffectEditor
             from ..reader.narration import protect_original_path
             from .audio_effects import show_effect_editor
@@ -1464,7 +1464,7 @@ class AudioStudioDialog:
             controller.edit_script(updated)
             self._refresh_text()
             self.script.SetFocus()
-            self._message('Role effect chains updated in the draft. Save and preview before rendering.', focus=True)
+            self._message('Role and master effects updated in the draft. Save and preview before rendering.', focus=True)
         except Exception as exc:
             self._error(exc)
 

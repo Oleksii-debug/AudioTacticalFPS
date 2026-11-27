@@ -9,6 +9,7 @@ from datetime import datetime
 from hashlib import sha256
 import os
 from pathlib import Path, PureWindowsPath
+from ..backup_files import optional_present
 import re
 
 from .models import canonical, local_path, text
@@ -274,7 +275,7 @@ def state_paths(root, *, cancelled=lambda: False):
     folder = root
     for part in DIRECTORY.split('/'):
         folder = folder / part
-        if not os.path.lexists(folder):
+        if not optional_present(folder):
             return ()
         local_path(folder)
         if not folder.is_dir():
@@ -306,7 +307,7 @@ def state_paths(root, *, cancelled=lambda: False):
 def snapshot_guard(root):
     """Caller already holds app writer; never reacquire it from a backup."""
     directory = Path(root) / DIRECTORY
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         yield
         return
     local_path(directory)

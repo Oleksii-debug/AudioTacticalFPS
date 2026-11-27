@@ -26,6 +26,8 @@ PIPELINE_VERSION = 2
 
 
 SCRIPT_HELP = '''Local audio script format
+[master mix=0.5]
+[master-effect compressor threshold_db=-20 ratio=3]
 # Chapter title
 [role Narrator voice="sapi5:default" pan=center language=en]
 [role Alice voice="sapi5:default" pan=left]
@@ -60,6 +62,13 @@ Use enabled=false to bypass an effect while retaining its place and parameters.
 [effect Narrator tempo factor=1.1]
 [effect Narrator loudness target_lufs=-18 peak_db=-1 range_lu=7]
 Reverb uses four reflections. Pitch is independent of output sample rate.
+Optional master directives must precede every timeline event. They create a
+version-three plan and process the complete stereo programme once, in order.
+Master dry/wet is a linear blend from 0 (dry) to 1 (processed). There is no
+automatic gain normalization; a 0.95 safety limiter controls excess peaks.
+Tempo and pitch remain role-only so measured subtitle/chapter frames stay fixed.
+Master effect tails stop at the final programme boundary. Chapter WAVs are exact
+frame slices of the processed master; stems are labelled pre-master.
 Output formats: wav, flac, mp3, opus, m4a, m4b, aiff, ogg, aac, wma.
 Optional MusicGen: [music engine=musicgen model_manifest=musicgen/manifest.json]
 Optional SoundFont: [music engine=fluidsynth model_manifest=fluidsynth/manifest.json]
@@ -86,6 +95,18 @@ def _pan(value):
     return {'left': -1.0, 'center': 0.0, 'right': 1.0}.get(value, None) if value in ('left', 'center', 'right') else float(value)
 
 
+def _effect_options(kind, tokens):
+    from .models import EFFECT_PARAMETERS
+    if kind not in EFFECT_PARAMETERS:
+        raise ValueError('Choose a supported effect.')
+    parameters = _options(tokens, (*EFFECT_PARAMETERS[kind], 'enabled'))
+    enabled = parameters.pop('enabled', 'true')
+    if enabled not in ('true', 'false'):
+        raise ValueError('Effect enabled must be true or false.')
+    return Effect(kind, tuple((key, float(value)) for key, value in parameters.items()),
+                  enabled=enabled == 'true')
+
+
 def parse_script(script, *, title='Audio project', voice='sapi5:default', language='en', _ranges=None):
     """Parse explicit, bounded instructions; preserve the original script verbatim."""
     text(script, 'Script', 16 * 1024 * 1024)
@@ -95,6 +116,7 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
     serial = 0
     settings = {}
     used_roles = set()
+    master_effects, master_configured = [], False
 
     def event_id():
         nonlocal serial
@@ -175,14 +197,31 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
                         p['pan'] = _pan(p['pan'])
                     clip_id = p.pop('id', None) or ('clip-' + event_id())
                     clips.append(Clip(clip_id, parts[1], **p))
-                    version = 2
+                    version = max(version, 2)
                 elif kind == 'duration' and len(parts) == 2:
                     if minimum_duration:
                         raise ValueError('Set the chapter minimum duration once.')
                     minimum_duration = float(parts[1])
                     from .models import number, MAX_CLIP_SECONDS
                     number(minimum_duration, 0.000001, MAX_CLIP_SECONDS, 'Chapter minimum duration')
-                    version = 2
+                    version = max(version, 2)
+                elif kind in ('master', 'master-effect'):
+                    if scenes or events or clips or minimum_duration:
+                        raise ValueError('Define master processing before the first timeline event.')
+                    if kind == 'master':
+                        if master_configured:
+                            raise ValueError('Set master dry/wet mix once.')
+                        parameters = _options(parts[1:], ('mix',))
+                        settings['master_mix'] = float(parameters.get('mix', 1))
+                        master_configured = True
+                    elif len(parts) >= 2:
+                        from .models import master_chain
+                        candidate = _effect_options(parts[1], parts[2:])
+                        master_chain((*master_effects, candidate))
+                        master_effects.append(candidate)
+                    else:
+                        raise ValueError('Choose a master effect.')
+                    version = 3
                 elif kind == 'effect' and len(parts) >= 3:
                     from .models import EFFECT_PARAMETERS
                     role_name, effect_name = parts[1:3]
@@ -190,12 +229,7 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
                         raise ValueError('Define a role effect before that role speaks.')
                     if role_name not in roles or effect_name not in EFFECT_PARAMETERS:
                         raise ValueError('Declare the role and choose a supported effect first.')
-                    p = _options(parts[3:], (*EFFECT_PARAMETERS[effect_name], 'enabled'))
-                    enabled = p.pop('enabled', 'true')
-                    if enabled not in ('true', 'false'):
-                        raise ValueError('Effect enabled must be true or false.')
-                    effect = Effect(effect_name, tuple((key, float(value)) for key, value in p.items()),
-                                    enabled=enabled == 'true')
+                    effect = _effect_options(effect_name, parts[3:])
                     roles[role_name] = replace(roles[role_name], effects=(*roles[role_name].effects, effect))
                 elif kind == 'output':
                     p = _options(parts[1:], ('format', 'sample_rate', 'stems', 'disk_budget_mb'))
@@ -224,6 +258,8 @@ def parse_script(script, *, title='Audio project', voice='sapi5:default', langua
         except (ValueError, TypeError, KeyError) as exc:
             raise ValueError(f'Script line {lineno}: {exc}') from exc
     finish(len(script_lines))
+    if version == 3:
+        settings['master_effects'] = tuple(master_effects)
     return ProductionPlan(title, script, tuple(roles.values()), tuple(scenes), schema_version=version, **settings)
 
 
@@ -520,9 +556,13 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                 audio.wav_info(asset)
                 assets[event.asset] = sha256_file(asset, cancelled=cancelled,
                     expected_identity=asset_identities[event.asset])
-    run_key = digest({'pipeline_version': PIPELINE_VERSION, 'plan': plan.to_dict(), 'engines': identities,
+    run_settings = {'pipeline_version': PIPELINE_VERSION, 'plan': plan.to_dict(), 'engines': identities,
                       'processor': processor, 'assets': assets, 'music_models': music_identities,
-                      'composer': composer_identity, 'mix_revision': audio.MIX_REVISION})
+                      'composer': composer_identity, 'mix_revision': audio.MIX_REVISION}
+    if plan.schema_version >= 3:
+        from .mastering import MASTER_REVISION
+        run_settings['master_revision'] = MASTER_REVISION
+    run_key = digest(run_settings)
     renders = checked_directory(root / 'renders', create=True)
     output_dir = renders / run_key
     if output_dir.is_symlink():
@@ -845,19 +885,45 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                 chapters.append({'id': scene.id, 'title': scene.title, 'start_frame': position,
                                  'end_frame': position + mixed_info['frames'], 'sample_rate': plan.sample_rate})
                 row = {'scene_id': scene.id, 'events': timed}
-                if plan.schema_version == 2:
+                if plan.schema_version >= 2:
                     row['clips'] = clip_timeline
                     row['minimum_duration'] = scene.minimum_duration
                 timeline.append(row)
                 position += mixed_info['frames']
                 checkpoint(f'Chapter {scene_index+1} is complete and saved.')
 
-            cache.reserve(position * 4 * (2 + (plan.output_format != 'wav')
+            cache.reserve(position * 4 * (2 + (4 if plan.schema_version >= 3 else 0) + (plan.output_format != 'wav')
                 + (len(role_names) + 2 + (4 if any(s.clips for s in plan.scenes) else 0) if plan.export_stems else 0)) + 1024 ** 2)
             scene_identities = verify_dependencies(scene_audio)
             staged_output = checked_directory(temp / 'finished', create=True)
             master = staged_output / 'master.wav'
-            audio.concatenate([p for p, _ in scene_audio], master, cancelled=cancelled, on_status=on_status)
+            master_report = None
+            if plan.schema_version >= 3:
+                from .mastering import MASTER_REVISION, process_master, split_master
+                assembled, assembled_info = cached({'kind': 'master_assembly',
+                    'parts': [info['sha256'] for _, info in scene_audio], 'rate': plan.sample_rate},
+                    lambda path: audio.concatenate([p for p, _ in scene_audio], path,
+                        cancelled=cancelled, on_status=on_status),
+                    estimate=position * 4 + 80, dependencies=scene_audio)
+                mastered, mastered_info = cached({'kind': 'master_processing',
+                    'input_sha256': assembled_info['sha256'], 'effects': [asdict(e) for e in plan.master_effects],
+                    'mix': plan.master_mix, 'processor': processor, 'master_revision': MASTER_REVISION},
+                    lambda path: process_master(assembled, path, ffmpeg=ffmpeg,
+                        effects=plan.master_effects, mix=plan.master_mix, cancelled=cancelled),
+                    estimate=position * 4 + 80, dependencies=((assembled, assembled_info),))
+                publish_new(mastered, master, cancelled=cancelled)
+                if (mastered_info['frames'], mastered_info['sample_rate']) != (position, plan.sample_rate):
+                    raise RuntimeError('The mastered cache changed the measured programme timeline.')
+                master_report = {'revision': MASTER_REVISION, 'effects': json.loads(canonical([asdict(e) for e in plan.master_effects])),
+                    'mix': plan.master_mix, 'input_sha256': assembled_info['sha256'],
+                    'output_sha256': mastered_info['sha256'], 'frames': position,
+                    'sample_rate': plan.sample_rate, 'tail_policy': 'trim at the measured programme end',
+                    'mixing': 'linear dry/wet; no automatic gain normalization',
+                    'limiter': '0.95 safety ceiling; automatic level disabled',
+                    'chapter_audio': 'exact frame partitions of the processed master',
+                    'stems': 'pre-master processing'}
+            else:
+                audio.concatenate([p for p, _ in scene_audio], master, cancelled=cancelled, on_status=on_status)
             measurements = audio.measure_peak(master, cancelled=cancelled)
             measurements.update(audio.measure_loudness(master, ffmpeg=ffmpeg, cancelled=cancelled))
             if measurements['clipped']:
@@ -872,10 +938,14 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                     filename = f'stem-{index:03d}.wav'
                     audio.concatenate(parts, staged_output / filename, cancelled=cancelled)
                     stem_names.append(filename)
-                    stem_labels[filename] = name
-            for index, ((path, _), identity) in enumerate(zip(scene_audio, scene_identities), 1):
-                publish_new(path, staged_output / f'chapter-{index:06d}.wav',
-                            cancelled=cancelled, expected_identity=identity)
+                    stem_labels[filename] = name + (' (pre-master)' if master_report is not None else '')
+            if master_report is not None:
+                split_master(master, tuple((item['start_frame'], item['end_frame']) for item in chapters),
+                             staged_output, cancelled=cancelled)
+            else:
+                for index, ((path, _), identity) in enumerate(zip(scene_audio, scene_identities), 1):
+                    publish_new(path, staged_output / f'chapter-{index:06d}.wav',
+                                cancelled=cancelled, expected_identity=identity)
             for scene_number, music_info in music_companions:
                 for item in music_info.get('companions', ()):
                     suffix = '.mid' if item['name'].endswith('.mid') else '.music.json'
@@ -912,6 +982,8 @@ def _render_locked(plan, root, *, engine, ffmpeg, cancelled, on_status, music_ma
                           'Line timing is measured; word alignment is unavailable.',
                           'Music uses only the explicitly selected local engine; quality and continuity require listening assessment.',
                           'Output measurements do not replace listening or Windows/NVDA acceptance.']}
+            if master_report is not None:
+                result['master_processing'] = master_report
             atomic_json(staged_output / 'complete.json', result)
             check_cancelled(cancelled)
             cache.reserve(0)

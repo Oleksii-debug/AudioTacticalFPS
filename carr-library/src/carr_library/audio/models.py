@@ -135,6 +135,16 @@ class Effect:
         return cls(value['kind'], tuple(tuple(p) for p in params), value.get('enabled', True))
 
 
+def master_chain(effects):
+    """Master processing must retain the already measured programme timeline."""
+    if (not isinstance(effects, tuple) or len(effects) > 16
+            or not all(isinstance(effect, Effect) for effect in effects)):
+        raise ValueError('Choose at most sixteen typed master effects.')
+    if any(effect.enabled and effect.kind in ('tempo', 'pitch') for effect in effects):
+        raise ValueError('Tempo and pitch belong on roles before timing is measured; bypass them on the master.')
+    return effects
+
+
 @dataclass(frozen=True)
 class Role:
     name: str
@@ -327,6 +337,8 @@ class ProductionPlan:
     disk_budget_bytes: int = 32 * 1024 ** 3
     schema_version: int = SCHEMA
     input_kind: str = 'script'
+    master_effects: tuple[Effect, ...] = ()
+    master_mix: float = 1.0
 
     def __post_init__(self):
         text(self.title, 'Project title', 500)
@@ -334,8 +346,12 @@ class ProductionPlan:
             raise ValueError('Choose explicit script or literal narration input.')
         text(self.original_script, 'Original script', 16 * 1024 * 1024, empty=True,
              allow_formfeed=self.input_kind == 'narration')
-        if type(self.schema_version) is not int or self.schema_version not in (1, 2):
+        if type(self.schema_version) is not int or self.schema_version not in (1, 2, 3):
             raise ValueError('Unsupported production project version.')
+        master_chain(self.master_effects)
+        number(self.master_mix, 0, 1, 'Master dry/wet mix')
+        if self.schema_version < 3 and (self.master_effects or self.master_mix != 1):
+            raise ValueError('Master processing requires production project version three.')
         if not isinstance(self.roles, tuple) or not 1 <= len(self.roles) <= 64 or not all(isinstance(r, Role) for r in self.roles):
             raise ValueError('Choose one to sixty-four named roles.')
         if len({r.name for r in self.roles}) != len(self.roles):
@@ -380,6 +396,10 @@ class ProductionPlan:
 
     def to_dict(self):
         data = asdict(self)
+        if self.schema_version < 3:
+            # Existing v1/v2 plan bytes and content-cache keys are unchanged.
+            data.pop('master_effects')
+            data.pop('master_mix')
         for scene, original in zip(data['scenes'], self.scenes):
             if self.schema_version == 1:
                 # Preserve all existing saved-plan/cache fingerprints verbatim.
@@ -398,10 +418,18 @@ class ProductionPlan:
 
     @classmethod
     def _from_dict(cls, value):
-        value = _strict(value, ('schema_version', 'title', 'original_script', 'roles', 'scenes', 'output_format', 'sample_rate', 'export_stems', 'disk_budget_bytes', 'input_kind'), 'project')
+        value = _strict(value, ('schema_version', 'title', 'original_script', 'roles', 'scenes', 'output_format', 'sample_rate', 'export_stems', 'disk_budget_bytes', 'input_kind', 'master_effects', 'master_mix'), 'project')
+        version = value.get('schema_version', 1)
+        master_fields = {'master_effects', 'master_mix'}
+        if version == 3:
+            if (not master_fields <= value.keys() or type(value['master_effects']) not in (list, tuple)
+                    or len(value['master_effects']) > 16):
+                raise ValueError('Version three requires an explicit bounded master chain and dry/wet mix.')
+        elif master_fields.intersection(value):
+            raise ValueError('Master fields cannot be hidden in a legacy project version.')
         scenes = []
         for item in value['scenes']:
-            fields = ('id', 'title', 'events', 'music') + (('clips', 'minimum_duration') if value.get('schema_version', 1) == 2 else ())
+            fields = ('id', 'title', 'events', 'music') + (('clips', 'minimum_duration') if version in (2, 3) else ())
             item = _strict(item, fields, 'scene')
             events = []
             for event in item['events']:
@@ -418,4 +446,6 @@ class ProductionPlan:
                 'trim_start', 'duration', 'fade_in', 'fade_out', 'title'), 'clip')) for clip in item.get('clips', ()))
             scenes.append(Scene(item['id'], item['title'], tuple(events), music, clips,
                                 item.get('minimum_duration', 0.0)))
-        return cls(**{**value, 'roles': tuple(Role.from_dict(r) for r in value['roles']), 'scenes': tuple(scenes)})
+        master = ({'master_effects': tuple(Effect.from_dict(item) for item in value['master_effects'])}
+                  if version == 3 else {})
+        return cls(**{**value, **master, 'roles': tuple(Role.from_dict(r) for r in value['roles']), 'scenes': tuple(scenes)})

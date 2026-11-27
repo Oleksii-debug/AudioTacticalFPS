@@ -8,6 +8,31 @@ from pathlib import Path
 import stat
 
 
+def optional_present(path):
+    """Only an absent name is optional; inaccessible/invalid lookup must fail.
+
+    ``lexists`` suppresses other OSErrors, which can turn a denied typed state
+    root into a successful but incomplete snapshot. Keep dangling links present
+    so the existing regular-file/directory validation rejects them explicitly.
+    """
+    path = Path(path)
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        # Windows may report PATH_NOT_FOUND for a child of a regular file.
+        # A missing descendant is optional only beneath an actual directory;
+        # do not let that OS error mapping hide an invalid or dangling parent.
+        for parent in path.parents:
+            try:
+                parent.lstat()
+            except FileNotFoundError:
+                continue
+            regular(parent, directory=True)
+            break
+        return False
+    return True
+
+
 def regular(path, *, directory=False):
     path = Path(path)
     value = path.lstat()
@@ -25,7 +50,7 @@ def local_path(value, *, root=None, exists=False):
     # Inspect the lexical ancestors before resolving; resolution must not hide
     # a symlink or Windows junction supplied by a caller.
     for parent in reversed((path, *path.parents)):
-        if os.path.lexists(parent):
+        if optional_present(parent):
             regular(parent, directory=(parent != path or parent.is_dir()))
     path = path.resolve(strict=exists)
     if root is not None and not path.is_relative_to(Path(root).resolve(strict=True)):
@@ -45,11 +70,17 @@ def sync_directory(path):
 def publish_tree(source, target, *, cancelled=lambda: False):
     """Publish a caller-owned, already verified staging tree without replacing."""
     source, target = Path(source), Path(target)
+    regular(source, directory=True)
+    def unreadable(error):
+        # os.walk otherwise drops inaccessible directories, which would let
+        # the caller publish a completion marker for an incomplete snapshot.
+        raise error
     target.mkdir(mode=0o700)
     directories = [target]
-    for directory, dirs, files in os.walk(source, followlinks=False):
+    for directory, dirs, files in os.walk(source, followlinks=False, onerror=unreadable):
         if cancelled():
             raise InterruptedError('Library backup or restore cancelled.')
+        regular(directory, directory=True)
         relative = Path(directory).relative_to(source)
         for name in sorted(dirs):
             regular(Path(directory) / name, directory=True)

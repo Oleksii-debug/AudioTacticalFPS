@@ -10,6 +10,7 @@ import json
 import math
 import os
 from pathlib import Path
+from .backup_files import optional_present
 import re
 
 from .backup_files import local_path, regular
@@ -132,7 +133,7 @@ def read_snapshot(root, name):
     info = regular(root, directory=True)
     root_identity = info.st_dev, info.st_ino
     path = local_path(root / name, root=root)
-    if not os.path.lexists(path):
+    if not optional_present(path):
         return None
     before = _identity(regular(path))
     if not 0 < before[4] <= maximum:
@@ -157,11 +158,11 @@ def snapshot_guard(root, *, expected=None):
     root = local_path(root, exists=True)
     directory = local_path(root / 'state' / 'ui', root=root)
     with ExitStack() as stack:
-        if os.path.lexists(directory):
+        if optional_present(directory):
             regular(directory, directory=True)
             for name in ('progress', 'shortcuts'):
                 path = directory / ('.' + name + '.lock')
-                if os.path.lexists(path):
+                if optional_present(path):
                     regular(path)
                 try:
                     stack.enter_context(FileLock(path, timeout=0, mode=0o600))
@@ -176,7 +177,7 @@ def migrate_progress(root):
     """Create current preferences once; voice selection is never imported."""
     from .progress import FILENAME, ProgressPreferences, save_preferences
     root = local_path(root, exists=True)
-    if os.path.lexists(root / FILENAME):
+    if optional_present(root / FILENAME):
         return ''
     source = read_snapshot(root, PROGRESS)
     if source is None:
@@ -235,12 +236,12 @@ def current_menu_map(manager):
 
 def migrate_shortcuts(manager):
     root = manager.store.path.parent
-    if os.path.lexists(manager.store.path):
+    if optional_present(manager.store.path):
         return False
     source = read_snapshot(root, SHORTCUTS)
     if source is None:
         return False
-    if os.path.lexists(root / 'keybindings.json'):
+    if optional_present(root / 'keybindings.json'):
         raise ValueError('Two older shortcut formats are present. Review their assignments before saving a current map.')
     old, mapping = decode_shortcuts(source.raw), current_menu_map(manager)
     translated = {}

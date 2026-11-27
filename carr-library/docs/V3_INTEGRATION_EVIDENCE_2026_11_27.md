@@ -3,6 +3,64 @@
 This is a source/evidence checkpoint, not a declaration of full-platform completion.
 The technical scope remains [V3 finalization](UNIVERSAL_SCOPE_V3_FINALIZATION.md).
 
+## Current reader, scanner and master composition
+
+This composition extends published `df0f7c1937d59b91b17c84d45311263be5957df6`.
+The exact runtime source verified against the built wheel is local commit
+`2ba600fd9a7b4e219f87bbb896eb5c00dfaab3bd`; subsequent changes before publication
+affect test timing and these evidence documents only. Its wheel SHA-256 is
+`b01b0973eaed6d085fdf81bf6c82760d18fd7d90785fe618ec9692dbb987405e`. The sealed
+source verifier found 373 payload files and 305 required runtime files.
+
+| Composed behavior | Executed acceptance |
+|---|---|
+| Exact-source live reading | Selection, cursor, word, line, sentence, paragraph, current location and whole-book traversal use the existing engine registry, resource broker and player. A held immutable PCM reader protects Play and completed-cursor publication. The final focused source suites total 80 passing cases, without skips. Native wx/SAPI controls are required but not yet executed on this composition. |
+| Durable folder continuation | Explicit finite pages, saved successor ownership, orphan recovery and inactive external cursors after restore; all 42 new domain/service/controller/backup cases executed. |
+| Project master effects | Versioned ordered master chain, bypass/presets and dry/wet mix run after assembly; chapter WAVs are exact cuts of the processed master. Held verified input ownership lasts through native FFmpeg completion. The 43-case master suite ran with actual selected Linux FFmpeg. |
+| Complete backup and reading-state refusal | Canonical optional-root error propagation is preserved. Failed staged enumeration cannot publish a completion marker, and unreadable live-cursor state cannot be treated as absent. The composed optional-root suite passed all 34 cases. |
+| Windows Unicode shortcut inspection | Reviewed `d967310951f4f682ce02f6da047168e73ff58879` reads actual links through explicit `IShellLinkW`/read-only `IPersistFile.Load`. Existing exact resolved-target and file-identity assertions remain. All 88 portable installer cases passed; actual COM/A-to-B acceptance remains required. |
+
+The **installed wheel** then passed all **404 cases in 17 suites**, zero failures
+and zero skips, in 30.44 seconds on Linux/Python 3.12.14. Network connection and
+name-resolution calls were denied. Both before and after execution every loaded
+product/bootstrap module was required to originate inside the isolated installed
+site-packages directory; checkout imports could not satisfy the gate. This
+composed run includes live reading, scanning, master/effect/clip editing and
+complete/pending backup. Earlier 368-case source and separate 176-case corrective
+source checks overlap with it and must not be added as unique coverage.
+
+### Exact df0 native results that prompted the corrections
+
+The [df0 main run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45976634127)
+passed Linux and native keyboard jobs, while main Windows passed 52 of 54 early
+strict suites. Its resource fixture expired during a native lock operation
+before the intended test body; its preset fixture expanded a 64 KiB byte value
+into `PYTEST_CURRENT_TEST`, exceeding the Windows environment-variable limit.
+The corrected timeout test holds only the broker clock fixed until actual
+admission and checks exact expiry plus retained OS-lock ownership. All 20
+resource cases passed after that correction. Short explicit preset test IDs
+retain the complete malformed/oversized inputs; all 34 effect-editor cases
+passed locally. These changes do not extend production deadlines or relax
+input validation. Later main Windows stages were not reached.
+
+The [df0 audio run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45976633842)
+passed installed SAPI/FFmpeg and native effect, extended clip, capture and
+publication controls, then stopped on the same oversized preset test ID.
+The [df0 managed run](https://github.com/Oleksii-debug/AudioTacticalFPS/actions/runs/45976633874)
+built both exact source wheels/bundles/setups and successfully installed corrected
+A `665acf2`. It stopped when the old shortcut getter returned lossy Unicode
+paths. The Inno log records the correct installation path; the new read-only
+Unicode inspector still must verify the actual links on Windows. A-to-B,
+rollback, repair and uninstall are not yet marked passed. The df0 bibliography,
+publication-conformance, signed-client and encrypted-snapshot lanes passed.
+
+All current main/audio/installed gates require the new source suites and native
+reader/master probes. Installed JUnit checks require representative live-reader,
+master, scanner and deadline cases by identity. Merely wiring a probe is not
+acceptance. Large-source streaming, further document/audio actions and final
+canonical convergence remain active work; physical listening, manual NVDA and
+owner-model/language qualification retain their separate evidence boundaries.
+
 ## Earlier fully observed native audio composition
 
 Source: `74ecde75c9ae5f4863e0122964de4cff35b89da0`.
@@ -22,7 +80,7 @@ Counts overlap; they are not a unique aggregate. No earlier green run certifies
 a later commit. Private supplied source, model weights, credentials, recordings,
 runtime archives and installers are excluded from public evidence artifacts.
 
-## Published feature source and the next corrective composition
+## Earlier df0 corrective composition
 
 The next composition is based on corrected immutable source
 `665acf2c1fdb5a30a05ef31c482eb02dcaf1e141`. The previous installer builder
@@ -69,10 +127,9 @@ with required JUnit names. It requires the local-setup source suite and runs
 the sealed helper's plan-only entrypoint under the installed runtime's existing
 outbound firewall block, asserting that the proposed directory remains absent.
 The baseline and new features must pass their actual composed Windows runs
-before acceptance. The scanner continuation candidate is intentionally separate;
-durable batch/UI
-integration, large-source streaming, live reader completion, master effects and
-other finite scope gaps are still active work.
+before acceptance. At that checkpoint scanner continuation, live reading and master effects were
+not yet composed. Their later implementation and evidence appear above; the
+remaining finite scope is tracked in the current gap audit.
 
 ## Latest completed Windows runs and their limits
 

@@ -174,15 +174,26 @@ def test_waiting_cancellation_is_prompt_and_adds_no_reservation(broker):
         assert len(broker.snapshot()['leases']) == 1
 
 
-def test_active_timeout_is_stop_signal_never_forced_reclaim(broker):
+@pytest.mark.parametrize('elapsed', [.01, .02])
+def test_active_timeout_is_stop_signal_never_forced_reclaim(broker, monkeypatch, elapsed):
+    import carr_library.operations.broker as module
+    clock = [0.0]
+    # Windows native metadata/lock work can consume the old 10 ms allowance
+    # before context entry. Advance only the scheduling clock after admission;
+    # retain actual files, OS locks and the competing reservation below.
+    monkeypatch.setattr(module, 'time', SimpleNamespace(
+        monotonic=lambda: clock[0], sleep=time.sleep, time=time.time))
     with broker.reserve(ResourceRequest(cpu_slots=2), operation_id='timed', timeout=0, run_timeout=.01) as lease:
-        time.sleep(.02)
+        assert not lease.cancelled()
+        assert [row['id'] for row in broker.snapshot()['leases']] == [lease.id]
+        clock[0] = elapsed
         assert lease.cancelled()
         with pytest.raises(ResourceTimeout, match='execution time'):
             lease.checkpoint()
         with pytest.raises(ResourceTimeout):
             with broker.reserve(ResourceRequest(), operation_id='still-blocked', timeout=0):
                 pytest.fail('A live timed-out worker lost its reservation before cleanup.')
+        assert [row['id'] for row in broker.snapshot()['leases']] == [lease.id]
     assert not broker.snapshot()['leases']
 
 

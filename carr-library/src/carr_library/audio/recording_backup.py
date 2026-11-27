@@ -7,6 +7,7 @@ opaque recovery inputs, including files without a usable WAV header.
 from contextlib import contextmanager
 import os
 from pathlib import Path, PurePosixPath
+from ..backup_files import optional_present
 import re
 
 from filelock import FileLock, Timeout
@@ -59,7 +60,7 @@ def allows_empty(relative):
 def state_paths(root, *, cancelled=lambda: False):
     root = local_path(root, exists=True)
     directory = root / DIRECTORY
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         return ()
     local_path(directory, root=root, exists=True)
     regular(directory, directory=True)
@@ -135,13 +136,13 @@ def snapshot_guard(root, *, cancelled=lambda: False):
     root = local_path(root, exists=True)
     directory = root / DIRECTORY
     _cancel(cancelled)
-    if not os.path.lexists(directory):
+    if not optional_present(directory):
         yield
         return
     local_path(directory, root=root, exists=True)
     regular(directory, directory=True)
     path = directory / '.recording.lock'
-    if os.path.lexists(path):
+    if optional_present(path):
         if regular(path).st_size > 1:
             raise ValueError('The recording lock is not a bounded lock file.')
     lock = FileLock(path, timeout=0, mode=0o600, thread_local=False)

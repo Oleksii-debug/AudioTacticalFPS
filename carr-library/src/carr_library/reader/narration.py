@@ -13,6 +13,7 @@ import json
 import math
 import os
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from ..backup_files import optional_present
 import re
 import stat
 import sys
@@ -618,7 +619,7 @@ def _directory(root, *, create=False):
     path = root / DIRECTORY
     if create:
         path.mkdir(mode=0o700, exist_ok=True)
-    if path.exists() or path.is_symlink():
+    if optional_present(path):
         _private_root(path)
     return path
 
@@ -626,7 +627,7 @@ def _directory(root, *, create=False):
 def snapshot_narration_files(root):
     """Return strict validated relative filenames/bytes; caller holds writer lock."""
     path = _directory(root)
-    if not path.exists():
+    if not optional_present(path):
         return {}
     result, total = {}, 0
     for file in path.iterdir():

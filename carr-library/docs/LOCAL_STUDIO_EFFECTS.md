@@ -1,12 +1,12 @@
 # Local studio effects and output formats
 
 The existing typed role-effect chain exposes 21 effect types through
-**Role effect chains** on the studio Script page. Choose **Structured production
-script**, select a role and edit its ordered steps. Add, edit, move, bypass and
+**Role and master effect chains** on the studio Script page. Choose **Structured production
+script**, select a role or **Master: entire programme** and edit its ordered steps. Add, edit, move, bypass and
 remove operate on an isolated pending chain. **Apply chain changes** makes one
 ordinary narration-draft edit; **Cancel chain changes** leaves the script alone.
 The original source, spoken words, other roles, scene directions and normal
-undo/recovery history are retained. Each role has at most 16 effects.
+undo/recovery history are retained. Each role and the master has at most 16 effects.
 
 Unchanged effect directives retain their spelling even when moved. New or edited
 directives use the same quoted-role and bounded-numeric grammar as the parser.
@@ -63,9 +63,9 @@ confirmation. The private library, current Studio project, recovery file and
 imported original source remain protected destinations.
 
 **Load preset** reads at most 64 KiB into an inert typed preview. Review the name,
-processing order, numeric settings and bypass states, select a role, then choose
-**Apply loaded preset**. This replaces that role's pending chain only. An empty
-preset explicitly means a dry role with no effects. The final **Apply chain
+processing order, numeric settings and bypass states, select a role or master, then choose
+**Apply loaded preset**. This replaces that target's pending chain only. An empty
+preset explicitly removes its effects. The final **Apply chain
 changes** is still required to change the draft.
 
 The `carr-role-effect-preset/1` document has exactly `schema`, `name`
@@ -77,9 +77,58 @@ credential or source path. They are reusable external exports, not an automatic
 preset catalogue or an active runtime profile. Complete project backup preserves
 the applied chain through the existing Studio draft schema.
 
-This editor operates on role chains. Compressor, delay, chorus and reverb expose
-their existing individual mix controls. A separate master effect chain and a
-general dry/wet control for an entire chain are not implemented here.
+The preset format stays unchanged and contains only the chain, so a preset can
+be applied to either target. The master's dry/wet setting is a separate project
+control and is not imported from a preset. Master restrictions are checked on
+every change, including preset application and enabling a bypassed effect.
+
+## Master chain and dry/wet blend
+
+The master processes the complete stereo programme once, after chapter mixing
+and assembly. This lets a delay or reflection cross an interior chapter boundary
+without restarting the effect for each exported chapter. The final programme
+length remains unchanged; effect tails are trimmed at that last frame.
+
+Select **Master: entire programme** to enable the named dry/wet control. Its
+finite value is between zero and one. The output is `(1 - mix) × dry + mix × wet`.
+Zero uses the unprocessed programme and one uses the complete ordered chain.
+Mixing does not normalize the two gains. The existing 0.95 safety limiter, with
+automatic level disabled, limits excess peaks. An explicitly chosen loudness
+effect can still change the processed signal's level by design.
+
+Tempo and pitch remain role effects, applied before the programme's measured
+timeline is built. Active tempo or pitch steps on the master are rejected;
+bypassed steps may be retained as inert preset data. Other effects are validated
+by the same bounded model and fixed FFmpeg filters as role processing. The master
+keeps the declared stereo layout and project rate.
+
+New scripts use these directives before the first timeline event:
+
+    [master mix=0.5]
+    [master-effect compressor threshold_db=-20 ratio=3]
+    [master-effect gain gain_db=-3 enabled=false]
+    # Chapter one
+    Narrator: Exact source text.
+
+Master directives opt into production schema 3, with explicit `master_effects`
+and `master_mix` fields. Existing version-1 and version-2 serialization and cache
+fingerprints remain unchanged. Literal narration continues to treat these words
+as source text, never as instructions.
+
+The renderer seals the assembled and processed master as separate cache steps.
+Changing only the master chain or blend reuses verified speech, music and chapter
+mixes. The cache key also binds the FFmpeg identity and master algorithm revision.
+Publication still follows the existing project lock, resource reservation,
+whole-child-family cleanup and no-overwrite transaction.
+
+Every chapter WAV is an exact consecutive PCM slice of the **processed** master;
+joining those PCM payloads reproduces the master byte for byte. Subtitles and
+chapter offsets retain their measured frame positions. Stem WAVs remain suitable
+for remixing before the master chain and are labelled **pre-master** in the
+completion receipt. Isolated clip preview deliberately excludes programme
+mastering. EPUB/DAISY publication validates schema-3 timelines and uses the same
+verified full master. Complete backup retains the typed plan, source draft,
+master cache and outputs through the existing managed-project adapter.
 
 ## Outputs
 
@@ -106,5 +155,15 @@ test measures an actual order-dependent result and compares a bypassed chain
 with dry audio. The installed Windows probe drives real add/edit/reorder/bypass/
 remove/apply/cancel controls and checks a typed preset file roundtrip. Its file
 picker automation, NVDA speech and listening remain separately labelled.
-This checkpoint was prepared while the executor was unavailable: the new cases
-and extended native sequence are **NOT_RUN** until the strict gates execute them.
+The role-chain suites were subsequently executed on exact source `947193c`:
+95 passed with no skips, including actual Linux FFmpeg signal checks. Master
+tests add historical v1/v2 hashes, explicit v3 validation, source-preserving
+edits, master restrictions, exact PCM blend ratios and stereo placement, very
+short programmes, order/bypass, cross-chapter delay, exact chapter partitions,
+cancellation/resume, full backup/restore and synchronized EPUB publication.
+
+The extended native probe now also selects the actual master control, refuses
+nonfinite mix without closing the dialog, changes mix/order/bypass and verifies
+the accepted typed plan. Native Windows controls, the sealed Windows FULL FFmpeg
+runtime, NVDA and listening remain separate acceptance evidence; the Linux
+synthetic tests do not claim those results.
